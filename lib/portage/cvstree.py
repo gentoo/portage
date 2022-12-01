@@ -2,7 +2,6 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 import re
 import stat
 import time

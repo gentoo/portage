@@ -1,7 +1,6 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 
 from portage import os, _encodings
 from portage.dep import Atom

@@ -22,7 +22,6 @@ from portage import shutil
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-import io
 import logging
 
 

@@ -17,7 +17,6 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage import _unicode_decode
 
-import io
 import sys
 
 _log_levels = frozenset(

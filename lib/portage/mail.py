@@ -10,7 +10,6 @@
 # 'smtlib' module imports the 'email' module, that's imported
 # locally as well.
 
-import socket
 import sys
 
 from portage import os

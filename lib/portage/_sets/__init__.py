@@ -9,9 +9,6 @@ __all__ = [
     "load_default_config",
 ]
 
-import io
-import logging
-import sys
 import portage
 from portage import os
 from portage import load_mod

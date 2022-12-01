@@ -5,7 +5,6 @@
 from portage.cache import fs_template
 from portage.cache import cache_errors
 import errno
-import io
 import stat
 import tempfile
 import os as _os

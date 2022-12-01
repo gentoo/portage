@@ -7,7 +7,6 @@ import grp
 import gzip
 import errno
 import fnmatch
-import io
 from itertools import chain
 import logging
 import os as _os

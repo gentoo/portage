@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import io
 import re
 import stat
 import sys

@@ -3,7 +3,6 @@
 
 __all__ = ["ExtractKernelVersion"]
 
-import io
 import logging
 
 from portage import os, _encodings, _unicode_encode

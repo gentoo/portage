@@ -16,7 +16,6 @@ __all__ = [
 from collections import OrderedDict
 
 import fnmatch
-import io
 import logging
 import os as _os
 import re

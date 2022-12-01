@@ -1,7 +1,6 @@
 # Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 
 import portage
 from portage import os, _encodings

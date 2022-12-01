@@ -20,7 +20,6 @@ __all__ = (
     "wait",
 )
 
-import subprocess
 import types
 import weakref
 

@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-import io
 
 import _emerge.emergelog
 from _emerge.AsynchronousTask import AsynchronousTask

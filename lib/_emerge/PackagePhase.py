@@ -1,7 +1,6 @@
 # Copyright 2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildProcess import EbuildProcess

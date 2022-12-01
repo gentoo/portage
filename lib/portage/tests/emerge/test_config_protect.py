@@ -1,7 +1,6 @@
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 from functools import partial
 import shutil
 import stat

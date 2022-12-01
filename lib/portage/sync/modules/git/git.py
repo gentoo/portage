@@ -1,7 +1,6 @@
 # Copyright 2005-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 import logging
 import re
 import subprocess
