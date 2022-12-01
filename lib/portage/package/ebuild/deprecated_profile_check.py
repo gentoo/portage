@@ -3,7 +3,6 @@
 
 __all__ = ["deprecated_profile_check"]
 
-import io
 
 import portage
 from portage import os, _encodings, _unicode_encode

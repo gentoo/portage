@@ -3,7 +3,6 @@
 
 __all__ = ["dbapi"]
 
-import functools
 import re
 
 import portage

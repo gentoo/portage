@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
-import io
 import logging
 import shelve
 import time

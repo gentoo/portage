@@ -5,7 +5,6 @@ __all__ = ["env_update"]
 
 import errno
 import glob
-import io
 import stat
 import time
 

@@ -8,7 +8,6 @@ accepts a list of directories and returns a list of mounts which need to be
 remounted RW, then add "elif ostype == (the ostype value for your OS)" to
 get_ro_checker().
 """
-import io
 import logging
 import os
 

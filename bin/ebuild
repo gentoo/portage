@@ -33,7 +33,6 @@ def debug_signal(_signum, _frame):
 
 signal.signal(signal.SIGUSR1, debug_signal)
 
-import io
 import os
 from os import path as osp
 

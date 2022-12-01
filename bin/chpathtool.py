@@ -8,7 +8,6 @@ In other words, eprefixy ${D} for Gentoo/Prefix."""
 __doc__ = doc
 
 import argparse
-import io
 import os
 import stat
 import sys

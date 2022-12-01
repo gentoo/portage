@@ -3,7 +3,6 @@
 
 __all__ = ("LocationsManager",)
 
-import io
 import warnings
 
 import portage

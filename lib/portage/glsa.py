@@ -10,7 +10,6 @@ import xml.dom.minidom
 
 from functools import reduce
 
-import io
 from io import StringIO
 
 from portage import _encodings, _unicode_decode, _unicode_encode

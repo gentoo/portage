@@ -6,7 +6,6 @@
 # written by Jeremy Wohl (http://igmus.org)
 
 import errno
-import io
 import functools
 import stat
 import subprocess

@@ -6,7 +6,6 @@ __all__ = ["fetch"]
 import errno
 import functools
 import glob
-import io
 import itertools
 import json
 import logging

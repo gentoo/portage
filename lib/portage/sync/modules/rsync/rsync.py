@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
-import io
 import logging
 import random
 import re

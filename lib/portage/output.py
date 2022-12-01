@@ -4,7 +4,6 @@
 __docformat__ = "epytext"
 
 import errno
-import io
 import itertools
 import re
 import subprocess

@@ -1,6 +1,5 @@
 """WebRsync module for portage"""
 
-import io
 import logging
 
 import portage

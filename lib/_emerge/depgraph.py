@@ -3,7 +3,6 @@
 
 import errno
 import functools
-import io
 import logging
 import stat
 import textwrap
