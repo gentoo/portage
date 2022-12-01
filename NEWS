@@ -2,7 +2,9 @@ portage-3.0.41 (UNRELEASED)
 --------------
 
 Features:
-* TODO
+* vartree: On collisions which are non-fatal (e.g. orphaned files when using
+  FEATURES="protect-owned"), Portage now has friendlier output
+  by using ewarn rather than eerror.
 
 Bug fixes:
 * TODO
