@@ -244,7 +244,6 @@ class bindbapi(fakedbapi):
     def aux_update(self, cpv, values):
         if not self.bintree.populated:
             self.bintree.populate()
-        build_id = None
         try:
             build_id = cpv.build_id
         except AttributeError:
@@ -257,6 +256,10 @@ class bindbapi(fakedbapi):
                 cpv = self._instance_key(cpv, support_string=True)[0]
                 build_id = cpv.build_id
 
+        cpv_str = str(cpv)
+        if build_id is not None:
+            cpv_str += f"-{build_id}"
+
         binpkg_path = self.bintree.getname(cpv)
         if not os.path.exists(binpkg_path):
             raise KeyError(cpv)
@@ -267,7 +270,7 @@ class bindbapi(fakedbapi):
             mydata = mytbz2.get_data()
             encoding_key = True
         elif binpkg_format == "gpkg":
-            mybinpkg = portage.gpkg.gpkg(self.settings, cpv, binpkg_path)
+            mybinpkg = portage.gpkg.gpkg(self.settings, cpv_str, binpkg_path)
             mydata = mybinpkg.get_metadata()
             encoding_key = False
         else:
