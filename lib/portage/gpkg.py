@@ -1150,7 +1150,8 @@ class gpkg:
             prefix = os.path.commonpath(container.getnames())
             if not prefix:
                 raise InvalidBinaryPackageFormat(
-                    f"gpkg file structure mismatch in {self.gpkg_file}"
+                    f"gpkg file structure mismatch in {self.gpkg_file}; files: "
+                    f"{container.getnames()}"
                 )
 
         shutil.move(tmp_gpkg_file_name, self.gpkg_file)

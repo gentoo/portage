@@ -7,7 +7,9 @@ Features:
   by using ewarn rather than eerror.
 
 Bug fixes:
-* TODO
+* Fixed possible corruption of GPKG multi-instance binary packages on upgrade.
+  Bug #877271.
+
 
 portage-3.0.40 (2022-12-01)
 --------------
