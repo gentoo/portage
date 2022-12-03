@@ -2,7 +2,7 @@ portage-3.0.42 (UNRELEASED)
 --------------
 
 Features:
-* TODO
+* cnf: make.conf.example.loong: add for the loong arch (bug #884135).
 
 Bug fixes:
 * glsa: Abort if a GLSA's arch list doesn't match the expected format (bug #882797).
