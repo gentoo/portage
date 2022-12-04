@@ -5,7 +5,8 @@ Features:
 * TODO
 
 Bug fixes:
-* TODO
+* etc-update: Apply defences for patsub_replacement being default on in Bash 5.2.
+  bug #881383.
 
 portage-3.0.41 (2022-11-04)
 --------------

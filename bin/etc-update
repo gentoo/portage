@@ -90,8 +90,8 @@ cmd_var_is_valid() {
 }
 
 diff_command() {
-	local cmd=${diff_command//%file1/$1}
-	${cmd//%file2/$2}
+	local cmd=${diff_command//%file1/"$1"}
+	${cmd//%file2/"$2"}
 }
 
 # Usage: do_mv_ln [options] <src> <dst>
