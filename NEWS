@@ -1,4 +1,4 @@
-portage-3.0.41 (UNRELEASED)
+portage-3.0.41 (2022-11-04)
 --------------
 
 Features:
@@ -6,10 +6,12 @@ Features:
   FEATURES="protect-owned"), Portage now has friendlier output
   by using ewarn rather than eerror.
 
+* cleanups: Use pyupgrade on the codebase (up to Python 3.8) to use newer
+  idioms.
+
 Bug fixes:
 * Fixed possible corruption of GPKG multi-instance binary packages on upgrade.
   Bug #877271.
-
 
 portage-3.0.40 (2022-12-01)
 --------------
