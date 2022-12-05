@@ -7,6 +7,8 @@ Features:
 Bug fixes:
 * glsa: Abort if a GLSA's arch list doesn't match the expected format (bug #882797).
 
+* install-qa-check.d: 60pkgconfig: avoid using grep -P (PCRE) unnecessarily (bug #884285).
+
 * etc-update: Apply defences for patsub_replacement being default on in Bash 5.2
   (bug #881383).
 
