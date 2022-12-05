@@ -1,4 +1,4 @@
-# Copyright 2003-2020 Gentoo Authors
+# Copyright 2003-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
@@ -37,6 +37,8 @@ opMapping = {
 }
 NEWLINE_ESCAPE = "!;\\n"  # some random string to mark newlines that should be preserved
 SPACE_ESCAPE = "!;_"  # some random string to mark spaces that should be preserved
+# See PMS 3.1.7 "Keyword names"
+ARCH_REGEX = re.compile(r"^\*$|^[-_a-z0-9 ]+$")
 
 
 def get_applied_glsas(settings):
@@ -739,7 +741,13 @@ class Glsa:
         for k in self.packages:
             pkg = self.packages[k]
             for path in pkg:
-                if path["arch"] == "*" or self.config["ARCH"] in path["arch"].split():
+                if not ARCH_REGEX.match(path["arch"]):
+                    raise GlsaFormatException(
+                        f"Unrecognized arch list in {self.nr} (wrong delimiter?): {path['arch']}"
+                    )
+
+                arches = path["arch"].split()
+                if path["arch"] == "*" or self.config["ARCH"] in arches:
                     for v in path["vul_atoms"]:
                         rValue = rValue or (
                             len(match(v, self.vardbapi)) > 0
