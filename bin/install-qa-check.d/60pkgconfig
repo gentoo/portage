@@ -77,7 +77,7 @@ pkgconfig_check() {
 			fi
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
 			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/, or libfoo
-			if grep -qP '=(/usr)?/lib\b' ${f} ; then
+			if grep -E -q '=(/usr)?/lib\b' ${f} ; then
 				bad_libdir+=( "${f//${D}}" )
 			fi
 		fi
