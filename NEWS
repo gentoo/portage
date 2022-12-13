@@ -15,6 +15,8 @@ Bug fixes:
 * make.conf(5): Note the various file suffixes / file extensions used
   for binary packages.
 
+* logging: Write logs under BROOT, not EPREFIX.
+
 portage-3.0.41 (2022-11-04)
 --------------
 

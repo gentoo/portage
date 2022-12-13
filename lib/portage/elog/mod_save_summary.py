@@ -20,7 +20,7 @@ def process(mysettings, key, logentries, fulltext):
         logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
     else:
         logdir = os.path.join(
-            os.sep, mysettings["EPREFIX"].lstrip(os.sep), "var", "log", "portage"
+            os.sep, mysettings["BROOT"].lstrip(os.sep), "var", "log", "portage"
         )
 
     if not os.path.isdir(logdir):
