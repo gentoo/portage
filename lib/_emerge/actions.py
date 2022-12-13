@@ -3799,7 +3799,10 @@ def run_action(emerge_config):
 
     emerge_log_dir = emerge_config.target_config.settings.get("EMERGE_LOG_DIR")
     default_log_dir = os.path.join(
-        os.sep, portage.const.EPREFIX.lstrip(os.sep), "var", "log"
+        os.sep,
+        emerge_config.target_config.settings["BROOT"].lstrip(os.sep),
+        "var",
+        "log",
     )
     for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
         if x in emerge_config.opts:
