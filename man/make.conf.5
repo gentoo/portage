@@ -114,12 +114,16 @@ ACCEPT_RESTRICT="* -bindist"
 .TP
 .B BINPKG_FORMAT
 This variable sets the format used for tar binary packages. Possible
-values are \fIxpak\fI or \fIgpkg\fI.
+values are \fIxpak\fI or \fIgpkg\fI.  If \fBBINPKG_FORMAT\fR is set to \fIxpak\fR,
+packages will have the file extension .tbz2 for any compression type for historical
+reasons.  If \fBBINPKG_FORMAT\fR is set to \fIxpak\fR, and FEATURES="binpkg-multi-instance"
+is set, packages will have the file extension .xpak.  If \fBBINPKG_FORMAT\fR is set
+to \fIgpkg\fR, packages will have the file extension .gpkg.
 .TP
 \fBBINPKG_COMPRESS\fR = \fI"compression"\fR
 This variable is used to determine the compression used for \fIbinary
-packages\fR. Supported settings and compression algorithms are: bzip2, gzip,
-lz4, lzip, lzop, xz, zstd.
+packages\fR.  Supported settings and compression algorithms are: bzip2, gzip,
+lz4, lzip, lzop, xz, zstd.  See note for \fBBINPKG_FORMAT\fR on file suffix.
 .br
 Defaults to "zstd".
 .br
