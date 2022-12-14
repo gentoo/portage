@@ -148,12 +148,31 @@ class GitSync(NewBase):
 
         if self.settings.get("PORTAGE_QUIET") == "1":
             git_cmd_opts += " --quiet"
+
+        # Default: Perform shallow updates (but only if the target is
+        # already a shallow repository).
+        sync_depth = 1
         if self.repo.sync_depth is not None:
-            if self.repo.sync_depth != 0:
-                git_cmd_opts += " --depth %d" % self.repo.sync_depth
+            sync_depth = self.repo.sync_depth
         else:
-            # default
-            git_cmd_opts += " --depth 1"
+            # If sync-depth is not explicitly set by the user,
+            # then check if the target repository is already a
+            # shallow one. And do not perform a shallow update if
+            # the target repository is not shallow.
+            is_shallow_cmd = ["git", "rev-parse", "--is-shallow-repository"]
+            is_shallow_res = portage._unicode_decode(
+                subprocess.check_output(
+                    is_shallow_cmd,
+                    cwd=portage._unicode_encode(self.repo.location),
+                )
+            )
+            if is_shallow_res == "false":
+                sync_depth = 0
+
+        shallow = False
+        if sync_depth > 0:
+            git_cmd_opts += f" --depth {sync_depth}"
+            shallow = True
 
         if self.repo.module_specific_options.get("sync-git-pull-extra-opts"):
             git_cmd_opts += (
@@ -181,7 +200,6 @@ class GitSync(NewBase):
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (e.returncode, False)
 
-        shallow = self.repo.sync_depth is None or self.repo.sync_depth != 0
         if shallow:
             # For shallow fetch, unreachable objects may need to be pruned
             # manually, in order to prevent automatic git gc calls from
