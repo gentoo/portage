@@ -4,6 +4,8 @@ portage-3.0.42 (UNRELEASED)
 Features:
 * cnf: make.conf.example.loong: add for the loong arch (bug #884135).
 
+* git: only perform shallow updates if the repository is a shallow one
+
 Bug fixes:
 * glsa: Abort if a GLSA's arch list doesn't match the expected format (bug #882797).
 
