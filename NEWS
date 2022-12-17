@@ -1,10 +1,61 @@
 portage-3.0.42 (UNRELEASED)
 --------------
 
+Breaking changes:
+* Portage changed its git sync behaviour for repositories with sync-type=git.
+
+  Recently in Portage 3.0.39 (for sync depth) and Portage 3.0.40 (git reset/clobbering),
+  Portage started doing two things:
+
+  1. Clobbering changes to repositories with sync-type=git
+
+  If git is pulling from a CDN, Portage may on one sync receive state X, but
+  on a subsequent sync receive state X-1. This can cause an odd state
+  where git wants to resolve conflicts and manual intervention is required,
+  hence needing git reset.
+
+  This situation was often worse with sync-depth=1 and would lead
+  to orphaned files hence needing git clean.
+
+  2. Defaulted to sync-depth=clone-depth=1.
+
+  The motivation here was because of disk space growing unbounded
+  otherwise. It makes sense when considered within the school of thought / motivation
+  listed above (prioritising a successful sync and then making an optimisation
+  based on how we achieve that).
+
+  Further, there was additional motivation to avoid disk usage growing
+  unbounded (which additionally could lead to a sync failing at some point).
+
+  Portage 3.0.42 will now only make a repository shallow if:
+  1. volatile=yes and it is a new sync (i.e. it was not deep before), or
+  2. volatile=no  and sync-depth is unset in repos.conf.
+
+  --
+
+  To allow users to opt-out of these destructive changes, we now
+  have a repository setting called 'volatile'.
+
+  * If volatile=yes, the repository is assumed to be user-modifiable
+    and Portage will NOT prioritise successful sync over preserving
+    repository state.
+
+  * If volatile=no, the repository is assumed to only be modified
+    by Portage, and Portage will try its best to ensure syncs continue
+    to work.
+
 Features:
 * cnf: make.conf.example.loong: add for the loong arch (bug #884135).
 
-* git: only perform shallow updates if the repository is a shallow one
+* sync: git: only perform destructive operations like 'git reset' to keep
+  sync working and the repository in a predictable state for sync-type=git
+  repositories if the repository is not marked volatile.
+
+* sync: git: only perform shallow updates if the repository is a shallow one
+  or if the repository is not marked volatile.
+
+* sync: git: run 'git clean' in git repositories if they are marked as
+  non-volatile.
 
 Bug fixes:
 * glsa: Abort if a GLSA's arch list doesn't match the expected format (bug #882797).
