@@ -160,6 +160,7 @@ class RepoConfig:
         "thin_manifest",
         "update_changelog",
         "user_location",
+        "volatile",
         "_eapis_banned",
         "_eapis_deprecated",
         "_masters_orig",
@@ -330,9 +331,35 @@ class RepoConfig:
                     self.name = name
                 if portage._sync_mode:
                     missing = False
-
         elif name == "DEFAULT":
             missing = False
+
+        volatile = repo_opts.get("volatile")
+        # If volatile is explicitly set, go with it.
+        if volatile is not None:
+            self.volatile = volatile in ("true", "yes")
+        else:
+            # If it's unset, we default to no (i.e. the repository is not volatile),
+            # but with a heuristic for when a repository is not likely to be suitable
+            # (likely to contain custom user changes).
+
+            # If the repository doesn't exist, we can't check its ownership,
+            # so err on the safe side.
+            if missing or not self.location:
+                self.volatile = True
+            # On Prefix, you can't rely on the ownership as a proxy for user
+            # owned because the user typically owns everything.
+            # But we can't access if we're on Prefix here, so use whether
+            # we're under /var/db/repos instead.
+            elif not self.location.startswith("/var/db/repos"):
+                self.volatile = True
+            # If the owner of the repository isn't root or Portage, it's
+            # an indication the user may expect to be able to safely make
+            # changes in the directory, so default to volatile.
+            elif Path(self.location).user not in ("root", "portage"):
+                self.volatile = True
+            else:
+                self.volatile = False
 
         self.eapi = None
         self.missing_repo_name = missing
@@ -581,6 +608,8 @@ class RepoConfig:
             repo_msg.append(
                 indent + "eclass-overrides: " + " ".join(self.eclass_overrides)
             )
+        if self.volatile is not None:
+            repo_msg.append(indent + "volatile: " + str(self.volatile))
         for o, v in self.module_specific_options.items():
             if v is not None:
                 repo_msg.append(indent + o + ": " + v)
@@ -690,8 +719,16 @@ class RepoConfigLoader:
                             "sync_umask",
                             "sync_uri",
                             "sync_user",
+                            "volatile",
                         ):
                             v = getattr(repos_conf_opts, k, None)
+
+                            # If PORTDIR_OVERLAY is set, we have to require volatile,
+                            # because it'll break changes e.g. with ebuild(1) or
+                            # development in a local repository with the same repo_name.
+                            if k == "volatile" and portdir_overlay:
+                                v = True
+
                             if v is not None:
                                 setattr(repo, k, v)
 
@@ -1216,6 +1253,7 @@ class RepoConfigLoader:
             "sync_allow_hardlinks",
             "sync_openpgp_key_refresh",
             "sync_rcu",
+            "volatile",
         )
         str_or_int_keys = (
             "auto_sync",

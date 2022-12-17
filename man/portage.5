@@ -1259,6 +1259,14 @@ Keep snapshots in \fBDISTDIR\fR (do not delete). Defaults to no, false.
 Require the detached tarball signature to contain a good OpenPGP
 signature. This uses the OpenPGP key(ring) specified by the
 sync\-openpgp\-key\-path setting. Defaults to no, false.
+.B volatile
+Specifies whether a repository is volatile.  Volatile repositories
+are assumed to contain changes made outside of Portage.  This prohibits
+optimizations from occurring by assuming the integrity of the repository
+and its caches may be violated.  Disabling this option allows local changes to
+be made to the repository for e.g. development safely.  For git-synced
+repositories, Portage will not perform destructive operations.
+.TP
 
 .RE
 
