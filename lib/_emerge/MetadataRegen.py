@@ -66,7 +66,7 @@ class MetadataRegen(AsyncScheduler):
                             f"ebuild not found for '{cpv}{_repo_separator}{repo.name}'"
                         )
                     metadata, ebuild_hash = portdb._pull_valid_cache(
-                        cpv, ebuild_path, repo_path
+                        cpv, ebuild_path, repo_path, force=True
                     )
                     if metadata is not None:
                         if consumer is not None:

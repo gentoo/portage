@@ -597,7 +597,7 @@ class portdbapi(dbapi):
                 # a traceback for debugging purposes.
                 traceback.print_exc()
 
-    def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
+    def _pull_valid_cache(self, cpv, ebuild_path, repo_path, force=False):
         try:
             ebuild_hash = eclass_cache.hashed_path(ebuild_path)
             # snag mtime since we use it later, and to trigger stat failure
@@ -622,7 +622,8 @@ class portdbapi(dbapi):
         if ro_auxdb is not None:
             auxdbs.append(ro_auxdb)
         auxdbs.append(self.auxdb[repo_path])
-        eclass_db = self.repositories.get_repo_for_location(repo_path).eclass_db
+        repo = self.repositories.get_repo_for_location(repo_path)
+        eclass_db = repo.eclass_db
 
         for auxdb in auxdbs:
             try:
@@ -645,6 +646,12 @@ class portdbapi(dbapi):
                 # EAPI from _parse_eapi_ebuild_head, we disregard cache entries
                 # for unsupported EAPIs.
                 continue
+
+            # egencache for example needs to be able to invalidate and force
+            # fresh entries.
+            if not force and not repo.volatile:
+                break
+
             if auxdb.validate_entry(metadata, ebuild_hash, eclass_db):
                 break
         else:
@@ -741,7 +748,11 @@ class portdbapi(dbapi):
             future.set_exception(PortageKeyError(mycpv))
             return future
 
-        mydata, ebuild_hash = self._pull_valid_cache(mycpv, myebuild, mylocation)
+        # If PORTDIR_OVERLAY is set, we allow checking for modifications because
+        # this happens when ebuild(1) is pointed at another location for a repository.
+        mydata, ebuild_hash = self._pull_valid_cache(
+            mycpv, myebuild, mylocation, force=lambda: "PORTDIR_OVERLAY" in os.environ
+        )
 
         if mydata is not None:
             self._aux_get_return(
