@@ -155,19 +155,24 @@ class GitSync(NewBase):
         if self.repo.sync_depth is not None:
             sync_depth = self.repo.sync_depth
         else:
-            # If sync-depth is not explicitly set by the user,
-            # then check if the target repository is already a
-            # shallow one. And do not perform a shallow update if
-            # the target repository is not shallow.
-            is_shallow_cmd = ["git", "rev-parse", "--is-shallow-repository"]
-            is_shallow_res = portage._unicode_decode(
-                subprocess.check_output(
-                    is_shallow_cmd,
-                    cwd=portage._unicode_encode(self.repo.location),
+            if self.repo.volatile:
+                # If sync-depth is not explicitly set by the user,
+                # then check if the target repository is already a
+                # shallow one. And do not perform a shallow update if
+                # the target repository is not shallow.
+                is_shallow_cmd = ["git", "rev-parse", "--is-shallow-repository"]
+                is_shallow_res = portage._unicode_decode(
+                    subprocess.check_output(
+                        is_shallow_cmd,
+                        cwd=portage._unicode_encode(self.repo.location),
+                    )
                 )
-            )
-            if is_shallow_res == "false":
-                sync_depth = 0
+                if is_shallow_res == "false":
+                    sync_depth = 0
+            else:
+                # If the repository is marked as non-volatile, we assume
+                # it's fine to Portage to do what it wishes to it.
+                sync_depth = 1
 
         shallow = False
         if sync_depth > 0:
