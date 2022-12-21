@@ -9,6 +9,7 @@ import re
 import typing
 
 import portage
+from pathlib import Path
 from portage import eclass_cache, os
 from portage.checksum import get_valid_checksum_keys
 from portage.const import PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH
