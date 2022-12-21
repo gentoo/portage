@@ -1266,6 +1266,9 @@ optimizations from occurring by assuming the integrity of the repository
 and its caches may be violated.  Disabling this option allows local changes to
 be made to the repository for e.g. development safely.  For git-synced
 repositories, Portage will not perform destructive operations.
+Per default, repositories are considered volatile if their directory is owned
+by either 'root' or 'portage' and if it is under /var/db/repos. Otherwise,
+the repository is considered non volatile.
 .TP
 
 .RE
