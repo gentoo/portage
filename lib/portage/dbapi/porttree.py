@@ -614,8 +614,7 @@ class portdbapi(dbapi):
         if ro_auxdb is not None:
             auxdbs.append(ro_auxdb)
         auxdbs.append(self.auxdb[repo_path])
-        repo = self.repositories.get_repo_for_location(repo_path)
-        eclass_db = repo.eclass_db
+        eclass_db = self.repositories.get_repo_for_location(repo_path).eclass_db
 
         for auxdb in auxdbs:
             try:
@@ -638,9 +637,7 @@ class portdbapi(dbapi):
                 # EAPI from _parse_eapi_ebuild_head, we disregard cache entries
                 # for unsupported EAPIs.
                 continue
-            if not repo.volatile or auxdb.validate_entry(
-                metadata, ebuild_hash, eclass_db
-            ):
+            if auxdb.validate_entry(metadata, ebuild_hash, eclass_db):
                 break
         else:
             metadata = None
