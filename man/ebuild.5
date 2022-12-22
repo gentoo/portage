@@ -910,6 +910,12 @@ expressions with escape\-quoted special characters.
 This should contain a list of file paths, relative to the image directory, of
 desktop files which should not be validated. The paths may contain regular
 expressions with escape\-quoted special characters.
+.TP
+.B QA_PKGCONFIG_VERSION
+If set, then portage verifies that all pkg-config .pc files have a Version field
+with the value of QA_PKGCONFIG_VERSION. For example, set
+\fIQA_PKGCONFIG_VERSION=${PV}\fR if your package is expected to install all
+pkg-config .pc files with a Version field containing PV.
 
 .SH "PORTAGE DECLARATIONS"
 .TP

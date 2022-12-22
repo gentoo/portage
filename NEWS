@@ -57,6 +57,8 @@ Features:
 * sync: git: run 'git clean' in git repositories if they are marked as
   non-volatile.
 
+* install-qa-check.d: 60pkgconfig: add opt-in QA_PKGCONFIG_VERSION check
+
 Bug fixes:
 * glsa: Abort if a GLSA's arch list doesn't match the expected format (bug #882797).
 
