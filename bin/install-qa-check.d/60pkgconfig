@@ -94,19 +94,16 @@ pkgconfig_check() {
 		eqatag -v pkgconfig.bad-libdir "${bad_libdir[@]}"
 	fi
 
-	# Check for mismatched Version field vs ${PV}
+	# Check for mismatched .pc Version field vs ${PV}. As this check
+	# initially caused false-positives, i.e., reports of a mismatch
+	# where the mismatch was intentional, it is now an opt-in check.
 	# To be safe, let's make sure _all_ installed .pcs have a bad Version
 	# before warning, as this should catch the general cases we're worried
 	# about, while avoiding any pathological cases e.g. multiple libraries
 	# with different versioning within one package.
 	# Example bugs: bug #833895, bug #833887.
 
-	# Default to PV if QA_PKGCONFIG_VERSION is unset.
-	if [[ -z ${QA_PKGCONFIG_VERSION+set} ]]; then
-		local QA_PKGCONFIG_VERSION=${PV}
-	fi
-
-	# Skip the check if QA_PKGCONFIG_VERSION is set to empty string.
+	# Skip the check if QA_PKGCONFIG_VERSION is not set.
 	if [[ -n ${QA_PKGCONFIG_VERSION} ]]; then
 		local pms_ver_re="^([0-9]+(\.[0-9]+)*)([a-z]?)((_(alpha|beta|pre|rc|p)[0-9]*)*)(-r[0-9]+)?$"
 		local -A bad_files
@@ -139,15 +136,13 @@ pkgconfig_check() {
 		# we want to avoid false positives.
 		if [[ ${#bad_files[@]} -gt 0 && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
 			eqawarn "QA Notice: pkg-config files with mismatched Version found!"
-			eqawarn "The Version field of the following files does not match ${PV}"
+			eqawarn "The Version field of the following files does not match ${QA_PKGCONFIG_VERSION}"
 			local bad_file
 			for bad_file in "${!bad_files[@]}"; do
 				local bad_file_version="${bad_files[${bad_file}]}"
 				eqawarn "- ${bad_file}: ${bad_file_version}"
 			done
 			eqawarn "Please check all .pc files installed by this package."
-			eqawarn "You can use QA_PKGCONFIG_VERSION to set the expected version,"
-			eqawarn "or set to the empty string to disable this QA check."
 			eqatag pkgconfig.unexpected-version ${!bad_files[@]}
 		fi
 	fi
