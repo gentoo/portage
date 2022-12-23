@@ -2,6 +2,7 @@
 # Copyright 2006-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import signal
 import sys
 
@@ -13,13 +14,7 @@ import sys
 global_event_loop = None
 try:
 
-    def exithandler(signum, _frame):
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        sys.exit(128 + signum)
-
-    signal.signal(signal.SIGTERM, exithandler)
-    # Prevent "[Errno 32] Broken pipe" exceptions when
-    # writing to a pipe.
+    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
     def debug_signal(_signum, _frame):
@@ -82,7 +77,8 @@ try:
 except KeyboardInterrupt:
     sys.stderr.write("\n\nExiting on signal {signal}\n".format(signal=signal.SIGINT))
     sys.stderr.flush()
-    sys.exit(128 + signal.SIGINT)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    os.kill(os.getpid(), signal.SIGINT)
 finally:
     if global_event_loop is not None:
         global_event_loop().close()

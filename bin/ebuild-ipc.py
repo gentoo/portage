@@ -5,21 +5,14 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
-# This block ensures that ^C interrupts are handled quietly.
-try:
-    import os
-    import signal
+import os
+import signal
 
-    def exithandler(signum, _frame):
-        signal.signal(signum, signal.SIG_DFL)
-        os.kill(os.getpid(), signum)
+# This ensures that ^C interrupts are handled quietly.
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    signal.signal(signal.SIGINT, exithandler)
-    signal.signal(signal.SIGTERM, exithandler)
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
-except KeyboardInterrupt:
-    raise SystemExit(130)
+# Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import errno
 import logging
