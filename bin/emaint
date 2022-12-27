@@ -5,46 +5,66 @@
 """System health checks and maintenance utilities.
 """
 
-import sys
-import errno
+import os
+import signal
 
-# This block ensures that ^C interrupts are handled quietly.
+# For compatibility with Python < 3.8
+raise_signal = getattr(
+    signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
+)
+
+# Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
+class SignalInterrupt(KeyboardInterrupt):
+    def __init__(self, signum):
+        self.signum = signum
+
+
 try:
-    import signal
 
-    def exithandler(signum, _frame):
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        sys.exit(128 + signum)
+    def signal_interrupt(signum, _frame):
+        raise SignalInterrupt(signum)
 
-    signal.signal(signal.SIGINT, exithandler)
-    signal.signal(signal.SIGTERM, exithandler)
+    def debug_signal(_signum, _frame):
+        import pdb
+
+        pdb.set_trace()
+
+    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal_interrupt)
+    signal.signal(signal.SIGUSR1, debug_signal)
 
-except KeyboardInterrupt:
-    sys.exit(1)
+    import sys
+    import errno
+    from os import path as osp
 
-from os import path as osp
+    if osp.isfile(
+        osp.join(
+            osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed"
+        )
+    ):
+        sys.path.insert(
+            0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+        )
+    import portage
 
-if osp.isfile(
-    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
-):
-    sys.path.insert(
-        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
-    )
-import portage
+    portage._internal_caller = True
+    from portage.emaint.main import emaint_main
+    from portage.util._eventloop.global_event_loop import global_event_loop
 
-portage._internal_caller = True
-from portage.emaint.main import emaint_main
-from portage.util._eventloop.global_event_loop import global_event_loop
+    try:
+        emaint_main(sys.argv[1:])
+    except OSError as e:
+        if e.errno == errno.EACCES:
+            print("\nemaint: Need superuser access")
+            sys.exit(1)
+        else:
+            raise
+    finally:
+        global_event_loop().close()
 
-try:
-    emaint_main(sys.argv[1:])
-except OSError as e:
-    if e.errno == errno.EACCES:
-        print("\nemaint: Need superuser access")
-        sys.exit(1)
-    else:
-        raise
-finally:
-    global_event_loop().close()
+except KeyboardInterrupt as e:
+    # Prevent traceback on ^C
+    signum = getattr(e, "signum", signal.SIGINT)
+    signal.signal(signum, signal.SIG_DFL)
+    raise_signal(signum)
