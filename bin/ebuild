@@ -2,434 +2,441 @@
 # Copyright 1999-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import argparse
-import signal
-import sys
-import textwrap
-
-# This block ensures that ^C interrupts are handled quietly.
-try:
-
-    def exithandler(signum, _frame):
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        sys.exit(128 + signum)
-
-    signal.signal(signal.SIGINT, exithandler)
-    signal.signal(signal.SIGTERM, exithandler)
-    # Prevent "[Errno 32] Broken pipe" exceptions when
-    # writing to a pipe.
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
-except KeyboardInterrupt:
-    sys.exit(128 + signal.SIGINT)
-
-
-def debug_signal(_signum, _frame):
-    import pdb
-
-    pdb.set_trace()
-
-
-signal.signal(signal.SIGUSR1, debug_signal)
-
 import os
-from os import path as osp
+import signal
 
-if osp.isfile(
-    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
-):
-    sys.path.insert(
-        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
-    )
-import portage
-
-portage._internal_caller = True
-from portage import os
-from portage import _encodings
-from portage import _shell_quote
-from portage import _unicode_encode
-from portage.const import VDB_PATH
-from portage.exception import (
-    PermissionDenied,
-    PortageKeyError,
-    PortagePackageException,
-    UnsupportedAPIException,
-)
-from portage.localization import _
-import portage.util
-from portage.util._eventloop.global_event_loop import global_event_loop
-from _emerge.actions import apply_priorities
-from _emerge.Package import Package
-from _emerge.RootConfig import RootConfig
-
-portage.process.sanitize_fds()
-
-description = "See the ebuild(1) man page for more info"
-usage = "Usage: ebuild <ebuild file> <command> [command] ..."
-parser = argparse.ArgumentParser(description=description, usage=usage)
-
-force_help = (
-    "When used together with the digest or manifest "
-    + "command, this option forces regeneration of digests for all "
-    + "distfiles associated with the current ebuild. Any distfiles "
-    + "that do not already exist in ${DISTDIR} will be automatically fetched."
+# For compatibility with Python < 3.8
+raise_signal = getattr(
+    signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
 )
 
-parser.add_argument("--force", help=force_help, action="store_true")
-parser.add_argument(
-    "--color", help="enable or disable color output", choices=("y", "n")
-)
-parser.add_argument("--debug", help="show debug output", action="store_true")
-parser.add_argument("--version", help="show version and exit", action="store_true")
-parser.add_argument(
-    "--ignore-default-opts",
-    action="store_true",
-    help="do not use the EBUILD_DEFAULT_OPTS environment variable",
-)
-parser.add_argument(
-    "--skip-manifest", help="skip all manifest checks", action="store_true"
-)
+# Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
+class SignalInterrupt(KeyboardInterrupt):
+    def __init__(self, signum):
+        self.signum = signum
 
-opts, pargs = parser.parse_known_args(args=sys.argv[1:])
-
-
-def err(txt):
-    portage.writemsg("ebuild: {}\n".format(txt), noiselevel=-1)
-    sys.exit(1)
-
-
-if opts.version:
-    print("Portage", portage.VERSION)
-    sys.exit(os.EX_OK)
-
-if len(pargs) < 2:
-    parser.error("missing required args")
-
-if not opts.ignore_default_opts:
-    default_opts = portage.util.shlex_split(
-        portage.settings.get("EBUILD_DEFAULT_OPTS", "")
-    )
-    opts, pargs = parser.parse_known_args(default_opts + sys.argv[1:])
-
-debug = opts.debug
-force = opts.force
-
-if debug:
-    # Ensure that all config instances have this setting,
-    # including the one that's used by portdbapi for aux_get.
-    os.environ["PORTAGE_DEBUG"] = "1"
-    portage._reset_legacy_globals()
-
-# do this _after_ 'import portage' to prevent unnecessary tracing
-if debug and "python-trace" in portage.features:
-    portage.debug.set_trace(True)
-
-if not opts.color == "y" and (
-    opts.color == "n"
-    or portage.settings.get("NOCOLOR") in ("yes", "true")
-    or portage.settings.get("TERM") == "dumb"
-    or not sys.stdout.isatty()
-):
-    portage.output.nocolor()
-    portage.settings.unlock()
-    portage.settings["NOCOLOR"] = "true"
-    portage.settings.backup_changes("NOCOLOR")
-    portage.settings.lock()
-
-apply_priorities(portage.settings)
-
-ebuild = pargs.pop(0)
-
-pf = None
-if ebuild.endswith(".ebuild"):
-    pf = os.path.basename(ebuild)[:-7]
-
-if pf is None:
-    err("{}: does not end with '.ebuild'".format(ebuild))
-
-if not os.path.isabs(ebuild):
-    mycwd = os.getcwd()
-    # Try to get the non-canonical path from the PWD evironment variable, since
-    # the canonical path returned from os.getcwd() may may be unusable in
-    # cases where the directory stucture is built from symlinks.
-    pwd = os.environ.get("PWD", "")
-    if pwd and pwd != mycwd and os.path.realpath(pwd) == mycwd:
-        mycwd = portage.normalize_path(pwd)
-    ebuild = os.path.join(mycwd, ebuild)
-ebuild = portage.normalize_path(ebuild)
-# portdbapi uses the canonical path for the base of the ebuild repository, but
-# subdirectories of the base can be built from symlinks (like crossdev does).
-ebuild_portdir = os.path.realpath(
-    os.path.dirname(os.path.dirname(os.path.dirname(ebuild)))
-)
-ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
-vdb_path = os.path.realpath(os.path.join(portage.settings["EROOT"], VDB_PATH))
-
-# Make sure that portdb.findname() returns the correct ebuild.
-if ebuild_portdir != vdb_path and ebuild_portdir not in portage.portdb.porttrees:
-    portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
-    os.environ["PORTDIR_OVERLAY"] = portdir_overlay + " " + _shell_quote(ebuild_portdir)
-
-    print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
-    portage._reset_legacy_globals()
-
-myrepo = None
-if ebuild_portdir != vdb_path:
-    myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
-
-if not os.path.exists(ebuild):
-    err("{}: does not exist".format(ebuild))
-
-ebuild_split = ebuild.split("/")
-cpv = "{}/{}".format(ebuild_split[-3], pf)
-
-with open(
-    _unicode_encode(ebuild, encoding=_encodings["fs"], errors="strict"),
-    encoding=_encodings["repo.content"],
-    errors="replace",
-) as f:
-    eapi = portage._parse_eapi_ebuild_head(f)[0]
-if eapi is None:
-    eapi = "0"
-if not portage.catpkgsplit(cpv, eapi=eapi):
-    err("{}: {}: does not follow correct package syntax".format(ebuild, cpv))
-
-if ebuild.startswith(vdb_path):
-    mytree = "vartree"
-    pkg_type = "installed"
-
-    portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=myrepo)
-
-    if os.path.realpath(portage_ebuild) != ebuild:
-        err("Portage seems to think that {} is at {}".format(cpv, portage_ebuild))
-
-else:
-    mytree = "porttree"
-    pkg_type = "ebuild"
-
-    portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
-
-    if not portage_ebuild or portage_ebuild != ebuild:
-        err("{}: does not seem to have a valid PORTDIR structure".format(ebuild))
-
-if len(pargs) > 1 and "config" in pargs:
-    other_phases = set(pargs)
-    other_phases.difference_update(("clean", "config", "digest", "manifest"))
-    if other_phases:
-        err('"config" must not be called with any other phase')
-
-
-def discard_digests(myebuild, mysettings, mydbapi):
-    """Discard all distfiles digests for the given ebuild.  This is useful when
-    upstream has changed the identity of the distfiles and the user would
-    otherwise have to manually remove the Manifest and files/digest-* files in
-    order to ensure correct results."""
-    try:
-        portage._doebuild_manifest_exempt_depend += 1
-        pkgdir = os.path.dirname(myebuild)
-        fetchlist_dict = portage.FetchlistDict(pkgdir, mysettings, mydbapi)
-        mf = mysettings.repositories.get_repo_for_location(
-            os.path.dirname(os.path.dirname(pkgdir))
-        )
-        mf = mf.load_manifest(
-            pkgdir, mysettings["DISTDIR"], fetchlist_dict=fetchlist_dict
-        )
-        mf.create(
-            requiredDistfiles=None,
-            assumeDistHashesSometimes=True,
-            assumeDistHashesAlways=True,
-        )
-        distfiles = fetchlist_dict[cpv]
-        for myfile in distfiles:
-            try:
-                del mf.fhashdict["DIST"][myfile]
-            except KeyError:
-                pass
-        mf.write()
-    finally:
-        portage._doebuild_manifest_exempt_depend -= 1
-
-
-portage.settings.validate()  # generate warning messages if necessary
-
-build_dir_phases = {
-    "setup",
-    "unpack",
-    "prepare",
-    "configure",
-    "compile",
-    "test",
-    "install",
-    "package",
-    "rpm",
-    "merge",
-    "qmerge",
-}
-
-# If the current metadata is invalid then force the ebuild to be
-# sourced again even if ${T}/environment already exists.
-ebuild_changed = False
-if mytree == "porttree" and build_dir_phases.intersection(pargs):
-    ebuild_changed = (
-        portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)[0] is None
-    )
-
-# Make configuration adjustments to portage.portdb.doebuild_settings,
-# in order to enforce consistency for EBUILD_FORCE_TEST support
-# (see bug 601466).
-tmpsettings = portage.portdb.doebuild_settings
-
-tmpsettings["PORTAGE_VERBOSE"] = "1"
-tmpsettings.backup_changes("PORTAGE_VERBOSE")
-
-if opts.skip_manifest:
-    tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"
-    tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
-
-if (
-    opts.skip_manifest
-    or "digest" in tmpsettings.features
-    or "digest" in pargs
-    or "manifest" in pargs
-):
-    portage._doebuild_manifest_exempt_depend += 1
-
-if "test" in pargs:
-    # This variable is a signal to config.regenerate() to
-    # indicate that the test phase should be enabled regardless
-    # of problems such as masked "test" USE flag.
-    tmpsettings["EBUILD_FORCE_TEST"] = "1"
-    tmpsettings.backup_changes("EBUILD_FORCE_TEST")
-    tmpsettings.features.add("test")
-    portage.writemsg(_("Forcing test.\n"), noiselevel=-1)
-
-tmpsettings.features.discard("fail-clean")
-
-if "merge" in pargs and "noauto" in tmpsettings.features:
-    print("Disabling noauto in features... merge disables it. (qmerge doesn't)")
-    tmpsettings.features.discard("noauto")
-
-if "digest" in tmpsettings.features:
-    if pargs and pargs[0] not in ("digest", "manifest"):
-        pargs = ["digest"] + pargs
-    # We only need to build digests on the first pass.
-    tmpsettings.features.discard("digest")
-
-# Now that configuration adjustments are complete, create a clone of
-# tmpsettings. The current instance refers to portdb.doebuild_settings,
-# and we want to avoid the possibility of unintended side-effects.
-tmpsettings = portage.config(clone=tmpsettings)
 
 try:
-    metadata = dict(
-        zip(
-            Package.metadata_keys,
-            portage.db[portage.settings["EROOT"]][mytree].dbapi.aux_get(
-                cpv, Package.metadata_keys, myrepo=myrepo
-            ),
+
+    def signal_interrupt(signum, _frame):
+        raise SignalInterrupt(signum)
+
+    def debug_signal(_signum, _frame):
+        import pdb
+
+        pdb.set_trace()
+
+    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal_interrupt)
+    signal.signal(signal.SIGUSR1, debug_signal)
+
+    import argparse
+    from os import path as osp
+    import sys
+    import textwrap
+
+    if osp.isfile(
+        osp.join(
+            osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed"
         )
-    )
-except PortageKeyError:
-    # aux_get failure, message should have been shown on stderr.
-    sys.exit(1)
-
-root_config = RootConfig(portage.settings, portage.db[portage.settings["EROOT"]], None)
-
-cpv = portage.versions._pkg_str(
-    cpv,
-    metadata=metadata,
-    settings=portage.settings,
-    db=portage.db[portage.settings["EROOT"]][mytree].dbapi,
-)
-
-pkg = Package(
-    built=(pkg_type != "ebuild"),
-    cpv=cpv,
-    installed=(pkg_type == "installed"),
-    metadata=metadata,
-    root_config=root_config,
-    type_name=pkg_type,
-)
-
-# Apply package.env and repo-level settings. This allows per-package
-# FEATURES and other variables (possibly PORTAGE_TMPDIR) to be
-# available as soon as possible. Also, note that the only way to ensure
-# that setcpv gets metadata from the correct repository is to pass in
-# a Package instance, as we do here (previously we had to modify
-# portdb.porttrees in order to accomplish this).
-tmpsettings.setcpv(pkg)
-
-
-def stale_env_warning():
-    if (
-        "clean" not in pargs
-        and "noauto" not in tmpsettings.features
-        and build_dir_phases.intersection(pargs)
     ):
-        portage.doebuild_environment(
-            ebuild, "setup", portage.root, tmpsettings, debug, 1, portage.portdb
+        sys.path.insert(
+            0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
         )
-        env_filename = os.path.join(tmpsettings["T"], "environment")
-        if os.path.exists(env_filename):
-            msg = (
-                "Existing ${T}/environment for '%s' will be sourced. "
-                + "Run 'clean' to start with a fresh environment."
-            ) % (tmpsettings["PF"],)
-            msg = textwrap.wrap(msg, 70)
-            for x in msg:
-                portage.writemsg(">>> %s\n" % x)
+    import portage
 
-            if ebuild_changed:
-                open(
-                    os.path.join(tmpsettings["PORTAGE_BUILDDIR"], ".ebuild_changed"),
-                    "w",
-                ).close()
+    portage._internal_caller = True
+    from portage import os
+    from portage import _encodings
+    from portage import _shell_quote
+    from portage import _unicode_encode
+    from portage.const import VDB_PATH
+    from portage.exception import (
+        PermissionDenied,
+        PortageKeyError,
+        PortagePackageException,
+        UnsupportedAPIException,
+    )
+    from portage.localization import _
+    import portage.util
+    from portage.util._eventloop.global_event_loop import global_event_loop
+    from _emerge.actions import apply_priorities
+    from _emerge.Package import Package
+    from _emerge.RootConfig import RootConfig
 
+    portage.process.sanitize_fds()
 
-checked_for_stale_env = False
+    description = "See the ebuild(1) man page for more info"
+    usage = "Usage: ebuild <ebuild file> <command> [command] ..."
+    parser = argparse.ArgumentParser(description=description, usage=usage)
 
-for arg in pargs:
+    force_help = (
+        "When used together with the digest or manifest "
+        + "command, this option forces regeneration of digests for all "
+        + "distfiles associated with the current ebuild. Any distfiles "
+        + "that do not already exist in ${DISTDIR} will be automatically fetched."
+    )
+
+    parser.add_argument("--force", help=force_help, action="store_true")
+    parser.add_argument(
+        "--color", help="enable or disable color output", choices=("y", "n")
+    )
+    parser.add_argument("--debug", help="show debug output", action="store_true")
+    parser.add_argument("--version", help="show version and exit", action="store_true")
+    parser.add_argument(
+        "--ignore-default-opts",
+        action="store_true",
+        help="do not use the EBUILD_DEFAULT_OPTS environment variable",
+    )
+    parser.add_argument(
+        "--skip-manifest", help="skip all manifest checks", action="store_true"
+    )
+
+    opts, pargs = parser.parse_known_args(args=sys.argv[1:])
+
+    def err(txt):
+        portage.writemsg("ebuild: {}\n".format(txt), noiselevel=-1)
+        sys.exit(1)
+
+    if opts.version:
+        print("Portage", portage.VERSION)
+        sys.exit(os.EX_OK)
+
+    if len(pargs) < 2:
+        parser.error("missing required args")
+
+    if not opts.ignore_default_opts:
+        default_opts = portage.util.shlex_split(
+            portage.settings.get("EBUILD_DEFAULT_OPTS", "")
+        )
+        opts, pargs = parser.parse_known_args(default_opts + sys.argv[1:])
+
+    debug = opts.debug
+    force = opts.force
+
+    if debug:
+        # Ensure that all config instances have this setting,
+        # including the one that's used by portdbapi for aux_get.
+        os.environ["PORTAGE_DEBUG"] = "1"
+        portage._reset_legacy_globals()
+
+    # do this _after_ 'import portage' to prevent unnecessary tracing
+    if debug and "python-trace" in portage.features:
+        portage.debug.set_trace(True)
+
+    if not opts.color == "y" and (
+        opts.color == "n"
+        or portage.settings.get("NOCOLOR") in ("yes", "true")
+        or portage.settings.get("TERM") == "dumb"
+        or not sys.stdout.isatty()
+    ):
+        portage.output.nocolor()
+        portage.settings.unlock()
+        portage.settings["NOCOLOR"] = "true"
+        portage.settings.backup_changes("NOCOLOR")
+        portage.settings.lock()
+
+    apply_priorities(portage.settings)
+
+    ebuild = pargs.pop(0)
+
+    pf = None
+    if ebuild.endswith(".ebuild"):
+        pf = os.path.basename(ebuild)[:-7]
+
+    if pf is None:
+        err("{}: does not end with '.ebuild'".format(ebuild))
+
+    if not os.path.isabs(ebuild):
+        mycwd = os.getcwd()
+        # Try to get the non-canonical path from the PWD evironment variable, since
+        # the canonical path returned from os.getcwd() may may be unusable in
+        # cases where the directory stucture is built from symlinks.
+        pwd = os.environ.get("PWD", "")
+        if pwd and pwd != mycwd and os.path.realpath(pwd) == mycwd:
+            mycwd = portage.normalize_path(pwd)
+        ebuild = os.path.join(mycwd, ebuild)
+    ebuild = portage.normalize_path(ebuild)
+    # portdbapi uses the canonical path for the base of the ebuild repository, but
+    # subdirectories of the base can be built from symlinks (like crossdev does).
+    ebuild_portdir = os.path.realpath(
+        os.path.dirname(os.path.dirname(os.path.dirname(ebuild)))
+    )
+    ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
+    vdb_path = os.path.realpath(os.path.join(portage.settings["EROOT"], VDB_PATH))
+
+    # Make sure that portdb.findname() returns the correct ebuild.
+    if ebuild_portdir != vdb_path and ebuild_portdir not in portage.portdb.porttrees:
+        portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
+        os.environ["PORTDIR_OVERLAY"] = (
+            portdir_overlay + " " + _shell_quote(ebuild_portdir)
+        )
+
+        print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
+        portage._reset_legacy_globals()
+
+    myrepo = None
+    if ebuild_portdir != vdb_path:
+        myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
+
+    if not os.path.exists(ebuild):
+        err("{}: does not exist".format(ebuild))
+
+    ebuild_split = ebuild.split("/")
+    cpv = "{}/{}".format(ebuild_split[-3], pf)
+
+    with open(
+        _unicode_encode(ebuild, encoding=_encodings["fs"], errors="strict"),
+        encoding=_encodings["repo.content"],
+        errors="replace",
+    ) as f:
+        eapi = portage._parse_eapi_ebuild_head(f)[0]
+    if eapi is None:
+        eapi = "0"
+    if not portage.catpkgsplit(cpv, eapi=eapi):
+        err("{}: {}: does not follow correct package syntax".format(ebuild, cpv))
+
+    if ebuild.startswith(vdb_path):
+        mytree = "vartree"
+        pkg_type = "installed"
+
+        portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(
+            cpv, myrepo=myrepo
+        )
+
+        if os.path.realpath(portage_ebuild) != ebuild:
+            err("Portage seems to think that {} is at {}".format(cpv, portage_ebuild))
+
+    else:
+        mytree = "porttree"
+        pkg_type = "ebuild"
+
+        portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
+
+        if not portage_ebuild or portage_ebuild != ebuild:
+            err("{}: does not seem to have a valid PORTDIR structure".format(ebuild))
+
+    if len(pargs) > 1 and "config" in pargs:
+        other_phases = set(pargs)
+        other_phases.difference_update(("clean", "config", "digest", "manifest"))
+        if other_phases:
+            err('"config" must not be called with any other phase')
+
+    def discard_digests(myebuild, mysettings, mydbapi):
+        """Discard all distfiles digests for the given ebuild.  This is useful when
+        upstream has changed the identity of the distfiles and the user would
+        otherwise have to manually remove the Manifest and files/digest-* files in
+        order to ensure correct results."""
+        try:
+            portage._doebuild_manifest_exempt_depend += 1
+            pkgdir = os.path.dirname(myebuild)
+            fetchlist_dict = portage.FetchlistDict(pkgdir, mysettings, mydbapi)
+            mf = mysettings.repositories.get_repo_for_location(
+                os.path.dirname(os.path.dirname(pkgdir))
+            )
+            mf = mf.load_manifest(
+                pkgdir, mysettings["DISTDIR"], fetchlist_dict=fetchlist_dict
+            )
+            mf.create(
+                requiredDistfiles=None,
+                assumeDistHashesSometimes=True,
+                assumeDistHashesAlways=True,
+            )
+            distfiles = fetchlist_dict[cpv]
+            for myfile in distfiles:
+                try:
+                    del mf.fhashdict["DIST"][myfile]
+                except KeyError:
+                    pass
+            mf.write()
+        finally:
+            portage._doebuild_manifest_exempt_depend -= 1
+
+    portage.settings.validate()  # generate warning messages if necessary
+
+    build_dir_phases = {
+        "setup",
+        "unpack",
+        "prepare",
+        "configure",
+        "compile",
+        "test",
+        "install",
+        "package",
+        "rpm",
+        "merge",
+        "qmerge",
+    }
+
+    # If the current metadata is invalid then force the ebuild to be
+    # sourced again even if ${T}/environment already exists.
+    ebuild_changed = False
+    if mytree == "porttree" and build_dir_phases.intersection(pargs):
+        ebuild_changed = (
+            portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)[0] is None
+        )
+
+    # Make configuration adjustments to portage.portdb.doebuild_settings,
+    # in order to enforce consistency for EBUILD_FORCE_TEST support
+    # (see bug 601466).
+    tmpsettings = portage.portdb.doebuild_settings
+
+    tmpsettings["PORTAGE_VERBOSE"] = "1"
+    tmpsettings.backup_changes("PORTAGE_VERBOSE")
+
+    if opts.skip_manifest:
+        tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"
+        tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
+
+    if (
+        opts.skip_manifest
+        or "digest" in tmpsettings.features
+        or "digest" in pargs
+        or "manifest" in pargs
+    ):
+        portage._doebuild_manifest_exempt_depend += 1
+
+    if "test" in pargs:
+        # This variable is a signal to config.regenerate() to
+        # indicate that the test phase should be enabled regardless
+        # of problems such as masked "test" USE flag.
+        tmpsettings["EBUILD_FORCE_TEST"] = "1"
+        tmpsettings.backup_changes("EBUILD_FORCE_TEST")
+        tmpsettings.features.add("test")
+        portage.writemsg(_("Forcing test.\n"), noiselevel=-1)
+
+    tmpsettings.features.discard("fail-clean")
+
+    if "merge" in pargs and "noauto" in tmpsettings.features:
+        print("Disabling noauto in features... merge disables it. (qmerge doesn't)")
+        tmpsettings.features.discard("noauto")
+
+    if "digest" in tmpsettings.features:
+        if pargs and pargs[0] not in ("digest", "manifest"):
+            pargs = ["digest"] + pargs
+        # We only need to build digests on the first pass.
+        tmpsettings.features.discard("digest")
+
+    # Now that configuration adjustments are complete, create a clone of
+    # tmpsettings. The current instance refers to portdb.doebuild_settings,
+    # and we want to avoid the possibility of unintended side-effects.
+    tmpsettings = portage.config(clone=tmpsettings)
+
     try:
-        if not checked_for_stale_env and arg not in ("digest", "manifest"):
-            # This has to go after manifest generation since otherwise
-            # aux_get() might fail due to invalid ebuild digests.
-            stale_env_warning()
-            checked_for_stale_env = True
-
-        if arg in ("digest", "manifest") and force:
-            discard_digests(ebuild, tmpsettings, portage.portdb)
-        a = portage.doebuild(
-            ebuild,
-            arg,
-            settings=tmpsettings,
-            debug=debug,
-            tree=mytree,
-            vartree=portage.db[portage.root]["vartree"],
+        metadata = dict(
+            zip(
+                Package.metadata_keys,
+                portage.db[portage.settings["EROOT"]][mytree].dbapi.aux_get(
+                    cpv, Package.metadata_keys, myrepo=myrepo
+                ),
+            )
         )
-    except KeyboardInterrupt:
-        print("Interrupted.")
-        a = 1
     except PortageKeyError:
-        # aux_get error
-        a = 1
-    except UnsupportedAPIException as e:
-        msg = textwrap.wrap(str(e), 70)
-        del e
-        for x in msg:
-            portage.writemsg("!!! %s\n" % x, noiselevel=-1)
-        a = 1
-    except PortagePackageException as e:
-        portage.writemsg("!!! {}\n".format(e), noiselevel=-1)
-        a = 1
-    except PermissionDenied as e:
-        portage.writemsg("!!! Permission Denied: {}\n".format(e), noiselevel=-1)
-        a = 1
-    if a is None:
-        print("Could not run the required binary?")
-        a = 127
-    if a:
-        global_event_loop().close()
-        sys.exit(a)
+        # aux_get failure, message should have been shown on stderr.
+        sys.exit(1)
 
-global_event_loop().close()
+    root_config = RootConfig(
+        portage.settings, portage.db[portage.settings["EROOT"]], None
+    )
+
+    cpv = portage.versions._pkg_str(
+        cpv,
+        metadata=metadata,
+        settings=portage.settings,
+        db=portage.db[portage.settings["EROOT"]][mytree].dbapi,
+    )
+
+    pkg = Package(
+        built=(pkg_type != "ebuild"),
+        cpv=cpv,
+        installed=(pkg_type == "installed"),
+        metadata=metadata,
+        root_config=root_config,
+        type_name=pkg_type,
+    )
+
+    # Apply package.env and repo-level settings. This allows per-package
+    # FEATURES and other variables (possibly PORTAGE_TMPDIR) to be
+    # available as soon as possible. Also, note that the only way to ensure
+    # that setcpv gets metadata from the correct repository is to pass in
+    # a Package instance, as we do here (previously we had to modify
+    # portdb.porttrees in order to accomplish this).
+    tmpsettings.setcpv(pkg)
+
+    def stale_env_warning():
+        if (
+            "clean" not in pargs
+            and "noauto" not in tmpsettings.features
+            and build_dir_phases.intersection(pargs)
+        ):
+            portage.doebuild_environment(
+                ebuild, "setup", portage.root, tmpsettings, debug, 1, portage.portdb
+            )
+            env_filename = os.path.join(tmpsettings["T"], "environment")
+            if os.path.exists(env_filename):
+                msg = (
+                    "Existing ${T}/environment for '%s' will be sourced. "
+                    + "Run 'clean' to start with a fresh environment."
+                ) % (tmpsettings["PF"],)
+                msg = textwrap.wrap(msg, 70)
+                for x in msg:
+                    portage.writemsg(">>> %s\n" % x)
+
+                if ebuild_changed:
+                    open(
+                        os.path.join(
+                            tmpsettings["PORTAGE_BUILDDIR"], ".ebuild_changed"
+                        ),
+                        "w",
+                    ).close()
+
+    checked_for_stale_env = False
+
+    for arg in pargs:
+        try:
+            if not checked_for_stale_env and arg not in ("digest", "manifest"):
+                # This has to go after manifest generation since otherwise
+                # aux_get() might fail due to invalid ebuild digests.
+                stale_env_warning()
+                checked_for_stale_env = True
+
+            if arg in ("digest", "manifest") and force:
+                discard_digests(ebuild, tmpsettings, portage.portdb)
+            a = portage.doebuild(
+                ebuild,
+                arg,
+                settings=tmpsettings,
+                debug=debug,
+                tree=mytree,
+                vartree=portage.db[portage.root]["vartree"],
+            )
+        except PortageKeyError:
+            # aux_get error
+            a = 1
+        except UnsupportedAPIException as e:
+            msg = textwrap.wrap(str(e), 70)
+            del e
+            for x in msg:
+                portage.writemsg("!!! %s\n" % x, noiselevel=-1)
+            a = 1
+        except PortagePackageException as e:
+            portage.writemsg("!!! {}\n".format(e), noiselevel=-1)
+            a = 1
+        except PermissionDenied as e:
+            portage.writemsg("!!! Permission Denied: {}\n".format(e), noiselevel=-1)
+            a = 1
+        if a is None:
+            print("Could not run the required binary?")
+            a = 127
+        if a:
+            global_event_loop().close()
+            sys.exit(a)
+
+    global_event_loop().close()
+
+except KeyboardInterrupt as e:
+    # Prevent traceback on ^C
+    signum = getattr(e, "signum", signal.SIGINT)
+    signal.signal(signum, signal.SIG_DFL)
+    raise_signal(signum)
