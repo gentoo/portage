@@ -1,3 +1,16 @@
+portage-3.0.43 (UNRELEASED)
+--------------
+
+Features:
+* TODO
+
+Bug fixes:
+* Rewrite Whirlpool implementation as a C extension to substantially improve
+  performance. This only takes effect with OpenSSL 3 and newer. See bug #885909.
+
+  Whirlpool is considered deprecated within Portage and we recommend that
+  repository maintainers remove it from `metadata/layout.conf`!
+
 portage-3.0.42 (2022-12-26)
 --------------
 
