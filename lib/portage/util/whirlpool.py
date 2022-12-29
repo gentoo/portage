@@ -27,12 +27,18 @@
 
 # pylint: disable=mixed-indentation
 
+try:
+    from ._whirlpool import Whirlpool as WhirlpoolExt
+except ImportError:
+    WhirlpoolExt = None
+
+
 # block_size = 64
 digest_size = 64
 digestsize = 64
 
 
-class Whirlpool:
+class PyWhirlpool:
     """Return a new Whirlpool object. An optional string argument
     may be provided; if present, this string will be automatically
     hashed."""
@@ -67,6 +73,42 @@ class Whirlpool:
         import copy
 
         return copy.deepcopy(self)
+
+
+class CWhirlpool:
+    """Return a new Whirlpool object. An optional string argument
+    may be provided; if present, this string will be automatically
+    hashed."""
+
+    def __init__(self, arg=b""):
+        self.obj = WhirlpoolExt()
+        self.dig = None
+        self.update(arg)
+
+    def update(self, arg):
+        if self.dig is not None:
+            raise RuntimeError("Whirlpool object already finalized")
+        self.obj.update(arg)
+
+    def digest(self):
+        if self.dig is None:
+            self.dig = self.obj.digest()
+        return self.dig
+
+    def hexdigest(self):
+        """hexdigest()"""
+        dig = self.digest()
+        tempstr = ""
+        for d in dig:
+            xxx = "%02x" % (d,)
+            tempstr = tempstr + xxx
+        return tempstr
+
+
+if WhirlpoolExt is not None:
+    Whirlpool = CWhirlpool
+else:
+    Whirlpool = PyWhirlpool
 
 
 def new(init=b""):

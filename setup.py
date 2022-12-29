@@ -86,6 +86,9 @@ x_c_helpers = {
     "portage.util.libc": [
         "src/portage_util_libc.c",
     ],
+    "portage.util._whirlpool": [
+        "src/portage_util__whirlpool.c",
+    ],
 }
 
 if platform.system() == "Linux":
