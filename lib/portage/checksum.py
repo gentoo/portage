@@ -310,10 +310,13 @@ if "STREEBOG256" not in hashfunc_map or "STREEBOG512" not in hashfunc_map:
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
     # Bundled WHIRLPOOL implementation
-    _whirlpool_unaccelerated = True
-    from portage.util.whirlpool import new as _new_whirlpool
+    from portage.util.whirlpool import CWhirlpool, PyWhirlpool
 
-    _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
+    if CWhirlpool.is_available:
+        _generate_hash_function("WHIRLPOOL", CWhirlpool, origin="bundled-c")
+    else:
+        _whirlpool_unaccelerated = True
+        _generate_hash_function("WHIRLPOOL", PyWhirlpool, origin="bundled-py")
 
 
 # There is only one implementation for size
