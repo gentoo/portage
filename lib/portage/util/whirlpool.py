@@ -83,6 +83,8 @@ class CWhirlpool:
     may be provided; if present, this string will be automatically
     hashed."""
 
+    is_available = WhirlpoolExt is not None
+
     def __init__(self, arg=b""):
         self.obj = WhirlpoolExt()
         self.dig = None
