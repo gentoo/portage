@@ -110,19 +110,6 @@ class CWhirlpool:
         return tempstr
 
 
-if WhirlpoolExt is not None:
-    Whirlpool = CWhirlpool
-else:
-    Whirlpool = PyWhirlpool
-
-
-def new(init=b""):
-    """Return a new Whirlpool object. An optional string argument
-    may be provided; if present, this string will be automatically
-    hashed."""
-    return Whirlpool(init)
-
-
 #
 # Private.
 #
