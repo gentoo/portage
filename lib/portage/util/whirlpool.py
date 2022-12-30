@@ -30,6 +30,10 @@
 
 # pylint: disable=mixed-indentation
 
+import warnings
+
+from portage.localization import _
+
 try:
     from ._whirlpool import Whirlpool as WhirlpoolExt
 except ImportError:
@@ -47,6 +51,13 @@ class PyWhirlpool:
     hashed."""
 
     def __init__(self, arg=b""):
+        warnings.warn(
+            _(
+                "The last-resort unaccelerated Whirlpool implementation is "
+                "being used. It is known to be absurdly slow. Please report "
+                "that the Whirlpool hash is deprecated to the repository owner."
+            )
+        )
         self.ctx = WhirlpoolStruct()
         self.update(arg)
 
