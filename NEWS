@@ -11,6 +11,8 @@ Bug fixes:
   Whirlpool is considered deprecated within Portage and we recommend that
   repository maintainers remove it from `metadata/layout.conf`!
 
+* Fix "is shallow git repository" check.
+
 portage-3.0.42 (2022-12-26)
 --------------
 
