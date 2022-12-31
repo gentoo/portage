@@ -6,15 +6,25 @@ Features:
 
 Bug fixes:
 * checksum: Rewrite Whirlpool implementation as a C extension to substantially improve
-  performance. This only takes effect with OpenSSL 3 and newer. See bug #885909.
+  performance (bug #885909).
+
+  This only takes effect with OpenSSL 3 and newer (unnecessary otherwise).
 
   Whirlpool is considered deprecated within Portage and we recommend that
   repository maintainers remove it from `metadata/layout.conf`!
 
 * sync: git: Fix "is shallow git repository" check.
 
-* bin/*: Rewrite signal handling which will now correctly rethrow SIGINT
-  and not confuse shells. See bug #887817.
+* bin: Rewrite signal handling which will now correctly rethrow SIGINT
+  and not confuse shells (bug #887817).
+
+* bin: Pass -S to file(1) to avoid seccomp sandbox issues (bug #811462, bug #889046).
+
+  Files being installed by Portage are generally trusted but also the
+  syscalls allowed by file are quite broad anyway.
+
+  Things can go catastrophically wrong if file misses valid input,
+  as we may have invalid VDB metadata.
 
 portage-3.0.42 (2022-12-26)
 --------------

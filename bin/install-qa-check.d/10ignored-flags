@@ -31,7 +31,7 @@ ignored_flag_check() {
 			# Separate out file types that are known to support
 			# .GCC.command.line sections, using the `file` command
 			# similar to how prepstrip uses it.
-			f=$(file "${x}") || continue
+			f=$(file -S "${x}") || continue
 			[[ -z ${f} ]] && continue
 			if [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
 				${f} == *"SB shared object"* ]] ; then

@@ -212,7 +212,7 @@ install_qa_check() {
 				needed=${l%%;*}; l=${l#*;}
 
 				# Infer implicit soname from basename (bug 715162).
-				if [[ -z ${soname} && $(file "${D%/}${obj}") == *"SB shared object"* ]]; then
+				if [[ -z ${soname} && $(file -S "${D%/}${obj}") == *"SB shared object"* ]]; then
 					soname=${obj##*/}
 				fi
 

@@ -489,7 +489,7 @@ do
 
 	(
 	__multijob_child_init
-	f=$(file "${x}") || exit 0
+	f=$(file -S "${x}") || exit 0
 	[[ -z ${f} ]] && exit 0
 
 	if ${SKIP_STRIP} ; then
