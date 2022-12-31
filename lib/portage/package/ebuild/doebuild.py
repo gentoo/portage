@@ -284,20 +284,8 @@ def _doebuild_path(settings, eapi=None):
     if portage_bin_path[0] != portage.const.PORTAGE_BIN_PATH:
         # Add a fallback path for restarting failed builds (bug 547086)
         portage_bin_path.append(portage.const.PORTAGE_BIN_PATH)
-    prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
-    rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
-    rootpath_set = frozenset(rootpath)
-    overrides = [
-        x for x in settings.get("__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x
-    ]
 
-    prefixes = []
-    # settings["EPREFIX"] should take priority over portage.const.EPREFIX
-    if portage.const.EPREFIX != settings["EPREFIX"] and settings["ROOT"] == os.sep:
-        prefixes.append(settings["EPREFIX"])
-    prefixes.append(portage.const.EPREFIX)
-
-    path = overrides
+    path = [x for x in settings.get("__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x]
 
     if "xattr" in settings.features:
         for x in portage_bin_path:
@@ -317,24 +305,20 @@ def _doebuild_path(settings, eapi=None):
 
     for x in portage_bin_path:
         path.append(os.path.join(x, "ebuild-helpers"))
-    path.extend(prerootpath)
 
-    for prefix in prefixes:
-        prefix = prefix if prefix else "/"
-        for x in (
-            "usr/local/sbin",
-            "usr/local/bin",
-            "usr/sbin",
-            "usr/bin",
-            "sbin",
-            "bin",
-        ):
-            # Respect order defined in ROOTPATH
-            x_abs = os.path.join(prefix, x)
-            if x_abs not in rootpath_set:
-                path.append(x_abs)
+    # If PATH is set in env.d, ignore PATH from the calling environment.
+    # This allows packages to update our PATH as they get installed.
+    if "PATH" in settings.configdict["env.d"]:
+        settings.configdict["env"].pop("PATH", None)
 
-    path.extend(rootpath)
+    if "PATH" in settings:
+        pathset = set(path)
+        for p in settings["PATH"].split(":"):
+            # Avoid duplicate entries.
+            if p not in pathset:
+                path.append(p)
+                pathset.add(p)
+
     settings["PATH"] = ":".join(path)
 
 
