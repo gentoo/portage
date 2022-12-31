@@ -237,7 +237,7 @@ class GitSync(NewBase):
                         is_shallow_cmd,
                         cwd=portage._unicode_encode(self.repo.location),
                     )
-                )
+                ).rstrip("\n")
                 if is_shallow_res == "false":
                     sync_depth = 0
             else:
