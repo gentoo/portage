@@ -686,6 +686,7 @@ class ResolverPlayground:
             create_trees_kwargs["target_root"] = self.target_root
 
         env = {
+            "PATH": os.environ["PATH"],
             "PORTAGE_REPOSITORIES": "\n".join(
                 "[%s]\n%s"
                 % (
@@ -693,7 +694,7 @@ class ResolverPlayground:
                     "\n".join("{} = {}".format(k, v) for k, v in repo_config.items()),
                 )
                 for repo_name, repo_config in self._repositories.items()
-            )
+            ),
         }
 
         if self.debug:
