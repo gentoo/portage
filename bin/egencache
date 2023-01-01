@@ -1130,6 +1130,10 @@ try:
         # completely controlled by commandline arguments.
         env = {}
 
+        # Pass through PATH to allow testing with an empty profile.env.
+        if "PATH" in os.environ:
+            env["PATH"] = os.environ["PATH"]
+
         if not sys.stdout.isatty() or os.environ.get("NOCOLOR", "").lower() in (
             "yes",
             "true",
