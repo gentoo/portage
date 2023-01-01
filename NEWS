@@ -1,6 +1,9 @@
 portage-3.0.52 (UNRELEASED)
 --------------
 
+Breaking changes:
+* FEATURES=pkgdir-index-trusted is now on by default.
+
 Features:
 * bintree: Add new API member (invalid_paths) to allow gentoolkit to later
   clean up invalid binpkgs (bug #900224).
