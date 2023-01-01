@@ -1,6 +1,11 @@
 portage-3.0.52 (UNRELEASED)
 --------------
 
+Breaking changes:
+* FEATURES=pkgdir-index-trusted is now on by default. This improves performance
+  with binpkgs, but does require that users run `emaint binhost --fix` if they
+  manually add or remove binpkgs from their PKGDIR (bug #889300).
+
 Features:
 * bintree: Add new API member (invalid_paths) to allow gentoolkit to later
   clean up invalid binpkgs (bug #900224).

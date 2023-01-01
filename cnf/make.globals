@@ -78,7 +78,7 @@ FEATURES="assume-digests binpkg-docompress binpkg-dostrip binpkg-logs
           binpkg-multi-instance buildpkg-live
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles ipc-sandbox merge-sync multilib-strict
-          network-sandbox news parallel-fetch pid-sandbox
+          network-sandbox news parallel-fetch pkgdir-index-trusted pid-sandbox
           preserve-libs protect-owned qa-unresolved-soname-deps
           sandbox sfperms strict
           unknown-features-warn unmerge-logs unmerge-orphans userfetch
