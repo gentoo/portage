@@ -279,11 +279,16 @@ class NewsItem:
 
         kwargs = {"vardb": vardb, "config": config, "profile": profile}
 
-        all_match = all(
-            restriction.checkRestriction(**kwargs)
-            for values in self.restrictions.values()
-            for restriction in values
-        )
+        all_match = True
+        for values in self.restrictions.values():
+            matches = [restriction.checkRestriction(**kwargs) for restriction in values]
+            any_match = any(matches)
+
+            # If, for a single restriction, we didn't match anything, then we obviously
+            # didn't match everything, so just bail out.
+            if not any_match:
+                all_match = False
+                break
 
         return all_match
 
