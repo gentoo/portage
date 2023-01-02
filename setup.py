@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1998-2022 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -821,7 +821,7 @@ def get_data_files(regular_files, venv_files):
 
 setup(
     name="portage",
-    version="3.0.42",
+    version="3.0.43",
     url="https://wiki.gentoo.org/wiki/Project:Portage",
     project_urls={
         "Release Notes": "https://gitweb.gentoo.org/proj/portage.git/plain/NEWS",
