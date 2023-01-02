@@ -5,6 +5,8 @@ Features:
 * TODO
 
 Bug fixes:
+* news: Fix matching profile paths with Display-If-Profile in some cases.
+
 * checksum: Rewrite Whirlpool implementation as a C extension to substantially improve
   performance (bug #885909).
 
