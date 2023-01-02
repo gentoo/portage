@@ -1,8 +1,5 @@
-portage-3.0.43 (UNRELEASED)
+portage-3.0.43 (2023-01-02)
 --------------
-
-Features:
-* TODO
 
 Bug fixes:
 * news: Fix matching profile paths with Display-If-Profile in some cases.
