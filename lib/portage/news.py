@@ -79,7 +79,7 @@ class NewsManager:
         portdir = portdb.repositories.mainRepoLocation()
         profiles_base = None
         if portdir is not None:
-            profiles_base = os.path.join(portdir, "profiles", os.path.sep)
+            profiles_base = os.path.join(portdir, ("profiles" + os.path.sep))
         profile_path = None
         if profiles_base is not None and portdb.settings.profile_path:
             profile_path = normalize_path(
