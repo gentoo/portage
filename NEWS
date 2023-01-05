@@ -1,6 +1,10 @@
 portage-3.0.44 (UNRELEASED)
 --------------
 
+Features:
+* emerge: Show time taken to calculate dependency resolution with
+  emerge --verbose.
+
 Bug fixes:
 * ebuild: the PATH variable exported to ebuilds has been changed:
   The PATH setting from /etc/profile.env is appended to portage-internal

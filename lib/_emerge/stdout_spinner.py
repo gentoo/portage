@@ -39,6 +39,7 @@ class stdout_spinner:
         ]
         self.last_update = 0
         self.min_display_latency = 0.05
+        self.start_time = None
 
     def _return_early(self):
         """
