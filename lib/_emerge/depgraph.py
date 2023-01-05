@@ -6,6 +6,7 @@ import functools
 import logging
 import stat
 import textwrap
+import time
 import warnings
 import collections
 from collections import deque, OrderedDict
@@ -11514,6 +11515,7 @@ def _spinner_start(spinner, myopts):
 
     if show_spinner:
         portage.writemsg_stdout("Calculating dependencies  ")
+    spinner.start_time = time.time()
 
 
 def _spinner_stop(spinner):
@@ -11526,6 +11528,10 @@ def _spinner_stop(spinner):
         portage.writemsg_stdout("\b\b")
 
     portage.writemsg_stdout("... done!\n")
+
+    stop_time = time.time()
+    time_fmt = f"{stop_time - spinner.start_time:.2f}"
+    portage.writemsg_stdout(f"Dependency resolution took {darkgreen(time_fmt)} s.\n\n")
 
 
 def backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
