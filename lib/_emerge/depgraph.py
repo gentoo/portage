@@ -2037,9 +2037,7 @@ class depgraph:
                 f"  package(s) to mask: {str(to_be_masked)}",
                 f"      slot: {slot_atom}",
                 "   parents: {}".format(
-                    ", ".join(
-                        f"({ppkg}, '{atom}')" for ppkg, atom in all_parents
-                    )
+                    ", ".join(f"({ppkg}, '{atom}')" for ppkg, atom in all_parents)
                 ),
                 "",
             ]

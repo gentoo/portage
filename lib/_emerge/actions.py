@@ -1643,9 +1643,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
                 if debug:
                     writemsg_level(
-                        "Candidates: [{}]\n".format(
-                            ", ".join(f"'{x}'" for x in atoms)
-                        ),
+                        "Candidates: [{}]\n".format(", ".join(f"'{x}'" for x in atoms)),
                         noiselevel=-1,
                         level=logging.DEBUG,
                     )
