@@ -87,9 +87,7 @@ class MoveHandler:
                                     if maybe_applied.build_time == build_time:
                                         break
                                 else:
-                                    errors.append(
-                                        f"'{cpv}' moved to '{newcp}'"
-                                    )
+                                    errors.append(f"'{cpv}' moved to '{newcp}'")
                 elif update_cmd[0] == "slotmove":
                     pkg, origslot, newslot = update_cmd[1:]
                     atom = pkg.with_slot(origslot)

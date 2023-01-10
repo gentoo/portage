@@ -59,9 +59,7 @@ class DeletionTask(CompositeTask):
                 os.unlink(self.distfile_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logger.error(
-                        f"{self.distfile} unlink failed in distfiles: {e}"
-                    )
+                    logger.error(f"{self.distfile} unlink failed in distfiles: {e}")
                     success = False
 
         if success:
@@ -85,9 +83,7 @@ class DeletionTask(CompositeTask):
                 os.unlink(copier.src_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logger.error(
-                        f"{self.distfile} unlink failed in distfiles: {e}"
-                    )
+                    logger.error(f"{self.distfile} unlink failed in distfiles: {e}")
                     success = False
 
         else:
@@ -118,9 +114,7 @@ class DeletionTask(CompositeTask):
                 os.unlink(distfile_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logger.error(
-                        f"{self.distfile} unlink failed in distfiles: {e}"
-                    )
+                    logger.error(f"{self.distfile} unlink failed in distfiles: {e}")
                     success = False
 
         if success:

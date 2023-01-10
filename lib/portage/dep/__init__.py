@@ -1669,8 +1669,7 @@ class Atom(str):
         if eapi is not None:
             if not isinstance(eapi, str):
                 raise TypeError(
-                    "expected eapi argument of "
-                    + f"{str}, got {type(eapi)}: {eapi}"
+                    "expected eapi argument of " + f"{str}, got {type(eapi)}: {eapi}"
                 )
             if self.slot and not eapi_attrs.slot_deps:
                 raise InvalidAtom(

@@ -137,9 +137,7 @@ def main(argv):
             prog = get_python_executable(ver)
             cmd = [prog, "-b", "-Wd", "lib/portage/tests/runTests.py"] + args
             if os.access(prog, os.X_OK):
-                print(
-                    f"{colors.GOOD}Testing with Python {ver}...{colors.NORMAL}"
-                )
+                print(f"{colors.GOOD}Testing with Python {ver}...{colors.NORMAL}")
                 statuses.append((ver, subprocess.call(cmd)))
             elif not ignore_missing:
                 print(

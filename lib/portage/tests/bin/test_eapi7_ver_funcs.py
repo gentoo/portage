@@ -14,9 +14,7 @@ class TestEAPI7VerFuncs(TestCase):
         Test that commands in test_cases produce expected output.
         """
         with tempfile.NamedTemporaryFile("w") as test_script:
-            test_script.write(
-                f'source "{PORTAGE_BIN_PATH}"/eapi7-ver-funcs.sh\n'
-            )
+            test_script.write(f'source "{PORTAGE_BIN_PATH}"/eapi7-ver-funcs.sh\n')
             for cmd, exp in test_cases:
                 test_script.write(f"{cmd}\n")
             test_script.flush()
@@ -31,18 +29,14 @@ class TestEAPI7VerFuncs(TestCase):
 
             for test_case, result in zip(test_cases, sout.decode().splitlines()):
                 cmd, exp = test_case
-                self.assertEqual(
-                    result, exp, f"{cmd} -> {result}; expected: {exp}"
-                )
+                self.assertEqual(result, exp, f"{cmd} -> {result}; expected: {exp}")
 
     def _test_return(self, test_cases):
         """
         Test that commands in test_cases give appropriate exit codes.
         """
         with tempfile.NamedTemporaryFile("w+") as test_script:
-            test_script.write(
-                f'source "{PORTAGE_BIN_PATH}"/eapi7-ver-funcs.sh\n'
-            )
+            test_script.write(f'source "{PORTAGE_BIN_PATH}"/eapi7-ver-funcs.sh\n')
             for cmd, exp in test_cases:
                 test_script.write(f"{cmd}; echo $?\n")
             test_script.flush()
@@ -57,9 +51,7 @@ class TestEAPI7VerFuncs(TestCase):
 
             for test_case, result in zip(test_cases, sout.decode().splitlines()):
                 cmd, exp = test_case
-                self.assertEqual(
-                    result, exp, f"{cmd} -> {result}; expected: {exp}"
-                )
+                self.assertEqual(result, exp, f"{cmd} -> {result}; expected: {exp}")
 
     def _test_fail(self, test_cases):
         """

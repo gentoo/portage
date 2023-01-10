@@ -139,9 +139,7 @@ class _PackageCounters:
             if self.uninst > 1:
                 details[-1] += "s"
         if self.interactive > 0:
-            details.append(
-                f"{self.interactive} {colorize('WARN', 'interactive')}"
-            )
+            details.append(f"{self.interactive} {colorize('WARN', 'interactive')}")
         myoutput.append(", ".join(details))
         if total_installs != 0:
             myoutput.append(")")

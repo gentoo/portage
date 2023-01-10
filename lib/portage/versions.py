@@ -520,8 +520,7 @@ def cpv_getkey(mycpv, eapi=None):
         return mysplit[0] + "/" + mysplit[1]
 
     warnings.warn(
-        "portage.versions.cpv_getkey() "
-        + f"called with invalid cpv: '{mycpv}'",
+        "portage.versions.cpv_getkey() " + f"called with invalid cpv: '{mycpv}'",
         DeprecationWarning,
         stacklevel=2,
     )

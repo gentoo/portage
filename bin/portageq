@@ -685,9 +685,7 @@ try:
     @uses_eroot
     def expand_virtual(argv):
         if len(argv) != 2:
-            writemsg(
-                f"ERROR: expected 2 parameters, got {len(argv)}!\n", noiselevel=-1
-            )
+            writemsg(f"ERROR: expected 2 parameters, got {len(argv)}!\n", noiselevel=-1)
             return 2
 
         root, atom = argv
@@ -1442,9 +1440,7 @@ try:
         eapi = os.environ.get("EAPI")
 
         def elog(elog_funcname, lines):
-            cmd = (
-                f"source '{os.environ['PORTAGE_BIN_PATH']}/isolated-functions.sh' ; "
-            )
+            cmd = f"source '{os.environ['PORTAGE_BIN_PATH']}/isolated-functions.sh' ; "
             for line in lines:
                 cmd += f"{elog_funcname} {portage._shell_quote(line)} ; "
             subprocess.call([portage.const.BASH_BINARY, "-c", cmd])

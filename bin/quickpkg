@@ -102,8 +102,7 @@ def quickpkg_atom(options, infos, arg, eout):
                 restrict = use_reduce(restrict, uselist=use, flat=True)
             except InvalidDependString as e:
                 eout.eerror(
-                    "Invalid RESTRICT metadata "
-                    + f"for '{cpv}': {str(e)}; skipping"
+                    "Invalid RESTRICT metadata " + f"for '{cpv}': {str(e)}; skipping"
                 )
                 del e
                 continue

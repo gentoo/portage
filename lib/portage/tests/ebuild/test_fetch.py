@@ -201,9 +201,7 @@ class EbuildFetchTestCase(TestCase):
 
             # Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
             foo_uri = {
-                "foo": (
-                    f"{scheme}://{host}:{server.server_port}/distfiles/foo",
-                )
+                "foo": (f"{scheme}://{host}:{server.server_port}/distfiles/foo",)
             }
             foo_path = os.path.join(settings["DISTDIR"], "foo")
             foo_stale_content = b"stale content\n"

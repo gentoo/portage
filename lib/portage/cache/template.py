@@ -315,8 +315,7 @@ def serialize_eclasses(eclass_dict, chf_type="mtime", paths=True):
             for k, v in sorted(eclass_dict.items(), key=_keysorter)
         )
     return "\t".join(
-        f"{k}\t{getter(v)}"
-        for k, v in sorted(eclass_dict.items(), key=_keysorter)
+        f"{k}\t{getter(v)}" for k, v in sorted(eclass_dict.items(), key=_keysorter)
     )
 
 

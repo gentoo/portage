@@ -205,9 +205,7 @@ def emaint_main(myargv):
             check_opt = opt
         if opt.status and getattr(options, opt.target, False):
             if long_action is not None:
-                parser.error(
-                    f"--{long_action} and {opt.long} are exclusive options"
-                )
+                parser.error(f"--{long_action} and {opt.long} are exclusive options")
             status = opt.status
             func = opt.func
             long_action = opt.long.lstrip("-")

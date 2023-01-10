@@ -312,7 +312,7 @@ class portdbapi(dbapi):
                         x,
                         self._known_keys,
                         readonly=True,
-                        **cache_kwargs
+                        **cache_kwargs,
                     )
                 except CacheError:
                     pass

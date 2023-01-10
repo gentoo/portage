@@ -883,9 +883,7 @@ def doebuild(
         mydo = "fetch"
 
     if mydo not in clean_phases and not os.path.exists(myebuild):
-        writemsg(
-            f"!!! doebuild: {myebuild} not found for {mydo}\n", noiselevel=-1
-        )
+        writemsg(f"!!! doebuild: {myebuild} not found for {mydo}\n", noiselevel=-1)
         return 1
 
     global _doebuild_manifest_cache

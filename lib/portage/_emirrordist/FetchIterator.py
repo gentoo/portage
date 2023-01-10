@@ -237,9 +237,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         except (OSError, PortageException) as e:
             digests_future.done() or digests_future.set_exception(e)
             for filename in new_uri_map:
-                config.log_failure(
-                    f"{cpv}\t{filename}\tManifest exception {e}"
-                )
+                config.log_failure(f"{cpv}\t{filename}\tManifest exception {e}")
                 config.file_failures[filename] = cpv
             result.set_result(fetch_tasks)
             return

@@ -139,9 +139,7 @@ class database(fs_template.FsBased):
         table_parameters.append(f"{self._db_table['packages']['package_key']} TEXT")
         for k in self._allowed_keys:
             table_parameters.append(f"{k} TEXT")
-        table_parameters.append(
-            f"UNIQUE({self._db_table['packages']['package_key']})"
-        )
+        table_parameters.append(f"UNIQUE({self._db_table['packages']['package_key']})")
         create_statement.append(",".join(table_parameters))
         create_statement.append(")")
 

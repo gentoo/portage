@@ -190,9 +190,7 @@ class SyncBase:
                     self.repo.sync_openpgp_key_refresh_retry_overall_timeout
                 )
             except Exception as e:
-                errors.append(
-                    f"sync-openpgp-key-refresh-retry-overall-timeout: {e}"
-                )
+                errors.append(f"sync-openpgp-key-refresh-retry-overall-timeout: {e}")
             else:
                 if retry_overall_timeout < 0:
                     errors.append(

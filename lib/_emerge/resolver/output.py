@@ -924,9 +924,7 @@ class Display:
         if self.conf.verbosity == 3:
             self.print_verbose(show_repos)
         for pkg, pkg_info in self.restrict_fetch_list.items():
-            writemsg_stdout(
-                f"\nFetch instructions for {pkg.cpv}:\n", noiselevel=-1
-            )
+            writemsg_stdout(f"\nFetch instructions for {pkg.cpv}:\n", noiselevel=-1)
             spawn_nofetch(
                 self.conf.trees[pkg.root]["porttree"].dbapi, pkg_info.ebuild_path
             )

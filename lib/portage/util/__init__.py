@@ -1460,7 +1460,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                             tmp_name, encoding=_encodings["fs"], errors="strict"
                         ),
                         mode=mode,
-                        **kargs
+                        **kargs,
                     ),
                 )
                 return
@@ -1479,7 +1479,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
             open_func(
                 _unicode_encode(tmp_name, encoding=_encodings["fs"], errors="strict"),
                 mode=mode,
-                **kargs
+                **kargs,
             ),
         )
 

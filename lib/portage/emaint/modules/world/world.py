@@ -86,9 +86,7 @@ class WorldHandler:
                 try:
                     world_set.replace(self.okay)
                 except portage.exception.PortageException:
-                    errors.append(
-                        f"{self.world_file} could not be opened for writing"
-                    )
+                    errors.append(f"{self.world_file} could not be opened for writing")
             if errors:
                 return (False, errors)
             return (True, None)

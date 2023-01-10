@@ -109,9 +109,7 @@ for mykey in biglist:
             print(f"* ignoring broken log entry for {mykey} (likely injected)")
     except ValueError as e:
         try:
-            print(
-                f"* {mykey} is an ambiguous package name, candidates are:\n{e}"
-            )
+            print(f"* {mykey} is an ambiguous package name, candidates are:\n{e}")
         except AttributeError:
             # FIXME: Find out what causes this (bug #344845).
             print(f"* {mykey} is an ambiguous package name")

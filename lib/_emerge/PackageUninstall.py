@@ -93,9 +93,7 @@ class PackageUninstall(CompositeTask):
             self._async_unlock_builddir(returncode=retval)
             return
 
-        self._writemsg_level(
-            f">>> Unmerging {self.pkg.cpv}...\n", noiselevel=-1
-        )
+        self._writemsg_level(f">>> Unmerging {self.pkg.cpv}...\n", noiselevel=-1)
         self._emergelog(f"=== Unmerging... ({self.pkg.cpv})")
 
         cat, pf = portage.catsplit(self.pkg.cpv)

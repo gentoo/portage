@@ -1132,9 +1132,7 @@ class Scheduler(PollScheduler):
             def sighandler(signum, frame):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 signal.signal(signal.SIGTERM, signal.SIG_IGN)
-                portage.util.writemsg(
-                    f"\n\nExiting on signal {signum}\n"
-                )
+                portage.util.writemsg(f"\n\nExiting on signal {signum}\n")
                 self.terminate()
                 received_signal.append(128 + signum)
 
@@ -2251,7 +2249,7 @@ class Scheduler(PollScheduler):
                         world_set.add(atom)
                     else:
                         writemsg_level(
-                            f'\n!!! Unable to record {atom} in "world\"\n',
+                            f'\n!!! Unable to record {atom} in "world"\n',
                             level=logging.WARN,
                             noiselevel=-1,
                         )

@@ -96,9 +96,7 @@ class WebRsync(SyncBase):
 
                 out = portage.output.EOutput(quiet=quiet)
                 try:
-                    out.einfo(
-                        f"Using keys from {self.repo.sync_openpgp_key_path}"
-                    )
+                    out.einfo(f"Using keys from {self.repo.sync_openpgp_key_path}")
                     with open(self.repo.sync_openpgp_key_path, "rb") as f:
                         openpgp_env.import_key(f)
                     self._refresh_keys(openpgp_env)

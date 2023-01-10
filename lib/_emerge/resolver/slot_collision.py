@@ -638,9 +638,7 @@ class slot_conflict_handler:
                         else:
                             use_display = ""
                         if atom.soname:
-                            msg.append(
-                                f"{atom} required by {parent} {use_display}\n"
-                            )
+                            msg.append(f"{atom} required by {parent} {use_display}\n")
                         elif isinstance(parent, PackageArg):
                             # For PackageArg it's
                             # redundant to display the atom attribute.

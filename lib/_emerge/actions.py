@@ -823,8 +823,7 @@ def action_depclean(
     msg.append("unless *all* required dependencies have been resolved.  As a\n")
     msg.append("consequence of this, it often becomes necessary to run \n")
     msg.append(
-        f"{good('`emerge --update --newuse --deep @world`')}"
-        + " prior to depclean.\n"
+        f"{good('`emerge --update --newuse --deep @world`')}" + " prior to depclean.\n"
     )
 
     if action == "depclean" and "--quiet" not in myopts and not myfiles:
@@ -1179,9 +1178,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     and atom != atom.unevaluated_atom
                     and vardb.match(Atom(str(atom)))
                 ):
-                    msg.append(
-                        f"  {atom.unevaluated_atom} ({atom}) pulled in by:"
-                    )
+                    msg.append(f"  {atom.unevaluated_atom} ({atom}) pulled in by:")
                 else:
                     msg.append(f"  {atom} pulled in by:")
                 msg.append(f"    {parent}")
@@ -1339,9 +1336,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     f">>> To see reverse dependencies, use {good('--verbose')}\n"
                 )
             if action == "prune":
-                writemsg_level(
-                    f">>> To ignore dependencies, use {good('--nodeps')}\n"
-                )
+                writemsg_level(f">>> To ignore dependencies, use {good('--nodeps')}\n")
 
         return pkgs_to_remove
 
@@ -1536,9 +1531,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                 msg.append(f"  {pkg.cpv} pulled in by:")
                 for consumer in unique_consumers:
                     libs = consumer_libs[consumer]
-                    msg.append(
-                        f"    {consumer} needs {', '.join(sorted(libs))}"
-                    )
+                    msg.append(f"    {consumer} needs {', '.join(sorted(libs))}")
             msg.append("")
             writemsg_level(
                 "".join(prefix + f"{line}\n" for line in msg),
@@ -2422,9 +2415,7 @@ def action_search(root_config, myopts, myfiles, spinner):
             try:
                 searchinstance.execute(mysearch)
             except re.error as comment:
-                print(
-                    f'\n!!! Regular expression error in "{mysearch}": {comment}'
-                )
+                print(f'\n!!! Regular expression error in "{mysearch}": {comment}')
                 sys.exit(1)
             searchinstance.output()
 
@@ -2495,9 +2486,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                     + "fully-qualified ebuild names instead:"
                 )
                 for line in textwrap.wrap(msg, 70):
-                    writemsg_level(
-                        f"!!! {line}\n", level=logging.ERROR, noiselevel=-1
-                    )
+                    writemsg_level(f"!!! {line}\n", level=logging.ERROR, noiselevel=-1)
                 for i in e.args[0]:
                     writemsg_level(
                         f"    {colorize('INFORM', i)}\n",
@@ -3198,8 +3187,7 @@ def missing_sets_warning(root_config, missing_sets):
     else:
         missing_sets_str = f'"{missing_sets[-1]}"'
     msg = [
-        "emerge: incomplete set configuration, "
-        + f"missing set(s): {missing_sets_str}"
+        "emerge: incomplete set configuration, " + f"missing set(s): {missing_sets_str}"
     ]
     if root_config.sets:
         msg.append(f"        sets defined: {', '.join(root_config.sets)}")
@@ -3363,9 +3351,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
             else:
                 newargs.extend(set_atoms)
             for error_msg in sets[s].errors:
-                writemsg_level(
-                    f"{error_msg}\n", level=logging.ERROR, noiselevel=-1
-                )
+                writemsg_level(f"{error_msg}\n", level=logging.ERROR, noiselevel=-1)
         else:
             newargs.append(a)
     return (newargs, retval)

@@ -310,9 +310,9 @@ class ResolverPlayground:
             with open(ebuild_path, "w") as f:
                 if copyright_header is not None:
                     f.write(copyright_header)
-                f.write(f'EAPI="{eapi}\"\n')
+                f.write(f'EAPI="{eapi}"\n')
                 for k, v in metadata.items():
-                    f.write(f'{k}="{v}\"\n')
+                    f.write(f'{k}="{v}"\n')
                 if misc_content is not None:
                     f.write(misc_content)
 
@@ -439,7 +439,7 @@ class ResolverPlayground:
             with open(ebuild_path, "w") as f:
                 f.write(f"EAPI=\"{metadata.pop('EAPI', '0')}\"\n")
                 for k, v in metadata.items():
-                    f.write(f'{k}="{v}\"\n')
+                    f.write(f'{k}="{v}"\n')
 
             env_path = os.path.join(vdb_pkg_dir, "environment.bz2")
             with bz2.BZ2File(env_path, mode="w") as f:
@@ -518,9 +518,7 @@ class ResolverPlayground:
             os.makedirs(eclass_dir)
 
             for eclass_name, eclass_content in eclasses.items():
-                with open(
-                    os.path.join(eclass_dir, f"{eclass_name}.eclass"), "w"
-                ) as f:
+                with open(os.path.join(eclass_dir, f"{eclass_name}.eclass"), "w") as f:
                     if isinstance(eclass_content, str):
                         eclass_content = [eclass_content]
                     for line in eclass_content:
