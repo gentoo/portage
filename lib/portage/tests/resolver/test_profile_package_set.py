@@ -103,7 +103,7 @@ class ProfilePackageSetTestCase(TestCase):
                         encoding=_encodings["repo.content"],
                     ) as f:
                         for line in v:
-                            f.write("%s\n" % line)
+                            f.write(f"{line}\n")
 
             # The config must be reloaded in order to account
             # for the above profile customizations.

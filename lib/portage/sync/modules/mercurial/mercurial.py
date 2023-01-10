@@ -35,7 +35,7 @@ class MercurialSync(NewBase):
             if not os.path.exists(self.repo.location):
                 os.makedirs(self.repo.location)
                 self.logger(
-                    self.xterm_titles, "Created new directory %s" % self.repo.location
+                    self.xterm_titles, f"Created new directory {self.repo.location}"
                 )
         except OSError:
             return (1, False)
@@ -87,7 +87,7 @@ class MercurialSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! hg clone error in %s" % self.repo.location
+            msg = f"!!! hg clone error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
@@ -130,7 +130,7 @@ class MercurialSync(NewBase):
                 " %s"
                 % self.repo.module_specific_options["sync-mercurial-pull-extra-opts"]
             )
-        hg_cmd = "{} pull -u{}".format(self.bin_command, hg_cmd_opts)
+        hg_cmd = f"{self.bin_command} pull -u{hg_cmd_opts}"
         writemsg_level(hg_cmd + "\n")
 
         rev_cmd = [self.bin_command, "id", "--id", "--rev", "tip"]
@@ -144,7 +144,7 @@ class MercurialSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! hg pull error in %s" % self.repo.location
+            msg = f"!!! hg pull error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)

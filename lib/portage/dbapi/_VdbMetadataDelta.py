@@ -111,7 +111,7 @@ class VdbMetadataDelta:
                 "package": cpv.cp,
                 "version": cpv.version,
                 "slot": slot,
-                "counter": "%s" % counter,
+                "counter": f"{counter}",
             }
 
             deltas_obj["deltas"].append(delta_node)

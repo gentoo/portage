@@ -87,7 +87,7 @@ class SlotOperatorRebuildTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
                 try:

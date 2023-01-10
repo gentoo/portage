@@ -148,7 +148,7 @@ class BuildIdProfileFormatTestCase(TestCase):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
                 _user_config = user_config.copy()
-                _user_config["make.conf"] += ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                _user_config["make.conf"] += (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
                     debug=False,
                     binpkgs=binpkgs,

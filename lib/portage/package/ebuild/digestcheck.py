@@ -80,7 +80,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
     except DigestException as e:
         eout.eend(1)
         writemsg(_("\n!!! Digest verification failed:\n"), noiselevel=-1)
-        writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
+        writemsg(f"!!! {e.value[0]}\n", noiselevel=-1)
         writemsg(_("!!! Reason: %s\n") % e.value[1], noiselevel=-1)
         writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
         writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)

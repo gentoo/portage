@@ -77,7 +77,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                         proc = subprocess.Popen(
                             [
                                 "/usr/bin/install-info",
-                                "--dir-file=%s" % os.path.join(inforoot, "dir"),
+                                f"--dir-file={os.path.join(inforoot, 'dir')}",
                                 os.path.join(inforoot, x),
                             ],
                             env=dict(os.environ, LANG="C", LANGUAGE="C"),

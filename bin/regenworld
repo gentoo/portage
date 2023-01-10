@@ -67,7 +67,7 @@ if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
     print("This script regenerates the portage world file by checking the portage")
     print("logfile for all actions that you've done in the past. It ignores any")
     print("arguments except --help. It is recommended that you make a backup of")
-    print("your existing world file (%s) before using this tool." % world_file)
+    print(f"your existing world file ({world_file}) before using this tool.")
     sys.exit(0)
 
 worldlist = portage.grabfile(world_file)
@@ -106,17 +106,15 @@ for mykey in biglist:
         mylist = portage.db[eroot]["vartree"].dbapi.match(mykey)
     except (portage.exception.InvalidAtom, KeyError):
         if "--debug" in sys.argv:
-            print("* ignoring broken log entry for %s (likely injected)" % mykey)
+            print(f"* ignoring broken log entry for {mykey} (likely injected)")
     except ValueError as e:
         try:
             print(
-                "* {} is an ambiguous package name, candidates are:\n{}".format(
-                    mykey, e
-                )
+                f"* {mykey} is an ambiguous package name, candidates are:\n{e}"
             )
         except AttributeError:
             # FIXME: Find out what causes this (bug #344845).
-            print("* {} is an ambiguous package name".format(mykey))
+            print(f"* {mykey} is an ambiguous package name")
         continue
     if mylist:
         # print "mylist:",mylist
@@ -157,7 +155,7 @@ else:
 
             portage.util.writemsg_stdout("\n", noiselevel=-1)
             for line in textwrap.wrap(msg, 65):
-                portage.util.writemsg_stdout("%s\n" % line, noiselevel=-1)
+                portage.util.writemsg_stdout(f"{line}\n", noiselevel=-1)
             portage.util.writemsg_stdout("\n", noiselevel=-1)
-            portage.util.writemsg_stdout("  old: %s\n\n" % old_world, noiselevel=-1)
-            portage.util.writemsg_stdout("  new: %s\n\n" % tmp_filename, noiselevel=-1)
+            portage.util.writemsg_stdout(f"  old: {old_world}\n\n", noiselevel=-1)
+            portage.util.writemsg_stdout(f"  new: {tmp_filename}\n\n", noiselevel=-1)

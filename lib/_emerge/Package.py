@@ -123,7 +123,7 @@ class Package(Task):
         )
         if hasattr(self.cpv, "slot_invalid"):
             self._invalid_metadata(
-                "SLOT.invalid", "SLOT: invalid value: '%s'" % self._metadata["SLOT"]
+                "SLOT.invalid", f"SLOT: invalid value: '{self._metadata['SLOT']}'"
             )
         self.cpv_split = self.cpv.cpv_split
         self.category, self.pf = portage.catsplit(self.cpv)
@@ -131,7 +131,7 @@ class Package(Task):
         self.version = self.cpv.version
         self.slot = self.cpv.slot
         self.sub_slot = self.cpv.sub_slot
-        self.slot_atom = Atom("{}{}{}".format(self.cp, _slot_separator, self.slot))
+        self.slot_atom = Atom(f"{self.cp}{_slot_separator}{self.slot}")
         # sync metadata with validated repo (may be UNKNOWN_REPO)
         self._metadata["repository"] = self.cpv.repo
 
@@ -375,13 +375,13 @@ class Package(Task):
             if not _get_eapi_attrs(eapi).required_use:
                 self._invalid_metadata(
                     "EAPI.incompatible",
-                    "REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi,
+                    f"REQUIRED_USE set, but EAPI='{eapi}' doesn't allow it",
                 )
             else:
                 try:
                     check_required_use(v, (), self.iuse.is_valid_flag, eapi=eapi)
                 except InvalidDependString as e:
-                    self._invalid_metadata(k + ".syntax", "{}: {}".format(k, e))
+                    self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
         k = "SRC_URI"
         v = self._metadata.get(k)
@@ -403,13 +403,13 @@ class Package(Task):
             try:
                 self._provides = frozenset(parse_soname_deps(self._metadata[k]))
             except InvalidData as e:
-                self._invalid_metadata(k + ".syntax", "{}: {}".format(k, e))
+                self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
             k = "REQUIRES"
             try:
                 self._requires = frozenset(parse_soname_deps(self._metadata[k]))
             except InvalidData as e:
-                self._invalid_metadata(k + ".syntax", "{}: {}".format(k, e))
+                self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
     def copy(self):
         return Package(
@@ -546,17 +546,17 @@ class Package(Task):
                     if getattr(error, "category", None) is None:
                         continue
                     categorized_error = True
-                    self._invalid_metadata(error.category, "{}: {}".format(k, error))
+                    self._invalid_metadata(error.category, f"{k}: {error}")
 
             if not categorized_error:
-                self._invalid_metadata(qacat, "{}: {}".format(k, e))
+                self._invalid_metadata(qacat, f"{k}: {e}")
         else:
             # For installed packages, show the path of the file
             # containing the invalid metadata, since the user may
             # want to fix the deps by hand.
             vardb = self.root_config.trees["vartree"].dbapi
             path = vardb.getpath(self.cpv, filename=k)
-            self._invalid_metadata(qacat, "{}: {} in '{}'".format(k, e, path))
+            self._invalid_metadata(qacat, f"{k}: {e} in '{path}'")
 
     def _invalid_metadata(self, msg_type, msg):
         if self._invalid is None:
@@ -580,7 +580,7 @@ class Package(Task):
 
         build_id_str = ""
         if isinstance(self.cpv.build_id, int) and self.cpv.build_id > 0:
-            build_id_str = "-%s" % self.cpv.build_id
+            build_id_str = f"-{self.cpv.build_id}"
 
         s = "({}, {}".format(
             portage.output.colorize(
@@ -599,14 +599,14 @@ class Package(Task):
 
         if self.type_name == "installed":
             if self.root_config.settings["ROOT"] != "/":
-                s += " in '%s'" % self.root_config.settings["ROOT"]
+                s += f" in '{self.root_config.settings['ROOT']}'"
             if self.operation == "uninstall":
                 s += " scheduled for uninstall"
         else:
             if self.operation == "merge":
                 s += " scheduled for merge"
                 if self.root_config.settings["ROOT"] != "/":
-                    s += " to '%s'" % self.root_config.settings["ROOT"]
+                    s += f" to '{self.root_config.settings['ROOT']}'"
         s += ")"
         return s
 

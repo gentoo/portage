@@ -22,7 +22,7 @@ class SpawnTestCase(TestCase):
             null_fd = os.open("/dev/null", os.O_RDWR)
             test_string = 2 * "blah blah blah\n"
             proc = SpawnProcess(
-                args=[BASH_BINARY, "-c", "echo -n '%s'" % test_string],
+                args=[BASH_BINARY, "-c", f"echo -n '{test_string}'"],
                 env={},
                 fd_pipes={0: portage._get_stdin().fileno(), 1: null_fd, 2: null_fd},
                 scheduler=global_event_loop(),

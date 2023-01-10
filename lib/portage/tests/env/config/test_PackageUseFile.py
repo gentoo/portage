@@ -30,7 +30,7 @@ class PackageUseFileTestCase(TestCase):
     def BuildFile(self):
         fd, self.fname = mkstemp()
         f = os.fdopen(fd, "w")
-        f.write("{} {}".format(self.cpv, " ".join(self.useflags)))
+        f.write(f"{self.cpv} {' '.join(self.useflags)}")
         f.close()
 
     def NukeFile(self):

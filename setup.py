@@ -132,7 +132,7 @@ class build_man(Command):
                 if not newer(source, target) and not newer(__file__, target):
                     continue
 
-                print("copying and updating {} -> {}".format(source, target))
+                print(f"copying and updating {source} -> {target}")
 
                 with codecs.open(source, "r", "utf8") as f:
                     data = f.readlines()
@@ -165,10 +165,10 @@ class docbook(Command):
         with open("doc/fragment/date", "w"):
             pass
         with open("doc/fragment/version", "w") as f:
-            f.write("<releaseinfo>%s</releaseinfo>" % self.distribution.get_version())
+            f.write(f"<releaseinfo>{self.distribution.get_version()}</releaseinfo>")
 
         for f in self.doc_formats:
-            print("Building docs in %s format..." % f)
+            print(f"Building docs in {f} format...")
             subprocess.check_call(
                 ["xmlto", "-o", "doc", "-m", "doc/custom.xsl", f, "doc/portage.docbook"]
             )
@@ -331,7 +331,7 @@ class x_clean(clean):
                 break
 
         for f in get_doc_outfiles():
-            print("removing %s" % repr(f))
+            print(f"removing {repr(f)}")
             os.remove(f)
 
         if os.path.isdir("doc/fragment"):
@@ -353,12 +353,12 @@ class x_clean(clean):
 
         conf_dir = os.path.join(top_dir, "cnf")
         if os.path.islink(conf_dir):
-            print("removing %s symlink" % repr(conf_dir))
+            print(f"removing {repr(conf_dir)} symlink")
             os.unlink(conf_dir)
 
         pni_file = os.path.join(top_dir, ".portage_not_installed")
         if os.path.exists(pni_file):
-            print("removing %s" % repr(pni_file))
+            print(f"removing {repr(pni_file)}")
             os.unlink(pni_file)
 
     def clean_man(self):
@@ -456,7 +456,7 @@ class x_install_data(install_data):
 
     def run(self):
         def re_sub_file(path, pattern, repl):
-            print("Rewriting %s" % path)
+            print(f"Rewriting {path}")
             with codecs.open(path, "r", "utf-8") as f:
                 data = f.read()
             data = re.sub(pattern, repl, data, flags=re.MULTILINE)
@@ -511,7 +511,7 @@ class x_install_lib(install_lib):
 
         def rewrite_file(path, val_dict):
             path = os.path.join(self.install_dir, path)
-            print("Rewriting %s" % path)
+            print(f"Rewriting {path}")
             with codecs.open(path, "r", "utf-8") as f:
                 data = f.read()
 
@@ -533,7 +533,7 @@ class x_install_lib(install_lib):
 
         def re_sub_file(path, pattern_repl_items):
             path = os.path.join(self.install_dir, path)
-            print("Rewriting %s" % path)
+            print(f"Rewriting {path}")
             with codecs.open(path, "r", "utf-8") as f:
                 data = f.read()
             for pattern, repl in pattern_repl_items:
@@ -563,10 +563,7 @@ class x_install_lib(install_lib):
                     ),
                     (
                         r"^(EPREFIX\s*=\s*)(.*)",
-                        lambda m: "{}{}".format(
-                            m.group(1),
-                            '__import__("sys").prefix',
-                        ),
+                        lambda m: f"{m.group(1)}__import__(\"sys\").prefix",
                     ),
                 ),
             )
@@ -678,11 +675,11 @@ class build_tests(x_build_scripts_custom):
         if os.path.exists(conf_dir):
             if not os.path.islink(conf_dir):
                 raise SystemError(
-                    "%s exists and is not a symlink (collision)" % repr(conf_dir)
+                    f"{repr(conf_dir)} exists and is not a symlink (collision)"
                 )
             os.unlink(conf_dir)
         conf_src = os.path.relpath("cnf", self.top_dir)
-        print("Symlinking {} -> {}".format(conf_dir, conf_src))
+        print(f"Symlinking {conf_dir} -> {conf_src}")
         os.symlink(conf_src, conf_dir)
 
         source_path = os.path.realpath(__file__)
@@ -752,7 +749,7 @@ def get_manpages():
         topdir = dirpath[len("man/") :]
         if not topdir or linguas is None or topdir in linguas:
             for g, mans in groups.items():
-                yield [os.path.join("$mandir", topdir, "man%s" % g), mans]
+                yield [os.path.join("$mandir", topdir, f"man{g}"), mans]
 
 
 class build_ext(_build_ext):
@@ -873,9 +870,7 @@ setup(
     ),
     entry_points={
         "console_scripts": [
-            "{}=portage.util.bin_entry_point:bin_entry_point".format(
-                os.path.basename(path)
-            )
+            f"{os.path.basename(path)}=portage.util.bin_entry_point:bin_entry_point"
             for path in itertools.chain.from_iterable(x_scripts.values())
         ],
     }

@@ -5,6 +5,8 @@ Features:
 * emerge: Show time taken to calculate dependency resolution with
   emerge --verbose.
 
+* cleanups: Use flynt on the codebase to upgrade to Python f-strings everywhere.
+
 Bug fixes:
 * ebuild: the PATH variable exported to ebuilds has been changed:
   The PATH setting from /etc/profile.env is appended to portage-internal

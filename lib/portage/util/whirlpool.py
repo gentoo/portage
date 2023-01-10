@@ -78,7 +78,7 @@ class PyWhirlpool:
         dig = self.digest()
         tempstr = ""
         for d in dig:
-            xxx = "%02x" % (ord(d))
+            xxx = f"{ord(d):02x}"
             tempstr = tempstr + xxx
         return tempstr
 
@@ -116,7 +116,7 @@ class CWhirlpool:
         dig = self.digest()
         tempstr = ""
         for d in dig:
-            xxx = "%02x" % (d,)
+            xxx = f"{d:02x}"
             tempstr = tempstr + xxx
         return tempstr
 
@@ -2225,7 +2225,7 @@ def WhirlpoolInit(ctx):
 
 def WhirlpoolAdd(source, sourceBits, ctx):
     if not isinstance(source, bytes):
-        raise TypeError("Expected {}, got {}".format(bytes, type(source)))
+        raise TypeError(f"Expected {bytes}, got {type(source)}")
     if sourceBits == 0:
         return
 

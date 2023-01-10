@@ -160,7 +160,7 @@ class LocationsManager:
                         _("!!! Unable to parse profile: '%s'\n") % self.profile_path,
                         noiselevel=-1,
                     )
-                    writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
+                    writemsg(f"!!! ParseError: {str(e)}\n", noiselevel=-1)
                 self.profiles = []
                 self.profiles_complex = []
 

@@ -99,7 +99,7 @@ class DoIns(setup_env.BinTestCase):
             uid = os.lstat(os.path.join(env["S"], "test")).st_uid
             pw = pwd.getpwuid(uid)
             # Similary to testDoInsOptionUid, use user name.
-            env["INSOPTIONS"] = "-o %s" % pw.pw_name
+            env["INSOPTIONS"] = f"-o {pw.pw_name}"
             doins("test")
             st = os.lstat(env["D"] + "/test")
             if st.st_uid != uid:
@@ -134,7 +134,7 @@ class DoIns(setup_env.BinTestCase):
             gid = os.lstat(os.path.join(env["S"], "test")).st_gid
             gr = grp.getgrgid(gid)
             # Similary to testDoInsOptionUid, use group name.
-            env["INSOPTIONS"] = "-g %s" % gr.gr_name
+            env["INSOPTIONS"] = f"-g {gr.gr_name}"
             doins("test")
             st = os.lstat(env["D"] + "/test")
             if st.st_gid != gid:

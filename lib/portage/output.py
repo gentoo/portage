@@ -284,7 +284,7 @@ def xtermTitle(mystr, raw=False):
         if len(mystr) > _max_xtermTitle_len:
             mystr = mystr[:_max_xtermTitle_len]
         if not raw:
-            mystr = "\x1b]0;%s\x07" % mystr
+            mystr = f"\x1b]0;{mystr}\x07"
 
         # avoid potential UnicodeEncodeError
         mystr = _unicode_encode(
@@ -386,7 +386,7 @@ def colormap():
         "QAWARN",
         "WARN",
     ):
-        mycolors.append("PORTAGE_COLOR_{}=$'{}'".format(c, style_to_ansi_code(c)))
+        mycolors.append(f"PORTAGE_COLOR_{c}=$'{style_to_ansi_code(c)}'")
     return "\n".join(mycolors)
 
 
@@ -811,7 +811,7 @@ class ProgressBar:
             "%s" % self._label if self._label else "",
         )
         if len(self._desc) > self._desc_max_length:  # truncate if too long
-            self._desc = "%s..." % self._desc[: self._desc_max_length - 3]
+            self._desc = f"{self._desc[:self._desc_max_length - 3]}..."
         if len(self._desc):
             self._desc = self._desc.ljust(self._desc_max_length)
 
@@ -912,7 +912,7 @@ class TermProgressBar(ProgressBar):
         percentage = 100 * curval // maxval
         max_bar_width = bar_space - 1
         _percent = ("%d%% " % percentage).rjust(percentage_str_width)
-        image = "{}{}".format(self._desc, _percent)
+        image = f"{self._desc}{_percent}"
 
         if cols < min_columns:
             return image
@@ -956,7 +956,7 @@ def _init(config_root="/"):
     try:
         _parse_color_map(
             config_root=config_root,
-            onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1),
+            onerror=lambda e: writemsg(f"{str(e)}\n", noiselevel=-1),
         )
     except FileNotFound:
         pass
@@ -964,7 +964,7 @@ def _init(config_root="/"):
         writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
         del e
     except PortageException as e:
-        writemsg("%s\n" % str(e), noiselevel=-1)
+        writemsg(f"{str(e)}\n", noiselevel=-1)
         del e
 
 

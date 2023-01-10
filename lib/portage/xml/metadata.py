@@ -83,7 +83,7 @@ class _Maintainer:
             setattr(self, attr.tag, attr.text)
 
     def __repr__(self):
-        return "<{} {!r}>".format(self.__class__.__name__, self.email)
+        return f"<{self.__class__.__name__} {self.email!r}>"
 
 
 class _Useflag:
@@ -113,7 +113,7 @@ class _Useflag:
         self.description = re.sub(r"\s+", " ", _desc)
 
     def __repr__(self):
-        return "<{} {!r}>".format(self.__class__.__name__, self.name)
+        return f"<{self.__class__.__name__} {self.name!r}>"
 
 
 class _Upstream:
@@ -145,7 +145,7 @@ class _Upstream:
         self.remoteids = self.upstream_remoteids()
 
     def __repr__(self):
-        return "<{} {!r}>".format(self.__class__.__name__, self.__dict__)
+        return f"<{self.__class__.__name__} {self.__dict__!r}>"
 
     def upstream_bugtrackers(self):
         """Retrieve upstream bugtracker location from xml node."""
@@ -200,7 +200,7 @@ class MetaDataXML:
         except ImportError:
             pass
         except ExpatError as e:
-            raise SyntaxError("{}".format(e))
+            raise SyntaxError(f"{e}")
 
         if isinstance(herds, etree.ElementTree):
             herds_etree = herds
@@ -219,7 +219,7 @@ class MetaDataXML:
         self._upstream = None
 
     def __repr__(self):
-        return "<{} {!r}>".format(self.__class__.__name__, self.metadata_xml_path)
+        return f"<{self.__class__.__name__} {self.metadata_xml_path!r}>"
 
     def _get_herd_email(self, herd):
         """Get a herd's email address.

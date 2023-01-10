@@ -162,7 +162,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         try:
             (restrict,) = aux_get_result.result()
         except (PortageKeyError, PortageException) as e:
-            config.log_failure("{}\t\taux_get exception {}".format(cpv, e))
+            config.log_failure(f"{cpv}\t\taux_get exception {e}")
             result.set_result(fetch_tasks)
             return
 
@@ -172,14 +172,14 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         try:
             restrict = frozenset(use_reduce(restrict, flat=True, matchnone=True))
         except PortageException as e:
-            config.log_failure("{}\t\tuse_reduce exception {}".format(cpv, e))
+            config.log_failure(f"{cpv}\t\tuse_reduce exception {e}")
             result.set_result(fetch_tasks)
             return
 
         try:
             uri_map = fetch_map_result.result()
         except PortageException as e:
-            config.log_failure("{}\t\tgetFetchMap exception {}".format(cpv, e))
+            config.log_failure(f"{cpv}\t\tgetFetchMap exception {e}")
             result.set_result(fetch_tasks)
             return
 
@@ -238,7 +238,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
             digests_future.done() or digests_future.set_exception(e)
             for filename in new_uri_map:
                 config.log_failure(
-                    "{}\t{}\tManifest exception {}".format(cpv, filename, e)
+                    f"{cpv}\t{filename}\tManifest exception {e}"
                 )
                 config.file_failures[filename] = cpv
             result.set_result(fetch_tasks)
@@ -248,7 +248,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
 
         if not digests:
             for filename in new_uri_map:
-                config.log_failure("{}\t{}\tdigest entry missing".format(cpv, filename))
+                config.log_failure(f"{cpv}\t{filename}\tdigest entry missing")
                 config.file_failures[filename] = cpv
             result.set_result(fetch_tasks)
             return
@@ -256,7 +256,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         for filename, uri_tuple in new_uri_map.items():
             file_digests = digests.get(filename)
             if file_digests is None:
-                config.log_failure("{}\t{}\tdigest entry missing".format(cpv, filename))
+                config.log_failure(f"{cpv}\t{filename}\tdigest entry missing")
                 config.file_failures[filename] = cpv
                 continue
             if filename in config.file_owners:

@@ -22,7 +22,7 @@ class CommandOutputSetTestCase(TestCase):
         command = find_binary("bash")
         command += " -c '"
         for a in params:
-            command += ' echo -e "%s" ; ' % a
+            command += f' echo -e "{a}" ; '
         command += "'"
         s = CommandOutputSet(command)
         atoms = s.getAtoms()

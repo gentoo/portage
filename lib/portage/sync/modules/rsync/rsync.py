@@ -160,7 +160,7 @@ class RsyncSync(NewBase):
             if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
                 try:
                     out.einfo(
-                        "Using keys from {}".format(self.repo.sync_openpgp_key_path)
+                        f"Using keys from {self.repo.sync_openpgp_key_path}"
                     )
                     with open(self.repo.sync_openpgp_key_path, "rb") as f:
                         openpgp_env.import_key(f)
@@ -226,7 +226,7 @@ class RsyncSync(NewBase):
                 )[1:5]
             except ValueError:
                 writemsg_level(
-                    "!!! sync-uri is invalid: %s\n" % syncuri,
+                    f"!!! sync-uri is invalid: {syncuri}\n",
                     noiselevel=-1,
                     level=logging.ERROR,
                 )
@@ -285,10 +285,10 @@ class RsyncSync(NewBase):
 
                 for addrinfo in addrinfos:
                     if addrinfo[0] == AF_INET:
-                        ips_v4.append("%s" % addrinfo[4][0])
+                        ips_v4.append(f"{addrinfo[4][0]}")
                     elif AF_INET6 is not None and addrinfo[0] == AF_INET6:
                         # IPv6 addresses need to be enclosed in square brackets
-                        ips_v6.append("[%s]" % addrinfo[4][0])
+                        ips_v6.append(f"[{addrinfo[4][0]}]")
 
                 random.shuffle(ips_v4)
                 random.shuffle(ips_v6)
@@ -335,7 +335,7 @@ class RsyncSync(NewBase):
                     dosyncuri = uris.pop()
                 elif maxretries < 0 or retries > maxretries:
                     writemsg(
-                        "!!! Exhausted addresses for %s\n" % _unicode_decode(hostname),
+                        f"!!! Exhausted addresses for {_unicode_decode(hostname)}\n",
                         noiselevel=-1,
                     )
                     return (1, False)
@@ -447,30 +447,30 @@ class RsyncSync(NewBase):
                             out.ewarn(
                                 "You may want to try using another mirror and/or reporting this one:"
                             )
-                            out.ewarn("  {}".format(dosyncuri))
+                            out.ewarn(f"  {dosyncuri}")
                             out.ewarn("")
                             out.quiet = quiet
 
-                        out.einfo("Manifest timestamp: {} UTC".format(ts.ts))
+                        out.einfo(f"Manifest timestamp: {ts.ts} UTC")
                         out.einfo("Valid OpenPGP signature found:")
                         out.einfo(
                             "- primary key: %s"
                             % (m.openpgp_signature.primary_key_fingerprint)
                         )
-                        out.einfo("- subkey: %s" % (m.openpgp_signature.fingerprint))
+                        out.einfo(f"- subkey: {m.openpgp_signature.fingerprint}")
                         out.einfo(
-                            "- timestamp: %s UTC" % (m.openpgp_signature.timestamp)
+                            f"- timestamp: {m.openpgp_signature.timestamp} UTC"
                         )
 
                         # if nothing has changed, skip the actual Manifest
                         # verification
                         if not local_state_unchanged:
-                            out.ebegin("Verifying {}".format(download_dir))
+                            out.ebegin(f"Verifying {download_dir}")
                             m.assert_directory_verifies()
                             out.eend(0)
                     except GematoException as e:
                         writemsg_level(
-                            "!!! Manifest verification failed:\n{}\n".format(e),
+                            f"!!! Manifest verification failed:\n{e}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -496,7 +496,7 @@ class RsyncSync(NewBase):
         elif exitcode == SERVER_OUT_OF_DATE:
             exitcode = 1
         elif exitcode == EXCEEDED_MAX_RETRIES:
-            sys.stderr.write(">>> Exceeded PORTAGE_RSYNC_RETRIES: %s\n" % maxretries)
+            sys.stderr.write(f">>> Exceeded PORTAGE_RSYNC_RETRIES: {maxretries}\n")
             exitcode = 1
         elif exitcode > 0:
             msg = []
@@ -508,7 +508,7 @@ class RsyncSync(NewBase):
                     "that sync-uri attribute for repository '%s' is proper."
                     % self.repo.name
                 )
-                msg.append("sync-uri: '%s'" % self.repo.sync_uri)
+                msg.append(f"sync-uri: '{self.repo.sync_uri}'")
             elif exitcode == 11:
                 msg.append("Rsync has reported that there is a File IO error. Normally")
                 msg.append(
@@ -519,7 +519,7 @@ class RsyncSync(NewBase):
                     % self.repo.name
                 )
                 msg.append("and try again after the problem has been fixed.")
-                msg.append("Location of repository: '%s'" % self.repo.location)
+                msg.append(f"Location of repository: '{self.repo.location}'")
             elif exitcode == 20:
                 msg.append("Rsync was killed before it finished.")
             else:
@@ -547,7 +547,7 @@ class RsyncSync(NewBase):
                 os.makedirs(self.repo.location)
                 self.logger(
                     self.self.xterm_titles,
-                    "Created New Directory %s " % self.repo.location,
+                    f"Created New Directory {self.repo.location} ",
                 )
         except OSError:
             return (1, False)
@@ -605,16 +605,16 @@ class RsyncSync(NewBase):
                 portage.writemsg(
                     yellow("WARNING:")
                     + " adding required option "
-                    + "%s not included in PORTAGE_RSYNC_OPTS\n" % opt
+                    + f"{opt} not included in PORTAGE_RSYNC_OPTS\n"
                 )
                 rsync_opts.append(opt)
 
         for exclude in ("distfiles", "local", "packages"):
-            opt = "--exclude=/%s" % exclude
+            opt = f"--exclude=/{exclude}"
             if opt not in rsync_opts:
                 portage.writemsg(
                     yellow("WARNING:")
-                    + " adding required option %s not included in " % opt
+                    + f" adding required option {opt} not included in "
                     + "PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n"
                 )
                 rsync_opts.append(opt)
@@ -635,7 +635,7 @@ class RsyncSync(NewBase):
                     portage.writemsg(
                         yellow("WARNING:")
                         + " adding required option "
-                        + "%s not included in PORTAGE_RSYNC_OPTS\n" % opt
+                        + f"{opt} not included in PORTAGE_RSYNC_OPTS\n"
                     )
                     rsync_opts.append(opt)
         return rsync_opts
@@ -775,20 +775,18 @@ class RsyncSync(NewBase):
                 )
                 print(">>>")
                 print(
-                    ">>> In order to force sync, remove '%s'."
-                    % self.servertimestampfile
+                    f">>> In order to force sync, remove '{self.servertimestampfile}'."
                 )
                 print(">>>")
                 print()
             elif (servertimestamp != 0) and (servertimestamp < timestamp):
-                self.logger(self.xterm_titles, ">>> Server out of date: %s" % syncuri)
+                self.logger(self.xterm_titles, f">>> Server out of date: {syncuri}")
                 print()
                 print(">>>")
-                print(">>> SERVER OUT OF DATE: %s" % syncuri)
+                print(f">>> SERVER OUT OF DATE: {syncuri}")
                 print(">>>")
                 print(
-                    ">>> In order to force sync, remove '%s'."
-                    % self.servertimestampfile
+                    f">>> In order to force sync, remove '{self.servertimestampfile}'."
                 )
                 print(">>>")
                 print()

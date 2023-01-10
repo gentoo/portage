@@ -230,5 +230,5 @@ class IsValidAtom(TestCase):
                     )
                 ),
                 test_case.expected,
-                msg="isvalidatom({}) != {}".format(test_case.atom, test_case.expected),
+                msg=f"isvalidatom({test_case.atom}) != {test_case.expected}",
             )

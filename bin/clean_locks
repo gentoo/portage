@@ -23,8 +23,8 @@ if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
     print("of the locks, even if we can't establish if they are in use.")
     print("Please attempt cleaning without force first.")
     print()
-    print("{} {}/.locks".format(sys.argv[0], portage.settings["DISTDIR"]))
-    print("{} --force {}/.locks".format(sys.argv[0], portage.settings["DISTDIR"]))
+    print(f"{sys.argv[0]} {portage.settings['DISTDIR']}/.locks")
+    print(f"{sys.argv[0]} --force {portage.settings['DISTDIR']}/.locks")
     print()
     sys.exit(1)
 
@@ -42,7 +42,7 @@ for x in sys.argv[1:]:
 
     except OSError as e:
         if e.errno in (errno.ENOENT, errno.ENOTDIR):
-            print("!!! %s is not a directory or does not exist" % x)
+            print(f"!!! {x} is not a directory or does not exist")
         else:
             raise
         sys.exit(e.errno)

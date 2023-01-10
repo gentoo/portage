@@ -27,7 +27,7 @@ _FS_ENCODING = sys.getfilesystemencoding()
 
 
 def octal_quote_byte(b):
-    return ("\\%03o" % ord(b)).encode("ascii")
+    return (f"\\{ord(b):03o}").encode("ascii")
 
 
 def unicode_encode(s):

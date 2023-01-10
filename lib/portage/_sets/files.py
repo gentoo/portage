@@ -38,7 +38,7 @@ class StaticFileSet(EditablePackageSet):
         super().__init__(allow_repo=True)
         self._filename = filename
         self._mtime = None
-        self.description = "Package set loaded from file %s" % self._filename
+        self.description = f"Package set loaded from file {self._filename}"
         self.loader = ItemFileLoader(self._filename, self._validate)
         if greedy and not dbapi:
             self.errors.append(
@@ -77,7 +77,7 @@ class StaticFileSet(EditablePackageSet):
         write_atomic(
             self._filename,
             "".join(
-                "{}\n".format(atom)
+                f"{atom}\n"
                 for atom in sorted(chain(self._atoms, self._nonatoms))
             ),
         )
@@ -104,7 +104,7 @@ class StaticFileSet(EditablePackageSet):
                     matches = self.dbapi.match(a)
                     for cpv in matches:
                         pkg = self.dbapi._pkg_str(cpv, None)
-                        atoms.append("{}:{}".format(pkg.cp, pkg.slot))
+                        atoms.append(f"{pkg.cp}:{pkg.slot}")
                     # In addition to any installed slots, also try to pull
                     # in the latest new slot that may be available.
                     atoms.append(a)
@@ -216,7 +216,7 @@ class ConfigFileSet(PackageSet):
     def __init__(self, filename):
         super().__init__()
         self._filename = filename
-        self.description = "Package set generated from %s" % self._filename
+        self.description = f"Package set generated from {self._filename}"
         self.loader = KeyListFileLoader(self._filename, ValidAtomValidator)
 
     def load(self):
@@ -299,7 +299,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
         return ValidAtomValidator(atom, allow_repo=True)
 
     def write(self):
-        write_atomic(self._filename, "".join(sorted("%s\n" % x for x in self._atoms)))
+        write_atomic(self._filename, "".join(sorted(f"{x}\n" for x in self._atoms)))
 
     def load(self):
         atoms = []
@@ -396,7 +396,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
 
     def write(self):
         write_atomic(
-            self._filename, "".join(sorted("%s\n" % x for x in self._nonatoms))
+            self._filename, "".join(sorted(f"{x}\n" for x in self._nonatoms))
         )
 
     def load(self):

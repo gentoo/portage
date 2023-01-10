@@ -273,7 +273,7 @@ class bindbapi(fakedbapi):
             encoding_key = False
         else:
             raise InvalidBinaryPackageFormat(
-                "Unknown binary package format %s" % binpkg_path
+                f"Unknown binary package format {binpkg_path}"
             )
 
         for k, v in values.items():
@@ -295,7 +295,7 @@ class bindbapi(fakedbapi):
             mybinpkg.update_metadata(mydata)
         else:
             raise InvalidBinaryPackageFormat(
-                "Unknown binary package format %s" % binpkg_path
+                f"Unknown binary package format {binpkg_path}"
             )
 
         # inject will clear stale caches via cpv_inject.
@@ -336,7 +336,7 @@ class bindbapi(fakedbapi):
                 )
             else:
                 raise InvalidBinaryPackageFormat(
-                    "Unknown binary package format %s" % binpkg_file
+                    f"Unknown binary package format {binpkg_file}"
                 )
 
     async def unpack_contents(self, pkg, dest_dir, loop=None):
@@ -374,7 +374,7 @@ class bindbapi(fakedbapi):
                 extractor.start()
                 await extractor.async_wait()
                 if extractor.returncode != os.EX_OK:
-                    raise PortageException("Error Extracting '{}'".format(pkg_path))
+                    raise PortageException(f"Error Extracting '{pkg_path}'")
             elif binpkg_format == "gpkg":
                 await loop.run_in_executor(
                     ForkExecutor(loop=loop),
@@ -426,7 +426,7 @@ class bindbapi(fakedbapi):
             except KeyError:
                 raise portage.exception.MissingSignature("SIZE")
             except ValueError:
-                raise portage.exception.InvalidSignature("SIZE: %s" % metadata["SIZE"])
+                raise portage.exception.InvalidSignature(f"SIZE: {metadata['SIZE']}")
             else:
                 filesdict[os.path.basename(self.bintree.getname(pkg))] = size
 
@@ -644,7 +644,7 @@ class binarytree:
             # If this update has already been applied to the same
             # package build then silently continue.
             applied = False
-            for maybe_applied in self.dbapi.match("={}".format(mynewcpv)):
+            for maybe_applied in self.dbapi.match(f"={mynewcpv}"):
                 if maybe_applied.build_time == mycpv.build_time:
                     applied = True
                     break
@@ -1080,7 +1080,7 @@ class binarytree:
                             )
                         )
                         for line in textwrap.wrap("".join(msg), 72):
-                            writemsg("!!! %s\n" % line, noiselevel=-1)
+                            writemsg(f"!!! {line}\n", noiselevel=-1)
                         self.invalids.append(mypkg)
                         continue
 
@@ -1092,7 +1092,7 @@ class binarytree:
                         build_id = self._parse_build_id(myfile)
                         if build_id < 1:
                             invalid_name = True
-                        elif myfile != "{}-{}.xpak".format(mypf, build_id):
+                        elif myfile != f"{mypf}-{build_id}.xpak":
                             invalid_name = True
                         else:
                             mypkg = mypkg[: -len(str(build_id)) - 1]
@@ -1100,12 +1100,12 @@ class binarytree:
                         build_id = self._parse_build_id(myfile)
                         if build_id > 0:
                             multi_instance = True
-                            if myfile != "{}-{}.gpkg.tar".format(mypf, build_id):
+                            if myfile != f"{mypf}-{build_id}.gpkg.tar":
                                 invalid_name = True
                             else:
                                 mypkg = mypkg[: -len(str(build_id)) - 1]
                         else:
-                            if myfile != "%s.gpkg.tar" % mypf:
+                            if myfile != f"{mypf}.gpkg.tar":
                                 invalid_name = True
                     elif myfile != mypf + ".tbz2":
                         invalid_name = True
@@ -1131,7 +1131,7 @@ class binarytree:
                         build_id = None
 
                     if multi_instance:
-                        name_split = catpkgsplit("{}/{}".format(mycat, mypf))
+                        name_split = catpkgsplit(f"{mycat}/{mypf}")
                         if (
                             name_split is None
                             or tuple(catsplit(mydir)) != name_split[:2]
@@ -1251,7 +1251,7 @@ class binarytree:
                     user, passwd = user.split(":", 1)
 
             if port is not None:
-                port_str = ":{}".format(port)
+                port_str = f":{port}"
                 if host.endswith(port_str):
                     host = host[: -len(port_str)]
             pkgindex_file = os.path.join(
@@ -1343,7 +1343,7 @@ class binarytree:
                             raise
                     except ValueError:
                         raise ParseError(
-                            "Invalid Portage BINHOST value '%s'" % url.lstrip()
+                            f"Invalid Portage BINHOST value '{url.lstrip()}'"
                         )
 
                 if f is None:
@@ -1356,7 +1356,7 @@ class binarytree:
                         # matches that of the cached Packages file.
                         ssh_args = ["ssh"]
                         if port is not None:
-                            ssh_args.append("-p{}".format(port))
+                            ssh_args.append(f"-p{port}")
                         # NOTE: shlex evaluates embedded quotes
                         ssh_args.extend(
                             portage.util.shlex_split(
@@ -1400,7 +1400,7 @@ class binarytree:
                             fcmd=fcmd, fcmd_vars=fcmd_vars
                         )
                         if not success:
-                            raise OSError("{} failed".format(setting))
+                            raise OSError(f"{setting} failed")
                         f = open(tmp_filename, "rb")
 
                 f_dec = codecs.iterdecode(
@@ -1475,7 +1475,7 @@ class binarytree:
                     error_msg = str(e)
                 except UnicodeDecodeError as uerror:
                     error_msg = str(uerror.object, encoding="utf_8", errors="replace")
-                writemsg("!!! %s\n\n" % error_msg)
+                writemsg(f"!!! {error_msg}\n\n")
                 del e
                 pkgindex = None
             if proc is not None:
@@ -1977,7 +1977,7 @@ class binarytree:
                 deps = use_reduce(deps, uselist=use, token_class=token_class)
                 deps = paren_enclose(deps)
             except portage.exception.InvalidDependString as e:
-                writemsg("{}: {}\n".format(k, e), noiselevel=-1)
+                writemsg(f"{k}: {e}\n", noiselevel=-1)
                 raise
             metadata[k] = deps
 
@@ -1993,13 +1993,13 @@ class binarytree:
         if not self.populated:
             self.populate()
         writemsg("\n\n", 1)
-        writemsg("mydep: %s\n" % mydep, 1)
+        writemsg(f"mydep: {mydep}\n", 1)
         mydep = dep_expand(mydep, mydb=self.dbapi, settings=self.settings)
-        writemsg("mydep: %s\n" % mydep, 1)
+        writemsg(f"mydep: {mydep}\n", 1)
         mykey = dep_getkey(mydep)
-        writemsg("mykey: %s\n" % mykey, 1)
+        writemsg(f"mykey: {mykey}\n", 1)
         mymatch = best(match_from_list(mydep, self.dbapi.cp_list(mykey)))
-        writemsg("mymatch: %s\n" % mymatch, 1)
+        writemsg(f"mymatch: {mymatch}\n", 1)
         if mymatch is None:
             return ""
         return mymatch
@@ -2059,19 +2059,13 @@ class binarytree:
             elif binpkg_format == "xpak":
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
-                    filename = "{}-{}.xpak".format(
-                        os.path.join(self.pkgdir, cpv.cp, pf),
-                        "1",
-                    )
+                    filename = f"{os.path.join(self.pkgdir, cpv.cp, pf)}-1.xpak"
                 else:
                     filename = os.path.join(self.pkgdir, cpv + ".tbz2")
             elif binpkg_format == "gpkg":
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
-                    filename = "{}-{}.gpkg.tar".format(
-                        os.path.join(self.pkgdir, cpv.cp, pf),
-                        "1",
-                    )
+                    filename = f"{os.path.join(self.pkgdir, cpv.cp, pf)}-1.gpkg.tar"
                 else:
                     filename = os.path.join(self.pkgdir, cpv + ".gpkg.tar")
             else:

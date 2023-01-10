@@ -461,9 +461,9 @@ def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
     for x in mylist:
         if isinstance(x, list):
             if opconvert and x and x[0] == "||":
-                mystrparts.append("{} ( {} )".format(x[0], paren_enclose(x[1:])))
+                mystrparts.append(f"{x[0]} ( {paren_enclose(x[1:])} )")
             else:
-                mystrparts.append("( %s )" % paren_enclose(x))
+                mystrparts.append(f"( {paren_enclose(x)} )")
         else:
             if unevaluated_atom:
                 x = getattr(x, "unevaluated_atom", x)
@@ -1163,10 +1163,10 @@ class _use_dep:
     def __str__(self):
         if not self.tokens:
             return ""
-        return "[{}]".format(",".join(self.tokens))
+        return f"[{','.join(self.tokens)}]"
 
     def __repr__(self):
-        return "portage.dep._use_dep(%s)" % repr(self.tokens)
+        return f"portage.dep._use_dep({repr(self.tokens)})"
 
     def evaluate_conditionals(self, use):
         """
@@ -1670,12 +1670,7 @@ class Atom(str):
             if not isinstance(eapi, str):
                 raise TypeError(
                     "expected eapi argument of "
-                    + "%s, got %s: %s"
-                    % (
-                        str,
-                        type(eapi),
-                        eapi,
-                    )
+                    + f"{str}, got {type(eapi)}: {eapi}"
                 )
             if self.slot and not eapi_attrs.slot_deps:
                 raise InvalidAtom(
@@ -1761,7 +1756,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         atom += _repo_separator + repo
@@ -1794,7 +1789,7 @@ class Atom(str):
                 False otherwise.
         """
         if not isinstance(other, Atom):
-            raise TypeError("expected {}, got {}".format(Atom, type(other)))
+            raise TypeError(f"expected {Atom}, got {type(other)}")
 
         if self == other:
             return True
@@ -1828,7 +1823,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         use_dep = self.use.evaluate_conditionals(use)
@@ -1861,7 +1856,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         use_dep = self.use.violated_conditionals(other_use, is_valid_flag, parent_use)
@@ -1882,7 +1877,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         use_dep = self.use._eval_qa_conditionals(use_mask, use_force)

@@ -67,7 +67,7 @@ class SonameDepsProcessor:
         if multilib_cat is None:
             # This usage is invalid. The caller must ensure that
             # the multilib category data is supplied here.
-            raise AssertionError("Missing multilib category data: %s" % entry.filename)
+            raise AssertionError(f"Missing multilib category data: {entry.filename}")
 
         self._basename_map.setdefault(os.path.basename(entry.filename), []).append(
             entry
@@ -85,7 +85,7 @@ class SonameDepsProcessor:
                         varexpand(
                             x,
                             expand,
-                            error_leader=lambda: "%s: DT_RUNPATH: " % entry.filename,
+                            error_leader=lambda: f"{entry.filename}: DT_RUNPATH: ",
                         )
                     )
                     for x in entry.runpaths

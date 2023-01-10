@@ -616,7 +616,7 @@ def dir_get_metadata(
     except tuple(_all_errors) as e:
         # ftplib.FTP(host) can raise errors like this:
         #   socket.error: (111, 'Connection refused')
-        sys.stderr.write("!!! {}\n".format(e))
+        sys.stderr.write(f"!!! {e}\n")
         return {}
 
     out = sys.stdout
@@ -688,7 +688,7 @@ def dir_get_metadata(
                         mytempfile.seek(0)
                         data = mytempfile.read()
                 except ValueError as e:
-                    sys.stderr.write("--- %s\n" % str(e))
+                    sys.stderr.write(f"--- {str(e)}\n")
                     if trynum < 3:
                         sys.stderr.write(_("Retrying...\n"))
                     sys.stderr.flush()

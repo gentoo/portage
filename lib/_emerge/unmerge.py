@@ -104,7 +104,7 @@ def _unmerge_display(
             if unmerge_action in ["rage-clean", "unmerge"]:
                 print()
                 print(
-                    bold("emerge %s" % unmerge_action)
+                    bold(f"emerge {unmerge_action}")
                     + " can only be used with specific package names"
                 )
                 print()
@@ -120,7 +120,7 @@ def _unmerge_display(
         else:
             # we've got command-line arguments
             if not unmerge_files:
-                print("\nNo packages to %s have been provided.\n" % unmerge_action)
+                print(f"\nNo packages to {unmerge_action} have been provided.\n")
                 return 1, {}
             for x in unmerge_files:
                 arg_parts = x.split("/")
@@ -187,7 +187,7 @@ def _unmerge_display(
             writemsg_level(
                 darkgreen(
                     newline
-                    + ">>> Using system located in ROOT tree %s\n" % settings["ROOT"]
+                    + f">>> Using system located in ROOT tree {settings['ROOT']}\n"
                 )
             )
 
@@ -445,11 +445,11 @@ def _unmerge_display(
                             parents.append(s)
                             break
             if parents:
-                print(colorize("WARN", "Package %s is going to be unmerged," % cpv))
+                print(colorize("WARN", f"Package {cpv} is going to be unmerged,"))
                 print(
                     colorize("WARN", "but still listed in the following package sets:")
                 )
-                print("    %s\n" % ", ".join(parents))
+                print(f"    {', '.join(parents)}\n")
 
     del installed_sets
 
@@ -506,13 +506,13 @@ def _unmerge_display(
         if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
             virt_cp = sys_virt_map.get(cp)
             if virt_cp is None:
-                cp_info = "'{}'".format(cp)
+                cp_info = f"'{cp}'"
             else:
-                cp_info = "'{}' ({})".format(cp, virt_cp)
+                cp_info = f"'{cp}' ({virt_cp})"
             writemsg_level(
                 colorize(
                     "BAD",
-                    "\n\n!!! " + "{} is part of your system profile.\n".format(cp_info),
+                    "\n\n!!! " + f"{cp_info} is part of your system profile.\n",
                 ),
                 level=logging.WARNING,
                 noiselevel=-1,
@@ -525,7 +525,7 @@ def _unmerge_display(
                 noiselevel=-1,
             )
         if not quiet:
-            writemsg_level("\n {}\n".format(bold(cp)), noiselevel=-1)
+            writemsg_level(f"\n {bold(cp)}\n", noiselevel=-1)
         else:
             writemsg_level(bold(cp) + ": ", noiselevel=-1)
         for mytype in ["selected", "protected", "omitted"]:

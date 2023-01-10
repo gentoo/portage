@@ -182,12 +182,12 @@ class MirrorDistTask(CompositeTask):
                     ("dry-run: scheduled deletions for %s: %s files")
                     % (date, len(date_files))
                 )
-            lines.append("%s\n" % date)
+            lines.append(f"{date}\n")
             for filename in date_files:
                 cpv = "unknown"
                 if distfiles_db is not None:
                     cpv = distfiles_db.get(filename, cpv)
-                lines.append("\t{}\t{}\n".format(filename, cpv))
+                lines.append(f"\t{filename}\t{cpv}\n")
 
         if not dry_run:
             portage.util.write_atomic(

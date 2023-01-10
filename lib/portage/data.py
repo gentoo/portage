@@ -215,7 +215,7 @@ def _get_global(k):
             return portage_gid
         if k == "portage_uid":
             return portage_uid
-        raise AssertionError("unknown name: %s" % k)
+        raise AssertionError(f"unknown name: {k}")
 
     elif k == "userpriv_groups":
         v = [_get_global("portage_gid")]
@@ -287,7 +287,7 @@ def _get_global(k):
                         else:
                             v = pwd_struct.pw_name
     else:
-        raise AssertionError("unknown name: %s" % k)
+        raise AssertionError(f"unknown name: {k}")
 
     globals()[k] = v
     _initialized_globals.add(k)

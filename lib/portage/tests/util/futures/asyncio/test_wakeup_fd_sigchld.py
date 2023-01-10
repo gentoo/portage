@@ -68,7 +68,7 @@ sys.exit(os.EX_OK)
         except Exception:
             portage.writemsg(
                 "".join(
-                    "{}\n".format(line)
+                    f"{line}\n"
                     for line in out.decode(errors="replace").splitlines()[:50]
                 ),
                 noiselevel=-1,

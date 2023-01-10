@@ -218,27 +218,27 @@ class TestAtom(TestCase):
             self.assertEqual(
                 op,
                 a.operator,
-                msg="Atom('{}').operator = {} == '{}'".format(atom, a.operator, op),
+                msg=f"Atom('{atom}').operator = {a.operator} == '{op}'",
             )
             self.assertEqual(
-                cp, a.cp, msg="Atom('{}').cp = {} == '{}'".format(atom, a.cp, cp)
+                cp, a.cp, msg=f"Atom('{atom}').cp = {a.cp} == '{cp}'"
             )
             if ver is not None:
-                cpv = "{}-{}".format(cp, ver)
+                cpv = f"{cp}-{ver}"
             else:
                 cpv = cp
             self.assertEqual(
-                cpv, a.cpv, msg="Atom('{}').cpv = {} == '{}'".format(atom, a.cpv, cpv)
+                cpv, a.cpv, msg=f"Atom('{atom}').cpv = {a.cpv} == '{cpv}'"
             )
             self.assertEqual(
                 slot,
                 a.slot,
-                msg="Atom('{}').slot = {} == '{}'".format(atom, a.slot, slot),
+                msg=f"Atom('{atom}').slot = {a.slot} == '{slot}'",
             )
             self.assertEqual(
                 repo,
                 a.repo,
-                msg="Atom('{}').repo == {} == '{}'".format(atom, a.repo, repo),
+                msg=f"Atom('{atom}').repo == {a.repo} == '{repo}'",
             )
 
             if a.use:
@@ -248,7 +248,7 @@ class TestAtom(TestCase):
             self.assertEqual(
                 use,
                 returned_use,
-                msg="Atom('{}').use = {} == '{}'".format(atom, returned_use, use),
+                msg=f"Atom('{atom}').use = {returned_use} == '{use}'",
             )
 
         for atom, allow_wildcard, allow_repo in tests_xfail:
@@ -306,7 +306,7 @@ class TestAtom(TestCase):
                 self.assertEqual(
                     v,
                     getattr(a, k),
-                    msg="Atom('{}').{} = {} == '{}'".format(atom, k, getattr(a, k), v),
+                    msg=f"Atom('{atom}').{k} = {getattr(a, k)} == '{v}'",
                 )
 
     def test_intersects(self):
@@ -327,7 +327,7 @@ class TestAtom(TestCase):
             self.assertEqual(
                 Atom(atom).intersects(Atom(other)),
                 expected_result,
-                "{} and {} should intersect: {}".format(atom, other, expected_result),
+                f"{atom} and {other} should intersect: {expected_result}",
             )
 
     def test_violated_conditionals(self):

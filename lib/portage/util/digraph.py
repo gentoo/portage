@@ -312,18 +312,14 @@ class digraph:
             writemsg(s, noiselevel=-1)
 
         for node in self.nodes:
-            output("{} ".format(node))
+            output(f"{node} ")
             if self.nodes[node][0]:
                 output("depends on\n")
             else:
                 output("(no children)\n")
             for child, priorities in self.nodes[node][0].items():
                 output(
-                    "  %s (%s)\n"
-                    % (
-                        child,
-                        priorities[-1],
-                    )
+                    f"  {child} ({priorities[-1]})\n"
                 )
 
     def bfs(self, start, ignore_priority=None):

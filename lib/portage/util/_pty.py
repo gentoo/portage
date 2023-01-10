@@ -58,7 +58,7 @@ def _create_pty_or_pipe(copy_term_size=None):
             got_pty = True
         except OSError as e:
             _disable_openpty = True
-            writemsg("openpty failed: '%s'\n" % str(e), noiselevel=-1)
+            writemsg(f"openpty failed: '{str(e)}'\n", noiselevel=-1)
             del e
             master_fd, slave_fd = os.pipe()
 

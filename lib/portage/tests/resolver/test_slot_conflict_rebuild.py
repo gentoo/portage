@@ -100,21 +100,21 @@ class SlotConflictRebuildTestCase(TestCase):
         expected_mergelist = ["app-misc/A-1", "app-misc/B-2"]
 
         for i in range(5):
-            ebuilds["app-misc/C%sC-1" % i] = {
+            ebuilds[f"app-misc/C{i}C-1"] = {
                 "EAPI": "5",
                 "DEPEND": "app-misc/B:=",
                 "RDEPEND": "app-misc/B:=",
             }
 
-            installed["app-misc/C%sC-1" % i] = {
+            installed[f"app-misc/C{i}C-1"] = {
                 "EAPI": "5",
                 "DEPEND": "app-misc/B:1/1=",
                 "RDEPEND": "app-misc/B:1/1=",
             }
             for x in ("DEPEND", "RDEPEND"):
-                ebuilds["app-misc/A-1"][x] += " app-misc/C%sC" % i
+                ebuilds["app-misc/A-1"][x] += f" app-misc/C{i}C"
 
-            expected_mergelist.append("app-misc/C%sC-1" % i)
+            expected_mergelist.append(f"app-misc/C{i}C-1")
 
         test_cases = (
             ResolverPlaygroundTestCase(

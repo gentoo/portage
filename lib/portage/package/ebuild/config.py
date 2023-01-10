@@ -133,8 +133,7 @@ def autouse(myvartree, use_cache=1, mysettings=None):
 def check_config_instance(test):
     if not isinstance(test, config):
         raise TypeError(
-            "Invalid type for config object: %s (should be %s)"
-            % (test.__class__, config)
+            f"Invalid type for config object: {test.__class__} (should be {config})"
         )
 
 
@@ -146,7 +145,7 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
             return top_dict[x][key]
     if EmptyOnError:
         return ""
-    raise KeyError("Key not found in list; '%s'" % key)
+    raise KeyError(f"Key not found in list; '{key}'")
 
 
 def _lazy_iuse_regex(iuse_implicit):
@@ -158,7 +157,7 @@ def _lazy_iuse_regex(iuse_implicit):
     # Escape anything except ".*" which is supposed to pass through from
     # _get_implicit_iuse().
     regex = sorted(re.escape(x) for x in iuse_implicit)
-    regex = "^(%s)$" % "|".join(regex)
+    regex = f"^({'|'.join(regex)})$"
     regex = regex.replace("\\.\\*", ".*")
     return regex
 
@@ -166,7 +165,7 @@ def _lazy_iuse_regex(iuse_implicit):
 class _iuse_implicit_match_cache:
     def __init__(self, settings):
         self._iuse_implicit_re = re.compile(
-            "^(%s)$" % "|".join(settings._get_implicit_iuse())
+            f"^({'|'.join(settings._get_implicit_iuse())})$"
         )
         self._cache = {}
 
@@ -553,7 +552,7 @@ class config:
                 and user_auxdbmodule in self._module_aliases
             ):
                 warnings.warn(
-                    "'{}' is deprecated: {}".format(user_auxdbmodule, modules_file)
+                    f"'{user_auxdbmodule}' is deprecated: {modules_file}"
                 )
 
             self.modules["default"] = {
@@ -1337,7 +1336,7 @@ class config:
                     _("!!! Directory initialization failed: '%s'\n") % mydir,
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
 
     @property
     def _keywords_manager(self):
@@ -2182,7 +2181,7 @@ class config:
                 "fi; "
                 "[[ -n ${___PORTAGE_IUSE_HASH[$1]} ]]; "
                 "}"
-            ) % " ".join('["%s"]=1' % x for x in portage_iuse)
+            ) % " ".join(f'["{x}"]=1' for x in portage_iuse)
         else:
             portage_iuse = self._get_implicit_iuse()
             portage_iuse.update(explicit_iuse)
@@ -2300,7 +2299,7 @@ class config:
                     if k in protected_keys or k in non_user_variables:
                         writemsg(
                             "!!! Illegal variable "
-                            + "'{}' assigned in '{}'\n".format(k, penvfile),
+                            + f"'{k}' assigned in '{penvfile}'\n",
                             noiselevel=-1,
                         )
                     elif k in incrementals:
@@ -3183,7 +3182,7 @@ class config:
                 return ":".join(value)
 
             if mykey == "PORTAGE_GID":
-                return "%s" % portage_gid
+                return f"{portage_gid}"
 
         for d in self.lookuplist:
             try:
@@ -3256,8 +3255,7 @@ class config:
         "set a value; will be thrown away at reset() time"
         if not isinstance(myvalue, str):
             raise ValueError(
-                "Invalid type being used as a value: '%s': '%s'"
-                % (str(mykey), str(myvalue))
+                f"Invalid type being used as a value: '{str(mykey)}': '{str(myvalue)}'"
             )
 
         # Avoid potential UnicodeDecodeError exceptions later.

@@ -131,7 +131,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
             raise FileNotFound("Binary packages index not found")
 
         if pretend:
-            portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
+            portage.writemsg_stdout(f"\n{uri}\n", noiselevel=-1)
             self.returncode = os.EX_OK
             self._async_wait()
             return

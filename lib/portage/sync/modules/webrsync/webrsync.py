@@ -97,7 +97,7 @@ class WebRsync(SyncBase):
                 out = portage.output.EOutput(quiet=quiet)
                 try:
                     out.einfo(
-                        "Using keys from {}".format(self.repo.sync_openpgp_key_path)
+                        f"Using keys from {self.repo.sync_openpgp_key_path}"
                     )
                     with open(self.repo.sync_openpgp_key_path, "rb") as f:
                         openpgp_env.import_key(f)
@@ -106,8 +106,7 @@ class WebRsync(SyncBase):
                     self.spawn_kwargs["env"]["PORTAGE_TEMP_GPG_DIR"] = openpgp_env.home
                 except (GematoException, asyncio.TimeoutError) as e:
                     writemsg_level(
-                        "!!! Verification impossible due to keyring problem:\n%s\n"
-                        % (e,),
+                        f"!!! Verification impossible due to keyring problem:\n{e}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -126,7 +125,7 @@ class WebRsync(SyncBase):
 
             exitcode = portage.process.spawn(webrsync_cmd, **self.spawn_kwargs)
             if exitcode != os.EX_OK:
-                msg = "!!! emerge-webrsync error in %s" % self.repo.location
+                msg = f"!!! emerge-webrsync error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)

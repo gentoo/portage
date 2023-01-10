@@ -71,7 +71,7 @@ class BlockerDB:
                         inst_pkg.root, portage.VDB_PATH, inst_pkg.category, inst_pkg.pf
                     )
                     portage.writemsg(
-                        "!!! {}/*DEPEND: {}\n".format(pkg_location, atoms),
+                        f"!!! {pkg_location}/*DEPEND: {atoms}\n",
                         noiselevel=-1,
                     )
                     continue
@@ -129,7 +129,7 @@ class BlockerDB:
         """Discard a package from the list of potential blockers.
         This will match any package(s) with identical cpv or cp:slot."""
         for cpv_match in self._fake_vartree.dbapi.match_pkgs(
-            Atom("={}".format(pkg.cpv))
+            Atom(f"={pkg.cpv}")
         ):
             if cpv_match.cp == pkg.cp:
                 self._fake_vartree.cpv_discard(cpv_match)

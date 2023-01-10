@@ -103,7 +103,7 @@ class PipeReaderTestCase(TestCase):
                 self.assertEqual(
                     test_string,
                     output,
-                    "x = {}, len(output) = {}".format(x, len(output)),
+                    f"x = {x}, len(output) = {len(output)}",
                 )
             finally:
                 if cleanup is not None:

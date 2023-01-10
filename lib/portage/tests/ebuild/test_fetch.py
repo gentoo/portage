@@ -135,7 +135,7 @@ class EbuildFetchTestCase(TestCase):
         fetch_bin = portage.process.find_binary(fetchcommand[0])
         if fetch_bin is None:
             self.skipTest(
-                "FETCHCOMMAND not found: {}".format(playground.settings["FETCHCOMMAND"])
+                f"FETCHCOMMAND not found: {playground.settings['FETCHCOMMAND']}"
             )
         eubin = os.path.join(playground.eprefix, "usr", "bin")
         os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
@@ -143,9 +143,7 @@ class EbuildFetchTestCase(TestCase):
         resume_bin = portage.process.find_binary(resumecommand[0])
         if resume_bin is None:
             self.skipTest(
-                "RESUMECOMMAND not found: {}".format(
-                    playground.settings["RESUMECOMMAND"]
-                )
+                f"RESUMECOMMAND not found: {playground.settings['RESUMECOMMAND']}"
             )
         if resume_bin != fetch_bin:
             os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
@@ -162,7 +160,7 @@ class EbuildFetchTestCase(TestCase):
 
         for layout_lines in mirror_layouts:
             settings = config(clone=playground.settings)
-            layout_data = "".join("{}\n".format(line) for line in layout_lines)
+            layout_data = "".join(f"{line}\n" for line in layout_lines)
             mirror_conf = MirrorLayoutConfig()
             mirror_conf.read_from_file(io.StringIO(layout_data))
             layouts = mirror_conf.get_all_layouts()
@@ -182,7 +180,7 @@ class EbuildFetchTestCase(TestCase):
                 for layout in layouts:
                     content["/distfiles/" + layout.get_path(filename)] = v
                 # upstream path
-                content["/distfiles/{}.txt".format(k)] = v
+                content[f"/distfiles/{k}.txt"] = v
 
             shutil.rmtree(settings["DISTDIR"])
             os.makedirs(settings["DISTDIR"])
@@ -204,9 +202,7 @@ class EbuildFetchTestCase(TestCase):
             # Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
             foo_uri = {
                 "foo": (
-                    "{scheme}://{host}:{port}/distfiles/foo".format(
-                        scheme=scheme, host=host, port=server.server_port
-                    ),
+                    f"{scheme}://{host}:{server.server_port}/distfiles/foo",
                 )
             }
             foo_path = os.path.join(settings["DISTDIR"], "foo")
@@ -457,7 +453,7 @@ class EbuildFetchTestCase(TestCase):
                         self.assertEqual(f.read(), distfiles[k])
 
                 # Test PORTAGE_RO_DISTDIRS
-                settings["PORTAGE_RO_DISTDIRS"] = '"{}"'.format(ro_distdir)
+                settings["PORTAGE_RO_DISTDIRS"] = f'"{ro_distdir}"'
                 orig_fetchcommand = settings["FETCHCOMMAND"]
                 orig_resumecommand = settings["RESUMECOMMAND"]
                 try:
@@ -580,13 +576,13 @@ class EbuildFetchTestCase(TestCase):
             emdisopts, portdb, asyncio.get_event_loop()
         ) as emdisconf:
             # Copy revisions from bar to foo.
-            for revision_key in emdisconf.content_db["filename:{}".format("bar")]:
+            for revision_key in emdisconf.content_db["filename:bar"]:
                 emdisconf.content_db.add(
                     DistfileName("foo", digests=dict(revision_key))
                 )
 
             # Copy revisions from foo to bar.
-            for revision_key in emdisconf.content_db["filename:{}".format("foo")]:
+            for revision_key in emdisconf.content_db["filename:foo"]:
                 emdisconf.content_db.add(
                     DistfileName("bar", digests=dict(revision_key))
                 )

@@ -49,7 +49,7 @@ class GitSync(NewBase):
             if not os.path.exists(self.repo.location):
                 os.makedirs(self.repo.location)
                 self.logger(
-                    self.xterm_titles, "Created new directory %s" % self.repo.location
+                    self.xterm_titles, f"Created new directory {self.repo.location}"
                 )
         except OSError:
             return (1, False)
@@ -90,7 +90,7 @@ class GitSync(NewBase):
 
         if self.repo.module_specific_options.get("sync-git-clone-extra-opts"):
             git_cmd_opts += (
-                " %s" % self.repo.module_specific_options["sync-git-clone-extra-opts"]
+                f" {self.repo.module_specific_options['sync-git-clone-extra-opts']}"
             )
         git_cmd = "{} clone{} {} .".format(
             self.bin_command,
@@ -100,11 +100,11 @@ class GitSync(NewBase):
         writemsg_level(git_cmd + "\n")
 
         exitcode = portage.process.spawn_bash(
-            "cd {} ; exec {}".format(portage._shell_quote(self.repo.location), git_cmd),
+            f"cd {portage._shell_quote(self.repo.location)} ; exec {git_cmd}",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
-            msg = "!!! git clone error in %s" % self.repo.location
+            msg = f"!!! git clone error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
@@ -252,7 +252,7 @@ class GitSync(NewBase):
 
         if self.repo.module_specific_options.get("sync-git-pull-extra-opts"):
             git_cmd_opts += (
-                " %s" % self.repo.module_specific_options["sync-git-pull-extra-opts"]
+                f" {self.repo.module_specific_options['sync-git-pull-extra-opts']}"
             )
 
         self.add_safe_directory()
@@ -271,7 +271,7 @@ class GitSync(NewBase):
                 )
             ).rstrip("\n")
         except subprocess.CalledProcessError as e:
-            msg = "!!! git rev-parse error in %s" % self.repo.location
+            msg = f"!!! git rev-parse error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (e.returncode, False)
@@ -289,7 +289,7 @@ class GitSync(NewBase):
                 **self.spawn_kwargs,
             )
             if exitcode != os.EX_OK:
-                msg = "!!! git gc error in %s" % self.repo.location
+                msg = f"!!! git gc error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
@@ -308,17 +308,17 @@ class GitSync(NewBase):
         )
 
         exitcode = portage.process.spawn_bash(
-            "cd {} ; exec {}".format(portage._shell_quote(self.repo.location), git_cmd),
+            f"cd {portage._shell_quote(self.repo.location)} ; exec {git_cmd}",
             **self.spawn_kwargs,
         )
 
         if exitcode != os.EX_OK:
-            msg = "!!! git fetch error in %s" % self.repo.location
+            msg = f"!!! git fetch error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
 
-        if not self.verify_head(revision="refs/remotes/%s" % remote_branch):
+        if not self.verify_head(revision=f"refs/remotes/{remote_branch}"):
             return (1, False)
 
         if not self.repo.volatile:
@@ -339,7 +339,7 @@ class GitSync(NewBase):
             )
 
             if exitcode != os.EX_OK:
-                msg = "!!! git clean error in %s" % self.repo.location
+                msg = f"!!! git clean error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
@@ -365,7 +365,7 @@ class GitSync(NewBase):
         else:
             merge_cmd = [self.bin_command, "merge"]
 
-        merge_cmd.append("refs/remotes/%s" % remote_branch)
+        merge_cmd.append(f"refs/remotes/{remote_branch}")
         if quiet:
             merge_cmd.append("--quiet")
 
@@ -386,7 +386,7 @@ class GitSync(NewBase):
             )
 
             if exitcode != os.EX_OK:
-                msg = "!!! git merge error in %s" % self.repo.location
+                msg = f"!!! git merge error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
@@ -419,15 +419,14 @@ class GitSync(NewBase):
             if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
                 try:
                     out.einfo(
-                        "Using keys from {}".format(self.repo.sync_openpgp_key_path)
+                        f"Using keys from {self.repo.sync_openpgp_key_path}"
                     )
                     with open(self.repo.sync_openpgp_key_path, "rb") as f:
                         openpgp_env.import_key(f)
                     self._refresh_keys(openpgp_env)
                 except (GematoException, asyncio.TimeoutError) as e:
                     writemsg_level(
-                        "!!! Verification impossible due to keyring problem:\n%s\n"
-                        % (e,),
+                        f"!!! Verification impossible due to keyring problem:\n{e}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -468,7 +467,7 @@ class GitSync(NewBase):
                 expl = "no signature"
             else:
                 expl = "unknown issue"
-            out.eerror("No valid signature found: {}".format(expl))
+            out.eerror(f"No valid signature found: {expl}")
             return False
         finally:
             if openpgp_env is not None:

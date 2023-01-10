@@ -87,4 +87,4 @@ def gen_label(base, label):
     label = label.strip('"').strip("'")
     label = os.path.join(*(label.rstrip(os.path.sep).split(os.path.sep)))
     tail = os.path.split(label)[1]
-    return "{}-{:X}".format(tail, abs(label.__hash__()))
+    return f"{tail}-{abs(label.__hash__()):X}"

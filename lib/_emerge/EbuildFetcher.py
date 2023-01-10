@@ -69,9 +69,7 @@ class EbuildFetcher(CompositeTask):
             uri_map = uri_map_task.future.result()
         except portage.exception.InvalidDependString as e:
             msg_lines = []
-            msg = "Fetch failed for '{}' due to invalid SRC_URI: {}".format(
-                self.pkg.cpv, e
-            )
+            msg = f"Fetch failed for '{self.pkg.cpv}' due to invalid SRC_URI: {e}"
             msg_lines.append(msg)
             self._fetcher_proc._eerror(msg_lines)
             self._current_task = None
@@ -289,7 +287,7 @@ class _EbuildFetcherProcess(ForkProcess):
         portdb = self.pkg.root_config.trees["porttree"].dbapi
         self.ebuild_path = portdb.findname(self.pkg.cpv, myrepo=self.pkg.repo)
         if self.ebuild_path is None:
-            raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
+            raise AssertionError(f"ebuild not found for '{self.pkg.cpv}'")
         return self.ebuild_path
 
     def _get_manifest(self):
@@ -375,7 +373,7 @@ class _EbuildFetcherProcess(ForkProcess):
             for filename in uri_map:
                 f.write(
                     _unicode_decode(
-                        (" * %s size ;-) ..." % filename).ljust(73) + "[ ok ]\n"
+                        f" * {filename} size ;-) ...".ljust(73) + "[ ok ]\n"
                     )
                 )
             f.close()
@@ -409,11 +407,11 @@ class _EbuildFetcherProcess(ForkProcess):
         """
         if not self.prefetch and not future.cancelled() and proc.exitcode != os.EX_OK:
             msg_lines = []
-            msg = "Fetch failed for '{}'".format(self.pkg.cpv)
+            msg = f"Fetch failed for '{self.pkg.cpv}'"
             if self.logfile is not None:
                 msg += ", Log file:"
             msg_lines.append(msg)
             if self.logfile is not None:
-                msg_lines.append(" '{}'".format(self.logfile))
+                msg_lines.append(f" '{self.logfile}'")
             self._eerror(msg_lines)
         super()._proc_join_done(proc, future)

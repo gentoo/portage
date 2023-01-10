@@ -17,7 +17,7 @@ class EbuildFetchonly(SlotObject):
         portdb = pkg.root_config.trees["porttree"].dbapi
         ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
         if ebuild_path is None:
-            raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
+            raise AssertionError(f"ebuild not found for '{pkg.cpv}'")
         settings.setcpv(pkg)
         debug = settings.get("PORTAGE_DEBUG") == "1"
 
@@ -37,7 +37,7 @@ class EbuildFetchonly(SlotObject):
         # and the unsuccessful return value is used to trigger
         # a call to the pkg_nofetch phase.
         if rval != os.EX_OK and not self.pretend:
-            msg = "Fetch failed for '{}'".format(pkg.cpv)
+            msg = f"Fetch failed for '{pkg.cpv}'"
             eerror(msg, phase="unpack", key=pkg.cpv)
 
         return rval

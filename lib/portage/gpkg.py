@@ -1375,7 +1375,7 @@ class gpkg:
                     if path.startswith(root_dir):
                         arcname = "image/" + path[len(root_dir) :]
                     else:
-                        raise ValueError("invalid root argument: '%s'" % root_dir)
+                        raise ValueError(f"invalid root argument: '{root_dir}'")
                     live_path = path
                     if (
                         "dir" == contents_type
@@ -1639,7 +1639,7 @@ class gpkg:
             for f in container_files:
                 if f in container_files_unique:
                     raise InvalidBinaryPackageFormat(
-                        "Duplicate file %s exist, potential attack?" % f
+                        f"Duplicate file {f} exist, potential attack?"
                     )
                 container_files_unique.append(f)
 
@@ -1817,7 +1817,7 @@ class gpkg:
 
         compressor = _compressors[compression]
         if mode not in compressor:
-            raise InvalidCompressionMethod("{}: {}".format(compression, mode))
+            raise InvalidCompressionMethod(f"{compression}: {mode}")
 
         if mode == "compress" and (
             self.settings.get(f"BINPKG_COMPRESS_FLAGS_{compression.upper()}", None)
@@ -1960,7 +1960,7 @@ class gpkg:
                 try:
                     d = _unicode_decode(d, encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError as err:
-                    writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
+                    writemsg(colorize("BAD", f"\n*** {err}\n\n"), noiselevel=-1)
                     raise
 
                 d = os.path.join(parent, d)
@@ -1985,7 +1985,7 @@ class gpkg:
                 try:
                     f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError as err:
-                    writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
+                    writemsg(colorize("BAD", f"\n*** {err}\n\n"), noiselevel=-1)
                     raise
 
                 filename_length = len(
@@ -2065,7 +2065,7 @@ class gpkg:
             try:
                 path = _unicode_decode(path, encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError as err:
-                writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
+                writemsg(colorize("BAD", f"\n*** {err}\n\n"), noiselevel=-1)
                 raise
 
             d, f = os.path.split(path)

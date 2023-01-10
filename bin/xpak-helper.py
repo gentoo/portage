@@ -16,19 +16,19 @@ def command_recompose(args):
 
     if len(args) != 2:
         sys.stderr.write(usage)
-        sys.stderr.write("2 arguments are required, got %s\n" % len(args))
+        sys.stderr.write(f"2 arguments are required, got {len(args)}\n")
         return 1
 
     binpkg_path, metadata_dir = args
 
     if not os.path.isfile(binpkg_path):
         sys.stderr.write(usage)
-        sys.stderr.write("Argument 1 is not a regular file: '%s'\n" % binpkg_path)
+        sys.stderr.write(f"Argument 1 is not a regular file: '{binpkg_path}'\n")
         return 1
 
     if not os.path.isdir(metadata_dir):
         sys.stderr.write(usage)
-        sys.stderr.write("Argument 2 is not a directory: '%s'\n" % metadata_dir)
+        sys.stderr.write(f"Argument 2 is not a directory: '{metadata_dir}'\n")
         return 1
 
     t = portage.xpak.tbz2(binpkg_path)
@@ -44,7 +44,7 @@ def main(argv):
 
     valid_commands = ("recompose",)
     description = "Perform metadata operations on a binary package."
-    usage = "usage: %s COMMAND [args]" % os.path.basename(argv[0])
+    usage = f"usage: {os.path.basename(argv[0])} COMMAND [args]"
 
     parser = argparse.ArgumentParser(description=description, usage=usage)
     options, args = parser.parse_known_args(argv[1:])
@@ -55,12 +55,12 @@ def main(argv):
     command = args[0]
 
     if command not in valid_commands:
-        parser.error("invalid command: '%s'" % command)
+        parser.error(f"invalid command: '{command}'")
 
     if command == "recompose":
         rval = command_recompose(args[1:])
     else:
-        raise AssertionError("invalid command: '%s'" % command)
+        raise AssertionError(f"invalid command: '{command}'")
 
     return rval
 

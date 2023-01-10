@@ -90,9 +90,9 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
     properties = metadata["PROPERTIES"]
     restrict = metadata["RESTRICT"]
     if not eapi_is_supported(eapi):
-        return [_MaskReason("EAPI", "EAPI %s" % eapi)]
+        return [_MaskReason("EAPI", f"EAPI {eapi}")]
     if _eapi_is_deprecated(eapi) and not installed:
-        return [_MaskReason("EAPI", "EAPI %s" % eapi)]
+        return [_MaskReason("EAPI", f"EAPI {eapi}")]
     egroups = settings.configdict["backupenv"].get("ACCEPT_KEYWORDS", "").split()
     global_accept_keywords = settings.get("ACCEPT_KEYWORDS", "")
     pgroups = global_accept_keywords.split()
@@ -185,7 +185,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
             msg.append("in RESTRICT")
             rValue.append(_MaskReason("RESTRICT", " ".join(msg)))
     except InvalidDependString as e:
-        rValue.append(_MaskReason("invalid", "RESTRICT: {}".format(e)))
+        rValue.append(_MaskReason("invalid", f"RESTRICT: {e}"))
 
     # Only show KEYWORDS masks for installed packages
     # if they're not masked for any other reason.

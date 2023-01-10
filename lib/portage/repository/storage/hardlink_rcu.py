@@ -125,7 +125,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         p.start()
         if await p.async_wait() != os.EX_OK:
             raise RepoStorageException(
-                "command exited with status {}: {}".format(p.returncode, " ".join(cmd))
+                f"command exited with status {p.returncode}: {' '.join(cmd)}"
             )
 
     async def init_update(self):
@@ -216,7 +216,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
             os.unlink(new_symlink)
         except OSError:
             pass
-        os.symlink("snapshots/{}".format(new_id), new_symlink)
+        os.symlink(f"snapshots/{new_id}", new_symlink)
 
         # If SyncManager.pre_sync creates an empty directory where
         # self._latest_symlink is suppose to be (which is normal if

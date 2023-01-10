@@ -34,7 +34,7 @@ class database(fs_template.FsBased):
         self._import_sqlite()
         self._allowed_keys = ["_eclasses_"]
         self._allowed_keys.extend(self._known_keys)
-        self._allowed_keys.extend("_%s_" % k for k in self.chf_types)
+        self._allowed_keys.extend(f"_{k}_" for k in self.chf_types)
         self._allowed_keys_set = frozenset(self._allowed_keys)
         self._allowed_keys = sorted(self._allowed_keys_set)
 
@@ -108,11 +108,11 @@ class database(fs_template.FsBased):
                 connection, cursor, portage.getpid()
             )
             self._db_cursor.execute(
-                "PRAGMA encoding = %s" % self._db_escape_string("UTF-8")
+                f"PRAGMA encoding = {self._db_escape_string('UTF-8')}"
             )
             if not self.readonly and not self._ensure_access(self._dbpath):
                 raise cache_errors.InitializationError(
-                    self.__class__, "can't ensure perms on %s" % self._dbpath
+                    self.__class__, f"can't ensure perms on {self._dbpath}"
                 )
             self._db_init_cache_size(config["cache_bytes"])
             self._db_init_synchronous(config["synchronous"])
@@ -136,11 +136,11 @@ class database(fs_template.FsBased):
             "%s INTEGER PRIMARY KEY AUTOINCREMENT"
             % self._db_table["packages"]["package_id"]
         )
-        table_parameters.append("%s TEXT" % self._db_table["packages"]["package_key"])
+        table_parameters.append(f"{self._db_table['packages']['package_key']} TEXT")
         for k in self._allowed_keys:
-            table_parameters.append("%s TEXT" % k)
+            table_parameters.append(f"{k} TEXT")
         table_parameters.append(
-            "UNIQUE(%s)" % self._db_table["packages"]["package_key"]
+            f"UNIQUE({self._db_table['packages']['package_key']})"
         )
         create_statement.append(",".join(table_parameters))
         create_statement.append(")")
@@ -163,7 +163,7 @@ class database(fs_template.FsBased):
                             )
                 else:
                     writemsg(_("sqlite: dropping old table: %s\n") % v["table_name"])
-                    cursor.execute("DROP TABLE %s" % v["table_name"])
+                    cursor.execute(f"DROP TABLE {v['table_name']}")
                     cursor.execute(v["create"])
             else:
                 cursor.execute(v["create"])
@@ -289,7 +289,7 @@ class database(fs_template.FsBased):
     def _setitem(self, cpv, values):
         update_statement = []
         update_statement.append(
-            "REPLACE INTO %s" % self._db_table["packages"]["table_name"]
+            f"REPLACE INTO {self._db_table['packages']['table_name']}"
         )
         update_statement.append("(")
         update_statement.append(
@@ -309,7 +309,7 @@ class database(fs_template.FsBased):
             s = " ".join(update_statement)
             cursor.execute(s)
         except self._db_error as e:
-            writemsg("{}: {}\n".format(cpv, str(e)))
+            writemsg(f"{cpv}: {str(e)}\n")
             raise
 
     def commit(self):

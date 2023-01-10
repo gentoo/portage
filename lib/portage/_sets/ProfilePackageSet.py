@@ -20,7 +20,7 @@ class ProfilePackageSet(PackageSet):
             description = desc_profile.location
         else:
             description = None
-        self.description = "Profile packages for profile %s" % description
+        self.description = f"Profile packages for profile {description}"
 
     def load(self):
         self._setAtoms(

@@ -235,7 +235,7 @@ call_has_and_best_version() {
                     installed=installed,
                     debug=debug,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 
@@ -566,7 +566,7 @@ call_has_and_best_version() {
         binrepos_conf_file = os.path.join(os.sep, eprefix, BINREPOS_CONF_FILE)
         with open(binrepos_conf_file, "w") as f:
             f.write("[test-binhost]\n")
-            f.write("sync-uri = {}\n".format(binhost_uri))
+            f.write(f"sync-uri = {binhost_uri}\n")
         fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
         fetch_bin = portage.process.find_binary(fetchcommand[0])
         if fetch_bin is not None:
@@ -720,7 +720,7 @@ move dev-util/git dev-vcs/git
                         portage.writemsg(output)
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args {}".format(args)
+                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
                 )
         finally:
             binhost_server.__exit__(None, None, None)

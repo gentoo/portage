@@ -239,7 +239,7 @@ try:
             if not buf:
 
                 portage.util.writemsg_level(
-                    "ebuild-ipc: {}\n".format(portage.localization._("read failed")),
+                    f"ebuild-ipc: {portage.localization._('read failed')}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -254,7 +254,7 @@ try:
                     # The pickle module can raise practically
                     # any exception when given corrupt data.
                     portage.util.writemsg_level(
-                        "ebuild-ipc: {}\n".format(e), level=logging.ERROR, noiselevel=-1
+                        f"ebuild-ipc: {e}\n", level=logging.ERROR, noiselevel=-1
                     )
 
                 else:

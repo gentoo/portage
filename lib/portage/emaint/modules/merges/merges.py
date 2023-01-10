@@ -32,7 +32,7 @@ class TrackingFile:
         @type failed_pkgs: dict
         """
         tracking_path = self._tracking_path
-        lines = ["{} {}".format(pkg, mtime) for pkg, mtime in failed_pkgs.items()]
+        lines = [f"{pkg} {mtime}" for pkg, mtime in failed_pkgs.items()]
         portage.util.write_atomic(tracking_path, "\n".join(lines))
 
     def load(self):
@@ -163,14 +163,14 @@ class MergesHandler:
         portdb = portage.db[portage.root]["porttree"].dbapi
         for failed_pkg in failed_pkgs:
             # validate pkg name
-            pkg_name = "%s" % failed_pkg.replace(MERGING_IDENTIFIER, "")
-            pkg_atom = "=%s" % pkg_name
+            pkg_name = f"{failed_pkg.replace(MERGING_IDENTIFIER, '')}"
+            pkg_atom = f"={pkg_name}"
 
             if not isvalidatom(pkg_atom):
-                pkg_invalid_entries.add("'%s' is an invalid package atom." % pkg_atom)
+                pkg_invalid_entries.add(f"'{pkg_atom}' is an invalid package atom.")
             if not portdb.cpv_exists(pkg_name):
                 pkg_invalid_entries.add(
-                    "'%s' does not exist in the ebuild repository." % pkg_name
+                    f"'{pkg_name}' does not exist in the ebuild repository."
                 )
             pkg_atoms.add(pkg_atom)
 
@@ -218,9 +218,9 @@ class MergesHandler:
         if output:
             results.append(output)
         if proc.returncode != os.EX_OK:
-            emerge_status = "Failed to emerge '%s'" % (" ".join(pkg_atoms))
+            emerge_status = f"Failed to emerge '{' '.join(pkg_atoms)}'"
         else:
-            emerge_status = "Successfully emerged '%s'" % (" ".join(pkg_atoms))
+            emerge_status = f"Successfully emerged '{' '.join(pkg_atoms)}'"
         results.append(emerge_status)
         return results
 
@@ -231,7 +231,7 @@ class MergesHandler:
         errors = []
         for pkg, mtime in failed_pkgs.items():
             mtime_str = time.ctime(int(mtime))
-            errors.append("'{}' failed to merge on '{}'".format(pkg, mtime_str))
+            errors.append(f"'{pkg}' failed to merge on '{mtime_str}'")
         if errors:
             return (False, errors)
         return (True, None)
@@ -252,7 +252,7 @@ class MergesHandler:
         try:
             self._tracking_file.save(failed_pkgs)
         except OSError as ex:
-            errors = ["Unable to save failed merges to tracking file: %s\n" % str(ex)]
+            errors = [f"Unable to save failed merges to tracking file: {str(ex)}\n"]
             errors.append(", ".join(sorted(failed_pkgs)))
             return (False, errors)
         self._remove_failed_dirs(failed_pkgs)
@@ -261,13 +261,13 @@ class MergesHandler:
         )
         # list any new failed merges
         for pkg in sorted(self._scan()):
-            results.append("'%s' still found as a failed merge." % pkg)
+            results.append(f"'{pkg}' still found as a failed merge.")
         # reload config and remove successful packages from tracking file
         portage._reset_legacy_globals()
         vardb = portage.db[portage.root]["vartree"].dbapi
         still_failed_pkgs = {}
         for pkg, mtime in failed_pkgs.items():
-            pkg_name = "%s" % pkg.replace(MERGING_IDENTIFIER, "")
+            pkg_name = f"{pkg.replace(MERGING_IDENTIFIER, '')}"
             if not vardb.cpv_exists(pkg_name):
                 still_failed_pkgs[pkg] = mtime
         self._tracking_file.save(still_failed_pkgs)

@@ -105,7 +105,7 @@ class UseExpandIncrementalTestCase(TestCase):
                         encoding=_encodings["repo.content"],
                     ) as f:
                         for line in v:
-                            f.write("%s\n" % line)
+                            f.write(f"{line}\n")
 
             # The config must be reloaded in order to account
             # for the above profile customizations.
@@ -121,7 +121,7 @@ class UseExpandIncrementalTestCase(TestCase):
                 settings.setcpv(pkg)
                 expected = frozenset(expected_use)
                 got = frozenset(settings["PORTAGE_USE"].split())
-                self.assertEqual(got, expected, "{} != {}".format(got, expected))
+                self.assertEqual(got, expected, f"{got} != {expected}")
 
         finally:
             playground.cleanup()

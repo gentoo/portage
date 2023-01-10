@@ -26,7 +26,7 @@ class UseFlagDisplay:
             s = "-" + s
             s = blue(s)
         if self.forced:
-            s = "(%s)" % s
+            s = f"({s})"
         return s
 
     def _cmp_combined(a, b):
@@ -111,7 +111,7 @@ def pkg_use_display(pkg, opts, modified_use=None):
         else:
             flags.sort(key=UseFlagDisplay.sort_separated)
         flag_displays.append(
-            '{}="{}"'.format(varname, " ".join("{}".format(f) for f in flags))
+            f"{varname}=\"{' '.join('{}'.format(f) for f in flags)}\""
         )
 
     return " ".join(flag_displays)

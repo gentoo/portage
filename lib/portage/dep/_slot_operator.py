@@ -106,10 +106,7 @@ def _eval_deps(dep_struct, vardbs):
                     except (KeyError, InvalidData):
                         pass
                     else:
-                        slot_part = "{}/{}=".format(
-                            best_version.slot,
-                            best_version.sub_slot,
-                        )
+                        slot_part = f"{best_version.slot}/{best_version.sub_slot}="
                         x = x.with_slot(slot_part)
                         dep_struct[i] = x
                         break

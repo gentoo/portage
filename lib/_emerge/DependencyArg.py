@@ -33,4 +33,4 @@ class DependencyArg:
         return hash((self.arg, self.root_config.root))
 
     def __str__(self):
-        return "{}".format(self.arg)
+        return f"{self.arg}"
