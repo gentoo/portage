@@ -48,7 +48,7 @@ class AuxdbTestCase(TestCase):
             "foo": ("inherit bar",),
             "bar": (
                 "EXPORT_FUNCTIONS src_prepare",
-                'DEPEND="{}"'.format(eclass_depend),
+                f'DEPEND="{eclass_depend}"',
                 "bar_src_prepare() { default; }",
             ),
         }
@@ -56,7 +56,7 @@ class AuxdbTestCase(TestCase):
         playground = ResolverPlayground(
             ebuilds=ebuilds,
             eclasses=eclasses,
-            user_config={"modules": ("portdbapi.auxdbmodule = %s" % auxdbmodule,)},
+            user_config={"modules": (f"portdbapi.auxdbmodule = {auxdbmodule}",)},
         )
 
         portdb = playground.trees[playground.eroot]["porttree"].dbapi

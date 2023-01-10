@@ -706,7 +706,7 @@ def writedict(mydict, myfilename, writekey=True):
             lines.append(v + "\n")
     else:
         for k, v in mydict.items():
-            lines.append("{} {}\n".format(k, " ".join(v)))
+            lines.append(f"{k} {' '.join(v)}\n")
     write_atomic(myfilename, "".join(lines))
 
 
@@ -736,7 +736,7 @@ class _getconfig_shlex(shlex.shlex):
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(newfile)
             if e.errno not in (errno.ENOENT, errno.ENOTDIR):
-                writemsg("open('{}', 'r'): {}\n".format(newfile, e), noiselevel=-1)
+                writemsg(f"open('{newfile}', 'r'): {e}\n", noiselevel=-1)
                 raise
 
             msg = self.error_leader()
@@ -746,7 +746,7 @@ class _getconfig_shlex(shlex.shlex):
                 msg += _("%s: No such file or directory") % newfile
 
             if self.__portage_tolerant:
-                writemsg("%s\n" % msg, noiselevel=-1)
+                writemsg(f"{msg}\n", noiselevel=-1)
             else:
                 raise ParseError(msg)
             return (newfile, io.StringIO())
@@ -801,7 +801,7 @@ def getconfig(
         if e.errno == PermissionDenied.errno:
             raise PermissionDenied(mycfg)
         if e.errno != errno.ENOENT:
-            writemsg("open('{}', 'r'): {}\n".format(mycfg, e), noiselevel=-1)
+            writemsg(f"open('{mycfg}', 'r'): {e}\n", noiselevel=-1)
             if e.errno not in (errno.EISDIR,):
                 raise
         return None
@@ -864,7 +864,7 @@ def getconfig(
                 if not tolerant:
                     raise ParseError(msg)
                 else:
-                    writemsg("%s\n" % msg, noiselevel=-1)
+                    writemsg(f"{msg}\n", noiselevel=-1)
                     return mykeys
 
             elif equ != "=":
@@ -872,7 +872,7 @@ def getconfig(
                 if not tolerant:
                     raise ParseError(msg)
                 else:
-                    writemsg("%s\n" % msg, noiselevel=-1)
+                    writemsg(f"{msg}\n", noiselevel=-1)
                     return mykeys
 
             val = _unicode_decode(lex.get_token())
@@ -883,14 +883,14 @@ def getconfig(
                 if not tolerant:
                     raise ParseError(msg)
                 else:
-                    writemsg("%s\n" % msg, noiselevel=-1)
+                    writemsg(f"{msg}\n", noiselevel=-1)
                     return mykeys
 
             if _invalid_var_name_re.search(key) is not None:
                 msg = lex.error_leader() + _("Invalid variable name '%s'") % (key,)
                 if not tolerant:
                     raise ParseError(msg)
-                writemsg("%s\n" % msg, noiselevel=-1)
+                writemsg(f"{msg}\n", noiselevel=-1)
                 continue
 
             if expand:
@@ -905,8 +905,8 @@ def getconfig(
     except Exception as e:
         if isinstance(e, ParseError) or lex is None:
             raise
-        msg = "{}{}".format(lex.error_leader(), e)
-        writemsg("%s\n" % msg, noiselevel=-1)
+        msg = f"{lex.error_leader()}{e}"
+        writemsg(f"{msg}\n", noiselevel=-1)
         raise
 
     return mykeys
@@ -1082,7 +1082,7 @@ def dump_traceback(msg, noiselevel=1):
         stack = traceback.extract_tb(info[2])
         error = str(info[1])
     writemsg("\n====================================\n", noiselevel=noiselevel)
-    writemsg("%s\n\n" % msg, noiselevel=noiselevel)
+    writemsg(f"{msg}\n\n", noiselevel=noiselevel)
     for line in traceback.format_list(stack):
         writemsg(line, noiselevel=noiselevel)
     if error:
@@ -1125,7 +1125,7 @@ class cmp_sort_key:
         def __lt__(self, other):
             if other.__class__ is not self.__class__:
                 raise TypeError(
-                    "Expected type {}, got {}".format(self.__class__, other.__class__)
+                    f"Expected type {self.__class__}, got {other.__class__}"
                 )
             return self._cmp_func(self._obj, other._obj) < 0
 
@@ -1192,7 +1192,7 @@ def _do_stat(filename, follow_links=True):
             return os.stat(filename)
         return os.lstat(filename)
     except OSError as oe:
-        func_call = "stat('%s')" % filename
+        func_call = f"stat('{filename}')"
         if oe.errno == errno.EPERM:
             raise OperationNotPermitted(func_call)
         if oe.errno == errno.EACCES:
@@ -1287,7 +1287,7 @@ def apply_permissions(
             os.chmod(filename, new_mode)
             modified = True
         except OSError as oe:
-            func_call = "chmod('{}', {})".format(filename, oct(new_mode))
+            func_call = f"chmod('{filename}', {oct(new_mode)})"
             if oe.errno == errno.EPERM:
                 raise OperationNotPermitted(func_call)
             elif oe.errno == errno.EACCES:
@@ -1560,7 +1560,7 @@ def write_atomic(file_path, content, **kwargs):
     except OSError as e:
         if f:
             f.abort()
-        func_call = "write_atomic('%s')" % file_path
+        func_call = f"write_atomic('{file_path}')"
         if e.errno == errno.EPERM:
             raise OperationNotPermitted(func_call)
         elif e.errno == errno.EACCES:
@@ -1589,7 +1589,7 @@ def ensure_dirs(dir_path, **kwargs):
         os.makedirs(dir_path)
         created_dir = True
     except OSError as oe:
-        func_call = "makedirs('%s')" % dir_path
+        func_call = f"makedirs('{dir_path}')"
         if oe.errno in (errno.EEXIST,):
             pass
         else:
@@ -1718,11 +1718,7 @@ class LazyItemsDict(UserDict):
                     raise TypeError(
                         "LazyItemsDict "
                         + "deepcopy is unsafe with lazy items that are "
-                        + "not singletons: key=%s value=%s"
-                        % (
-                            k,
-                            lazy_item,
-                        )
+                        + f"not singletons: key={k} value={lazy_item}"
                     )
             UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
         return result
@@ -1962,7 +1958,7 @@ def find_updated_config_files(target_root, config_protect):
 
             if stat.S_ISDIR(mymode):
                 mycommand = (
-                    "find '%s' -name '.*' -type d -prune -o -name '._cfg????_*'" % x
+                    f"find '{x}' -name '.*' -type d -prune -o -name '._cfg????_*'"
                 )
             else:
                 mycommand = (

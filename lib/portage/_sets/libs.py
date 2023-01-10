@@ -28,7 +28,7 @@ class LibraryConsumerSet(PackageSet):
                     # without replacement.
                     pass
                 else:
-                    rValue.add("{}:{}".format(pkg.cp, pkg.slot))
+                    rValue.add(f"{pkg.cp}:{pkg.slot}")
         return rValue
 
 

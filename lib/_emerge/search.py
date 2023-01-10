@@ -107,7 +107,7 @@ class search:
 
     def _aux_get_error(self, cpv):
         portage.writemsg(
-            "emerge: search: " "aux_get('%s') failed, skipping\n" % cpv, noiselevel=-1
+            f"emerge: search: aux_get('{cpv}') failed, skipping\n", noiselevel=-1
         )
 
     def _findname(self, *args, **kwargs):
@@ -475,7 +475,7 @@ class search:
                     try:
                         uri_map = _parse_uri_map(mycpv, metadata, use=pkg.use.enabled)
                     except portage.exception.InvalidDependString as e:
-                        file_size_str = "Unknown ({})".format(e)
+                        file_size_str = f"Unknown ({e})"
                         del e
                     else:
                         try:
@@ -483,9 +483,7 @@ class search:
                         except KeyError as e:
                             file_size_str = (
                                 "Unknown (missing "
-                                + "digest for {})".format(
-                                    e,
-                                )
+                                + f"digest for {e})"
                             )
                             del e
 
@@ -514,12 +512,11 @@ class search:
                             % (darkgreen("Latest version available:"), myversion)
                         )
                     msg.append(
-                        "      %s\n" % self.getInstallationStatus(mycat + "/" + mypkg)
+                        f"      {self.getInstallationStatus(mycat + '/' + mypkg)}\n"
                     )
                     if myebuild:
                         msg.append(
-                            "      %s %s\n"
-                            % (darkgreen("Size of files:"), file_size_str)
+                            f"      {darkgreen('Size of files:')} {file_size_str}\n"
                         )
                     msg.append(
                         "      " + darkgreen("Homepage:") + "      " + homepage + "\n"

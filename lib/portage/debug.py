@@ -69,12 +69,12 @@ class trace_handler:
             my_repr = repr(arg)
             if len(my_repr) > self.max_repr_length:
                 my_repr = "'omitted'"
-            return "value=%s " % my_repr
+            return f"value={my_repr} "
         if "exception" == event:
             my_repr = repr(arg[1])
             if len(my_repr) > self.max_repr_length:
                 my_repr = "'omitted'"
-            return "type={} value={} ".format(arg[0], my_repr)
+            return f"type={arg[0]} value={my_repr} "
 
         return ""
 

@@ -43,14 +43,10 @@ class SonameAtom:
             return True
 
     def __repr__(self):
-        return "{}('{}', '{}')".format(
-            self.__class__.__name__,
-            self.multilib_category,
-            self.soname,
-        )
+        return f"{self.__class__.__name__}('{self.multilib_category}', '{self.soname}')"
 
     def __str__(self):
-        return "{}: {}".format(self.multilib_category, self.soname)
+        return f"{self.multilib_category}: {self.soname}"
 
     def match(self, pkg):
         """

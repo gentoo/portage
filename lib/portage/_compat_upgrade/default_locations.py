@@ -68,7 +68,7 @@ def main():
         with open(config_path) as f:
             content = f.read()
             if do_distdir:
-                compat_setting = 'DISTDIR="{}"'.format(compat_distdir)
+                compat_setting = f'DISTDIR="{compat_distdir}"'
                 out.einfo(
                     "Setting make.globals default {} for backward compatibility".format(
                         compat_setting
@@ -78,7 +78,7 @@ def main():
                     "^DISTDIR=.*$", compat_setting, content, flags=re.MULTILINE
                 )
             if do_pkgdir:
-                compat_setting = 'PKGDIR="{}"'.format(compat_pkgdir)
+                compat_setting = f'PKGDIR="{compat_pkgdir}"'
                 out.einfo(
                     "Setting make.globals default {} for backward compatibility".format(
                         compat_setting
@@ -88,7 +88,7 @@ def main():
                     "^PKGDIR=.*$", compat_setting, content, flags=re.MULTILINE
                 )
             if do_rpmdir:
-                compat_setting = 'RPMDIR="{}"'.format(compat_rpmdir)
+                compat_setting = f'RPMDIR="{compat_rpmdir}"'
                 out.einfo(
                     "Setting make.globals default {} for backward compatibility".format(
                         compat_setting
@@ -106,7 +106,7 @@ def main():
         )
         with open(config_path) as f:
             content = f.read()
-            compat_setting = "location = {}".format(compat_main_repo)
+            compat_setting = f"location = {compat_main_repo}"
             out.einfo(
                 "Setting repos.conf default {} for backward compatibility".format(
                     compat_setting

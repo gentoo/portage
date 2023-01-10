@@ -147,7 +147,7 @@ class PreservedLibsRegistry:
         except OSError as e:
             if e.errno != PermissionDenied.errno:
                 writemsg_level(
-                    "!!! {} {}\n".format(e, self._filename),
+                    f"!!! {e} {self._filename}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

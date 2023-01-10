@@ -50,7 +50,7 @@ class MergeProcess(ForkProcess):
         # since closing of file descriptors in the subprocess
         # can prevent access to open database connections such
         # as that used by the sqlite metadata cache module.
-        cpv = "{}/{}".format(self.mycat, self.mypkg)
+        cpv = f"{self.mycat}/{self.mypkg}"
         settings = self.settings
         if cpv != settings.mycpv or "EAPI" not in settings.configdict["pkg"]:
             settings.reload()

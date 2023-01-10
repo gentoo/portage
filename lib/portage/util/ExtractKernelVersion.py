@@ -79,7 +79,7 @@ def ExtractKernelVersion(base_dir):
         for file_path, file_errors in loader_errors.items():
             for error_str in file_errors:
                 writemsg_level(
-                    "{}: {}\n".format(file_path, error_str),
+                    f"{file_path}: {error_str}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

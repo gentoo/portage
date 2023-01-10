@@ -16,7 +16,7 @@ def chk_updated_cfg_files(eroot, config_protect):
 
     for x in result:
         writemsg_level(
-            "\n %s " % (colorize("WARN", "* " + _("IMPORTANT:"))),
+            f"\n {colorize('WARN', '* ' + _('IMPORTANT:'))} ",
             level=logging.INFO,
             noiselevel=-1,
         )

@@ -71,9 +71,9 @@ class GetConfigTestCase(TestCase):
             # Format like env_update formats /etc/profile.env.
             for k, v in cases.items():
                 if v.startswith("$") and not v.startswith("${"):
-                    line = "export {}=$'{}'\n".format(k, v[1:])
+                    line = f"export {k}=$'{v[1:]}'\n"
                 else:
-                    line = "export {}='{}'\n".format(k, v)
+                    line = f"export {k}='{v}'\n"
                 f.write(_unicode_encode(line))
             f.flush()
 

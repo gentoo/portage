@@ -146,7 +146,7 @@ class slot_conflict_handler:
             if self.debug:
                 writemsg("\nNew configuration:\n", noiselevel=-1)
                 for pkg in config:
-                    writemsg("   {}\n".format(pkg), noiselevel=-1)
+                    writemsg(f"   {pkg}\n", noiselevel=-1)
                 writemsg("\n", noiselevel=-1)
 
             new_solutions = self._check_configuration(
@@ -258,9 +258,9 @@ class slot_conflict_handler:
         )
 
         for root, slot_atom, pkgs in self.all_conflicts:
-            msg.append("{}".format(slot_atom))
+            msg.append(f"{slot_atom}")
             if root != self.depgraph._frozen_config._running_root.root:
-                msg.append(" for {}".format(root))
+                msg.append(f" for {root}")
             msg.append("\n\n")
 
             for pkg in pkgs:
@@ -523,7 +523,7 @@ class slot_conflict_handler:
 
                     def highlight_violations(atom, version, use, slot_violated):
                         """Colorize parts of an atom"""
-                        atom_str = "{}".format(atom)
+                        atom_str = f"{atom}"
                         colored_idx = set()
                         if version:
                             op = atom.operator
@@ -614,7 +614,7 @@ class slot_conflict_handler:
 
                             atom_str = (
                                 atom_str[:use_part_start]
-                                + "[{}]".format(",".join(new_tokens))
+                                + f"[{','.join(new_tokens)}]"
                                 + atom_str[use_part_end + 1 :]
                             )
 
@@ -639,17 +639,15 @@ class slot_conflict_handler:
                             use_display = ""
                         if atom.soname:
                             msg.append(
-                                "{} required by {} {}\n".format(
-                                    atom, parent, use_display
-                                )
+                                f"{atom} required by {parent} {use_display}\n"
                             )
                         elif isinstance(parent, PackageArg):
                             # For PackageArg it's
                             # redundant to display the atom attribute.
-                            msg.append("{}\n".format(parent))
+                            msg.append(f"{parent}\n")
                         elif isinstance(parent, AtomArg):
                             msg.append(2 * indent)
-                            msg.append("{} (Argument)\n".format(atom))
+                            msg.append(f"{atom} (Argument)\n")
                         else:
                             # Display the specific atom from SetArg or
                             # Package types.
@@ -738,7 +736,7 @@ class slot_conflict_handler:
             )
             msg.append("!!! package(s) cannot be rebuilt for the reason(s) shown:\n\n")
             for ppkg, reason in need_rebuild.items():
-                msg.append("{}{}: {}\n".format(indent, ppkg, reason))
+                msg.append(f"{indent}{ppkg}: {reason}\n")
             msg.append("\n")
 
         msg.append("\n")
@@ -786,7 +784,7 @@ class slot_conflict_handler:
                     indent
                     + "- "
                     + pkg.cpv
-                    + " (Change USE: %s" % " ".join(changes)
+                    + f" (Change USE: {' '.join(changes)}"
                     + ")\n"
                 )
             mymsg += "\n"
@@ -977,7 +975,7 @@ class slot_conflict_handler:
         if self.debug:
             writemsg("All involved flags:\n", noiselevel=-1)
             for idx, involved_flags in enumerate(all_involved_flags):
-                writemsg("   {}\n".format(config[idx]), noiselevel=-1)
+                writemsg(f"   {config[idx]}\n", noiselevel=-1)
                 for flag, state in involved_flags.items():
                     writemsg("     " + flag + ": " + state + "\n", noiselevel=-1)
 
@@ -1068,7 +1066,7 @@ class slot_conflict_handler:
                         inner_first = False
                     else:
                         msg += ", "
-                    msg += flag + ": {}".format(state)
+                    msg += flag + f": {state}"
                 msg += "}"
             msg += "]\n"
             writemsg(msg, noiselevel=-1)
@@ -1283,7 +1281,7 @@ class _solution_candidate_generator:
             return self.value == other.value
 
         def __str__(self):
-            return "{}".format(self.value)
+            return f"{self.value}"
 
     def __init__(self, all_involved_flags):
         # A copy of all_involved_flags with all "cond" values

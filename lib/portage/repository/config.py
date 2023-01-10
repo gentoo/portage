@@ -629,7 +629,7 @@ class RepoConfig:
         d = {}
         for k in self.__slots__:
             d[k] = getattr(self, k, None)
-        return "{}".format(d)
+        return f"{d}"
 
 
 class RepoConfigLoader:
@@ -1292,7 +1292,7 @@ class RepoConfigLoader:
         ):
             if repo_name != repo.name:
                 continue
-            config_string += "\n[%s]\n" % repo_name
+            config_string += f"\n[{repo_name}]\n"
             for key in sorted(keys):
                 if key == "main_repo" and repo_name != "DEFAULT":
                     continue
@@ -1318,7 +1318,7 @@ class RepoConfigLoader:
                             " ".join(x.name for x in getattr(repo, key)),
                         )
             for o, v in repo.module_specific_options.items():
-                config_string += "{} = {}\n".format(o, v)
+                config_string += f"{o} = {v}\n"
         return config_string.lstrip("\n")
 
 

@@ -211,7 +211,7 @@ if "affected" in params:
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    "invalid GLSA: {} (error message was: {})\n".format(x, e)
+                    f"invalid GLSA: {x} (error message was: {e})\n"
                 )
             continue
         if myglsa.isVulnerable():
@@ -250,7 +250,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
             myglsa = Glsa(myid, portage.settings, vardb, portdb)
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
-                fd2.write("invalid GLSA: {} (error message was: {})\n".format(myid, e))
+                fd2.write(f"invalid GLSA: {myid} (error message was: {e})\n")
             continue
         if myglsa.isInjected():
             status = "[A]"
@@ -320,7 +320,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    "invalid GLSA: {} (error message was: {})\n".format(myid, e)
+                    f"invalid GLSA: {myid} (error message was: {e})\n"
                 )
             continue
         if mode == "dump":
@@ -414,7 +414,7 @@ if mode == "test":
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    "invalid GLSA: {} (error message was: {})\n".format(myid, e)
+                    f"invalid GLSA: {myid} (error message was: {e})\n"
                 )
             continue
         if myglsa.isVulnerable():
@@ -450,13 +450,13 @@ if mode == "mail":
     else:
         myfrom = "glsa-check"
 
-    mysubject = "[glsa-check] Summary for %s" % socket.getfqdn()
+    mysubject = f"[glsa-check] Summary for {socket.getfqdn()}"
 
     # need a file object for summarylist()
     myfd = BytesIO()
-    line = "GLSA Summary report for host %s\n" % socket.getfqdn()
+    line = f"GLSA Summary report for host {socket.getfqdn()}\n"
     myfd.write(line.encode("utf-8"))
-    line = "(Command was: %s)\n\n" % " ".join(sys.argv)
+    line = f"(Command was: {' '.join(sys.argv)})\n\n"
     myfd.write(line.encode("utf-8"))
     summarylist(glsalist, fd1=myfd, fd2=myfd)
     summary = myfd.getvalue().decode("utf-8")
@@ -469,7 +469,7 @@ if mode == "mail":
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    "invalid GLSA: {} (error message was: {})\n".format(myid, e)
+                    f"invalid GLSA: {myid} (error message was: {e})\n"
                 )
             continue
         myfd = BytesIO()

@@ -312,7 +312,7 @@ def _pkgsplit(mypkg, eapi=None):
     return (m.group("pn"), m.group("ver"), rev)
 
 
-_cat_re = re.compile("^%s$" % _cat, re.UNICODE)
+_cat_re = re.compile(f"^{_cat}$", re.UNICODE)
 _missing_cat = "null"
 
 
@@ -521,7 +521,7 @@ def cpv_getkey(mycpv, eapi=None):
 
     warnings.warn(
         "portage.versions.cpv_getkey() "
-        + "called with invalid cpv: '{}'".format(mycpv),
+        + f"called with invalid cpv: '{mycpv}'",
         DeprecationWarning,
         stacklevel=2,
     )

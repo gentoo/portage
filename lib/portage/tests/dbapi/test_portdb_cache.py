@@ -163,7 +163,7 @@ class PortdbCacheTestCase(TestCase):
             ),
             # Test auto-detection and preference for md5-cache when both
             # cache formats are available but layout.conf is absent.
-            (BASH_BINARY, "-c", "rm %s" % portage._shell_quote(layout_conf_path)),
+            (BASH_BINARY, "-c", f"rm {portage._shell_quote(layout_conf_path)}"),
             python_cmd
             + (
                 textwrap.dedent(
@@ -231,7 +231,7 @@ class PortdbCacheTestCase(TestCase):
             for i, args in enumerate(test_commands):
 
                 if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), "callable at index {} failed".format(i))
+                    self.assertTrue(args[0](), f"callable at index {i} failed")
                     continue
 
                 proc = subprocess.Popen(args, env=env, stdout=stdout)

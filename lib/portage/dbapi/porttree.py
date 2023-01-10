@@ -161,7 +161,7 @@ class _better_cache:
                 continue
             for p in pkg_list:
                 try:
-                    atom = Atom("{}/{}".format(cat, p))
+                    atom = Atom(f"{cat}/{p}")
                 except InvalidAtom:
                     continue
                 if atom != atom.cp:
@@ -574,7 +574,7 @@ class portdbapi(dbapi):
         try:
             cache = self.auxdb[repo_path]
             chf = cache.validation_chf
-            metadata["_%s_" % chf] = getattr(ebuild_hash, chf)
+            metadata[f"_{chf}_"] = getattr(ebuild_hash, chf)
         except CacheError:
             # Normally this shouldn't happen, so we'll show
             # a traceback for debugging purposes.
@@ -600,7 +600,7 @@ class portdbapi(dbapi):
                 _("!!! aux_get(): ebuild for " "'%s' does not exist at:\n") % (cpv,),
                 noiselevel=-1,
             )
-            writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
+            writemsg(f"!!!            {ebuild_path}\n", noiselevel=-1)
             raise PortageKeyError(cpv)
 
         # Pull pre-generated metadata from the metadata/cache/
@@ -886,9 +886,7 @@ class portdbapi(dbapi):
                 # since callers already handle it.
                 result.set_exception(
                     portage.exception.InvalidDependString(
-                        "getFetchMap(): '{}' has unsupported EAPI: '{}'".format(
-                            mypkg, eapi
-                        )
+                        f"getFetchMap(): '{mypkg}' has unsupported EAPI: '{eapi}'"
                     )
                 )
                 return
@@ -1065,7 +1063,7 @@ class portdbapi(dbapi):
                     oroot + "/" + x, EmptyOnError=1, ignorecvs=1, dirsonly=1
                 ):
                     try:
-                        atom = Atom("{}/{}".format(x, y))
+                        atom = Atom(f"{x}/{y}")
                     except InvalidAtom:
                         continue
                     if atom != atom.cp:
@@ -1373,7 +1371,7 @@ class portdbapi(dbapi):
                     myval = ""
 
         else:
-            raise AssertionError("Invalid level argument: '%s'" % level)
+            raise AssertionError(f"Invalid level argument: '{level}'")
 
         if self.frozen:
             xcache_this_level = self.xcache.get(level)
@@ -1436,10 +1434,10 @@ class portdbapi(dbapi):
                     continue
                 except PortageException as e:
                     writemsg(
-                        "!!! Error: aux_get('{}', {})\n".format(mycpv, aux_keys),
+                        f"!!! Error: aux_get('{mycpv}', {aux_keys})\n",
                         noiselevel=-1,
                     )
-                    writemsg("!!! {}\n".format(e), noiselevel=-1)
+                    writemsg(f"!!! {e}\n", noiselevel=-1)
                     del e
                     continue
 

@@ -72,7 +72,5 @@ def read_configs(parser, paths):
             read_file(p, **kwargs)
         else:
             raise TypeError(
-                "Unsupported type {!r} of element {!r} of 'paths' argument".format(
-                    type(p), p
-                )
+                f"Unsupported type {type(p)!r} of element {p!r} of 'paths' argument"
             )

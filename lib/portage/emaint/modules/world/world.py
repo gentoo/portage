@@ -64,8 +64,8 @@ class WorldHandler:
         self._check_world(onProgress)
         errors = []
         if self.found:
-            errors += ["'%s' is not a valid atom" % x for x in self.invalid]
-            errors += ["'%s' is not installed" % x for x in self.not_installed]
+            errors += [f"'{x}' is not a valid atom" for x in self.invalid]
+            errors += [f"'{x}' is not installed" for x in self.not_installed]
         else:
             errors.append(self.world_file + " could not be opened for reading")
         if errors:
@@ -87,7 +87,7 @@ class WorldHandler:
                     world_set.replace(self.okay)
                 except portage.exception.PortageException:
                     errors.append(
-                        "%s could not be opened for writing" % self.world_file
+                        f"{self.world_file} could not be opened for writing"
                     )
             if errors:
                 return (False, errors)

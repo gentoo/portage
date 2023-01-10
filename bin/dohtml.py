@@ -53,9 +53,9 @@ def dofile(src, dst):
 
 
 def eqawarn(lines):
-    cmd = "source '%s/isolated-functions.sh' ; " % os.environ["PORTAGE_BIN_PATH"]
+    cmd = f"source '{os.environ['PORTAGE_BIN_PATH']}/isolated-functions.sh' ; "
     for line in lines:
-        cmd += 'eqawarn "%s" ; ' % line
+        cmd += f'eqawarn "{line}" ; '
     os.spawnlp(os.P_WAIT, "bash", "bash", "-c", cmd)
 
 
@@ -96,7 +96,7 @@ def install(basename, dirname, options, prefix=""):
     ).rstrip(os.sep)
 
     if not os.path.exists(fullpath):
-        sys.stderr.write("!!! dohtml: %s does not exist\n" % fullpath)
+        sys.stderr.write(f"!!! dohtml: {fullpath} does not exist\n")
         return False
     elif os.path.isfile(fullpath):
         ext = os.path.splitext(basename)[1][1:]
@@ -119,8 +119,7 @@ def install(basename, dirname, options, prefix=""):
                 i = _unicode_decode(i, errors="strict")
             except UnicodeDecodeError:
                 writemsg(
-                    "dohtml: argument is not encoded as UTF-8: %s\n"
-                    % _unicode_decode(i),
+                    f"dohtml: argument is not encoded as UTF-8: {_unicode_decode(i)}\n",
                     noiselevel=-1,
                 )
                 sys.exit(1)
@@ -200,7 +199,7 @@ def parse_args():
             argv[x] = _unicode_decode(arg, errors="strict")
         except UnicodeDecodeError:
             writemsg(
-                "dohtml: argument is not encoded as UTF-8: %s\n" % _unicode_decode(arg),
+                f"dohtml: argument is not encoded as UTF-8: {_unicode_decode(arg)}\n",
                 noiselevel=-1,
             )
             sys.exit(1)
@@ -271,9 +270,9 @@ def main():
         success |= install(basename, dirname, options)
 
     for x in skipped_directories:
-        eqawarn(["QA Notice: dohtml on directory '%s' without recursion option" % x])
+        eqawarn([f"QA Notice: dohtml on directory '{x}' without recursion option"])
     for x in skipped_files:
-        eqawarn(["dohtml: skipped file '%s'" % x])
+        eqawarn([f"dohtml: skipped file '{x}'"])
 
     if success:
         retcode = 0

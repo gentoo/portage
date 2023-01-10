@@ -38,11 +38,7 @@ class ManifestProcess(ForkProcess):
             modified = mf.write(sign=False)
         except PermissionDenied as e:
             portage.writemsg(
-                "!!! %s: %s\n"
-                % (
-                    _("Permission Denied"),
-                    e,
-                ),
+                f"!!! {_('Permission Denied')}: {e}\n",
                 noiselevel=-1,
             )
             return 1

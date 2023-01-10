@@ -66,7 +66,7 @@ def parse_args(argv):
     options, args = parser.parse_known_args(argv[1:])
 
     if len(args) != 4:
-        parser.error("Required 4 arguments, got %d" % (len(args),))
+        parser.error(f"Required 4 arguments, got {len(args)}")
 
     return parser, options, args
 
@@ -78,20 +78,20 @@ def main(argv):
     src_pkgs_index = os.path.join(src_pkg_dir, "Packages")
 
     if not os.path.isdir(src_pkg_dir):
-        parser.error("src_pkg_dir is not a directory: '{}'".format(src_pkg_dir))
+        parser.error(f"src_pkg_dir is not a directory: '{src_pkg_dir}'")
 
     if not os.path.isfile(src_pkgs_index):
         parser.error(
             "src_pkg_dir does not contain a "
-            + "'Packages' index: '{}'".format(src_pkg_dir)
+            + f"'Packages' index: '{src_pkg_dir}'"
         )
 
     parse_result = urlparse(snapshot_uri)
     if not (parse_result.scheme and parse_result.netloc and parse_result.path):
-        parser.error("snapshot_uri is not a valid URI: '{}'".format(snapshot_uri))
+        parser.error(f"snapshot_uri is not a valid URI: '{snapshot_uri}'")
 
     if os.path.isdir(snapshot_dir):
-        parser.error("snapshot_dir already exists: '%s'" % snapshot_dir)
+        parser.error(f"snapshot_dir already exists: '{snapshot_dir}'")
 
     try:
         os.makedirs(os.path.dirname(snapshot_dir))
@@ -108,7 +108,7 @@ def main(argv):
     except OSError:
         pass
     if not os.path.isdir(binhost_dir):
-        parser.error("binhost_dir could not be created: '%s'" % binhost_dir)
+        parser.error(f"binhost_dir could not be created: '{binhost_dir}'")
 
     cp_opts = "RP"
     if options.hardlinks == "n":
@@ -147,7 +147,7 @@ def main(argv):
         else:
             if not line.strip():
                 # end of header
-                outfile.write("URI: %s\n\n" % snapshot_uri)
+                outfile.write(f"URI: {snapshot_uri}\n\n")
                 break
             outfile.write(line)
 

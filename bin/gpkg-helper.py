@@ -18,19 +18,19 @@ def command_compose(args):
 
     if len(args) != 4:
         sys.stderr.write(usage)
-        sys.stderr.write("4 arguments are required, got %s\n" % len(args))
+        sys.stderr.write(f"4 arguments are required, got {len(args)}\n")
         return 1
 
     basename, binpkg_path, metadata_dir, image_dir = args
 
     if not os.path.isdir(metadata_dir):
         sys.stderr.write(usage)
-        sys.stderr.write("Argument 3 is not a directory: '%s'\n" % metadata_dir)
+        sys.stderr.write(f"Argument 3 is not a directory: '{metadata_dir}'\n")
         return 1
 
     if not os.path.isdir(image_dir):
         sys.stderr.write(usage)
-        sys.stderr.write("Argument 4 is not a directory: '%s'\n" % image_dir)
+        sys.stderr.write(f"Argument 4 is not a directory: '{image_dir}'\n")
         return 1
 
     try:
@@ -51,7 +51,7 @@ def main(argv):
 
     valid_commands = ("compress",)
     description = "Perform metadata operations on a binary package."
-    usage = "usage: %s COMMAND [args]" % os.path.basename(argv[0])
+    usage = f"usage: {os.path.basename(argv[0])} COMMAND [args]"
 
     parser = argparse.ArgumentParser(description=description, usage=usage)
     options, args = parser.parse_known_args(argv[1:])
@@ -62,12 +62,12 @@ def main(argv):
     command = args[0]
 
     if command not in valid_commands:
-        parser.error("invalid command: '%s'" % command)
+        parser.error(f"invalid command: '{command}'")
 
     if command == "compress":
         rval = command_compose(args[1:])
     else:
-        raise AssertionError("invalid command: '%s'" % command)
+        raise AssertionError(f"invalid command: '{command}'")
 
     return rval
 

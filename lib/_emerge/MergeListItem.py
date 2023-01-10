@@ -76,7 +76,7 @@ class MergeListItem(CompositeTask):
         )
 
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " {} {}".format(preposition, pkg.root)
+            msg += f" {preposition} {pkg.root}"
 
         if not build_opts.pretend:
             self.statusMessage(msg)

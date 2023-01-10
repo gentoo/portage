@@ -82,9 +82,7 @@ def old_tree_timestamp_warn(portdir, settings):
         warnsync = float(settings.get(var_name, default_warnsync))
     except ValueError:
         writemsg_level(
-            "!!! {} contains non-numeric value: {}\n".format(
-                var_name, settings[var_name]
-            ),
+            f"!!! {var_name} contains non-numeric value: {settings[var_name]}\n",
             level=logging.ERROR,
             noiselevel=-1,
         )
@@ -96,7 +94,7 @@ def old_tree_timestamp_warn(portdir, settings):
     if (unixtime - 86400 * warnsync) > lastsync:
         out = EOutput()
         if have_english_locale():
-            out.ewarn("Last emerge --sync was %s ago." % whenago(unixtime - lastsync))
+            out.ewarn(f"Last emerge --sync was {whenago(unixtime - lastsync)} ago.")
         else:
             out.ewarn(
                 _("Last emerge --sync was %s.")

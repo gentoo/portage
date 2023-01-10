@@ -197,6 +197,6 @@ def compute_multilib_category(elf_header):
         if prefix is None or suffix is None:
             category = None
         else:
-            category = "{}_{}".format(prefix, suffix)
+            category = f"{prefix}_{suffix}"
 
     return category

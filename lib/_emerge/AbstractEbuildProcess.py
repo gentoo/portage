@@ -159,9 +159,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
                 cgroup_path = tempfile.mkdtemp(
                     dir=cgroup_portage,
-                    prefix="{}:{}.".format(
-                        self.settings["CATEGORY"], self.settings["PF"]
-                    ),
+                    prefix=f"{self.settings['CATEGORY']}:{self.settings['PF']}.",
                 )
             except (subprocess.CalledProcessError, OSError):
                 pass
@@ -454,7 +452,7 @@ class AbstractEbuildProcess(SpawnProcess):
         elif self._build_dir_unlock is None:
             if self.returncode is None:
                 raise asyncio.InvalidStateError(
-                    "Result is not ready for {}".format(self)
+                    f"Result is not ready for {self}"
                 )
             self._async_unlock_builddir(returncode=self.returncode)
 

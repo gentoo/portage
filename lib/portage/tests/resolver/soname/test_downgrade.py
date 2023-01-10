@@ -133,7 +133,7 @@ class SonameDowngradeTestCase(TestCase):
             with self.subTest(binpkg_format=binpkg_format):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
-                user_config["make.conf"] = ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                user_config["make.conf"] = (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
                     binpkgs=binpkgs,
                     ebuilds=ebuilds,
@@ -232,7 +232,7 @@ class SonameDowngradeTestCase(TestCase):
             with self.subTest(binpkg_format=binpkg_format):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
-                user_config["make.conf"] = ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                user_config["make.conf"] = (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
                     ebuilds=ebuilds,
                     binpkgs=binpkgs,

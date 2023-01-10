@@ -359,8 +359,7 @@ class SyncRepos:
         messages = []
         for rval in rvals:
             messages.append(
-                "Action: %s for repo: %s, returned code = %s"
-                % (action, rval[0], rval[1])
+                f"Action: {action} for repo: {rval[0]}, returned code = {rval[1]}"
             )
         return messages
 

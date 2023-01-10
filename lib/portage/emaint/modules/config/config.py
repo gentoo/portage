@@ -33,7 +33,7 @@ class CleanConfig:
         keys = sorted(configs)
         for config in keys:
             if not os.path.exists(config):
-                messages.append("  %s" % config)
+                messages.append(f"  {config}")
             if onProgress:
                 onProgress(maxval, i + 1)
                 i += 1
@@ -61,7 +61,7 @@ class CleanConfig:
             if not os.path.exists(full_path):
                 modified = True
                 configs.pop(config)
-                messages.append("  %s" % config)
+                messages.append(f"  {config}")
             if onProgress:
                 onProgress(maxval, i + 1)
                 i += 1

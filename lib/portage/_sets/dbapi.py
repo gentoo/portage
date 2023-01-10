@@ -47,7 +47,7 @@ class EverythingSet(PackageSet):
                 # SLOT installed, in order to avoid the possibility
                 # of unwanted upgrades as reported in bug #338959.
                 pkg = pkg_str(cpv, None)
-                atom = Atom("{}:{}".format(pkg.cp, pkg.slot))
+                atom = Atom(f"{pkg.cp}:{pkg.slot}")
                 if self._filter:
                     if self._filter(atom):
                         myatoms.append(atom)
@@ -105,7 +105,7 @@ class OwnerSet(PackageSet):
         if not exclude_paths:
             for link, p in vardb._owners.iter_owners(paths):
                 pkg = pkg_str(link.mycpv, None)
-                rValue.add("{}:{}".format(pkg.cp, pkg.slot))
+                rValue.add(f"{pkg.cp}:{pkg.slot}")
         else:
             all_paths = set()
             all_paths.update(paths)
@@ -113,7 +113,7 @@ class OwnerSet(PackageSet):
             exclude_atoms = set()
             for link, p in vardb._owners.iter_owners(all_paths):
                 pkg = pkg_str(link.mycpv, None)
-                atom = "{}:{}".format(pkg.cp, pkg.slot)
+                atom = f"{pkg.cp}:{pkg.slot}"
                 rValue.add(atom)
                 # Returned paths are relative to ROOT and do not have
                 # a leading slash.
@@ -242,7 +242,7 @@ class SubslotChangedSet(PackageSet):
         cp_list = self._vardb.cp_list
         for cp in self._vardb.cp_all():
             for pkg in cp_list(cp):
-                slot_atom = "{}:{}".format(pkg.cp, pkg.slot)
+                slot_atom = f"{pkg.cp}:{pkg.slot}"
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -281,7 +281,7 @@ class DowngradeSet(PackageSet):
         for cp in self._vardb.cp_all():
             for cpv in cp_list(cp):
                 pkg = pkg_str(cpv, None)
-                slot_atom = "{}:{}".format(pkg.cp, pkg.slot)
+                slot_atom = f"{pkg.cp}:{pkg.slot}"
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -672,7 +672,7 @@ class ChangedDepsSet(PackageSet):
 
             # if dependencies don't match, trigger the rebuild.
             if vdbvars != pdbvars:
-                atoms.append("=%s" % cpv)
+                atoms.append(f"={cpv}")
 
         self._setAtoms(atoms)
 

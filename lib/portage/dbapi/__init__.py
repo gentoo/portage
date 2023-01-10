@@ -350,11 +350,11 @@ class dbapi:
         if "/" + MERGING_IDENTIFIER in mypath:
             if os.path.exists(mypath):
                 writemsg(
-                    colorize("BAD", _("INCOMPLETE MERGE:")) + " %s\n" % mypath,
+                    colorize("BAD", _("INCOMPLETE MERGE:")) + f" {mypath}\n",
                     noiselevel=-1,
                 )
         else:
-            writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
+            writemsg(f"!!! Invalid db entry: {mypath}\n", noiselevel=-1)
 
     def update_ents(self, updates, onProgress=None, onUpdate=None):
         """
@@ -453,7 +453,7 @@ class dbapi:
                 and mycpv.sub_slot
                 and mycpv.sub_slot not in (mycpv.slot, newslot)
             ):
-                newslot = "{}/{}".format(newslot, mycpv.sub_slot)
+                newslot = f"{newslot}/{mycpv.sub_slot}"
             mydata = {"SLOT": newslot + "\n"}
             self.aux_update(mycpv, mydata)
         return moves

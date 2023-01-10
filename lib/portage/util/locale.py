@@ -77,19 +77,19 @@ def _check_locale(silent):
         if uc != ruc:
             msg.extend(
                 [
-                    "  {} -> {}".format(chars(lc), chars(ruc)),
+                    f"  {chars(lc)} -> {chars(ruc)}",
                     "  %28s: %s" % ("expected", chars(uc)),
                 ]
             )
         if lc != rlc:
             msg.extend(
                 [
-                    "  {} -> {}".format(chars(uc), chars(rlc)),
+                    f"  {chars(uc)} -> {chars(rlc)}",
                     "  %28s: %s" % ("expected", chars(lc)),
                 ]
             )
         writemsg_level(
-            "".join(["!!! %s\n" % l for l in msg]), level=logging.ERROR, noiselevel=-1
+            "".join([f"!!! {l}\n" for l in msg]), level=logging.ERROR, noiselevel=-1
         )
         return False
 

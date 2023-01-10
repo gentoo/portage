@@ -79,7 +79,7 @@ def _finalize(mysettings, items):
         "process %(pid)d on host %(host)s:\n"
     ) % {"pid": portage.getpid(), "host": socket.getfqdn()}
     for key in items:
-        mybody += "- %s\n" % key
+        mybody += f"- {key}\n"
 
     mymessage = portage.mail.create_message(
         myfrom, myrecipient, mysubject, mybody, attachments=list(items.values())
@@ -97,6 +97,6 @@ def _finalize(mysettings, items):
             "Timeout in finalize() for elog system 'mail_summary'\n", noiselevel=-1
         )
     except PortageException as e:
-        writemsg("{}\n".format(e), noiselevel=-1)
+        writemsg(f"{e}\n", noiselevel=-1)
 
     return

@@ -240,7 +240,7 @@ try:
                 jobs = -1
 
             if jobs < 1:
-                parser.error("Invalid: --jobs='{}'".format(options.jobs))
+                parser.error(f"Invalid: --jobs='{options.jobs}'")
 
             options.jobs = jobs
 
@@ -255,7 +255,7 @@ try:
 
             if load_average <= 0.0:
                 parser.error(
-                    "Invalid: --load-average='{}'".format(options.load_average)
+                    f"Invalid: --load-average='{options.load_average}'"
                 )
 
             options.load_average = load_average
@@ -266,27 +266,27 @@ try:
         options.config_root = options.portage_configroot
         if options.config_root is not None and not os.path.isdir(options.config_root):
             parser.error(
-                "Not a directory: --config-root='{}'".format(options.config_root)
+                f"Not a directory: --config-root='{options.config_root}'"
             )
 
         if options.cache_dir is not None:
             if not os.path.isdir(options.cache_dir):
                 parser.error(
-                    "Not a directory: --cache-dir='{}'".format(options.cache_dir)
+                    f"Not a directory: --cache-dir='{options.cache_dir}'"
                 )
             if not os.access(options.cache_dir, os.W_OK):
                 parser.error(
-                    "Write access denied: --cache-dir='{}'".format(options.cache_dir)
+                    f"Write access denied: --cache-dir='{options.cache_dir}'"
                 )
 
         for atom in args:
             try:
                 atom = portage.dep.Atom(atom)
             except portage.exception.InvalidAtom:
-                parser.error("Invalid atom: {}".format(atom))
+                parser.error(f"Invalid atom: {atom}")
 
             if not isjustname(atom):
-                parser.error("Atom is too specific: {}".format(atom))
+                parser.error(f"Atom is too specific: {atom}")
 
         if options.update_use_local_desc:
             try:
@@ -406,7 +406,7 @@ try:
 
             try:
                 chf = trg_cache.validation_chf
-                metadata["_%s_" % chf] = getattr(ebuild_hash, chf)
+                metadata[f"_{chf}_"] = getattr(ebuild_hash, chf)
                 try:
                     trg_cache[cpv] = metadata
                 except StatCollision as sc:
@@ -434,7 +434,7 @@ try:
                     except OSError as e:
                         self.returncode |= 1
                         writemsg_level(
-                            "{} writing target: {}\n".format(cpv, e),
+                            f"{cpv} writing target: {e}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -447,7 +447,7 @@ try:
             except CacheError as ce:
                 self.returncode |= 1
                 writemsg_level(
-                    "{} writing target: {}\n".format(cpv, ce),
+                    f"{cpv} writing target: {ce}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -472,7 +472,7 @@ try:
                         if cp is None:
                             self.returncode |= 1
                             writemsg_level(
-                                "Unable to parse cp for '{}'\n".format(cpv),
+                                f"Unable to parse cp for '{cpv}'\n",
                                 level=logging.ERROR,
                                 noiselevel=-1,
                             )
@@ -482,7 +482,7 @@ try:
                     self.returncode |= 1
                     writemsg_level(
                         "Error listing cache entries for "
-                        + "'{}': {}, continuing...\n".format(trg_cache.location, ce),
+                        + f"'{trg_cache.location}': {ce}, continuing...\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -495,7 +495,7 @@ try:
                         if cp is None:
                             self.returncode |= 1
                             writemsg_level(
-                                "Unable to parse cp for '{}'\n".format(cpv),
+                                f"Unable to parse cp for '{cpv}'\n",
                                 level=logging.ERROR,
                                 noiselevel=-1,
                             )
@@ -507,7 +507,7 @@ try:
                     self.returncode |= 1
                     writemsg_level(
                         "Error listing cache entries for "
-                        + "'{}': {}, continuing...\n".format(trg_cache.location, ce),
+                        + f"'{trg_cache.location}': {ce}, continuing...\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -516,7 +516,7 @@ try:
                 self.returncode |= 1
                 for cp in sorted(cp_missing):
                     writemsg_level(
-                        "No ebuilds or cache entries found for '{}'\n".format(cp),
+                        f"No ebuilds or cache entries found for '{cp}'\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -531,7 +531,7 @@ try:
                     except CacheError as ce:
                         self.returncode |= 1
                         writemsg_level(
-                            "{} deleting stale cache: {}\n".format(k, ce),
+                            f"{k} deleting stale cache: {ce}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -542,7 +542,7 @@ try:
                 except CacheError as ce:
                     self.returncode |= 1
                     writemsg_level(
-                        "committing target: {}\n".format(ce),
+                        f"committing target: {ce}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -604,9 +604,7 @@ try:
                     version = self._portdb.xmatch(
                         "bestmatch-visible",
                         Atom(
-                            "{}{}{}".format(
-                                pkg_desc.cp, _repo_separator, self._repo_config.name
-                            )
+                            f"{pkg_desc.cp}{_repo_separator}{self._repo_config.name}"
                         ),
                     )
                     if not version:
@@ -694,9 +692,7 @@ try:
                 except OSError as e:
                     if not self._preserve_comments or os.path.isfile(desc_path):
                         writemsg_level(
-                            "ERROR: failed to open output file {}: {}\n".format(
-                                desc_path, e
-                            ),
+                            f"ERROR: failed to open output file {desc_path}: {e}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -708,7 +704,7 @@ try:
                     # preserve_comments mode now.
                     writemsg_level(
                         "WARNING: --preserve-comments enabled, but "
-                        + "output file not found: {}\n".format(desc_path),
+                        + f"output file not found: {desc_path}\n",
                         level=logging.WARNING,
                         noiselevel=-1,
                     )
@@ -724,9 +720,7 @@ try:
                         )
                     except OSError as e:
                         writemsg_level(
-                            "ERROR: failed to open output file {}: {}\n".format(
-                                desc_path, e
-                            ),
+                            f"ERROR: failed to open output file {desc_path}: {e}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -804,7 +798,7 @@ try:
                     pass
                 except (ExpatError, OSError) as e:
                     writemsg_level(
-                        "ERROR: failed parsing {}/metadata.xml: {}\n".format(cp, e),
+                        f"ERROR: failed parsing {cp}/metadata.xml: {e}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -814,7 +808,7 @@ try:
                         usedict = parse_metadata_use(metadata)
                     except portage.exception.ParseError as e:
                         writemsg_level(
-                            "ERROR: failed parsing {}/metadata.xml: {}\n".format(cp, e),
+                            f"ERROR: failed parsing {cp}/metadata.xml: {e}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -865,7 +859,7 @@ try:
                                     )
                                     resdesc = resdict[reskeys[resatoms[-1]]]
 
-                            output.write("{}:{} - {}\n".format(cp, flag, resdesc))
+                            output.write(f"{cp}:{flag} - {resdesc}\n")
 
             output.close()
             if prev_mtime is not None and prev_md5 == portage.checksum.perform_md5(
@@ -907,7 +901,7 @@ try:
             # If work-tree is not passed, Git tries to use the shared
             # parent of the current directory and the ${GIT_DIR}, which can
             # be outside the root of the checkout.
-            self._work_tree = "--work-tree=%s" % self._repo_path
+            self._work_tree = f"--work-tree={self._repo_path}"
 
         @staticmethod
         def grab(cmd):
@@ -947,11 +941,7 @@ try:
                 )
             except OSError as e:
                 writemsg_level(
-                    "ERROR: failed to open ChangeLog for %s: %s\n"
-                    % (
-                        cp,
-                        e,
-                    ),
+                    f"ERROR: failed to open ChangeLog for {cp}: {e}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -997,7 +987,7 @@ try:
                             "--no-renames",
                             "--format=%ct %cN <%cE>%n%B",
                             "--root",
-                            "--relative={}".format(cp),
+                            f"--relative={cp}",
                             "-r",
                             c,
                             "--",
@@ -1037,11 +1027,7 @@ try:
                             changed.append(ChangeLogTypeSort("", f[1]))
                         else:
                             writemsg_level(
-                                "ERROR: unexpected git file status for %s: %s\n"
-                                % (
-                                    cp,
-                                    f,
-                                ),
+                                f"ERROR: unexpected git file status for {cp}: {f}\n",
                                 level=logging.ERROR,
                                 noiselevel=-1,
                             )
@@ -1059,7 +1045,7 @@ try:
                 # Reverse the sort order for headers.
                 for c in reversed(changed):
                     if c.startswith("+") and c.endswith(".ebuild"):
-                        output.write("*{} ({})\n".format(c[1:-7], date))
+                        output.write(f"*{c[1:-7]} ({date})\n")
                         wroteheader = True
                 if wroteheader:
                     output.write("\n")
@@ -1087,7 +1073,7 @@ try:
                 self._wrapper.break_on_hyphens = False
                 output.write(
                     self._wrapper.fill(
-                        "{}; {} {}:".format(date, author, ", ".join(changed))
+                        f"{date}; {author} {', '.join(changed)}:"
                     )
                 )
                 # but feel free to break commit messages there
@@ -1191,7 +1177,7 @@ try:
 
         repo_path = settings.repositories.treemap.get(options.repo)
         if repo_path is None:
-            parser.error("Unable to locate repository named '{}'".format(options.repo))
+            parser.error(f"Unable to locate repository named '{options.repo}'")
             return 1
 
         repo_config = settings.repositories.get_repo_for_location(repo_path)
@@ -1231,9 +1217,7 @@ try:
                 if not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
                     writemsg_level(
                         "ecachegen: error: "
-                        + "write access denied: {}\n".format(
-                            settings["PORTAGE_DEPCACHEDIR"]
-                        ),
+                        + f"write access denied: {settings['PORTAGE_DEPCACHEDIR']}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -1351,12 +1335,8 @@ try:
                 )
                 if not options.external_cache_only:
                     msg = [
-                        "WARNING: Repository is not writable: {}".format(
-                            repo_config.location
-                        ),
-                        "         Using cache directory instead: {}".format(
-                            writable_location
-                        ),
+                        f"WARNING: Repository is not writable: {repo_config.location}",
+                        f"         Using cache directory instead: {writable_location}",
                     ]
                     msg = "".join(line + "\n" for line in msg)
                     writemsg_level(msg, level=logging.WARNING, noiselevel=-1)
@@ -1424,7 +1404,7 @@ try:
             try:
                 portage.util.write_atomic(
                     timestamp_path,
-                    time.strftime("%s\n" % TIMESTAMP_FORMAT, time.gmtime()),
+                    time.strftime(f"{TIMESTAMP_FORMAT}\n", time.gmtime()),
                 )
             except (OSError, portage.exception.PortageException):
                 ret.append(os.EX_IOERR)

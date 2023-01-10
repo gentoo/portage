@@ -67,7 +67,7 @@ class UserQuery:
                         # first value in responses.
                         if response.upper() == key[: len(response)].upper():
                             return key
-                print("Sorry, response '%s' not understood." % response, end=" ")
+                print(f"Sorry, response '{response}' not understood.", end=" ")
         except (EOFError, KeyboardInterrupt):
             print("Interrupted.")
             sys.exit(128 + signal.SIGINT)

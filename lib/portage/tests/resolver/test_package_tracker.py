@@ -20,7 +20,7 @@ class PackageTrackerTestCase(TestCase):
 
     def make_pkg(self, root, atom, repo="test_repo"):
         atom = Atom(atom)
-        slot_atom = Atom("{}:{}".format(atom.cp, atom.slot))
+        slot_atom = Atom(f"{atom.cp}:{atom.slot}")
         slot = atom.slot
 
         return self.FakePackage(

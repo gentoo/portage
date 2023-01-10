@@ -64,7 +64,7 @@ def process(mysettings, key, logentries, fulltext):
         ) as elogfile:
             elogfile.write(_unicode_decode(fulltext))
     except OSError as e:
-        func_call = "open('%s', 'w')" % elogfilename
+        func_call = f"open('{elogfilename}', 'w')"
         if e.errno == errno.EACCES:
             raise portage.exception.PermissionDenied(func_call)
         elif e.errno == errno.EPERM:

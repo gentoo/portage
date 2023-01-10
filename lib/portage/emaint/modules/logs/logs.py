@@ -63,7 +63,7 @@ class CleanLogs:
                     clean_cmd.remove("-mtime")
                     clean_cmd.pop(i)
                 else:
-                    clean_cmd[clean_cmd.index("-mtime") + 1] = "+%s" % str(num_of_days)
+                    clean_cmd[clean_cmd.index("-mtime") + 1] = f"+{str(num_of_days)}"
             if pretend:
                 if "-delete" in clean_cmd:
                     clean_cmd.remove("-delete")
@@ -98,7 +98,7 @@ class CleanLogs:
             if rval in ERROR_MESSAGES:
                 msg.append(ERROR_MESSAGES[rval])
             else:
-                msg.append("PORTAGE_LOGDIR_CLEAN command returned %s" % rval)
+                msg.append(f"PORTAGE_LOGDIR_CLEAN command returned {rval}")
             msg.append(
                 "See the make.conf(5) man page for "
                 "PORTAGE_LOGDIR_CLEAN usage instructions."

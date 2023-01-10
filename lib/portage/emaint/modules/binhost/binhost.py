@@ -86,9 +86,9 @@ class BinhostHandler:
                 missing.append(cpv)
             if onProgress:
                 onProgress(maxval, i + 1)
-        errors = ["'%s' is not in Packages" % cpv for cpv in missing]
+        errors = [f"'{cpv}' is not in Packages" for cpv in missing]
         for cpv in stale:
-            errors.append("'%s' is not in the repository" % cpv)
+            errors.append(f"'{cpv}' is not in the repository")
         if errors:
             return (False, errors)
         return (True, None)
@@ -158,7 +158,7 @@ class BinhostHandler:
                         bintree._eval_use_flags(cpv, d)
                     except portage.exception.InvalidDependString:
                         writemsg(
-                            "!!! Invalid binary package: '%s'\n" % bintree.getname(cpv),
+                            f"!!! Invalid binary package: '{bintree.getname(cpv)}'\n",
                             noiselevel=-1,
                         )
                     else:

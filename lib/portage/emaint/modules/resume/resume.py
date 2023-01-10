@@ -26,14 +26,14 @@ class CleanResume:
                 if d is None:
                     continue
                 if not isinstance(d, dict):
-                    messages.append("unrecognized resume list: '%s'" % k)
+                    messages.append(f"unrecognized resume list: '{k}'")
                     continue
                 mergelist = d.get("mergelist")
                 if mergelist is None or not hasattr(mergelist, "__len__"):
-                    messages.append("unrecognized resume list: '%s'" % k)
+                    messages.append(f"unrecognized resume list: '{k}'")
                     continue
                 messages.append(
-                    "resume list '%s' contains %d packages" % (k, len(mergelist))
+                    f"resume list '{k}' contains {len(mergelist)} packages"
                 )
             finally:
                 if onProgress:

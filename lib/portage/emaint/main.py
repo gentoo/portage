@@ -72,30 +72,30 @@ def usage(module_controller):
 
     _usage += "\n\n"
     for line in textwrap.wrap(desc, 65):
-        _usage += "%s\n" % line
+        _usage += f"{line}\n"
     _usage += "\nCommands:\n"
-    _usage += "  %s" % "all".ljust(15) + "Perform all supported commands\n"
+    _usage += f"  {'all'.ljust(15)}" + "Perform all supported commands\n"
     textwrap.subsequent_indent = " ".ljust(17)
     for mod in module_controller.module_names:
         desc = textwrap.wrap(module_controller.get_description(mod), 65)
-        _usage += "  {}{}\n".format(mod.ljust(15), desc[0])
+        _usage += f"  {mod.ljust(15)}{desc[0]}\n"
         for d in desc[1:]:
-            _usage += "  {}{}\n".format(" ".ljust(15), d)
+            _usage += f"  {' '.ljust(15)}{d}\n"
     return _usage
 
 
 def module_opts(module_controller, module):
-    _usage = " %s module options:\n" % module
+    _usage = f" {module} module options:\n"
     opts = module_controller.get_func_descriptions(module)
     if opts == {}:
         opts = DEFAULT_OPTIONS
     for opt in sorted(opts):
         optd = opts[opt]
         if "short" in optd:
-            opto = "  {}, {}".format(optd["short"], optd["long"])
+            opto = f"  {optd['short']}, {optd['long']}"
         else:
-            opto = "  {}".format(optd["long"])
-        _usage += "{} {}\n".format(opto.ljust(15), optd["help"])
+            opto = f"  {optd['long']}"
+        _usage += f"{opto.ljust(15)} {optd['help']}\n"
     _usage += "\n"
     return _usage
 
@@ -195,7 +195,7 @@ def emaint_main(myargv):
     if len(args) != 1:
         parser.error("Incorrect number of arguments")
     if args[0] not in module_names:
-        parser.error("%s target is not a known target" % args[0])
+        parser.error(f"{args[0]} target is not a known target")
 
     check_opt = None
     func = status = long_action = None
@@ -206,7 +206,7 @@ def emaint_main(myargv):
         if opt.status and getattr(options, opt.target, False):
             if long_action is not None:
                 parser.error(
-                    "--{} and {} are exclusive options".format(long_action, opt.long)
+                    f"--{long_action} and {opt.long} are exclusive options"
                 )
             status = opt.status
             func = opt.func
@@ -228,8 +228,7 @@ def emaint_main(myargv):
         tasks = [module_controller.get_class(args[0])]
     else:
         portage.util.writemsg(
-            "\nERROR: module '%s' does not have option '--%s'\n\n"
-            % (args[0], long_action),
+            f"\nERROR: module '{args[0]}' does not have option '--{long_action}'\n\n",
             noiselevel=-1,
         )
         portage.util.writemsg(module_opts(module_controller, args[0]), noiselevel=-1)

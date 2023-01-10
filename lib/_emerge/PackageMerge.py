@@ -37,7 +37,7 @@ class PackageMerge(CompositeTask):
         )
 
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " {} {}".format(preposition, pkg.root)
+            msg += f" {preposition} {pkg.root}"
 
         if (
             not self.merge.build_opts.fetchonly

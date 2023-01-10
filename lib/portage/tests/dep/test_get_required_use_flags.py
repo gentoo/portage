@@ -41,7 +41,7 @@ class TestCheckRequiredUse(TestCase):
 
         for required_use in test_cases_xfail:
             self.assertRaisesMsg(
-                "REQUIRED_USE: '{}'".format(required_use),
+                f"REQUIRED_USE: '{required_use}'",
                 InvalidDependString,
                 get_required_use_flags,
                 required_use,

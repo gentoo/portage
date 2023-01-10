@@ -266,7 +266,7 @@ class ResolverPlayground:
 
             repo_name_file = os.path.join(profile_path, "repo_name")
             with open(repo_name_file, "w") as f:
-                f.write("%s\n" % repo)
+                f.write(f"{repo}\n")
 
         return self._repositories[repo]["location"]
 
@@ -310,9 +310,9 @@ class ResolverPlayground:
             with open(ebuild_path, "w") as f:
                 if copyright_header is not None:
                     f.write(copyright_header)
-                f.write('EAPI="%s"\n' % eapi)
+                f.write(f'EAPI="{eapi}\"\n')
                 for k, v in metadata.items():
-                    f.write('{}="{}"\n'.format(k, v))
+                    f.write(f'{k}="{v}\"\n')
                 if misc_content is not None:
                     f.write(misc_content)
 
@@ -332,7 +332,7 @@ class ResolverPlayground:
             portdb = self.trees[self.eroot]["porttree"].dbapi
             tmpsettings["O"] = ebuild_dir
             if not digestgen(mysettings=tmpsettings, myportdb=portdb):
-                raise AssertionError("digest creation failed for %s" % ebuild_path)
+                raise AssertionError(f"digest creation failed for {ebuild_path}")
 
     def _create_binpkgs(self, binpkgs):
         # When using BUILD_ID, there can be mutiple instances for the
@@ -369,13 +369,13 @@ class ResolverPlayground:
             if "BUILD_ID" in metadata:
                 if binpkg_format == "xpak":
                     binpkg_path = os.path.join(
-                        category_dir, pn, "{}-{}.xpak".format(pf, metadata["BUILD_ID"])
+                        category_dir, pn, f"{pf}-{metadata['BUILD_ID']}.xpak"
                     )
                 elif binpkg_format == "gpkg":
                     binpkg_path = os.path.join(
                         category_dir,
                         pn,
-                        "{}-{}.gpkg.tar".format(pf, metadata["BUILD_ID"]),
+                        f"{pf}-{metadata['BUILD_ID']}.gpkg.tar",
                     )
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
@@ -433,13 +433,13 @@ class ResolverPlayground:
             metadata["repository"] = repo
             for k, v in metadata.items():
                 with open(os.path.join(vdb_pkg_dir, k), "w") as f:
-                    f.write("%s\n" % v)
+                    f.write(f"{v}\n")
 
             ebuild_path = os.path.join(vdb_pkg_dir, a.cpv.split("/")[1] + ".ebuild")
             with open(ebuild_path, "w") as f:
-                f.write('EAPI="%s"\n' % metadata.pop("EAPI", "0"))
+                f.write(f"EAPI=\"{metadata.pop('EAPI', '0')}\"\n")
                 for k, v in metadata.items():
-                    f.write('{}="{}"\n'.format(k, v))
+                    f.write(f'{k}="{v}\"\n')
 
             env_path = os.path.join(vdb_pkg_dir, "environment.bz2")
             with bz2.BZ2File(env_path, mode="w") as f:
@@ -492,7 +492,7 @@ class ResolverPlayground:
                         fnmatch.fnmatch(config_file, os.path.join(x, "*"))
                         for x in self.config_files
                     ):
-                        raise ValueError("Unknown config file: '%s'" % config_file)
+                        raise ValueError(f"Unknown config file: '{config_file}'")
 
                     if config_file in ("layout.conf",):
                         file_name = os.path.join(repo_dir, "metadata", config_file)
@@ -504,7 +504,7 @@ class ResolverPlayground:
                             os.makedirs(os.path.dirname(file_name))
                     with open(file_name, "w") as f:
                         for line in lines:
-                            f.write("%s\n" % line)
+                            f.write(f"{line}\n")
                         # Temporarily write empty value of masters until it becomes default.
                         # TODO: Delete all references to "# use implicit masters" when empty value becomes default.
                         if config_file == "layout.conf" and not any(
@@ -519,12 +519,12 @@ class ResolverPlayground:
 
             for eclass_name, eclass_content in eclasses.items():
                 with open(
-                    os.path.join(eclass_dir, "{}.eclass".format(eclass_name)), "w"
+                    os.path.join(eclass_dir, f"{eclass_name}.eclass"), "w"
                 ) as f:
                     if isinstance(eclass_content, str):
                         eclass_content = [eclass_content]
                     for line in eclass_content:
-                        f.write("{}\n".format(line))
+                        f.write(f"{line}\n")
 
             # Temporarily write empty value of masters until it becomes default.
             if not repo_config or "layout.conf" not in repo_config:
@@ -560,12 +560,12 @@ class ResolverPlayground:
                 if profile:
                     for config_file, lines in profile.items():
                         if config_file not in self.config_files:
-                            raise ValueError("Unknown config file: '%s'" % config_file)
+                            raise ValueError(f"Unknown config file: '{config_file}'")
 
                         file_name = os.path.join(sub_profile_dir, config_file)
                         with open(file_name, "w") as f:
                             for line in lines:
-                                f.write("%s\n" % line)
+                                f.write(f"{line}\n")
 
                 # Create profile symlink
                 os.symlink(
@@ -620,12 +620,12 @@ class ResolverPlayground:
 
         for config_file, lines in configs.items():
             if config_file not in self.config_files:
-                raise ValueError("Unknown config file: '%s'" % config_file)
+                raise ValueError(f"Unknown config file: '{config_file}'")
 
             file_name = os.path.join(user_config_dir, config_file)
             with open(file_name, "w") as f:
                 for line in lines:
-                    f.write("%s\n" % line)
+                    f.write(f"{line}\n")
 
         # Create /usr/share/portage/config/make.globals
         make_globals_path = os.path.join(
@@ -661,7 +661,7 @@ class ResolverPlayground:
             file_name = os.path.join(set_config_dir, sets_file)
             with open(file_name, "w") as f:
                 for line in lines:
-                    f.write("%s\n" % line)
+                    f.write(f"{line}\n")
 
     def _create_world(self, world, world_sets):
         # Create /var/lib/portage/world
@@ -673,11 +673,11 @@ class ResolverPlayground:
 
         with open(world_file, "w") as f:
             for atom in world:
-                f.write("%s\n" % atom)
+                f.write(f"{atom}\n")
 
         with open(world_set_file, "w") as f:
             for atom in world_sets:
-                f.write("%s\n" % atom)
+                f.write(f"{atom}\n")
 
     def _load_config(self):
 
@@ -782,7 +782,7 @@ class ResolverPlayground:
             portdb = self.trees[eroot]["porttree"].dbapi
             portdb.close_caches()
         if self.debug:
-            print("\nEROOT=%s" % self.eroot)
+            print(f"\nEROOT={self.eroot}")
         else:
             shutil.rmtree(self.eroot)
         if hasattr(self, "_orig_eprefix"):
@@ -816,7 +816,7 @@ class ResolverPlaygroundTestCase:
         checks = dict.fromkeys(result.checks)
         for key, value in self._checks.items():
             if not key in checks:
-                raise KeyError("Not an available check: '%s'" % key)
+                raise KeyError(f"Not an available check: '{key}'")
             checks[key] = value
 
         fail_msgs = []
@@ -976,14 +976,14 @@ def _mergelist_str(x, depgraph):
             repo_str = _repo_separator + x.repo
         build_id_str = ""
         if x.type_name == "binary" and x.cpv.build_id is not None:
-            build_id_str = "-%s" % x.cpv.build_id
+            build_id_str = f"-{x.cpv.build_id}"
         mergelist_str = x.cpv + build_id_str + repo_str
         if x.built:
             if x.operation == "merge":
                 desc = x.type_name
             else:
                 desc = x.operation
-            mergelist_str = "[{}]{}".format(desc, mergelist_str)
+            mergelist_str = f"[{desc}]{mergelist_str}"
         if x.root != depgraph._frozen_config._running_root.root:
             mergelist_str += "{targetroot}"
     return mergelist_str

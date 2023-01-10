@@ -57,42 +57,42 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
 
     def testDisplayIfProfile(self):
         tmpItem = self.fakeItem[:].replace(
-            "#Display-If-Profile:", "Display-If-Profile: %s" % self.profile
+            "#Display-If-Profile:", f"Display-If-Profile: {self.profile}"
         )
 
         item = self._processItem(tmpItem)
         try:
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
-                msg="Expected %s to be relevant, but it was not!" % tmpItem,
+                msg=f"Expected {tmpItem} to be relevant, but it was not!",
             )
         finally:
             os.unlink(item.path)
 
     def testDisplayIfInstalled(self):
         tmpItem = self.fakeItem[:].replace(
-            "#Display-If-Installed:", "Display-If-Installed: %s" % "sys-apps/portage"
+            "#Display-If-Installed:", f"Display-If-Installed: {'sys-apps/portage'}"
         )
 
         try:
             item = self._processItem(tmpItem)
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
-                msg="Expected %s to be relevant, but it was not!" % tmpItem,
+                msg=f"Expected {tmpItem} to be relevant, but it was not!",
             )
         finally:
             os.unlink(item.path)
 
     def testDisplayIfKeyword(self):
         tmpItem = self.fakeItem[:].replace(
-            "#Display-If-Keyword:", "Display-If-Keyword: %s" % self.keywords
+            "#Display-If-Keyword:", f"Display-If-Keyword: {self.keywords}"
         )
 
         try:
             item = self._processItem(tmpItem)
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
-                msg="Expected %s to be relevant, but it was not!" % tmpItem,
+                msg=f"Expected {tmpItem} to be relevant, but it was not!",
             )
         finally:
             os.unlink(item.path)
@@ -106,4 +106,4 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
         try:
             return NewsItem(filename, 0)
         except TypeError:
-            self.fail("Error while processing news item %s" % filename)
+            self.fail(f"Error while processing news item {filename}")

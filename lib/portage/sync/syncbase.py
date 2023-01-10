@@ -62,18 +62,17 @@ class SyncBase:
         """
         if self.bin_command is None:
             msg = [
-                "Command not found: %s" % self._bin_command,
-                'Type "emerge %s" to enable %s support.'
-                % (self.bin_pkg, self._bin_command),
+                f"Command not found: {self._bin_command}",
+                f'Type "emerge {self.bin_pkg}" to enable {self._bin_command} support.',
             ]
             for l in msg:
-                writemsg_level("!!! %s\n" % l, level=logging.ERROR, noiselevel=-1)
+                writemsg_level(f"!!! {l}\n", level=logging.ERROR, noiselevel=-1)
             return False
 
         try:
             self.repo_storage
         except RepoStorageException as e:
-            writemsg_level("!!! {}\n".format(e), level=logging.ERROR, noiselevel=-1)
+            writemsg_level(f"!!! {e}\n", level=logging.ERROR, noiselevel=-1)
             return False
 
         return True
@@ -178,7 +177,7 @@ class SyncBase:
         try:
             retry_count = int(self.repo.sync_openpgp_key_refresh_retry_count)
         except Exception as e:
-            errors.append("sync-openpgp-key-refresh-retry-count: {}".format(e))
+            errors.append(f"sync-openpgp-key-refresh-retry-count: {e}")
         else:
             if retry_count <= 0:
                 return None
@@ -192,7 +191,7 @@ class SyncBase:
                 )
             except Exception as e:
                 errors.append(
-                    "sync-openpgp-key-refresh-retry-overall-timeout: {}".format(e)
+                    f"sync-openpgp-key-refresh-retry-overall-timeout: {e}"
                 )
             else:
                 if retry_overall_timeout < 0:
@@ -213,7 +212,7 @@ class SyncBase:
                     self.repo.sync_openpgp_key_refresh_retry_delay_mult
                 )
             except Exception as e:
-                errors.append("sync-openpgp-key-refresh-retry-delay-mult: {}".format(e))
+                errors.append(f"sync-openpgp-key-refresh-retry-delay-mult: {e}")
             else:
                 if retry_delay_mult <= 0:
                     errors.append(
@@ -229,7 +228,7 @@ class SyncBase:
                     self.repo.sync_openpgp_key_refresh_retry_delay_exp_base
                 )
             except Exception as e:
-                errors.append("sync-openpgp-key-refresh-retry-delay-exp: {}".format(e))
+                errors.append(f"sync-openpgp-key-refresh-retry-delay-exp: {e}")
             else:
                 if retry_delay_exp_base <= 0:
                     errors.append(
@@ -243,11 +242,11 @@ class SyncBase:
             lines.append("!!! Retry disabled for openpgp key refresh:")
             lines.append("")
             for msg in errors:
-                lines.append("    {}".format(msg))
+                lines.append(f"    {msg}")
             lines.append("")
 
             for line in lines:
-                writemsg_level("{}\n".format(line), level=logging.ERROR, noiselevel=-1)
+                writemsg_level(f"{line}\n", level=logging.ERROR, noiselevel=-1)
 
             return None
 
@@ -315,7 +314,7 @@ class SyncBase:
                         keyserver=self.repo.sync_openpgp_keyserver
                     )
                 except Exception as e:
-                    writemsg_level("{}\n".format(e), level=logging.ERROR, noiselevel=-1)
+                    writemsg_level(f"{e}\n", level=logging.ERROR, noiselevel=-1)
                     raise  # retry
 
             # The ThreadPoolExecutor that asyncio uses by default

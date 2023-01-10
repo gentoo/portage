@@ -84,13 +84,13 @@ if _fd_dir is not None:
                     raise
                 return range(max_fd_limit)
 
-elif os.path.isdir("/proc/%s/fd" % portage.getpid()):
+elif os.path.isdir(f"/proc/{portage.getpid()}/fd"):
     # In order for this function to work in forked subprocesses,
     # os.getpid() must be called from inside the function.
     def get_open_fds():
         return (
             int(fd)
-            for fd in os.listdir("/proc/%s/fd" % portage.getpid())
+            for fd in os.listdir(f"/proc/{portage.getpid()}/fd")
             if fd.isdigit()
         )
 
@@ -442,7 +442,7 @@ def spawn(
                 # We need to catch _any_ exception so that it doesn't
                 # propagate out of this function and cause exiting
                 # with anything other than os._exit()
-                writemsg("{}:\n   {}\n".format(e, " ".join(mycommand)), noiselevel=-1)
+                writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
                 traceback.print_exc()
                 sys.stderr.flush()
 
@@ -458,7 +458,7 @@ def spawn(
             os._exit(1)
 
     if not isinstance(pid, int):
-        raise AssertionError("fork returned non-integer: {}".format(repr(pid)))
+        raise AssertionError(f"fork returned non-integer: {repr(pid)}")
 
     # Add the pid to our local and the global pid lists.
     mypids.append(pid)
@@ -574,7 +574,7 @@ def _configure_loopback_interface():
                 rtnl.add_address(ifindex, socket.AF_INET6, "fd::1", 8)
     except OSError as e:
         writemsg(
-            "Unable to configure loopback interface: %s\n" % e.strerror, noiselevel=-1
+            f"Unable to configure loopback interface: {e.strerror}\n", noiselevel=-1
         )
 
 

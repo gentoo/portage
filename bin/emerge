@@ -57,7 +57,7 @@ try:
         try:
             retval = emerge_main()
         except PermissionDenied as e:
-            sys.stderr.write("Permission denied: '%s'\n" % str(e))
+            sys.stderr.write(f"Permission denied: '{str(e)}'\n")
             sys.exit(e.errno)
         except IsADirectory as e:
             sys.stderr.write(
@@ -67,7 +67,7 @@ try:
             )
             sys.exit(e.errno)
         except ParseError as e:
-            sys.stderr.write("%s\n" % str(e))
+            sys.stderr.write(f"{str(e)}\n")
             sys.exit(1)
         except (KeyboardInterrupt, SystemExit):
             raise

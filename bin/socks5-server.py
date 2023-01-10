@@ -220,7 +220,7 @@ class Socks5Server:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: %s <socket-path>" % sys.argv[0])
+        print(f"Usage: {sys.argv[0]} <socket-path>")
         sys.exit(1)
 
     loop = asyncio.new_event_loop()

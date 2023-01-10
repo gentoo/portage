@@ -96,7 +96,7 @@ try:
     opts, pargs = parser.parse_known_args(args=sys.argv[1:])
 
     def err(txt):
-        portage.writemsg("ebuild: {}\n".format(txt), noiselevel=-1)
+        portage.writemsg(f"ebuild: {txt}\n", noiselevel=-1)
         sys.exit(1)
 
     if opts.version:
@@ -146,7 +146,7 @@ try:
         pf = os.path.basename(ebuild)[:-7]
 
     if pf is None:
-        err("{}: does not end with '.ebuild'".format(ebuild))
+        err(f"{ebuild}: does not end with '.ebuild'")
 
     if not os.path.isabs(ebuild):
         mycwd = os.getcwd()
@@ -173,7 +173,7 @@ try:
             portdir_overlay + " " + _shell_quote(ebuild_portdir)
         )
 
-        print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
+        print(f"Appending {ebuild_portdir} to PORTDIR_OVERLAY...")
         portage._reset_legacy_globals()
 
     myrepo = None
@@ -181,10 +181,10 @@ try:
         myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
 
     if not os.path.exists(ebuild):
-        err("{}: does not exist".format(ebuild))
+        err(f"{ebuild}: does not exist")
 
     ebuild_split = ebuild.split("/")
-    cpv = "{}/{}".format(ebuild_split[-3], pf)
+    cpv = f"{ebuild_split[-3]}/{pf}"
 
     with open(
         _unicode_encode(ebuild, encoding=_encodings["fs"], errors="strict"),
@@ -195,7 +195,7 @@ try:
     if eapi is None:
         eapi = "0"
     if not portage.catpkgsplit(cpv, eapi=eapi):
-        err("{}: {}: does not follow correct package syntax".format(ebuild, cpv))
+        err(f"{ebuild}: {cpv}: does not follow correct package syntax")
 
     if ebuild.startswith(vdb_path):
         mytree = "vartree"
@@ -206,7 +206,7 @@ try:
         )
 
         if os.path.realpath(portage_ebuild) != ebuild:
-            err("Portage seems to think that {} is at {}".format(cpv, portage_ebuild))
+            err(f"Portage seems to think that {cpv} is at {portage_ebuild}")
 
     else:
         mytree = "porttree"
@@ -215,7 +215,7 @@ try:
         portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
 
         if not portage_ebuild or portage_ebuild != ebuild:
-            err("{}: does not seem to have a valid PORTDIR structure".format(ebuild))
+            err(f"{ebuild}: does not seem to have a valid PORTDIR structure")
 
     if len(pargs) > 1 and "config" in pargs:
         other_phases = set(pargs)
@@ -381,7 +381,7 @@ try:
                 ) % (tmpsettings["PF"],)
                 msg = textwrap.wrap(msg, 70)
                 for x in msg:
-                    portage.writemsg(">>> %s\n" % x)
+                    portage.writemsg(f">>> {x}\n")
 
                 if ebuild_changed:
                     open(
@@ -418,13 +418,13 @@ try:
             msg = textwrap.wrap(str(e), 70)
             del e
             for x in msg:
-                portage.writemsg("!!! %s\n" % x, noiselevel=-1)
+                portage.writemsg(f"!!! {x}\n", noiselevel=-1)
             a = 1
         except PortagePackageException as e:
-            portage.writemsg("!!! {}\n".format(e), noiselevel=-1)
+            portage.writemsg(f"!!! {e}\n", noiselevel=-1)
             a = 1
         except PermissionDenied as e:
-            portage.writemsg("!!! Permission Denied: {}\n".format(e), noiselevel=-1)
+            portage.writemsg(f"!!! Permission Denied: {e}\n", noiselevel=-1)
             a = 1
         if a is None:
             print("Could not run the required binary?")

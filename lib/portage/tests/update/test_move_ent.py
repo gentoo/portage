@@ -59,7 +59,7 @@ class MoveEntTestCase(TestCase):
                     ebuilds=ebuilds,
                     installed=installed,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 

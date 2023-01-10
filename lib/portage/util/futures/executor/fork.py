@@ -91,9 +91,7 @@ class ForkExecutor:
                 # distinguish between kill and crash
                 future.set_exception(
                     Exception(
-                        "pid {} crashed or killed, exitcode {}".format(
-                            proc.pid, proc.returncode
-                        )
+                        f"pid {proc.pid} crashed or killed, exitcode {proc.returncode}"
                     )
                 )
 
@@ -122,7 +120,7 @@ class _ExceptionWithTraceback:
         tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
         tb = "".join(tb)
         self.exc = exc
-        self.tb = '\n"""\n%s"""' % tb
+        self.tb = f'\n""\"\n{tb}"""'
 
     def __reduce__(self):
         return _rebuild_exc, (self.exc, self.tb)

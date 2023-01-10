@@ -103,7 +103,7 @@ class DeletionIterator:
                     deletion_entry = deletion_db.get(filename)
 
                     if deletion_entry is None:
-                        logger.debug("add '%s' to deletion db" % filename)
+                        logger.debug(f"add '{filename}' to deletion db")
                         deletion_db[filename] = start_time
 
                     elif deletion_entry + deletion_delay <= start_time:
@@ -123,4 +123,4 @@ class DeletionIterator:
                     except KeyError:
                         pass
                     else:
-                        logger.debug("drop '%s' from deletion db" % filename)
+                        logger.debug(f"drop '{filename}' from deletion db")

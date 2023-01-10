@@ -94,7 +94,7 @@ class SonameSlotConflictReinstallTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
                 try:
@@ -140,21 +140,21 @@ class SonameSlotConflictReinstallTestCase(TestCase):
         expected_mergelist = ["[binary]app-misc/A-1", "[binary]app-misc/B-2"]
 
         for i in range(5):
-            binpkgs["app-misc/C%sC-1" % i] = {
+            binpkgs[f"app-misc/C{i}C-1"] = {
                 "DEPEND": "app-misc/B",
                 "RDEPEND": "app-misc/B",
                 "REQUIRES": "x86_32: libB-2.so",
             }
 
-            installed["app-misc/C%sC-1" % i] = {
+            installed[f"app-misc/C{i}C-1"] = {
                 "DEPEND": "app-misc/B",
                 "RDEPEND": "app-misc/B",
                 "REQUIRES": "x86_32: libB-1.so",
             }
             for x in ("DEPEND", "RDEPEND"):
-                binpkgs["app-misc/A-1"][x] += " app-misc/C%sC" % i
+                binpkgs["app-misc/A-1"][x] += f" app-misc/C{i}C"
 
-            expected_mergelist.append("[binary]app-misc/C%sC-1" % i)
+            expected_mergelist.append(f"[binary]app-misc/C{i}C-1")
 
         test_cases = (
             ResolverPlaygroundTestCase(
@@ -185,7 +185,7 @@ class SonameSlotConflictReinstallTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 
@@ -281,7 +281,7 @@ class SonameSlotConflictReinstallTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 
@@ -368,7 +368,7 @@ class SonameSlotConflictReinstallTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
                 try:

@@ -93,10 +93,10 @@ class PopenPipeTestCase(TestCase):
             test_string = x * "a"
             output = self._testPipeReader(test_string)
             self.assertEqual(
-                test_string, output, "x = {}, len(output) = {}".format(x, len(output))
+                test_string, output, f"x = {x}, len(output) = {len(output)}"
             )
 
             output = self._testPipeLogger(test_string)
             self.assertEqual(
-                test_string, output, "x = {}, len(output) = {}".format(x, len(output))
+                test_string, output, f"x = {x}, len(output) = {len(output)}"
             )

@@ -86,7 +86,7 @@ class SonameReinstallTestCase(TestCase):
                     installed=installed,
                     world=world,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 

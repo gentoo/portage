@@ -59,7 +59,7 @@ class _XattrSystemCommands(_XattrGetAll):
     @classmethod
     def get(cls, item, name, nofollow=False, namespace=None):
         if namespace:
-            name = "{}.{}".format(namespace, name)
+            name = f"{namespace}.{name}"
         cmd = ["getfattr", "--absolute-names", "-n", name, item]
         if nofollow:
             cmd += ["-h"]
@@ -75,14 +75,14 @@ class _XattrSystemCommands(_XattrGetAll):
     @classmethod
     def set(cls, item, name, value, _flags=0, namespace=None):
         if namespace:
-            name = "{}.{}".format(namespace, name)
+            name = f"{namespace}.{name}"
         cmd = ["setfattr", "-n", name, "-v", value, item]
         cls._call(cmd)
 
     @classmethod
     def remove(cls, item, name, nofollow=False, namespace=None):
         if namespace:
-            name = "{}.{}".format(namespace, name)
+            name = f"{namespace}.{name}"
         cmd = ["setfattr", "-x", name, item]
         if nofollow:
             cmd += ["-h"]
@@ -93,12 +93,12 @@ class _XattrSystemCommands(_XattrGetAll):
         cmd = ["getfattr", "-d", "--absolute-names", item]
         if nofollow:
             cmd += ["-h"]
-        cmd += ["-m", ("^%s[.]" % namespace) if namespace else "-"]
+        cmd += ["-m", (f"^{namespace}[.]") if namespace else "-"]
         proc = cls._call(cmd, stdout=subprocess.PIPE)
 
         ret = []
         if namespace:
-            namespace = "%s." % namespace
+            namespace = f"{namespace}."
         for name, value in cls._parse_output(proc.stdout):
             if namespace:
                 if name.startswith(namespace):

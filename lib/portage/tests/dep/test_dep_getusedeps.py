@@ -23,7 +23,7 @@ class DepGetUseDeps(TestCase):
                         if slot:
                             cpv += ":" + slot
                         if isinstance(use, tuple):
-                            cpv += "[{}]".format(",".join(use))
+                            cpv += f"[{','.join(use)}]"
                             self.assertEqual(dep_getusedeps(cpv), use)
                         else:
                             if len(use):

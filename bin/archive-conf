@@ -62,7 +62,7 @@ def archive_conf():
                 contents = open(filename)
             except OSError as e:
                 print(
-                    "archive-conf: Unable to open {}: {}".format(filename, e),
+                    f"archive-conf: Unable to open {filename}: {e}",
                     file=sys.stderr,
                 )
                 sys.exit(1)

@@ -138,7 +138,7 @@ try:
             atom = portage.dep.Atom(argv[1], allow_repo=allow_repo)
         except portage.exception.InvalidAtom:
             if atom_validate_strict:
-                portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1], noiselevel=-1)
+                portage.writemsg(f"ERROR: Invalid atom: '{argv[1]}'\n", noiselevel=-1)
                 return 2
             else:
                 atom = argv[1]
@@ -147,7 +147,7 @@ try:
                 try:
                     atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
                 except portage.exception.InvalidAtom as e:
-                    warnings.append("QA Notice: {}: {}".format("has_version", e))
+                    warnings.append(f"QA Notice: has_version: {e}")
             atom = eval_atom_use(atom)
 
         if warnings:
@@ -162,7 +162,7 @@ try:
         except KeyError:
             return 1
         except portage.exception.InvalidAtom:
-            portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1], noiselevel=-1)
+            portage.writemsg(f"ERROR: Invalid atom: '{argv[1]}'\n", noiselevel=-1)
             return 2
 
     docstrings[
@@ -185,7 +185,7 @@ try:
             atom = portage.dep.Atom(argv[1], allow_repo=allow_repo)
         except portage.exception.InvalidAtom:
             if atom_validate_strict:
-                portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1], noiselevel=-1)
+                portage.writemsg(f"ERROR: Invalid atom: '{argv[1]}'\n", noiselevel=-1)
                 return 2
             else:
                 atom = argv[1]
@@ -194,7 +194,7 @@ try:
                 try:
                     atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
                 except portage.exception.InvalidAtom as e:
-                    warnings.append("QA Notice: {}: {}".format("best_version", e))
+                    warnings.append(f"QA Notice: best_version: {e}")
             atom = eval_atom_use(atom)
 
         if warnings:
@@ -221,7 +221,7 @@ try:
         try:
             for pack in argv[1:]:
                 mylist = portage.db[argv[0]]["vartree"].dbapi.match(pack)
-                print("{}:{}".format(pack, portage.best(mylist)))
+                print(f"{pack}:{portage.best(mylist)}")
         except KeyError:
             return 1
 
@@ -242,7 +242,7 @@ try:
         metakeys = argv[3:]
         type_map = {"ebuild": "porttree", "binary": "bintree", "installed": "vartree"}
         if pkgtype not in type_map:
-            print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
+            print(f"Unrecognized package type: '{pkgtype}'", file=sys.stderr)
             return 1
         trees = portage.db
         repo = portage.dep.dep_getrepo(pkgspec)
@@ -251,39 +251,37 @@ try:
             values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
                 pkgspec, metakeys, myrepo=repo
             )
-            writemsg_stdout("".join("%s\n" % x for x in values), noiselevel=-1)
+            writemsg_stdout("".join(f"{x}\n" for x in values), noiselevel=-1)
         except KeyError:
-            print("Package not found: '%s'" % pkgspec, file=sys.stderr)
+            print(f"Package not found: '{pkgspec}'", file=sys.stderr)
             return 1
 
     docstrings[
         "metadata"
-    ] = """
-	<eroot> <pkgtype> <category/package> [<key>]+
-	Returns metadata values for the specified package.
-	Available keys: %s
-	""" % ",".join(
-        sorted(x for x in portage.auxdbkeys)
-    )
+    ] = f"""
+\t<eroot> <pkgtype> <category/package> [<key>]+
+\tReturns metadata values for the specified package.
+\tAvailable keys: {','.join(sorted(x for x in portage.auxdbkeys))}
+\t"""
     metadata.__doc__ = docstrings["metadata"]
 
     @uses_eroot
     def contents(argv):
         if len(argv) != 2:
-            print("ERROR: expected 2 parameters, got %d!" % len(argv))
+            print(f"ERROR: expected 2 parameters, got {len(argv)}!")
             return 2
 
         root, cpv = argv
         vartree = portage.db[root]["vartree"]
         if not vartree.dbapi.cpv_exists(cpv):
-            sys.stderr.write("Package not found: '%s'\n" % cpv)
+            sys.stderr.write(f"Package not found: '{cpv}'\n")
             return 1
         cat, pkg = portage.catsplit(cpv)
         db = portage.dblink(
             cat, pkg, root, vartree.settings, treetype="vartree", vartree=vartree
         )
         writemsg_stdout(
-            "".join("%s\n" % x for x in sorted(db.getcontents())), noiselevel=-1
+            "".join(f"{x}\n" for x in sorted(db.getcontents())), noiselevel=-1
         )
 
     docstrings[
@@ -341,10 +339,10 @@ try:
         msg = []
         for pkg, owned_files in owners.items():
             cpv = pkg.mycpv
-            msg.append("%s\n" % cpv)
+            msg.append(f"{cpv}\n")
             for f in sorted(owned_files):
                 f_abs = os.path.join(root, f.lstrip(os.path.sep))
-                msg.append("\t{}\n".format(f_abs))
+                msg.append(f"\t{f_abs}\n")
                 orphan_abs_paths.discard(f_abs)
                 if orphan_basenames:
                     orphan_basenames.discard(os.path.basename(f_abs))
@@ -359,7 +357,7 @@ try:
             msg = []
             msg.append("None of the installed packages claim these files:\n")
             for f in orphans:
-                msg.append("\t{}\n".format(f))
+                msg.append(f"\t{f}\n")
             sys.stderr.write("".join(msg))
             sys.stderr.flush()
 
@@ -381,7 +379,7 @@ try:
     @uses_eroot
     def is_protected(argv):
         if len(argv) != 2:
-            sys.stderr.write("ERROR: expected 2 parameters, got %d!\n" % len(argv))
+            sys.stderr.write(f"ERROR: expected 2 parameters, got {len(argv)}!\n")
             sys.stderr.flush()
             return 2
 
@@ -434,7 +432,7 @@ try:
     @uses_eroot
     def filter_protected(argv):
         if len(argv) != 1:
-            sys.stderr.write("ERROR: expected 1 parameter, got %d!\n" % len(argv))
+            sys.stderr.write(f"ERROR: expected 1 parameter, got {len(argv)}!\n")
             sys.stderr.flush()
             return 2
 
@@ -480,7 +478,7 @@ try:
                 continue
 
             if protect_obj.isprotected(f):
-                out.write("%s\n" % filename)
+                out.write(f"{filename}\n")
         out.flush()
 
         if errors:
@@ -512,7 +510,7 @@ try:
         type_map = {"ebuild": "porttree", "binary": "bintree", "installed": "vartree"}
 
         if pkgtype not in type_map:
-            writemsg("Unrecognized package type: '%s'\n" % pkgtype, noiselevel=-1)
+            writemsg(f"Unrecognized package type: '{pkgtype}'\n", noiselevel=-1)
             return 2
 
         eroot = argv[0]
@@ -521,7 +519,7 @@ try:
         try:
             atom = portage.dep_expand(atom, mydb=db, settings=portage.settings)
         except portage.exception.InvalidAtom:
-            writemsg("ERROR: Invalid atom: '%s'\n" % atom, noiselevel=-1)
+            writemsg(f"ERROR: Invalid atom: '{atom}'\n", noiselevel=-1)
             return 2
 
         root_config = RootConfig(portage.settings, portage.db[eroot], None)
@@ -568,7 +566,7 @@ try:
                         continue
 
                     if pkg.visible:
-                        writemsg_stdout("{}\n".format(pkg.cpv), noiselevel=-1)
+                        writemsg_stdout(f"{pkg.cpv}\n", noiselevel=-1)
                         return os.EX_OK
 
         # No package found, write out an empty line.
@@ -598,7 +596,7 @@ try:
             if argv[0] in type_map:
                 pkgtype = argv.pop(0)
             for pack in argv:
-                writemsg_stdout("%s:" % pack, noiselevel=-1)
+                writemsg_stdout(f"{pack}:", noiselevel=-1)
                 best_visible([root, pkgtype, pack])
         except KeyError:
             return 1
@@ -635,7 +633,7 @@ try:
     @uses_eroot
     def match(argv):
         if len(argv) != 2:
-            print("ERROR: expected 2 parameters, got %d!" % len(argv))
+            print(f"ERROR: expected 2 parameters, got {len(argv)}!")
             return 2
         root, atom = argv
         if not atom:
@@ -688,7 +686,7 @@ try:
     def expand_virtual(argv):
         if len(argv) != 2:
             writemsg(
-                "ERROR: expected 2 parameters, got %d!\n" % len(argv), noiselevel=-1
+                f"ERROR: expected 2 parameters, got {len(argv)}!\n", noiselevel=-1
             )
             return 2
 
@@ -697,13 +695,13 @@ try:
         try:
             results = list(expand_new_virt(portage.db[root]["vartree"].dbapi, atom))
         except portage.exception.InvalidAtom:
-            writemsg("ERROR: Invalid atom: '%s'\n" % atom, noiselevel=-1)
+            writemsg(f"ERROR: Invalid atom: '{atom}'\n", noiselevel=-1)
             return 2
 
         results.sort()
         for x in results:
             if not x.blocker:
-                writemsg_stdout("{}\n".format(x))
+                writemsg_stdout(f"{x}\n")
 
         return os.EX_OK
 
@@ -929,7 +927,7 @@ try:
             return 3
         for arg in argv[1:]:
             if portage.dep._repo_name_re.match(arg) is None:
-                print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+                print(f"ERROR: invalid repository: {arg}", file=sys.stderr)
                 return 2
             try:
                 repo = portage.db[argv[0]]["vartree"].settings.repositories[arg]
@@ -967,7 +965,7 @@ try:
             return 3
         for arg in argv[1:]:
             if portage.dep._repo_name_re.match(arg) is None:
-                print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+                print(f"ERROR: invalid repository: {arg}", file=sys.stderr)
                 return 2
             path = portage.db[argv[0]]["vartree"].settings.repositories.treemap.get(arg)
             if path is None:
@@ -989,7 +987,7 @@ try:
             return 3
         for arg in argv[1:]:
             if portage.dep._repo_name_re.match(arg) is None:
-                print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+                print(f"ERROR: invalid repository: {arg}", file=sys.stderr)
                 return 2
             try:
                 repo = portage.db[argv[0]]["vartree"].settings.repositories[arg]
@@ -1012,7 +1010,7 @@ try:
             print("ERROR: insufficient parameters!", file=sys.stderr)
             return 3
         if portage.dep._repo_name_re.match(argv[1]) is None:
-            print("ERROR: invalid repository: %s" % argv[1], file=sys.stderr)
+            print(f"ERROR: invalid repository: {argv[1]}", file=sys.stderr)
             return 2
         try:
             repo = portage.db[argv[0]]["vartree"].settings.repositories[argv[1]]
@@ -1044,7 +1042,7 @@ try:
             print("ERROR: insufficient parameters!", file=sys.stderr)
             return 3
         if portage.dep._repo_name_re.match(argv[1]) is None:
-            print("ERROR: invalid repository: %s" % argv[1], file=sys.stderr)
+            print(f"ERROR: invalid repository: {argv[1]}", file=sys.stderr)
             return 2
         try:
             repo = portage.db[argv[0]]["vartree"].settings.repositories[argv[1]]
@@ -1105,7 +1103,7 @@ try:
 
     class MaintainerEmailMatcher:
         def __init__(self, maintainer_emails):
-            self._re = re.compile("^(%s)$" % "|".join(maintainer_emails), re.I)
+            self._re = re.compile(f"^({'|'.join(maintainer_emails)})$", re.I)
 
         def __call__(self, metadata_xml):
             match = False
@@ -1152,7 +1150,7 @@ try:
             if "/" not in arg.split(":")[0]:
                 atom = insert_category_into_atom(arg, "*")
                 if atom is None:
-                    writemsg("ERROR: Invalid atom: '%s'\n" % arg, noiselevel=-1)
+                    writemsg(f"ERROR: Invalid atom: '{arg}'\n", noiselevel=-1)
                     return 2
             else:
                 atom = arg
@@ -1160,7 +1158,7 @@ try:
             try:
                 atom = portage.dep.Atom(atom, allow_wildcard=True, allow_repo=True)
             except portage.exception.InvalidAtom:
-                writemsg("ERROR: Invalid atom: '%s'\n" % arg, noiselevel=-1)
+                writemsg(f"ERROR: Invalid atom: '{arg}'\n", noiselevel=-1)
                 return 2
 
             if atom.slot is not None:
@@ -1290,12 +1288,12 @@ try:
                     continue
 
                 if no_version:
-                    writemsg_stdout("{}\n".format(cp), noiselevel=-1)
+                    writemsg_stdout(f"{cp}\n", noiselevel=-1)
                 else:
                     matches = list(set(matches))
                     portdb._cpv_sort_ascending(matches)
                     for cpv in matches:
-                        writemsg_stdout("{}\n".format(cpv), noiselevel=-1)
+                        writemsg_stdout(f"{cpv}\n", noiselevel=-1)
 
         return os.EX_OK
 
@@ -1400,7 +1398,7 @@ try:
 
     def usage(argv):
         print(">>> Portage information query tool")
-        print(">>> %s" % portage.VERSION)
+        print(f">>> {portage.VERSION}")
         print(">>> Usage: portageq <command> [<option> ...]")
         print("")
         print("Available commands:")
@@ -1445,10 +1443,10 @@ try:
 
         def elog(elog_funcname, lines):
             cmd = (
-                "source '%s/isolated-functions.sh' ; " % os.environ["PORTAGE_BIN_PATH"]
+                f"source '{os.environ['PORTAGE_BIN_PATH']}/isolated-functions.sh' ; "
             )
             for line in lines:
-                cmd += "{} {} ; ".format(elog_funcname, portage._shell_quote(line))
+                cmd += f"{elog_funcname} {portage._shell_quote(line)} ; "
             subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
 
     else:
@@ -1509,7 +1507,7 @@ try:
         uses_eroot = getattr(function, "uses_eroot", False) and len(argv) > 2
         if uses_eroot:
             if not os.path.isdir(argv[2]):
-                sys.stderr.write("Not a directory: '%s'\n" % argv[2])
+                sys.stderr.write(f"Not a directory: '{argv[2]}'\n")
                 sys.stderr.write("Run portageq with --help for info\n")
                 sys.stderr.flush()
                 sys.exit(os.EX_USAGE)
@@ -1554,10 +1552,10 @@ try:
             if retval:
                 sys.exit(retval)
         except portage.exception.PermissionDenied as e:
-            sys.stderr.write("Permission denied: '%s'\n" % str(e))
+            sys.stderr.write(f"Permission denied: '{str(e)}'\n")
             sys.exit(e.errno)
         except portage.exception.ParseError as e:
-            sys.stderr.write("%s\n" % str(e))
+            sys.stderr.write(f"{str(e)}\n")
             sys.exit(1)
         except portage.exception.AmbiguousPackageName as e:
             # Multiple matches thrown from cpv_expand
@@ -1568,7 +1566,7 @@ try:
                 noiselevel=-1,
             )
             for pkg in pkgs:
-                portage.writemsg("* %s\n" % pkg, noiselevel=-1)
+                portage.writemsg(f"* {pkg}\n", noiselevel=-1)
             portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
             sys.exit(1)
 

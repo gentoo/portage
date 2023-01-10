@@ -26,7 +26,7 @@ class database(fs_template.FsBased):
         )
         write_keys = set(self._known_keys)
         write_keys.add("_eclasses_")
-        write_keys.add("_{}_".format(self.validation_chf))
+        write_keys.add(f"_{self.validation_chf}_")
         self._write_keys = sorted(write_keys)
         if not self.readonly and not os.path.exists(self.location):
             self._ensure_dirs()
@@ -74,7 +74,7 @@ class database(fs_template.FsBased):
                 v = values.get(k)
                 if not v:
                     continue
-                myf.write("{}={}\n".format(k, v))
+                myf.write(f"{k}={v}\n")
 
         self._ensure_access(fp)
 

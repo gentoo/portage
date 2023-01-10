@@ -56,7 +56,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                 for myfile in fetchlist_dict[cpv]:
                     distfiles_map.setdefault(myfile, []).append(cpv)
             except InvalidDependString as e:
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
                 del e
                 return 0
         mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
@@ -171,7 +171,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                     # digest does not match.
                     cmd = colorize(
                         "INFORM",
-                        "ebuild --force %s manifest" % os.path.basename(myebuild),
+                        f"ebuild --force {os.path.basename(myebuild)} manifest",
                     )
                     writemsg(
                         (
@@ -181,7 +181,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                             )
                             % myfile
                         )
-                        + "!!!    %s\n" % cmd,
+                        + f"!!!    {cmd}\n",
                         noiselevel=-1,
                     )
                 return 0
@@ -227,7 +227,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                     pv = pkg_key.split("/")[1]
                     for filename in auto_assumed:
                         if filename in fetchlist:
-                            writemsg_stdout("   {}::{}\n".format(pv, filename))
+                            writemsg_stdout(f"   {pv}::{filename}\n")
         return 1
     finally:
         portage._doebuild_manifest_exempt_depend -= 1

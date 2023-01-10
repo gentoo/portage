@@ -47,7 +47,7 @@ def process(mysettings, key, logentries, fulltext):
             errors="backslashreplace",
         )
     except OSError as e:
-        func_call = "open('%s', 'a')" % elogfilename
+        func_call = f"open('{elogfilename}', 'a')"
         if e.errno == errno.EACCES:
             raise portage.exception.PermissionDenied(func_call)
         elif e.errno == errno.EPERM:

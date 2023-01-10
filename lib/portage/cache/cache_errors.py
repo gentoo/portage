@@ -12,10 +12,7 @@ class InitializationError(CacheError):
         self.error, self.class_name = error, class_name
 
     def __str__(self):
-        return "Creation of instance {} failed due to {}".format(
-            self.class_name,
-            str(self.error),
-        )
+        return f"Creation of instance {self.class_name} failed due to {str(self.error)}"
 
 
 class CacheCorruption(CacheError):
@@ -23,7 +20,7 @@ class CacheCorruption(CacheError):
         self.key, self.ex = key, ex
 
     def __str__(self):
-        return "{} is corrupt: {}".format(self.key, str(self.ex))
+        return f"{self.key} is corrupt: {str(self.ex)}"
 
 
 class GeneralCacheCorruption(CacheError):
@@ -31,7 +28,7 @@ class GeneralCacheCorruption(CacheError):
         self.ex = ex
 
     def __str__(self):
-        return "corruption detected: %s" % str(self.ex)
+        return f"corruption detected: {str(self.ex)}"
 
 
 class InvalidRestriction(CacheError):
@@ -41,7 +38,7 @@ class InvalidRestriction(CacheError):
         self.key, self.restriction, self.ex = key, restriction, ex
 
     def __str__(self):
-        return "{}:{} is not valid: {}".format(self.key, self.restriction, str(self.ex))
+        return f"{self.key}:{self.restriction} is not valid: {str(self.ex)}"
 
 
 class ReadOnlyRestriction(CacheError):

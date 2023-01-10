@@ -85,10 +85,10 @@ class Display:
         """
         if blocker.satisfied:
             self.blocker_style = "PKG_BLOCKER_SATISFIED"
-            addl = "{}     ".format(colorize(self.blocker_style, "b"))
+            addl = f"{colorize(self.blocker_style, 'b')}     "
         else:
             self.blocker_style = "PKG_BLOCKER"
-            addl = "{}     ".format(colorize(self.blocker_style, "B"))
+            addl = f"{colorize(self.blocker_style, 'B')}     "
         addl += self.empty_space_in_brackets()
         self.resolved = dep_expand(
             str(blocker.atom).lstrip("!"), mydb=self.vardb, settings=self.pkgsettings
@@ -117,7 +117,7 @@ class Display:
             )
         else:
             addl += colorize(
-                self.blocker_style, " (is {} {})".format(blocking_desc, block_parents)
+                self.blocker_style, f" (is {blocking_desc} {block_parents})"
             )
         if blocker.satisfied:
             if not self.conf.columns:
@@ -444,7 +444,7 @@ class Display:
         @rtype string
         """
         if pkg.type_name == "binary" and pkg.cpv.build_id is not None:
-            pkg_str += "-%s" % pkg.cpv.build_id
+            pkg_str += f"-{pkg.cpv.build_id}"
         return pkg_str
 
     def _set_non_root_columns(self, pkg, pkg_info):
@@ -576,30 +576,30 @@ class Display:
         """
         for msg in self.print_msg:
             if isinstance(msg, str):
-                writemsg_stdout("{}\n".format(msg), noiselevel=-1)
+                writemsg_stdout(f"{msg}\n", noiselevel=-1)
                 continue
             myprint, self.verboseadd, repoadd = msg
             if self.verboseadd:
                 myprint += " " + self.verboseadd
             if show_repos and repoadd:
-                myprint += " " + teal("[%s]" % repoadd)
-            writemsg_stdout("{}\n".format(myprint), noiselevel=-1)
+                myprint += " " + teal(f"[{repoadd}]")
+            writemsg_stdout(f"{myprint}\n", noiselevel=-1)
 
     def print_blockers(self):
         """Performs the actual output printing of the pre-formatted
         blocker messages
         """
         for pkg in self.blockers:
-            writemsg_stdout("{}\n".format(pkg), noiselevel=-1)
+            writemsg_stdout(f"{pkg}\n", noiselevel=-1)
 
     def print_verbose(self, show_repos):
         """Prints the verbose output to std_out
 
         @param show_repos: bool.
         """
-        writemsg_stdout("\n{}\n".format(self.counters), noiselevel=-1)
+        writemsg_stdout(f"\n{self.counters}\n", noiselevel=-1)
         if show_repos:
-            writemsg_stdout("{}".format(self.conf.repo_display), noiselevel=-1)
+            writemsg_stdout(f"{self.conf.repo_display}", noiselevel=-1)
 
     def get_display_list(self, mylist):
         """Determines the display list to process
@@ -662,7 +662,7 @@ class Display:
                 pkg.cpv, myrepo=pkg_info.repo_name
             )
             if pkg_info.ebuild_path is None:
-                raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
+                raise AssertionError(f"ebuild not found for '{pkg.cpv}'")
             pkg_info.repo_path_real = os.path.dirname(
                 os.path.dirname(os.path.dirname(pkg_info.ebuild_path))
             )
@@ -925,7 +925,7 @@ class Display:
             self.print_verbose(show_repos)
         for pkg, pkg_info in self.restrict_fetch_list.items():
             writemsg_stdout(
-                "\nFetch instructions for {}:\n".format(pkg.cpv), noiselevel=-1
+                f"\nFetch instructions for {pkg.cpv}:\n", noiselevel=-1
             )
             spawn_nofetch(
                 self.conf.trees[pkg.root]["porttree"].dbapi, pkg_info.ebuild_path
@@ -951,7 +951,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
     # 	5. USE
 
     if atom.soname:
-        return "{}".format(atom), ""
+        return f"{atom}", ""
 
     highlight = set()
 
@@ -1015,7 +1015,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
 
     highlight_use = set()
     if atom.use:
-        use_atom = "{}[{}]".format(atom.cp, str(atom.use))
+        use_atom = f"{atom.cp}[{str(atom.use)}]"
         use_atom_set = InternalPackageSet(initial_atoms=(use_atom,))
         if not use_atom_set.findAtomForPackage(pkg, modified_use=pkg_use_enabled(pkg)):
             missing_iuse = pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required)

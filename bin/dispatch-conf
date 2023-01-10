@@ -415,14 +415,14 @@ class dispatch:
                         os.unlink(mrgconf)
                     break
                 else:
-                    raise AssertionError("Invalid Input: %s" % c)
+                    raise AssertionError(f"Invalid Input: {c}")
 
         if auto_zapped:
             print()
             print(" One or more updates are frozen and have been automatically zapped:")
             print()
             for frozen in auto_zapped:
-                writemsg_stdout("  * '%s'\n" % frozen, noiselevel=-1)
+                writemsg_stdout(f"  * '{frozen}'\n", noiselevel=-1)
             print()
 
         perform_conf_update_session_hooks("post-session")

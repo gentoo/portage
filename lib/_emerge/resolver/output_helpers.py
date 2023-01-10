@@ -75,7 +75,7 @@ class _RepoDisplay:
             show_repo_paths[repo_index] = repo_path
         if show_repo_paths:
             for index, repo_path in enumerate(show_repo_paths):
-                output.append(" " + teal("[" + str(index) + "]") + " %s\n" % repo_path)
+                output.append(" " + teal("[" + str(index) + "]") + f" {repo_path}\n")
         if unknown_repo:
             output.append(
                 " "
@@ -107,47 +107,47 @@ class _PackageCounters:
         )
         myoutput = []
         details = []
-        myoutput.append("Total: %s package" % total_installs)
+        myoutput.append(f"Total: {total_installs} package")
         if total_installs != 1:
             myoutput.append("s")
         if total_installs != 0:
             myoutput.append(" (")
         if self.upgrades > 0:
-            details.append("%s upgrade" % self.upgrades)
+            details.append(f"{self.upgrades} upgrade")
             if self.upgrades > 1:
                 details[-1] += "s"
         if self.downgrades > 0:
-            details.append("%s downgrade" % self.downgrades)
+            details.append(f"{self.downgrades} downgrade")
             if self.downgrades > 1:
                 details[-1] += "s"
         if self.new > 0:
-            details.append("%s new" % self.new)
+            details.append(f"{self.new} new")
         if self.newslot > 0:
-            details.append("%s in new slot" % self.newslot)
+            details.append(f"{self.newslot} in new slot")
             if self.newslot > 1:
                 details[-1] += "s"
         if self.reinst > 0:
-            details.append("%s reinstall" % self.reinst)
+            details.append(f"{self.reinst} reinstall")
             if self.reinst > 1:
                 details[-1] += "s"
         if self.binary > 0:
-            details.append("%s binary" % self.binary)
+            details.append(f"{self.binary} binary")
             if self.binary > 1:
                 details[-1] = details[-1][:-1] + "ies"
         if self.uninst > 0:
-            details.append("%s uninstall" % self.uninst)
+            details.append(f"{self.uninst} uninstall")
             if self.uninst > 1:
                 details[-1] += "s"
         if self.interactive > 0:
             details.append(
-                "{} {}".format(self.interactive, colorize("WARN", "interactive"))
+                f"{self.interactive} {colorize('WARN', 'interactive')}"
             )
         myoutput.append(", ".join(details))
         if total_installs != 0:
             myoutput.append(")")
-        myoutput.append(", Size of downloads: %s" % localized_size(self.totalsize))
+        myoutput.append(f", Size of downloads: {localized_size(self.totalsize)}")
         if self.restrict_fetch:
-            myoutput.append("\nFetch Restriction: %s package" % self.restrict_fetch)
+            myoutput.append(f"\nFetch Restriction: {self.restrict_fetch} package")
             if self.restrict_fetch > 1:
                 myoutput.append("s")
         if self.restrict_fetch_satisfied < self.restrict_fetch:
@@ -156,7 +156,7 @@ class _PackageCounters:
                 % (self.restrict_fetch - self.restrict_fetch_satisfied)
             )
         if self.blocks > 0:
-            myoutput.append("\nConflict: %s block" % self.blocks)
+            myoutput.append(f"\nConflict: {self.blocks} block")
             if self.blocks > 1:
                 myoutput.append("s")
             if self.blocks_satisfied < self.blocks:
@@ -205,7 +205,7 @@ class _DisplayConfig:
             try:
                 mywidth = int(frozen_config.settings["COLUMNWIDTH"])
             except ValueError as e:
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
                 writemsg(
                     "!!! Unable to parse COLUMNWIDTH='%s'\n"
                     % frozen_config.settings["COLUMNWIDTH"],
@@ -339,7 +339,7 @@ def _create_use_string(
     else:
         ret = " ".join(enabled + disabled + removed)
     if ret:
-        ret = '{}="{}" '.format(name, ret)
+        ret = f'{name}="{ret}" '
     return ret
 
 

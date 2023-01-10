@@ -82,7 +82,7 @@ class EbuildBuild(CompositeTask):
             settings.configdict["pkg"]["MERGE_TYPE"] = "source"
         ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
         if ebuild_path is None:
-            raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
+            raise AssertionError(f"ebuild not found for '{pkg.cpv}'")
         self._ebuild_path = ebuild_path
         portage.doebuild_environment(
             ebuild_path, "setup", settings=self.settings, db=portdb
@@ -108,7 +108,7 @@ class EbuildBuild(CompositeTask):
                 msg = (
                     "Fetching files in the background.",
                     "To view fetch progress, run in another terminal:",
-                    "tail -f %s" % fetch_log,
+                    f"tail -f {fetch_log}",
                 )
                 out = portage.output.EOutput()
                 for l in msg:
@@ -297,9 +297,7 @@ class EbuildBuild(CompositeTask):
             already_fetched = already_fetched_task.future.result()
         except portage.exception.InvalidDependString as e:
             msg_lines = []
-            msg = "Fetch failed for '{}' due to invalid SRC_URI: {}".format(
-                self.pkg.cpv, e
-            )
+            msg = f"Fetch failed for '{self.pkg.cpv}' due to invalid SRC_URI: {e}"
             msg_lines.append(msg)
             fetcher._eerror(msg_lines)
             portage.elog.elog_process(self.pkg.cpv, self.settings)
@@ -559,10 +557,10 @@ class EbuildBuild(CompositeTask):
         pkg = task.get_binpkg_info()
         infoloc = os.path.join(self.settings["PORTAGE_BUILDDIR"], "build-info")
         info = {
-            "BINPKGMD5": "%s\n" % pkg._metadata["MD5"],
+            "BINPKGMD5": f"{pkg._metadata['MD5']}\n",
         }
         if pkg.build_id is not None:
-            info["BUILD_ID"] = "%s\n" % pkg.build_id
+            info["BUILD_ID"] = f"{pkg.build_id}\n"
         for k, v in info.items():
             with open(
                 _unicode_encode(

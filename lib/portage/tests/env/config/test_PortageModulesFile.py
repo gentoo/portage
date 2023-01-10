@@ -32,7 +32,7 @@ class PortageModulesFileTestCase(TestCase):
         fd, self.fname = mkstemp()
         f = os.fdopen(fd, "w")
         for k, v in self.items.items():
-            f.write("{}={}\n".format(k, v))
+            f.write(f"{k}={v}\n")
         f.close()
 
     def NukeFile(self):

@@ -71,7 +71,7 @@ def chpath_inplace(filename, is_text_file, old, new):
         try:
             orig_mode = stat.S_IMODE(os.lstat(filename).st_mode)
         except OSError as e:
-            sys.stderr.write("{}: {}\n".format(e, filename))
+            sys.stderr.write(f"{e}: {filename}\n")
             return
         temp_mode = 0o200 | orig_mode
         os.chmod(filename, temp_mode)

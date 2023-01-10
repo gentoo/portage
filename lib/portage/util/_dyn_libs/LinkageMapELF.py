@@ -309,7 +309,7 @@ class LinkageMapELF:
                         entry = NeededEntry.parse("scanelf", l)
                     except InvalidData as e:
                         writemsg_level(
-                            "\n{}\n\n".format(e), level=logging.ERROR, noiselevel=-1
+                            f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1
                         )
                         continue
                     try:
@@ -392,7 +392,7 @@ class LinkageMapELF:
             try:
                 entry = NeededEntry.parse(location, l)
             except InvalidData as e:
-                writemsg_level("\n{}\n\n".format(e), level=logging.ERROR, noiselevel=-1)
+                writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                 continue
 
             # If NEEDED.ELF.2 contains the new multilib category field,
@@ -409,7 +409,7 @@ class LinkageMapELF:
             expand = {"ORIGIN": os.path.dirname(entry.filename)}
             entry.runpaths = frozenset(
                 normalize_path(
-                    varexpand(x, expand, error_leader=lambda: "%s: " % location)
+                    varexpand(x, expand, error_leader=lambda: f"{location}: ")
                 )
                 for x in entry.runpaths
             )
@@ -662,15 +662,14 @@ class LinkageMapELF:
                         if debug:
                             if not os.path.isfile(lib):
                                 writemsg_level(
-                                    _("Missing library:") + " {}\n".format(lib),
+                                    _("Missing library:") + f" {lib}\n",
                                     level=logging.DEBUG,
                                     noiselevel=-1,
                                 )
                             else:
                                 writemsg_level(
                                     _("Possibly missing symlink:")
-                                    + "%s\n"
-                                    % (os.path.join(os.path.dirname(lib), soname)),
+                                    + f"{os.path.join(os.path.dirname(lib), soname)}\n",
                                     level=logging.DEBUG,
                                     noiselevel=-1,
                                 )
@@ -719,7 +718,7 @@ class LinkageMapELF:
         os = _os_merge
         obj_key = self._obj_key(obj)
         if obj_key not in self._obj_properties:
-            raise KeyError("{} ({}) not in object list".format(obj_key, obj))
+            raise KeyError(f"{obj_key} ({obj}) not in object list")
         basename = os.path.basename(obj)
         soname = self._obj_properties[obj_key].soname
         return (
@@ -770,10 +769,10 @@ class LinkageMapELF:
         else:
             obj_key = self._obj_key_cache.get(obj)
             if obj_key is None:
-                raise KeyError("%s not in object list" % obj)
+                raise KeyError(f"{obj} not in object list")
         obj_props = self._obj_properties.get(obj_key)
         if obj_props is None:
-            raise KeyError("%s not in object list" % obj_key)
+            raise KeyError(f"{obj_key} not in object list")
         if obj_props.owner is None:
             return ()
         return (obj_props.owner,)
@@ -793,10 +792,10 @@ class LinkageMapELF:
         if isinstance(obj, self._ObjectKey):
             obj_key = obj
             if obj_key not in self._obj_properties:
-                raise KeyError("%s not in object list" % obj_key)
+                raise KeyError(f"{obj_key} not in object list")
             return self._obj_properties[obj_key].soname
         if obj not in self._obj_key_cache:
-            raise KeyError("%s not in object list" % obj)
+            raise KeyError(f"{obj} not in object list")
         return self._obj_properties[self._obj_key_cache[obj]].soname
 
     def findProviders(self, obj):
@@ -831,11 +830,11 @@ class LinkageMapELF:
         if isinstance(obj, self._ObjectKey):
             obj_key = obj
             if obj_key not in self._obj_properties:
-                raise KeyError("%s not in object list" % obj_key)
+                raise KeyError(f"{obj_key} not in object list")
         else:
             obj_key = self._obj_key(obj)
             if obj_key not in self._obj_properties:
-                raise KeyError("{} ({}) not in object list".format(obj_key, obj))
+                raise KeyError(f"{obj_key} ({obj}) not in object list")
 
         obj_props = self._obj_properties[obj_key]
         arch = obj_props.arch
@@ -910,13 +909,13 @@ class LinkageMapELF:
         if isinstance(obj, self._ObjectKey):
             obj_key = obj
             if obj_key not in self._obj_properties:
-                raise KeyError("%s not in object list" % obj_key)
+                raise KeyError(f"{obj_key} not in object list")
             objs = self._obj_properties[obj_key].alt_paths
         else:
             objs = {obj}
             obj_key = self._obj_key(obj)
             if obj_key not in self._obj_properties:
-                raise KeyError("{} ({}) not in object list".format(obj_key, obj))
+                raise KeyError(f"{obj_key} ({obj}) not in object list")
 
         # If there is another version of this lib with the
         # same soname and the soname symlink points to that

@@ -287,7 +287,7 @@ src_install() {
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args {}".format(args)
+                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
                 )
         finally:
             playground.cleanup()
