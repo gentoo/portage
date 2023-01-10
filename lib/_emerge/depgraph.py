@@ -18,6 +18,7 @@ from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
     VCS_DIRS,
+    SUPPORTED_XPAK_EXTENSIONS,
     SUPPORTED_GPKG_EXTENSIONS,
 )
 from portage.dbapi import dbapi
@@ -4574,7 +4575,9 @@ class depgraph:
         onlydeps = "--onlydeps" in self._frozen_config.myopts
         lookup_owners = []
         for x in myfiles:
-            if x.endswith(".tbz2") or x.endswith(SUPPORTED_GPKG_EXTENSIONS):
+            if x.endswith(SUPPORTED_XPAK_EXTENSIONS) or x.endswith(
+                SUPPORTED_GPKG_EXTENSIONS
+            ):
                 if not os.path.exists(x):
                     if os.path.exists(os.path.join(pkgsettings["PKGDIR"], "All", x)):
                         x = os.path.join(pkgsettings["PKGDIR"], "All", x)
@@ -4608,7 +4611,7 @@ class depgraph:
                     mykey = None
                     cat = mytbz2.getfile("CATEGORY")
                 elif binpkg_format == "gpkg":
-                    mygpkg = portage.gpkg.gpkg(self.frozen_config, None, x)
+                    mygpkg = portage.gpkg.gpkg(root_config.settings, None, x)
                     mykey = None
                     cat = mygpkg.get_metadata("CATEGORY")
                 else:
@@ -4618,7 +4621,12 @@ class depgraph:
                     cat = _unicode_decode(
                         cat.strip(), encoding=_encodings["repo.content"]
                     )
-                    mykey = cat + "/" + os.path.basename(x)[:-5]
+                    if binpkg_format == "xpak":
+                        mykey = cat + "/" + os.path.basename(x)[:-5]
+                    elif binpkg_format == "gpkg":
+                        mykey = cat + "/" + os.path.basename(x)[:-9]
+                    else:
+                        raise InvalidBinaryPackageFormat(x)
 
                 if mykey is None:
                     writemsg(
