@@ -220,16 +220,12 @@ class TestAtom(TestCase):
                 a.operator,
                 msg=f"Atom('{atom}').operator = {a.operator} == '{op}'",
             )
-            self.assertEqual(
-                cp, a.cp, msg=f"Atom('{atom}').cp = {a.cp} == '{cp}'"
-            )
+            self.assertEqual(cp, a.cp, msg=f"Atom('{atom}').cp = {a.cp} == '{cp}'")
             if ver is not None:
                 cpv = f"{cp}-{ver}"
             else:
                 cpv = cp
-            self.assertEqual(
-                cpv, a.cpv, msg=f"Atom('{atom}').cpv = {a.cpv} == '{cpv}'"
-            )
+            self.assertEqual(cpv, a.cpv, msg=f"Atom('{atom}').cpv = {a.cpv} == '{cpv}'")
             self.assertEqual(
                 slot,
                 a.slot,

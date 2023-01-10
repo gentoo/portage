@@ -92,10 +92,7 @@ def display_preserved_libs(vardb, verbose=False):
                     owners_desc = "preserved"
                 else:
                     owners_desc = ", ".join(x.mycpv for x in owners.get(c, []))
-                print(
-                    colorize("WARN", " * ")
-                    + f"     used by {c} ({owners_desc})"
-                )
+                print(colorize("WARN", " * ") + f"     used by {c} ({owners_desc})")
             if not verbose and len(consumers) > max_display:
                 print(
                     colorize("WARN", " * ")

@@ -429,9 +429,7 @@ def update_config_files(
                             )
                             contents.insert(
                                 pos + 1,
-                                line.replace(
-                                    f"{atom}", f"{new_atom}", 1
-                                ),
+                                line.replace(f"{atom}", f"{new_atom}", 1),
                             )
                             # we've inserted an additional line, so we need to
                             # skip it when it's reached in the next iteration

@@ -31,7 +31,7 @@ def _expand_new_virtuals(
     trees=None,
     use_mask=None,
     use_force=None,
-    **kwargs
+    **kwargs,
 ):
     """
     In order to solve bug #141118, recursively expand new-style virtuals so
@@ -96,7 +96,7 @@ def _expand_new_virtuals(
                 trees=trees,
                 use_mask=use_mask,
                 use_force=use_force,
-                **kwargs
+                **kwargs,
             )
             if is_disjunction:
                 if len(x_exp) == 1:
@@ -241,7 +241,7 @@ def _expand_new_virtuals(
                     mysettings,
                     myroot=myroot,
                     trees=trees,
-                    **pkg_kwargs
+                    **pkg_kwargs,
                 )
             finally:
                 # Restore previous EAPI after recursion.

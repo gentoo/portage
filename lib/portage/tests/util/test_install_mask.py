@@ -190,8 +190,6 @@ class InstallMaskTestCase(TestCase):
             self.assertFalse(
                 os.path.lexists(link_name), f"failed to remove {link_name}"
             )
-            self.assertFalse(
-                os.path.lexists(base_dir), f"failed to remove {base_dir}"
-            )
+            self.assertFalse(os.path.lexists(base_dir), f"failed to remove {base_dir}")
         finally:
             shutil.rmtree(tmp_dir)

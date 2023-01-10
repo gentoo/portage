@@ -159,9 +159,7 @@ class RsyncSync(NewBase):
             # so we may as well bail out before actual rsync happens.
             if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
                 try:
-                    out.einfo(
-                        f"Using keys from {self.repo.sync_openpgp_key_path}"
-                    )
+                    out.einfo(f"Using keys from {self.repo.sync_openpgp_key_path}")
                     with open(self.repo.sync_openpgp_key_path, "rb") as f:
                         openpgp_env.import_key(f)
                     self._refresh_keys(openpgp_env)
@@ -458,9 +456,7 @@ class RsyncSync(NewBase):
                             % (m.openpgp_signature.primary_key_fingerprint)
                         )
                         out.einfo(f"- subkey: {m.openpgp_signature.fingerprint}")
-                        out.einfo(
-                            f"- timestamp: {m.openpgp_signature.timestamp} UTC"
-                        )
+                        out.einfo(f"- timestamp: {m.openpgp_signature.timestamp} UTC")
 
                         # if nothing has changed, skip the actual Manifest
                         # verification

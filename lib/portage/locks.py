@@ -342,9 +342,7 @@ def _lockfile_iteration(
                                     _("Error while waiting " "to lock '%s'")
                                     % lockfilename
                                 )
-                            writemsg(
-                                f"\n!!! {context_desc}: {e}\n", noiselevel=-1
-                            )
+                            writemsg(f"\n!!! {context_desc}: {e}\n", noiselevel=-1)
 
                         time.sleep(_HARDLINK_POLL_LATENCY)
                         continue

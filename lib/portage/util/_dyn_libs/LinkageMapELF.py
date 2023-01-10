@@ -308,9 +308,7 @@ class LinkageMapELF:
                     try:
                         entry = NeededEntry.parse("scanelf", l)
                     except InvalidData as e:
-                        writemsg_level(
-                            f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1
-                        )
+                        writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                         continue
                     try:
                         with open(

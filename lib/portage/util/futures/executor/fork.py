@@ -120,7 +120,7 @@ class _ExceptionWithTraceback:
         tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
         tb = "".join(tb)
         self.exc = exc
-        self.tb = f'\n""\"\n{tb}"""'
+        self.tb = f'\n"""\n{tb}"""'
 
     def __reduce__(self):
         return _rebuild_exc, (self.exc, self.tb)

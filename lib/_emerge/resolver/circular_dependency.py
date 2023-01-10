@@ -88,10 +88,7 @@ class circular_dependency_handler:
             parent = self.shortest_cycle[pos - 1]
             priorities = self.graph.nodes[parent][0][pkg]
             if pos > 0:
-                msg.append(
-                    indent
-                    + f"{pkg} ({priorities[-1]})"
-                )
+                msg.append(indent + f"{pkg} ({priorities[-1]})")
             else:
                 msg.append(indent + f"{pkg} depends on")
             indent += " "
@@ -99,10 +96,7 @@ class circular_dependency_handler:
         pkg = self.shortest_cycle[0]
         parent = self.shortest_cycle[-1]
         priorities = self.graph.nodes[parent][0][pkg]
-        msg.append(
-            indent
-            + f"{pkg} ({priorities[-1]})"
-        )
+        msg.append(indent + f"{pkg} ({priorities[-1]})")
 
         return "\n".join(msg)
 

@@ -210,9 +210,7 @@ if "affected" in params:
             myglsa = Glsa(x, portage.settings, vardb, portdb)
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
-                sys.stderr.write(
-                    f"invalid GLSA: {x} (error message was: {e})\n"
-                )
+                sys.stderr.write(f"invalid GLSA: {x} (error message was: {e})\n")
             continue
         if myglsa.isVulnerable():
             glsalist.append(x)
@@ -319,9 +317,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
             myglsa = Glsa(myid, portage.settings, vardb, portdb)
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
-                sys.stderr.write(
-                    f"invalid GLSA: {myid} (error message was: {e})\n"
-                )
+                sys.stderr.write(f"invalid GLSA: {myid} (error message was: {e})\n")
             continue
         if mode == "dump":
             myglsa.dump()
@@ -413,9 +409,7 @@ if mode == "test":
             myglsa = Glsa(myid, portage.settings, vardb, portdb)
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
-                sys.stderr.write(
-                    f"invalid GLSA: {myid} (error message was: {e})\n"
-                )
+                sys.stderr.write(f"invalid GLSA: {myid} (error message was: {e})\n")
             continue
         if myglsa.isVulnerable():
             outputlist.append(str(myglsa.nr))
@@ -468,9 +462,7 @@ if mode == "mail":
             myglsa = Glsa(myid, portage.settings, vardb, portdb)
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
-                sys.stderr.write(
-                    f"invalid GLSA: {myid} (error message was: {e})\n"
-                )
+                sys.stderr.write(f"invalid GLSA: {myid} (error message was: {e})\n")
             continue
         myfd = BytesIO()
         myglsa.dump(outstream=myfd)

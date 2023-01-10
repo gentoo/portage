@@ -551,9 +551,7 @@ class config:
                 user_auxdbmodule is not None
                 and user_auxdbmodule in self._module_aliases
             ):
-                warnings.warn(
-                    f"'{user_auxdbmodule}' is deprecated: {modules_file}"
-                )
+                warnings.warn(f"'{user_auxdbmodule}' is deprecated: {modules_file}")
 
             self.modules["default"] = {
                 "portdbapi.auxdbmodule": "portage.cache.flat_hash.mtime_md5_database",

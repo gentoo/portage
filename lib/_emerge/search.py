@@ -481,10 +481,7 @@ class search:
                         try:
                             mysum[0] = mf.getDistfilesSize(uri_map)
                         except KeyError as e:
-                            file_size_str = (
-                                "Unknown (missing "
-                                + f"digest for {e})"
-                            )
+                            file_size_str = "Unknown (missing " + f"digest for {e})"
                             del e
 
                 available = False

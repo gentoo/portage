@@ -174,9 +174,7 @@ class FetchTask(CompositeTask):
 
             if self.config.options.dry_run:
                 if os.path.exists(recycle_file):
-                    logger.info(
-                        f"dry-run: delete '{self.distfile}' from recycle"
-                    )
+                    logger.info(f"dry-run: delete '{self.distfile}' from recycle")
             else:
                 try:
                     os.unlink(recycle_file)

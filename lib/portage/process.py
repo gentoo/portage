@@ -89,9 +89,7 @@ elif os.path.isdir(f"/proc/{portage.getpid()}/fd"):
     # os.getpid() must be called from inside the function.
     def get_open_fds():
         return (
-            int(fd)
-            for fd in os.listdir(f"/proc/{portage.getpid()}/fd")
-            if fd.isdigit()
+            int(fd) for fd in os.listdir(f"/proc/{portage.getpid()}/fd") if fd.isdigit()
         )
 
 else:

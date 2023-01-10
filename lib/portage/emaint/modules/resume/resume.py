@@ -32,9 +32,7 @@ class CleanResume:
                 if mergelist is None or not hasattr(mergelist, "__len__"):
                     messages.append(f"unrecognized resume list: '{k}'")
                     continue
-                messages.append(
-                    f"resume list '{k}' contains {len(mergelist)} packages"
-                )
+                messages.append(f"resume list '{k}' contains {len(mergelist)} packages")
             finally:
                 if onProgress:
                     onProgress(maxval, i + 1)

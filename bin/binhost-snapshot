@@ -82,8 +82,7 @@ def main(argv):
 
     if not os.path.isfile(src_pkgs_index):
         parser.error(
-            "src_pkg_dir does not contain a "
-            + f"'Packages' index: '{src_pkg_dir}'"
+            "src_pkg_dir does not contain a " + f"'Packages' index: '{src_pkg_dir}'"
         )
 
     parse_result = urlparse(snapshot_uri)

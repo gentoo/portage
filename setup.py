@@ -563,7 +563,7 @@ class x_install_lib(install_lib):
                     ),
                     (
                         r"^(EPREFIX\s*=\s*)(.*)",
-                        lambda m: f"{m.group(1)}__import__(\"sys\").prefix",
+                        lambda m: f'{m.group(1)}__import__("sys").prefix',
                     ),
                 ),
             )

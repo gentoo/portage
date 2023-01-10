@@ -135,9 +135,7 @@ class EbuildPhase(CompositeTask):
                     maint_str = "<invalid metadata.xml>"
 
             msg = []
-            msg.append(
-                f"Package:    {self.settings.mycpv}:{self.settings['SLOT']}"
-            )
+            msg.append(f"Package:    {self.settings.mycpv}:{self.settings['SLOT']}")
             if self.settings.get("PORTAGE_REPO_NAME"):
                 msg.append(f"Repository: {self.settings['PORTAGE_REPO_NAME']}")
             if maint_str:
@@ -570,7 +568,7 @@ class _PostPhaseCommands(CompositeTask):
                     phase=self.phase,
                     scheduler=self.scheduler,
                     settings=self.settings,
-                    **kwargs
+                    **kwargs,
                 )
             )
 

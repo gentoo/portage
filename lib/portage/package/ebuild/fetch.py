@@ -370,9 +370,7 @@ def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
         if hash_filter is not None:
             digests = _apply_hash_filter(digests, hash_filter)
         if _check_digests(filename, digests, show_errors=show_errors):
-            eout.ebegin(
-                f"{os.path.basename(filename)} {' '.join(sorted(digests))} ;-)"
-            )
+            eout.ebegin(f"{os.path.basename(filename)} {' '.join(sorted(digests))} ;-)")
             eout.eend(0)
         else:
             return (False, st)
@@ -1553,9 +1551,7 @@ def fetch(
                                 if digests:
                                     digests = list(digests)
                                     digests.sort()
-                                    eout.ebegin(
-                                        f"{myfile} {' '.join(digests)} ;-)"
-                                    )
+                                    eout.ebegin(f"{myfile} {' '.join(digests)} ;-)")
                                     eout.eend(0)
                                 continue  # fetch any remaining files
 

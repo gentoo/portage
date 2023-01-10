@@ -30,9 +30,7 @@ class UnshareNetTestCase(TestCase):
 
         errno_value = portage.process._unshare_validate(CLONE_NEWNET)
         if errno_value != 0:
-            self.skipTest(
-                f"Unable to unshare: {errno.errorcode.get(errno_value, '?')}"
-            )
+            self.skipTest(f"Unable to unshare: {errno.errorcode.get(errno_value, '?')}")
 
         env = os.environ.copy()
         env["IPV6"] = "1" if portage.process._has_ipv6() else ""

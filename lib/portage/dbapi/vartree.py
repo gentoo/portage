@@ -703,7 +703,7 @@ class vardbapi(dbapi):
                     self._aux_cache_filename, encoding=_encodings["fs"], errors="strict"
                 ),
                 mode="rb",
-                **open_kwargs
+                **open_kwargs,
             ) as f:
                 mypickle = pickle.Unpickler(f)
                 try:
@@ -1080,9 +1080,7 @@ class vardbapi(dbapi):
         # Method parameters may override QUICKPKG_DEFAULT_OPTS.
         opts_list = portage.util.shlex_split(settings.get("QUICKPKG_DEFAULT_OPTS", ""))
         if include_config is not None:
-            opts_list.append(
-                f"--include-config={'y' if include_config else 'n'}"
-            )
+            opts_list.append(f"--include-config={'y' if include_config else 'n'}")
         if include_unmodified_config is not None:
             opts_list.append(
                 "--include-unmodified-config={}".format(
@@ -1329,9 +1327,7 @@ class vardbapi(dbapi):
                     try:
                         entry = NeededEntry.parse(needed_filename, l)
                     except InvalidData as e:
-                        writemsg_level(
-                            f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1
-                        )
+                        writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                         continue
 
                     filename = os.path.join(root, entry.filename.lstrip(os.sep))
@@ -2450,9 +2446,7 @@ class dblink:
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
-                showMessage(
-                    f"{eapi_unsupported}\n", level=logging.ERROR, noiselevel=-1
-                )
+                showMessage(f"{eapi_unsupported}\n", level=logging.ERROR, noiselevel=-1)
             elif os.path.isfile(myebuildpath):
                 phase = EbuildPhase(
                     background=background,
@@ -2649,9 +2643,7 @@ class dblink:
                 )
 
     def _show_unmerge(self, zing, desc, file_type, file_name):
-        self._display_merge(
-            f"{zing} {desc.ljust(8)} {file_type} {file_name}\n"
-        )
+        self._display_merge(f"{zing} {desc.ljust(8)} {file_type} {file_name}\n")
 
     def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
         """
@@ -4888,9 +4880,7 @@ class dblink:
                     msg = []
                     msg.append(pkg_info_strs[pkg.mycpv])
                     for f in sorted(owned_files):
-                        msg.append(
-                            f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}"
-                        )
+                        msg.append(f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}")
                     msg.append("")
                     collision_message_type(msg)
 

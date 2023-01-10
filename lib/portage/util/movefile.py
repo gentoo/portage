@@ -232,9 +232,7 @@ def movefile(
         except SystemExit as e:
             raise
         except Exception as e:
-            writemsg(
-                f"!!! {_('failed to properly create symlink:')}\n", noiselevel=-1
-            )
+            writemsg(f"!!! {_('failed to properly create symlink:')}\n", noiselevel=-1)
             writemsg(f"!!! {dest} -> {target}\n", noiselevel=-1)
             writemsg(f"!!! {e}\n", noiselevel=-1)
             return None
@@ -246,9 +244,7 @@ def movefile(
     # and them use os.rename() to replace the destination.
     if hardlink_candidates:
         head, tail = os.path.split(dest)
-        hardlink_tmp = os.path.join(
-            head, f".{tail}._portage_merge_.{portage.getpid()}"
-        )
+        hardlink_tmp = os.path.join(head, f".{tail}._portage_merge_.{portage.getpid()}")
         try:
             os.unlink(hardlink_tmp)
         except OSError as e:

@@ -321,9 +321,7 @@ class SyncLocalTestCase(TestCase):
 
         def hg_init_global_config():
             with open(os.path.join(homedir, ".hgrc"), "w") as f:
-                f.write(
-                    f"[ui]\nusername = {committer_name} <{committer_email}>\n"
-                )
+                f.write(f"[ui]\nusername = {committer_name} <{committer_email}>\n")
 
         hg_repo_create = (
             (repo.location, hg_init_global_config),

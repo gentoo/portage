@@ -800,9 +800,7 @@ class depgraph:
             )
 
             for root in atoms:
-                writemsg_level(
-                    f"   root: {root}\n", level=logging.DEBUG, noiselevel=-1
-                )
+                writemsg_level(f"   root: {root}\n", level=logging.DEBUG, noiselevel=-1)
                 for atom in atoms[root]:
                     writemsg_level(
                         f"      atom: {atom}\n", level=logging.DEBUG, noiselevel=-1
@@ -983,9 +981,7 @@ class depgraph:
             writemsg_level("forced rebuilds:\n", level=logging.DEBUG, noiselevel=-1)
 
             for root in forced_rebuilds:
-                writemsg_level(
-                    f"   root: {root}\n", level=logging.DEBUG, noiselevel=-1
-                )
+                writemsg_level(f"   root: {root}\n", level=logging.DEBUG, noiselevel=-1)
                 for child in forced_rebuilds[root]:
                     writemsg_level(
                         f"      child: {child}\n", level=logging.DEBUG, noiselevel=-1
@@ -1011,9 +1007,7 @@ class depgraph:
 
         for root in self._forced_rebuilds:
             for child in self._forced_rebuilds[root]:
-                writemsg_stdout(
-                    f"  {child} causes rebuilds for:\n", noiselevel=-1
-                )
+                writemsg_stdout(f"  {child} causes rebuilds for:\n", noiselevel=-1)
                 for parent in self._forced_rebuilds[root][child]:
                     writemsg_stdout(f"    {parent}\n", noiselevel=-1)
 
@@ -1470,9 +1464,7 @@ class depgraph:
                         use_display = ""
 
                     msg.append(2 * indent)
-                    msg.append(
-                        f"{atom} required by {parent} {use_display}\n"
-                    )
+                    msg.append(f"{atom} required by {parent} {use_display}\n")
                     msg.append(2 * indent)
                     msg.append(marker)
                     msg.append("\n")
@@ -2112,9 +2104,7 @@ class depgraph:
 
         for unbuilt_child in chain(
             matches,
-            self._iter_match_pkgs(
-                root_config, "ebuild", Atom(f"={dep.child.cpv}")
-            ),
+            self._iter_match_pkgs(root_config, "ebuild", Atom(f"={dep.child.cpv}")),
         ):
             if unbuilt_child in self._dynamic_config._runtime_pkg_mask:
                 continue
@@ -4029,9 +4019,7 @@ class depgraph:
         strict = pkg.type_name != "installed"
 
         if debug:
-            writemsg_level(
-                f"\nParent:    {pkg}\n", noiselevel=-1, level=logging.DEBUG
-            )
+            writemsg_level(f"\nParent:    {pkg}\n", noiselevel=-1, level=logging.DEBUG)
             dep_repr = portage.dep.paren_enclose(
                 dep_string, unevaluated_atom=True, opconvert=True
             )
@@ -4283,9 +4271,7 @@ class depgraph:
                             traversed_virt_pkgs.add(dep.child)
 
         if debug:
-            writemsg_level(
-                f"\nExiting... {pkg}\n", noiselevel=-1, level=logging.DEBUG
-            )
+            writemsg_level(f"\nExiting... {pkg}\n", noiselevel=-1, level=logging.DEBUG)
 
         return 1
 
@@ -5180,9 +5166,7 @@ class depgraph:
                     writemsg(
                         f"\n\n!!! Problem in '{atom}' dependencies.\n", noiselevel=-1
                     )
-                    writemsg(
-                        f"!!! {str(e)} {str(getattr(e, '__module__', None))}\n"
-                    )
+                    writemsg(f"!!! {str(e)} {str(getattr(e, '__module__', None))}\n")
                     raise
 
         try:
@@ -6903,9 +6887,7 @@ class depgraph:
             return self._pkg(pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
         except portage.exception.PackageNotFound:
             return next(
-                self._iter_match_pkgs(
-                    pkg.root_config, "ebuild", Atom(f"={pkg.cpv}")
-                ),
+                self._iter_match_pkgs(pkg.root_config, "ebuild", Atom(f"={pkg.cpv}")),
                 None,
             )
 
@@ -8524,9 +8506,7 @@ class depgraph:
                                 self._dynamic_config._blocker_parents.add(blocker, pkg)
                         except portage.exception.InvalidAtom as e:
                             depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
-                            show_invalid_depstring_notice(
-                                pkg, f"Invalid Atom: {e}"
-                            )
+                            show_invalid_depstring_notice(pkg, f"Invalid Atom: {e}")
                             return False
                 for cpv in stale_cache:
                     del blocker_cache[cpv]
@@ -9979,9 +9959,7 @@ class depgraph:
                                 % (atom.unevaluated_atom, atom, parent, use_display)
                             )
                         else:
-                            msg.append(
-                                f"{atom} required by {parent} {use_display}"
-                            )
+                            msg.append(f"{atom} required by {parent} {use_display}")
                     msg.append("\n")
 
                 msg.append("\n")
@@ -10102,9 +10080,7 @@ class depgraph:
                                     f"={pkg.cpv} {keyword}\n"
                                 )
                         else:
-                            unstable_keyword_msg[root].append(
-                                f"={pkg.cpv} {keyword}\n"
-                            )
+                            unstable_keyword_msg[root].append(f"={pkg.cpv} {keyword}\n")
 
         p_mask_change_msg = {}
         for pkg in self._dynamic_config._needed_p_mask_changes:
@@ -10390,9 +10366,7 @@ class depgraph:
                 if e.errno == errno.ENOENT:
                     file_contents = []
                 else:
-                    problems.append(
-                        f"!!! Failed to read '{file_to_write_to}': {e}\n"
-                    )
+                    problems.append(f"!!! Failed to read '{file_to_write_to}': {e}\n")
             if file_contents is not None:
                 file_contents.extend(changes)
                 if not autounmask_continue and protect_obj[root].isprotected(
@@ -10535,9 +10509,7 @@ class depgraph:
         for depgraph_sets in self._dynamic_config.sets.values():
             for pset in depgraph_sets.sets.values():
                 for error_msg in pset.errors:
-                    writemsg_level(
-                        f"{error_msg}\n", level=logging.ERROR, noiselevel=-1
-                    )
+                    writemsg_level(f"{error_msg}\n", level=logging.ERROR, noiselevel=-1)
 
         # TODO: Add generic support for "set problem" handlers so that
         # the below warnings aren't special cases for world only.
@@ -10774,9 +10746,7 @@ class depgraph:
             if "--ask" in self._frozen_config.myopts:
                 writemsg_stdout("\n", noiselevel=-1)
                 for a in all_added:
-                    writemsg_stdout(
-                        f" {colorize('GOOD', '*')} {a}\n", noiselevel=-1
-                    )
+                    writemsg_stdout(f" {colorize('GOOD', '*')} {a}\n", noiselevel=-1)
                 writemsg_stdout("\n", noiselevel=-1)
                 prompt = (
                     "Would you like to add these packages to your world " "favorites?"
@@ -11482,9 +11452,7 @@ def _spinner_start(spinner, myopts):
             if "--unordered-display" in myopts:
                 portage.writemsg_stdout(
                     "\n"
-                    + darkgreen(
-                        "These are the packages that " + f"would be {action}:"
-                    )
+                    + darkgreen("These are the packages that " + f"would be {action}:")
                     + "\n\n"
                 )
             else:

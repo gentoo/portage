@@ -254,9 +254,7 @@ try:
                 load_average = 0.0
 
             if load_average <= 0.0:
-                parser.error(
-                    f"Invalid: --load-average='{options.load_average}'"
-                )
+                parser.error(f"Invalid: --load-average='{options.load_average}'")
 
             options.load_average = load_average
 
@@ -265,19 +263,13 @@ try:
 
         options.config_root = options.portage_configroot
         if options.config_root is not None and not os.path.isdir(options.config_root):
-            parser.error(
-                f"Not a directory: --config-root='{options.config_root}'"
-            )
+            parser.error(f"Not a directory: --config-root='{options.config_root}'")
 
         if options.cache_dir is not None:
             if not os.path.isdir(options.cache_dir):
-                parser.error(
-                    f"Not a directory: --cache-dir='{options.cache_dir}'"
-                )
+                parser.error(f"Not a directory: --cache-dir='{options.cache_dir}'")
             if not os.access(options.cache_dir, os.W_OK):
-                parser.error(
-                    f"Write access denied: --cache-dir='{options.cache_dir}'"
-                )
+                parser.error(f"Write access denied: --cache-dir='{options.cache_dir}'")
 
         for atom in args:
             try:
@@ -603,9 +595,7 @@ try:
                     masked = False
                     version = self._portdb.xmatch(
                         "bestmatch-visible",
-                        Atom(
-                            f"{pkg_desc.cp}{_repo_separator}{self._repo_config.name}"
-                        ),
+                        Atom(f"{pkg_desc.cp}{_repo_separator}{self._repo_config.name}"),
                     )
                     if not version:
                         version = pkg_desc.cpv_list[-1]
@@ -1072,9 +1062,7 @@ try:
                 # don't break filenames on hyphens
                 self._wrapper.break_on_hyphens = False
                 output.write(
-                    self._wrapper.fill(
-                        f"{date}; {author} {', '.join(changed)}:"
-                    )
+                    self._wrapper.fill(f"{date}; {author} {', '.join(changed)}:")
                 )
                 # but feel free to break commit messages there
                 self._wrapper.break_on_hyphens = True

@@ -262,7 +262,7 @@ class Package(Task):
         repo_name=None,
         root_config=None,
         type_name=None,
-        **kwargs
+        **kwargs,
     ):
 
         if operation is None:

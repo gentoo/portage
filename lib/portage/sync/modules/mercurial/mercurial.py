@@ -84,7 +84,7 @@ class MercurialSync(NewBase):
         exitcode = portage.process.spawn(
             shlex_split(hg_cmd),
             cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
             msg = f"!!! hg clone error in {self.repo.location}"
@@ -141,7 +141,7 @@ class MercurialSync(NewBase):
         exitcode = portage.process.spawn(
             shlex_split(hg_cmd),
             cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
             msg = f"!!! hg pull error in {self.repo.location}"

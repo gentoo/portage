@@ -128,9 +128,7 @@ class BlockerDB:
     def discardBlocker(self, pkg):
         """Discard a package from the list of potential blockers.
         This will match any package(s) with identical cpv or cp:slot."""
-        for cpv_match in self._fake_vartree.dbapi.match_pkgs(
-            Atom(f"={pkg.cpv}")
-        ):
+        for cpv_match in self._fake_vartree.dbapi.match_pkgs(Atom(f"={pkg.cpv}")):
             if cpv_match.cp == pkg.cp:
                 self._fake_vartree.cpv_discard(cpv_match)
         for slot_match in self._fake_vartree.dbapi.match_pkgs(pkg.slot_atom):

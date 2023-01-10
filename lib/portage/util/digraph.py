@@ -318,9 +318,7 @@ class digraph:
             else:
                 output("(no children)\n")
             for child, priorities in self.nodes[node][0].items():
-                output(
-                    f"  {child} ({priorities[-1]})\n"
-                )
+                output(f"  {child} ({priorities[-1]})\n")
 
     def bfs(self, start, ignore_priority=None):
         if start not in self:
