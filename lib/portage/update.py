@@ -425,7 +425,7 @@ def update_config_files(
                             # add a comment with the update command, so
                             # the user can clearly see what happened
                             contents[pos] = "# {}\n".format(
-                                " ".join("{}".format(x) for x in update_cmd)
+                                " ".join(f"{x}" for x in update_cmd)
                             )
                             contents.insert(
                                 pos + 1,

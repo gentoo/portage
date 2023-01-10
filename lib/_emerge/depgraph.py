@@ -2038,7 +2038,7 @@ class depgraph:
                 f"      slot: {slot_atom}",
                 "   parents: {}".format(
                     ", ".join(
-                        "({}, '{}')".format(ppkg, atom) for ppkg, atom in all_parents
+                        f"({ppkg}, '{atom}')" for ppkg, atom in all_parents
                     )
                 ),
                 "",
