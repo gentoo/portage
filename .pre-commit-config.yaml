@@ -12,3 +12,8 @@ repos:
     rev: '0.77'
     hooks:
       - id: flynt
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.3.1
+    hooks:
+      - id: pyupgrade
+        args: [--py37-plus]
