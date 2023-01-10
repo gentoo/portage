@@ -101,7 +101,9 @@ def send_mail(mysettings, message):
                 mymailuser, mymailpasswd = myauthdata.split(":")
             except ValueError:
                 print(
-                    _("!!! invalid SMTP AUTH configuration, trying unauthenticated ...")
+                    _(
+                        "!!!! invalid SMTP AUTH configuration, trying unauthenticated ..."
+                    )
                 )
         else:
             myconndata = mymailuri
@@ -121,7 +123,7 @@ def send_mail(mysettings, message):
         if fd.close() is not None:
             sys.stderr.write(
                 _(
-                    f"!!! {mymailhost} returned with a non-zero exit code. This generally indicates an error.\n"
+                    f"!!!! {mymailhost} returned with a non-zero exit code. This generally indicates an error.\n"
                 )
             )
     else:
@@ -132,7 +134,7 @@ def send_mail(mysettings, message):
                 if not myconn.has_extn("STARTTLS"):
                     raise portage.exception.PortageException(
                         _(
-                            "!!! TLS support requested for logmail but not supported by server"
+                            "!!!! TLS support requested for logmail but not supported by server"
                         )
                     )
                 myconn.starttls()
@@ -147,11 +149,11 @@ def send_mail(mysettings, message):
             myconn.quit()
         except smtplib.SMTPException as e:
             raise portage.exception.PortageException(
-                _(f"!!! An error occurred while trying to send logmail:\n{e}")
+                _(f"!!!! An error occurred while trying to send logmail:\n{e}")
             )
         except OSError as e:
             raise portage.exception.PortageException(
                 _(
-                    f"!!! A network error occurred while trying to send logmail:\n{e}\nSure you configured PORTAGE_ELOG_MAILURI correctly?"
+                    f"!!!! A network error occurred while trying to send logmail:\n{e}\nSure you configured PORTAGE_ELOG_MAILURI correctly?"
                 )
             )

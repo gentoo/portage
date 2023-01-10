@@ -110,7 +110,7 @@ def ververify(myver, silent=1):
     if ver_regexp.match(myver):
         return True
     if not silent:
-        print(_("!!! syntax error in version: %s") % myver)
+        print(_("!!!! syntax error in version: %s") % myver)
     return False
 
 
@@ -119,12 +119,12 @@ def vercmp(ver1, ver2, silent=1):
     """
     Compare two versions
     Example usage:
-            >>> from portage.versions import vercmp
-            >>> vercmp('1.0-r1','1.2-r3')
+            >>>> from portage.versions import vercmp
+            >>>> vercmp('1.0-r1','1.2-r3')
             negative number
-            >>> vercmp('1.3','1.2-r3')
+            >>>> vercmp('1.3','1.2-r3')
             positive number
-            >>> vercmp('1.0_p3','1.0_p3')
+            >>>> vercmp('1.0_p3','1.0_p3')
             0
 
     @param pkg1: version to compare with (see ver_regexp in portage.versions.py)
@@ -148,11 +148,11 @@ def vercmp(ver1, ver2, silent=1):
     # checking that the versions are valid
     if not match1 or not match1.groups():
         if not silent:
-            print(_("!!! syntax error in version: %s") % ver1)
+            print(_("!!!! syntax error in version: %s") % ver1)
         return None
     if not match2 or not match2.groups():
         if not silent:
-            print(_("!!! syntax error in version: %s") % ver2)
+            print(_("!!!! syntax error in version: %s") % ver2)
         return None
 
     # building lists of the version parts before the suffix
@@ -267,10 +267,10 @@ def pkgcmp(pkg1, pkg2):
     Compare 2 package versions created in pkgsplit format.
 
     Example usage:
-            >>> from portage.versions import *
-            >>> pkgcmp(pkgsplit('test-1.0-r1'),pkgsplit('test-1.2-r3'))
+            >>>> from portage.versions import *
+            >>>> pkgcmp(pkgsplit('test-1.0-r1'),pkgsplit('test-1.2-r3'))
             -1
-            >>> pkgcmp(pkgsplit('test-1.3'),pkgsplit('test-1.2-r3'))
+            >>>> pkgcmp(pkgsplit('test-1.3'),pkgsplit('test-1.2-r3'))
             1
 
     @param pkg1: package to compare with

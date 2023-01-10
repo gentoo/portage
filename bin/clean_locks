@@ -42,7 +42,7 @@ for x in sys.argv[1:]:
 
     except OSError as e:
         if e.errno in (errno.ENOENT, errno.ENOTDIR):
-            print(f"!!! {x} is not a directory or does not exist")
+            print(f"!!!! {x} is not a directory or does not exist")
         else:
             raise
         sys.exit(e.errno)

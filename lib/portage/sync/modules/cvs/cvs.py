@@ -45,7 +45,7 @@ class CVSSync(NewBase):
             )
             != os.EX_OK
         ):
-            msg = "!!! cvs checkout error; exiting."
+            msg = "!!!! cvs checkout error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
             return (1, False)
@@ -67,7 +67,7 @@ class CVSSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! cvs update error; exiting."
+            msg = "!!!! cvs update error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
         return (exitcode, False)

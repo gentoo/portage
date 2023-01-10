@@ -446,7 +446,7 @@ class Manifest:
                     # unless this repo is being prepared for distribution
                     # via rsync.
                     writemsg_level(
-                        f"!!! utime('{path}', ({max_mtime}, {max_mtime})): {e}\n",
+                        f"!!!! utime('{path}', ({max_mtime}, {max_mtime})): {e}\n",
                         level=logging.WARNING,
                         noiselevel=-1,
                     )

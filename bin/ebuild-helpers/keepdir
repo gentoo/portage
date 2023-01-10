@@ -13,7 +13,7 @@ ret=$?
 
 for x in "$@"; do
 	>> "${ED%/}/${x#/}/.keep_${CATEGORY}_${PN}-${SLOT%/*}" || \
-		{ echo "!!! ${0##*/}: cannot write .keep in ${ED%/}/${x#/}" 1>&2; ret=1; }
+		{ echo "!!!! ${0##*/}: cannot write .keep in ${ED%/}/${x#/}" 1>&2; ret=1; }
 done
 
 [[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"

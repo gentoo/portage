@@ -41,7 +41,7 @@ if [ -n "${repository_name}" ]; then
 	if [ "${repository_name}" != "gentoo" ]; then
 		if ! egencache --update --repo="${repository_name}" --jobs=4
 		then
-			echo "!!! egencache failed!"
+			echo "!!!! egencache failed!"
 			ret=1
 		fi
 	fi
@@ -55,7 +55,7 @@ if [ -n "${repository_name}" ] && ! [ -e "${repository_path}/metadata/pkg_desc_i
 	# does not interfere with repository verification.
 	if ! egencache --update-pkg-desc-index --external-cache-only --repo="${repository_name}" ${PORTAGE_VERBOSE+--verbose}
 	then
-		echo "!!! egencache failed!"
+		echo "!!!! egencache failed!"
 		ret=1
 	fi
 fi

@@ -56,7 +56,7 @@ for x in "$@" ; do
 			install -m0644 "${x}" "${ED%/}/usr/share/man/${mandir}/${name}"
 			((ret|=$?))
 		elif [[ ! -e ${x} ]] ; then
-			echo "!!! ${0##*/}: ${x} does not exist" 1>&2
+			echo "!!!! ${0##*/}: ${x} does not exist" 1>&2
 			((ret|=1))
 		fi
 	else

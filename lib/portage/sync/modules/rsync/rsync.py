@@ -70,8 +70,8 @@ class RsyncSync(NewBase):
         for vcs_dir in vcs_dirs:
             writemsg_level(
                 (
-                    "!!! %s appears to be under revision "
-                    + "control (contains %s).\n!!! Aborting rsync sync "
+                    "!!!! %s appears to be under revision "
+                    + "control (contains %s).\n!!!! Aborting rsync sync "
                     '(override with "sync-rsync-vcs-ignore = true" in repos.conf).\n'
                 )
                 % (self.repo.location, vcs_dir),
@@ -116,7 +116,7 @@ class RsyncSync(NewBase):
                     raise ValueError(self.verify_jobs)
             except ValueError:
                 writemsg_level(
-                    "!!! sync-rsync-verify-jobs not a positive integer: %s\n"
+                    "!!!! sync-rsync-verify-jobs not a positive integer: %s\n"
                     % (self.verify_jobs,),
                     level=logging.WARNING,
                     noiselevel=-1,
@@ -138,7 +138,7 @@ class RsyncSync(NewBase):
                     raise ValueError(self.max_age)
             except ValueError:
                 writemsg_level(
-                    "!!! sync-rsync-max-age must be a non-negative integer: %s\n"
+                    "!!!! sync-rsync-max-age must be a non-negative integer: %s\n"
                     % (self.max_age,),
                     level=logging.WARNING,
                     noiselevel=-1,
@@ -165,7 +165,7 @@ class RsyncSync(NewBase):
                     self._refresh_keys(openpgp_env)
                 except (GematoException, asyncio.TimeoutError) as e:
                     writemsg_level(
-                        "!!! Manifest verification impossible due to keyring problem:\n%s\n"
+                        "!!!! Manifest verification impossible due to keyring problem:\n%s\n"
                         % (e,),
                         level=logging.ERROR,
                         noiselevel=-1,
@@ -224,7 +224,7 @@ class RsyncSync(NewBase):
                 )[1:5]
             except ValueError:
                 writemsg_level(
-                    f"!!! sync-uri is invalid: {syncuri}\n",
+                    f"!!!! sync-uri is invalid: {syncuri}\n",
                     noiselevel=-1,
                     level=logging.ERROR,
                 )
@@ -265,7 +265,7 @@ class RsyncSync(NewBase):
                     )
                 except OSError as e:
                     writemsg_level(
-                        "!!! getaddrinfo failed for '%s': %s\n"
+                        "!!!! getaddrinfo failed for '%s': %s\n"
                         % (_unicode_decode(hostname), str(e)),
                         noiselevel=-1,
                         level=logging.ERROR,
@@ -333,7 +333,7 @@ class RsyncSync(NewBase):
                     dosyncuri = uris.pop()
                 elif maxretries < 0 or retries > maxretries:
                     writemsg(
-                        f"!!! Exhausted addresses for {_unicode_decode(hostname)}\n",
+                        f"!!!! Exhausted addresses for {_unicode_decode(hostname)}\n",
                         noiselevel=-1,
                     )
                     return (1, False)
@@ -359,18 +359,18 @@ class RsyncSync(NewBase):
                             print()
                             sys.exit(128 + signal.SIGINT)
                     self.logger(
-                        self.xterm_titles, ">>> Starting rsync with " + dosyncuri
+                        self.xterm_titles, ">>>> Starting rsync with " + dosyncuri
                     )
                     if "--quiet" not in opts:
-                        print(">>> Starting rsync with " + dosyncuri + "...")
+                        print(">>>> Starting rsync with " + dosyncuri + "...")
                 else:
                     self.logger(
                         self.xterm_titles,
-                        ">>> Starting retry %d of %d with %s"
+                        ">>>> Starting retry %d of %d with %s"
                         % (retries, effective_maxretries, dosyncuri),
                     )
                     writemsg_stdout(
-                        "\n\n>>> Starting retry %d of %d with %s\n"
+                        "\n\n>>>> Starting retry %d of %d with %s\n"
                         % (retries, effective_maxretries, dosyncuri),
                         noiselevel=-1,
                     )
@@ -389,7 +389,7 @@ class RsyncSync(NewBase):
                 retries = retries + 1
 
                 if maxretries < 0 or retries <= maxretries:
-                    print(">>> Retrying...")
+                    print(">>>> Retrying...")
                 else:
                     # over retries
                     # exit loop
@@ -410,7 +410,7 @@ class RsyncSync(NewBase):
             if exitcode == 0 and self.verify_metamanifest:
                 if gemato is None:
                     writemsg_level(
-                        "!!! Unable to verify: gemato-14.5+ is required\n",
+                        "!!!! Unable to verify: gemato-14.5+ is required\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -466,7 +466,7 @@ class RsyncSync(NewBase):
                             out.eend(0)
                     except GematoException as e:
                         writemsg_level(
-                            f"!!! Manifest verification failed:\n{e}\n",
+                            f"!!!! Manifest verification failed:\n{e}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -492,7 +492,7 @@ class RsyncSync(NewBase):
         elif exitcode == SERVER_OUT_OF_DATE:
             exitcode = 1
         elif exitcode == EXCEEDED_MAX_RETRIES:
-            sys.stderr.write(f">>> Exceeded PORTAGE_RSYNC_RETRIES: {maxretries}\n")
+            sys.stderr.write(f">>>> Exceeded PORTAGE_RSYNC_RETRIES: {maxretries}\n")
             exitcode = 1
         elif exitcode > 0:
             msg = []
@@ -654,7 +654,7 @@ class RsyncSync(NewBase):
         updatecache_flg = False
         is_synced = False
         if timestamp != 0 and "--quiet" not in opts:
-            print(">>> Checking server timestamp ...")
+            print(">>>> Checking server timestamp ...")
 
         rsynccommand = [self.bin_command] + self.rsync_opts + self.extra_rsync_opts
 
@@ -759,32 +759,32 @@ class RsyncSync(NewBase):
                 local_state_unchanged = True
                 is_synced = True
                 self.logger(
-                    self.xterm_titles, ">>> Cancelling sync -- Already current."
+                    self.xterm_titles, ">>>> Cancelling sync -- Already current."
                 )
                 print()
-                print(">>>")
+                print(">>>>")
                 print(
-                    ">>> Timestamps on the server and in the local repository are the same."
+                    ">>>> Timestamps on the server and in the local repository are the same."
                 )
                 print(
-                    ">>> Cancelling all further sync action. You are already up to date."
+                    ">>>> Cancelling all further sync action. You are already up to date."
                 )
-                print(">>>")
+                print(">>>>")
                 print(
-                    f">>> In order to force sync, remove '{self.servertimestampfile}'."
+                    f">>>> In order to force sync, remove '{self.servertimestampfile}'."
                 )
-                print(">>>")
+                print(">>>>")
                 print()
             elif (servertimestamp != 0) and (servertimestamp < timestamp):
-                self.logger(self.xterm_titles, f">>> Server out of date: {syncuri}")
+                self.logger(self.xterm_titles, f">>>> Server out of date: {syncuri}")
                 print()
-                print(">>>")
-                print(f">>> SERVER OUT OF DATE: {syncuri}")
-                print(">>>")
+                print(">>>>")
+                print(f">>>> SERVER OUT OF DATE: {syncuri}")
+                print(">>>>")
                 print(
-                    f">>> In order to force sync, remove '{self.servertimestampfile}'."
+                    f">>>> In order to force sync, remove '{self.servertimestampfile}'."
                 )
-                print(">>>")
+                print(">>>>")
                 print()
                 exitcode = SERVER_OUT_OF_DATE
             elif (servertimestamp == 0) or (servertimestamp > timestamp):

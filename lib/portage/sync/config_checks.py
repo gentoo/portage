@@ -18,7 +18,7 @@ from portage.util import writemsg_level
 def check_type(repo, logger, module_names):
     if repo.sync_uri is not None and repo.sync_type is None:
         writemsg_level(
-            "!!! %s\n"
+            "!!!! %s\n"
             % _(
                 "Repository '%s' has sync-uri attribute, but is missing sync-type attribute"
             )
@@ -29,7 +29,7 @@ def check_type(repo, logger, module_names):
         return False
     if repo.sync_type not in module_names + [None]:
         writemsg_level(
-            "!!! %s\n"
+            "!!!! %s\n"
             % _(
                 "Repository '%s' has sync-type attribute set to unsupported value: '%s'"
             )
@@ -38,7 +38,7 @@ def check_type(repo, logger, module_names):
             noiselevel=-1,
         )
         writemsg_level(
-            "!!! %s\n" % _("Installed sync-types are: '%s'") % (str(module_names)),
+            "!!!! %s\n" % _("Installed sync-types are: '%s'") % (str(module_names)),
             level=logger.ERROR,
             noiselevel=-1,
         )
@@ -68,7 +68,7 @@ class CheckSyncConfig:
         """Check the sync_uri setting"""
         if self.repo.sync_uri is None:
             writemsg_level(
-                "!!! %s\n"
+                "!!!! %s\n"
                 % _(
                     "Repository '%s' has sync-type attribute, but is missing sync-uri attribute"
                 )
@@ -81,7 +81,7 @@ class CheckSyncConfig:
         """Check the auto_sync setting"""
         if self.repo.auto_sync is None:
             writemsg_level(
-                "!!! %s\n"
+                "!!!! %s\n"
                 % _("Repository '%s' is missing auto_sync attribute")
                 % self.repo.name,
                 level=self.logger.ERROR,
@@ -89,7 +89,7 @@ class CheckSyncConfig:
             )
         elif self.repo.auto_sync.lower() not in ["yes", "true", "no", "false"]:
             writemsg_level(
-                "!!! %s\n"
+                "!!!! %s\n"
                 % _("Repository '%s' auto_sync attribute must be one of: %s")
                 % (self.repo.name, "{yes, true, no, false}"),
                 level=self.logger.ERROR,

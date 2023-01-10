@@ -461,7 +461,7 @@ class EbuildBuild(CompositeTask):
             return
 
         if self._issyspkg:
-            msg = ">>> This is a system package, " + "let's pack a rescue tarball.\n"
+            msg = ">>>> This is a system package, " + "let's pack a rescue tarball.\n"
             self.scheduler.output(msg, log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
         binpkg_tasks = TaskSequence()

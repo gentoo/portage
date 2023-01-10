@@ -66,13 +66,13 @@ class SyncBase:
                 f'Type "emerge {self.bin_pkg}" to enable {self._bin_command} support.',
             ]
             for l in msg:
-                writemsg_level(f"!!! {l}\n", level=logging.ERROR, noiselevel=-1)
+                writemsg_level(f"!!!! {l}\n", level=logging.ERROR, noiselevel=-1)
             return False
 
         try:
             self.repo_storage
         except RepoStorageException as e:
-            writemsg_level(f"!!! {e}\n", level=logging.ERROR, noiselevel=-1)
+            writemsg_level(f"!!!! {e}\n", level=logging.ERROR, noiselevel=-1)
             return False
 
         return True
@@ -237,7 +237,7 @@ class SyncBase:
         if errors:
             lines = []
             lines.append("")
-            lines.append("!!! Retry disabled for openpgp key refresh:")
+            lines.append("!!!! Retry disabled for openpgp key refresh:")
             lines.append("")
             for msg in errors:
                 lines.append(f"    {msg}")

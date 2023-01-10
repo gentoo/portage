@@ -2487,7 +2487,7 @@ def match_from_list(mydep, candidate_list):
     if ver and rev:
         operator = mydep.operator
         if not operator:
-            writemsg(_("!!! Invalid atom: %s\n") % mydep, noiselevel=-1)
+            writemsg(_("!!!! Invalid atom: %s\n") % mydep, noiselevel=-1)
             return []
     else:
         operator = None

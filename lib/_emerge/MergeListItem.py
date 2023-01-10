@@ -81,7 +81,7 @@ class MergeListItem(CompositeTask):
         if not build_opts.pretend:
             self.statusMessage(msg)
             logger.log(
-                " >>> emerge (%s of %s) %s to %s"
+                " >>>> emerge (%s of %s) %s to %s"
                 % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root)
             )
 

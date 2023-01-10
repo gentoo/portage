@@ -203,9 +203,9 @@ class _DisplayConfig:
             try:
                 mywidth = int(frozen_config.settings["COLUMNWIDTH"])
             except ValueError as e:
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!!! {str(e)}\n", noiselevel=-1)
                 writemsg(
-                    "!!! Unable to parse COLUMNWIDTH='%s'\n"
+                    "!!!! Unable to parse COLUMNWIDTH='%s'\n"
                     % frozen_config.settings["COLUMNWIDTH"],
                     noiselevel=-1,
                 )

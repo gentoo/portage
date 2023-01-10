@@ -157,7 +157,7 @@ class tar_stream_writer:
             except PermissionError:
                 writemsg(
                     colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
+                        "BAD", f"!!!! Drop root privileges to user {self.uid} failed."
                     )
                 )
                 raise
@@ -168,7 +168,7 @@ class tar_stream_writer:
             except PermissionError:
                 writemsg(
                     colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
+                        "BAD", f"!!!! Drop root privileges to group {self.gid} failed."
                     )
                 )
                 raise
@@ -382,7 +382,7 @@ class tar_stream_reader:
             except PermissionError:
                 writemsg(
                     colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
+                        "BAD", f"!!!! Drop root privileges to user {self.uid} failed."
                     )
                 )
                 raise
@@ -393,7 +393,7 @@ class tar_stream_reader:
             except PermissionError:
                 writemsg(
                     colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
+                        "BAD", f"!!!! Drop root privileges to group {self.gid} failed."
                     )
                 )
                 raise
@@ -467,7 +467,7 @@ class checksum_helper:
                 else:
                     self.uid = pwd.getpwnam(drop_user).pw_uid
             except KeyError:
-                writemsg(colorize("BAD", f"!!! Failed to find user {drop_user}."))
+                writemsg(colorize("BAD", f"!!!! Failed to find user {drop_user}."))
                 raise
 
             try:
@@ -477,7 +477,7 @@ class checksum_helper:
                 else:
                     self.gid = grp.getgrnam(drop_group).gr_gid
             except KeyError:
-                writemsg(colorize("BAD", f"!!! Failed to find group {drop_group}."))
+                writemsg(colorize("BAD", f"!!!! Failed to find group {drop_group}."))
                 raise
         else:
             self.uid = None
@@ -623,7 +623,7 @@ class checksum_helper:
             except PermissionError:
                 writemsg(
                     colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
+                        "BAD", f"!!!! Drop root privileges to user {self.uid} failed."
                     )
                 )
                 raise
@@ -634,7 +634,7 @@ class checksum_helper:
             except PermissionError:
                 writemsg(
                     colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
+                        "BAD", f"!!!! Drop root privileges to group {self.gid} failed."
                     )
                 )
                 raise

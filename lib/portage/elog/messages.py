@@ -49,7 +49,7 @@ def collect_ebuild_messages(path):
         filename = os.path.join(path, msgfunction)
         if msgfunction not in EBUILD_PHASES:
             writemsg(
-                _("!!! can't process invalid log file: %s\n") % filename, noiselevel=-1
+                _("!!!! can't process invalid log file: %s\n") % filename, noiselevel=-1
             )
             continue
         if not msgfunction in logentries:
@@ -72,7 +72,8 @@ def collect_ebuild_messages(path):
                     raise ValueError(msgtype)
             except ValueError:
                 writemsg(
-                    _("!!! malformed entry in " "log file: '%s': %s\n") % (filename, l),
+                    _("!!!! malformed entry in " "log file: '%s': %s\n")
+                    % (filename, l),
                     noiselevel=-1,
                 )
                 continue

@@ -37,7 +37,7 @@ class AutounmaskUseBreakageTestCase(TestCase):
             ),
             # With --autounmask-backtrack=y:
             # emerge: there are no ebuilds built with USE flags to satisfy "app-misc/D[foo]".
-            #!!! One of the following packages is required to complete your request:
+            #!!!! One of the following packages is required to complete your request:
             # - app-misc/D-0::test_repo (Change USE: +foo)
             # (dependency required by "app-misc/B-0::test_repo" [ebuild])
             # (dependency required by "app-misc/B" [argument])
@@ -48,8 +48,8 @@ class AutounmaskUseBreakageTestCase(TestCase):
             # [ebuild  N     ] app-misc/B-0
             # [ebuild  N     ] app-misc/A-0
             #
-            #!!! Multiple package instances within a single package slot have been pulled
-            #!!! into the dependency graph, resulting in a slot conflict:
+            #!!!! Multiple package instances within a single package slot have been pulled
+            #!!!! into the dependency graph, resulting in a slot conflict:
             #
             # app-misc/D:0
             #

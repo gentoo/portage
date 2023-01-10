@@ -212,7 +212,7 @@ class SyncManager:
         return succeeded
 
     def pre_sync(self, repo):
-        msg = f">>> Syncing repository '{repo.name}' into '{repo.location}'..."
+        msg = f">>>> Syncing repository '{repo.name}' into '{repo.location}'..."
         self.logger(self.xterm_titles, msg)
         writemsg_level(msg + "\n")
         try:
@@ -248,7 +248,7 @@ class SyncManager:
                             pw = pwd.getpwuid(int(username))
                     except (ValueError, KeyError):
                         writemsg(
-                            f"!!! User '{username}' invalid or does not exist\n",
+                            f"!!!! User '{username}' invalid or does not exist\n",
                             noiselevel=-1,
                         )
                         return (logname, user, group, home)
@@ -266,7 +266,7 @@ class SyncManager:
                             pw = grp.getgrgid(int(groupname))
                     except (ValueError, KeyError):
                         writemsg(
-                            f"!!! Group '{groupname}' invalid or does not exist\n",
+                            f"!!!! Group '{groupname}' invalid or does not exist\n",
                             noiselevel=-1,
                         )
                         return (logname, user, group, home)

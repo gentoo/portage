@@ -4,27 +4,27 @@
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
 
 	Example usage:
-		>>> from portage.xml.metadata import MetaDataXML
-		>>> pkg_md = MetaDataXML('/var/db/repos/gentoo/app-misc/gourmet/metadata.xml')
-		>>> pkg_md
+		>>>> from portage.xml.metadata import MetaDataXML
+		>>>> pkg_md = MetaDataXML('/var/db/repos/gentoo/app-misc/gourmet/metadata.xml')
+		>>>> pkg_md
 		<MetaDataXML '/var/db/repos/gentoo/app-misc/gourmet/metadata.xml'>
-		>>> pkg_md.herds()
+		>>>> pkg_md.herds()
 		['no-herd']
-		>>> for maint in pkg_md.maintainers():
+		>>>> for maint in pkg_md.maintainers():
 		...     print "{0} ({1})".format(maint.email, maint.name)
 		...
 		nixphoeni@gentoo.org (Joe Sapp)
-		>>> for flag in pkg_md.use():
+		>>>> for flag in pkg_md.use():
 		...     print flag.name, "->", flag.description
 		...
 		rtf -> Enable export to RTF
 		gnome-print -> Enable printing support using gnome-print
-		>>> upstream = pkg_md.upstream()
-		>>> upstream
+		>>>> upstream = pkg_md.upstream()
+		>>>> upstream
 		[<_Upstream {'docs': [], 'remoteid': [], 'maintainer':
 		 [<_Maintainer 'Thomas_Hinkle@alumni.brown.edu'>], 'bugtracker': [],
 		 'changelog': []}>]
-		>>> upstream[0].maintainer[0].name
+		>>>> upstream[0].maintainer[0].name
 		'Thomas Mills Hinkle'
 """
 

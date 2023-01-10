@@ -62,7 +62,7 @@ class ManifestScheduler(AsyncScheduler):
                         disabled_repos.add(repo_config.name)
                         portage.writemsg(
                             _(
-                                ">>> Skipping creating Manifest for %s%s%s; "
+                                ">>>> Skipping creating Manifest for %s%s%s; "
                                 "repository is configured to not use them\n"
                             )
                             % (cp, _repo_separator, repo_config.name),

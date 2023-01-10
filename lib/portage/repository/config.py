@@ -293,7 +293,8 @@ class RepoConfig:
                     v = int(v)
                 except (OverflowError, ValueError):
                     writemsg(
-                        _("!!! Invalid %s setting for repo" " %s: %s\n") % (k, name, v),
+                        _("!!!! Invalid %s setting for repo" " %s: %s\n")
+                        % (k, name, v),
                         noiselevel=-1,
                     )
                     v = None
@@ -652,7 +653,7 @@ class RepoConfigLoader:
             # File "/usr/lib/python3.2/shlex.py", line 168, in read_token
             # 	raise ValueError("No closing quotation")
             writemsg(
-                _("!!! Invalid PORTDIR_OVERLAY:" " %s: %s\n") % (e, portdir_overlay),
+                _("!!!! Invalid PORTDIR_OVERLAY:" " %s: %s\n") % (e, portdir_overlay),
                 noiselevel=-1,
             )
             port_ov = []
@@ -763,7 +764,7 @@ class RepoConfigLoader:
 
                     if not portage._sync_mode:
                         writemsg(
-                            _("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov,
+                            _("!!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov,
                             noiselevel=-1,
                         )
 
@@ -838,7 +839,7 @@ class RepoConfigLoader:
             self._parse(paths, prepos, settings.local_config, default_opts)
         except ConfigParserError as e:
             writemsg(
-                _("!!! Error while reading repo config file: %s\n") % e, noiselevel=-1
+                _("!!!! Error while reading repo config file: %s\n") % e, noiselevel=-1
             )
             # The configparser state is unreliable (prone to quirky
             # exceptions) after it has thrown an error, so use empty
@@ -889,7 +890,7 @@ class RepoConfigLoader:
                     # Skip this warning for repoman (bug #474578).
                     if settings.local_config and paths:
                         writemsg_level(
-                            "!!! %s\n"
+                            "!!!! %s\n"
                             % _(
                                 "Section '%s' in repos.conf is missing location attribute"
                             )
@@ -903,7 +904,7 @@ class RepoConfigLoader:
                 if not portage._sync_mode:
                     if not isdir_raise_eaccess(repo.location):
                         writemsg_level(
-                            "!!! %s\n"
+                            "!!!! %s\n"
                             % _(
                                 "Section '%s' in repos.conf has location attribute set "
                                 "to nonexistent directory: '%s'"
@@ -923,7 +924,7 @@ class RepoConfigLoader:
                     # if repo.missing_repo_name:
                     if repo.missing_repo_name and repo.name != repo_name:
                         writemsg_level(
-                            "!!! %s\n"
+                            "!!!! %s\n"
                             % _(
                                 "Section '%s' in repos.conf refers to repository "
                                 "without repository name set in '%s'"
@@ -937,7 +938,7 @@ class RepoConfigLoader:
 
                     if repo.name != repo_name:
                         writemsg_level(
-                            "!!! %s\n"
+                            "!!!! %s\n"
                             % _(
                                 "Section '%s' in repos.conf has name different "
                                 "from repository name '%s' set inside repository"
@@ -967,7 +968,7 @@ class RepoConfigLoader:
                         continue
                     writemsg_level(
                         _(
-                            "!!! Repository name or alias '%s', "
+                            "!!!! Repository name or alias '%s', "
                             + "defined for repository '%s', overrides "
                             + "existing alias or repository.\n"
                         )
@@ -996,7 +997,7 @@ class RepoConfigLoader:
                 prepos["DEFAULT"].main_repo = None
                 if portdir and not portage._sync_mode:
                     writemsg(
-                        _("!!! main-repo not set in DEFAULT and PORTDIR is empty.\n"),
+                        _("!!!! main-repo not set in DEFAULT and PORTDIR is empty.\n"),
                         noiselevel=-1,
                     )
 
@@ -1009,7 +1010,7 @@ class RepoConfigLoader:
         if portdir_sync and main_repo is not None:
             writemsg(
                 _(
-                    "!!! SYNC setting found in make.conf.\n    "
+                    "!!!! SYNC setting found in make.conf.\n    "
                     "This setting is Deprecated and no longer used.  "
                     "Please ensure your 'sync-type' and 'sync-uri' are set correctly"
                     " in /etc/portage/repos.conf/gentoo.conf\n"
@@ -1136,13 +1137,13 @@ class RepoConfigLoader:
             ):
                 # TODO: Delete masters code in lib/portage/tests/resolver/ResolverPlayground.py when deleting this warning.
                 writemsg_level(
-                    "!!! %s\n"
+                    "!!!! %s\n"
                     % _("Repository '%s' is missing masters attribute in '%s'")
                     % (
                         repo.name,
                         os.path.join(repo.location, "metadata", "layout.conf"),
                     )
-                    + "!!! %s\n"
+                    + "!!!! %s\n"
                     % _("Set 'masters = %s' in this file for future compatibility")
                     % self.mainRepo().name,
                     level=logging.WARNING,
@@ -1186,14 +1187,14 @@ class RepoConfigLoader:
             if name != "DEFAULT":
                 if r.location is None:
                     writemsg(
-                        _("!!! Location not set for repository %s\n") % name,
+                        _("!!!! Location not set for repository %s\n") % name,
                         noiselevel=-1,
                     )
                 else:
                     if not isdir_raise_eaccess(r.location) and not portage._sync_mode:
                         self.prepos_order.remove(name)
                         writemsg(
-                            _("!!! Invalid Repository Location" " (not a dir): '%s'\n")
+                            _("!!!! Invalid Repository Location" " (not a dir): '%s'\n")
                             % r.location,
                             noiselevel=-1,
                         )

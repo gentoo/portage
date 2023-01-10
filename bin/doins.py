@@ -36,7 +36,7 @@ def _warn(helper, msg):
             helper: helper executable name.
             msg: Message to be output.
     """
-    print(f"!!! {helper}: {msg}\n", file=sys.stderr)
+    print(f"!!!! {helper}: {msg}\n", file=sys.stderr)
 
 
 def _parse_group(group):

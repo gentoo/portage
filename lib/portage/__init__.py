@@ -33,20 +33,20 @@ try:
 except ImportError as e:
     sys.stderr.write("\n\n")
     sys.stderr.write(
-        "!!! Failed to complete python imports. These are internal modules for\n"
+        "!!!! Failed to complete python imports. These are internal modules for\n"
     )
     sys.stderr.write(
-        "!!! python and failure here indicates that you have a problem with python\n"
+        "!!!! python and failure here indicates that you have a problem with python\n"
     )
     sys.stderr.write(
-        "!!! itself and thus portage is not able to continue processing.\n\n"
+        "!!!! itself and thus portage is not able to continue processing.\n\n"
     )
 
     sys.stderr.write(
-        "!!! You might consider starting python with verbose flags to see what has\n"
+        "!!!! You might consider starting python with verbose flags to see what has\n"
     )
     sys.stderr.write(
-        "!!! gone wrong. Here is the information we got for this exception:\n"
+        "!!!! gone wrong. Here is the information we got for this exception:\n"
     )
     sys.stderr.write(f"    {e}\n\n")
     raise
@@ -169,21 +169,21 @@ try:
 except ImportError as e:
     sys.stderr.write("\n\n")
     sys.stderr.write(
-        "!!! Failed to complete portage imports. There are internal modules for\n"
+        "!!!! Failed to complete portage imports. There are internal modules for\n"
     )
     sys.stderr.write(
-        "!!! portage and failure here indicates that you have a problem with your\n"
+        "!!!! portage and failure here indicates that you have a problem with your\n"
     )
     sys.stderr.write(
-        "!!! installation of portage. Please try a rescue portage located in the ebuild\n"
+        "!!!! installation of portage. Please try a rescue portage located in the ebuild\n"
     )
     sys.stderr.write(
-        "!!! repository under '/var/db/repos/gentoo/sys-apps/portage/files/' (default).\n"
+        "!!!! repository under '/var/db/repos/gentoo/sys-apps/portage/files/' (default).\n"
     )
     sys.stderr.write(
-        "!!! There is a README.RESCUE file that details the steps required to perform\n"
+        "!!!! There is a README.RESCUE file that details the steps required to perform\n"
     )
-    sys.stderr.write("!!! a recovery of portage.\n")
+    sys.stderr.write("!!!! a recovery of portage.\n")
     sys.stderr.write(f"    {e}\n\n")
     raise
 
@@ -403,7 +403,7 @@ try:
     _selinux_merge = _unicode_module_wrapper(_selinux, encoding=_encodings["merge"])
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
-        sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
+        sys.stderr.write(f"!!!! SELinux not loaded: {e}\n")
     del e
     _selinux = None
     selinux = None

@@ -303,22 +303,22 @@ class Scheduler(PollScheduler):
             or "--fetchonly" in self.myopts
         ):
             if "distlocks" not in features:
-                portage.writemsg(red("!!!") + "\n", noiselevel=-1)
+                portage.writemsg(red("!!!!") + "\n", noiselevel=-1)
                 portage.writemsg(
-                    red("!!!")
+                    red("!!!!")
                     + " parallel-fetching "
                     + "requires the distlocks feature enabled"
                     + "\n",
                     noiselevel=-1,
                 )
                 portage.writemsg(
-                    red("!!!")
+                    red("!!!!")
                     + " you have it disabled, "
                     + "thus parallel-fetching is being disabled"
                     + "\n",
                     noiselevel=-1,
                 )
-                portage.writemsg(red("!!!") + "\n", noiselevel=-1)
+                portage.writemsg(red("!!!!") + "\n", noiselevel=-1)
             elif merge_count > 1:
                 self._parallel_fetch = True
 
@@ -442,7 +442,7 @@ class Scheduler(PollScheduler):
             if interactive_tasks:
                 background = False
                 writemsg_level(
-                    ">>> Sending package output to stdio due "
+                    ">>>> Sending package output to stdio due "
                     + "to interactive package(s):\n",
                     level=logging.INFO,
                     noiselevel=-1,
@@ -462,15 +462,15 @@ class Scheduler(PollScheduler):
                 if self._max_jobs is True or self._max_jobs > 1:
                     self._set_max_jobs(1)
                     writemsg_level(
-                        ">>> Setting --jobs=1 due "
+                        ">>>> Setting --jobs=1 due "
                         + "to the above interactive package(s)\n",
                         level=logging.INFO,
                         noiselevel=-1,
                     )
                     writemsg_level(
-                        ">>> In order to temporarily mask "
+                        ">>>> In order to temporarily mask "
                         + "interactive updates, you may\n"
-                        + ">>> specify --accept-properties=-interactive\n",
+                        + ">>>> specify --accept-properties=-interactive\n",
                         level=logging.INFO,
                         noiselevel=-1,
                     )
@@ -732,7 +732,7 @@ class Scheduler(PollScheduler):
             pkgsettings["O"] = os.path.dirname(ebuild_path)
             if not digestgen(mysettings=pkgsettings, myportdb=portdb):
                 writemsg_level(
-                    f"!!! Unable to generate manifest for '{x.cpv}'.\n",
+                    f"!!!! Unable to generate manifest for '{x.cpv}'.\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -1069,9 +1069,9 @@ class Scheduler(PollScheduler):
         if "--resume" in self.myopts:
             # We're resuming.
             portage.writemsg_stdout(
-                colorize("GOOD", "*** Resuming merge...\n"), noiselevel=-1
+                colorize("GOOD", "**** Resuming merge...\n"), noiselevel=-1
             )
-            self._logger.log(" *** Resuming merge...")
+            self._logger.log(" **** Resuming merge...")
 
         self._save_resume_list()
 
@@ -1206,7 +1206,7 @@ class Scheduler(PollScheduler):
         # event loop by calls to the terminate method.
         self._cleanup()
 
-        self._logger.log(" *** Finished. Cleaning up...")
+        self._logger.log(" **** Finished. Cleaning up...")
 
         if failed_pkgs:
             self._failed_pkgs_all.extend(failed_pkgs)
@@ -2079,7 +2079,7 @@ class Scheduler(PollScheduler):
         @rtype: bool
         @return: True if successful, False otherwise.
         """
-        print(colorize("GOOD", "*** Resuming merge..."))
+        print(colorize("GOOD", "**** Resuming merge..."))
 
         # free some memory before creating
         # the resume depgraph
@@ -2249,7 +2249,7 @@ class Scheduler(PollScheduler):
                         world_set.add(atom)
                     else:
                         writemsg_level(
-                            f'\n!!! Unable to record {atom} in "world"\n',
+                            f'\n!!!! Unable to record {atom} in "world"\n',
                             level=logging.WARN,
                             noiselevel=-1,
                         )

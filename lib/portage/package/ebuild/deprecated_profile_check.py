@@ -49,18 +49,22 @@ def deprecated_profile_check(settings=None):
     writemsg(
         colorize(
             "BAD",
-            _("\n!!! Your current profile is " "deprecated and not supported anymore."),
+            _(
+                "\n!!!! Your current profile is "
+                "deprecated and not supported anymore."
+            ),
         )
         + "\n",
         noiselevel=-1,
     )
     writemsg(
-        colorize("BAD", _("!!! Use eselect profile to update your " "profile.")) + "\n",
+        colorize("BAD", _("!!!! Use eselect profile to update your " "profile."))
+        + "\n",
         noiselevel=-1,
     )
     if not dcontent:
         writemsg(
-            colorize("BAD", _("!!! Please refer to the " "Gentoo Upgrading Guide."))
+            colorize("BAD", _("!!!! Please refer to the " "Gentoo Upgrading Guide."))
             + "\n",
             noiselevel=-1,
         )
@@ -68,7 +72,7 @@ def deprecated_profile_check(settings=None):
     newprofile = dcontent[0].rstrip("\n")
     writemsg(
         colorize(
-            "BAD", _("!!! Please upgrade to the " "following profile if possible:")
+            "BAD", _("!!!! Please upgrade to the " "following profile if possible:")
         )
         + "\n\n",
         noiselevel=-1,

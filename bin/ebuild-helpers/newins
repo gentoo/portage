@@ -24,14 +24,14 @@ trap 'rm -rf "${TMP}"' EXIT
 
 if [[ ${stdin} ]] ; then
 	if [[ -t 0 ]] ; then
-		__helpers_die "!!! ${helper}: Input is from a terminal"
+		__helpers_die "!!!! ${helper}: Input is from a terminal"
 		exit 1
 	fi
 	cat > "${TMP}/${2}"
 	ret=$?
 else
 	if [[ ! -e $1 ]] ; then
-		__helpers_die "!!! ${helper}: ${1} does not exist"
+		__helpers_die "!!!! ${helper}: ${1} does not exist"
 		exit 1
 	fi
 

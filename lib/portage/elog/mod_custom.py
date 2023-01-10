@@ -12,7 +12,7 @@ def process(mysettings, key, logentries, fulltext):
 
     if not mysettings.get("PORTAGE_ELOG_COMMAND"):
         raise portage.exception.MissingParameter(
-            "!!! Custom logging requested but PORTAGE_ELOG_COMMAND is not defined"
+            "!!!! Custom logging requested but PORTAGE_ELOG_COMMAND is not defined"
         )
     else:
         mylogcmd = mysettings["PORTAGE_ELOG_COMMAND"]
@@ -21,5 +21,5 @@ def process(mysettings, key, logentries, fulltext):
         retval = portage.process.spawn_bash(mylogcmd)
         if retval != 0:
             raise portage.exception.PortageException(
-                "!!! PORTAGE_ELOG_COMMAND failed with exitcode %d" % retval
+                "!!!! PORTAGE_ELOG_COMMAND failed with exitcode %d" % retval
             )

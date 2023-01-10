@@ -722,7 +722,7 @@ class vardbapi(dbapi):
                 pass
             else:
                 writemsg(
-                    _("!!! Error loading '%s': %s\n") % (self._aux_cache_filename, e),
+                    _("!!!! Error loading '%s': %s\n") % (self._aux_cache_filename, e),
                     noiselevel=-1,
                 )
             del e
@@ -1183,19 +1183,19 @@ class vardbapi(dbapi):
                     counter = int(f.readline().strip())
                 except (OverflowError, ValueError) as e:
                     writemsg(
-                        _("!!! COUNTER file is corrupt: '%s'\n") % self._counter_path,
+                        _("!!!! COUNTER file is corrupt: '%s'\n") % self._counter_path,
                         noiselevel=-1,
                     )
-                    writemsg(f"!!! {e}\n", noiselevel=-1)
+                    writemsg(f"!!!! {e}\n", noiselevel=-1)
         except OSError as e:
             # Silently allow ENOENT since files under
             # /var/cache/ are allowed to disappear.
             if e.errno != errno.ENOENT:
                 writemsg(
-                    _("!!! Unable to read COUNTER file: '%s'\n") % self._counter_path,
+                    _("!!!! Unable to read COUNTER file: '%s'\n") % self._counter_path,
                     noiselevel=-1,
                 )
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!!! {str(e)}\n", noiselevel=-1)
             del e
 
         if self._cached_counter == counter:
@@ -2112,9 +2112,9 @@ class dblink:
             pkgfiles[path] = data
 
         if errors:
-            writemsg(_("!!! Parse error in '%s'\n") % contents_file, noiselevel=-1)
+            writemsg(_("!!!! Parse error in '%s'\n") % contents_file, noiselevel=-1)
             for pos, e in errors:
-                writemsg(_("!!!   line %d: %s\n") % (pos, e), noiselevel=-1)
+                writemsg(_("!!!!   line %d: %s\n") % (pos, e), noiselevel=-1)
         self.contentscache = pkgfiles
         return pkgfiles
 
@@ -2426,7 +2426,7 @@ class dblink:
                 retval = self._pre_unmerge_backup(background)
                 if retval != os.EX_OK:
                     showMessage(
-                        _("!!! FAILED prerm: quickpkg: %s\n") % retval,
+                        _("!!!! FAILED prerm: quickpkg: %s\n") % retval,
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -2442,7 +2442,7 @@ class dblink:
                 # Sometimes this happens due to corruption of the EAPI file.
                 failures += 1
                 showMessage(
-                    _("!!! FAILED prerm: %s\n") % os.path.join(self.dbdir, "EAPI"),
+                    _("!!!! FAILED prerm: %s\n") % os.path.join(self.dbdir, "EAPI"),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -2461,7 +2461,7 @@ class dblink:
                 if retval != os.EX_OK:
                     failures += 1
                     showMessage(
-                        _("!!! FAILED prerm: %s\n") % retval,
+                        _("!!!! FAILED prerm: %s\n") % retval,
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -2488,7 +2488,7 @@ class dblink:
                 if retval != os.EX_OK:
                     failures += 1
                     showMessage(
-                        _("!!! FAILED postrm: %s\n") % retval,
+                        _("!!!! FAILED postrm: %s\n") % retval,
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -2996,7 +2996,7 @@ class dblink:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
-                        show_unmerge("!!!", "", file_type, obj)
+                        show_unmerge("!!!!", "", file_type, obj)
                 elif pkgfiles[objkey][0] == "obj":
                     if statobj is None or not stat.S_ISREG(statobj.st_mode):
                         show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
@@ -3161,7 +3161,7 @@ class dblink:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
-                        show_unmerge("!!!", "", "sym", obj)
+                        show_unmerge("!!!!", "", "sym", obj)
 
             protected_symlinks.clear()
             self._unmerge_dirs(
@@ -3212,7 +3212,7 @@ class dblink:
                             if e.errno not in ignored_unlink_errnos:
                                 raise
                             del e
-                            show_unmerge("!!!", "", "obj", child)
+                            show_unmerge("!!!!", "", "obj", child)
 
             try:
                 parent_name = os.path.dirname(obj)
@@ -3278,7 +3278,7 @@ class dblink:
                             if e.errno not in ignored_unlink_errnos:
                                 raise
                             del e
-                            show_unmerge("!!!", "", "sym", obj)
+                            show_unmerge("!!!!", "", "sym", obj)
                         else:
                             parents.append(os.path.dirname(obj))
 
@@ -3507,7 +3507,7 @@ class dblink:
             self._linkmap_broken = True
             self._display_merge(
                 _(
-                    "!!! Disabling preserve-libs "
+                    "!!!! Disabling preserve-libs "
                     "due to error: Command Not Found: %s\n"
                 )
                 % (e,),
@@ -3682,7 +3682,7 @@ class dblink:
                 # it shouldn't be preserved here.
                 showMessage(
                     _(
-                        "!!! File '%s' will not be preserved "
+                        "!!!! File '%s' will not be preserved "
                         "due to missing contents entry\n"
                     )
                     % (f_abs,),
@@ -3819,8 +3819,8 @@ class dblink:
                     # registry, but the actual lib it points to is not.
                     self._display_merge(
                         _(
-                            "!!! symlink to lib is preserved, "
-                            "but not the lib itself:\n!!! '%s'\n"
+                            "!!!! symlink to lib is preserved, "
+                            "but not the lib itself:\n!!!! '%s'\n"
                         )
                         % (obj,),
                         level=logging.ERROR,
@@ -4304,7 +4304,7 @@ class dblink:
 
         if not os.path.isdir(srcroot):
             showMessage(
-                _("!!! Directory Not Found: D='%s'\n") % srcroot,
+                _("!!!! Directory Not Found: D='%s'\n") % srcroot,
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -4320,7 +4320,7 @@ class dblink:
         )
         phase.start()
         if phase.wait() != os.EX_OK:
-            showMessage(_("!!! instprep failed\n"), level=logging.ERROR, noiselevel=-1)
+            showMessage(_("!!!! instprep failed\n"), level=logging.ERROR, noiselevel=-1)
             return 1
 
         is_binpkg = self.settings.get("EMERGE_FROM") == "binary"
@@ -4350,7 +4350,7 @@ class dblink:
                     slot = self.settings.get(var_name, "")
                     if not slot.strip():
                         showMessage(
-                            _("!!! SLOT is undefined\n"),
+                            _("!!!! SLOT is undefined\n"),
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -4958,7 +4958,7 @@ class dblink:
             rval = self._pre_merge_backup(self._installed_instance, downgrade)
             if rval != os.EX_OK:
                 showMessage(
-                    _("!!! FAILED preinst: ") + f"quickpkg: {rval}\n",
+                    _("!!!! FAILED preinst: ") + f"quickpkg: {rval}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -4966,7 +4966,7 @@ class dblink:
 
         # run preinst script
         showMessage(
-            _(">>> Merging %(cpv)s to %(destroot)s\n")
+            _(">>>> Merging %(cpv)s to %(destroot)s\n")
             % {"cpv": self.mycpv, "destroot": destroot}
         )
         phase = EbuildPhase(
@@ -4981,7 +4981,7 @@ class dblink:
         # XXX: Decide how to handle failures here.
         if a != os.EX_OK:
             showMessage(
-                _("!!! FAILED preinst: ") + str(a) + "\n",
+                _("!!!! FAILED preinst: ") + str(a) + "\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -5094,14 +5094,14 @@ class dblink:
         # so that preserve-libs logic doesn't have
         # to account for the additional complexity of the
         # AUTOCLEAN=no mode.
-        emerge_log(_(" >>> AUTOCLEAN: %s") % (slot_atom,))
+        emerge_log(_(" >>>> AUTOCLEAN: %s") % (slot_atom,))
 
         others_in_slot.append(self)  # self has just been merged
         for dblnk in list(others_in_slot):
             if dblnk is self:
                 continue
 
-            showMessage(_(">>> Safely unmerging already-installed instance...\n"))
+            showMessage(_(">>>> Safely unmerging already-installed instance...\n"))
             emerge_log(_(" === Unmerging... (%s)") % (dblnk.mycpv,))
             others_in_slot.remove(dblnk)  # dblnk will unmerge itself now
             dblnk._linkmap_broken = self._linkmap_broken
@@ -5118,9 +5118,9 @@ class dblink:
             dblnk.settings.pop("REPLACED_BY_VERSION", None)
 
             if unmerge_rval == os.EX_OK:
-                emerge_log(_(" >>> unmerge success: %s") % (dblnk.mycpv,))
+                emerge_log(_(" >>>> unmerge success: %s") % (dblnk.mycpv,))
             else:
-                emerge_log(_(" !!! unmerge FAILURE: %s") % (dblnk.mycpv,))
+                emerge_log(_(" !!!! unmerge FAILURE: %s") % (dblnk.mycpv,))
 
             self.lockdb()
             try:
@@ -5128,7 +5128,7 @@ class dblink:
                 dblnk.delete()
             finally:
                 self.unlockdb()
-            showMessage(_(">>> Original instance of package unmerged safely.\n"))
+            showMessage(_(">>>> Original instance of package unmerged safely.\n"))
 
         # We hold both directory locks.
         self.dbdir = self.dbpkgdir
@@ -5248,7 +5248,7 @@ class dblink:
             phase.start()
             a = phase.wait()
             if a == os.EX_OK:
-                showMessage(_(">>> %s merged.\n") % self.mycpv)
+                showMessage(_(">>>> %s merged.\n") % self.mycpv)
         finally:
             self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
@@ -5655,12 +5655,12 @@ class dblink:
                     )
                 else:
                     showMessage(
-                        _("!!! Failed to move file.\n"),
+                        _("!!!! Failed to move file.\n"),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
                     showMessage(
-                        f"!!! {mydest} -> {myto}\n",
+                        f"!!!! {mydest} -> {myto}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -5679,20 +5679,20 @@ class dblink:
                     if not stat.S_ISLNK(mydmode) and not os.access(mydest, os.W_OK):
                         pkgstuff = pkgsplit(self.pkg)
                         writemsg(
-                            _("\n!!! Cannot write to '%s'.\n") % mydest, noiselevel=-1
+                            _("\n!!!! Cannot write to '%s'.\n") % mydest, noiselevel=-1
                         )
                         writemsg(
                             _(
-                                "!!! Please check permissions and directories for broken symlinks.\n"
+                                "!!!! Please check permissions and directories for broken symlinks.\n"
                             )
                         )
                         writemsg(
                             _(
-                                "!!! You may start the merge process again by using ebuild:\n"
+                                "!!!! You may start the merge process again by using ebuild:\n"
                             )
                         )
                         writemsg(
-                            "!!! ebuild "
+                            "!!!! ebuild "
                             + self.settings["PORTDIR"]
                             + "/"
                             + self.cat
@@ -5702,7 +5702,7 @@ class dblink:
                             + self.pkg
                             + ".ebuild merge\n"
                         )
-                        writemsg(_("!!! And finish by running this: env-update\n\n"))
+                        writemsg(_("!!!! And finish by running this: env-update\n\n"))
                         return 1
 
                     if stat.S_ISDIR(mydmode) or (
