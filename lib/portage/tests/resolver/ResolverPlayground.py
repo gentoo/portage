@@ -689,7 +689,7 @@ class ResolverPlayground:
                 "[%s]\n%s"
                 % (
                     repo_name,
-                    "\n".join("{} = {}".format(k, v) for k, v in repo_config.items()),
+                    "\n".join(f"{k} = {v}" for k, v in repo_config.items()),
                 )
                 for repo_name, repo_config in self._repositories.items()
             ),
