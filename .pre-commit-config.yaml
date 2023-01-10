@@ -5,6 +5,10 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/PyCQA/pylint
-    rev: v2.15.9
+    rev: v2.15.10
     hooks:
       - id: pylint
+  - repo: https://github.com/ikamensh/flynt/
+    rev: '0.77'
+    hooks:
+      - id: flynt
