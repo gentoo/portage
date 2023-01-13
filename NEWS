@@ -63,12 +63,10 @@ Breaking changes:
   2. Defaulted to sync-depth=clone-depth=1.
 
   The motivation here was because of disk space growing unbounded
-  otherwise. It makes sense when considered within the school of thought / motivation
-  listed above (prioritising a successful sync and then making an optimisation
+  otherwise, as a full disk could lead to sync failure. It also makes sense
+  when considered within the school of thought / motivation listed above
+  (prioritising a successful sync and then making an optimisation
   based on how we achieve that).
-
-  Further, there was additional motivation to avoid disk usage growing
-  unbounded (which additionally could lead to a sync failing at some point).
 
   Portage 3.0.42 will now only make a repository shallow if:
   1. volatile=yes and it is a new sync (i.e. it was not deep before), or
@@ -86,6 +84,10 @@ Breaking changes:
   * If volatile=no, the repository is assumed to only be modified
     by Portage, and Portage will try its best to ensure syncs continue
     to work.
+
+  The default value of 'volatile' is determined as follows:
+  - If unset and the repository is under /var/db/repos and the repository
+    exists and it's owned by either 'portage' or 'root', set to yes.
 
 Features:
 * cnf: make.conf.example.loong: add for the loong arch (bug #884135).
