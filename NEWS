@@ -14,6 +14,8 @@ Bug fixes:
 
 * emerge: Fix installation of binpkgs by path (bug #873202, bug #890291).
 
+* Fix crash with pypy when PORTAGE_SCHEDULING_POLICY has been set (bug #876031).
+
 portage-3.0.43 (2023-01-02)
 --------------
 
