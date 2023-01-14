@@ -3117,12 +3117,14 @@ def set_scheduling_policy(settings):
     if platform.system() != "Linux" or not scheduling_policy:
         return os.EX_OK
 
+    # IDs sourced from linux/sched.h kernel's header.
     policies = {
-        "other": os.SCHED_OTHER,
-        "batch": os.SCHED_BATCH,
-        "idle": os.SCHED_IDLE,
-        "fifo": os.SCHED_FIFO,
-        "round-robin": os.SCHED_RR,
+        "other": 0,
+        "fifo": 1,
+        "round-robin": 2,
+        "batch": 3,
+        "idle": 5,
+        "deadline": 6,
     }
 
     out = portage.output.EOutput()

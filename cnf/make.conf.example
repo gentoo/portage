@@ -292,12 +292,12 @@
 #PORTAGE_IONICE_COMMAND="ionice -c 3 -p \${PID}"
 #
 # PORTAGE_SCHEDULING_POLICY allows changing the current scheduling policy. The
-# supported options are 'other', 'batch', 'idle', 'fifo' and 'round-robin'. When
-# unset, the scheduling policy remains unchanged, by default Linux uses 'other'
-# policy. Users that wish to minimize the Portage's impact on system
-# responsiveness should set scheduling policy to 'idle' which significantly
-# reduces the disruption to the rest of the system by scheduling Portage as
-# extremely low priority processes.
+# supported options are 'other', 'batch', 'idle', 'fifo', 'round-robin' and
+# 'deadline'. When unset, the scheduling policy remains unchanged, by default
+# Linux uses 'other' policy. Users that wish to minimize the Portage's impact
+# on system responsiveness should set scheduling policy to 'idle' which
+# significantly reduces the disruption to the rest of the system by scheduling
+# Portage as extremely low priority processes.
 #
 #PORTAGE_SCHEDULING_POLICY="idle"
 #
