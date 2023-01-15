@@ -7,6 +7,8 @@ Features:
 
 * cleanups: Use flynt on the codebase to upgrade to Python f-strings everywhere.
 
+* process: Show diagnostic message if exec failed with E2BIG
+
 Bug fixes:
 * ebuild: the PATH variable exported to ebuilds has been changed:
   The PATH setting from /etc/profile.env is appended to portage-internal
