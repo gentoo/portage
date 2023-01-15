@@ -15,10 +15,12 @@ class OnlydepsMinimalTestCase(TestCase):
                 "DEPEND": "dev-libs/B",
                 "RDEPEND": "dev-libs/C",
                 "PDEPEND": "dev-libs/D",
+                "IDEPEND": "dev-libs/E",
             },
             "dev-libs/B-1": {},
             "dev-libs/C-1": {},
             "dev-libs/D-1": {},
+            "dev-libs/E-1": {},
         }
         installed = {}
 
@@ -36,6 +38,29 @@ class OnlydepsMinimalTestCase(TestCase):
                 all_permutations=True,
                 success=True,
                 options={"--onlydeps": True, "--onlydeps-with-rdeps": "n"},
+                mergelist=["dev-libs/B-1"],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A"],
+                all_permutations=True,
+                success=True,
+                options={
+                    "--onlydeps": True,
+                    "--onlydeps-with-rdeps": "n",
+                    "--onlydeps-with-ideps": "y",
+                },
+                ambiguous_merge_order=True,
+                mergelist=[("dev-libs/B-1",)],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A"],
+                all_permutations=True,
+                success=True,
+                options={
+                    "--onlydeps": True,
+                    "--onlydeps-with-rdeps": "n",
+                    "--onlydeps-with-ideps": "n",
+                },
                 mergelist=["dev-libs/B-1"],
             ),
         )
