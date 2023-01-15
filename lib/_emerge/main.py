@@ -162,6 +162,7 @@ def insert_optional_args(args):
         "--jobs": valid_integers,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
+        "--onlydeps-with-ideps": y_or_n,
         "--onlydeps-with-rdeps": y_or_n,
         "--package-moves": y_or_n,
         "--quiet": y_or_n,
@@ -573,8 +574,12 @@ def parse_opts(tmpcmdline, silent=False):
             + "Emerge will ignore matching binary packages. ",
             "action": "append",
         },
+        "--onlydeps-with-ideps": {
+            "help": "modify interpretation of dependencies to include IDEPEND",
+            "choices": true_y_or_n,
+        },
         "--onlydeps-with-rdeps": {
-            "help": "modify interpretation of depedencies",
+            "help": "modify interpretation of dependencies",
             "choices": true_y_or_n,
         },
         "--rebuild-exclude": {
@@ -671,7 +676,7 @@ def parse_opts(tmpcmdline, silent=False):
             "action": "store",
         },
         "--root-deps": {
-            "help": "modify interpretation of depedencies",
+            "help": "modify interpretation of dependencies",
             "choices": ("True", "rdeps"),
         },
         "--search-index": {

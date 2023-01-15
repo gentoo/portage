@@ -800,6 +800,11 @@ Include run time dependencies when \fB\-\-onlydeps\fR is specified.
 When this is disabled only build time dependencies are included. This
 option is enabled by default.
 .TP
+.BR "\-\-onlydeps\-with\-ideps < y | n >"
+Include install time dependencies when \fB\-\-onlydeps\fR and
+\fB\-\-onlydeps\-with\-rdeps=n\fR are both specified. This option is
+disabled by default.
+.TP
 .BR "\-\-package\-moves [ y | n ]"
 Perform package moves when necessary. This option is enabled
 by default. Package moves are typically applied immediately

@@ -3718,7 +3718,8 @@ class depgraph:
         ):
             edepend["RDEPEND"] = ""
             edepend["PDEPEND"] = ""
-            edepend["IDEPEND"] = ""
+            if self._frozen_config.myopts.get("--onlydeps-with-ideps") in ("n", None):
+                edepend["IDEPEND"] = ""
 
         ignore_build_time_deps = False
         if pkg.built and not removal_action:
