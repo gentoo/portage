@@ -437,6 +437,35 @@ def spawn(
             except SystemExit:
                 raise
             except Exception as e:
+                if isinstance(e, OSError) and e.errno == errno.E2BIG:
+                    # If exec() failed with E2BIG, then this is
+                    # potentially because the environment variables
+                    # grew to large. The following will gather some
+                    # stats about the environment and print a
+                    # diagnostic message to help identifying the
+                    # culprit. See also
+                    # - https://bugs.gentoo.org/721088
+                    # - https://bugs.gentoo.org/830187
+                    def encoded_length(s):
+                        return len(os.fsencode(s))
+
+                    env_size = 0
+                    env_largest_name = None
+                    env_largest_size = 0
+                    for env_name, env_value in env.items():
+                        env_name_size = encoded_length(env_name)
+                        env_value_size = encoded_length(env_value)
+                        # Add two for '=' and the terminating null byte.
+                        total_size = env_name_size + env_value_size + 2
+                        if total_size > env_largest_size:
+                            env_largest_name = env_name
+                            env_largest_size = total_size
+                        env_size += total_size
+
+                    writemsg(
+                        f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_size} bytes. Largest environment variable: {env_largest_name} ({env_largest_size} bytes)\n"
+                    )
+
                 # We need to catch _any_ exception so that it doesn't
                 # propagate out of this function and cause exiting
                 # with anything other than os._exit()
