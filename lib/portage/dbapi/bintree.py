@@ -803,7 +803,13 @@ class binarytree:
             except PortageException:
                 pass
 
-    def populate(self, getbinpkgs=False, getbinpkg_refresh=False, add_repos=()):
+    def populate(
+        self,
+        getbinpkgs=False,
+        getbinpkg_refresh=False,
+        add_repos=(),
+        force_reindex=False,
+    ):
         """
         Populates the binarytree with package metadata.
 
@@ -833,6 +839,7 @@ class binarytree:
         try:
             update_pkgindex = self._populate_local(
                 reindex="pkgdir-index-trusted" not in self.settings.features
+                or force_reindex
             )
 
             if update_pkgindex and self.dbapi.writable:
