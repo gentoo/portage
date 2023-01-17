@@ -17,6 +17,7 @@ from portage.const import (
 )
 from portage.process import find_binary
 from portage.dep import Atom, _repo_separator
+from portage.dbapi.bintree import binarytree
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
@@ -396,6 +397,9 @@ class ResolverPlayground:
                 t.compress(os.path.dirname(binpkg_path), metadata)
             else:
                 raise InvalidBinaryPackageFormat(binpkg_format)
+
+            bintree = binarytree(pkgdir=self.pkgdir, settings=self.settings)
+            bintree.populate(force_reindex=True)
 
     def _create_installed(self, installed):
         for cpv in installed:
