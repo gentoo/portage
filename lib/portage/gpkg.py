@@ -201,8 +201,12 @@ class tar_stream_writer:
                 if not self.killed:
                     # Do not raise error if killed by portage
                     raise CompressorOperationFailed("PIPE broken")
-
-            self.container.fileobj.write(buffer)
+            try:
+                self.container.fileobj.write(buffer)
+            except OSError as err:
+                self.error = True
+                self.kill()
+                raise CompressorOperationFailed(str(err))
             if self.checksum_helper:
                 self.checksum_helper.update(buffer)
 
