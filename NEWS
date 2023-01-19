@@ -6,6 +6,8 @@ Bug fixes:
 
 * portage(5): List volatile option as a separate entry (bug #888585).
 
+* emaint: Changed default action for emaint target sync to 'auto'.
+
 portage-3.0.44 (2023-01-15)
 --------------
 

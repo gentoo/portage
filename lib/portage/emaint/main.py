@@ -210,10 +210,16 @@ def emaint_main(myargv):
             long_action = opt.long.lstrip("-")
 
     if long_action is None:
-        # print("DEBUG: long_action is None: setting to 'check'")
-        long_action = "check"
-        func = check_opt.func
-        status = check_opt.status
+        if args[0] == "sync":
+            # print("DEBUG: long_action is None: setting to 'auto'")
+            long_action = "auto"
+            func = "auto_sync"
+            status = "Syncing %s"
+        else:
+            # print("DEBUG: long_action is None: setting to 'check'")
+            long_action = "check"
+            func = check_opt.func
+            status = check_opt.status
 
     if args[0] == "all":
         tasks = []
