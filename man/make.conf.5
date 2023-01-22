@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Nov 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2023" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -521,12 +521,6 @@ fixes (order of flags, duplicated entries, ...)
 .B force\-mirror
 Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
 except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
-.TP
-.B force\-prefix
-Enable prefix support for all ebuilds, regardless of EAPI, since older EAPIs
-would otherwise be useless with prefix configurations. This brings
-compatibility with the prefix branch of portage, which also supports EPREFIX
-for all EAPIs (for obvious reasons).
 .TP
 .B getbinpkg
 Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See

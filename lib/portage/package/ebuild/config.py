@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -3347,14 +3347,9 @@ class config:
         if not (src_like_phase and eapi_attrs.broot):
             mydict.pop("BROOT", None)
 
-        # Prefix variables are supported beginning with EAPI 3, or when
-        # force-prefix is in FEATURES, since older EAPIs would otherwise be
-        # useless with prefix configurations. This brings compatibility with
-        # the prefix branch of portage, which also supports EPREFIX for all
-        # EAPIs (for obvious reasons).
+        # Prefix variables are supported beginning with EAPI 3.
         if phase == "depend" or (
-            "force-prefix" not in self.features
-            and eapi is not None
+            eapi is not None
             and not eapi_supports_prefix(eapi)
         ):
             mydict.pop("ED", None)

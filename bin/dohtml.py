@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -146,9 +146,7 @@ class OptionsClass:
             self.PF = os.environ["PF"]
             if self.PF:
                 self.PF = normalize_path(self.PF)
-        if "force-prefix" not in os.environ.get(
-            "FEATURES", ""
-        ).split() and os.environ.get("EAPI", "0") in ("0", "1", "2"):
+        if os.environ.get("EAPI", "0") in ("0", "1", "2"):
             self.ED = os.environ.get("D", "")
         else:
             self.ED = os.environ.get("ED", "")
