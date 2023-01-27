@@ -4,6 +4,8 @@ portage-3.0.45 (UNRELEASED)
 Bug fixes:
 * gpkg: Handle out-of-space errors (bug #891391).
 
+* portage(5): List volatile option as a separate entry (bug #888585).
+
 portage-3.0.44 (2023-01-15)
 --------------
 
