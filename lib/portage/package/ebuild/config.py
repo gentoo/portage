@@ -3347,8 +3347,8 @@ class config:
         if not (src_like_phase and eapi_attrs.broot):
             mydict.pop("BROOT", None)
 
-        # Prefix variables are supported beginning with EAPI 3.
         if phase == "depend" or (
+            # Prefix variables are supported beginning with EAPI 3.
             eapi is not None
             and not eapi_supports_prefix(eapi)
         ):
