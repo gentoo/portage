@@ -1,0 +1,87 @@
+# Check for implicit function declaration warnings in configure logs
+#
+# ebuilds should set the QA_CONFIG_IMPL_DECL_SKIP array to skip known false
+# positives.
+#
+# Some examples of logs to look for:
+# bash: work/bash-5.1/config.log
+#       ^---  easy
+# python: work/Python-3.10.9/config.log
+#         ^---  easy
+# gcc: work/build/config.log
+#      ^---  can be out-of-tree
+# clang: work/x/y/clang-abi_x86_64.amd64/CMakeFiles/CMakeError.log
+#        ^---  can be non-autotools (and very deep)
+# systemd-utils: work/systemd-stable-251.10-abi_x86_64.amd64/meson-logs/meson-log.txt
+#                ^---  can be non-autotools
+#
+# Adapted from macports portconfigure.tcl with love.
+#
+# See also: bug 892651
+
+find_log_targets() {
+	local log_targets=(
+		'config.log'
+		'CMakeError.log'
+		'meson-log.txt'
+	)
+	local find_args=()
+	local log
+
+	# Find config logs. Assume the dirs can have spaces in them, even though
+	# that is hella evil and goes against good filesystem manners!
+	for log in "${log_targets[@]}"; do
+		find_args+=( '-name' "${log}" '-o' )
+	done
+	unset -v 'find_args[-1]'
+	printf '%s\0' "${WORKDIR}" |
+		find -files0-from - -type f \( "${find_args[@]}" \) -print0
+}
+
+config_impl_decl_check() {
+	local files=()
+	local lines=()
+	local funcs=()
+	local l
+	local entry
+	local line
+	local func
+	local re=" function '([[:print:]]+)'"
+
+	# Iterate over every log file found and check for '-Wimplicit-function-declaration'
+	while IFS= read -rd '' l; do
+		while IFS= read -ru3 entry; do
+			# Strip ANSI codes (color and erase in line have been seen at least)
+			entry="$(printf '%s\n' "${entry}" | sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g')"
+
+			line="${entry%%:*}"
+			# This conditional should always be true unless compiler warnings
+			# get drastically changed
+			if [[ ${entry} =~ ${re} ]]; then
+				func="${BASH_REMATCH[1]}"
+			fi
+
+			has "${func}" "${QA_CONFIG_IMPL_DECL_SKIP[@]}" && continue
+
+			files+=( "${l}" )
+			lines+=( "${line}" )
+			funcs+=( "${func}" )
+		# Using -I to ignore binary files is a GNU extension for grep
+		done 3< <(grep -nEI -e '-Wimplicit-function-declaration' "${l}")
+	done < <(find_log_targets)
+
+	# Drop out early if no impl decls found (all the arrays are the same size)
+	[[ ${#files[@]} -eq 0 ]] && return
+
+	eqawarn 'Found the following implicit function declarations in configure logs:'
+	for l in "${!files[@]}"; do
+		eqawarn "  ${files[l]}:${lines[l]} - ${funcs[l]}"
+		eqatag 'config.log-impl-decl' "line=${lines[l]}" "func=${funcs[l]}" "${files[l]}"
+	done
+	eqawarn 'Check that no features were accidentally disabled.'
+}
+
+config_impl_decl_check
+: # guarantee successful exit
+
+# vim:ft=sh noexpandtab:
