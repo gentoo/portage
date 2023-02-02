@@ -1,6 +1,9 @@
 portage-3.0.45 (UNRELEASED)
 --------------
 
+Features:
+* Support new ELF machine code: AMDGPU
+
 Bug fixes:
 * gpkg: Handle out-of-space errors (bug #891391).
 
