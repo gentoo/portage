@@ -13,7 +13,6 @@ from portage.util import ensure_dirs
 
 class ProfilePackageSetTestCase(TestCase):
     def testProfilePackageSet(self):
-
         repo_configs = {
             "test_repo": {
                 "layout.conf": ("profile-formats = profile-set",),

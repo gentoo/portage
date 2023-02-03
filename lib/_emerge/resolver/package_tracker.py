@@ -269,7 +269,6 @@ class PackageTracker:
             self._conflicts_cache = []
 
             for cp_key in self._multi_pkgs:
-
                 # Categorize packages according to cpv and slot.
                 slot_map = collections.defaultdict(list)
                 cpv_map = collections.defaultdict(list)

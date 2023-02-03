@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class UseDepDefaultsTestCase(TestCase):
     def testUseDepDefaultse(self):
-
         ebuilds = {
             "dev-libs/A-1": {
                 "DEPEND": "dev-libs/B[foo]",

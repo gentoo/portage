@@ -13,6 +13,7 @@ raise_signal = getattr(
     signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
 )
 
+
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
 class SignalInterrupt(KeyboardInterrupt):
     def __init__(self, signum):
@@ -81,7 +82,6 @@ try:
     RETURNCODE_WRITE_FAILED = 2
 
     class FifoWriter(AbstractPollTask):
-
         __slots__ = ("buf", "fifo", "_fd")
 
         def _start(self):
@@ -128,7 +128,6 @@ try:
                 self._fd = None
 
     class EbuildIpc:
-
         # Timeout for each individual communication attempt (we retry
         # as long as the daemon process appears to be alive).
         _COMMUNICATE_RETRY_TIMEOUT = 15  # seconds
@@ -151,7 +150,6 @@ try:
                 return False
 
         def communicate(self, args):
-
             # Make locks quiet since unintended locking messages displayed on
             # stdout could corrupt the intended output of this program.
             portage.locks._quiet = True
@@ -209,7 +207,6 @@ try:
             return fifo_writer.wait()
 
         def _receive_reply(self, input_fd):
-
             start_time = time.time()
 
             pipe_reader = PipeReader(
@@ -237,7 +234,6 @@ try:
             retval = 2
 
             if not buf:
-
                 portage.util.writemsg_level(
                     f"ebuild-ipc: {portage.localization._('read failed')}\n",
                     level=logging.ERROR,
@@ -245,7 +241,6 @@ try:
                 )
 
             else:
-
                 try:
                     reply = pickle.loads(buf)
                 except SystemExit:
@@ -258,7 +253,6 @@ try:
                     )
 
                 else:
-
                     (out, err, retval) = reply
 
                     if out:
@@ -270,7 +264,6 @@ try:
             return retval
 
         def _communicate(self, args):
-
             if not self._daemon_is_alive():
                 self._no_daemon_msg()
                 return 2

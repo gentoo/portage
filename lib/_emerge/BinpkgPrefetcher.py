@@ -8,7 +8,6 @@ from portage import os
 
 
 class BinpkgPrefetcher(CompositeTask):
-
     __slots__ = ("pkg",) + (
         "pkg_path",
         "pkg_allocated_path",
@@ -28,7 +27,6 @@ class BinpkgPrefetcher(CompositeTask):
         self._start_task(fetcher, self._fetcher_exit)
 
     def _fetcher_exit(self, fetcher):
-
         if self._default_exit(fetcher) != os.EX_OK:
             self.wait()
             return

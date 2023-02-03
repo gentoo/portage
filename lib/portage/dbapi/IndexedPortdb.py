@@ -43,7 +43,6 @@ class IndexedPortdb:
     )
 
     def __init__(self, portdb):
-
         self._portdb = portdb
 
         for k in self._copy_attrs:
@@ -54,7 +53,6 @@ class IndexedPortdb:
         self._unindexed_cp_map = None
 
     def _init_index(self):
-
         cp_map = {}
         desc_cache = {}
         self._desc_cache = desc_cache
@@ -118,7 +116,6 @@ class IndexedPortdb:
                 cp_group_iter = MultiIterGroupBy(streams, key=operator.attrgetter("cp"))
 
             for cp_group in cp_group_iter:
-
                 new_cp = None
                 cp_list = cp_map.get(cp_group[0].cp)
                 if cp_list is None:

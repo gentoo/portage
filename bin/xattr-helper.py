@@ -130,7 +130,6 @@ def restore_xattrs(file_in):
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser(description=doc)
     parser.add_argument("paths", nargs="*", default=[])
 

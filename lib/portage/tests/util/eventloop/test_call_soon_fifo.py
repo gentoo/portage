@@ -10,7 +10,6 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 
 class CallSoonFifoTestCase(TestCase):
     def testCallSoonFifo(self):
-
         event_loop = global_event_loop()
         inputs = [random.random() for index in range(10)]
         outputs = []

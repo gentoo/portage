@@ -112,13 +112,11 @@ _mips_abi_map = {
 
 
 def _compute_suffix_loong(elf_header):
-
     loong_abi = elf_header.e_flags & EF_LOONGARCH_ABI_MASK
     return _loong_abi_map.get(loong_abi)
 
 
 def _compute_suffix_mips(elf_header):
-
     name = None
     mips_abi = elf_header.e_flags & EF_MIPS_ABI
 
@@ -179,7 +177,6 @@ def compute_multilib_category(elf_header):
     """
     category = None
     if elf_header.e_machine is not None:
-
         prefix = _machine_prefix_map.get(elf_header.e_machine)
         specialized_func = _specialized_funcs.get(prefix)
         suffix = None

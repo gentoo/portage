@@ -24,7 +24,6 @@ from _emerge.Task import Task
 
 
 class Package(Task):
-
     __hash__ = Task.__hash__
     __slots__ = (
         "built",
@@ -264,7 +263,6 @@ class Package(Task):
         type_name=None,
         **kwargs,
     ):
-
         if operation is None:
             if installed or onlydeps:
                 operation = "nomerge"
@@ -480,9 +478,7 @@ class Package(Task):
         return masks
 
     def _eval_visiblity(self, masks):
-
         if masks is not False:
-
             if "EAPI.unsupported" in masks:
                 return False
 
@@ -533,7 +529,6 @@ class Package(Task):
         return pmask is not None
 
     def _metadata_exception(self, k, e):
-
         if k.endswith("DEPEND"):
             qacat = "dependency.syntax"
         else:
@@ -611,7 +606,6 @@ class Package(Task):
         return s
 
     class _use_class:
-
         __slots__ = ("enabled", "_expand", "_expand_hidden", "_force", "_pkg", "_mask")
 
         # Share identical frozenset instances when available.
@@ -725,7 +719,6 @@ class Package(Task):
         return use_str
 
     class _iuse:
-
         __slots__ = (
             "__weakref__",
             "_iuse_implicit_match",

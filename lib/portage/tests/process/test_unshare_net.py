@@ -22,7 +22,6 @@ ping -c 1 -W 1 fd::1 || exit 1
 
 class UnshareNetTestCase(TestCase):
     def testUnshareNet(self):
-
         if platform.system() != "Linux":
             self.skipTest("not Linux")
         if portage.process.find_binary("ping") is None:

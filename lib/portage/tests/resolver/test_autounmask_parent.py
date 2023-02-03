@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class AutounmaskParentTestCase(TestCase):
     def testAutounmaskParentUse(self):
-
         ebuilds = {
             "dev-libs/B-1": {
                 "EAPI": "5",

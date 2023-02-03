@@ -969,7 +969,6 @@ def _init(config_root="/"):
 
 
 class _LazyInitColorMap(portage.proxy.objectproxy.ObjectProxy):
-
     __slots__ = ("_attr",)
 
     def __init__(self, attr):

@@ -113,7 +113,6 @@ def sanitize_fds():
     not be inherited by child processes.
     """
     if _set_inheritable is not None:
-
         whitelist = frozenset(
             [
                 portage._get_stdin().fileno(),
@@ -502,7 +501,6 @@ def spawn(
 
     # Otherwise we clean them up.
     while mypids:
-
         # Pull the last reader in the pipe chain. If all processes
         # in the pipe are well behaved, it will die when the process
         # it is reading from dies.
@@ -734,7 +732,6 @@ def _exec(
                     if errno_value == 0 and libc.unshare(unshare_flags) != 0:
                         errno_value = ctypes.get_errno()
                     if errno_value != 0:
-
                         involved_features = []
                         if unshare_ipc:
                             involved_features.append("ipc-sandbox")
@@ -1039,7 +1036,6 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
     # explicitly requested for it to remain open by adding
     # it to the keys of fd_pipes.
     while reverse_map:
-
         oldfd, newfds = reverse_map.popitem()
         old_fdflags = None
 
@@ -1065,7 +1061,6 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
                     fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
 
             if _set_inheritable is not None:
-
                 inheritable_state = None
                 if not (old_fdflags is None or _FD_CLOEXEC is None):
                     inheritable_state = not bool(old_fdflags & _FD_CLOEXEC)

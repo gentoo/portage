@@ -8,7 +8,6 @@ from tempfile import mkstemp
 
 
 class PortageModulesFileTestCase(TestCase):
-
     keys = ["foo.bar", "baz", "bob", "extra_key"]
     invalid_keys = ["", ""]
     modules = ["spanky", "zmedico", "antarus", "ricer", "5", "6"]

@@ -788,7 +788,6 @@ def venv_data_files(locations):
 
         abs_source_path = os.path.abspath(source_path)
         for root, dirs, files in os.walk(abs_source_path):
-
             root_offset = root[len(abs_source_path) :].lstrip("/")
             dest_path = os.path.join(dest_prefix, root_offset)
 

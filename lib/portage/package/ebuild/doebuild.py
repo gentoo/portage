@@ -246,7 +246,6 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 def _spawn_phase(
     phase, settings, actionmap=None, returnpid=False, logfile=None, **kwargs
 ):
-
     if returnpid:
         return _doebuild_spawn(
             phase,
@@ -964,7 +963,6 @@ def doebuild(
             return 1
 
         if mf is not _doebuild_manifest_cache and not mf.allow_missing:
-
             # Make sure that all of the ebuilds are
             # actually listed in the Manifest.
             for f in os.listdir(pkgdir):
@@ -1034,7 +1032,6 @@ def doebuild(
             )
 
         if mydo == "nofetch":
-
             if returnpid:
                 writemsg(
                     "!!! doebuild: %s\n"
@@ -1047,7 +1044,6 @@ def doebuild(
             )
 
         if tree == "porttree":
-
             if not returnpid:
                 # Validate dependency metadata here to ensure that ebuilds with
                 # invalid data are never installed via the ebuild command. Skip
@@ -1278,7 +1274,6 @@ def doebuild(
             )
         )
         if need_distfiles:
-
             src_uri = mysettings.configdict["pkg"].get("SRC_URI")
             if src_uri is None:
                 (src_uri,) = mydbapi.aux_get(
@@ -1572,7 +1567,6 @@ def doebuild(
         return retval
 
     finally:
-
         if builddir_lock is not None:
             builddir_lock.scheduler.run_until_complete(builddir_lock.async_unlock())
         if tmpdir:
@@ -1786,7 +1780,6 @@ def _spawn_actionmap(settings):
 
 
 def _validate_deps(mysettings, myroot, mydo, mydbapi):
-
     invalid_dep_exempt_phases = {"clean", "cleanrm", "help", "prerm", "postrm"}
     all_keys = set(Package.metadata_keys)
     all_keys.add("SRC_URI")
@@ -2136,7 +2129,6 @@ def spawnebuild(
     fd_pipes=None,
     returnpid=False,
 ):
-
     if returnpid:
         warnings.warn(
             "portage.spawnebuild() called "
@@ -2668,7 +2660,6 @@ def _post_src_install_uid_fix(mysettings, out):
         qa_desktop_file = re.compile(qa_desktop_file)
 
     while True:
-
         unicode_error = False
         size = 0
         counted_inodes = set()
@@ -2733,7 +2724,6 @@ def _post_src_install_uid_fix(mysettings, out):
                         is not None
                     )
                 ):
-
                     desktop_validate = validate_desktop_entry(fpath)
                     if desktop_validate:
                         desktopfile_errors.extend(desktop_validate)

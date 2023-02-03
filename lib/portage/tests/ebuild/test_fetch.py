@@ -36,7 +36,6 @@ from _emerge.Package import Package
 
 class EbuildFetchTestCase(TestCase):
     def testEbuildFetch(self):
-
         user_config = {
             "make.conf": ('GENTOO_MIRRORS="{scheme}://{host}:{port}"',),
         }
@@ -71,7 +70,6 @@ class EbuildFetchTestCase(TestCase):
 
             user_config_subst = user_config.copy()
             for configname, configdata in user_config.items():
-
                 configdata_sub = []
                 for line in configdata:
                     configdata_sub.append(

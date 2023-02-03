@@ -8,7 +8,6 @@ from portage.exception import InvalidAtom
 
 class TestAtom(TestCase):
     def testAtom(self):
-
         tests = (
             (
                 "=sys-apps/portage-2.1-r1:0[doc,a=,!b=,c?,!d?,-e]",

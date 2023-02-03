@@ -12,7 +12,6 @@ from ..SlotObject import SlotObject
 
 
 class SchedulerInterface(SlotObject):
-
     _event_loop_attrs = (
         "add_reader",
         "add_writer",
@@ -118,7 +117,6 @@ class SchedulerInterface(SlotObject):
                 if not msg_shown:
                     writemsg_level(msg, level=level, noiselevel=noiselevel)
             else:
-
                 if log_path.endswith(".gz"):
                     # NOTE: The empty filename argument prevents us from
                     # triggering a bug in python3 which causes GzipFile

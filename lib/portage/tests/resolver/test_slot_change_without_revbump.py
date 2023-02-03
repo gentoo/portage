@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SlotChangeWithoutRevBumpTestCase(TestCase):
     def testSlotChangeWithoutRevBump(self):
-
         ebuilds = {
             "app-arch/libarchive-3.1.1": {"EAPI": "5", "SLOT": "0/13"},
             "app-arch/libarchive-3.0.4-r1": {"EAPI": "5", "SLOT": "0"},

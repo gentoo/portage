@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SonameDepcleanTestCase(TestCase):
     def testSonameDepclean(self):
-
         installed = {
             "app-misc/A-1": {
                 "RDEPEND": "dev-libs/B",

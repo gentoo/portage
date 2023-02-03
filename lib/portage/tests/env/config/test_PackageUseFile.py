@@ -9,7 +9,6 @@ from tempfile import mkstemp
 
 
 class PackageUseFileTestCase(TestCase):
-
     cpv = "sys-apps/portage"
     useflags = ["cdrom", "far", "boo", "flag", "blat"]
 

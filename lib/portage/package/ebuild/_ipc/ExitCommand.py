@@ -5,7 +5,6 @@ from portage.package.ebuild._ipc.IpcCommand import IpcCommand
 
 
 class ExitCommand(IpcCommand):
-
     __slots__ = (
         "exitcode",
         "reply_hook",
@@ -17,7 +16,6 @@ class ExitCommand(IpcCommand):
         self.exitcode = None
 
     def __call__(self, argv):
-
         if self.exitcode is not None:
             # Ignore all but the first call, since if die is called
             # then we certainly want to honor that exitcode, even

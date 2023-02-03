@@ -339,7 +339,6 @@ class SetConfig:
 
 
 def load_default_config(settings, trees):
-
     if not _ENABLE_SET_CONFIG:
         return SetConfig(None, settings, trees)
 

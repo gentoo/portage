@@ -16,7 +16,6 @@ from portage.output import colorize
 
 class MoveEntTestCase(TestCase):
     def testMoveEnt(self):
-
         ebuilds = {
             "dev-libs/A-2::dont_apply_updates": {
                 "EAPI": "4",

@@ -38,7 +38,6 @@ _xattr_excluder_cache = {}
 
 
 def _get_xattr_excluder(pattern):
-
     try:
         value = _xattr_excluder_cache[pattern]
     except KeyError:
@@ -49,11 +48,9 @@ def _get_xattr_excluder(pattern):
 
 
 class _xattr_excluder:
-
     __slots__ = ("_pattern_split",)
 
     def __init__(self, pattern):
-
         if pattern is None:
             self._pattern_split = None
         else:
@@ -65,7 +62,6 @@ class _xattr_excluder:
                 self._pattern_split = tuple(pattern)
 
     def __call__(self, attr):
-
         if self._pattern_split is None:
             return False
 

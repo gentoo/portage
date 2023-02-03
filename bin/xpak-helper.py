@@ -11,7 +11,6 @@ from portage import os
 
 
 def command_recompose(args):
-
     usage = "usage: recompose <binpkg_path> <metadata_dir>\n"
 
     if len(args) != 2:
@@ -37,7 +36,6 @@ def command_recompose(args):
 
 
 def main(argv):
-
     if argv and isinstance(argv[0], bytes):
         for i, x in enumerate(argv):
             argv[i] = portage._unicode_decode(x, errors="strict")

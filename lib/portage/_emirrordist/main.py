@@ -232,7 +232,6 @@ def parse_args(args):
 
 
 def emirrordist_main(args):
-
     # The calling environment is ignored, so the program is
     # completely controlled by commandline arguments.
     env = {}
@@ -459,7 +458,6 @@ def emirrordist_main(args):
         l.setLevel(l.getEffectiveLevel() - 10 * options.verbose)
 
     with Config(options, portdb, SchedulerInterface(global_event_loop())) as config:
-
         if not options.mirror:
             parser.error("No action specified")
 

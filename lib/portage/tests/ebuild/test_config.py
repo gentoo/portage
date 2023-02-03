@@ -83,7 +83,6 @@ class ConfigTestCase(TestCase):
             playground.cleanup()
 
     def testLicenseManager(self):
-
         user_config = {
             "package.license": (
                 "dev-libs/* TEST",
@@ -195,7 +194,6 @@ class ConfigTestCase(TestCase):
             playground.cleanup()
 
     def testPackageMaskOrder(self):
-
         ebuilds = {
             "dev-libs/A-1": {},
             "dev-libs/B-1": {},
@@ -262,7 +260,6 @@ class ConfigTestCase(TestCase):
             playground.cleanup()
 
     def testManifest(self):
-
         distfiles = {
             "B-2.tar.bz2": b"binary\0content",
             "C-2.zip": b"binary\0content",

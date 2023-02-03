@@ -10,7 +10,6 @@ class PackageMerge(CompositeTask):
     __slots__ = ("merge", "postinst_failure")
 
     def _start(self):
-
         self.scheduler = self.merge.scheduler
         pkg = self.merge.pkg
         pkg_count = self.merge.pkg_count

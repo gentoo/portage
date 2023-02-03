@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SimpleDepcleanTestCase(TestCase):
     def testSimpleDepclean(self):
-
         ebuilds = {
             "dev-libs/A-1": {
                 "EAPI": "5",

@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class RegularSlotChangeWithoutRevBumpTestCase(TestCase):
     def testRegularSlotChangeWithoutRevBumpTestCase(self):
-
         ebuilds = {
             "dev-libs/boost-1.52.0": {"SLOT": "0"},
             "app-office/libreoffice-4.0.0.2": {

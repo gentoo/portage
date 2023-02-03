@@ -66,7 +66,6 @@ class WebRsync(SyncBase):
             if self.repo.module_specific_options.get(
                 "sync-webrsync-verify-signature", "false"
             ).lower() in ("true", "yes"):
-
                 if not self.repo.sync_openpgp_key_path:
                     writemsg_level(
                         "!!! sync-openpgp-key-path is not set\n",

@@ -364,9 +364,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
                 if quiet:
                     sys.stdout.write("Checking GLSA " + myid + "\n")
                 mergedict = {}
-                for (vuln, update) in myglsa.getAffectionTable(
-                    least_change=least_change
-                ):
+                for vuln, update in myglsa.getAffectionTable(least_change=least_change):
                     mergedict.setdefault(update, []).append(vuln)
 
                 # first, extract the atoms that cannot be upgraded (where key == "")
@@ -381,7 +379,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
                 # see if anything is left that can be upgraded
                 if mergedict:
                     sys.stdout.write(">>> Updates that will be performed:\n")
-                    for (upd, vuln) in mergedict.items():
+                    for upd, vuln in mergedict.items():
                         sys.stdout.write(
                             "     "
                             + green(upd)

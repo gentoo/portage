@@ -12,7 +12,6 @@ from portage import os
 
 
 def chk_updated_info_files(root, infodirs, prev_mtimes):
-
     if os.path.exists("/usr/bin/install-info"):
         out = portage.output.EOutput()
         regen_infodirs = []

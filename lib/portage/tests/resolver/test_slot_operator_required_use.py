@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotOperatorRequiredUseTestCase(TestCase):
     def testSlotOperatorRequiredUse(self):
-
         ebuilds = {
             "app-misc/A-1": {"EAPI": "5", "SLOT": "0/1"},
             "app-misc/A-2": {"EAPI": "5", "SLOT": "0/2"},

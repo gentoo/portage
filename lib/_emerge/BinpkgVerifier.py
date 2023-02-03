@@ -22,7 +22,6 @@ class BinpkgVerifier(CompositeTask):
     __slots__ = ("logfile", "pkg", "_digests", "_pkg_path")
 
     def _start(self):
-
         bintree = self.pkg.root_config.trees["bintree"]
         digests = bintree._get_digests(self.pkg)
         if "size" not in digests:
@@ -69,7 +68,6 @@ class BinpkgVerifier(CompositeTask):
         )
 
     def _digester_exit(self, digester):
-
         if self._default_exit(digester) != os.EX_OK:
             self.wait()
             return
@@ -119,7 +117,6 @@ class BinpkgVerifier(CompositeTask):
         )
 
     def _digest_exception(self, name, value, expected):
-
         head, tail = os.path.split(self._pkg_path)
         temp_filename = _checksum_failure_temp_file(
             self.pkg.root_config.settings, head, tail

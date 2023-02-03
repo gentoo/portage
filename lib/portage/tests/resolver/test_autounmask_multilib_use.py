@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class AutounmaskMultilibUseTestCase(TestCase):
     def testAutounmaskMultilibUse(self):
-
         self.todo = True
 
         ebuilds = {

@@ -129,7 +129,6 @@ class CompatCoroutineTestCase(TestCase):
 
     def test_method_coroutine(self):
         class Cubby:
-
             _empty = object()
 
             def __init__(self, loop):

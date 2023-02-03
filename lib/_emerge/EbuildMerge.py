@@ -10,7 +10,6 @@ from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 
 
 class EbuildMerge(CompositeTask):
-
     __slots__ = (
         "exit_hook",
         "find_blockers",

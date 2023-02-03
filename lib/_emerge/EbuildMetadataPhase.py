@@ -199,7 +199,6 @@ class EbuildMetadataPhase(SubProcess):
                 # EAPI from _parse_eapi_ebuild_head, we don't write cache
                 # entries for unsupported EAPIs.
                 if self.eapi_supported:
-
                     if metadata.get("INHERITED", False):
                         metadata[
                             "_eclasses_"

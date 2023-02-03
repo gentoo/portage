@@ -12,7 +12,6 @@ os.chdir(os.environ["__PORTAGE_HELPER_CWD"])
 
 
 def main(files):
-
     # We can't trust that the filesystem encoding (locale dependent)
     # correctly matches the arguments, so use surrogateescape to
     # pass through the original argv bytes for Python 3.

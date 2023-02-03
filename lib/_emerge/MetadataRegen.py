@@ -140,7 +140,6 @@ class MetadataRegen(AsyncScheduler):
         portdb.flush_cache()
 
     def _task_exit(self, metadata_process):
-
         if metadata_process.returncode != os.EX_OK:
             self._valid_pkgs.discard(metadata_process.cpv)
             if not self._terminated_tasks:

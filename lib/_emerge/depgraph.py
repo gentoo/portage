@@ -302,7 +302,6 @@ class _rebuild_config:
                 or dep_root_slot in self.rebuild_list
                 or not dep_pkg.installed
             ):
-
                 # A direct rebuild dependency is being installed. We
                 # should update the parent as well to the latest binary,
                 # if that binary is valid.
@@ -637,7 +636,6 @@ class _dynamic_depgraph_config:
 
 
 class depgraph:
-
     # Represents the depth of a node that is unreachable from explicit
     # user arguments (or their deep dependencies). Such nodes are pulled
     # in by the _complete_graph method.
@@ -697,7 +695,6 @@ class depgraph:
             return
 
         for myroot in self._frozen_config.trees:
-
             dynamic_deps = "dynamic_deps" in self._dynamic_config.myparams
             preload_installed_pkgs = "--nodeps" not in self._frozen_config.myopts
 
@@ -761,7 +758,6 @@ class depgraph:
                 yield proc
 
     class _dynamic_deps_proc_exit:
-
         __slots__ = ("_pkg", "_fake_vartree")
 
         def __init__(self, pkg, fake_vartree):
@@ -812,9 +808,7 @@ class depgraph:
         forced_rebuilds = {}
 
         for root, rebuild_atoms in atoms.items():
-
             for slot_atom in rebuild_atoms:
-
                 inst_pkg, reinst_pkg = self._select_pkg_from_installed(root, slot_atom)
 
                 if inst_pkg is reinst_pkg or reinst_pkg is None:
@@ -869,7 +863,6 @@ class depgraph:
 
                 if built_slot_op_atoms and reinst_pkg is not None:
                     for child in self._dynamic_config.digraph.child_nodes(reinst_pkg):
-
                         if child.installed:
                             continue
 
@@ -997,7 +990,6 @@ class depgraph:
         self._forced_rebuilds = forced_rebuilds
 
     def _show_abi_rebuild_info(self):
-
         if not self._forced_rebuilds:
             return
 
@@ -1017,11 +1009,9 @@ class depgraph:
         for which a more optimal alternative exists.
         """
         for pkg in list(self._dynamic_config.ignored_binaries):
-
             for selected_pkg in self._dynamic_config._package_tracker.match(
                 pkg.root, pkg.slot_atom
             ):
-
                 if selected_pkg > pkg:
                     self._dynamic_config.ignored_binaries.pop(pkg)
                     break
@@ -1225,7 +1215,6 @@ class depgraph:
             self._show_ignored_binaries_changed_deps(ignored_binaries["changed_deps"])
 
     def _show_ignored_binaries_respect_use(self, respect_use):
-
         writemsg(
             "\n!!! The following binary packages have been ignored "
             + "due to non matching USE:\n\n",
@@ -1258,7 +1247,6 @@ class depgraph:
             writemsg(line + "\n", noiselevel=-1)
 
     def _show_ignored_binaries_changed_deps(self, changed_deps):
-
         writemsg(
             "\n!!! The following binary packages have been "
             "ignored due to changed dependencies:\n\n",
@@ -1284,7 +1272,6 @@ class depgraph:
             writemsg(line + "\n", noiselevel=-1)
 
     def _get_missed_updates(self):
-
         # In order to minimize noise, show only the highest
         # missed update from each SLOT.
         missed_updates = {}
@@ -1322,7 +1309,6 @@ class depgraph:
         return missed_updates
 
     def _show_missed_update(self):
-
         missed_updates = self._get_missed_updates()
 
         if not missed_updates:
@@ -1348,7 +1334,6 @@ class depgraph:
         )
 
     def _show_missed_update_unsatisfied_dep(self, missed_updates):
-
         if not missed_updates:
             return
 
@@ -1356,7 +1341,6 @@ class depgraph:
         backtrack_masked = []
 
         for pkg, parent_atoms in missed_updates:
-
             try:
                 for parent, root, atom in parent_atoms:
                     self._show_unsatisfied_dep(
@@ -1409,7 +1393,6 @@ class depgraph:
                 writemsg("\n", noiselevel=-1)
 
     def _show_missed_update_slot_conflicts(self, missed_updates):
-
         if not missed_updates:
             return
 
@@ -1917,7 +1900,6 @@ class depgraph:
         conflict_pkgs = []
         conflict_atoms = {}
         for pkg in slot_nodes:
-
             if (
                 self._dynamic_config._allow_backtracking
                 and pkg in self._dynamic_config._runtime_pkg_mask
@@ -1968,7 +1950,6 @@ class depgraph:
                 )
 
     def _slot_confict_backtrack(self, root, slot_atom, all_parents, conflict_pkgs):
-
         debug = "--debug" in self._frozen_config.myopts
         existing_node = next(
             self._dynamic_config._package_tracker.match(
@@ -2223,9 +2204,7 @@ class depgraph:
             return new_dep
 
         if self._dynamic_config._autounmask is True:
-
             for autounmask_level in self._autounmask_levels():
-
                 new_dep = self._slot_operator_update_probe(
                     dep, slot_conflict=True, autounmask_level=autounmask_level
                 )
@@ -2378,7 +2357,6 @@ class depgraph:
         for replacement_parent in self._iter_similar_available(
             dep.parent, dep.parent.slot_atom, autounmask_level=autounmask_level
         ):
-
             if replacement_parent is dep.parent:
                 continue
 
@@ -2424,7 +2402,6 @@ class depgraph:
                         # so continue checking the rest of the atoms.
                         continue
                 else:
-
                     if atom.blocker or atom.cp != dep.child.cp:
                         continue
 
@@ -2509,7 +2486,6 @@ class depgraph:
                             dep.child, pkg, replacement_parent=replacement_parent
                         )
                     ):
-
                         candidate_pkg_atoms.append((pkg, unevaluated_atom or atom))
                         candidate_pkgs.append(pkg)
 
@@ -2586,7 +2562,6 @@ class depgraph:
         return None
 
     def _slot_operator_unsatisfied_probe(self, dep):
-
         if (
             dep.parent.installed
             and self._frozen_config.excluded_pkgs.findAtomForPackage(
@@ -2600,7 +2575,6 @@ class depgraph:
         for replacement_parent in self._iter_similar_available(
             dep.parent, dep.parent.slot_atom
         ):
-
             for atom in replacement_parent.validated_atoms:
                 if (
                     not atom.slot_operator == "="
@@ -2619,7 +2593,6 @@ class depgraph:
                 )
 
                 if pkg is not None:
-
                     if debug:
                         msg = (
                             "",
@@ -2653,7 +2626,6 @@ class depgraph:
         return False
 
     def _slot_operator_unsatisfied_backtrack(self, dep):
-
         parent = dep.parent
 
         if "--debug" in self._frozen_config.myopts:
@@ -2872,9 +2844,7 @@ class depgraph:
         )
 
         for slot_key, slot_info in self._dynamic_config._slot_operator_deps.items():
-
             for dep in slot_info:
-
                 atom = dep.atom
 
                 if not (atom.soname or atom.slot_operator_built):
@@ -2941,7 +2911,6 @@ class depgraph:
         return None
 
     def _changed_deps(self, pkg):
-
         ebuild = None
         try:
             ebuild = self._pkg(pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
@@ -3105,7 +3074,6 @@ class depgraph:
         debug = "--debug" in self._frozen_config.myopts
         nodeps = "--nodeps" in self._frozen_config.myopts
         if dep.blocker:
-
             # Slot collision nodes are not allowed to block other packages since
             # blocker validation is only able to account for one package per slot.
             is_slot_conflict_parent = any(
@@ -3238,7 +3206,6 @@ class depgraph:
                     onlydeps=dep.onlydeps,
                 )
                 if dep_pkg is None:
-
                     # In order to suppress the sort of aggressive
                     # backtracking that can trigger undesirable downgrades
                     # as in bug 693836, do not backtrack if there's an
@@ -3417,7 +3384,6 @@ class depgraph:
                 return 0
 
         if not pkg.onlydeps:
-
             existing_node, existing_node_matches = self._check_slot_conflict(
                 pkg, dep.atom
             )
@@ -3689,7 +3655,6 @@ class depgraph:
         self._dynamic_config._highest_pkg_cache_cp_map.clear()
 
     def _check_masks(self, pkg):
-
         slot_key = (pkg.root, pkg.slot_atom)
 
         # Check for upgrades in the same slot that are
@@ -3715,7 +3680,6 @@ class depgraph:
         slot_info.append(dep)
 
     def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
-
         if not self._add_pkg_soname_deps(pkg, allow_unsatisfied=allow_unsatisfied):
             return False
 
@@ -4062,7 +4026,6 @@ class depgraph:
         for atom, child in self._minimize_children(
             pkg, dep_priority, root_config, selected_atoms[pkg]
         ):
-
             # If this was a specially generated virtual atom
             # from dep_check, map it back to the original, in
             # order to avoid distortion in places like display
@@ -4077,7 +4040,6 @@ class depgraph:
 
             mypriority = dep_priority.copy()
             if not atom.blocker:
-
                 if atom.slot_operator == "=":
                     if mypriority.buildtime:
                         mypriority.buildtime_slot_op = True
@@ -4158,7 +4120,6 @@ class depgraph:
         # here in order to avoid distorting the dependency graph like
         # <=portage-2.1.6.x did.
         for virt_dep, atoms in selected_atoms.items():
-
             virt_pkg = virt_dep.child
             if virt_pkg not in traversed_virt_pkgs:
                 continue
@@ -4171,7 +4132,6 @@ class depgraph:
                 )
 
             if not dep_priority.ignored or self._dynamic_config._traverse_ignored_deps:
-
                 inst_pkgs = [
                     inst_pkg
                     for inst_pkg in reversed(vardb.match_pkgs(virt_dep.atom))
@@ -4195,7 +4155,6 @@ class depgraph:
             for atom, child in self._minimize_children(
                 pkg, self._priority(runtime=True), root_config, atoms
             ):
-
                 # If this was a specially generated virtual atom
                 # from dep_check, map it back to the original, in
                 # order to avoid distortion in places like display
@@ -4985,7 +4944,6 @@ class depgraph:
         return self._resolve(myfavorites)
 
     def _gen_reinstall_sets(self):
-
         atom_list = []
         for root, atom in self._rebuild.rebuild_list:
             atom_list.append((root, "__auto_rebuild__", atom))
@@ -6413,7 +6371,6 @@ class depgraph:
             show_req_use = required_use_unsatisfied[0]
 
         if show_req_use is not None:
-
             pkg = show_req_use
             output_cpv = pkg.cpv + _repo_separator + pkg.repo
             writemsg(
@@ -6524,7 +6481,6 @@ class depgraph:
                 and not cp_exists
                 and self._frozen_config.myopts.get("--misspell-suggestions", "y") != "n"
             ):
-
                 writemsg("\nemerge: searching for similar names...", noiselevel=-1)
 
                 search_index = (
@@ -6671,7 +6627,6 @@ class depgraph:
             and atom.slot is not None
             and not atom.slot_operator_built
         ):
-
             if "remove" in self._dynamic_config.myparams:
                 # We need to search the portdbapi, which is not in our
                 # normal dbs list, in order to find the real SLOT.
@@ -6794,7 +6749,6 @@ class depgraph:
         return not arg
 
     def _want_update_pkg(self, parent, pkg):
-
         if self._frozen_config.excluded_pkgs.findAtomForPackage(
             pkg, modified_use=self._pkg_use_enabled(pkg)
         ):
@@ -6997,7 +6951,6 @@ class depgraph:
             autounmask_level.allow_unstable_keywords = True
 
             for missing_keyword, unmask in ((False, True), (True, True)):
-
                 autounmask_level.allow_missing_keywords = missing_keyword
                 autounmask_level.allow_unmasks = unmask
 
@@ -7054,7 +7007,6 @@ class depgraph:
         return pkg, existing
 
     def _pkg_visibility_check(self, pkg, autounmask_level=None, trust_graph=True):
-
         if pkg.visible:
             return True
 
@@ -7532,7 +7484,6 @@ class depgraph:
                             continue
 
                     if atom.package and atom.use is not None:
-
                         if (
                             autounmask_level
                             and autounmask_level.allow_use_changes
@@ -8353,7 +8304,6 @@ class depgraph:
             # are already built.
             dep_keys = Package._runtime_keys
             for myroot in self._frozen_config.trees:
-
                 if (
                     self._frozen_config.myopts.get("--root-deps") is not None
                     and myroot != self._frozen_config.target_root
@@ -8710,7 +8660,6 @@ class depgraph:
         deep_system_deps = _find_deep_system_runtime_deps(mygraph)
 
         def cmp_merge_preference(node1, node2):
-
             if node1.operation == "uninstall":
                 if node2.operation == "uninstall":
                     return 0
@@ -8733,7 +8682,6 @@ class depgraph:
         mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
     def altlist(self, reversed=DeprecationWarning):  # pylint: disable=redefined-builtin
-
         if reversed is not DeprecationWarning:
             warnings.warn(
                 "The reversed parameter of "
@@ -8868,7 +8816,6 @@ class depgraph:
             ] = root_config
 
     def _resolve_conflicts(self):
-
         if (
             "complete" not in self._dynamic_config.myparams
             and self._dynamic_config._allow_backtracking
@@ -8883,7 +8830,6 @@ class depgraph:
         self._process_slot_conflicts()
 
     def _serialize_tasks(self):
-
         debug = "--debug" in self._frozen_config.myopts
 
         if debug:
@@ -9621,7 +9567,6 @@ class depgraph:
 
                 unsolved_cycle = False
                 if self._dynamic_config._allow_backtracking:
-
                     backtrack_infos = self._dynamic_config._backtrack_infos
                     backtrack_infos.setdefault("config", {})
                     circular_dependency = backtrack_infos["config"].setdefault(
@@ -9873,7 +9818,6 @@ class depgraph:
                 self._dynamic_config._blocked_pkgs.child_nodes(blocker),
                 self._dynamic_config._blocker_parents.parent_nodes(blocker),
             ):
-
                 is_slot_conflict_pkg = False
                 for conflict in self._dynamic_config._package_tracker.slot_conflicts():
                     if conflict.root == pkg.root and conflict.atom == pkg.slot_atom:
@@ -9912,7 +9856,6 @@ class depgraph:
             msg = ["\n"]
             indent = "  "
             for pkg, parent_atoms in conflict_pkgs.items():
-
                 # Prefer packages that are not directly involved in a conflict.
                 # It can be essential to see all the packages here, so don't
                 # omit any. If the list is long, people can simply use a pager.
@@ -9968,7 +9911,6 @@ class depgraph:
             show_blocker_docs_link()
 
     def display(self, mylist, favorites=[], verbosity=None):
-
         # This is used to prevent display_problems() from
         # redundantly displaying this exact same merge list
         # again via _show_merge_list().
@@ -11079,7 +11021,6 @@ class depgraph:
             and self._frozen_config.myopts.get("--autounmask-backtrack") != "y"
             and self._have_autounmask_changes()
         ):
-
             if (
                 self._frozen_config.myopts.get("--autounmask-continue") is True
                 and self._frozen_config.myopts.get("--autounmask-backtrack") != "n"
@@ -11237,7 +11178,6 @@ class _dep_check_composite_db(dbapi):
                     # when appropriate for bug #526160.
                     selected = pkg
                     for candidate in self._iter_virt_update(pkg, atom_set):
-
                         if candidate.slot != slot:
                             continue
 
@@ -11286,7 +11226,6 @@ class _dep_check_composite_db(dbapi):
                     return False
 
         if pkg.cp.startswith("virtual/"):
-
             if not self._depgraph._virt_deps_visible(pkg, ignore_use=True):
                 return False
 
@@ -11348,18 +11287,15 @@ class _dep_check_composite_db(dbapi):
         return True
 
     def _iter_virt_update(self, pkg, atom_set):
-
         if (
             self._depgraph._select_atoms_parent is not None
             and self._depgraph._want_update_pkg(
                 self._depgraph._select_atoms_parent, pkg
             )
         ):
-
             for new_child in self._depgraph._iter_similar_available(
                 pkg, next(iter(atom_set))
             ):
-
                 if not self._depgraph._virt_deps_visible(new_child, ignore_use=True):
                     continue
 
@@ -11374,7 +11310,6 @@ class _dep_check_composite_db(dbapi):
                 yield new_child
 
     def _have_virt_update(self, pkg, atom_set):
-
         for new_child in self._iter_virt_update(pkg, atom_set):
             if pkg < new_child:
                 return True
@@ -11390,7 +11325,6 @@ class _dep_check_composite_db(dbapi):
 
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
-
     if "--quiet" in myopts:
         writemsg(
             f'!!! The short ebuild name "{arg}" is ambiguous. Please specify\n',
@@ -11510,7 +11444,6 @@ def backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spi
 
 
 def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
-
     debug = "--debug" in myopts
     mydepgraph = None
     max_retries = myopts.get("--backtrack", 10)
@@ -11522,7 +11455,6 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
     frozen_config = _frozen_depgraph_config(settings, trees, myopts, myparams, spinner)
 
     while backtracker:
-
         if debug and mydepgraph is not None:
             writemsg_level(
                 f"\n\nbacktracking try {backtracked} \n\n",
@@ -11564,7 +11496,6 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
             backtracked += 1
 
     if backtracked and not success and not mydepgraph.need_display_problems():
-
         if debug:
             writemsg_level(
                 f"\n\nbacktracking aborted after {backtracked} tries\n\n",
@@ -11767,7 +11698,7 @@ def show_masked_packages(masked_packages):
     # show one of them to avoid redundant appearance.
     shown_cpvs = set()
     have_eapi_mask = False
-    for (root_config, pkgsettings, cpv, repo, metadata, mreasons) in masked_packages:
+    for root_config, pkgsettings, cpv, repo, metadata, mreasons in masked_packages:
         output_cpv = cpv
         if repo:
             output_cpv += _repo_separator + repo

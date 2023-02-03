@@ -15,7 +15,6 @@ from portage.util import apply_permissions, ensure_dirs, normalize_path
 
 
 def process(mysettings, key, logentries, fulltext):
-
     if mysettings.get("PORTAGE_LOGDIR"):
         logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
     else:

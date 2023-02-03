@@ -62,7 +62,6 @@ class SpawnProcess(SubProcess):
     _CGROUP_CLEANUP_RETRY_MAX = 8
 
     def _start(self):
-
         if self.fd_pipes is None:
             self.fd_pipes = {}
         else:

@@ -47,7 +47,6 @@ class FileDigester(ForkProcess):
         return os.EX_OK
 
     def _parse_digests(self, data):
-
         digests = {}
         for line in data.decode("utf_8").splitlines():
             parts = line.split("=", 1)

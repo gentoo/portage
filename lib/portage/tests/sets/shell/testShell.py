@@ -17,7 +17,6 @@ class CommandOutputSetTestCase(TestCase):
         pass
 
     def testCommand(self):
-
         params = set(test_cps)
         command = find_binary("bash")
         command += " -c '"

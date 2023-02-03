@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameDowngradeTestCase(TestCase):
     def testSingleSlot(self):
-
         ebuilds = {
             "dev-libs/icu-49": {},
             "dev-libs/icu-4.8": {},
@@ -154,7 +153,6 @@ class SonameDowngradeTestCase(TestCase):
                     playground.cleanup()
 
     def testTwoSlots(self):
-
         ebuilds = {
             "dev-libs/glib-1.2.10": {"SLOT": "1"},
             "dev-libs/glib-2.30.2": {"SLOT": "2"},

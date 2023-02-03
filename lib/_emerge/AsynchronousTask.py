@@ -193,7 +193,6 @@ class AsynchronousTask(SlotObject):
             self._start_hook()
 
         if self.returncode is not None and self._exit_listeners is not None:
-
             listeners = self._exit_listeners
             self._exit_listeners = None
             if self._exit_listener_handles is None:

@@ -134,7 +134,6 @@ def _spawn_fetch(settings, args, **kwargs):
     # wget pollute stderr (if portage detects a problem then it
     # can send it's own message to stderr).
     if "fd_pipes" not in kwargs:
-
         kwargs["fd_pipes"] = {
             0: portage._get_stdin().fileno(),
             1: sys.__stdout__.fileno(),
@@ -1231,7 +1230,6 @@ def fetch(
                 if (size - mysize + vfs_stat.f_bsize) >= (
                     vfs_stat.f_bsize * vfs_stat.f_bavail
                 ):
-
                     if (size - mysize + vfs_stat.f_bsize) >= (
                         vfs_stat.f_bsize * vfs_stat.f_bfree
                     ):
@@ -1245,7 +1243,6 @@ def fetch(
                         has_space = False
 
             if distdir_writable and use_locks:
-
                 lock_kwargs = {}
                 if fetchonly:
                     lock_kwargs["flags"] = os.O_NONBLOCK
@@ -1264,7 +1261,6 @@ def fetch(
                     continue
         try:
             if not listonly:
-
                 eout = EOutput()
                 eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
                 match, mystat = _check_distfile(
@@ -1748,7 +1744,6 @@ def fetch(
 
                     myret = -1
                     try:
-
                         myret = _spawn_fetch(mysettings, myfetch)
 
                     finally:
@@ -1791,7 +1786,6 @@ def fetch(
                             del e
                             fetched = 0
                         else:
-
                             if stat.S_ISDIR(mystat.st_mode):
                                 # This can happen if FETCHCOMMAND erroneously
                                 # contains wget's -P option where it should

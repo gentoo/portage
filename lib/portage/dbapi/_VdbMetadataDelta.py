@@ -11,7 +11,6 @@ from portage.versions import cpv_getkey
 
 
 class VdbMetadataDelta:
-
     _format_version = "1"
 
     def __init__(self, vardb):
@@ -31,7 +30,6 @@ class VdbMetadataDelta:
             )
 
     def load(self):
-
         if not os.path.exists(self._vardb._aux_cache_filename):
             # If the primary cache doesn't exist yet, then
             # we can't record a delta against it.
@@ -96,7 +94,6 @@ class VdbMetadataDelta:
         return None
 
     def recordEvent(self, event, cpv, slot, counter):
-
         self._vardb.lock()
         try:
             deltas_obj = self.load()

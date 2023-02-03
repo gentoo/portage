@@ -56,7 +56,6 @@ def _open_file(filename):
 
 
 class _generate_hash_function:
-
     __slots__ = ("_hashobject",)
 
     def __init__(self, hashtype, hashobject, origin="unknown"):

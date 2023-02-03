@@ -63,7 +63,6 @@ class EverythingSet(PackageSet):
 
 
 class OwnerSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -145,7 +144,6 @@ class OwnerSet(PackageSet):
 
 
 class VariableSet(EverythingSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -221,7 +219,6 @@ class VariableSet(EverythingSet):
 
 
 class SubslotChangedSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -258,7 +255,6 @@ class SubslotChangedSet(PackageSet):
 
 
 class DowngradeSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -297,7 +293,6 @@ class DowngradeSet(PackageSet):
 
 
 class UnavailableSet(EverythingSet):
-
     _operations = ["unmerge"]
 
     description = (
@@ -314,7 +309,6 @@ class UnavailableSet(EverythingSet):
         return not self._metadatadb.match(atom)
 
     def singleBuilder(cls, options, settings, trees):
-
         metadatadb = options.get("metadata-source", "porttree")
         if not metadatadb in trees:
             raise SetConfigError(
@@ -327,7 +321,6 @@ class UnavailableSet(EverythingSet):
 
 
 class UnavailableBinaries(EverythingSet):
-
     _operations = (
         "merge",
         "unmerge",
@@ -351,7 +344,6 @@ class UnavailableBinaries(EverythingSet):
         return not self._metadatadb.cpv_exists(inst_cpv)
 
     def singleBuilder(cls, options, settings, trees):
-
         metadatadb = options.get("metadata-source", "bintree")
         if not metadatadb in trees:
             raise SetConfigError(
@@ -460,7 +452,6 @@ class AgeSet(EverythingSet):
         self._age = age
 
     def _filter(self, atom):
-
         cpv = self._db.match(atom)[0]
         try:
             (date,) = self._db.aux_get(cpv, self._aux_keys)
@@ -499,7 +490,6 @@ class DateSet(EverythingSet):
         self._date = date
 
     def _filter(self, atom):
-
         cpv = self._db.match(atom)[0]
         try:
             (date,) = self._db.aux_get(cpv, self._aux_keys)
@@ -608,7 +598,6 @@ class RebuiltBinaries(EverythingSet):
 
 
 class ChangedDepsSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (

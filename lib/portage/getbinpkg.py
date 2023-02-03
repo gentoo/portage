@@ -329,7 +329,6 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
 
 
 def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
-
     warnings.warn(
         "portage.getbinpkg.match_in_array() is deprecated",
         DeprecationWarning,
@@ -490,7 +489,6 @@ def file_get(
     URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
     if not fcmd:
-
         warnings.warn(
             "Use of portage.getbinpkg.file_get() without the fcmd "
             "parameter is deprecated",
@@ -879,7 +877,6 @@ class PackageIndex:
         inherited_keys=None,
         translated_keys=None,
     ):
-
         self._pkg_slot_dict = None
         if allowed_pkg_keys:
             self._pkg_slot_dict = slot_dict_class(allowed_pkg_keys)

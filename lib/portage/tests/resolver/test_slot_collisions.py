@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotCollisionTestCase(TestCase):
     def testSlotCollision(self):
-
         ebuilds = {
             "dev-libs/A-1": {"PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo"},
             "dev-libs/B-1": {"IUSE": "foo"},

@@ -114,7 +114,6 @@ import warnings
 
 
 class vardbapi(dbapi):
-
     _excluded_dirs = ["CVS", "lost+found"]
     _excluded_dirs = [re.escape(x) for x in _excluded_dirs]
     _excluded_dirs = re.compile(
@@ -666,7 +665,6 @@ class vardbapi(dbapi):
                 or not os.path.exists(self._cache_delta_filename)
             )
         ):
-
             ensure_dirs(os.path.dirname(self._aux_cache_filename))
 
             self._owners.populate()  # index any unindexed contents
@@ -1529,7 +1527,6 @@ class vardbapi(dbapi):
                 return x
 
             while path_iter:
-
                 path = path_iter.pop()
                 if case_insensitive:
                     path = path.lower()
@@ -1648,7 +1645,6 @@ class vartree:
     def __init__(
         self, root=None, virtual=DeprecationWarning, categories=None, settings=None
     ):
-
         if settings is None:
             settings = portage.settings
 
@@ -1870,7 +1866,6 @@ class dblink:
         return isinstance(other, dblink) and self._hash_key == other._hash_key
 
     def _get_protect_obj(self):
-
         if self._protect_obj is None:
             self._protect_obj = ConfigProtect(
                 self._eroot,
@@ -2568,7 +2563,6 @@ class dblink:
                     scheduler.run_until_complete(builddir_lock.async_unlock())
 
         if log_path is not None:
-
             if not failures and "unmerge-logs" not in self.settings.features:
                 try:
                     os.unlink(log_path)
@@ -2739,7 +2733,6 @@ class dblink:
                         [f"Could not chmod or unlink '{file_name}': {ose}"],
                     )
                 else:
-
                     # Even though the file no longer exists, we log it
                     # here so that _unmerge_dirs can see that we've
                     # removed a file from this device, and will record
@@ -2787,7 +2780,6 @@ class dblink:
                     infodirs_inodes.add((statobj.st_dev, statobj.st_ino))
 
             for i, objkey in enumerate(mykeys):
-
                 obj = normalize_path(objkey)
                 if os is _os_merge:
                     try:
@@ -2939,7 +2931,6 @@ class dblink:
                         and stat.S_ISDIR(statobj.st_mode)
                         and obj.startswith(real_root)
                     ):
-
                         relative_path = obj[real_root_len:]
                         try:
                             target_dir_contents = os.listdir(obj)
@@ -3082,7 +3073,6 @@ class dblink:
         unlink,
         os,
     ):
-
         real_root = self.settings["ROOT"]
         show_unmerge = self._show_unmerge
         ignored_unlink_errnos = self._ignored_unlink_errnos
@@ -3172,7 +3162,6 @@ class dblink:
     def _unmerge_dirs(
         self, dirs, infodirs_inodes, protected_symlinks, unmerge_desc, unlink, os
     ):
-
         show_unmerge = self._show_unmerge
         infodir_cleanup = self._infodir_cleanup
         ignored_unlink_errnos = self._ignored_unlink_errnos
@@ -3391,7 +3380,6 @@ class dblink:
         if self.getcontents():
             basename = os_filename_arg.path.basename(destfile)
             if self._contents_basenames is None:
-
                 try:
                     for x in self._contents.keys():
                         _unicode_encode(
@@ -3431,7 +3419,6 @@ class dblink:
                 del e
                 return False
             if self._contents_inodes is None:
-
                 if os is _os_merge:
                     try:
                         for x in self._contents.keys():
@@ -3558,7 +3545,6 @@ class dblink:
         provider_nodes = set()
         # Create provider nodes and add them to the graph.
         for f_abs in old_contents:
-
             if os is _os_merge:
                 try:
                     _unicode_encode(
@@ -3882,7 +3868,6 @@ class dblink:
         self.vartree.dbapi._plib_registry.pruneNonExisting()
 
     def _collision_protect(self, srcroot, destroot, mypkglist, file_list, symlink_list):
-
         os = _os_merge
 
         real_relative_paths = {}
@@ -4110,7 +4095,6 @@ class dblink:
         inode_map = {}
         real_paths = set()
         for i, path in enumerate(file_paths):
-
             if os is _os_merge:
                 try:
                     _unicode_encode(path, encoding=_encodings["merge"], errors="strict")
@@ -4500,7 +4484,6 @@ class dblink:
         eprefix_len = len(self.settings["EPREFIX"])
 
         while True:
-
             unicode_error = False
             eagain_error = False
 
@@ -5305,7 +5288,6 @@ class dblink:
         return backup_p
 
     def _merge_contents(self, srcroot, destroot, cfgfiledict):
-
         cfgfiledict_orig = cfgfiledict.copy()
 
         # open CONTENTS file (possibly overwriting old one) for recording
@@ -5456,7 +5438,6 @@ class dblink:
             mergelist = stufftomerge[:]
 
         while mergelist:
-
             relative_path = mergelist.pop()
             mysrc = join(srcroot, relative_path)
             mydest = join(destroot, relative_path)
@@ -5904,7 +5885,6 @@ class dblink:
         dest_md5,
         dest_link,
     ):
-
         move_me = True
         protected = True
         force = False
@@ -6001,7 +5981,6 @@ class dblink:
 
         returncode = None
         if platform.system() == "Linux":
-
             paths = []
             for path in self._device_path_map.values():
                 if path is not False:
@@ -6061,7 +6040,6 @@ class dblink:
             # fail-clean is enabled, and the success/die hooks have
             # already been called by EbuildPhase.
             if os.path.isdir(self.settings["PORTAGE_BUILDDIR"]):
-
                 if retval == os.EX_OK:
                     phase = "success_hooks"
                 else:
@@ -6190,7 +6168,6 @@ class dblink:
         return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
 
     def _pre_merge_backup(self, backup_dblink, downgrade):
-
         if "unmerge-backup" in self.settings.features or (
             downgrade and "downgrade-backup" in self.settings.features
         ):
@@ -6199,7 +6176,6 @@ class dblink:
         return os.EX_OK
 
     def _pre_unmerge_backup(self, background):
-
         if "unmerge-backup" in self.settings.features:
             logfile = None
             if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
@@ -6209,7 +6185,6 @@ class dblink:
         return os.EX_OK
 
     def _quickpkg_dblink(self, backup_dblink, background, logfile):
-
         build_time = backup_dblink.getfile("BUILD_TIME")
         try:
             build_time = int(build_time.strip())
@@ -6225,7 +6200,6 @@ class dblink:
 
         self.lockdb()
         try:
-
             if not backup_dblink.exists():
                 # It got unmerged by a concurrent process.
                 return os.EX_OK

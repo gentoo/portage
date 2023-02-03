@@ -28,7 +28,6 @@ class DoebuildSpawnTestCase(TestCase):
     """
 
     def testDoebuildSpawn(self):
-
         ebuild_body = textwrap.dedent(
             """
 			pkg_nofetch() { : ; }
@@ -88,7 +87,6 @@ class DoebuildSpawnTestCase(TestCase):
 
             scheduler = SchedulerInterface(global_event_loop())
             for phase in ("_internal_test",):
-
                 # Test EbuildSpawnProcess by calling doebuild.spawn() with
                 # returnpid=False. This case is no longer used by portage
                 # internals since EbuildPhase is used instead and that passes

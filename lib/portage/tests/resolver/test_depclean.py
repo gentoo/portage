@@ -172,7 +172,6 @@ class DepcleanInstalledKeywordMaskedSlotTestCase(TestCase):
 
 class DepcleanWithExcludeTestCase(TestCase):
     def testDepcleanWithExclude(self):
-
         installed = {
             "dev-libs/A-1": {},
             "dev-libs/B-1": {"RDEPEND": "dev-libs/A"},
@@ -224,7 +223,6 @@ class DepcleanWithExcludeTestCase(TestCase):
 
 class DepcleanWithExcludeAndSlotsTestCase(TestCase):
     def testDepcleanWithExcludeAndSlots(self):
-
         installed = {
             "dev-libs/Z-1": {"SLOT": 1},
             "dev-libs/Z-2": {"SLOT": 2},
@@ -267,7 +265,6 @@ class DepcleanWithExcludeAndSlotsTestCase(TestCase):
 
 class DepcleanAndWildcardsTestCase(TestCase):
     def testDepcleanAndWildcards(self):
-
         installed = {
             "dev-libs/A-1": {"RDEPEND": "dev-libs/B"},
             "dev-libs/B-1": {},

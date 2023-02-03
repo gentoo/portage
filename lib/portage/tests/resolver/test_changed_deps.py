@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class ChangedDepsTestCase(TestCase):
     def testChangedDeps(self):
-
         ebuilds = {
             "app-misc/A-0": {
                 "DEPEND": "app-misc/B",

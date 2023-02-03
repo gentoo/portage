@@ -5,7 +5,6 @@ import copy
 
 
 class BacktrackParameter:
-
     __slots__ = (
         "circular_dependency",
         "needed_unstable_keywords",
@@ -79,7 +78,6 @@ class BacktrackParameter:
 
 
 class _BacktrackNode:
-
     __slots__ = (
         "parameter",
         "depth",
@@ -100,7 +98,6 @@ class _BacktrackNode:
 
 
 class Backtracker:
-
     __slots__ = (
         "_max_depth",
         "_unexplored_nodes",
@@ -151,7 +148,6 @@ class Backtracker:
         """
 
         for pkg, mask_info in runtime_pkg_mask.items():
-
             if (
                 "missing dependency" in mask_info
                 or "slot_operator_mask_built" in mask_info

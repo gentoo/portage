@@ -10,6 +10,7 @@ raise_signal = getattr(
     signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
 )
 
+
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
 class SignalInterrupt(KeyboardInterrupt):
     def __init__(self, signum):
@@ -376,7 +377,6 @@ try:
                     self._write_cache(trg_cache, cpv, repo_path, metadata, ebuild_hash)
 
         def _write_cache(self, trg_cache, cpv, repo_path, metadata, ebuild_hash):
-
             if not hasattr(trg_cache, "raise_stat_collision"):
                 # This cache does not avoid redundant writes automatically,
                 # so check for an identical existing entry before writing.
@@ -551,7 +551,6 @@ try:
             self._verbose = verbose
 
         def run(self):
-
             display_updates = self._verbose > 0
             old = {}
             new = {}
@@ -901,7 +900,6 @@ try:
             )
 
         def generate_changelog(self, cp):
-
             os.chdir(os.path.join(self._repo_path, cp))
             # Determine whether ChangeLog is up-to-date by comparing
             # the newest commit timestamp with the ChangeLog timestamp.
@@ -1099,7 +1097,6 @@ try:
             )
 
     def egencache_main(args):
-
         # The calling environment is ignored, so the program is
         # completely controlled by commandline arguments.
         env = {}
@@ -1223,7 +1220,6 @@ try:
 
         if options.update_manifests:
             if repo_config.sign_manifest:
-
                 sign_problem = False
                 gpg_dir = None
                 gpg_cmd = settings.get("PORTAGE_GPG_SIGNING_COMMAND")
@@ -1361,7 +1357,6 @@ try:
             ret.append(gen_clogs.returncode)
 
         if options.update_manifests:
-
             cp_iter = None
             if atoms:
                 cp_iter = iter(atoms)

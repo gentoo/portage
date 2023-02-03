@@ -143,7 +143,6 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser(description=doc)
     parser.add_argument("location", default=None, help="root directory (e.g. ${D})")
     parser.add_argument("old", default=None, help="original build prefix (e.g. /)")

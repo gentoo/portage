@@ -14,7 +14,6 @@ class EbuildSpawnProcess(AbstractEbuildProcess):
     __slots__ = ("fakeroot_state", "spawn_func")
 
     def _spawn(self, args, **kwargs):
-
         env = self.settings.environ()
 
         if self._dummy_pipe_fd is not None:

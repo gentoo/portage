@@ -1024,7 +1024,6 @@ def flatten(mylist):
 
 
 class _use_dep:
-
     __slots__ = (
         "_eapi_attrs",
         "conditional",
@@ -1070,7 +1069,6 @@ class _use_dep:
         conditional=None,
         required=None,
     ):
-
         self._eapi_attrs = eapi_attrs
 
         if enabled_flags is not None:
@@ -1977,7 +1975,6 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
         return self._normal.setdefault(cp, default)
 
     def __getitem__(self, cp):
-
         if not isinstance(cp, str):
             raise KeyError(cp)
 
@@ -2495,7 +2492,6 @@ def match_from_list(mydep, candidate_list):
     mylist = []
 
     if mydep.extended_syntax:
-
         for x in candidate_list:
             cp = getattr(x, "cp", None)
             if cp is None:
@@ -2510,7 +2506,6 @@ def match_from_list(mydep, candidate_list):
                 mylist.append(x)
 
         if mylist and mydep.operator == "=*":
-
             candidate_list = mylist
             mylist = []
             # Currently, only \*\w+\* is supported.
@@ -2821,7 +2816,6 @@ def get_required_use_flags(required_use, eapi=None):
 
 
 class _RequiredUseLeaf:
-
     __slots__ = ("_satisfied", "_token")
 
     def __init__(self, token, satisfied):
@@ -2833,7 +2827,6 @@ class _RequiredUseLeaf:
 
 
 class _RequiredUseBranch:
-
     __slots__ = ("_children", "_operator", "_parent", "_satisfied")
 
     def __init__(self, operator=None, parent=None):
@@ -2846,7 +2839,6 @@ class _RequiredUseBranch:
         return self._satisfied
 
     def tounicode(self):
-
         include_parens = self._parent is not None
         tokens = []
         if self._operator is not None:

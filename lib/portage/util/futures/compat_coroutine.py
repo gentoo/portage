@@ -41,6 +41,7 @@ def coroutine(generator_func):
     @return: A function which calls the given generator function and
             returns a Future that is done when the generator is exhausted.
     """
+
     # Note that functools.partial does not work for decoration of
     # methods, since it doesn't implement the descriptor protocol.
     # This problem is solve by defining a wrapper function.

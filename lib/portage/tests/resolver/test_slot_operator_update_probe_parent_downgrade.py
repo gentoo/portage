@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotOperatorUpdateProbeParentDowngradeTestCase(TestCase):
     def testSlotOperatorUpdateProbeParentDowngrade(self):
-
         ebuilds = {
             "net-nds/openldap-2.4.40-r3": {
                 "EAPI": "5",

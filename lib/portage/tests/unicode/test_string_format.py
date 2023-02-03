@@ -21,7 +21,6 @@ class StringFormatTestCase(TestCase):
     )
 
     def testDependencyArg(self):
-
         self.assertEqual(_encodings["content"], "utf_8")
 
         for arg_unicode in self.unicode_strings:
@@ -36,7 +35,6 @@ class StringFormatTestCase(TestCase):
             self.assertEqual(formatted_str, arg_unicode)
 
     def testPortageException(self):
-
         self.assertEqual(_encodings["content"], "utf_8")
 
         for arg_unicode in self.unicode_strings:
@@ -51,7 +49,6 @@ class StringFormatTestCase(TestCase):
             self.assertEqual(formatted_str, arg_unicode)
 
     def testUseFlagDisplay(self):
-
         self.assertEqual(_encodings["content"], "utf_8")
 
         for enabled in (True, False):

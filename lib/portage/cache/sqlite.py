@@ -14,7 +14,6 @@ from portage.localization import _
 
 
 class database(fs_template.FsBased):
-
     validation_chf = "md5"
     chf_types = ("md5", "mtime")
 

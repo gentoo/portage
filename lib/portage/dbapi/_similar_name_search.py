@@ -7,7 +7,6 @@ from portage.versions import catsplit
 
 
 def similar_name_search(dbs, atom):
-
     cp_lower = atom.cp.lower()
     cat, pkg = catsplit(cp_lower)
     if cat == "null":

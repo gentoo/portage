@@ -12,7 +12,6 @@ from portage.versions import _pkg_str
 
 
 class _UnmaskHint:
-
     __slots__ = ("key", "value")
 
     def __init__(self, key, value):
@@ -21,7 +20,6 @@ class _UnmaskHint:
 
 
 class _MaskReason:
-
     __slots__ = ("category", "message", "unmask_hint")
 
     def __init__(self, category, message, unmask_hint=None):
@@ -43,7 +41,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None, myrepo=None):
 
 
 def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
-
     metadata = None
     installed = False
     if not isinstance(mycpv, str):

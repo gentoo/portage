@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class CompeteIfNewSubSlotWithoutRevBumpTestCase(TestCase):
     def testCompeteIfNewSubSlotWithoutRevBump(self):
-
         ebuilds = {
             "media-libs/libpng-1.5.14": {"EAPI": "5", "SLOT": "0"},
             "x11-libs/gdk-pixbuf-2.26.5": {

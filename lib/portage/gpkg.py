@@ -1076,7 +1076,6 @@ class gpkg:
                 container.extractfile(image_tarinfo),
                 self._get_decompression_cmd(image_comp),
             ) as image_tar:
-
                 with tarfile.open(mode="r|", fileobj=image_tar) as image:
                     try:
                         image_safe = tar_safe_extract(image, "image")
@@ -1273,7 +1272,6 @@ class gpkg:
             with tarfile.open(
                 mode="w|", fileobj=metadata_writer, format=tarfile.USTAR_FORMAT
             ) as metadata_tar:
-
                 for m in metadata:
                     m_info = tarfile.TarInfo(os.path.join("metadata", m))
                     m_info.mtime = datetime.utcnow().timestamp()

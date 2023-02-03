@@ -12,7 +12,6 @@ from portage.util.SlotObject import SlotObject
 
 
 class EbuildBuildDir(SlotObject):
-
     __slots__ = ("scheduler", "settings", "locked", "_catdir", "_lock_obj")
 
     def __init__(self, **kwargs):

@@ -18,7 +18,6 @@ class SyncfsProcess(ForkProcess):
 
     @staticmethod
     def _get_syncfs():
-
         filename = find_library("c")
         if filename is not None:
             library = LoadLibrary(filename)
@@ -31,7 +30,6 @@ class SyncfsProcess(ForkProcess):
         return None
 
     def _run(self):
-
         syncfs_failed = False
         syncfs = self._get_syncfs()
 

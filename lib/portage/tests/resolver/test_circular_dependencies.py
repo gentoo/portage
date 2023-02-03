@@ -9,7 +9,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class CircularDependencyTestCase(TestCase):
-
     # TODO:
     # 	use config change by autounmask
     # 	conflict on parent's parent
@@ -19,7 +18,6 @@ class CircularDependencyTestCase(TestCase):
     # 	play with REQUIRED_USE
 
     def testCircularDependency(self):
-
         ebuilds = {
             "dev-libs/Z-1": {
                 "DEPEND": "foo? ( !bar? ( dev-libs/Y ) )",

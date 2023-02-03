@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotConflictUnsatisfiedDeepDepsTestCase(TestCase):
     def testSlotConflictUnsatisfiedDeepDeps(self):
-
         ebuilds = {
             "dev-libs/A-1": {},
             "dev-libs/A-2": {"KEYWORDS": "~x86"},

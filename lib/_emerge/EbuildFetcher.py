@@ -25,7 +25,6 @@ from _emerge.CompositeTask import CompositeTask
 
 
 class EbuildFetcher(CompositeTask):
-
     __slots__ = (
         "config_pool",
         "ebuild_path",
@@ -99,7 +98,6 @@ class EbuildFetcher(CompositeTask):
 
 
 class _EbuildFetcherProcess(ForkProcess):
-
     __slots__ = (
         "config_pool",
         "ebuild_path",
@@ -212,7 +210,6 @@ class _EbuildFetcherProcess(ForkProcess):
         return success
 
     def _start(self):
-
         root_config = self.pkg.root_config
         portdb = root_config.trees["porttree"].dbapi
         ebuild_path = self._get_ebuild_path()

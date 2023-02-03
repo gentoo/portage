@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class EAPITestCase(TestCase):
     def testEAPI(self):
-
         ebuilds = {
             # EAPI-1: IUSE-defaults
             "dev-libs/A-1.0": {"EAPI": 0, "IUSE": "+foo"},

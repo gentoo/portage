@@ -13,7 +13,6 @@ from _emerge.PipeReader import PipeReader
 
 
 class DoebuildProcess(ForkProcess):
-
     __slots__ = ("doebuild_kwargs", "doebuild_pargs")
 
     def _run(self):
@@ -125,7 +124,6 @@ class DoebuildFdPipesTestCase(TestCase):
                 "clean",
                 "merge",
             ):
-
                 pr, pw = os.pipe()
 
                 producer = DoebuildProcess(

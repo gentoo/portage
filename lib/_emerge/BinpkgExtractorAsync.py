@@ -24,7 +24,6 @@ import tarfile
 
 
 class BinpkgExtractorAsync(SpawnProcess):
-
     __slots__ = ("features", "image_dir", "pkg", "pkg_path")
 
     _shell_binary = portage.const.BASH_BINARY

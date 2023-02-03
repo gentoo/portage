@@ -8,7 +8,6 @@ from portage.util.SlotObject import SlotObject
 
 
 class EbuildFetchonly(SlotObject):
-
     __slots__ = ("fetch_all", "pkg", "pretend", "settings")
 
     def execute(self):

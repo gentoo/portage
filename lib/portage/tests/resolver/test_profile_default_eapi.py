@@ -12,7 +12,6 @@ from portage.util import ensure_dirs
 
 class ProfileDefaultEAPITestCase(TestCase):
     def testProfileDefaultEAPI(self):
-
         repo_configs = {
             "test_repo": {
                 "layout.conf": (

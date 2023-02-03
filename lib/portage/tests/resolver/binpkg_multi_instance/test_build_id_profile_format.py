@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class BuildIdProfileFormatTestCase(TestCase):
     def testBuildIdProfileFormat(self):
-
         profile = {
             "packages": ("=app-misc/A-1-2::test_repo",),
             "package.mask": ("<app-misc/A-1::test_repo",),

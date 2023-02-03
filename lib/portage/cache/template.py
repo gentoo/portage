@@ -120,7 +120,8 @@ class database:
 
     def __setitem__(self, cpv, values):
         """set a cpv to values
-        This shouldn't be overriden in derived classes since it handles the readonly checks"""
+        This shouldn't be overriden in derived classes since it handles the readonly checks
+        """
         if self.readonly:
             raise cache_errors.ReadOnlyRestriction()
         d = None
@@ -156,7 +157,8 @@ class database:
 
     def __delitem__(self, cpv):
         """delete a key from the cache.
-        This shouldn't be overriden in derived classes since it handles the readonly checks"""
+        This shouldn't be overriden in derived classes since it handles the readonly checks
+        """
         if self.readonly:
             raise cache_errors.ReadOnlyRestriction()
         if not self.autocommits:

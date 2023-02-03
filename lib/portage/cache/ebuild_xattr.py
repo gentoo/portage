@@ -20,7 +20,6 @@ class NoValueException(Exception):
 
 
 class database(fs_template.FsBased):
-
     autocommits = True
 
     def __init__(self, *args, **config):
@@ -151,7 +150,6 @@ class database(fs_template.FsBased):
         return os.path.exists(self.__get_path(cpv))
 
     def __iter__(self):
-
         for root, dirs, files in os.walk(self.portdir):
             for file in files:
                 try:

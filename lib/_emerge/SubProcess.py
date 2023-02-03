@@ -12,7 +12,6 @@ import errno
 
 
 class SubProcess(AbstractPollTask):
-
     __slots__ = ("pid",) + ("_dummy_pipe_fd", "_files", "_waitpid_id")
 
     # This is how much time we allow for waitpid to succeed after

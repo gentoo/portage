@@ -20,7 +20,6 @@ class MultiIterGroupBy:
         self._key = key
 
     def __iter__(self):
-
         trackers = []
         for iterator in self._iterators:
             trackers.append(_IteratorTracker(iterator))
@@ -34,9 +33,7 @@ class MultiIterGroupBy:
         min_progress = None
 
         while trackers:
-
             for tracker in trackers:
-
                 if tracker.current is not None and tracker.current != min_progress:
                     # The trackers are sorted by progress, so the
                     # remaining trackers are guaranteed to have
@@ -80,11 +77,9 @@ class MultiIterGroupBy:
 
 
 class _IteratorTracker:
-
     __slots__ = ("current", "iterator")
 
     def __init__(self, iterator):
-
         self.iterator = iterator
         self.current = None
 

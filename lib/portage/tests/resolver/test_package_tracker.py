@@ -9,7 +9,6 @@ from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapi
 
 
 class PackageTrackerTestCase(TestCase):
-
     FakePackage = collections.namedtuple(
         "FakePackage", ["root", "cp", "cpv", "slot", "slot_atom", "version", "repo"]
     )

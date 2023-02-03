@@ -14,7 +14,6 @@ from portage.glsa import GlsaFormatException
 
 
 class SecuritySetTestCase(TestCase):
-
     glsa_template = """\
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet href="/xsl/glsa.xsl" type="text/xsl"?>

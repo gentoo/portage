@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class CircularJsoncppCmakeBootstrapTestCase(TestCase):
     def testCircularJsoncppCmakeBootstrapOrDeps(self):
-
         ebuilds = {
             "dev-libs/jsoncpp-1.9.2": {
                 "EAPI": "7",
@@ -80,7 +79,6 @@ class CircularJsoncppCmakeBootstrapTestCase(TestCase):
             playground.cleanup()
 
     def testVirtualCmakeBootstrapUseConditional(self):
-
         ebuilds = {
             "dev-libs/jsoncpp-1.9.2": {"EAPI": "7", "BDEPEND": "virtual/cmake"},
             "dev-util/cmake-bootstrap-3.16.2": {
@@ -122,7 +120,6 @@ class CircularJsoncppCmakeBootstrapTestCase(TestCase):
 
 class CircularChoicesTestCase(TestCase):
     def testDirectCircularDependency(self):
-
         ebuilds = {
             "dev-lang/gwydion-dylan-2.4.0": {
                 "DEPEND": "|| ( dev-lang/gwydion-dylan dev-lang/gwydion-dylan-bin )"
@@ -153,7 +150,6 @@ class CircularChoicesTestCase(TestCase):
 
 class VirtualCircularChoicesTestCase(TestCase):
     def testDirectVirtualCircularDependency(self):
-
         ebuilds = {
             "dev-java/icedtea-6.1.10.3": {"SLOT": "6", "DEPEND": "virtual/jdk"},
             "dev-java/icedtea6-bin-1.10.3": {},
@@ -187,7 +183,6 @@ class VirtualCircularChoicesTestCase(TestCase):
 
 class CircularPypyExeTestCase(TestCase):
     def testCircularPypyExe(self):
-
         ebuilds = {
             "dev-python/pypy-7.3.0": {
                 "EAPI": "7",

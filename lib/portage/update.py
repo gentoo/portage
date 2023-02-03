@@ -31,7 +31,6 @@ ignored_dbentries = ("CONTENTS", "environment.bz2")
 
 
 def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
-
     if parent is not None:
         eapi = parent.eapi
 

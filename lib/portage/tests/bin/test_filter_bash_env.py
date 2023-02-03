@@ -12,7 +12,6 @@ from portage.tests import TestCase
 
 class TestFilterBashEnv(TestCase):
     def testTestFilterBashEnv(self):
-
         test_cases = (
             (
                 "RDEPEND BASH.* _EPATCH_ECLASS",

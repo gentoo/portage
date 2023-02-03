@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class BacktrackMissedUpdateTestCase(TestCase):
     def testBacktrackMissedUpdateTestCase(self):
-
         ebuilds = {
             "dev-lang/python-2.7.18-r2": {
                 "EAPI": "7",

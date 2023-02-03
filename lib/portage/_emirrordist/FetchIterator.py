@@ -44,7 +44,6 @@ class FetchIterator:
             yield from cp_all(categories=(category,))
 
     def __iter__(self):
-
         portdb = self._config.portdb
         get_repo_for_location = portdb.repositories.get_repo_for_location
 
@@ -53,19 +52,16 @@ class FetchIterator:
             hash_filter = None
 
         for cp in self._iter_every_cp():
-
             if self._terminated.is_set():
                 return
 
             for tree in portdb.porttrees:
-
                 # Reset state so the Manifest is pulled once
                 # for this cp / tree combination.
                 repo_config = get_repo_for_location(tree)
                 digests_future = portdb._event_loop.create_future()
 
                 for cpv in portdb.cp_list(cp, mytree=tree):
-
                     if self._terminated.is_set():
                         return
 

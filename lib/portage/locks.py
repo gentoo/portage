@@ -501,7 +501,6 @@ def _fstat_nlink(fd):
 
 
 def unlockfile(mytuple):
-
     # XXX: Compatability hack.
     if len(mytuple) == 3:
         lockfilename, myfd, unlinkfile = mytuple

@@ -38,7 +38,6 @@ class MergeListItem(CompositeTask):
     ) + ("_install_task",)
 
     def _start(self):
-
         pkg = self.pkg
         build_opts = self.build_opts
 
@@ -86,7 +85,6 @@ class MergeListItem(CompositeTask):
             )
 
         if pkg.type_name == "ebuild":
-
             build = EbuildBuild(
                 args_set=args_set,
                 background=self.background,
@@ -108,7 +106,6 @@ class MergeListItem(CompositeTask):
             return
 
         if pkg.type_name == "binary":
-
             binpkg = Binpkg(
                 background=self.background,
                 find_blockers=find_blockers,
@@ -128,7 +125,6 @@ class MergeListItem(CompositeTask):
             return
 
     def create_install_task(self):
-
         pkg = self.pkg
         build_opts = self.build_opts
         mtimedb = self.mtimedb
@@ -141,7 +137,6 @@ class MergeListItem(CompositeTask):
             if not (
                 build_opts.buildpkgonly or build_opts.fetchonly or build_opts.pretend
             ):
-
                 task = PackageUninstall(
                     background=self.background,
                     ldpath_mtimes=ldpath_mtimes,

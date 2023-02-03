@@ -61,7 +61,6 @@ from portage import _unicode_encode
 
 
 class EbuildPhase(CompositeTask):
-
     __slots__ = ("actionmap", "fd_pipes", "phase", "settings") + ("_ebuild_lock",)
 
     # FEATURES displayed prior to setup phase
@@ -95,7 +94,6 @@ class EbuildPhase(CompositeTask):
         self._start_task(AsyncTaskFuture(future=future), self._async_start_exit)
 
     async def _async_start(self):
-
         need_builddir = self.phase not in EbuildProcess._phases_without_builddir
 
         if need_builddir:
@@ -113,7 +111,6 @@ class EbuildPhase(CompositeTask):
             ensure_dirs(os.path.join(self.settings["PORTAGE_BUILDDIR"], "empty"))
 
         if self.phase in ("nofetch", "pretend", "setup"):
-
             use = self.settings.get("PORTAGE_BUILT_USE")
             if use is None:
                 use = self.settings["PORTAGE_USE"]
@@ -393,7 +390,6 @@ class EbuildPhase(CompositeTask):
         self.wait()
 
     def _post_phase_exit(self, post_phase):
-
         self._assert_current(post_phase)
 
         log_path = None
@@ -415,7 +411,6 @@ class EbuildPhase(CompositeTask):
         return
 
     def _append_temp_log(self, temp_log, log_path):
-
         temp_file = open(
             _unicode_encode(temp_log, encoding=_encodings["fs"], errors="strict"), "rb"
         )
@@ -432,7 +427,6 @@ class EbuildPhase(CompositeTask):
         os.unlink(temp_log)
 
     def _open_log(self, log_path):
-
         f = open(
             _unicode_encode(log_path, encoding=_encodings["fs"], errors="strict"),
             mode="ab",
@@ -539,7 +533,6 @@ class EbuildPhase(CompositeTask):
 
 
 class _PostPhaseCommands(CompositeTask):
-
     __slots__ = ("commands", "elog", "fd_pipes", "logfile", "phase", "settings")
 
     def _start(self):
@@ -575,7 +568,6 @@ class _PostPhaseCommands(CompositeTask):
         self._start_task(tasks, self._commands_exit)
 
     def _commands_exit(self, task):
-
         if self._default_exit(task) != os.EX_OK:
             self._async_wait()
             return
@@ -607,7 +599,6 @@ class _PostPhaseCommands(CompositeTask):
             self._default_final_exit(task)
 
     async def _soname_deps_qa(self):
-
         vardb = QueryCommand.get_db()[self.settings["EROOT"]]["vartree"].dbapi
 
         all_provides = await self.scheduler.run_in_executor(

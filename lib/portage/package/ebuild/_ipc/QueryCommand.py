@@ -15,7 +15,6 @@ from portage.versions import best
 
 
 class QueryCommand(IpcCommand):
-
     __slots__ = (
         "phase",
         "settings",

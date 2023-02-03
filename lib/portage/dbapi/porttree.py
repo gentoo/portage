@@ -570,7 +570,6 @@ class portdbapi(dbapi):
         return (None, 0)
 
     def _write_cache(self, cpv, repo_path, metadata, ebuild_hash):
-
         try:
             cache = self.auxdb[repo_path]
             chf = cache.validation_chf
@@ -1729,7 +1728,6 @@ def _async_manifest_fetchlist(
 
 
 def _parse_uri_map(cpv, metadata, use=None):
-
     myuris = use_reduce(
         metadata.get("SRC_URI", ""),
         uselist=use,

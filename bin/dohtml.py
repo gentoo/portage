@@ -243,7 +243,6 @@ def parse_args():
 
 
 def main():
-
     (options, args) = parse_args()
 
     if options.verbose:

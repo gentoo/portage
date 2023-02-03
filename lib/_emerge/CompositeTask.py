@@ -6,7 +6,6 @@ from portage import os
 
 
 class CompositeTask(AsynchronousTask):
-
     __slots__ = ("_current_task",)
 
     _TASK_QUEUED = -1

@@ -59,7 +59,6 @@ class LinkageMapELF:
     _soname_map_class = slot_dict_class(("consumers", "providers"), prefix="")
 
     class _obj_properties_class:
-
         __slots__ = (
             "arch",
             "needed",

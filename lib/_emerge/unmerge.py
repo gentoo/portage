@@ -417,7 +417,6 @@ def _unmerge_display(
                 # special purposes and can be ignored here (and are usually generated dynamically, so the
                 # user can't do much about them anyway)
                 if isinstance(sets[s], EditablePackageSet):
-
                     # This is derived from a snippet of code in the
                     # depgraph._iter_atoms_for_pkg() method.
                     for atom in sets[s].iterAtomsForPackage(pkg):

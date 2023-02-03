@@ -272,7 +272,6 @@ class RsyncSync(NewBase):
                     )
 
             if addrinfos:
-
                 AF_INET = socket.AF_INET
                 AF_INET6 = None
                 if socket.has_ipv6:

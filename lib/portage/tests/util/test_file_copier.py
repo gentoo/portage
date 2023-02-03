@@ -17,7 +17,6 @@ class FileCopierTestCase(TestCase):
         loop = global_event_loop()
         tempdir = tempfile.mkdtemp()
         try:
-
             # regular successful copy
             src_path = os.path.join(tempdir, "src")
             dest_path = os.path.join(tempdir, "dest")

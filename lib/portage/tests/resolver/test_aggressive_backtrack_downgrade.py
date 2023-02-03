@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class AgressiveBacktrackDowngradeTestCase(TestCase):
     def testAgressiveBacktrackDowngrade(self):
-
         ebuilds = {
             "www-client/firefox-69.0": {
                 "EAPI": "7",

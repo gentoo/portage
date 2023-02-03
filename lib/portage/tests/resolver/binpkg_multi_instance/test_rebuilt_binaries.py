@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class RebuiltBinariesCase(TestCase):
     def testRebuiltBinaries(self):
-
         user_config = {
             "make.conf": ('FEATURES="binpkg-multi-instance"',),
         }

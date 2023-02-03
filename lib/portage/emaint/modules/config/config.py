@@ -8,7 +8,6 @@ from portage.util import grabdict, writedict
 
 
 class CleanConfig:
-
     short_desc = "Discard any no longer installed configs from emerge's tracker list"
 
     @staticmethod

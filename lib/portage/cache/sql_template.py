@@ -157,7 +157,6 @@ class SQLDatabase(template.database):
             self.db.close()
 
     def _setitem(self, cpv, values):
-
         try:
             # insert.
             try:

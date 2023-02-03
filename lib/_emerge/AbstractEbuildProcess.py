@@ -27,7 +27,6 @@ portage.proxy.lazyimport.lazyimport(
 
 
 class AbstractEbuildProcess(SpawnProcess):
-
     __slots__ = ("phase", "settings",) + (
         "_build_dir",
         "_build_dir_unlock",
@@ -65,7 +64,6 @@ class AbstractEbuildProcess(SpawnProcess):
             self.phase = phase
 
     def _start(self):
-
         need_builddir = self.phase not in self._phases_without_builddir
 
         # This can happen if the pre-clean phase triggers
@@ -247,12 +245,10 @@ class AbstractEbuildProcess(SpawnProcess):
                 os.close(null_fd)
 
     def _init_ipc_fifos(self):
-
         input_fifo = os.path.join(self.settings["PORTAGE_BUILDDIR"], ".ipc", "in")
         output_fifo = os.path.join(self.settings["PORTAGE_BUILDDIR"], ".ipc", "out")
 
         for p in (input_fifo, output_fifo):
-
             st = None
             try:
                 st = os.lstat(p)
@@ -354,7 +350,6 @@ class AbstractEbuildProcess(SpawnProcess):
         self._eerror(textwrap.wrap(msg, 72))
 
     def _unexpected_exit(self):
-
         phase = self.phase
 
         msg = (

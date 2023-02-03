@@ -177,7 +177,6 @@ class Socks5ServerTestCase(TestCase):
             return f.read()
 
     def test_socks5_proxy(self):
-
         loop = global_event_loop()
 
         host = "127.0.0.1"
@@ -188,7 +187,6 @@ class Socks5ServerTestCase(TestCase):
 
         try:
             with AsyncHTTPServer(host, {path: content}, loop) as server:
-
                 settings = {
                     "PORTAGE_TMPDIR": tempdir,
                     "PORTAGE_BIN_PATH": PORTAGE_BIN_PATH,

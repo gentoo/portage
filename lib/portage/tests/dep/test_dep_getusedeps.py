@@ -12,7 +12,6 @@ class DepGetUseDeps(TestCase):
     """A simple testcase for dep_getusedeps"""
 
     def testDepGetUseDeps(self):
-
         for mycpv in test_cps:
             for version in test_versions:
                 for slot in test_slots:

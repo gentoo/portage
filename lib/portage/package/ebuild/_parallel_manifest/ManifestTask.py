@@ -21,7 +21,6 @@ from .ManifestProcess import ManifestProcess
 
 
 class ManifestTask(CompositeTask):
-
     __slots__ = (
         "cp",
         "distdir",

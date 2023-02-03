@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameSkipUpdateTestCase(TestCase):
     def testSonameSkipUpdate(self):
-
         binpkgs = {
             "app-misc/A-1": {
                 "RDEPEND": "dev-libs/B",

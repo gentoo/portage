@@ -55,7 +55,6 @@ def addtolist(mylist, curdir):
         _unicode_decode(curdir, encoding=_encodings["fs"], errors="strict")
     )
     for parent, dirs, files in os.walk(curdir):
-
         parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
         if parent != curdir:
             mylist.append(parent[len(curdir) + 1 :] + os.sep)

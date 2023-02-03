@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class CircularRustTestCase(TestCase):
     def testCircularPypyExe(self):
-
         ebuilds = {
             "dev-lang/rust-1.47.0-r2": {
                 "EAPI": "7",

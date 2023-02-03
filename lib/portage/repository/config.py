@@ -760,7 +760,6 @@ class RepoConfigLoader:
 
                     prepos[repo.name] = repo
                 else:
-
                     if not portage._sync_mode:
                         writemsg(
                             _("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov,
@@ -1182,7 +1181,7 @@ class RepoConfigLoader:
 
     def _check_locations(self):
         """Check if repositories location are correct and show a warning message if not"""
-        for (name, r) in self.prepos.items():
+        for name, r in self.prepos.items():
             if name != "DEFAULT":
                 if r.location is None:
                     writemsg(

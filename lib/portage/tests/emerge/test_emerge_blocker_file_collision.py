@@ -16,7 +16,6 @@ from portage.util import ensure_dirs
 
 class BlockerFileCollisionEmergeTestCase(TestCase):
     def testBlockerFileCollision(self):
-
         debug = False
 
         install_something = """
@@ -160,7 +159,6 @@ src_install() {
                 stdout = subprocess.PIPE
 
             for i, args in enumerate(test_commands):
-
                 if hasattr(args[0], "__call__"):
                     self.assertTrue(args[0](), f"callable at index {i} failed")
                     continue

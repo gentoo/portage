@@ -14,7 +14,6 @@ from _emerge.getloadavg import getloadavg
 
 
 class PollScheduler:
-
     # max time between loadavg checks (milliseconds)
     _loadavg_latency = None
 

@@ -58,7 +58,6 @@ class PopenPipeBlockingIOTestCase(TestCase):
         return consumer.getvalue().decode("ascii", "replace")
 
     def testPopenPipeBlockingIO(self):
-
         if threading is None:
             skip_reason = "threading disabled"
             self.portage_skip = "threading disabled"

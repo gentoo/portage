@@ -26,7 +26,6 @@ import logging
 
 
 class Binpkg(CompositeTask):
-
     __slots__ = (
         "find_blockers",
         "ldpath_mtimes",
@@ -60,7 +59,6 @@ class Binpkg(CompositeTask):
         )
 
     def _start(self):
-
         pkg = self.pkg
         settings = self.settings
         settings.setcpv(pkg)
@@ -115,7 +113,6 @@ class Binpkg(CompositeTask):
         if prefetcher is None:
             pass
         elif prefetcher.isAlive() and prefetcher.poll() is None:
-
             if not self.background:
                 fetch_log = os.path.join(
                     _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
@@ -137,7 +134,6 @@ class Binpkg(CompositeTask):
         self._prefetch_exit(prefetcher)
 
     def _prefetch_exit(self, prefetcher):
-
         if self._was_cancelled():
             self.wait()
             return
@@ -169,7 +165,6 @@ class Binpkg(CompositeTask):
         fetcher = None
 
         if self.opts.getbinpkg and self._bintree.isremote(pkg.cpv):
-
             fetcher = BinpkgFetcher(
                 background=self.background,
                 logfile=self.settings.get("PORTAGE_LOG_FILE"),
@@ -201,7 +196,6 @@ class Binpkg(CompositeTask):
         self._fetcher_exit(fetcher)
 
     def _fetcher_exit(self, fetcher):
-
         # The fetcher only has a returncode when
         # --getbinpkg is enabled.
         if fetcher is not None:
@@ -312,7 +306,6 @@ class Binpkg(CompositeTask):
         )
 
     async def _unpack_metadata(self, loop=None):
-
         dir_path = self.settings["PORTAGE_BUILDDIR"]
 
         infloc = self._infloc

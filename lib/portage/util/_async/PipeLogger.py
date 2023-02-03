@@ -31,7 +31,6 @@ class PipeLogger(AbstractPollTask):
     )
 
     def _start(self):
-
         log_file_path = self.log_file_path
         if hasattr(log_file_path, "write"):
             self._log_file_nb = True

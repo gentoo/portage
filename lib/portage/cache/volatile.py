@@ -6,7 +6,6 @@ from portage.cache import template
 
 
 class database(template.database):
-
     autocommits = True
     serialize_eclasses = False
     store_eclass_paths = False

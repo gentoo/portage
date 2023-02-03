@@ -975,7 +975,6 @@ def parse_opts(tmpcmdline, silent=False):
         myoptions.selective = True
 
     if myoptions.backtrack is not None:
-
         try:
             backtrack = int(myoptions.backtrack)
         except (OverflowError, ValueError):

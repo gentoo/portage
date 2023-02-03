@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotConflictRebuildTestCase(TestCase):
     def testSlotConflictRebuild(self):
-
         ebuilds = {
             "app-misc/A-1": {"EAPI": "5", "SLOT": "0/1"},
             "app-misc/A-2": {"EAPI": "5", "SLOT": "0/2"},
@@ -392,7 +391,6 @@ class SlotConflictRebuildTestCase(TestCase):
             playground.cleanup()
 
     def testSlotConflictRebuildGolang(self):
-
         ebuilds = {
             "dev-lang/go-1.14.7": {"EAPI": "7", "SLOT": "0/1.14.7"},
             "dev-lang/go-1.15": {"EAPI": "7", "SLOT": "0/1.15"},

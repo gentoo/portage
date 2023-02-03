@@ -449,7 +449,6 @@ class ResolverPlayground:
     def _create_profile(
         self, ebuilds, eclasses, installed, profile, repo_configs, user_config, sets
     ):
-
         user_config_dir = os.path.join(self.eroot, USER_CONFIG_PATH)
 
         try:
@@ -678,7 +677,6 @@ class ResolverPlayground:
                 f.write(f"{atom}\n")
 
     def _load_config(self):
-
         create_trees_kwargs = {}
         if self.target_root != os.sep:
             create_trees_kwargs["target_root"] = self.target_root
@@ -728,7 +726,6 @@ class ResolverPlayground:
         global_noiselimit = portage.util.noiselimit
         global_emergelog_disable = _emerge.emergelog._disable
         try:
-
             if not self.debug:
                 portage.util.noiselimit = -2
             _emerge.emergelog._disable = True
@@ -988,7 +985,6 @@ def _mergelist_str(x, depgraph):
 
 
 class ResolverPlaygroundResult:
-
     checks = (
         "success",
         "mergelist",
@@ -1105,7 +1101,6 @@ class ResolverPlaygroundResult:
 
 
 class ResolverPlaygroundDepcleanResult:
-
     checks = (
         "success",
         "cleanlist",

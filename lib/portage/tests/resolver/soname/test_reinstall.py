@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameReinstallTestCase(TestCase):
     def testSonameReinstall(self):
-
         binpkgs = {
             "app-misc/A-1": {
                 "RDEPEND": "dev-libs/B",

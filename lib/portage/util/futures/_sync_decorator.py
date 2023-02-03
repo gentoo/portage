@@ -46,7 +46,6 @@ def _sync_methods(obj, loop=None):
 
 
 class _ObjectAttrWrapper(portage.proxy.objectproxy.ObjectProxy):
-
     __slots__ = ("_obj", "_attr_wrapper")
 
     def __init__(self, obj, attr_wrapper):

@@ -35,7 +35,6 @@ def TextMessage(_text):
 
 
 def create_message(sender, recipient, subject, body, attachments=None):
-
     from email.header import Header
     from email.mime.base import MIMEBase as BaseMessage
     from email.mime.multipart import MIMEMultipart as MultipartMessage
@@ -76,7 +75,6 @@ def create_message(sender, recipient, subject, body, attachments=None):
 
 
 def send_mail(mysettings, message):
-
     import smtplib
 
     mymailhost = "localhost"

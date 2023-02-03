@@ -30,7 +30,6 @@ warn = create_color_func("WARN")
 
 
 class SyncRepos:
-
     short_desc = "Check repos.conf settings and/or sync repositories"
 
     @staticmethod

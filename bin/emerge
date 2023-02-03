@@ -11,6 +11,7 @@ raise_signal = getattr(
     signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
 )
 
+
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
 class SignalInterrupt(KeyboardInterrupt):
     def __init__(self, signum):

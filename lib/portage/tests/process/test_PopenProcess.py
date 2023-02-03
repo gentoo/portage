@@ -52,7 +52,6 @@ class PopenPipeTestCase(TestCase):
         return consumer.getvalue().decode("ascii", "replace")
 
     def _testPipeLogger(self, test_string):
-
         producer = PopenProcess(
             proc=subprocess.Popen(
                 ["bash", "-c", self._echo_cmd % test_string],
@@ -64,7 +63,6 @@ class PopenPipeTestCase(TestCase):
 
         fd, log_file_path = tempfile.mkstemp()
         try:
-
             consumer = PipeLogger(
                 background=True,
                 input_fd=producer.proc.stdout,

@@ -15,7 +15,6 @@ ERROR_MESSAGES = {
 
 
 class CleanLogs:
-
     short_desc = "Clean PORTAGE_LOGDIR logs"
 
     @staticmethod

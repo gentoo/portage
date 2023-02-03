@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class DeletionTask(CompositeTask):
-
     __slots__ = ("distfile", "distfile_path", "config")
 
     def _start(self):
@@ -70,7 +69,6 @@ class DeletionTask(CompositeTask):
         self._async_wait()
 
     def _recycle_copier_exit(self, copier):
-
         self._assert_current(copier)
         if self._was_cancelled():
             self.wait()
@@ -78,7 +76,6 @@ class DeletionTask(CompositeTask):
 
         success = True
         if copier.returncode == os.EX_OK:
-
             try:
                 os.unlink(copier.src_path)
             except OSError as e:
@@ -124,7 +121,6 @@ class DeletionTask(CompositeTask):
             self.returncode = 1
 
     def _success(self):
-
         cpv = "unknown"
         if self.config.distfiles_db is not None:
             cpv = self.config.distfiles_db.get(self.distfile, cpv)

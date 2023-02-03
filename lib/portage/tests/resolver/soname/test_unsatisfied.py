@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameUnsatisfiedTestCase(TestCase):
     def testSonameUnsatisfied(self):
-
         binpkgs = {
             "app-misc/A-1": {
                 "EAPI": "5",

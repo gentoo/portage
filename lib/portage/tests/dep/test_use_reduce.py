@@ -65,7 +65,6 @@ class UseReduce(TestCase):
         return False
 
     def testUseReduce(self):
-
         EAPI_WITH_SRC_URI_ARROWS = "2"
         EAPI_WITHOUT_SRC_URI_ARROWS = "0"
 

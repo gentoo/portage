@@ -10,7 +10,6 @@ class TestStandalone(TestCase):
     """Test some small functions portage.dep"""
 
     def testCPVequal(self):
-
         test_cases = (
             ("sys-apps/portage-2.1", "sys-apps/portage-2.1", True),
             ("sys-apps/portage-2.1", "sys-apps/portage-2.0", False),

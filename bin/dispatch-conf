@@ -78,6 +78,7 @@ while SCRATCH_DIR is None:
             raise
 os.umask(oldmask)
 
+
 # Ensure the scratch dir is deleted
 def cleanup(mydir=SCRATCH_DIR):
     shutil.rmtree(mydir)

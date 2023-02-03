@@ -52,7 +52,6 @@ except ImportError as e:
     raise
 
 try:
-
     import portage.proxy.lazyimport
     import portage.proxy as proxy
 
@@ -638,7 +637,6 @@ class _trees_dict(dict):
 def create_trees(
     config_root=None, target_root=None, trees=None, env=None, sysroot=None, eprefix=None
 ):
-
     if trees is None:
         trees = _trees_dict()
     elif not isinstance(trees, _trees_dict):
@@ -664,7 +662,6 @@ def create_trees(
     if settings["ROOT"] == "/" and settings["EPREFIX"] == const.EPREFIX:
         trees._running_eroot = trees._target_eroot
     else:
-
         # When ROOT != "/" we only want overrides from the calling
         # environment to apply to the config that's associated
         # with ROOT != "/", so pass a nearly empty dict for the env parameter.
@@ -803,7 +800,6 @@ def _reset_legacy_globals():
 
 
 class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
-
     __slots__ = ("_name",)
 
     def __init__(self, name):

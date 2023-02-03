@@ -88,7 +88,6 @@ class Config:
         self.layouts = self.layout_conf.get_all_layouts()
 
     def _open_log(self, log_desc, log_path, mode):
-
         if log_path is None or getattr(self.options, "dry_run", False):
             log_func = logger.info
             line_format = "%s: %%s" % log_desc
@@ -103,7 +102,6 @@ class Config:
         return self._LogFormatter(line_format, log_func)
 
     class _LogFormatter:
-
         __slots__ = ("_line_format", "_log_func")
 
         def __init__(self, line_format, log_func):

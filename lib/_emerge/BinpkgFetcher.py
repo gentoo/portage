@@ -18,7 +18,6 @@ from portage.util._pty import _create_pty_or_pipe
 
 
 class BinpkgFetcher(CompositeTask):
-
     __slots__ = ("pkg", "pretend", "logfile", "pkg_path", "pkg_allocated_path")
 
     def __init__(self, **kwargs):
@@ -93,7 +92,6 @@ class BinpkgFetcher(CompositeTask):
 
 
 class _BinpkgFetcherProcess(SpawnProcess):
-
     __slots__ = ("pkg", "pretend", "locked", "pkg_path", "_lock_obj")
 
     def _start(self):

@@ -174,7 +174,6 @@ def _adjust_perms_msg(settings, msg):
 
 
 def _prepare_features_dirs(mysettings):
-
     # Use default ABI libdir in accordance with bug #355283.
     libdir = None
     default_abi = mysettings.get("DEFAULT_ABI")

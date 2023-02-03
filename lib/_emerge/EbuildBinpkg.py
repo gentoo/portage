@@ -44,7 +44,6 @@ class EbuildBinpkg(CompositeTask):
         self._start_task(package_phase, self._package_phase_exit)
 
     def _package_phase_exit(self, package_phase):
-
         self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
         if self._default_exit(package_phase) != os.EX_OK:
             try:

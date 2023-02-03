@@ -301,7 +301,6 @@ class RequiredUSETestCase(TestCase):
             playground.cleanup()
 
     def testRequiredUseOrDeps(self):
-
         ebuilds = {
             "dev-libs/A-1": {
                 "IUSE": "+x +y",

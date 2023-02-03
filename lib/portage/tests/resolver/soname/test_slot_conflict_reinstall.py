@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameSlotConflictReinstallTestCase(TestCase):
     def testSonameSlotConflictReinstall(self):
-
         binpkgs = {
             "app-misc/A-1": {
                 "PROVIDES": "x86_32: libA-1.so",

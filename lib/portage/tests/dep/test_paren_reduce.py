@@ -8,7 +8,6 @@ from portage.exception import InvalidDependString
 
 class TestParenReduce(TestCase):
     def testParenReduce(self):
-
         test_cases = (
             ("A", ["A"]),
             ("( A )", ["A"]),

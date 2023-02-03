@@ -35,7 +35,6 @@ class PackageUninstall(CompositeTask):
     )
 
     def _start(self):
-
         vardb = self.pkg.root_config.trees["vartree"].dbapi
         dbdir = vardb.getpath(self.pkg.cpv)
         if not os.path.exists(dbdir):
@@ -150,7 +149,6 @@ class PackageUninstall(CompositeTask):
         emergelog("notitles" not in self.settings.features, msg)
 
     def _writemsg_level(self, msg, level=0, noiselevel=0):
-
         log_path = self.settings.get("PORTAGE_LOG_FILE")
         background = self.background
 

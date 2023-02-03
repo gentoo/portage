@@ -58,7 +58,6 @@ class BinpkgEnvExtractor(CompositeTask):
                 raise
 
     def _extractor_exit(self, extractor_proc):
-
         if self._default_exit(extractor_proc) != os.EX_OK:
             self._remove_dest_env()
             self.wait()

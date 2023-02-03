@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class ResolverDepthTestCase(TestCase):
     def testResolverDepth(self):
-
         profile = {
             "package.mask": (
                 # Mask an installed package (for which an update is

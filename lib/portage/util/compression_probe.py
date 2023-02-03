@@ -111,7 +111,6 @@ def compression_probe(f):
 
 
 def _compression_probe_file(f):
-
     m = _compression_re.match(f.read(_max_compression_re_len))
     if m is not None:
         for k, v in m.groupdict().items():

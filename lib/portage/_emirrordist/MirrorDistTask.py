@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class MirrorDistTask(CompositeTask):
-
     __slots__ = ("_config", "_fetch_iterator", "_term_rlock", "_term_callback_handle")
 
     def __init__(self, config):
@@ -42,7 +41,6 @@ class MirrorDistTask(CompositeTask):
         self._start_task(fetch, self._fetch_exit)
 
     def _fetch_exit(self, fetch):
-
         self._assert_current(fetch)
         if self._was_cancelled():
             self._async_wait()
@@ -61,7 +59,6 @@ class MirrorDistTask(CompositeTask):
         self._post_deletion()
 
     def _deletion_exit(self, deletion):
-
         self._assert_current(deletion)
         if self._was_cancelled():
             self._async_wait()
@@ -70,7 +67,6 @@ class MirrorDistTask(CompositeTask):
         self._post_deletion()
 
     def _post_deletion(self):
-
         if self._config.options.recycle_db is not None:
             self._update_recycle_db()
 
@@ -84,7 +80,6 @@ class MirrorDistTask(CompositeTask):
         self._async_wait()
 
     def _update_recycle_db(self):
-
         start_time = self._config.start_time
         recycle_dir = self._config.options.recycle_dir
         recycle_db = self._config.recycle_db
@@ -94,7 +89,6 @@ class MirrorDistTask(CompositeTask):
         recycle_db_cache = dict(recycle_db.items())
 
         for filename in os.listdir(recycle_dir):
-
             recycle_file = os.path.join(recycle_dir, filename)
 
             try:
@@ -150,7 +144,6 @@ class MirrorDistTask(CompositeTask):
                 logger.debug(("drop non-existent '%s' from " "recycle db") % filename)
 
     def _scheduled_deletion_log(self):
-
         start_time = self._config.start_time
         dry_run = self._config.options.dry_run
         deletion_delay = self._config.options.deletion_delay

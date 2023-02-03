@@ -9,7 +9,6 @@ from portage import _unicode_decode
 
 
 def get_vm_info():
-
     vm_info = {}
 
     env = os.environ.copy()
@@ -51,7 +50,6 @@ def get_vm_info():
                                 pass
 
     else:
-
         try:
             proc = subprocess.Popen(
                 ["sysctl", "-a"],

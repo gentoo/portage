@@ -12,7 +12,6 @@ from portage.util import ensure_dirs
 
 class UseExpandIncrementalTestCase(TestCase):
     def testUseExpandIncremental(self):
-
         profiles = (
             (
                 "base",

@@ -26,7 +26,6 @@ from portage.util.path import first_existing
 
 
 class EbuildBuild(CompositeTask):
-
     __slots__ = (
         "args_set",
         "config_pool",
@@ -100,7 +99,6 @@ class EbuildBuild(CompositeTask):
         if prefetcher is None:
             pass
         elif prefetcher.isAlive() and prefetcher.poll() is None:
-
             if not self.background:
                 fetch_log = os.path.join(
                     _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
@@ -139,7 +137,6 @@ class EbuildBuild(CompositeTask):
         return success
 
     def _prefetch_exit(self, prefetcher):
-
         if self._was_cancelled():
             self.wait()
             return
@@ -317,7 +314,6 @@ class EbuildBuild(CompositeTask):
         self.scheduler.fetch.schedule(fetcher)
 
     def _fetch_exit(self, fetcher):
-
         if fetcher is not None and self._default_exit(fetcher) != os.EX_OK:
             self._fetch_failed()
             return
@@ -360,7 +356,6 @@ class EbuildBuild(CompositeTask):
             and not buildpkg_live_disabled
             and not self.opts.buildpkg_exclude.findAtomForPackage(pkg)
         ):
-
             self._buildpkg = True
 
             msg = " === ({} of {}) Compiling/Packaging ({}::{})".format(

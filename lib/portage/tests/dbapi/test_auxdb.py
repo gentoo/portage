@@ -102,7 +102,6 @@ class AuxdbTestCase(TestCase):
     async def _test_mod_async(
         self, ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb
     ):
-
         for cpv, metadata in ebuilds.items():
             defined_phases, depend, eapi, inherited = await portdb.async_aux_get(
                 cpv, ["DEFINED_PHASES", "DEPEND", "EAPI", "INHERITED"]

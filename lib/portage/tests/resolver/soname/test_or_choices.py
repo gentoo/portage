@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameOrChoicesTestCase(TestCase):
     def testSonameConflictMissedUpdate(self):
-
         binpkgs = {
             "dev-lang/ocaml-4.02.1": {
                 "EAPI": "5",

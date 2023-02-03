@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class AutounmaskTestCase(TestCase):
     def testAutounmask(self):
-
         ebuilds = {
             # ebuilds to test use changes
             "dev-libs/A-1": {"SLOT": 1, "DEPEND": "dev-libs/B[foo]", "EAPI": 2},
@@ -451,7 +450,6 @@ class AutounmaskTestCase(TestCase):
             playground.cleanup()
 
     def testAutounmaskForLicenses(self):
-
         ebuilds = {
             "dev-libs/A-1": {"LICENSE": "TEST"},
             "dev-libs/B-1": {"LICENSE": "TEST", "IUSE": "foo", "KEYWORDS": "~x86"},
@@ -546,7 +544,6 @@ class AutounmaskTestCase(TestCase):
             playground.cleanup()
 
     def testAutounmaskAndSets(self):
-
         ebuilds = {
             # ebuilds to test use changes
             "dev-libs/A-1": {},
@@ -663,7 +660,6 @@ class AutounmaskTestCase(TestCase):
             playground.cleanup()
 
     def testAutounmask9999(self):
-
         ebuilds = {
             "dev-libs/A-1": {},
             "dev-libs/A-2": {},

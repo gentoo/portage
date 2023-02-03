@@ -16,7 +16,6 @@ from _emerge.getloadavg import getloadavg
 
 
 class JobStatusDisplay:
-
     _bound_properties = ("curval", "failed", "running")
 
     # Don't update the display unless at least this much
@@ -138,7 +137,6 @@ class JobStatusDisplay:
         self._displayed = True
 
     def _update(self, msg):
-
         if not self._isatty:
             self._write(self._format_msg(msg) + self._term_codes["newline"])
             self._displayed = True
@@ -150,7 +148,6 @@ class JobStatusDisplay:
         self._display(self._format_msg(msg))
 
     def displayMessage(self, msg):
-
         was_displayed = self._displayed
 
         if self._isatty and self._displayed:

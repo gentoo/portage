@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class ImageMagickGraphicsMagickTestCase(TestCase):
     def testImageMagickUpdate(self):
-
         ebuilds = {
             "media-gfx/imagemagick-6.9.7.0": {
                 "EAPI": "6",

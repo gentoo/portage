@@ -563,7 +563,6 @@ def cpv_sort_key(eapi=None):
     split_cache = {}
 
     def cmp_cpv(cpv1, cpv2):
-
         split1 = split_cache.get(cpv1, False)
         if split1 is False:
             split1 = None

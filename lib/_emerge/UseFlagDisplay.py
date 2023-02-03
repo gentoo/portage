@@ -10,7 +10,6 @@ from portage.output import blue
 
 
 class UseFlagDisplay:
-
     __slots__ = ("name", "enabled", "forced")
 
     def __init__(self, name, enabled, forced):

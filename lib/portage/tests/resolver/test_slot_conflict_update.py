@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotConflictUpdateTestCase(TestCase):
     def testSlotConflictUpdate(self):
-
         ebuilds = {
             "app-text/podofo-0.9.2": {"EAPI": "5", "RDEPEND": "dev-util/boost-build"},
             "dev-cpp/libcmis-0.3.1": {"EAPI": "5", "RDEPEND": "dev-libs/boost:="},

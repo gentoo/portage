@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class BinaryPkgEbuildVisibilityTestCase(TestCase):
     def testBinaryPkgEbuildVisibility(self):
-
         binpkgs = {
             "app-misc/foo-3": {},
             "app-misc/foo-2": {},

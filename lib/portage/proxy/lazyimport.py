@@ -89,7 +89,6 @@ def _unregister_module_proxy(name):
 
 
 class _LazyImport(ObjectProxy):
-
     __slots__ = ("_scope", "_alias", "_name", "_target")
 
     def __init__(self, scope, alias, name):
@@ -116,7 +115,6 @@ class _LazyImport(ObjectProxy):
 
 
 class _LazyImportFrom(_LazyImport):
-
     __slots__ = ("_attr_name",)
 
     def __init__(self, scope, name, attr_name, alias):

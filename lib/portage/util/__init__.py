@@ -573,7 +573,6 @@ def grabfile_package(
     eapi=None,
     eapi_default="0",
 ):
-
     pkgs = grabfile(
         myfilename, compatlevel, recursive=recursive, remember_source_file=True
     )
@@ -758,7 +757,6 @@ _invalid_var_name_re = re.compile(r"^\d|\W")
 def getconfig(
     mycfg, tolerant=False, allow_sourcing=False, expand=True, recursive=False
 ):
-
     if isinstance(expand, dict):
         # Some existing variable definitions have been
         # passed in, for use in substitutions.
@@ -1409,7 +1407,6 @@ def apply_secpass_permissions(
     # Avoid accessing portage.data.secpass when possible, since
     # it triggers config loading (undesirable for chmod-lite).
     if (uid != -1 or gid != -1) and portage.data.secpass < 2:
-
         if uid != -1 and uid != stat_cached.st_uid:
             all_applied = False
             uid = -1
@@ -1622,7 +1619,6 @@ class LazyItemsDict(UserDict):
     __slots__ = ("lazy_items",)
 
     def __init__(self, *args, **kwargs):
-
         self.lazy_items = {}
         UserDict.__init__(self, *args, **kwargs)
 
@@ -1724,11 +1720,9 @@ class LazyItemsDict(UserDict):
         return result
 
     class _LazyItem:
-
         __slots__ = ("func", "pargs", "kwargs", "singleton")
 
         def __init__(self, func, pargs, kwargs, singleton):
-
             if not pargs:
                 pargs = None
             if not kwargs:

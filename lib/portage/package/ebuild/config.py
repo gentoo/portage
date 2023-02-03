@@ -1102,7 +1102,6 @@ class config:
             except OSError:
                 pass
             else:
-
                 if portage.data._unprivileged_mode(eroot_or_parent, eroot_st):
                     unprivileged = True
 
@@ -1671,7 +1670,6 @@ class config:
         self.regenerate()
 
     class _lazy_vars:
-
         __slots__ = ("built_use", "settings", "values")
 
         def __init__(self, built_use, settings):
@@ -2795,10 +2793,8 @@ class config:
 
         myflags = set()
         for mykey, incremental_list in increment_lists.items():
-
             myflags.clear()
             for mysplit in incremental_list:
-
                 for x in mysplit:
                     if x == "-*":
                         # "-*" is a special "minus" var that means "unset all settings".
@@ -2898,7 +2894,6 @@ class config:
             iuse = [x.lstrip("+-") for x in iuse.split()]
         myflags = set()
         for curdb in self.uvlist:
-
             for k in use_expand_unprefixed:
                 v = curdb.get(k)
                 if v is None:
@@ -3154,7 +3149,6 @@ class config:
                 return ""
 
     def _getitem(self, mykey):
-
         if mykey in self._constant_keys:
             # These two point to temporary values when
             # portage plans to update itself.

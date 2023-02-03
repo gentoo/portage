@@ -13,7 +13,6 @@ from portage.eapi import (
 
 
 class EbuildExecuter(CompositeTask):
-
     __slots__ = ("pkg", "settings")
 
     _phases = ("prepare", "configure", "compile", "test", "install")
@@ -46,7 +45,6 @@ class EbuildExecuter(CompositeTask):
         self.scheduler.scheduleSetup(setup_phase)
 
     def _setup_exit(self, setup_phase):
-
         if self._default_exit(setup_phase) != os.EX_OK:
             self.wait()
             return
@@ -70,7 +68,6 @@ class EbuildExecuter(CompositeTask):
             self._start_task(unpack_phase, self._unpack_exit)
 
     def _unpack_exit(self, unpack_phase):
-
         if self._default_exit(unpack_phase) != os.EX_OK:
             self.wait()
             return

@@ -16,7 +16,6 @@ from portage.util import ensure_dirs
 
 class SlotAbiEmergeTestCase(TestCase):
     def testSlotAbiEmerge(self):
-
         debug = False
 
         ebuilds = {
@@ -162,7 +161,6 @@ class SlotAbiEmergeTestCase(TestCase):
                 stdout = subprocess.PIPE
 
             for i, args in enumerate(test_commands):
-
                 if hasattr(args[0], "__call__"):
                     self.assertTrue(args[0](), f"callable at index {i} failed")
                     continue

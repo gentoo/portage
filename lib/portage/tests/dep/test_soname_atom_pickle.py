@@ -9,7 +9,6 @@ from portage.util.futures.executor.fork import ForkExecutor
 
 
 class TestSonameAtomPickle(TestCase):
-
     _ALL_PROVIDES = frozenset([SonameAtom("x86_64", "libc.so.6")])
 
     def test_soname_atom_pickle(self):

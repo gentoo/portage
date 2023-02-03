@@ -262,7 +262,6 @@ src_install() {
                 stdout = subprocess.PIPE
 
             for args in test_commands:
-
                 if hasattr(args, "__call__"):
                     args()
                     continue

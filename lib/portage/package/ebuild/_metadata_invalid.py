@@ -10,7 +10,6 @@ from portage.elog.messages import eerror
 
 
 def eapi_invalid(self, cpv, repo_name, settings, eapi_var, eapi_parsed, eapi_lineno):
-
     msg = []
     msg.extend(
         textwrap.wrap(

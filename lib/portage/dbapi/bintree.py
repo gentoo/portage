@@ -443,7 +443,6 @@ class binarytree:
         virtual=DeprecationWarning,
         settings=None,
     ):
-
         if pkgdir is None:
             raise TypeError("pkgdir parameter is required")
 
@@ -1224,7 +1223,6 @@ class binarytree:
         return pkgindex if update_pkgindex else None
 
     def _populate_remote(self, getbinpkg_refresh=True):
-
         self._remote_has_index = False
         self._remotepkgs = {}
 
@@ -1347,7 +1345,6 @@ class binarytree:
                         )
 
                 if f is None:
-
                     path = parsed_url.path.rstrip("/") + "/Packages"
 
                     if repo.fetchcommand is None and parsed_url.scheme == "ssh":
@@ -2112,7 +2109,6 @@ class binarytree:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
     def _allocate_filename_multi(self, cpv, remote_binpkg_format=None):
-
         # First, get the max build_id found when _populate was
         # called.
         max_build_id = self._max_build_id(cpv)
@@ -2262,7 +2258,6 @@ class binarytree:
         return pkgindex
 
     def _get_digests(self, pkg):
-
         try:
             cpv = pkg.cpv
         except AttributeError:

@@ -3,7 +3,6 @@
 
 
 class DependencyArg:
-
     __slots__ = ("arg", "force_reinstall", "internal", "reset_depth", "root_config")
 
     def __init__(

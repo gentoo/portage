@@ -270,7 +270,6 @@ def _create_use_string(
     feature_flags,
     reinst_flags,
 ):
-
     if not conf.print_use_string:
         return ""
 
@@ -342,7 +341,6 @@ def _create_use_string(
 
 
 def _tree_display(conf, mylist):
-
     # If there are any Uninstall instances, add the
     # corresponding blockers to the digraph.
     mygraph = conf.digraph.copy()
@@ -416,7 +414,6 @@ def _unordered_tree_display(mygraph, mylist):
     seen_nodes = set()
 
     def print_node(node, depth):
-
         if node in seen_nodes:
             pass
         else:
@@ -591,7 +588,6 @@ class PkgInfo:
 
 
 class PkgAttrDisplay(SlotObject):
-
     __slots__ = (
         "downgrade",
         "fetch_restrict",

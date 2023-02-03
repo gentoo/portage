@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class VirtualSlotResolverTestCase(TestCase):
     def testLicenseMaskedVirtualSlotUpdate(self):
-
         ebuilds = {
             "dev-java/oracle-jdk-bin-1.7.0": {"SLOT": "1.7", "LICENSE": "TEST"},
             "dev-java/sun-jdk-1.6.0": {"SLOT": "1.6", "LICENSE": "TEST"},
@@ -60,7 +59,6 @@ class VirtualSlotResolverTestCase(TestCase):
             playground.cleanup()
 
     def testVirtualSlotUpdate(self):
-
         ebuilds = {
             "dev-java/oracle-jdk-bin-1.7.0": {"SLOT": "1.7", "LICENSE": "TEST"},
             "dev-java/sun-jdk-1.6.0": {"SLOT": "1.6", "LICENSE": "TEST"},
@@ -118,7 +116,6 @@ class VirtualSlotResolverTestCase(TestCase):
             playground.cleanup()
 
     def testVirtualSubslotUpdate(self):
-
         ebuilds = {
             "virtual/pypy-2.3.1": {
                 "EAPI": "5",
@@ -190,7 +187,6 @@ class VirtualSlotResolverTestCase(TestCase):
             playground.cleanup()
 
     def testVirtualSlotDepclean(self):
-
         ebuilds = {
             "dev-java/oracle-jdk-bin-1.7.0": {"SLOT": "1.7", "LICENSE": "TEST"},
             "dev-java/sun-jdk-1.6.0": {"SLOT": "1.6", "LICENSE": "TEST"},

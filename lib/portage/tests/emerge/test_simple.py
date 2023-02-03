@@ -53,7 +53,6 @@ class SimpleEmergeTestCase(TestCase):
         return True
 
     def testSimple(self):
-
         debug = False
 
         install_something = """
@@ -250,7 +249,6 @@ call_has_and_best_version() {
                 )
 
     async def _async_test_simple(self, playground, metadata_xml_files, loop):
-
         debug = playground.debug
         settings = playground.settings
         eprefix = settings["EPREFIX"]
@@ -695,7 +693,6 @@ move dev-util/git dev-vcs/git
                 stdout = subprocess.PIPE
 
             for args in test_commands:
-
                 if hasattr(args, "__call__"):
                     args()
                     continue

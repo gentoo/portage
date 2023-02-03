@@ -49,7 +49,6 @@ class AsynchronousLock(AsynchronousTask):
     _use_process_by_default = True
 
     def _start(self):
-
         if not self._force_async:
             try:
                 self._imp = lockfile(
@@ -224,7 +223,6 @@ class _LockProcess(AbstractPollTask):
         os.close(in_pw)
 
     def _proc_exit(self, proc):
-
         if self._files is not None:
             # Close pipe_out if it's still open, since it's useless
             # after the process has exited. This helps to avoid

@@ -58,7 +58,6 @@ def ignore_built_slot_operator_deps(dep_struct):
 
 
 def evaluate_slot_operator_equal_deps(settings, use, trees):
-
     metadata = settings.configdict["pkg"]
     eapi = metadata["EAPI"]
     eapi_attrs = _get_eapi_attrs(eapi)

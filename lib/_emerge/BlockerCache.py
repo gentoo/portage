@@ -22,7 +22,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
     _cache_threshold = 5
 
     class BlockerData:
-
         __slots__ = ("__weakref__", "atoms", "counter")
 
         def __init__(self, counter, atoms):

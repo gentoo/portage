@@ -18,7 +18,6 @@ from _emerge.Package import Package
 
 
 class search:
-
     #
     # class constants
     #
@@ -152,7 +151,6 @@ class search:
         ).visible
 
     def _first_cp(self, cp):
-
         for db in self._dbs:
             if hasattr(db, "cp_list"):
                 matches = db.cp_list(cp)
@@ -249,7 +247,6 @@ class search:
         self.searchkey = searchkey
 
     def _iter_search(self):
-
         match_category = 0
         self.packagematches = []
         if self.searchdesc:

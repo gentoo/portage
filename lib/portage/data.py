@@ -327,7 +327,6 @@ def _init(settings):
         "_portage_grpname" not in _initialized_globals
         and "_portage_username" not in _initialized_globals
     ):
-
         # Prevents "TypeError: expected string" errors
         # from grp.getgrnam() with PyPy
         native_string = platform.python_implementation() == "PyPy"

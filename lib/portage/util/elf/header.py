@@ -20,7 +20,6 @@ from portage.util.elf.constants import (
 
 
 class ELFHeader:
-
     __slots__ = ("e_flags", "e_machine", "e_type", "ei_class", "ei_data")
 
     @classmethod

@@ -5,7 +5,6 @@ import portage
 
 
 class CleanResume:
-
     short_desc = "Discard emerge --resume merge lists"
 
     @staticmethod

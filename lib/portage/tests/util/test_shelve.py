@@ -12,7 +12,6 @@ from portage.util.shelve import dump, open_shelve, restore
 
 
 class ShelveUtilsTestCase(TestCase):
-
     TEST_DATA = (
         # distfiles_db
         {

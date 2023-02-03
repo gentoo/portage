@@ -163,7 +163,6 @@ class UpdateDbentryTestCase(TestCase):
             self.assertEqual(result, output_str)
 
     def testUpdateDbentryDbapiTestCase(self):
-
         ebuilds = {
             "dev-libs/A-2::dont_apply_updates": {
                 "RDEPEND": "dev-libs/M dev-libs/N dev-libs/P",

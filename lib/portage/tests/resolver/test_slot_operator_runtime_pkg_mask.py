@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotOperatorRuntimePkgMaskTestCase(TestCase):
     def testSlotOperatorRuntimePkgMask(self):
-
         ebuilds = {
             "app-misc/meta-pkg-2": {
                 "EAPI": "6",

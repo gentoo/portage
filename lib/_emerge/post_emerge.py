@@ -18,7 +18,6 @@ from ._flush_elog_mod_echo import _flush_elog_mod_echo
 
 
 def clean_logs(settings):
-
     if "clean-logs" not in settings.features:
         return
 

@@ -9,7 +9,6 @@ from portage.util._async.ForkProcess import ForkProcess
 
 
 class ManifestProcess(ForkProcess):
-
     __slots__ = ("cp", "distdir", "fetchlist_dict", "repo_config")
 
     MODIFIED = 16

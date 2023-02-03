@@ -20,7 +20,6 @@ from portage.util import writemsg_level
 
 
 class circular_dependency_handler:
-
     MAX_AFFECTING_USE = 10
 
     def __init__(self, depgraph, graph):
@@ -251,7 +250,6 @@ class circular_dependency_handler:
                     changed_parent
                 )
                 for ppkg, atom in parent_parent_atoms:
-
                     atom = atom.unevaluated_atom
                     if not atom.use:
                         continue

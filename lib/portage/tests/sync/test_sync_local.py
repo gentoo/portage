@@ -458,7 +458,6 @@ class SyncLocalTestCase(TestCase):
                 + sync_cmds
                 + mercurial_tests
             ):
-
                 if hasattr(cmd, "__call__"):
                     cmd()
                     continue

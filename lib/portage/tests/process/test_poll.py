@@ -15,7 +15,6 @@ from _emerge.PipeReader import PipeReader
 
 
 class PipeReaderTestCase(TestCase):
-
     _use_array = False
     _echo_cmd = "echo -n '%s'"
 
@@ -111,7 +110,6 @@ class PipeReaderTestCase(TestCase):
 
 
 class PipeReaderArrayTestCase(PipeReaderTestCase):
-
     _use_array = True
     # sleep allows reliable triggering of the failure mode on fast computers
     _echo_cmd = "sleep 0.1 ; echo -n '%s'"

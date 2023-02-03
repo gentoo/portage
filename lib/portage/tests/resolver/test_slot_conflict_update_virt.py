@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotConflictUpdateVirtTestCase(TestCase):
     def testSlotConflictUpdateVirt(self):
-
         ebuilds = {
             "dev-db/mysql-connector-c-6.1.11-r2": {"EAPI": "7", "SLOT": "0/18"},
             "dev-db/mysql-connector-c-8.0.17-r3": {"EAPI": "7", "SLOT": "0/21"},

@@ -21,7 +21,6 @@ class FsBased(template.database):
     attempt to ensure files have the specified owners/perms"""
 
     def __init__(self, *args, **config):
-
         for x, y in (("gid", -1), ("perms", 0o644)):
             if x in config:
                 # Since Python 3.4, chown requires int type (no proxies).

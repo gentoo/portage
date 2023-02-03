@@ -16,7 +16,6 @@ from portage.versions import _pkg_str
 
 
 class database(fs_template.FsBased):
-
     autocommits = True
 
     def __init__(self, *args, **config):
@@ -148,7 +147,6 @@ class database(fs_template.FsBased):
 
 
 class md5_database(database):
-
     validation_chf = "md5"
     store_eclass_paths = False
 

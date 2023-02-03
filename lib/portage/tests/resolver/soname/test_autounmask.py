@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameAutoUnmaskTestCase(TestCase):
     def testSonameAutoUnmask(self):
-
         binpkgs = {
             "dev-libs/icu-49": {
                 "KEYWORDS": "x86",

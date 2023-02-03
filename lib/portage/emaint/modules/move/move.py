@@ -177,7 +177,6 @@ class MoveHandler:
 
 
 class MoveInstalled(MoveHandler):
-
     short_desc = "Perform package move updates for installed packages"
 
     @staticmethod
@@ -192,7 +191,6 @@ class MoveInstalled(MoveHandler):
 
 
 class MoveBinary(MoveHandler):
-
     short_desc = "Perform package move updates for binary packages"
 
     @staticmethod

@@ -8,7 +8,6 @@ from portage.util import varexpand
 
 class VarExpandTestCase(TestCase):
     def testVarExpandPass(self):
-
         varDict = {"a": "5", "b": "7", "c": "-5"}
         for key in varDict:
             result = varexpand(f"${key}", varDict)
@@ -60,7 +59,6 @@ class VarExpandTestCase(TestCase):
             )
 
     def testVarExpandDoubleQuotes(self):
-
         varDict = {"a": "5"}
         tests = [('"${a}"', '"5"')]
         for test in tests:
@@ -71,7 +69,6 @@ class VarExpandTestCase(TestCase):
             )
 
     def testVarExpandSingleQuotes(self):
-
         varDict = {"a": "5"}
         tests = [("'${a}'", "'${a}'")]
         for test in tests:
@@ -82,7 +79,6 @@ class VarExpandTestCase(TestCase):
             )
 
     def testVarExpandFail(self):
-
         varDict = {"a": "5", "b": "7", "c": "15"}
 
         testVars = ["fail"]

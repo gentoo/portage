@@ -115,7 +115,6 @@ def action_build(
     myfiles=DeprecationWarning,
     spinner=None,
 ):
-
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_build() now expects "
@@ -550,7 +549,6 @@ def action_build(
                 return retval
 
     else:
-
         if not mergelist_shown:
             # If we haven't already shown the merge list above, at
             # least show warnings about missed updates and such.
@@ -573,7 +571,6 @@ def action_build(
         )
 
         if need_write_bindb or need_write_vardb:
-
             eroots = set()
             ebuild_eroots = set()
             for x in mydepgraph.altlist():
@@ -1002,9 +999,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
     real_vardb = trees[eroot]["vartree"].dbapi
 
     if action == "depclean":
-
         if args_set:
-
             if deselect:
                 # Start with an empty set.
                 selected_set = InternalPackageSet()
@@ -1030,7 +1025,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     continue
 
     elif action == "prune":
-
         if deselect:
             # Start with an empty set.
             selected_set = InternalPackageSet()
@@ -1043,7 +1037,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         protected_set.update(vardb.cp_all())
 
         if not args_set:
-
             # Try to prune everything that's slotted.
             for cp in vardb.cp_all():
                 if len(vardb.cp_list(cp)) > 1:
@@ -1111,7 +1104,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         return _depclean_result(1, [], False, 0, resolver)
 
     def unresolved_deps():
-
         soname_deps = set()
         unresolvable = set()
         for dep in resolver._dynamic_config._initially_unsatisfied_deps:
@@ -1146,7 +1138,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             return False
 
         if unresolvable and not allow_missing_deps:
-
             if "--debug" in myopts:
                 writemsg("\ndigraph:\n\n", noiselevel=-1)
                 resolver._dynamic_config.digraph.debug_print()
@@ -1288,7 +1279,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         return -1
 
     def create_cleanlist():
-
         if "--debug" in myopts:
             writemsg("\ndigraph:\n\n", noiselevel=-1)
             graph.debug_print()
@@ -1298,7 +1288,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
         if action == "depclean":
             if args_set:
-
                 for pkg in sorted(vardb, key=cmp_sort_key(cmp_pkg_cpv)):
                     arg_atom = None
                     try:
@@ -1321,7 +1310,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         show_parents(pkg)
 
         elif action == "prune":
-
             for atom in args_set:
                 for pkg in vardb.match_pkgs(atom):
                     if pkg not in graph:
@@ -1358,7 +1346,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                 break
 
     if depclean_lib_check and (preserve_libs_restrict or not preserve_libs):
-
         # Check if any of these packages are the sole providers of libraries
         # with consumers that have not been selected for removal. If so, these
         # packages and any dependencies need to be added to the graph.
@@ -1370,7 +1357,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         writemsg_level(">>> Checking for lib consumers...\n")
 
         for pkg in cleanlist:
-
             if preserve_libs and "preserve-libs" not in pkg.restrict:
                 # Any needed libraries will be preserved
                 # when this package is unmerged, so there's
@@ -1407,7 +1393,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                 continue
 
             for lib, lib_consumers in consumers.items():
-
                 soname = linkmap.getSoname(lib)
 
                 consumer_providers = []
@@ -1426,7 +1411,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             consumer_map[pkg] = consumers
 
         if consumer_map:
-
             search_files = set()
             for consumers in consumer_map.values():
                 for lib, consumer_providers in consumers.items():
@@ -1659,7 +1643,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         continue
                     for child_node in matches:
                         if child_node in clean_set:
-
                             mypriority = priority.copy()
                             if atom.slot_operator_built:
                                 if mypriority.buildtime:
@@ -1783,7 +1766,6 @@ def action_deselect(settings, trees, opts, atoms):
                         break
         if discard_atoms:
             for atom in sorted(discard_atoms):
-
                 if pretend:
                     action_desc = "Would remove"
                 else:
@@ -1840,7 +1822,6 @@ class _info_pkgs_ver:
 
 
 def action_info(settings, trees, myopts, myfiles):
-
     # See if we can find any packages installed matching the strings
     # passed on the command line
     mypkgs = []
@@ -1899,7 +1880,6 @@ def action_info(settings, trees, myopts, myfiles):
             )
 
             if myopts.get("--misspell-suggestions", "y") != "n":
-
                 writemsg("\nemerge: searching for similar names...", noiselevel=-1)
 
                 search_index = myopts.get("--search-index", "y") != "n"
@@ -2425,7 +2405,6 @@ def action_sync(
     opts=DeprecationWarning,
     action=DeprecationWarning,
 ):
-
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_sync() now expects "
@@ -2472,7 +2451,6 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
         if is_valid_package_atom(x, allow_repo=True) or (
             ignore_missing_eq and is_valid_package_atom("=" + x)
         ):
-
             try:
                 atom = dep_expand(x, mydb=vardb, settings=settings)
             except portage.exception.AmbiguousPackageName as e:
@@ -2803,7 +2781,6 @@ def adjust_config(myopts, settings):
 
 
 def display_missing_pkg_set(root_config, set_name):
-
     msg = []
     msg.append(
         ("emerge: There are no sets to satisfy '%s'. " + "The following sets exist:")
@@ -2898,7 +2875,6 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 
 
 class _emerge_config(SlotObject):
-
     __slots__ = ("action", "args", "opts", "running_config", "target_config", "trees")
 
     # Support unpack as tuple, for load_emerge_config backward compatibility.
@@ -2915,7 +2891,6 @@ class _emerge_config(SlotObject):
 
 
 def load_emerge_config(emerge_config=None, env=None, **kargs):
-
     if emerge_config is None:
         emerge_config = _emerge_config(**kargs)
 
@@ -3085,7 +3060,6 @@ def nice(settings):
 
 
 def ionice(settings):
-
     ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
     if ionice_cmd:
         ionice_cmd = portage.util.shlex_split(ionice_cmd)
@@ -3437,7 +3411,6 @@ def repo_name_duplicate_check(trees):
 
 
 def run_action(emerge_config):
-
     # skip global updates prior to sync, since it's called after sync
     if (
         emerge_config.action not in ("help", "info", "sync", "version")
@@ -3951,7 +3924,6 @@ def run_action(emerge_config):
         return rval
 
     elif emerge_config.action == "info":
-
         # Ensure atoms are valid before calling unmerge().
         vardb = emerge_config.target_config.trees["vartree"].dbapi
         portdb = emerge_config.target_config.trees["porttree"].dbapi

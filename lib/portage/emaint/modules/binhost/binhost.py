@@ -11,7 +11,6 @@ from portage.versions import _pkg_str
 
 
 class BinhostHandler:
-
     short_desc = "Generate a metadata index for binary packages"
 
     @staticmethod
@@ -26,7 +25,6 @@ class BinhostHandler:
         self._pkgindex = self._bintree._load_pkgindex()
 
     def _need_update(self, cpv, data):
-
         if "MD5" not in data:
             return True
 

@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class SonameSlotConflictUpdateTestCase(TestCase):
     def testSonameSlotConflictUpdate(self):
-
         binpkgs = {
             "app-text/podofo-0.9.2": {
                 "RDEPEND": "dev-util/boost-build",

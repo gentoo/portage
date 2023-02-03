@@ -14,7 +14,6 @@ from portage.output import colorize
 
 class BdepsTestCase(TestCase):
     def testImageMagickUpdate(self):
-
         ebuilds = {
             "app-misc/A-1": {
                 "EAPI": "6",

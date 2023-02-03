@@ -8,7 +8,6 @@ from portage.output import colorize
 
 
 def display_preserved_libs(vardb, verbose=False):
-
     MAX_DISPLAY = 3
 
     plibdata = vardb._plib_registry.getPreservedLibs()

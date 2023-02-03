@@ -9,7 +9,6 @@ from tempfile import mkstemp
 
 
 class PackageKeywordsFileTestCase(TestCase):
-
     cpv = ["sys-apps/portage"]
     keywords = ["~x86", "amd64", "-mips"]
 

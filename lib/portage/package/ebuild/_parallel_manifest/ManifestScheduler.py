@@ -20,7 +20,6 @@ class ManifestScheduler(AsyncScheduler):
         force_sign_key=None,
         **kwargs
     ):
-
         AsyncScheduler.__init__(self, **kwargs)
 
         self._portdb = portdb
@@ -93,7 +92,6 @@ class ManifestScheduler(AsyncScheduler):
                 )
 
     def _task_exit(self, task):
-
         if task.returncode != os.EX_OK:
             if not self._terminated_tasks:
                 portage.writemsg(

@@ -64,7 +64,6 @@ FAILURE = 1
 
 
 class Scheduler(PollScheduler):
-
     # max time between loadavg checks (seconds)
     _loadavg_latency = 30
 
@@ -340,7 +339,6 @@ class Scheduler(PollScheduler):
             )
 
     def _handle_self_update(self):
-
         if self._opts_no_self_update.intersection(self.myopts):
             return os.EX_OK
 
@@ -494,7 +492,6 @@ class Scheduler(PollScheduler):
         return interactive_tasks
 
     def _set_graph_config(self, graph_config):
-
         if graph_config is None:
             self._graph_config = None
             self._pkg_cache = {}
@@ -787,12 +784,10 @@ class Scheduler(PollScheduler):
         return os.EX_OK
 
     def _add_prefetchers(self):
-
         if not self._parallel_fetch:
             return
 
         if self._parallel_fetch:
-
             prefetchers = self._prefetchers
 
             for pkg in self._mergelist:
@@ -819,7 +814,6 @@ class Scheduler(PollScheduler):
             pass
 
         elif pkg.type_name == "ebuild":
-
             prefetcher = EbuildFetcher(
                 background=True,
                 config_pool=self._ConfigPool(
@@ -838,7 +832,6 @@ class Scheduler(PollScheduler):
             and "--getbinpkg" in self.myopts
             and pkg.root_config.trees["bintree"].isremote(pkg.cpv)
         ):
-
             prefetcher = BinpkgPrefetcher(
                 background=True, pkg=pkg, scheduler=self._sched_iface
             )
@@ -908,7 +901,6 @@ class Scheduler(PollScheduler):
             current_task = None
 
             try:
-
                 # Clean up the existing build dir, in case pkg_pretend
                 # checks for available space (bug #390711).
                 if existing_builddir:
@@ -1028,7 +1020,6 @@ class Scheduler(PollScheduler):
                     self._record_pkg_failure(x, settings, ret)
                 portage.elog.elog_process(x.cpv, settings)
             finally:
-
                 if current_task is not None:
                     if current_task.isAlive():
                         current_task.cancel()
@@ -1126,7 +1117,6 @@ class Scheduler(PollScheduler):
             return rval
 
         while True:
-
             received_signal = []
 
             def sighandler(signum, frame):
@@ -1268,7 +1258,6 @@ class Scheduler(PollScheduler):
             and self._failed_pkgs_die_msgs
             and not mod_echo_output
         ):
-
             for mysettings, key, logentries in self._failed_pkgs_die_msgs:
                 root_msg = ""
                 if mysettings["ROOT"] != "/":
@@ -1329,7 +1318,6 @@ class Scheduler(PollScheduler):
             self._failed_pkgs_die_msgs.append((mysettings, key, errors))
 
     def _locate_failure_log(self, failed_pkg):
-
         log_paths = [failed_pkg.build_log]
 
         for log_path in log_paths:
@@ -1548,7 +1536,6 @@ class Scheduler(PollScheduler):
         self._event_loop.run_until_complete(self._main_exit)
 
     def _merge(self):
-
         if self._opts_no_background.intersection(self.myopts):
             self._set_max_jobs(1)
 
@@ -1755,9 +1742,7 @@ class Scheduler(PollScheduler):
         return self._jobs
 
     def _schedule_tasks(self):
-
         while True:
-
             state_change = 0
 
             # When the number of jobs and merges drops to zero,
@@ -1852,15 +1837,12 @@ class Scheduler(PollScheduler):
         """
 
         if self._jobs and self._max_load is not None:
-
             current_time = time.time()
 
             if self._sigcont_time is not None:
-
                 elapsed_seconds = current_time - self._sigcont_time
                 # elapsed_seconds < 0 means the system clock has been adjusted
                 if elapsed_seconds > 0 and elapsed_seconds < self._sigcont_delay:
-
                     if self._job_delay_timeout_id is not None:
                         self._job_delay_timeout_id.cancel()
 
@@ -1885,7 +1867,6 @@ class Scheduler(PollScheduler):
             elapsed_seconds = current_time - self._previous_job_start_time
             # elapsed_seconds < 0 means the system clock has been adjusted
             if elapsed_seconds > 0 and elapsed_seconds < delay:
-
                 if self._job_delay_timeout_id is not None:
                     self._job_delay_timeout_id.cancel()
 
@@ -1905,7 +1886,6 @@ class Scheduler(PollScheduler):
         state_change = 0
 
         while True:
-
             if not self._keep_scheduling():
                 return bool(state_change)
 
@@ -1973,7 +1953,6 @@ class Scheduler(PollScheduler):
         return prefetcher
 
     def _task(self, pkg):
-
         pkg_to_replace = None
         if pkg.operation != "uninstall":
             vardb = pkg.root_config.trees["vartree"].dbapi
@@ -2220,7 +2199,6 @@ class Scheduler(PollScheduler):
             atom = self._world_atoms.get(pkg)
 
         try:
-
             if hasattr(world_set, "lock"):
                 world_set.lock()
                 world_locked = True

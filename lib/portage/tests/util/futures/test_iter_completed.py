@@ -29,7 +29,6 @@ class SleepProcess(ForkProcess):
 
 class IterCompletedTestCase(TestCase):
     def testIterCompleted(self):
-
         # Mark this as todo, since we don't want to fail if heavy system
         # load causes the tasks to finish in an unexpected order.
         self.todo = True
@@ -57,7 +56,6 @@ class IterCompletedTestCase(TestCase):
             self.assertEqual(seconds, future.result())
 
     def testAsyncCancel(self):
-
         loop = global_event_loop()
         input_futures = set()
         future_count = 3

@@ -14,7 +14,6 @@ from _emerge.SpawnProcess import SpawnProcess
 
 
 class ForkProcess(SpawnProcess):
-
     __slots__ = ("_proc", "_proc_join_task")
 
     # Number of seconds between poll attempts for process exit status

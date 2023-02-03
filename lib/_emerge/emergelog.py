@@ -18,7 +18,6 @@ _emerge_log_dir = "/var/log"
 
 
 def emergelog(xterm_titles, mystr, short_msg=None):
-
     if _disable:
         return
 

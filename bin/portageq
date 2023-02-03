@@ -10,6 +10,7 @@ raise_signal = getattr(
     signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
 )
 
+
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
 class SignalInterrupt(KeyboardInterrupt):
     def __init__(self, signum):
@@ -653,7 +654,6 @@ try:
                 results = []
                 require_metadata = atom.slot or atom.repo
                 for cpv in vardb.cpv_all():
-
                     if not portage.match_from_list(atom, [cpv]):
                         continue
 
@@ -957,7 +957,6 @@ try:
     @uses_configroot
     @uses_eroot
     def get_repo_path(argv):
-
         if len(argv) < 2:
             print("ERROR: insufficient parameters!", file=sys.stderr)
             return 3
@@ -1451,7 +1450,6 @@ try:
             pass
 
     def main(argv):
-
         argv = portage._decode_argv(argv)
 
         nocolor = os.environ.get("NOCOLOR")

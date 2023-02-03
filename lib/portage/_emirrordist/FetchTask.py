@@ -27,7 +27,6 @@ default_fetchcommand = 'wget -c -v -t 1 --passive-ftp --no-check-certificate --t
 
 
 class FetchTask(CompositeTask):
-
     __slots__ = (
         "distfile",
         "digests",
@@ -48,7 +47,6 @@ class FetchTask(CompositeTask):
     )
 
     def _start(self):
-
         if (
             self.config.options.fetch_log_dir is not None
             and not self.config.options.dry_run
@@ -169,7 +167,6 @@ class FetchTask(CompositeTask):
                     pass
 
         if self.config.options.recycle_dir is not None:
-
             recycle_file = os.path.join(self.config.options.recycle_dir, self.distfile)
 
             if self.config.options.dry_run:
@@ -184,7 +181,6 @@ class FetchTask(CompositeTask):
                     logger.debug(f"delete '{self.distfile}' from recycle")
 
     def _distfiles_digester_exit(self, digester):
-
         self._assert_current(digester)
         if self._was_cancelled():
             self.wait()
@@ -215,7 +211,6 @@ class FetchTask(CompositeTask):
     _mirror_info = collections.namedtuple("_mirror_info", "name location")
 
     def _start_fetch(self):
-
         self._previously_added = False
         self._fs_mirror_stack = []
         if self.config.options.distfiles_local is not None:
@@ -244,7 +239,6 @@ class FetchTask(CompositeTask):
 
     @staticmethod
     def _mirror_iterator(uri, mirrors_dict):
-
         slash_index = uri.find("/", 9)
         if slash_index != -1:
             mirror_name = uri[9:slash_index].strip("/")
@@ -279,7 +273,6 @@ class FetchTask(CompositeTask):
     def _next_uri(self):
         remaining_tries = self.config.options.tries - len(self._tried_uris)
         if remaining_tries > 0:
-
             if remaining_tries <= self.config.options.tries // 2:
                 while self._primaryuri_stack:
                     uri = self._primaryuri_stack.pop()
@@ -334,7 +327,6 @@ class FetchTask(CompositeTask):
             self._try_next_mirror()
 
     def _fs_mirror_digester_exit(self, digester):
-
         self._assert_current(digester)
         if self._was_cancelled():
             self.wait()
@@ -409,7 +401,6 @@ class FetchTask(CompositeTask):
         self._try_next_mirror()
 
     def _fs_mirror_copier_exit(self, copier):
-
         self._assert_current(copier)
         if self._was_cancelled():
             self.wait()
@@ -425,7 +416,6 @@ class FetchTask(CompositeTask):
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
             logger.error(msg)
         else:
-
             logger.debug(
                 f"copy '{self.distfile}' from {current_mirror.name} to distfiles"
             )
@@ -456,7 +446,6 @@ class FetchTask(CompositeTask):
         self._try_next_mirror()
 
     def _fetch_uri(self, uri):
-
         if self.config.options.dry_run:
             # Simply report success.
             logger.info(f"dry-run: fetch '{self.distfile}' from '{uri}'")
@@ -510,7 +499,6 @@ class FetchTask(CompositeTask):
         self._start_task(fetcher, self._fetcher_exit)
 
     def _fetcher_exit(self, fetcher):
-
         self._assert_current(fetcher)
         if self._was_cancelled():
             self.wait()
@@ -530,7 +518,6 @@ class FetchTask(CompositeTask):
             self._try_next_mirror()
 
     def _fetch_digester_exit(self, digester):
-
         self._assert_current(digester)
         if self._was_cancelled():
             self.wait()
@@ -585,7 +572,6 @@ class FetchTask(CompositeTask):
         self._try_next_mirror()
 
     def _fetch_copier_exit(self, copier):
-
         self._assert_current(copier)
 
         try:
@@ -697,7 +683,6 @@ class FetchTask(CompositeTask):
             return st1.st_dev == st2.st_dev
 
     def _hardlink_atomic(self, src, dest, dir_info, symlink=False):
-
         head, tail = os.path.split(dest)
         hardlink_tmp = os.path.join(
             head, f".{tail}._mirrordist_hardlink_.{portage.getpid()}"

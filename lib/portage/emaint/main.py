@@ -159,7 +159,6 @@ def print_results(results):
 
 
 def emaint_main(myargv):
-
     # Similar to emerge, emaint needs a default umask so that created
     # files (such as the world file) have sane permissions.
     os.umask(0o22)

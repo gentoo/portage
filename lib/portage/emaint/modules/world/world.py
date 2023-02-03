@@ -6,7 +6,6 @@ from portage import os
 
 
 class WorldHandler:
-
     short_desc = "Fix problems in the world file"
 
     @staticmethod

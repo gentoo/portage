@@ -16,7 +16,6 @@ from portage.output import colorize
 
 class MoveSlotEntTestCase(TestCase):
     def testMoveSlotEnt(self):
-
         ebuilds = {
             "dev-libs/A-2::dont_apply_updates": {
                 "EAPI": "5",
