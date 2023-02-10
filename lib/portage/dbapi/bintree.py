@@ -674,6 +674,14 @@ class binarytree:
             elif binpkg_format == "gpkg":
                 mybinpkg = portage.gpkg.gpkg(self.settings, mycpv, binpkg_path)
                 mydata = mybinpkg.get_metadata()
+                if mybinpkg.signature_exist:
+                    writemsg(
+                        colorize(
+                            "WARN",
+                            f"Binpkg update ignored for signed package: {binpkg_path}",
+                        )
+                    )
+                    continue
                 decode_metadata_name = True
             else:
                 continue
