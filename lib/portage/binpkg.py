@@ -50,8 +50,13 @@ def get_binpkg_format(binpkg_path, check_file=False, remote=False):
             except tarfile.TarError:
                 pass
 
-    except OSError:
+    except Exception as err:
+        # We got many different exceptions here, so have to catch all of them.
         file_format = None
+        writemsg(
+            colorize("ERR", f"Error reading binpkg '{binpkg_path}': {err}"),
+        )
+        raise InvalidBinaryPackageFormat(f"Error reading binpkg '{binpkg_path}': {err}")
 
     if file_format is None:
         raise InvalidBinaryPackageFormat(
