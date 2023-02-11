@@ -27,7 +27,9 @@ portage.proxy.lazyimport.lazyimport(
 
 
 class AbstractEbuildProcess(SpawnProcess):
-    __slots__ = ("phase", "settings",) + (
+    __slots__ = (
+        "phase",
+        "settings",
         "_build_dir",
         "_build_dir_unlock",
         "_ipc_daemon",

@@ -1499,8 +1499,8 @@ class Atom(str):
                 allow_build_id = True
 
         blocker_prefix = ""
-        if "!" == s[:1]:
-            blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
+        if s[:1] == "!":
+            blocker = self._blocker(forbid_overlap=s[1:2] == "!")
             if blocker.overlap.forbid:
                 blocker_prefix = s[:2]
                 s = s[2:]
