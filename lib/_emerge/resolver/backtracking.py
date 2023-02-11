@@ -270,7 +270,7 @@ class Backtracker:
         # Not all config changes require a restart, that's why they can appear together
         # with other conflicts.
         if "config" in infos:
-            self._feedback_config(infos["config"], explore=(len(infos) == 1))
+            self._feedback_config(infos["config"], explore=len(infos) == 1)
 
         # There is at most one of the following types of conflicts for a given restart.
         if "slot conflict" in infos:
