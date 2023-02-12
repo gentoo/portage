@@ -447,7 +447,7 @@ to be removed by \fBemerge\fR(1) \fB\-\-depclean\fR actions (see the
 # you take care of the kernel
 sys-kernel/development-sources-2.6.7
 
-# you installed your own special copy of QT
+# you installed your own special copy of Qt
 x11-libs/qt-3.3.0
 
 # you have modular X but packages want monolithic
@@ -472,7 +472,7 @@ a '\-'.
 .nf
 # force docs for GTK 2.x
 =x11\-libs/gtk+\-2* doc
-# unforce mysql support for QT
+# unforce mysql support for Qt
 x11\-libs/qt \-mysql
 .fi
 .TP
@@ -494,7 +494,7 @@ a '\-'.
 .nf
 # mask docs for GTK 2.x
 =x11\-libs/gtk+\-2* doc
-# unmask mysql support for QT
+# unmask mysql support for Qt
 x11\-libs/qt \-mysql
 .fi
 .TP
@@ -875,7 +875,7 @@ KEYWORDS.
 Per\-package USE flags.  Useful for tracking local USE flags or for
 enabling USE flags for certain packages only.  Perhaps you develop GTK
 and thus you want documentation for it, but you don't want
-documentation for QT.  Easy as pie my friend!
+documentation for Qt.  Easy as pie my friend!
 
 .I Format:
 .nf
@@ -891,7 +891,7 @@ assignments or defaults, you need to explicitly specify '\-*'.
 .nf
 # turn on docs for GTK 2.x
 =x11\-libs/gtk+\-2* doc
-# disable mysql support for QT
+# disable mysql support for Qt
 x11\-libs/qt \-mysql
 # set preferred video card for all packages
 */* VIDEO_CARDS: \-* radeon
