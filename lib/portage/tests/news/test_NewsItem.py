@@ -8,45 +8,115 @@ from portage.news import NewsItem
 from portage.dbapi.virtual import testdbapi
 from tempfile import mkstemp
 
+from dataclasses import dataclass
+from string import Template
+from typing import Optional
+
+import textwrap
+
 # TODO(antarus) Make newsitem use a loader so we can load using a string instead of a tempfile
+
+
+# TODO: port the real newsitem class to this?
+@dataclass
+class FakeNewsItem:
+    title: str
+    author: str
+    content_type: str
+    posted: str
+    revision: int
+    news_item_format: str
+    content: str
+    display_if_installed: Optional[list[str]] = None
+    display_if_profile: Optional[list[str]] = None
+    display_if_keyword: Optional[list[str]] = None
+
+    item_template_header = Template(
+        textwrap.dedent(
+            """
+        Title: ${title}
+        Author: ${author}
+        Content-Type: ${content_type}
+        Posted: ${posted}
+        Revision: ${revision}
+        News-Item-Format: ${news_item_format}
+        """
+        )
+    )
+
+    def __post_init__(self):
+        if not any(
+            [self.display_if_installed, self.display_if_profile, self.display_if_keyword]
+        ):
+            raise ValueError(
+                "At least one-of Display-If-Installed, Display-If-Profile, or Display-If-Arch must be set!"
+            )
+
+    def __str__(self) -> str:
+        item = self.item_template_header.substitute(
+            title=self.title,
+            author=self.author,
+            content_type=self.content_type,
+            posted=self.posted,
+            revision=self.revision,
+            news_item_format=self.news_item_format,
+        )
+
+        for package in self.display_if_installed:
+            item += f"Display-If-Installed: {package}\n"
+
+        for profile in self.display_if_profile:
+            item += f"Display-If-Profile: {profile}\n"
+
+        for keyword in self.display_if_keyword:
+            item += f"Display-If-Keyword: {keyword}\n"
+
+        item += "\n"
+        item += f"{self.content}"
+
+        return item
 
 
 class NewsItemTestCase(TestCase):
     """These tests suck: they use your running config instead of making their own"""
 
-    fakeItem = """
-Title: YourSQL Upgrades from 4.0 to 4.1
-Author: Ciaran McCreesh <ciaranm@gentoo.org>
-Content-Type: text/plain
-Posted: 01-Nov-2005
-Revision: 1
-News-Item-Format: 1.0
-#Display-If-Installed:
-#Display-If-Profile:
-#Display-If-Arch:
+    # Default values for testing
+    placeholders = {
+        "title": "YourSQL Upgrades from 4.0 to 4.1",
+        "author": "Ciaran McCreesh <ciaranm@gentoo.org>",
+        "content_type": "Content-Type: text/plain",
+        "posted": "01-Nov-2005",
+        "revision": 1,
+        "news_item_format": "1.0",
+        "display_if_installed": [],
+        "display_if_profile": [],
+        "display_if_keyword": [],
+        "content": textwrap.dedent(
+            """
+    YourSQL databases created using YourSQL version 4.0 are incompatible
+    with YourSQL version 4.1 or later. There is no reliable way to
+    automate the database format conversion, so action from the system
+    administrator is required before an upgrade can take place.
 
-YourSQL databases created using YourSQL version 4.0 are incompatible
-with YourSQL version 4.1 or later. There is no reliable way to
-automate the database format conversion, so action from the system
-administrator is required before an upgrade can take place.
+    Please see the Gentoo YourSQL Upgrade Guide for instructions:
 
-Please see the Gentoo YourSQL Upgrade Guide for instructions:
+        http://www.gentoo.org/doc/en/yoursql-upgrading.xml
 
-    http://www.gentoo.org/doc/en/yoursql-upgrading.xml
+    Also see the official YourSQL documentation:
 
-Also see the official YourSQL documentation:
+        http://dev.yoursql.com/doc/refman/4.1/en/upgrading-from-4-0.html
 
-    http://dev.yoursql.com/doc/refman/4.1/en/upgrading-from-4-0.html
+    After upgrading, you should also recompile any packages which link
+    against YourSQL:
 
-After upgrading, you should also recompile any packages which link
-against YourSQL:
+        revdep-rebuild --library=libyoursqlclient.so.12
 
-    revdep-rebuild --library=libyoursqlclient.so.12
+    The revdep-rebuild tool is provided by app-portage/gentoolkit.
+    """
+        ),
+    }
 
-The revdep-rebuild tool is provided by app-portage/gentoolkit.
-"""
-
-    def setUp(self):
+    def setUp(self) -> None:
         self.profile = "/var/db/repos/gentoo/profiles/default-linux/x86/2007.0/"
         self.keywords = "x86"
         # Use fake/test dbapi to avoid slow tests
@@ -55,12 +125,19 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
         # Consumers only use ARCH, so avoid portage.settings by using a dict
         self.settings = {"ARCH": "x86"}
 
-    def testDisplayIfProfile(self):
-        tmpItem = self.fakeItem[:].replace(
-            "#Display-If-Profile:", f"Display-If-Profile: {self.profile}"
-        )
+    def _createNewsItem(self, *kwargs) -> FakeNewsItem:
+        # Use our placeholders unless overridden
+        news_args = self.placeholders.copy()
+        # Substitute in what we're given to allow for easily passing
+        # just custom values.
+        news_args.update(*kwargs)
 
-        item = self._processItem(tmpItem)
+        return FakeNewsItem(**news_args)
+
+    def testDisplayIfProfile(self):
+        tmpItem = self._createNewsItem({"display_if_profile": [self.profile]})
+
+        item = self._processItem(str(tmpItem))
         try:
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
@@ -70,12 +147,10 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
             os.unlink(item.path)
 
     def testDisplayIfInstalled(self):
-        tmpItem = self.fakeItem[:].replace(
-            "#Display-If-Installed:", f"Display-If-Installed: {'sys-apps/portage'}"
-        )
+        tmpItem = self._createNewsItem({"display_if_installed": ["sys-apps/portage"]})
 
         try:
-            item = self._processItem(tmpItem)
+            item = self._processItem(str(tmpItem))
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
                 msg=f"Expected {tmpItem} to be relevant, but it was not!",
@@ -84,12 +159,10 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
             os.unlink(item.path)
 
     def testDisplayIfKeyword(self):
-        tmpItem = self.fakeItem[:].replace(
-            "#Display-If-Keyword:", f"Display-If-Keyword: {self.keywords}"
-        )
+        tmpItem = self._createNewsItem({"display_if_keyword": [self.keywords]})
 
         try:
-            item = self._processItem(tmpItem)
+            item = self._processItem(str(tmpItem))
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
                 msg=f"Expected {tmpItem} to be relevant, but it was not!",
@@ -97,7 +170,7 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
         finally:
             os.unlink(item.path)
 
-    def _processItem(self, item):
+    def _processItem(self, item) -> NewsItem:
         filename = None
         fd, filename = mkstemp()
         f = os.fdopen(fd, "w")
