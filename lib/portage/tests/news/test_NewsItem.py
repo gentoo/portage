@@ -5,7 +5,7 @@
 from portage import os
 from portage.tests import TestCase
 from portage.news import NewsItem
-from portage.dbapi.virtual import testdbapi
+from portage.dbapi.virtual import fakedbapi
 from tempfile import mkstemp
 
 from dataclasses import dataclass
@@ -81,8 +81,6 @@ class FakeNewsItem:
 
 
 class NewsItemTestCase(TestCase):
-    """These tests suck: they use your running config instead of making their own"""
-
     # Default values for testing
     placeholders = {
         "title": "YourSQL Upgrades from 4.0 to 4.1",
@@ -122,11 +120,10 @@ class NewsItemTestCase(TestCase):
     def setUp(self) -> None:
         self.profile = "/var/db/repos/gentoo/profiles/default-linux/x86/2007.0/"
         self.keywords = "x86"
-        # Use fake/test dbapi to avoid slow tests
-        self.vardb = testdbapi()
-        # self.vardb.inject_cpv('sys-apps/portage-2.0', { 'SLOT' : 0 })
         # Consumers only use ARCH, so avoid portage.settings by using a dict
         self.settings = {"ARCH": "x86"}
+        # Use fake/test dbapi to avoid slow tests
+        self.vardb = fakedbapi(self.settings)
 
     def _createNewsItem(self, *kwargs) -> FakeNewsItem:
         # Use our placeholders unless overridden
@@ -158,6 +155,7 @@ class NewsItemTestCase(TestCase):
             os.unlink(item.path)
 
     def testDisplayIfInstalled(self):
+        self.vardb.cpv_inject('sys-apps/portage-2.0', { 'SLOT' : "0" })
         tmpItem = self._createNewsItem({"display_if_installed": ["sys-apps/portage"]})
 
         try:
