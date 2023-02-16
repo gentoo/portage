@@ -137,6 +137,13 @@ class NewsItemTestCase(TestCase):
 
         return FakeNewsItem(**news_args)
 
+    def testBasicNewsItem(self):
+        # Simple test with no filter fields (Display-If-*)
+        try:
+            item = self._processItem(str(self._createNewsItem()))
+        finally:
+            os.unlink(item.path)
+
     def testDisplayIfProfile(self):
         tmpItem = self._createNewsItem({"display_if_profile": [self.profile]})
 
