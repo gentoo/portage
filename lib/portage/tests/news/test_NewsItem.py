@@ -139,6 +139,7 @@ class NewsItemTestCase(TestCase):
 
         item = self._processItem(str(tmpItem))
         try:
+            self.assertTrue(item.isValid())
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
                 msg=f"Expected {tmpItem} to be relevant, but it was not!",
@@ -151,6 +152,7 @@ class NewsItemTestCase(TestCase):
 
         try:
             item = self._processItem(str(tmpItem))
+            self.assertTrue(item.isValid())
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
                 msg=f"Expected {tmpItem} to be relevant, but it was not!",
@@ -163,6 +165,7 @@ class NewsItemTestCase(TestCase):
 
         try:
             item = self._processItem(str(tmpItem))
+            self.assertTrue(item.isValid())
             self.assertTrue(
                 item.isRelevant(self.vardb, self.settings, self.profile),
                 msg=f"Expected {tmpItem} to be relevant, but it was not!",
