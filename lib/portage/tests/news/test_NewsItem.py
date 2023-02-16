@@ -14,6 +14,9 @@ from typing import Optional
 
 import textwrap
 
+# The specification for news items is GLEP 42 ("Critical News Reporting"):
+# https://www.gentoo.org/glep/glep-0042.html
+
 # TODO(antarus) Make newsitem use a loader so we can load using a string instead of a tempfile
 
 
