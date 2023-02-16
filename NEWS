@@ -10,6 +10,10 @@ Features:
 
 * emerge: add --onlydeps-with-ideps=<y|n> option (bug #890777)
 
+* emerge: add --update-if-installed option. This is useful for one-shot
+  emerge commands to be run across several machines to upgrade packages
+  only if they're installed.
+
 * install-qa-check.d: 60pkgconfig: add opt-in QA_PKGCONFIG_VERSION check
 
 * emerge: Log completion of package installs.

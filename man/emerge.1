@@ -1054,6 +1054,12 @@ the command line are greedy, meaning that unspecific
 atoms may match multiple versions of slotted packages.
 This option also implies the \fB\-\-selective\fR option.
 .TP
+.BR \-\-update\-if\-installed
+Acts similar to \fB\-\-update\fR except it updates packages
+passed as arguments to the best version available only if they are
+already installed.  This is useful for oneshot commands across
+a series of systems to upgrade away from a buggy version.
+.TP
 .BR "\-\-use\-ebuild\-visibility [ y | n ]"
 Use unbuilt ebuild metadata for visibility
 checks on built packages.
