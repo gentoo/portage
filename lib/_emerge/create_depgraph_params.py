@@ -129,6 +129,12 @@ def create_depgraph_params(myopts, myaction):
     if changed_slot:
         myparams["changed_slot"] = True
 
+    # --update-if-installed implies --update
+    update_if_installed = myopts.get("--update-if-installed")
+    if update_if_installed is not None:
+        myparams["update_if_installed"] = update_if_installed
+        myopts["--update"] = True
+
     if (
         "--update" in myopts
         or "--newrepo" in myopts

@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -5019,6 +5019,21 @@ class depgraph:
                     pkg, existing_node = self._select_package(
                         myroot, atom, onlydeps=onlydeps
                     )
+
+                    # Is the package installed (at any version)?
+                    if pkg and "update_if_installed" in self._dynamic_config.myparams:
+                        package_is_installed = any(
+                            self._iter_match_pkgs(
+                                self._frozen_config.roots[myroot], "installed", atom
+                            )
+                        )
+
+                        # This package isn't eligible for selection in the
+                        # merge list as the user passed --update-if-installed
+                        # and it isn't installed.
+                        if not package_is_installed:
+                            continue
+
                     if not pkg:
                         pprovided_match = False
                         for virt_choice in virtuals.get(atom.cp, []):
