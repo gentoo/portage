@@ -11,18 +11,16 @@ from tempfile import mkstemp
 from dataclasses import dataclass
 from string import Template
 from typing import Optional
+from unittest.mock import mock_open, patch
 
 import textwrap
 
 # The specification for news items is GLEP 42 ("Critical News Reporting"):
 # https://www.gentoo.org/glep/glep-0042.html
 
-# TODO(antarus) Make newsitem use a loader so we can load using a string instead of a tempfile
-
-
 # TODO: port the real newsitem class to this?
 @dataclass
-class FakeNewsItem:
+class FakeNewsItem(NewsItem):
     title: str
     author: str
     content_type: str
@@ -48,12 +46,11 @@ class FakeNewsItem:
     )
 
     def __post_init__(self):
-        if not any(
-            [self.display_if_installed, self.display_if_profile, self.display_if_keyword]
-        ):
-            raise ValueError(
-                "At least one-of Display-If-Installed, Display-If-Profile, or Display-If-Arch must be set!"
-            )
+        super().__init__(path="mocked_news", name=self.title)
+
+    def isValid(self):
+        with patch('builtins.open', mock_open(read_data=str(self))):
+            return super().isValid()
 
     def __str__(self) -> str:
         item = self.item_template_header.substitute(
@@ -136,70 +133,57 @@ class NewsItemTestCase(TestCase):
 
     def testBasicNewsItem(self):
         # Simple test with no filter fields (Display-If-*)
-        try:
-            item = self._processItem(str(self._createNewsItem()))
-        finally:
-            os.unlink(item.path)
+        item = self._createNewsItem()
+        self.assertTrue(item.isValid())
+        # relevant: self.assertTrue(...)
 
     def testDisplayIfProfile(self):
-        tmpItem = self._createNewsItem({"display_if_profile": [self.profile]})
+        # First, just check the simple case of one profile matching ours.
+        item = self._createNewsItem({"display_if_profile": [self.profile]})
+        self.assertTrue(item.isValid())
+        self.assertTrue(
+            item.isRelevant(self.vardb, self.settings, self.profile),
+            msg=f"Expected {item} to be relevant, but it was not!",
+        )
 
-        item = self._processItem(str(tmpItem))
-        try:
-            self.assertTrue(item.isValid())
-            self.assertTrue(
-                item.isRelevant(self.vardb, self.settings, self.profile),
-                msg=f"Expected {tmpItem} to be relevant, but it was not!",
-            )
-        finally:
-            os.unlink(item.path)
+        # Test the negative case: what if the only profile listed does *not* match ours?
+        item = self._createNewsItem({"display_if_profile": ["profiles/i-do-not-exist"]})
+        self.assertTrue(item.isValid())
+        self.assertFalse(
+            item.isRelevant(self.vardb, self.settings, self.profile),
+            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+        )
 
     def testDisplayIfInstalled(self):
         self.vardb.cpv_inject('sys-apps/portage-2.0', { 'SLOT' : "0" })
-        tmpItem = self._createNewsItem({"display_if_installed": ["sys-apps/portage"]})
+        item = self._createNewsItem({"display_if_installed": ["sys-apps/portage"]})
+        self.assertTrue(item.isValid())
+        self.assertTrue(
+            item.isRelevant(self.vardb, self.settings, self.profile),
+            msg=f"Expected {item} to be relevant, but it was not!",
+        )
 
-        try:
-            item = self._processItem(str(tmpItem))
-            self.assertTrue(item.isValid())
-            self.assertTrue(
-                item.isRelevant(self.vardb, self.settings, self.profile),
-                msg=f"Expected {tmpItem} to be relevant, but it was not!",
-            )
-        finally:
-            os.unlink(item.path)
-
-        tmpItem = self._createNewsItem({"display_if_installed": ["sys-apps/i-do-not-exist"]})
-
-        try:
-            item = self._processItem(str(tmpItem))
-            self.assertTrue(item.isValid())
-            self.assertFalse(
-                item.isRelevant(self.vardb, self.settings, self.profile),
-                msg=f"Expected {tmpItem} to be irrelevant, but it was relevant!",
-            )
-        finally:
-            os.unlink(item.path)
+        # Test the negative case: a single Display-If-Installed listing
+        # a package we don't have.
+        item = self._createNewsItem({"display_if_installed": ["sys-apps/i-do-not-exist"]})
+        self.assertTrue(item.isValid())
+        self.assertFalse(
+            item.isRelevant(self.vardb, self.settings, self.profile),
+            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+        )
 
     def testDisplayIfKeyword(self):
-        tmpItem = self._createNewsItem({"display_if_keyword": [self.keywords]})
+        item = self._createNewsItem({"display_if_keyword": [self.keywords]})
+        self.assertTrue(item.isValid())
+        self.assertTrue(
+            item.isRelevant(self.vardb, self.settings, self.profile),
+            msg=f"Expected {item} to be relevant, but it was not!",
+        )
 
-        try:
-            item = self._processItem(str(tmpItem))
-            self.assertTrue(item.isValid())
-            self.assertTrue(
-                item.isRelevant(self.vardb, self.settings, self.profile),
-                msg=f"Expected {tmpItem} to be relevant, but it was not!",
-            )
-        finally:
-            os.unlink(item.path)
-
-    def _processItem(self, item) -> NewsItem:
-        filename = None
-        fd, filename = mkstemp()
-        f = os.fdopen(fd, "w")
-        f.write(item)
-        f.close()
-        try:
-            return NewsItem(filename, 0)
-        except TypeError:
-            self.fail(f"Error while processing news item {filename}")
+        # Test the negative case: a keyword we don't have set.
+        item = self._createNewsItem({"display_if_keyword": ["fake-keyword"]})
+        self.assertTrue(item.isValid())
+        self.assertFalse(
+            item.isRelevant(self.vardb, self.settings, self.profile),
+            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+        )
