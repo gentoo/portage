@@ -170,6 +170,18 @@ class NewsItemTestCase(TestCase):
         finally:
             os.unlink(item.path)
 
+        tmpItem = self._createNewsItem({"display_if_installed": ["sys-apps/i-do-not-exist"]})
+
+        try:
+            item = self._processItem(str(tmpItem))
+            self.assertTrue(item.isValid())
+            self.assertFalse(
+                item.isRelevant(self.vardb, self.settings, self.profile),
+                msg=f"Expected {tmpItem} to be irrelevant, but it was relevant!",
+            )
+        finally:
+            os.unlink(item.path)
+
     def testDisplayIfKeyword(self):
         tmpItem = self._createNewsItem({"display_if_keyword": [self.keywords]})
 
