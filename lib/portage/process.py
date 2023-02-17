@@ -6,6 +6,7 @@
 import atexit
 import errno
 import fcntl
+import logging
 import multiprocessing
 import platform
 import signal
@@ -15,6 +16,9 @@ import sys
 import traceback
 import os as _os
 
+from dataclasses import dataclass
+from functools import lru_cache
+
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -22,7 +26,7 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
-    "portage.util:dump_traceback,writemsg",
+    "portage.util:dump_traceback,writemsg,writemsg_level",
 )
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
@@ -241,6 +245,37 @@ def cleanup():
     pass
 
 
+@dataclass(frozen=True)
+class EnvStats:
+    env_size: int
+    env_largest_name: str
+    env_largest_size: int
+
+
+def calc_env_stats(env) -> EnvStats:
+    @lru_cache(1024)
+    def encoded_length(s):
+        return len(os.fsencode(s))
+
+    env_size = 0
+    env_largest_name = None
+    env_largest_size = 0
+    for env_name, env_value in env.items():
+        env_name_size = encoded_length(env_name)
+        env_value_size = encoded_length(env_value)
+        # Add two for '=' and the terminating null byte.
+        total_size = env_name_size + env_value_size + 2
+        if total_size > env_largest_size:
+            env_largest_name = env_name
+            env_largest_size = total_size
+        env_size += total_size
+
+    return EnvStats(env_size, env_largest_name, env_largest_size)
+
+
+env_too_large_warnings = 0
+
+
 def spawn(
     mycommand,
     env=None,
@@ -261,6 +296,7 @@ def spawn(
     unshare_mount=False,
     unshare_pid=False,
     cgroup=None,
+    warn_on_large_env=False,
 ):
     """
     Spawns a given command.
@@ -321,6 +357,18 @@ def spawn(
         mycommand = mycommand.split()
 
     env = os.environ if env is None else env
+
+    env_stats = None
+    if warn_on_large_env:
+        env_stats = calc_env_stats(env)
+
+        global env_too_large_warnings
+        if env_stats.env_size > 1024 * 96 and env_too_large_warnings < 3:
+            env_too_large_warnings += 1
+            writemsg_level(
+                f"WARNING: New process environment is large, executing {mycommand} may fail. Size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)",
+                logging.WARNING,
+            )
 
     # If an absolute path to an executable file isn't given
     # search for it unless we've been told not to.
@@ -445,24 +493,11 @@ def spawn(
                     # culprit. See also
                     # - https://bugs.gentoo.org/721088
                     # - https://bugs.gentoo.org/830187
-                    def encoded_length(s):
-                        return len(os.fsencode(s))
-
-                    env_size = 0
-                    env_largest_name = None
-                    env_largest_size = 0
-                    for env_name, env_value in env.items():
-                        env_name_size = encoded_length(env_name)
-                        env_value_size = encoded_length(env_value)
-                        # Add two for '=' and the terminating null byte.
-                        total_size = env_name_size + env_value_size + 2
-                        if total_size > env_largest_size:
-                            env_largest_name = env_name
-                            env_largest_size = total_size
-                        env_size += total_size
+                    if not env_stats:
+                        env_stats = calc_env_stats(env)
 
                     writemsg(
-                        f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_size} bytes. Largest environment variable: {env_largest_name} ({env_largest_size} bytes)\n"
+                        f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
                     )
 
                 # We need to catch _any_ exception so that it doesn't
