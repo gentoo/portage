@@ -209,6 +209,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
     kwargs["pidns"] = (
         "pid-sandbox" in settings.features and phase not in _global_pid_phases
     )
+    kwargs["warn_on_large_env"] = "warn-on-large-env" in settings.features
 
     if phase == "depend":
         kwargs["droppriv"] = "userpriv" in settings.features
