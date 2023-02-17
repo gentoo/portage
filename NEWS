@@ -7,7 +7,10 @@ Features:
 * ebuild: Set GNUMAKEFLAGS="--output-sync=line" to ensure build logs are written
   to synchronously when running GNU make in parallel. This option is only set if
   MAKEOPTS and GNUMAKEFLAGS are left unset by the user.
-* emerge: add --onlydeps-with-ideps=<y|n> option (bug #890777).
+
+* emerge: add --onlydeps-with-ideps=<y|n> option (bug #890777)
+
+* install-qa-check.d: 60pkgconfig: add opt-in QA_PKGCONFIG_VERSION check
 
 Bug fixes:
 * gpkg: Handle out-of-space errors (bug #891391).
@@ -129,8 +132,6 @@ Features:
 
 * sync: git: run 'git clean' in git repositories if they are marked as
   non-volatile.
-
-* install-qa-check.d: 60pkgconfig: add opt-in QA_PKGCONFIG_VERSION check
 
 Bug fixes:
 * glsa: Abort if a GLSA's arch list doesn't match the expected format (bug #882797).
