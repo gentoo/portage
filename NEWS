@@ -7,6 +7,12 @@ Features:
 Bug fixes:
 * gpkg: Handle out-of-space errors (bug #891391).
 
+* gpkg: GPG signed gpkg will be ignored for profiles updates.
+
+* binpkg: Show warning if the binhost is missing metadata (outdated). (bug #884869)
+
+* binpkg: Improve error handling for binpkg detection. (bug #893638)
+
 * portage(5): List volatile option as a separate entry (bug #888585).
 
 * emaint: Changed default action for emaint target sync to 'auto'.
