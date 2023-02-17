@@ -4,6 +4,10 @@ portage-3.0.45 (UNRELEASED)
 Features:
 * Support new ELF machine code: AMDGPU
 
+* ebuild: Set GNUMAKEFLAGS="--output-sync=line" to ensure build logs are written
+  to synchronously when running GNU make in parallel. This option is only set if
+  MAKEOPTS and GNUMAKEFLAGS are left unset by the user.
+
 Bug fixes:
 * gpkg: Handle out-of-space errors (bug #891391).
 
