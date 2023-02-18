@@ -27,6 +27,8 @@ Bug fixes:
 
 * emaint: Changed default action for emaint target sync to 'auto'.
 
+* tests: news: significantly improved test coverage (bug #889330).
+
 portage-3.0.44 (2023-01-15)
 --------------
 
