@@ -131,6 +131,25 @@ class NewsItemTestCase(TestCase):
 
         return FakeNewsItem(**news_args)
 
+    def _checkAndCreateNewsItem(
+        self, news_args: dict, relevant: bool = True, reason: str = ""
+    ) -> FakeNewsItem:
+        return self._checkNewsItem(self._createNewsItem(news_args), relevant, reason)
+
+    def _checkNewsItem(self, item: NewsItem, relevant: bool = True, reason: str = ""):
+        self.assertTrue(item.isValid())
+
+        if relevant:
+            self.assertTrue(
+                item.isRelevant(self.vardb, self.settings, self.profile),
+                msg=f"Expected {item} to be relevant, but it was not!",
+            )
+        else:
+            self.assertFalse(
+                item.isRelevant(self.vardb, self.settings, self.profile),
+                msg=f"Expected {item} to be irrelevant, but it was relevant!",
+            )
+
     def testNewsManager(self):
         vardb = MagicMock()
         portdb = MagicMock()
@@ -154,6 +173,8 @@ class NewsItemTestCase(TestCase):
     def testDisplayIfProfile(self):
         # We repeat all of these with the full profile path (including repo)
         # and a relative path, as we've had issues there before.
+        # Note that we can't use _checkNewsItem() here as we override the
+        # profile value passed to isRelevant.
         for profile_prefix in ("", self.profile_base):
             # First, just check the simple case of one profile matching ours.
             item = self._createNewsItem(
@@ -217,60 +238,41 @@ class NewsItemTestCase(TestCase):
     def testDisplayIfInstalled(self):
         self.vardb.cpv_inject("sys-apps/portage-2.0", {"SLOT": "0"})
 
-        item = self._createNewsItem({"display_if_installed": ["sys-apps/portage"]})
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
-        )
+        self._checkAndCreateNewsItem({"display_if_installed": ["sys-apps/portage"]})
 
         # Test the negative case: a single Display-If-Installed listing
         # a package we don't have.
-        item = self._createNewsItem(
-            {"display_if_installed": ["sys-apps/i-do-not-exist"]}
-        )
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+        self._checkAndCreateNewsItem(
+            {"display_if_installed": ["sys-apps/i-do-not-exist"]}, False
         )
 
         # What about several packages and we have none of them installed?
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_installed": [
                     "dev-util/pkgcheck",
                     "dev-util/pkgdev",
                     "sys-apps/pkgcore",
                 ]
-            }
-        )
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+            },
+            False,
         )
 
         # What about several packages and we have one of them installed?
         self.vardb.cpv_inject("net-misc/openssh-9.2_p1", {"SLOT": "0"})
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_installed": [
                     "net-misc/openssh",
                     "net-misc/dropbear",
                 ]
             }
-        )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
         )
 
         # What about several packages and we have all of them installed?
         # Note: we already have openssh added from the above test
         self.vardb.cpv_inject("net-misc/dropbear-2022.83", {"SLOT": "0"})
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_installed": [
                     "net-misc/openssh",
@@ -278,48 +280,33 @@ class NewsItemTestCase(TestCase):
                 ]
             }
         )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
-        )
 
         # What if we have a newer version of the listed package which
         # shouldn't match the constraint?
-        self.vardb.cpv_inject("net-misc/openssh-9.2_p1", {"SLOT": "0"})
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_installed": [
                     "<net-misc/openssh-9.2_p1",
                 ]
-            }
-        )
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+            },
+            False,
         )
 
         # What if we have a newer version of the listed package which
         # should match the constraint?
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_installed": [
                     ">=net-misc/openssh-9.2_p1",
                 ]
             }
-        )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
         )
 
         # What if the item lists multiple packages and we have one of
         # them installed, but not all?
         # (Note that openssh is already "installed" by this point because
         # of a previous test.)
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_installed": [
                     ">=net-misc/openssh-9.2_p1",
@@ -327,72 +314,38 @@ class NewsItemTestCase(TestCase):
                 ]
             }
         )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
-        )
 
     def testDisplayIfKeyword(self):
-        item = self._createNewsItem({"display_if_keyword": [self.keywords]})
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
-        )
+        self._checkAndCreateNewsItem({"display_if_keyword": [self.keywords]})
 
         # Test the negative case: a keyword we don't have set.
-        item = self._createNewsItem({"display_if_keyword": ["fake-keyword"]})
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
-        )
+        self._checkAndCreateNewsItem({"display_if_keyword": ["fake-keyword"]}, False)
 
         # What if several keywords are listed and we match one of them?
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {"display_if_keyword": [self.keywords, "amd64", "~hppa"]}
-        )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
         )
 
         # What if several keywords are listed and we match none of them?
-        item = self._createNewsItem({"display_if_keyword": ["amd64", "~hppa"]})
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
-        )
+        self._checkAndCreateNewsItem({"display_if_keyword": ["amd64", "~hppa"]}, False)
 
         # What if the ~keyword (testing) keyword is listed but we're keyword (stable)?
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_keyword": [
                     f"~{self.keywords}",
                 ]
-            }
-        )
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+            },
+            False,
         )
 
         # What if the stable keyword is listed but we're ~keyword (testing)?
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_keyword": [
                     f"{self.keywords}",
                 ]
             }
-        )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
         )
 
     def testMultipleRestrictions(self):
@@ -403,62 +356,44 @@ class NewsItemTestCase(TestCase):
         # What if there's a Display-If-Keyword that matches and a
         # Display-If-Installed which does too?
         self.vardb.cpv_inject("sys-apps/portage-2.0", {"SLOT": "0"})
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_keyword": [self.keywords],
-                "display_if_installed": ["sys-apps/portage"]
-             }
-        )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
+                "display_if_installed": ["sys-apps/portage"],
+            }
         )
 
         # What if there's a Display-If-Keyword that matches and a
         # Display-If-Installed which doesn't?
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_keyword": [self.keywords],
-                "display_if_installed": ["sys-apps/i-do-not-exist"]
-             }
-        )
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+                "display_if_installed": ["sys-apps/i-do-not-exist"],
+            },
+            False,
         )
 
         # What if there's a Display-If-{Installed,Keyword,Profile} and
         # they all match?
         # (Note that sys-apps/portage is already "installed" by this point
         # because of the above test.)
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_keyword": [self.keywords],
                 "display_if_installed": ["sys-apps/portage"],
                 "display_if_profile": [self.profile],
-             }
-        )
-        self.assertTrue(item.isValid())
-        self.assertTrue(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be relevant, but it was not!",
+            }
         )
 
         # What if there's a Display-If-{Installed,Keyword,Profile} and
         # none of them match?
         # (Note that sys-apps/portage is already "installed" by this point
         # because of the above test.)
-        item = self._createNewsItem(
+        self._checkAndCreateNewsItem(
             {
                 "display_if_keyword": ["i-do-not-exist"],
                 "display_if_installed": ["sys-apps/i-do-not-exist"],
                 "display_if_profile": [self.profile_base + "/i-do-not-exist"],
-             }
-        )
-        self.assertTrue(item.isValid())
-        self.assertFalse(
-            item.isRelevant(self.vardb, self.settings, self.profile),
-            msg=f"Expected {item} to be irrelevant, but it was relevant!",
+            },
+            False,
         )
