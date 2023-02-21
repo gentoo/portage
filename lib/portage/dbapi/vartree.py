@@ -3,6 +3,8 @@
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
+import filecmp
+
 import portage
 
 portage.proxy.lazyimport.lazyimport(
@@ -5800,28 +5802,33 @@ class dblink:
                 # whether config protection or not, we merge the new file the
                 # same way.  Unless moveme=0 (blocking directory)
                 if moveme:
-                    # Create hardlinks only for source files that already exist
-                    # as hardlinks (having identical st_dev and st_ino).
-                    hardlink_key = (mystat.st_dev, mystat.st_ino)
+                    # only replace the existing file if it differs, see #722270
+                    already_merged = os.path.exists(mydest)
+                    if already_merged and filecmp.cmp(mysrc, mydest, shallow=False):
+                        zing = "==="
+                    else:
+                        # Create hardlinks only for source files that already exist
+                        # as hardlinks (having identical st_dev and st_ino).
+                        hardlink_key = (mystat.st_dev, mystat.st_ino)
 
-                    hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
-                    if hardlink_candidates is None:
-                        hardlink_candidates = []
-                        self._hardlink_merge_map[hardlink_key] = hardlink_candidates
+                        hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
+                        if hardlink_candidates is None:
+                            hardlink_candidates = []
+                            self._hardlink_merge_map[hardlink_key] = hardlink_candidates
 
-                    mymtime = movefile(
-                        mysrc,
-                        mydest,
-                        newmtime=thismtime,
-                        sstat=mystat,
-                        mysettings=self.settings,
-                        hardlink_candidates=hardlink_candidates,
-                        encoding=_encodings["merge"],
-                    )
-                    if mymtime is None:
-                        return 1
-                    hardlink_candidates.append(mydest)
-                    zing = ">>>"
+                        mymtime = movefile(
+                            mysrc,
+                            mydest,
+                            newmtime=thismtime,
+                            sstat=mystat,
+                            mysettings=self.settings,
+                            hardlink_candidates=hardlink_candidates,
+                            encoding=_encodings["merge"],
+                        )
+                        if mymtime is None:
+                            return 1
+                        hardlink_candidates.append(mydest)
+                        zing = ">>>"
 
                     try:
                         self._merged_path(mydest, os.lstat(mydest))
