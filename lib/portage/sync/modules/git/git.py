@@ -376,15 +376,16 @@ class GitSync(NewBase):
             **self.spawn_kwargs,
         )
 
-        if exitcode != os.EX_OK and not self.repo.volatile:
-            # HACK - sometimes merging results in a tree diverged from
-            # upstream, so try to hack around it
-            # https://stackoverflow.com/questions/41075972/how-to-update-a-git-shallow-clone/41081908#41081908
-            exitcode = portage.process.spawn(
-                f"{self.bin_command} reset --hard refs/remotes/{remote_branch}",
-                cwd=portage._unicode_encode(self.repo.location),
-                **self.spawn_kwargs,
-            )
+        if exitcode != os.EX_OK:
+            if not self.repo.volatile:
+                # HACK - sometimes merging results in a tree diverged from
+                # upstream, so try to hack around it
+                # https://stackoverflow.com/questions/41075972/how-to-update-a-git-shallow-clone/41081908#41081908
+                exitcode = portage.process.spawn(
+                    f"{self.bin_command} reset --hard refs/remotes/{remote_branch}",
+                    cwd=portage._unicode_encode(self.repo.location),
+                    **self.spawn_kwargs,
+                )
 
             if exitcode != os.EX_OK:
                 msg = f"!!! git merge error in {self.repo.location}"

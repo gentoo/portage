@@ -33,6 +33,9 @@ Bug fixes:
 
 * tests: news: significantly improved test coverage (bug #889330).
 
+* git: also report sync errors for volatile repos. Portage would previously simply
+  report success if an volatile repository failed to sync.
+
 portage-3.0.44 (2023-01-15)
 --------------
 
