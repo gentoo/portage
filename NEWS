@@ -125,8 +125,14 @@ Breaking changes:
     to work.
 
   The default value of 'volatile' is determined as follows:
-  - If unset and the repository is under /var/db/repos and the repository
-    exists and it's owned by either 'portage' or 'root', set to yes.
+  - If the repository is under /var/db/repos or if it is owned by either
+    'portage' or 'root', then it defaults to 'no'. That is, portage
+    assumes full control over the repository, potentially performing
+    destructive changes to the repository.
+  - If the repository is not under /var/db/repos or owned by a different
+    user than 'portage' or 'root', then it defaults to 'yes'. That is,
+    portage assumes the repository is user owned and does *not* perform
+    any destructive changes.
 
 Features:
 * cnf: make.conf.example.loong: add for the loong arch (bug #884135).
