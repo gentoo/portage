@@ -370,6 +370,9 @@ class GitSync(NewBase):
         if quiet:
             merge_cmd.append("--quiet")
 
+        if not quiet:
+            writemsg_level(' '.join(merge_cmd) + "\n")
+
         exitcode = portage.process.spawn(
             merge_cmd,
             cwd=portage._unicode_encode(self.repo.location),
