@@ -194,13 +194,14 @@ class GitSync(NewBase):
         # 1. sync-type=git
         # 2.
         #   - volatile=no (explicitly set to no), OR
-        #   - volatile is unset AND the repository owner is neither root or portage
+        #   - volatile is unset AND the repository owner is either root or portage
         # 3. Portage is syncing the respository (rather than e.g. auto-sync=no
         # and never running 'emaint sync -r foo')
         #
         # Portage will not clobber if:
         # 1. volatile=yes (explicitly set in the config), OR
-        # 2. volatile is unset and the repository owner is root or portage.
+        # 2. volatile is unset and the repository owner is neither root nor
+        #    portage.
         #
         # 'volatile' refers to whether the repository is volatile and may
         # only be safely changed by Portage itself, i.e. whether Portage
