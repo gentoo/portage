@@ -16,6 +16,17 @@ Features:
 
 * install-qa-check.d: 60pkgconfig: add opt-in QA_PKGCONFIG_VERSION check
 
+* install-qa-check.d: add 90config-impl-decl to detect -Wimplicit-function-declaration
+  in config.log, CMakeError.log, and meson-log.txt. ebuilds can add functions to
+  the QA_CONFIG_IMPL_DECL_SKIP array to skip false positives.
+
+  The following entries are created in qa.log under the tag 'config.log-impl-decl':
+
+  * 'line' - line number in the config log where the warning is found
+  * 'func' - the function that is implicitly declared
+
+  (bug #892651)
+
 * emerge: Log completion of package installs.
 
 Bug fixes:
