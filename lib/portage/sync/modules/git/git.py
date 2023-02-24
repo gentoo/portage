@@ -301,7 +301,8 @@ class GitSync(NewBase):
             git_cmd_opts,
         )
 
-        writemsg_level(git_cmd + "\n")
+        if not quiet:
+            writemsg_level(git_cmd + "\n")
 
         rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
         previous_rev = subprocess.check_output(
