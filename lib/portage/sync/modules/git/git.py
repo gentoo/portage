@@ -169,7 +169,7 @@ class GitSync(NewBase):
             }
             self.spawn_kwargs["env"].update(pull_env)
 
-        if self.settings.get("PORTAGE_QUIET") == "1":
+        if quiet:
             git_cmd_opts += " --quiet"
 
         # The logic here is a bit delicate. We need to balance two things:
