@@ -357,7 +357,7 @@ class RepoConfig:
             # If the owner of the repository isn't root or Portage, it's
             # an indication the user may expect to be able to safely make
             # changes in the directory, so default to volatile.
-            elif Path(self.location).owner not in ("root", "portage"):
+            elif Path(self.location).owner() not in ("root", "portage"):
                 self.volatile = True
             else:
                 self.volatile = False
