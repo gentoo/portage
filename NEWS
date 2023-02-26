@@ -49,6 +49,8 @@ Bug fixes:
 
 * git: correct detection of volatile repositories (bug #895526).
 
+* ebuild(5): alphabetize QA_* vars
+
 portage-3.0.44 (2023-01-15)
 --------------
 
