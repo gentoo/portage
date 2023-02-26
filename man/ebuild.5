@@ -916,6 +916,11 @@ If set, then portage verifies that all pkg-config .pc files have a Version field
 with the value of QA_PKGCONFIG_VERSION. For example, set
 \fIQA_PKGCONFIG_VERSION=${PV}\fR if your package is expected to install all
 pkg-config .pc files with a Version field containing PV.
+.TP
+.B QA_CONFIG_IMPL_DECL_SKIP
+This should contain a list of function names to ignore when checking for
+\fI-Wimplicit-function-declaration\fR in configure logs. This should only be
+used for false positives.
 
 .SH "PORTAGE DECLARATIONS"
 .TP
