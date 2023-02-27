@@ -14,11 +14,17 @@ __all__ = [
 ]
 
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import fnmatch
 import logging
 import os as _os
 import re
+
+if TYPE_CHECKING:
+    import portage.dbapi.vartree
+    import portage.package.ebuild.config
+
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -58,7 +64,14 @@ class NewsManager:
 
     """
 
-    def __init__(self, portdb, vardb, news_path, unread_path, language_id="en"):
+    def __init__(
+        self,
+        portdb: "portage.dbapi.porttree.portdbapi",
+        vardb: "portage.dbapi.vartree.vardbapi",
+        news_path: str,
+        unread_path: str,
+        language_id: str = "en",
+    ):
         self.news_path = news_path
         self.unread_path = unread_path
         self.language_id = language_id
@@ -89,19 +102,19 @@ class NewsManager:
                 profile_path = profile_path[len(profiles_base) :]
         self._profile_path = profile_path
 
-    def _unread_filename(self, repoid):
+    def _unread_filename(self, repoid: str) -> str:
         return os.path.join(self.unread_path, f"news-{repoid}.unread")
 
-    def _skip_filename(self, repoid):
+    def _skip_filename(self, repoid: str) -> str:
         return os.path.join(self.unread_path, f"news-{repoid}.skip")
 
-    def _news_dir(self, repoid):
+    def _news_dir(self, repoid: str) -> str:
         repo_path = self.portdb.getRepositoryPath(repoid)
         if repo_path is None:
             raise AssertionError(_(f"Invalid repoID: {repoid}"))
         return os.path.join(repo_path, self.news_path)
 
-    def updateItems(self, repoid):
+    def updateItems(self, repoid: str) -> None:
         """
         Figure out which news items from NEWS_PATH are both unread and relevant to
         the user (according to the GLEP 42 standards of relevancy).  Then add these
@@ -199,7 +212,7 @@ class NewsManager:
         finally:
             unlockfile(unread_lock)
 
-    def getUnreadItems(self, repoid, update=False):
+    def getUnreadItems(self, repoid: str, update: bool = False) -> int:
         """
         Determine if there are unread relevant items in news.repoid.unread.
         If there are unread items return their number.
@@ -249,7 +262,7 @@ class NewsItem:
     Creation of a news item involves passing in the path to the particular news item.
     """
 
-    def __init__(self, path, name):
+    def __init__(self, path: str, name: str):
         """
         For a given news item we only want if it path is a file.
         """
@@ -258,7 +271,12 @@ class NewsItem:
         self._parsed = False
         self._valid = True
 
-    def isRelevant(self, vardb, config, profile):
+    def isRelevant(
+        self,
+        vardb: "portage.dbapi.vartree.vardbapi",
+        config: "portage.package.ebuild.config.config",
+        profile: Optional[str],
+    ) -> bool:
         """
         This function takes a dict of keyword arguments; one should pass in any
         objects need to do to lookups (like what keywords we are on, what profile,
@@ -292,12 +310,12 @@ class NewsItem:
 
         return all_match
 
-    def isValid(self):
+    def isValid(self) -> bool:
         if not self._parsed:
             self.parse()
         return self._valid
 
-    def parse(self):
+    def parse(self) -> None:
         with open(
             _unicode_encode(self.path, encoding=_encodings["fs"], errors="strict"),
             encoding=_encodings["content"],
@@ -365,7 +383,7 @@ class DisplayRestriction:
     are met, then it is displayed
     """
 
-    def isValid(self):
+    def isValid(self) -> bool:
         return True
 
     def checkRestriction(self, **kwargs):
@@ -382,7 +400,7 @@ class DisplayProfileRestriction(DisplayRestriction):
         self.profile = profile
         self.format = news_format
 
-    def isValid(self):
+    def isValid(self) -> bool:
         return (
             not fnmatch.fnmatch(self.format, "1.*")
             or "*" not in self.profile
@@ -390,7 +408,7 @@ class DisplayProfileRestriction(DisplayRestriction):
             or _valid_profile_RE.match(self.profile)
         )
 
-    def checkRestriction(self, **kwargs):
+    def checkRestriction(self, **kwargs) -> bool:
         if fnmatch.fnmatch(self.format, "2.*") and self.profile.endswith("/*"):
             return kwargs["profile"].startswith(self.profile[:-1])
         return kwargs["profile"] == self.profile
@@ -406,7 +424,7 @@ class DisplayKeywordRestriction(DisplayRestriction):
         self.keyword = keyword
         self.format = news_format
 
-    def checkRestriction(self, **kwargs):
+    def checkRestriction(self, **kwargs) -> bool:
         return kwargs["config"].get("ARCH", "") == self.keyword
 
 
@@ -420,18 +438,23 @@ class DisplayInstalledRestriction(DisplayRestriction):
         self.atom = atom
         self.format = news_format
 
-    def isValid(self):
+    def isValid(self) -> bool:
         if fnmatch.fnmatch(self.format, "1.*"):
             return isvalidatom(self.atom, eapi="0")
         if fnmatch.fnmatch(self.format, "2.*"):
             return isvalidatom(self.atom, eapi="5")
         return isvalidatom(self.atom)
 
-    def checkRestriction(self, **kwargs):
+    def checkRestriction(self, **kwargs) -> bool:
         return kwargs["vardb"].match(self.atom)
 
 
-def count_unread_news(portdb, vardb, repos=None, update=True):
+def count_unread_news(
+    portdb: "portage.dbapi.porttree.portdbapi",
+    vardb: "portage.dbapi.vartree.vardbapi",
+    repos: Optional[List[Any]] = None,
+    update: bool = True,
+) -> Dict[str, int]:
     """
     Returns a dictionary mapping repos to integer counts of unread news items.
     By default, this will scan all repos and check for new items that have
@@ -477,7 +500,7 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
     return news_counts
 
 
-def display_news_notifications(news_counts: dict):
+def display_news_notifications(news_counts: Dict[Any, int]) -> None:
     """
     Display a notification for unread news items, using a dictionary mapping
     repos to integer counts, like that returned from count_unread_news().
