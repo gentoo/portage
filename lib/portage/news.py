@@ -15,7 +15,7 @@ __all__ = [
 
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
-
+from typing import Pattern, Match
 import fnmatch
 import logging
 import os as _os
@@ -89,11 +89,11 @@ class NewsManager:
         self._dir_mode = 0o0074
         self._mode_mask = 0o0000
 
-        portdir = portdb.repositories.mainRepoLocation()
-        profiles_base = None
+        portdir: Optional[str] = portdb.repositories.mainRepoLocation()
+        profiles_base: Optional[str] = None
         if portdir is not None:
             profiles_base = os.path.join(portdir, ("profiles" + os.path.sep))
-        profile_path = None
+        profile_path: Optional[str] = None
         if profiles_base is not None and portdb.settings.profile_path:
             profile_path = normalize_path(
                 os.path.realpath(portdb.settings.profile_path)
@@ -137,23 +137,23 @@ class NewsManager:
         if not os.access(self.unread_path, os.W_OK):
             return
 
-        news_dir = self._news_dir(repoid)
+        news_dir: str = self._news_dir(repoid)
         try:
-            news = _os.listdir(
+            news: list[str] = _os.listdir(
                 _unicode_encode(news_dir, encoding=_encodings["fs"], errors="strict")
             )
         except OSError:
             return
 
-        skip_filename = self._skip_filename(repoid)
-        unread_filename = self._unread_filename(repoid)
-        unread_lock = lockfile(unread_filename, wantnewlockfile=1)
+        skip_filename: str = self._skip_filename(repoid)
+        unread_filename: str = self._unread_filename(repoid)
+        unread_lock: Optional[bool] = lockfile(unread_filename, wantnewlockfile=1)
         try:
             try:
-                unread = set(grabfile(unread_filename))
-                unread_orig = unread.copy()
-                skip = set(grabfile(skip_filename))
-                skip_orig = skip.copy()
+                unread: set[str | tuple[str, str]] = set(grabfile(unread_filename))
+                unread_orig: set[str | tuple[str, str]] = unread.copy()
+                skip: set[str | tuple[str, str]] = set(grabfile(skip_filename))
+                skip_orig: set[str | tuple[str, str]] = skip.copy()
             except PermissionDenied:
                 return
 
@@ -224,7 +224,7 @@ class NewsManager:
             self.updateItems(repoid)
 
         unread_filename = self._unread_filename(repoid)
-        unread_lock = None
+        unread_lock: Optional[bool] = None
         try:
             unread_lock = lockfile(unread_filename, wantnewlockfile=1)
         except (
@@ -244,11 +244,11 @@ class NewsManager:
                 unlockfile(unread_lock)
 
 
-_formatRE = re.compile(r"News-Item-Format:\s*([^\s]*)\s*$")
-_installedRE = re.compile("Display-If-Installed:(.*)\n")
-_profileRE = re.compile("Display-If-Profile:(.*)\n")
-_keywordRE = re.compile("Display-If-Keyword:(.*)\n")
-_valid_profile_RE = re.compile(r"^[^*]+(/\*)?$")
+_formatRE: Pattern[str] = re.compile(r"News-Item-Format:\s*([^\s]*)\s*$")
+_installedRE: Pattern[str] = re.compile("Display-If-Installed:(.*)\n")
+_profileRE: Pattern[str] = re.compile("Display-If-Profile:(.*)\n")
+_keywordRE: Pattern[str] = re.compile("Display-If-Keyword:(.*)\n")
+_valid_profile_RE: Pattern[str] = re.compile(r"^[^*]+(/\*)?$")
 
 
 class NewsItem:
@@ -295,9 +295,9 @@ class NewsItem:
         if not len(self.restrictions):
             return True
 
-        kwargs = {"vardb": vardb, "config": config, "profile": profile}
+        kwargs: dict[str, any] = {"vardb": vardb, "config": config, "profile": profile}
 
-        all_match = True
+        all_match: bool = True
         for values in self.restrictions.values():
             matches = [restriction.checkRestriction(**kwargs) for restriction in values]
             any_match = any(matches)
@@ -324,11 +324,11 @@ class NewsItem:
             lines = f.readlines()
         self.restrictions = {}
         invalids = []
-        news_format = None
+        news_format: Optional[Match[str]] = None
 
         # Look for News-Item-Format
         for i, line in enumerate(lines):
-            format_match = _formatRE.match(line)
+            format_match: Match[str] = _formatRE.match(line)
             if format_match is not None:
                 news_format = format_match.group(1)
                 if fnmatch.fnmatch(news_format, "[12].*"):
@@ -445,7 +445,7 @@ class DisplayInstalledRestriction(DisplayRestriction):
             return isvalidatom(self.atom, eapi="5")
         return isvalidatom(self.atom)
 
-    def checkRestriction(self, **kwargs) -> bool:
+    def checkRestriction(self, **kwargs) -> Optional[Match[str]]:
         return kwargs["vardb"].match(self.atom)
 
 
