@@ -5,7 +5,9 @@ Features:
 * TODO
 
 Bug fixes:
-* TODO
+* install-qa-check.d/90config-impl-decl: fix handling of non-ASCII quotes when
+  extracting the function name. Detect "-Werror=implicit-function-declaration"
+  as used by GCC.
 
 portage-3.0.45 (2023-02-26)
 --------------
