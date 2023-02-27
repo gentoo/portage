@@ -5,6 +5,8 @@ import logging
 import re
 import subprocess
 
+from typing import Tuple
+
 import portage
 from portage import os
 from portage.util import writemsg_level, shlex_split
@@ -35,11 +37,11 @@ class GitSync(NewBase):
     def __init__(self):
         NewBase.__init__(self, "git", portage.const.GIT_PACKAGE_ATOM)
 
-    def exists(self, **kwargs):
+    def exists(self, **kwargs) -> bool:
         """Tests whether the repo actually exists"""
         return os.path.exists(os.path.join(self.repo.location, ".git"))
 
-    def new(self, **kwargs):
+    def new(self, **kwargs) -> Tuple[int, bool]:
         """Do the initial clone of the repository"""
         if kwargs:
             self._kwargs(kwargs)
@@ -116,12 +118,11 @@ class GitSync(NewBase):
 
         return (os.EX_OK, True)
 
-    def _gen_ceiling_string(self, path):
+    def _gen_ceiling_string(self, path: str) -> str:
         """
         Iteratively generate a colon delimited string of all of the
         given path's parents, for use with GIT_CEILING_DIRECTORIES
         """
-        path = self.repo.location
         directories = []
 
         while True:
@@ -132,7 +133,7 @@ class GitSync(NewBase):
 
         return ":".join(directories)
 
-    def update(self):
+    def update(self) -> Tuple[int, bool]:
         """Update existing git repository, and ignore the syncuri. We are
         going to trust the user and assume that the user is in the branch
         that he/she wants updated. We'll let the user manage branches with
@@ -403,7 +404,7 @@ class GitSync(NewBase):
 
         return (os.EX_OK, current_rev != previous_rev)
 
-    def verify_head(self, revision="-1"):
+    def verify_head(self, revision="-1") -> bool:
         if self.repo.module_specific_options.get(
             "sync-git-verify-commit-signature", "false"
         ).lower() not in ("true", "yes"):
@@ -477,7 +478,7 @@ class GitSync(NewBase):
             if openpgp_env is not None:
                 openpgp_env.close()
 
-    def retrieve_head(self, **kwargs):
+    def retrieve_head(self, **kwargs) -> Tuple[int, bool]:
         """Get information about the head commit"""
         if kwargs:
             self._kwargs(kwargs)
@@ -498,7 +499,7 @@ class GitSync(NewBase):
             ret = (1, False)
         return ret
 
-    def add_safe_directory(self):
+    def add_safe_directory(self) -> bool:
         # Add safe.directory to system gitconfig if not already configured.
         # Workaround for bug #838271 and bug #838223.
         location_escaped = re.escape(self.repo.location)
