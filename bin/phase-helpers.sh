@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
@@ -643,13 +643,15 @@ econf() {
 			fi
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
-				if [[ ${conf_help} == *--disable-dependency-tracking* ]]; then
+				if [[ ${conf_help} == \
+						*--disable-dependency-tracking[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-dependency-tracking )
 				fi
 			fi
 
 			if ___eapi_econf_passes_--disable-silent-rules; then
-				if [[ ${conf_help} == *--disable-silent-rules* ]]; then
+				if [[ ${conf_help} == \
+						*--disable-silent-rules[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-silent-rules )
 				fi
 			fi
@@ -672,7 +674,7 @@ econf() {
 			fi
 
 			if ___eapi_econf_passes_--with-sysroot; then
-				if [[ ${conf_help} == *--with-sysroot* ]]; then
+				if [[ ${conf_help} == *--with-sysroot[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --with-sysroot="${ESYSROOT:-/}" )
 				fi
 			fi

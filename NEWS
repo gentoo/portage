@@ -18,6 +18,11 @@ Features:
   - -Wimplicit-int
   - -Wstring-compare
 
+Bug fixes:
+* econf now checks for proper end of string in "configure --help" output for
+  all options starting with "--with-", "--disable-" or "--enable-", in order
+  to pass them to configure. This follows a change in PMS (bug #815169).
+
 portage-3.0.46 (2023-04-07)
 ---------------
 
