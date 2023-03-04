@@ -243,7 +243,7 @@ Bug fixes:
 
 * portage: sets: Fix DeprecationWarning in sets.
 
-* install-qa-check.d: 90gcc-warnigns: Disable -Wimplicit-function-declaration being
+* install-qa-check.d: 90gcc-warnings: Disable -Wimplicit-function-declaration being
   fatal for now. The number of failures in bug #870412 is too large for the time
   being.
 
