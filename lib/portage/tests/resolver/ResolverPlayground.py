@@ -587,8 +587,8 @@ class ResolverPlayground:
             "PORTAGE_TMPDIR": os.path.join(self.eroot, "var/tmp"),
         }
 
-        if os.environ.get("NOCOLOR"):
-            make_conf["NOCOLOR"] = os.environ["NOCOLOR"]
+        if portage.util.no_color(os.environ):
+            make_conf["NO_COLOR"] = os.environ["NO_COLOR"]
 
         # Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
         # need to be inherited by ebuild subprocesses.

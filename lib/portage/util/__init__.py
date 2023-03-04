@@ -56,6 +56,7 @@ __all__ = [
     "writemsg",
     "writemsg_level",
     "writemsg_stdout",
+    "no_color",
 ]
 
 from contextlib import AbstractContextManager
@@ -71,6 +72,7 @@ import string
 import sys
 import traceback
 import glob
+from typing import Optional
 
 import portage
 
@@ -2006,3 +2008,12 @@ def getlibpaths(root, env=None):
     rval.append("/lib")
 
     return [normalize_path(x) for x in rval if x]
+
+
+def no_color(settings: Optional[dict]) -> bool:
+    # In several years (2026+), we can cleanup NOCOLOR support, and just support NO_COLOR.
+    has_color: str = settings.get("NO_COLOR")
+    nocolor: str = settings.get("NOCOLOR", "false").lower()
+    if has_color is None:
+        return nocolor in ("yes", "true")
+    return bool(has_color)

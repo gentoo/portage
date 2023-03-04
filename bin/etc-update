@@ -798,6 +798,7 @@ portage_vars=(
 	EROOT
 	USERLAND
 	NOCOLOR
+	NO_COLOR
 )
 
 if type -P portageq > /dev/null; then

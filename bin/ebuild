@@ -67,7 +67,6 @@ try:
     from _emerge.RootConfig import RootConfig
 
     portage.process.sanitize_fds()
-
     description = "See the ebuild(1) man page for more info"
     usage = "Usage: ebuild <ebuild file> <command> [command] ..."
     parser = argparse.ArgumentParser(description=description, usage=usage)
@@ -128,14 +127,14 @@ try:
 
     if not opts.color == "y" and (
         opts.color == "n"
-        or portage.settings.get("NOCOLOR") in ("yes", "true")
+        or portage.util.no_color(portage.settings)
         or portage.settings.get("TERM") == "dumb"
         or not sys.stdout.isatty()
     ):
         portage.output.nocolor()
         portage.settings.unlock()
-        portage.settings["NOCOLOR"] = "true"
-        portage.settings.backup_changes("NOCOLOR")
+        portage.settings["NO_COLOR"] = "true"
+        portage.settings.backup_changes("NO_COLOR")
         portage.settings.lock()
 
     apply_priorities(portage.settings)

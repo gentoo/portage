@@ -434,14 +434,21 @@ RC_INDENTATION=''
 RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
 
-case "${NOCOLOR:-false}" in
+
+
+if [[ -z ${NO_COLOR} ]] ; then
+	case ${NOCOLOR:-false} in
 	yes|true)
 		__unset_colors
 		;;
 	no|false)
 		__set_colors
 		;;
-esac
+	esac
+else
+	__unset_colors
+fi
+
 
 if [[ -z ${USERLAND} ]] ; then
 	case $(uname -s) in

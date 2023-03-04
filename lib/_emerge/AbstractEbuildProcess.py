@@ -18,7 +18,7 @@ from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
 from portage.util.futures import asyncio
-from portage.util import apply_secpass_permissions
+from portage.util import apply_secpass_permissions, no_color
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -170,6 +170,7 @@ class AbstractEbuildProcess(SpawnProcess):
             # Automatically prevent color codes from showing up in logs,
             # since we're not displaying to a terminal anyway.
             self.settings["NOCOLOR"] = "true"
+            self.settings["NO_COLOR"] = "true"
 
         start_ipc_daemon = False
         if self._enable_ipc_daemon:
@@ -390,9 +391,7 @@ class AbstractEbuildProcess(SpawnProcess):
         elog_func = getattr(elog_messages, elog_funcname)
         global_havecolor = portage.output.havecolor
         try:
-            portage.output.havecolor = self.settings.get(
-                "NOCOLOR", "false"
-            ).lower() in ("no", "false")
+            portage.output.havecolor = not no_color(self.settings)
             for line in lines:
                 elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
         finally:

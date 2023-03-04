@@ -114,6 +114,7 @@ environ_whitelist = frozenset(
         "HOME",
         "MERGE_TYPE",
         "NOCOLOR",
+        "NO_COLOR",
         "P",
         "PATH",
         "PF",
@@ -358,4 +359,5 @@ validate_commands = (
 case_insensitive_vars = (
     "AUTOCLEAN",
     "NOCOLOR",
+    "NO_COLOR",
 )

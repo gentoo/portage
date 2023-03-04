@@ -10,7 +10,7 @@ from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages
 from portage.exception import InvalidAtom
 from portage.package.ebuild._ipc.IpcCommand import IpcCommand
-from portage.util import normalize_path
+from portage.util import normalize_path, no_color
 from portage.versions import best
 
 
@@ -149,9 +149,7 @@ class QueryCommand(IpcCommand):
         elog_func = getattr(elog_messages, elog_funcname)
         global_havecolor = portage.output.havecolor
         try:
-            portage.output.havecolor = self.settings.get(
-                "NOCOLOR", "false"
-            ).lower() in ("no", "false")
+            portage.output.havecolor = not no_color(self.settings)
             for line in lines:
                 elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
         finally:

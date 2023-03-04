@@ -48,7 +48,12 @@ Cleanups:
   in terms of priority for providers.
 
 Features:
-* TODO
+* Respect the NO_COLOR environment variable for disabling color.
+
+  The new quasi-standard for disabling ANSI color is to check for the NO_COLOR
+  environment variable and disable color when the variable has a nonempty value.
+  See bug #898224. Portage previously used NOCOLOR. It continues to support NOCOLOR
+  for a time for compatibility.
 
 Bug fixes:
 * TODO
