@@ -70,7 +70,7 @@ try:
     portage._internal_caller = True
     from portage import os
     from portage.eapi import eapi_has_repo_deps
-    from portage.util import writemsg, writemsg_stdout
+    from portage.util import writemsg, writemsg_stdout, no_color
 
     portage.proxy.lazyimport.lazyimport(
         globals(),
@@ -1451,9 +1451,7 @@ try:
 
     def main(argv):
         argv = portage._decode_argv(argv)
-
-        nocolor = os.environ.get("NOCOLOR")
-        if nocolor in ("yes", "true"):
+        if no_color(os.environ):
             portage.output.nocolor()
 
         parser = argparse.ArgumentParser(add_help=False)

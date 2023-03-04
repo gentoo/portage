@@ -238,7 +238,7 @@ def emirrordist_main(args):
 
     if not sys.stdout.isatty():
         portage.output.nocolor()
-        env["NOCOLOR"] = "true"
+        env["NO_COLOR"] = "true"
 
     parser, options, args = parse_args(args)
 

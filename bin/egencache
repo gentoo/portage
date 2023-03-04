@@ -67,7 +67,7 @@ try:
     from portage.package.ebuild._parallel_manifest.ManifestScheduler import (
         ManifestScheduler,
     )
-    from portage.util import cmp_sort_key, writemsg_level
+    from portage.util import cmp_sort_key, writemsg_level, no_color
     from portage.util._async.AsyncFunction import AsyncFunction
     from portage.util._async.run_main_scheduler import run_main_scheduler
     from portage.util._async.TaskScheduler import TaskScheduler
@@ -1105,12 +1105,9 @@ try:
         if "PATH" in os.environ:
             env["PATH"] = os.environ["PATH"]
 
-        if not sys.stdout.isatty() or os.environ.get("NOCOLOR", "").lower() in (
-            "yes",
-            "true",
-        ):
+        if not sys.stdout.isatty() or no_color(os.environ):
             portage.output.nocolor()
-            env["NOCOLOR"] = "true"
+            env["NO_COLOR"] = "true"
 
         parser, options, atoms = parse_args(args)
 

@@ -2757,7 +2757,7 @@ def adjust_config(myopts, settings):
     settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
     settings.backup_changes("PORTAGE_DEBUG")
 
-    if settings.get("NOCOLOR") not in ("yes", "true"):
+    if not portage.util.no_color(settings):
         portage.output.havecolor = 1
 
     # The explicit --color < y | n > option overrides the NOCOLOR environment
@@ -2765,15 +2765,15 @@ def adjust_config(myopts, settings):
     if "--color" in myopts:
         if "y" == myopts["--color"]:
             portage.output.havecolor = 1
-            settings["NOCOLOR"] = "false"
+            settings["NO_COLOR"] = ""
         else:
             portage.output.havecolor = 0
-            settings["NOCOLOR"] = "true"
-        settings.backup_changes("NOCOLOR")
+            settings["NO_COLOR"] = "true"
+        settings.backup_changes("NO_COLOR")
     elif settings.get("TERM") == "dumb" or not sys.stdout.isatty():
         portage.output.havecolor = 0
-        settings["NOCOLOR"] = "true"
-        settings.backup_changes("NOCOLOR")
+        settings["NO_COLOR"] = "true"
+        settings.backup_changes("NO_COLOR")
 
     if "--pkg-format" in myopts:
         settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]

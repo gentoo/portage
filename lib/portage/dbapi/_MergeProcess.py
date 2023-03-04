@@ -11,6 +11,7 @@ from portage import os, _unicode_decode
 from portage.util._ctypes import find_library
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
+from portage.util import no_color
 
 
 class MergeProcess(ForkProcess):
@@ -200,9 +201,7 @@ class MergeProcess(ForkProcess):
         os.close(self._elog_reader_fd)
         counter = self._counter
         mylink = self._dblink
-
-        portage.output.havecolor = self.settings.get("NOCOLOR") not in ("yes", "true")
-
+        portage.output.havecolor = not no_color(self.settings)
         # Avoid wastful updates of the vdb cache.
         self.vartree.dbapi._flush_cache_enabled = False
 

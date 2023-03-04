@@ -1,3 +1,11 @@
+portage-3.0.46 (UNRELEASED)
+--------------
+
+Features:
+* support for NO_COLOR environment variable: The new quasi-standard for disabling
+  ANSI color is to check for the NO_COLOR environment variable and disable color
+  when the variable has a nonempty value.
+
 portage-3.0.45.2 (2023-03-04)
 --------------
 
