@@ -376,9 +376,9 @@ try:
             env_filename = os.path.join(tmpsettings["T"], "environment")
             if os.path.exists(env_filename):
                 msg = (
-                    "Existing ${T}/environment for '%s' will be sourced. "
-                    + "Run 'clean' to start with a fresh environment."
-                ) % (tmpsettings["PF"],)
+                    f"Existing ${{T}}/environment for '{tmpsettings['PF']}' will be sourced. "
+                    "Run 'clean' to start with a fresh environment."
+                )
                 msg = textwrap.wrap(msg, 70)
                 for x in msg:
                     portage.writemsg(f">>> {x}\n")

@@ -92,15 +92,13 @@ def main(argv):
     if os.path.isdir(snapshot_dir):
         parser.error(f"snapshot_dir already exists: '{snapshot_dir}'")
 
+    dirname_ss_dir = os.path.dirname(snapshot_dir)
     try:
-        os.makedirs(os.path.dirname(snapshot_dir))
+        os.makedirs(dirname_ss_dir)
     except OSError:
         pass
-    if not os.path.isdir(os.path.dirname(snapshot_dir)):
-        parser.error(
-            "snapshot_dir parent could not be created: '%s'"
-            % os.path.dirname(snapshot_dir)
-        )
+    if not os.path.isdir(dirname_ss_dir):
+        parser.error(f"snapshot_dir parent could not be created: '{dirname_ss_dir}'")
 
     try:
         os.makedirs(binhost_dir)

@@ -176,8 +176,7 @@ def quickpkg_atom(options, infos, arg, eout):
                 if find_binary(compression_binary) is None:
                     missing_package = compression["package"]
                     eout.eerror(
-                        "File compression unsupported %s. Missing package: %s"
-                        % (binpkg_compression, missing_package)
+                        f"File compression unsupported {binpkg_compression} (missing package: {missing_package})"
                     )
                     return 1
 
@@ -391,7 +390,7 @@ def quickpkg_main(options, args, eout):
         eout.einfo(f"{cpv}: {size_str}")
     if infos["config_files_excluded"]:
         print()
-        eout.ewarn("Excluded config files: %d" % infos["config_files_excluded"])
+        eout.ewarn(f"Excluded config files: {infos['config_files_excluded']}")
         eout.ewarn("See --help if you would like to include config files.")
     if infos["missing"]:
         print()

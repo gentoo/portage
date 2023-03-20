@@ -163,10 +163,7 @@ try:
         def _timeout_retry_msg(self, start_time, when):
             time_elapsed = time.time() - start_time
             portage.util.writemsg_level(
-                portage.localization._(
-                    "ebuild-ipc timed out %s after %d seconds," + " retrying...\n"
-                )
-                % (when, time_elapsed),
+                f"ebuild-ipc timed out {when} after {time_elapsed} seconds, retrying...\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -290,8 +287,7 @@ try:
 
             if retval != os.EX_OK:
                 portage.util.writemsg_level(
-                    "ebuild-ipc: %s: %s\n"
-                    % (msg, portage.localization._("subprocess failure: %s") % retval),
+                    f"ebuild-ipc: {msg}: subprocess failure: {retval}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

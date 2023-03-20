@@ -62,9 +62,9 @@ try:
             sys.exit(e.errno)
         except IsADirectory as e:
             sys.stderr.write(
-                "'%s' is a directory, but should be a file!\n"
+                f"'{str(e)}' is a directory, but should be a file!\n"
                 "See portage man page for information on "
-                "which files may be directories.\n" % str(e)
+                "which files may be directories.\n"
             )
             sys.exit(e.errno)
         except ParseError as e:
