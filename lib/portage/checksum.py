@@ -99,10 +99,15 @@ class _generate_hash_function:
 # Define hash functions, try to use the best module available. Preferred
 # modules should go first, latter ones should check if the hashes aren't
 # already defined.
-
-
 # Use hashlib if available and prefer it over pycrypto and internal fallbacks.
+#
 # Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
+# We keep fallbacks for RMD160/WHIRLPOOL for now as newer OpenSSLs don't expose them
+# by default.
+# See also
+# - https://github.com/python/cpython/issues/91257
+# - https://github.com/python/cpython/issues/92876
+# - https://bugs.gentoo.org/846389
 _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
 _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
 _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
