@@ -26,7 +26,7 @@ from portage.localization import _
 # SHA256: hashlib
 # SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
-# WHIRLPOOL: hashlib, mhash, bundled (C), bundled (Python)
+# WHIRLPOOL: hashlib, bundled (C), bundled (Python)
 # BLAKE2B (512): hashlib
 # BLAKE2S (512): hashlib
 # SHA3_256: hashlib
@@ -141,33 +141,26 @@ if "RMD160" not in hashfunc_map:
         if rmd160hash_ is not None:
             _generate_hash_function("RMD160", rmd160hash_, origin="pycrypto")
     except ImportError:
-        pass
+        # Try to use mhash if available
+        # mhash causes GIL presently, so it gets less priority than hashlib and
+        # pycrypto. However, it might be the only accelerated implementation of
+        # WHIRLPOOL available.
+        try:
+            import mhash
 
-        pass
-
-
-# Try to use mhash if available
-# mhash causes GIL presently, so it gets less priority than hashlib and
-# pycrypto. However, it might be the only accelerated implementation of
-# WHIRLPOOL available.
-if "RMD160" not in hashfunc_map or "WHIRLPOOL" not in hashfunc_map:
-    try:
-        import mhash
-
-        for local_name, hash_name in (
-            ("RMD160", "RIPEMD160"),
-            ("WHIRLPOOL", "WHIRLPOOL"),
-        ):
-            if local_name not in hashfunc_map and hasattr(mhash, f"MHASH_{hash_name}"):
-                _generate_hash_function(
-                    local_name,
-                    functools.partial(
-                        mhash.MHASH, getattr(mhash, f"MHASH_{hash_name}")
-                    ),
-                    origin="mhash",
-                )
-    except ImportError:
-        pass
+            for local_name, hash_name in (("RMD160", "RIPEMD160"),):
+                if local_name not in hashfunc_map and hasattr(
+                    mhash, f"MHASH_{hash_name}"
+                ):
+                    _generate_hash_function(
+                        local_name,
+                        functools.partial(
+                            mhash.MHASH, getattr(mhash, f"MHASH_{hash_name}")
+                        ),
+                        origin="mhash",
+                    )
+        except ImportError:
+            pass
 
 
 _whirlpool_unaccelerated = False
