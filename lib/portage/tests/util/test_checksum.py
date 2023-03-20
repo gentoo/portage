@@ -121,32 +121,6 @@ class ChecksumTestCase(TestCase):
         except DigestException:
             self.skipTest("SHA3_512 implementation not available")
 
-    def test_streebog256(self):
-        try:
-            self.assertEqual(
-                checksum_str(b"", "STREEBOG256"),
-                "3f539a213e97c802cc229d474c6aa32a825a360b2a933a949fd925208d9ce1bb",
-            )
-            self.assertEqual(
-                checksum_str(self.text, "STREEBOG256"),
-                "4992f1239c46f15b89e7b83ded4d83fb5966da3692788a4a1a6d118f78c08444",
-            )
-        except DigestException:
-            self.skipTest("STREEBOG256 implementation not available")
-
-    def test_streebog512(self):
-        try:
-            self.assertEqual(
-                checksum_str(b"", "STREEBOG512"),
-                "8e945da209aa869f0455928529bcae4679e9873ab707b55315f56ceb98bef0a7362f715528356ee83cda5f2aac4c6ad2ba3a715c1bcd81cb8e9f90bf4c1c1a8a",
-            )
-            self.assertEqual(
-                checksum_str(self.text, "STREEBOG512"),
-                "330f5c26437f4e22c0163c72b12e93b8c27202f0750627355bdee43a0e0b253c90fbf0a27adbe5414019ff01ed84b7b240a1da1cbe10fae3adffc39c2d87a51f",
-            )
-        except DigestException:
-            self.skipTest("STREEBOG512 implementation not available")
-
 
 class ApplyHashFilterTestCase(TestCase):
     def test_apply_hash_filter(self):
