@@ -871,8 +871,8 @@ try:
         for arg in argv:
             if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
                 print(
-                    "WARNING: 'portageq envvar %s' is deprecated. Use any of "
-                    "'get_repos, get_repo_path, repos_config' instead." % arg,
+                    f"WARNING: 'portageq envvar {arg}' is deprecated. Use any of "
+                    "'get_repos, get_repo_path, repos_config' instead.",
                     file=sys.stderr,
                 )
 
@@ -1516,8 +1516,8 @@ try:
                     sys.stderr.write(
                         "ERROR: This version of portageq"
                         " only supports <eroot>s ending in"
-                        " '%s'. The provided <eroot>, '%s',"
-                        " doesn't.\n" % (eprefix, eroot)
+                        f" '{eprefix}'. The provided <eroot>, '{eroot}',"
+                        " doesn't.\n"
                     )
                     sys.stderr.flush()
                     sys.exit(os.EX_USAGE)

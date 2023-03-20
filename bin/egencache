@@ -345,8 +345,7 @@ try:
                 )
                 if not self._trg_caches:
                     raise Exception(
-                        "cache formats '%s' aren't supported"
-                        % (" ".join(conf.cache_formats),)
+                        f"cache formats '{' '.join(conf.cache_formats)}' aren't supported"
                     )
 
             if rsync:
@@ -615,14 +614,7 @@ try:
                             prefix0 = "M"
 
                         print(
-                            " [%s%s] %s (%s):  %s"
-                            % (
-                                colorize("red", prefix0),
-                                color(prefix1),
-                                colorize("bold", pkg_desc.cp),
-                                color(version[len(pkg_desc.cp) + 1 :]),
-                                pkg_desc.desc,
-                            )
+                            f" [{colorize('red', prefix0)}{color(prefix1)}] {colorize('bold', pkg_desc.cp)} ({color(version[len(pkg_desc.cp) + 1 :])}):  {pkg_desc.desc}"
                         )
                         haspkgs = True
 
@@ -835,8 +827,7 @@ try:
                                     reskeys = {_Atom(k): k for k in resdict}
                                 except portage.exception.InvalidAtom as e:
                                     writemsg_level(
-                                        "ERROR: failed parsing %s/metadata.xml: %s\n"
-                                        % (cp, e),
+                                        f"ERROR: failed parsing {cp}/metadata.xml: {e}\n",
                                         level=logging.ERROR,
                                         noiselevel=-1,
                                     )
@@ -938,13 +929,12 @@ try:
 
             output.write(
                 textwrap.dedent(
-                    """\
-                # ChangeLog for %s
-                # Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
+                    f"""\
+                # ChangeLog for {cp}
+                # Copyright 1999-{time.strftime("%Y")} Gentoo Foundation; Distributed under the GPL v2
                 # (auto-generated from git log)
 
                 """
-                    % (cp, time.strftime("%Y"))
                 )
             )
 
@@ -1064,9 +1054,10 @@ try:
                 )
                 # but feel free to break commit messages there
                 self._wrapper.break_on_hyphens = True
-                output.write(
-                    "\n%s\n\n" % "\n".join(self._wrapper.fill(x) for x in body)
-                )
+                # temp var needed because fstrings can not have backslashes in
+                # the expression part...
+                temp_joined = "\n".join(self._wrapper.fill(x) for x in body)
+                output.write(f"\n{temp_joined}\n\n")
 
             output.close()
             os.utime(self._changelog_output, (lmod, lmod))
@@ -1249,12 +1240,8 @@ try:
                         gpg_dir = os.path.expanduser(settings["PORTAGE_GPG_DIR"])
                     if not os.access(gpg_dir, os.X_OK):
                         writemsg_level(
-                            (
-                                "egencache: error: "
-                                "Unable to access directory: "
-                                "PORTAGE_GPG_DIR='%s'\n"
-                            )
-                            % gpg_dir,
+                            "egencache: error: Unable to access directory: "
+                            f"PORTAGE_GPG_DIR='{gpg_dir}'\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )

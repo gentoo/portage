@@ -27,8 +27,6 @@ import portage.dispatch_conf
 from portage import os
 from portage.checksum import perform_md5
 
-FIND_EXTANT_CONTENTS = "find %s -name CONTENTS"
-
 MANDATORY_OPTS = ["archive-dir"]
 
 
@@ -45,11 +43,9 @@ def archive_conf():
         args += [conf]
         md5_match_hash[conf] = ""
 
-    # Find all the CONTENT files in VDB_PATH.
-    with os.popen(
-        FIND_EXTANT_CONTENTS
-        % (os.path.join(portage.settings["EROOT"], portage.VDB_PATH))
-    ) as f:
+    # Find all the CONTENTS files in VDB_PATH.
+    eroot_vdb_path = os.path.join(portage.settings["EROOT"], portage.VDB_PATH)
+    with os.popen(f"find {eroot_vdb_path} -type f -name CONTENTS") as f:
         content_files += f.readlines()
 
     # Search for the saved md5 checksum of all the specified config files

@@ -220,8 +220,7 @@ if "affected" in params:
 for p in params[:]:
     if not (p in completelist or os.path.exists(p)):
         sys.stderr.write(
-            "(removing %s from parameter list as it isn't a valid GLSA specification)\n"
-            % p
+            f"(removing {p} from parameter list as it isn't a valid GLSA specification)\n"
         )
         params.remove(p)
 
@@ -261,7 +260,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
             color = green
 
         if verbose:
-            access = "[%-8s] " % myglsa.access
+            access = f"[{myglsa.access:8}] "
         else:
             access = ""
 
