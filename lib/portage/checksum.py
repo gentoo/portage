@@ -26,7 +26,7 @@ from portage.localization import _
 # SHA256: hashlib
 # SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
-# WHIRLPOOL: hashlib, mhash, bundled
+# WHIRLPOOL: hashlib, mhash, bundled (C), bundled (Python)
 # BLAKE2B (512): hashlib, pycrypto
 # BLAKE2S (512): hashlib,pycrypto
 # SHA3_256: hashlib, pycrypto
