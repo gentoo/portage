@@ -1,4 +1,4 @@
-.TH "EBUILD" "1" "Mar 2013" "Portage VERSION" "Portage"
+.TH "EBUILD" "1" "Mar 2023" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- a low level interface to the Portage system
 .SH "SYNOPSIS"
@@ -202,9 +202,10 @@ Run bash with the \-x option, causing it to output verbose debugging
 information to stdout.
 .TP
 .BR "\-\-color < y | n >"
-Enable or disable color output.  This option will override \fINOCOLOR\fR
-(see \fBmake.conf\fR(5)) and may also be used to force color output when stdout
-is not a tty (by default, color is disabled unless stdout is a tty).
+Enable or disable color output.  This option will override \fINO_COLOR\fR
+and \fINOCOLOR\fR (see \fBmake.conf\fR(5)) and may also be used to force
+color output when stdout is not a tty (by default, color is disabled
+unless stdout is a tty).
 .TP
 .BR "\-\-force"
 When used together with the digest or manifest command,
