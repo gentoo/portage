@@ -209,47 +209,33 @@ For a more detailed explanation (and rationalisation) of these rules:
 Releases
 --------
 
-0. Before starting: CI MUST BE GREEN!
+Before starting: CI MUST BE GREEN!
 
-1. Repository mangling:
-	- Update NEWS (for both new version & release date)
-	- Update setup.py
+First update:
+- NEWS (for both new version & release date)
+- setup.py
 and commit.
 
-2. Create a git tag for this release:
-	git tag -a -s portage-3.0.30
+Second create a git tag for this release:
+	git tag portage-3.0.30
 
-3. Create the tarball and run the tests: ./runtests
-   (see PYTHON_SUPPORTED_VERSIONS in runtests).
+Create the tarball and run the tests: ./runtests
+(see PYTHON_SUPPORTED_VERSIONS in runtests).
 
-4. Version bump the ebuild locally (don't push) and verify it can re-install itself:
-	emerge --oneshot sys-apps/portage
-	emerge --oneshot sys-apps/portage # this is using the new Portage
+Version bump the ebuild locally (don't push) and verify it can re-install itself:
+	emerge --oneshot portage
+	emerge --oneshot portage # this is using the new Portage
 
-5. Publish the results (no going back now):
+Publish the results (no going back now):
 	- Push the new git tag
 	- Upload the tarball
 	- Commit the new ebuild version and tag the tracker bug for the commit
 
-6. Create the release for pypi and upload it there:
+Create the release for pypi and upload it there:
 	- python -m venv .venv
 	- . .venv/bin/activate
 	- pip install wheel twine
 	- python setup.py bdist_wheel sdist
 	- twine upload dist/<filenames>
 
-7. Bugzilla wrangling:
-	- Close the bugs blocked by the tracker bug for this release and
-          the tracker itself.
-
-	- File a new bug in Portage Development > Core named
-		"[TRACKER] sys-apps/portage-${NEW_VERSION}"
-	  with the 'Tracker' Bugzilla Keyword and the following text:
-	"""
-	Tracks bugs fixed in this release.
-
-	'Depends on' now means 'we want to fix this before release'
-	'Blocks' means 'fixed in this release'
-	"""
-
-8. Done! Congratulations!
+Close the bugs blocking the tracker bug for this release.
