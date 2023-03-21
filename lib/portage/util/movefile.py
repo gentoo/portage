@@ -105,6 +105,35 @@ def _copyxattr(src, dest, exclude=None):
             )
 
 
+def _cmpxattr(src, dest, exclude=None):
+    """
+    Compares extended attributes between |src| and |dest| and returns True
+    if they are equal or xattrs are not supported, False otherwise
+    """
+    try:
+        src_attrs = xattr.list(src)
+        dest_attrs = xattr.list(dest)
+    except OSError as e:
+        if e.errno != OperationNotSupported.errno:
+            raise
+        return True
+
+    if src_attrs:
+        if exclude is not None and isinstance(src_attrs[0], bytes):
+            exclude = exclude.encode(_encodings["fs"])
+    exclude = _get_xattr_excluder(exclude)
+
+    src_attrs = {attr for attr in src_attrs if not exclude(attr)}
+    dest_attrs = {attr for attr in dest_attrs if not exclude(attr)}
+    if src_attrs != dest_attrs:
+        return False
+
+    for attr in src_attrs:
+        if xattr.get(src, attr) != xattr.get(dest, attr):
+            return False
+    return True
+
+
 def movefile(
     src,
     dest,

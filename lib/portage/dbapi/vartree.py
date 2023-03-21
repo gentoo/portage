@@ -3,8 +3,6 @@
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
-import filecmp
-
 import portage
 
 portage.proxy.lazyimport.lazyimport(
@@ -34,7 +32,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util.env_update:env_update",
     "portage.util.install_mask:install_mask_dir,InstallMask,_raise_exc",
     "portage.util.listdir:dircache,listdir",
-    "portage.util.movefile:movefile",
+    "portage.util.movefile:movefile,_cmpxattr",
     "portage.util.path:first_existing,iter_parents",
     "portage.util.writeable_check:get_ro_checker",
     "portage.util._xattr:xattr",
@@ -95,6 +93,7 @@ from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
 import argparse
 import errno
+import filecmp
 import fnmatch
 import functools
 import gc
@@ -5803,10 +5802,7 @@ class dblink:
                 # same way.  Unless moveme=0 (blocking directory)
                 if moveme:
                     # only replace the existing file if it differs, see #722270
-                    already_merged = os.path.exists(mydest)
-                    if already_merged and filecmp.cmp(mysrc, mydest, shallow=False):
-                        zing = "==="
-                    else:
+                    if self._needs_move(mysrc, mydest, mymode, mydmode):
                         # Create hardlinks only for source files that already exist
                         # as hardlinks (having identical st_dev and st_ino).
                         hardlink_key = (mystat.st_dev, mystat.st_ino)
@@ -5829,6 +5825,8 @@ class dblink:
                             return 1
                         hardlink_candidates.append(mydest)
                         zing = ">>>"
+                    else:
+                        zing = "==="
 
                     try:
                         self._merged_path(mydest, os.lstat(mydest))
@@ -6253,6 +6251,26 @@ class dblink:
 
         finally:
             self.unlockdb()
+
+    def _needs_move(self, mysrc, mydest, mymode, mydmode):
+        """
+        Checks whether the given file at |mysrc| needs to be moved to |mydest| or if
+        they are identical.
+
+        Takes file mode and extended attributes into account.
+        Should only be used for regular files.
+        """
+        if not os.path.exists(mydest):
+            return True
+
+        if mymode != mydmode:
+            return True
+
+        excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
+        if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
+            return True
+
+        return not filecmp.cmp(mysrc, mydest, shallow=False)
 
 
 def merge(
