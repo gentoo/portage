@@ -40,7 +40,7 @@ portage._internal_caller = True
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
 
-if portage.util.no_color(os.environ):
+if os.environ.get("NOCOLOR") in ("yes", "true"):
     portage.output.nocolor()
 
 import portage.tests as tests

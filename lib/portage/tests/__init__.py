@@ -12,7 +12,6 @@ from unittest.runner import TextTestResult as _TextTestResult
 
 import portage
 from portage import os
-from portage.util import no_color
 from portage import _encodings
 from portage import _unicode_decode
 from portage.output import colorize
@@ -79,7 +78,7 @@ def main():
     options = parser.parse_args(args=sys.argv)
 
     if (
-        no_color(os.environ)
+        os.environ.get("NOCOLOR") in ("yes", "true")
         or os.environ.get("TERM") == "dumb"
         or not sys.stdout.isatty()
     ):
