@@ -9,6 +9,7 @@
 #  Jeremy Wohl's dispatch-conf script and the portage chkcontents script.
 #
 
+import subprocess
 import sys
 
 from os import path as osp
@@ -45,8 +46,12 @@ def archive_conf():
 
     # Find all the CONTENTS files in VDB_PATH.
     eroot_vdb_path = os.path.join(portage.settings["EROOT"], portage.VDB_PATH)
-    with os.popen(f"find {eroot_vdb_path} -type f -name CONTENTS") as f:
-        content_files += f.readlines()
+    find = subprocess.run(
+        ["find", eroot_vdb_path, "-type", "f", "-name", "CONTENTS"],
+        capture_output=True,
+        text=True,
+    )
+    content_files += find.stdout.splitlines()
 
     # Search for the saved md5 checksum of all the specified config files
     # and see if the current file is unmodified or not.
