@@ -213,7 +213,6 @@ SUPPORTED_FEATURES = frozenset(
         "userpriv",
         "usersandbox",
         "usersync",
-        "warn-on-large-env",
         "webrsync-gpg",
         "xattr",
     )
