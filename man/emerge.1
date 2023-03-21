@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Dec 2021" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Mar 2023" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -513,9 +513,10 @@ has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
 information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-color < y | n >"
-Enable or disable color output.  This option will override \fINOCOLOR\fR
-(see \fBmake.conf\fR(5)) and may also be used to force color output when stdout
-is not a tty (by default, color is disabled unless stdout is a tty).
+Enable or disable color output.  This option will override \fINO_COLOR\fR
+and \fINOCOLOR\fR (see \fBmake.conf\fR(5)) and may also be used to force
+color output when stdout is not a tty (by default, color is disabled
+unless stdout is a tty).
 .TP
 .BR \-\-columns
 Used alongside \fB\-\-pretend\fR to cause the package name, new version,

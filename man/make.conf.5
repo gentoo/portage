@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jan 2023" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Mar 2023" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -939,8 +939,14 @@ For more information, see \fBmake\fR(1). Also see \fBemerge\fR(1) for
 information about analogous \fB\-\-jobs\fR and \fB\-\-load\-average\fR options.
 Defaults to the number of processors if left unset.
 .TP
+\fBNO_COLOR\fR = \fI[any string]\fR
+Set to any nonempty string (e.g. "1") to disable color by default.
+.br
+Defaults to unset.
+.TP
 \fBNOCOLOR\fR = \fI["true" | "false"]\fR
-Defines if color should be disabled by default.
+Defines if color should be disabled by default.  Deprecated in favor
+of \fBNO_COLOR\fR.
 .br
 Defaults to false.
 .TP
