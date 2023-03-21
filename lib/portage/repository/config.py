@@ -343,26 +343,24 @@ class RepoConfig:
             # If it's unset, we default to no (i.e. the repository is not volatile),
             # but with a heuristic for when a repository is not likely to be suitable
             # (likely to contain custom user changes).
-            try:
-                # If the repository doesn't exist, we can't check its ownership,
-                # so err on the safe side.
-                if missing or not self.location:
-                    self.volatile = True
-                # On Prefix, you can't rely on the ownership as a proxy for user
-                # owned because the user typically owns everything.
-                # But we can't access if we're on Prefix here, so use whether
-                # we're under /var/db/repos instead.
-                elif not self.location.startswith("/var/db/repos"):
-                    self.volatile = True
-                # If the owner of the repository isn't root or Portage, it's
-                # an indication the user may expect to be able to safely make
-                # changes in the directory, so default to volatile.
-                elif Path(self.location).owner() not in ("root", "portage"):
-                    self.volatile = True
-                else:
-                    self.volatile = False
-            except (FileNotFoundError, PermissionError):
+
+            # If the repository doesn't exist, we can't check its ownership,
+            # so err on the safe side.
+            if missing or not self.location:
                 self.volatile = True
+            # On Prefix, you can't rely on the ownership as a proxy for user
+            # owned because the user typically owns everything.
+            # But we can't access if we're on Prefix here, so use whether
+            # we're under /var/db/repos instead.
+            elif not self.location.startswith("/var/db/repos"):
+                self.volatile = True
+            # If the owner of the repository isn't root or Portage, it's
+            # an indication the user may expect to be able to safely make
+            # changes in the directory, so default to volatile.
+            elif Path(self.location).owner() not in ("root", "portage"):
+                self.volatile = True
+            else:
+                self.volatile = False
 
         self.eapi = None
         self.missing_repo_name = missing

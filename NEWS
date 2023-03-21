@@ -1,9 +1,11 @@
-portage-3.0.45.2 (2023-03-04)
+portage-3.0.46 (UNRELEASED)
 --------------
 
+Features:
+* TODO
+
 Bug fixes:
-* repository: config: Fix initial sync of repositories (bug #899208). Regression
-  from portage-3.0.45, but the real bug is from portage-3.0.42.
+* TODO
 
 portage-3.0.45.1 (2023-02-27)
 --------------
