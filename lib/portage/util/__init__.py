@@ -1,26 +1,6 @@
 # Copyright 2004-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.cache.mappings import UserDict
-from portage.proxy.objectproxy import ObjectProxy
-from portage.localization import _
-from portage.exception import (
-    InvalidAtom,
-    PortageException,
-    FileNotFound,
-    IsADirectory,
-    OperationNotPermitted,
-    ParseError,
-    PermissionDenied,
-    ReadOnlyFileSystem,
-)
-from portage.const import VCS_DIRS
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage import _os_merge
-from portage import _encodings
-from portage import os
-
 __all__ = [
     "apply_permissions",
     "apply_recursive_permissions",
@@ -80,6 +60,26 @@ portage.proxy.lazyimport.lazyimport(
     "portage.dep:Atom",
     "subprocess",
 )
+
+from portage import os
+from portage import _encodings
+from portage import _os_merge
+from portage import _unicode_encode
+from portage import _unicode_decode
+from portage.const import VCS_DIRS
+from portage.exception import (
+    InvalidAtom,
+    PortageException,
+    FileNotFound,
+    IsADirectory,
+    OperationNotPermitted,
+    ParseError,
+    PermissionDenied,
+    ReadOnlyFileSystem,
+)
+from portage.localization import _
+from portage.proxy.objectproxy import ObjectProxy
+from portage.cache.mappings import UserDict
 
 
 noiselimit = 0
@@ -142,7 +142,7 @@ def writemsg_level(msg, level=0, noiselevel=0):
     writemsg(msg, noiselevel=noiselevel, fd=fd)
 
 
-def normalize_path(mypath) -> str:
+def normalize_path(mypath):
     """
     os.path.normpath("//foo") returns "//foo" instead of "/foo"
     We dislike this behavior so we create our own normpath func
