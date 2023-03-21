@@ -44,5 +44,7 @@ jobs:
         printf "[build_ext]\nportage_ext_modules=true" >> setup.cfg
         ./setup.py install --root=/tmp/install-root
     - name: Run tox targets for ${{ matrix.python-version }}
+      # Capture who this runs as before the run starts
       run: |
+        id
         tox -vv
