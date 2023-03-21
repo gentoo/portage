@@ -11,10 +11,6 @@ Breaking changes:
   We're dropping both pygost and pygcrypt compatibility: pygost has been
   removed from pypi and pygcrypt is inactive upstream.
 
-  pygost being yanked from pypi made CI start to fail too and silently dropping
-  it from CI without addressing the situation which was already suboptimal (insufficient
-  testing) wasn't deemed acceptable.
-
 Cleanups:
 * Drop support for pygcrypt
 
