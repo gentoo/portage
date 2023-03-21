@@ -361,14 +361,7 @@ class RepoConfig:
                     self.volatile = True
                 else:
                     self.volatile = False
-            except Exception:
-                # There's too many conditions here to refine the exception list:
-                # - We lack permissions to poke at the directory (PermissionError)
-                # - Its UID doesn't actually exist and the repository
-                #   won't be synced by the user (KeyError).
-                # - The directory doesn't exist (FileNotFoundError)
-                # - Probably many others.
-                # So, just fail safe.
+            except (FileNotFoundError, PermissionError):
                 self.volatile = True
 
         self.eapi = None

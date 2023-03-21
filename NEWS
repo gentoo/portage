@@ -1,23 +1,15 @@
-portage-3.0.45.3 (UNRELEASED)
-----------------
-
-Features:
 * New portage FEATURE warn-on-large-env, to emit a warning if portage
   executes an ebuild-related child process with a large environment.
 
-Bug fixes:
-* repository: config: Handle more error cases when determining repository
-  volatility (bug #900683).
-
 portage-3.0.45.2 (2023-03-04)
-----------------
+--------------
 
 Bug fixes:
 * repository: config: Fix initial sync of repositories (bug #899208). Regression
   from portage-3.0.45, but the real bug is from portage-3.0.42.
 
 portage-3.0.45.1 (2023-02-27)
-----------------
+--------------
 
 Bug fixes:
 * install-qa-check.d/90config-impl-decl: fix handling of non-ASCII quotes when
