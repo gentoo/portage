@@ -1,5 +1,8 @@
-portage-3.0.46.1 (2023-02-27)
+portage-3.0.46 (UNRELEASED)
 --------------
+
+Features:
+* TODO
 
 Bug fixes:
 * install-qa-check.d/90config-impl-decl: fix handling of non-ASCII quotes when
