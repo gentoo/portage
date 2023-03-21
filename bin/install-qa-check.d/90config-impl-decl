@@ -92,13 +92,12 @@ config_impl_decl_check() {
 	# Drop out early if no impl decls found (all the arrays are the same size)
 	[[ ${#files[@]} -eq 0 ]] && return
 
-	eqawarn 'QA Notice: Found the following implicit function declarations in configure logs:'
+	eqawarn 'Found the following implicit function declarations in configure logs:'
 	for l in "${!files[@]}"; do
 		eqawarn "  ${files[l]}:${lines[l]} - ${funcs[l]}"
 		eqatag 'config.log-impl-decl' "line=${lines[l]}" "func=${funcs[l]}" "${files[l]}"
 	done
 	eqawarn 'Check that no features were accidentally disabled.'
-	eqawarn 'See https://wiki.gentoo.org/wiki/Modern_C_porting.'
 }
 
 config_impl_decl_check
