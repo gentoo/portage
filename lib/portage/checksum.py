@@ -151,7 +151,7 @@ if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
 # Support pygcrypt as fallback using optimized routines from libgcrypt
 # (GnuPG).
 gcrypt_algos = frozenset(
-    ("RMD160", "WHIRLPOOL", "SHA3_256", "SHA3_512")
+    ("RMD160", "WHIRLPOOL", "SHA3_256", "SHA3_512", "STREEBOG256", "STREEBOG512")
 )
 # Note: currently disabled due to resource exhaustion bugs in pygcrypt.
 # Please do not reenable until upstream has a fix.
@@ -177,6 +177,8 @@ if False:
             "WHIRLPOOL": "whirlpool",
             "SHA3_256": "sha3-256",
             "SHA3_512": "sha3-512",
+            "STREEBOG256": "stribog256",
+            "STREEBOG512": "stribog512",
         }
 
         for local_name, gcry_name in name_mapping.items():
@@ -277,6 +279,27 @@ if "RMD160" not in hashfunc_map or "WHIRLPOOL" not in hashfunc_map:
                     ),
                     origin="mhash",
                 )
+    except ImportError:
+        pass
+
+
+# Support pygost as fallback streebog provider
+# It's mostly provided as a reference implementation; it's pure Python,
+# slow and reads all data to memory (i.e. doesn't hash on update()...)
+if "STREEBOG256" not in hashfunc_map or "STREEBOG512" not in hashfunc_map:
+    try:
+        import pygost.gost34112012
+
+        _generate_hash_function(
+            "STREEBOG256",
+            functools.partial(pygost.gost34112012.GOST34112012, digest_size=32),
+            origin="pygost",
+        )
+        _generate_hash_function(
+            "STREEBOG512",
+            functools.partial(pygost.gost34112012.GOST34112012, digest_size=64),
+            origin="pygost",
+        )
     except ImportError:
         pass
 
