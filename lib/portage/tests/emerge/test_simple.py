@@ -708,7 +708,7 @@ move dev-util/git dev-vcs/git
                 # triggered by python -Wd will be visible.
                 stdout = subprocess.PIPE
 
-            for args in test_commands:
+            for idx, args in enumerate(test_commands):
                 if hasattr(args, "__call__"):
                     args()
                     continue
@@ -720,21 +720,22 @@ move dev-util/git dev-vcs/git
                 else:
                     local_env = env
 
-                proc = await asyncio.create_subprocess_exec(
-                    *args, env=local_env, stderr=None, stdout=stdout
-                )
+                with self.subTest(cmd=args, i=idx):
+                    proc = await asyncio.create_subprocess_exec(
+                        *args, env=local_env, stderr=None, stdout=stdout
+                    )
 
-                if debug:
-                    await proc.wait()
-                else:
-                    output, _err = await proc.communicate()
-                    await proc.wait()
-                    if proc.returncode != os.EX_OK:
-                        portage.writemsg(output)
+                    if debug:
+                        await proc.wait()
+                    else:
+                        output, _err = await proc.communicate()
+                        await proc.wait()
+                        if proc.returncode != os.EX_OK:
+                            portage.writemsg(output)
 
-                self.assertEqual(
-                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
-                )
+                    self.assertEqual(
+                        os.EX_OK, proc.returncode, f"emerge failed with args {args}"
+                    )
         finally:
             binhost_server.__exit__(None, None, None)
             playground.cleanup()
