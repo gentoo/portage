@@ -27,10 +27,10 @@ from portage.localization import _
 # SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled
-# BLAKE2B (512): hashlib, pycrypto
-# BLAKE2S (512): hashlib,pycrypto
-# SHA3_256: hashlib, pycrypto
-# SHA3_512: hashlib, pycrypto
+# BLAKE2B (512): hashlib (3.6+), pyblake2, pycrypto
+# BLAKE2S (512): hashlib (3.6+), pyblake2, pycrypto
+# SHA3_256: hashlib (3.6+), pysha3, pycrypto
+# SHA3_512: hashlib (3.6+), pysha3, pycrypto
 
 
 # Dict of all available hash functions
@@ -101,7 +101,7 @@ class _generate_hash_function:
 # already defined.
 
 
-# Use hashlib if available and prefer it over pycrypto and internal fallbacks.
+# Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
 # Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
 _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
 _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
@@ -110,6 +110,7 @@ _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
 for local_name, hash_name in (
     ("RMD160", "ripemd160"),
     ("WHIRLPOOL", "whirlpool"),
+    # available since Python 3.6
     ("BLAKE2B", "blake2b"),
     ("BLAKE2S", "blake2s"),
     ("SHA3_256", "sha3_256"),
@@ -123,6 +124,28 @@ for local_name, hash_name in (
         _generate_hash_function(
             local_name, functools.partial(hashlib.new, hash_name), origin="hashlib"
         )
+
+
+# Support using pyblake2 as fallback for python<3.6
+if "BLAKE2B" not in hashfunc_map or "BLAKE2S" not in hashfunc_map:
+    try:
+        import pyblake2
+
+        _generate_hash_function("BLAKE2B", pyblake2.blake2b, origin="pyblake2")
+        _generate_hash_function("BLAKE2S", pyblake2.blake2s, origin="pyblake2")
+    except ImportError:
+        pass
+
+
+# Support using pysha3 as fallback for python<3.6
+if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
+    try:
+        import sha3
+
+        _generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
+        _generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
+    except ImportError:
+        pass
 
 
 # Use pycrypto when available, prefer it over the internal fallbacks
