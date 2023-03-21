@@ -27,10 +27,10 @@ from portage.localization import _
 # SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled (C), bundled (Python)
-# BLAKE2B (512): hashlib
-# BLAKE2S (512): hashlib
-# SHA3_256: hashlib
-# SHA3_512: hashlib
+# BLAKE2B (512): hashlib, pycrypto
+# BLAKE2S (512): hashlib,pycrypto
+# SHA3_256: hashlib, pycrypto
+# SHA3_512: hashlib, pycrypto
 
 
 # Dict of all available hash functions
@@ -138,6 +138,53 @@ if "RMD160" not in hashfunc_map:
     except ImportError:
         pass
 
+# The following hashes were added in pycryptodome (pycrypto fork)
+if "BLAKE2B" not in hashfunc_map:
+    try:
+        from Crypto.Hash import BLAKE2b
+
+        blake2bhash_ = getattr(BLAKE2b, "new", None)
+        if blake2bhash_ is not None:
+            _generate_hash_function(
+                "BLAKE2B",
+                functools.partial(blake2bhash_, digest_bytes=64),
+                origin="pycrypto",
+            )
+    except ImportError:
+        pass
+
+if "BLAKE2S" not in hashfunc_map:
+    try:
+        from Crypto.Hash import BLAKE2s
+
+        blake2shash_ = getattr(BLAKE2s, "new", None)
+        if blake2shash_ is not None:
+            _generate_hash_function(
+                "BLAKE2S",
+                functools.partial(blake2shash_, digest_bytes=32),
+                origin="pycrypto",
+            )
+    except ImportError:
+        pass
+
+if "SHA3_256" not in hashfunc_map:
+    try:
+        from Crypto.Hash import SHA3_256
+
+        sha3_256hash_ = getattr(SHA3_256, "new", None)
+        if sha3_256hash_ is not None:
+            _generate_hash_function("SHA3_256", sha3_256hash_, origin="pycrypto")
+    except ImportError:
+        pass
+
+if "SHA3_512" not in hashfunc_map:
+    try:
+        from Crypto.Hash import SHA3_512
+
+        sha3_512hash_ = getattr(SHA3_512, "new", None)
+        if sha3_512hash_ is not None:
+            _generate_hash_function("SHA3_512", sha3_512hash_, origin="pycrypto")
+    except ImportError:
         pass
 
 
