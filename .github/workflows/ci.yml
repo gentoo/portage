@@ -8,41 +8,40 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version:
-        - '3.7'
-        - '3.8'
-        - '3.9'
-        - '3.10'
-        - '3.11'
-        - '3.12-dev'
-        - 'pypy-3.7'
-        - 'pypy-3.8'
-        - 'pypy-3.9'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12-dev'
+          - 'pypy-3.7'
+          - 'pypy-3.8'
+          - 'pypy-3.9'
       fail-fast: false
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install python dependencies
-      run: |
-        set -xe
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libxml2-utils zstd
-        python -VV
-        python -m site
-        python -m pip install --upgrade pip
-        python -m pip install tox tox-gh-actions
-    - name: Test ./setup.py install --root=/tmp/install-root
-      run: |
-        printf "[build_ext]\nportage_ext_modules=true" >> setup.cfg
-        ./setup.py install --root=/tmp/install-root
-    - name: Run tox targets for ${{ matrix.python-version }}
-      run: |
-        tox -vv
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install python dependencies
+        run: |
+          set -xe
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libxml2-utils zstd
+          python -VV
+          python -m site
+          python -m pip install --upgrade pip
+          python -m pip install tox tox-gh-actions
+      - name: Test ./setup.py install --root=/tmp/install-root
+        run: |
+          printf "[build_ext]\nportage_ext_modules=true" >> setup.cfg
+          ./setup.py install --root=/tmp/install-root
+      - name: Run tox test env for ${{ matrix.python-version }}
+        run: tox -vv
+        env:
+          TARGET: test
