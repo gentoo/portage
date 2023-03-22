@@ -1,5 +1,10 @@
+portage-3.0.48 (UNRELEASED)
+---------------
 Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
+
+Cleanups:
+* Convert printf-style %-formats into fstrings.
 
 portage-3.0.47 (2023-04-30)
 ---------------
