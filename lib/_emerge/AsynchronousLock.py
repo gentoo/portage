@@ -18,7 +18,6 @@ except ImportError:
 import portage
 from portage import os
 from portage.exception import TryAgain
-from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
 from _emerge.AbstractPollTask import AbstractPollTask
@@ -244,9 +243,7 @@ class _LockProcess(AbstractPollTask):
                 # this failure appropriately.
                 if not (self.cancelled or self._kill_test):
                     writemsg_level(
-                        "_LockProcess: %s\n"
-                        % _("failed to acquire lock on '%s'")
-                        % (self.path,),
+                        "_LockProcess: failed to acquire lock on '{self.path}'\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )

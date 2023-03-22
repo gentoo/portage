@@ -80,8 +80,8 @@ class MergeListItem(CompositeTask):
         if not build_opts.pretend:
             self.statusMessage(msg)
             logger.log(
-                " >>> emerge (%s of %s) %s to %s"
-                % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root)
+                f" >>> emerge ({pkg_count.curval} of {pkg_count.maxval}) "
+                f"{pkg.cpv} to {pkg.root}"
             )
 
         if pkg.type_name == "ebuild":

@@ -8,7 +8,6 @@ import textwrap
 import portage
 from portage import os
 from portage.dbapi._expand_new_virt import expand_new_virt
-from portage.localization import _
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
 from portage._sets.base import EditablePackageSet
@@ -228,8 +227,7 @@ def _unmerge_display(
                 mymatch = vartree.dep_match(x)
             if not mymatch:
                 portage.writemsg(
-                    "\n--- Couldn't find '%s' to %s.\n"
-                    % (x.replace("null/", ""), unmerge_action),
+                    f"\n--- Couldn't find '{x.replace('null/', '')}' to {unmerge_action}.\n",
                     noiselevel=-1,
                 )
                 continue
@@ -369,17 +367,17 @@ def _unmerge_display(
                 skip_pkg = False
                 if portage.match_from_list(portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
                     msg = (
-                        "Not unmerging package %s "
+                        f"Not unmerging package {pkg.cpv} "
                         "since there is no valid reason for Portage to "
-                        "%s itself."
-                    ) % (pkg.cpv, unmerge_action)
+                        f"{unmerge_action} itself."
+                    )
                     skip_pkg = True
                 elif vartree.dbapi._dblink(cpv).isowner(portage._python_interpreter):
                     msg = (
-                        "Not unmerging package %s since there is no valid "
-                        "reason for Portage to %s currently used Python "
+                        f"Not unmerging package {pkg.cpv} since there is no valid "
+                        f"reason for Portage to {unmerge_action} currently used Python "
                         "interpreter."
-                    ) % (pkg.cpv, unmerge_action)
+                    )
                     skip_pkg = True
                 if skip_pkg:
                     for line in textwrap.wrap(msg, 75):
@@ -404,12 +402,8 @@ def _unmerge_display(
                     unknown_sets.add(s)
                     out = portage.output.EOutput()
                     out.eerror(
-                        ("Unknown set '@%s' in %s%s")
-                        % (
-                            s,
-                            root_config.settings["EROOT"],
-                            portage.const.WORLD_SETS_FILE,
-                        )
+                        f"Unknown set '@{s}' in "
+                        f"{root_config.settings['EROOT']}{portage.const.WORLD_SETS_FILE}"
                     )
                     continue
 
@@ -555,7 +549,7 @@ def _unmerge_display(
             writemsg_level("\n", noiselevel=-1)
 
     writemsg_level(
-        "\nAll selected packages: %s\n" % " ".join("=%s" % x for x in all_selected),
+        f"\nAll selected packages: {' '.join(f'={x}' for x in all_selected)}\n",
         noiselevel=-1,
     )
 
@@ -632,7 +626,7 @@ def unmerge(
 
     if not vartree.dbapi.writable:
         writemsg_level(
-            "!!! %s\n" % _("Read-only file system: %s") % vartree.dbapi._dbroot,
+            f"!!! Read-only file system: {vartree.dbapi._dbroot}\n",
             level=logging.ERROR,
             noiselevel=-1,
         )

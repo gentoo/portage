@@ -13,7 +13,6 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 import portage
 from portage.elog import messages as elog_messages
-from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
@@ -72,10 +71,10 @@ class AbstractEbuildProcess(SpawnProcess):
         # die_hooks for some reason, and PORTAGE_BUILDDIR
         # doesn't exist yet.
         if need_builddir and not os.path.isdir(self.settings["PORTAGE_BUILDDIR"]):
-            msg = _(
-                "The ebuild phase '%s' has been aborted "
-                "since PORTAGE_BUILDDIR does not exist: '%s'"
-            ) % (self.phase, self.settings["PORTAGE_BUILDDIR"])
+            msg = (
+                f"The ebuild phase '{self.phase}' has been aborted since "
+                f"PORTAGE_BUILDDIR does not exist: '{self.settings['PORTAGE_BUILDDIR']}'"
+            )
             self._eerror(textwrap.wrap(msg, 72))
             self.returncode = 1
             self._async_wait()
@@ -326,11 +325,10 @@ class AbstractEbuildProcess(SpawnProcess):
     def _orphan_process_warn(self):
         phase = self.phase
 
-        msg = _(
-            "The ebuild phase '%s' with pid %s appears "
-            "to have left an orphan process running in the "
-            "background."
-        ) % (phase, self.pid)
+        msg = (
+            f"The ebuild phase '{phase}' with pid {self.pid} appears "
+            "to have left an orphan process running in the background."
+        )
 
         self._eerror(textwrap.wrap(msg, 72))
 
@@ -346,38 +344,32 @@ class AbstractEbuildProcess(SpawnProcess):
         ) or os.isatty(slave_fd)
 
     def _killed_by_signal(self, signum):
-        msg = _("The ebuild phase '%s' has been " "killed by signal %s.") % (
-            self.phase,
-            signum,
-        )
+        msg = f"The ebuild phase '{self.phase}' has been killed by signal {signum}."
         self._eerror(textwrap.wrap(msg, 72))
 
     def _unexpected_exit(self):
         phase = self.phase
 
         msg = (
-            _(
-                "The ebuild phase '%s' has exited "
-                "unexpectedly. This type of behavior "
-                "is known to be triggered "
-                "by things such as failed variable "
-                "assignments (bug #190128) or bad substitution "
-                "errors (bug #200313). Normally, before exiting, bash should "
-                "have displayed an error message above. If bash did not "
-                "produce an error message above, it's possible "
-                "that the ebuild has called `exit` when it "
-                "should have called `die` instead. This behavior may also "
-                "be triggered by a corrupt bash binary or a hardware "
-                "problem such as memory or cpu malfunction. If the problem is not "
-                "reproducible or it appears to occur randomly, then it is likely "
-                "to be triggered by a hardware problem. "
-                "If you suspect a hardware problem then you should "
-                "try some basic hardware diagnostics such as memtest. "
-                "Please do not report this as a bug unless it is consistently "
-                "reproducible and you are sure that your bash binary and hardware "
-                "are functioning properly."
-            )
-            % phase
+            f"The ebuild phase '{phase}' has exited "
+            "unexpectedly. This type of behavior "
+            "is known to be triggered "
+            "by things such as failed variable "
+            "assignments (bug #190128) or bad substitution "
+            "errors (bug #200313). Normally, before exiting, bash should "
+            "have displayed an error message above. If bash did not "
+            "produce an error message above, it's possible "
+            "that the ebuild has called `exit` when it "
+            "should have called `die` instead. This behavior may also "
+            "be triggered by a corrupt bash binary or a hardware "
+            "problem such as memory or cpu malfunction. If the problem is not "
+            "reproducible or it appears to occur randomly, then it is likely "
+            "to be triggered by a hardware problem. "
+            "If you suspect a hardware problem then you should "
+            "try some basic hardware diagnostics such as memtest. "
+            "Please do not report this as a bug unless it is consistently "
+            "reproducible and you are sure that your bash binary and hardware "
+            "are functioning properly."
         )
 
         self._eerror(textwrap.wrap(msg, 72))

@@ -112,8 +112,7 @@ class Display:
         if self.resolved != blocker.atom:
             addl += colorize(
                 self.blocker_style,
-                ' ("%s" is %s %s)'
-                % (str(blocker.atom).lstrip("!"), blocking_desc, block_parents),
+                f' ("{str(blocker.atom).lstrip("!")}" is {blocking_desc} {block_parents})',
             )
         else:
             addl += colorize(
