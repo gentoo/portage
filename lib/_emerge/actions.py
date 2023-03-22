@@ -582,9 +582,7 @@ def action_build(
             for eroot in eroots:
                 if need_write_vardb and not trees[eroot]["vartree"].dbapi.writable:
                     writemsg_level(
-                        "!!! %s\n"
-                        % _("Read-only file system: %s")
-                        % trees[eroot]["vartree"].dbapi._dbroot,
+                        f"!!! Read-only file system: {trees[eroot]['vartree'].dbapi._dbroot}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -601,9 +599,7 @@ def action_build(
                     and not trees[eroot]["bintree"].dbapi.writable
                 ):
                     writemsg_level(
-                        "!!! %s\n"
-                        % _("Read-only file system: %s")
-                        % trees[eroot]["bintree"].pkgdir,
+                        f"!!! Read-only file system: {trees[eroot]['bintree'].pkgdir}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -943,8 +939,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             # A nested set could not be resolved, so ignore nested sets.
             set_atoms[k] = root_config.sets[k].getAtoms()
             writemsg_level(
-                _("!!! The set '%s' " "contains a non-existent set named '%s'.\n")
-                % (k, e),
+                f"!!! The set '{k}' contains a non-existent set named '{e}'.\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -967,8 +962,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         world_atoms = bool(root_config.setconfig.getSetAtoms("world"))
     except portage.exception.PackageSetNotFound as e:
         writemsg_level(
-            _("!!! The set '%s' " "contains a non-existent set named '%s'.\n")
-            % ("world", e),
+            f"!!! The set 'world' contains a non-existent set named '{e}'.\n",
             level=logging.ERROR,
             noiselevel=-1,
         )
@@ -1052,8 +1046,8 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             if not pkgs_for_cp or pkg not in pkgs_for_cp:
                 raise AssertionError(
                     "package expected in matches: "
-                    + "cp = %s, cpv = %s matches = %s"
-                    % (pkg.cp, pkg.cpv, [str(x) for x in pkgs_for_cp])
+                    f"cp = {pkg.cp}, cpv = {pkg.cpv}, "
+                    f"matches = {[str(x) for x in pkgs_for_cp]}"
                 )
 
             highest_version = pkgs_for_cp[-1]
@@ -1065,8 +1059,8 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             if len(pkgs_for_cp) <= 1:
                 raise AssertionError(
                     "more packages expected: "
-                    + "cp = %s, cpv = %s matches = %s"
-                    % (pkg.cp, pkg.cpv, [str(x) for x in pkgs_for_cp])
+                    f"cp = {pkg.cp}, cpv = {pkg.cpv}, "
+                    f"matches = {[str(x) for x in pkgs_for_cp]}"
                 )
 
             try:
@@ -1256,11 +1250,8 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             # atoms in separate groups.
             atoms = sorted(atoms, reverse=True, key=operator.attrgetter("package"))
             parent_strs.append(
-                "%s requires %s"
-                % (
-                    getattr(parent, "cpv", parent),
-                    ", ".join(str(atom) for atom in atoms),
-                )
+                f"{getattr(parent, 'cpv', parent)} requires "
+                f"{', '.join(str(atom) for atom in atoms)}"
             )
         parent_strs.sort()
         msg = []
@@ -1777,8 +1768,8 @@ def action_deselect(settings, trees, opts, atoms):
                     filename = "world"
 
                 writemsg_stdout(
-                    '>>> %s %s from "%s" favorites file...\n'
-                    % (action_desc, colorize("INFORM", str(atom)), filename),
+                    f">>> {action_desc} {colorize('INFORM', str(atom))} "
+                    f'from "{filename}" favorites file...\n',
                     noiselevel=-1,
                 )
 
@@ -1874,8 +1865,7 @@ def action_info(settings, trees, myopts, myfiles):
             if settings["ROOT"] != "/":
                 xinfo = f"{xinfo} for {eroot}"
             writemsg(
-                "\nemerge: there are no ebuilds to satisfy %s.\n"
-                % colorize("INFORM", xinfo),
+                f"\nemerge: there are no ebuilds to satisfy {colorize('INFORM', xinfo)}.\n",
                 noiselevel=-1,
             )
 
@@ -1897,8 +1887,7 @@ def action_info(settings, trees, myopts, myfiles):
                     )
                 elif len(matches) > 1:
                     writemsg(
-                        "\nemerge: Maybe you meant any of these: %s?\n"
-                        % (", ".join(matches),),
+                        f"\nemerge: Maybe you meant any of these: {', '.join(matches)}?\n",
                         noiselevel=-1,
                     )
                 else:
@@ -1933,14 +1922,14 @@ def action_info(settings, trees, myopts, myfiles):
 
     vm_info = get_vm_info()
     if "ram.total" in vm_info:
-        line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] // 1024)
+        line = f"KiB Mem:  {vm_info['ram.total'] // 1024:10d} total"
         if "ram.free" in vm_info:
-            line += ",%10d free" % (vm_info["ram.free"] // 1024,)
+            line += f",{vm_info['ram.free'] // 1024:10d} free"
         append(line)
     if "swap.total" in vm_info:
-        line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] // 1024)
+        line = f"KiB Swap: {vm_info['swap.total'] // 1024:10d} total"
         if "swap.free" in vm_info:
-            line += ",%10d free" % (vm_info["swap.free"] // 1024,)
+            line += f",{vm_info['swap.free'] // 1024:10d} free"
         append(line)
 
     for repo in repos:
@@ -2068,7 +2057,7 @@ def action_info(settings, trees, myopts, myfiles):
         try:
             x = Atom(x)
         except InvalidAtom:
-            append("%-20s %s" % (x + ":", "[NOT VALID]"))
+            append(f"{x + ':':<20s} [NOT VALID]")
         else:
             for atom in expand_new_virt(vardb, x):
                 if not atom.blocker:
@@ -2262,18 +2251,18 @@ def action_info(settings, trees, myopts, myfiles):
 
             if pkg_type == "installed":
                 append(
-                    "\n%s was built with the following:"
-                    % colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo))
+                    f"\n{colorize('INFORM', str(pkg.cpv + _repo_separator + pkg.repo))} "
+                    "was built with the following:"
                 )
             elif pkg_type == "ebuild":
                 append(
-                    "\n%s would be built with the following:"
-                    % colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo))
+                    f"\n{colorize('INFORM', str(pkg.cpv + _repo_separator + pkg.repo))} "
+                    "would be built with the following:"
                 )
             elif pkg_type == "binary":
                 append(
-                    "\n%s (non-installed binary) was built with the following:"
-                    % colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo))
+                    f"\n{colorize('INFORM', str(pkg.cpv + _repo_separator + pkg.repo))} "
+                    "(non-installed binary) was built with the following:"
                 )
 
             append(f"{pkg_use_display(pkg, myopts)}")
@@ -2474,11 +2463,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
             else:
                 if atom.use and atom.use.conditional:
                     writemsg_level(
-                        (
-                            "\n\n!!! '%s' contains a conditional "
-                            + "which is not allowed.\n"
-                        )
-                        % (x,),
+                        f"\n\n!!! '{x}' contains a conditional which is not allowed.\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -2492,7 +2477,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
         elif x.startswith(os.sep):
             if not x.startswith(eroot):
                 writemsg_level(
-                    ("!!! '%s' does not start with" + " $EROOT.\n") % x,
+                    f"!!! '{x}' does not start with $EROOT.\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -2577,7 +2562,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                 valid_atoms.append(portage.dep.Atom(atom))
         else:
             writemsg_level(
-                ("!!! '%s' is not claimed " + "by any package.\n") % lookup_owners[0],
+                f"!!! '{lookup_owners[0]}' is not claimed by any package.\n",
                 level=logging.WARNING,
                 noiselevel=-1,
             )
@@ -2708,8 +2693,8 @@ def adjust_config(myopts, settings):
     except ValueError as e:
         portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: EMERGE_WARNING_DELAY='%s'\n"
-            % settings["EMERGE_WARNING_DELAY"],
+            "!!! Unable to parse integer: "
+            f"EMERGE_WARNING_DELAY='{settings['EMERGE_WARNING_DELAY']}'\n",
             noiselevel=-1,
         )
     settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
@@ -2740,15 +2725,15 @@ def adjust_config(myopts, settings):
         PORTAGE_DEBUG = int(settings.get("PORTAGE_DEBUG", str(PORTAGE_DEBUG)))
         if PORTAGE_DEBUG not in (0, 1):
             portage.writemsg(
-                "!!! Invalid value: PORTAGE_DEBUG='%i'\n" % PORTAGE_DEBUG, noiselevel=-1
+                f"!!! Invalid value: PORTAGE_DEBUG='{PORTAGE_DEBUG}'\n",
+                noiselevel=-1,
             )
             portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n", noiselevel=-1)
             PORTAGE_DEBUG = 0
     except ValueError as e:
         portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n"
-            % settings["PORTAGE_DEBUG"],
+            f"!!! Unable to parse integer: PORTAGE_DEBUG='{settings['PORTAGE_DEBUG']}'\n",
             noiselevel=-1,
         )
         del e
@@ -2783,8 +2768,8 @@ def adjust_config(myopts, settings):
 def display_missing_pkg_set(root_config, set_name):
     msg = []
     msg.append(
-        ("emerge: There are no sets to satisfy '%s'. " + "The following sets exist:")
-        % colorize("INFORM", set_name)
+        f"emerge: There are no sets to satisfy '{colorize('INFORM', set_name)}'. "
+        "The following sets exist:"
     )
     msg.append("")
 
@@ -2806,7 +2791,14 @@ def relative_profile_path(portdir, abs_profile):
 
 
 def getportageversion(portdir, _unused, profile, chost, vardb):
-    pythonver = "python %d.%d.%d-%s-%d" % sys.version_info[:]
+    pythonver = (
+        "python"
+        f" {sys.version_info[0]}"
+        f".{sys.version_info[1]}"
+        f".{sys.version_info[2]}"
+        f"-{sys.version_info[3]}"
+        f"-{sys.version_info[4]}"
+    )
     profilever = None
     repositories = vardb.settings.repositories
     if profile:
@@ -3078,7 +3070,7 @@ def ionice(settings):
 
     if rval != os.EX_OK:
         out = portage.output.EOutput()
-        out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
+        out.eerror(f"PORTAGE_IONICE_COMMAND returned {rval}")
         out.eerror(
             "See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions."
         )
@@ -3157,7 +3149,7 @@ def missing_sets_warning(root_config, missing_sets):
         missing_sets_str = ", ".join(f'"{s}"' for s in missing_sets[:-1])
         missing_sets_str += f', and "{missing_sets[-1]}"'
     elif len(missing_sets) == 2:
-        missing_sets_str = '"%s" and "%s"' % tuple(missing_sets)
+        missing_sets_str = f'"{missing_sets[0]}" and "{missing_sets[1]}"'
     else:
         missing_sets_str = f'"{missing_sets[-1]}"'
     msg = [
@@ -3171,8 +3163,8 @@ def missing_sets_warning(root_config, missing_sets):
             portage.const.EPREFIX, portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep)
         )
     msg.append(
-        "        This usually means that '%s'"
-        % (os.path.join(global_config_path, "sets/portage.conf"),)
+        "        This usually means that "
+        f"'{os.path.join(global_config_path, 'sets/portage.conf')}'"
     )
     msg.append("        is missing or corrupt.")
     msg.append("        Falling back to default world and system set configuration!!!")
@@ -3283,11 +3275,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
                 set_atoms = setconfig.getSetAtoms(s)
             except portage.exception.PackageSetNotFound as e:
                 writemsg_level(
-                    (
-                        "emerge: the given set '%s' "
-                        + "contains a non-existent set named '%s'.\n"
-                    )
-                    % (s, e),
+                    f"emerge: the given set '{s}' contains a non-existent set named '{e}'.\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -3297,12 +3285,8 @@ def expand_set_arguments(myfiles, myaction, root_config):
                 ):
                     writemsg_level(
                         (
-                            "Use `emerge --deselect %s%s` to "
+                            f"Use `emerge --deselect {SETPREFIX}{e}` to "
                             "remove this set from world_sets.\n"
-                        )
-                        % (
-                            SETPREFIX,
-                            e,
                         ),
                         level=logging.ERROR,
                         noiselevel=-1,
@@ -3519,11 +3503,7 @@ def run_action(emerge_config):
                 problematic = "PORTAGE_BINPKG_FORMAT"
 
             writemsg_level(
-                (
-                    "emerge: %s is not set correctly. Format "
-                    + "'%s' is not supported.\n"
-                )
-                % (problematic, fmt),
+                f"emerge: {problematic} is not set correctly. Format '{fmt}' is not supported.\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -3598,8 +3578,7 @@ def run_action(emerge_config):
         and emerge_config.args
     ):
         writemsg(
-            "emerge: unexpected argument(s) for --resume: %s\n"
-            % " ".join(emerge_config.args),
+            f"emerge: unexpected argument(s) for --resume: {' '.join(emerge_config.args)}\n",
             noiselevel=-1,
         )
         return 1
@@ -3741,7 +3720,7 @@ def run_action(emerge_config):
                     emerge_config.opts["--pretend"] = True
                     emerge_config.opts.pop("--ask")
                 else:
-                    sys.stderr.write(("emerge: %s access is required\n") % access_desc)
+                    sys.stderr.write(f"emerge: {access_desc} access is required\n")
                     if portage.data.secpass < 1 and not need_superuser:
                         portage.data.portage_group_warning()
                     return 1
@@ -3853,8 +3832,7 @@ def run_action(emerge_config):
     if emerge_config.action in ("config", "metadata", "regen", "sync"):
         if "--pretend" in emerge_config.opts:
             sys.stderr.write(
-                ("emerge: The '%s' action does " + "not support '--pretend'.\n")
-                % emerge_config.action
+                f"emerge: The '{emerge_config.action}' action does not support '--pretend'.\n"
             )
             return 1
 

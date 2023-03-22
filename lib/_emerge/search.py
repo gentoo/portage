@@ -502,8 +502,7 @@ class search:
                 if self.verbose:
                     if available:
                         msg.append(
-                            "      %s %s\n"
-                            % (darkgreen("Latest version available:"), myversion)
+                            f"      {darkgreen('Latest version available:')} {myversion}\n"
                         )
                     msg.append(
                         f"      {self.getInstallationStatus(mycat + '/' + mypkg)}\n"

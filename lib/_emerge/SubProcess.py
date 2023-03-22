@@ -30,7 +30,7 @@ class SubProcess(AbstractPollTask):
                 if e.errno == errno.EPERM:
                     # Reported with hardened kernel (bug #358211).
                     writemsg_level(
-                        "!!! kill: (%i) - Operation not permitted\n" % (self.pid,),
+                        f"!!! kill: ({self.pid}) - Operation not permitted\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )

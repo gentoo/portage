@@ -244,8 +244,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
             else:
                 result.set_exception(
                     AssertionError(
-                        "AsynchronousLock failed with returncode %s"
-                        % (async_lock.returncode,)
+                        f"AsynchronousLock failed with returncode {async_lock.returncode}"
                     )
                 )
 

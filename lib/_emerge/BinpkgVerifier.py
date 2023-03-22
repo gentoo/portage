@@ -42,7 +42,7 @@ class BinpkgVerifier(CompositeTask):
             if e.errno not in (errno.ENOENT, errno.ESTALE):
                 raise
             self.scheduler.output(
-                ("!!! Fetching Binary failed " "for '%s'\n") % self.pkg.cpv,
+                f"!!! Fetching Binary failed for '{self.pkg.cpv}'\n",
                 log_path=self.logfile,
                 background=self.background,
             )
@@ -123,15 +123,12 @@ class BinpkgVerifier(CompositeTask):
         )
 
         self.scheduler.output(
-            (
-                "\n!!! Digest verification failed:\n"
-                "!!! %s\n"
-                "!!! Reason: Failed on %s verification\n"
-                "!!! Got: %s\n"
-                "!!! Expected: %s\n"
-                "File renamed to '%s'\n"
-            )
-            % (self._pkg_path, name, value, expected, temp_filename),
+            "\n!!! Digest verification failed:\n"
+            f"!!! {self._pkg_path}\n"
+            f"!!! Reason: Failed on {name} verification\n"
+            f"!!! Got: {value}\n"
+            f"!!! Expected: {expected}\n"
+            f"File renamed to '{temp_filename}'\n",
             log_path=self.logfile,
             background=self.background,
         )
