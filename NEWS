@@ -18,6 +18,9 @@ Features:
   - -Wimplicit-int
   - -Wstring-compare
 
+Cleanups:
+* Convert printf-style %-formats into fstrings.
+
 portage-3.0.46 (2023-04-07)
 ---------------
 
