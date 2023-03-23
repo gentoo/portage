@@ -6,3 +6,5 @@ __pycache__/
 /tags
 /.tox/
 setup.cfg
+.*.swp
+*.vim
