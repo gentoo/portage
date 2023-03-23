@@ -485,6 +485,7 @@ class binarytree:
         self._remotepkgs = None  # remote metadata indexed by cpv
         self._additional_pkgs = {}
         self.invalids = []
+        self.invalid_paths: dict[str, list[str]] = {}
         self.settings = settings
         self._pkg_paths = {}
         self._populating = False
@@ -1017,12 +1018,14 @@ class binarytree:
                             noiselevel=-1,
                         )
                         self.invalids.append(myfile[:-5])
+                        self.invalid_paths[myfile] = [full_path]
                         continue
 
                     try:
                         binpkg_format = get_binpkg_format(myfile)
                     except InvalidBinaryPackageFormat:
                         self.invalids.append(myfile[:-5])
+                        self.invalid_paths[myfile[:-5]] = [full_path]
                         continue
 
                     if gpkg_only:
@@ -1089,6 +1092,7 @@ class binarytree:
                         for line in textwrap.wrap("".join(msg), 72):
                             writemsg(f"!!! {line}\n", noiselevel=-1)
                         self.invalids.append(mypkg)
+                        self.invalid_paths[mypkg] = [full_path]
                         continue
 
                     multi_instance = False
