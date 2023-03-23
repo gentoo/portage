@@ -42,6 +42,7 @@ class BinarytreeTestCase(TestCase):
             "_remotepkgs",
             "_additional_pkgs",
             "invalids",
+            "invalid_paths",
             "settings",
             "_pkg_paths",
             "_populating",
