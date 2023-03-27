@@ -6267,9 +6267,10 @@ class dblink:
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
-        excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
-        if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
-            return True
+        if "xattr" in self.settings.features:
+            excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
+            if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
+                return True
 
         return not filecmp.cmp(mysrc, mydest, shallow=False)
 
