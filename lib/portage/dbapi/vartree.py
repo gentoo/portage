@@ -5544,6 +5544,8 @@ class dblink:
                     destmd5,
                     mydest_link,
                 )
+                if protected and moveme:
+                    mydmode = None
 
             zing = "!!!"
             if not moveme:
@@ -5584,6 +5586,7 @@ class dblink:
                         msg.append("")
                         self._eerror("preinst", msg)
                         mydest = newdest
+                        mydmode = None
 
                 # if secondhand is None it means we're operating in "force" mode and should not create a second hand.
                 if (secondhand is not None) and (not os.path.exists(myrealto)):
@@ -5797,6 +5800,7 @@ class dblink:
                     msg.append("")
                     self._eerror("preinst", msg)
                     mydest = newdest
+                    mydmode = None
 
                 # whether config protection or not, we merge the new file the
                 # same way.  Unless moveme=0 (blocking directory)
@@ -6260,10 +6264,7 @@ class dblink:
         Takes file mode and extended attributes into account.
         Should only be used for regular files.
         """
-        if not os.path.exists(mydest):
-            return True
-
-        if mymode != mydmode:
+        if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
         excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
