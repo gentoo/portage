@@ -146,4 +146,6 @@ class PyWebRsync(SyncBase):
 
     def sync(self, **kwargs):
         """Sync the repository"""
-        pass
+        raise NotImplementedError(
+            "Python impl. of webrsync backend is not yet implemented"
+        )
