@@ -7,11 +7,11 @@ from portage import os
 from portage.util import writemsg_level
 from portage.util.futures import asyncio
 from portage.output import create_color_func
+from portage.sync.syncbase import SyncBase
 
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from portage.sync.syncbase import SyncBase
 
 try:
     from gemato.exceptions import GematoException
@@ -21,7 +21,15 @@ except ImportError:
 
 
 class WebRsync(SyncBase):
-    """WebRSync sync class"""
+    """WebRSync sync class
+
+    This class implements syncing via calls to an external binary, either:
+    - emerge-delta-webrsync (if sync-webrsync-delta is set), or
+    - emerge-webrsync
+
+    It wraps them and performs PGP verification if sync-webrsync-verify-signature
+    is set via gemato.
+    """
 
     short_desc = "Perform sync operations on webrsync based repositories"
 
@@ -133,7 +141,12 @@ class WebRsync(SyncBase):
 
 
 class PyWebRsync(SyncBase):
-    """WebRSync sync class"""
+    """PyWebRsync sync class
+
+    TODO: Implement the sync parts from the emerge-webrsync external
+          binary to avoid split logic for various components, which
+          is how we ended up with bug #597800.
+    """
 
     short_desc = "Perform sync operations on webrsync based repositories"
 
