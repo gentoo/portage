@@ -1,15 +1,25 @@
 # Maintainer: Oskari Pirhonen <xxc3ncoredxx@gmail.com>
 
-image: ubuntu/lts
+image: ubuntu/jammy
 shell: true
+repositories:
+  # For more versions than just the default python3
+  deadsnakes: https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy main "BA6932366A755776"
+environment:
+  PYTHON_VERSIONS:
+    - '3.7'
+    - '3.8'
+    - '3.9'
+    - '3.10'
+    - '3.11'
 tasks:
-  - setup-lint-env: |
-      sudo apt-get update
-      sudo apt-get install -y --no-install-recommends python-is-python3 python3-venv
-      python -m venv .venv
+  - setup-python: |
+      portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
+
+  - setup-black: |
       source .venv/bin/activate
-      pip install --upgrade pip
       pip install black
+      deactivate
 
   - black: |
       source .venv/bin/activate
@@ -18,3 +28,4 @@ tasks:
           xargs grep -l '#!/usr/bin/env python' | \
           tr '\n' ' ')"
       black --check --diff --color . $STRAGGLERS
+      deactivate
