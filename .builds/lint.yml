@@ -21,11 +21,27 @@ tasks:
       pip install black
       deactivate
 
+  - setup-pylint: |
+      for py in "${PYTHON_VERSIONS[@]}"; do
+        source ".venv-$py/bin/activate"
+        pip install pylint
+        deactivate
+      done
+
   - black: |
       source .venv/bin/activate
       cd portage
       STRAGGLERS="$(find bin runtests -type f -not -name '*.py' -not -name '*.sh' | \
           xargs grep -l '#!/usr/bin/env python' | \
           tr '\n' ' ')"
-      black --check --diff --color . $STRAGGLERS
+      time black --check --diff --color . $STRAGGLERS
       deactivate
+
+  - pylint: |
+      for py in "${PYTHON_VERSIONS[@]}"; do
+        source ".venv-$py/bin/activate"
+        pushd portage
+          time ./run-pylint
+        popd
+        deactivate
+      done
