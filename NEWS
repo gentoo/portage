@@ -56,7 +56,8 @@ Features:
   for a time for compatibility.
 
 Bug fixes:
-* TODO
+* tests: util/test_shelve: fix test failure if the backend for the shelve module
+  does not create the shelve db using the literal filename.
 
 portage-3.0.45.3 (2023-03-19)
 ----------------
