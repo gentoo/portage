@@ -1,0 +1,39 @@
+# Maintainer: Oskari Pirhonen <xxc3ncoredxx@gmail.com>
+
+image: ubuntu/jammy
+shell: true
+repositories:
+  # For more versions than just the default python3
+  deadsnakes: https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy main "BA6932366A755776"
+  # Because Ubuntu have yet to fix: https://foss.hetapod.net/pypy/pypy/-/issues/3741
+  # pypy: https://ppa.launchpadcontent.net/pypy/ppa/ubuntu jammy main "251104D968854915"
+environment:
+  PYTHON_VERSIONS:
+    - '3.7'
+    - '3.8'
+    - '3.9'
+    - '3.10'
+    - '3.11'
+    # Testing PyPy is currently broken, see bug #903709
+    # - 'pypy3'
+tasks:
+  - setup-python: |
+      portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
+
+  - test-install: |
+      for py in "${PYTHON_VERSIONS[@]}"; do
+        source ".venv-$py/bin/activate"
+        pushd portage
+          time ./setup.py clean install
+        popd
+        deactivate
+      done
+
+  - test-portage: |
+      for py in "${PYTHON_VERSIONS[@]}"; do
+        source ".venv-$py/bin/activate"
+        pushd portage
+          ./setup.py clean test
+        popd
+        deactivate
+      done
