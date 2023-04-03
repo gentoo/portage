@@ -59,6 +59,25 @@ Features:
   See bug #898224. Portage previously used NOCOLOR. It continues to support NOCOLOR
   for a time for compatibility.
 
+* ci: enable running Portage tests on sourcehut builds
+
+  The build manifests and supporting files can be found in .builds/
+
+  Current limitations compared to GitHub actions:
+
+  - Does not test with PyPy (see bug #903709)
+  - Runs all all tests on each push (unless pushed with `-o skip-ci` which skips
+    all tests)
+  - Runs lint and ci jobs concurrently, but each Python version within those is
+    tested sequentially. This means tests will take longer to complete, unless
+    the run fails partway through (~1h vs ~15-20m).
+
+  Benefits compared to GitHub actions:
+
+  - Can monitor test progress over SSH
+  - Can investigate failed tests over SSH
+  - ... not GitHub ;)
+
 Bug fixes:
 * dbapi: Handle mismatched binpkg structure during pkgmoves (bug #877271,
   bug #903917, bug #903926).
