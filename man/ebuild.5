@@ -803,6 +803,11 @@ One or more ebuild phases will produce a prompt that requires user interaction.
 .I live
 The package uses live source code that may vary each time that the package
 is installed.
+.TP
+.I test_network
+The package manager may run tests that require an internet connection, even if
+the ebuild has
+.IR RESTRICT=test .
 .RE
 .PD 1
 .TP
