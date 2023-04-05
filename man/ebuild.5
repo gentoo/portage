@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "July 2022" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Apr 2023" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -738,7 +738,7 @@ Must enable exactly one but not more (exclusive or)	^^ ( flag1 flag2 flag3 )
 May enable at most one (EAPI 5 or later)	?? ( flag1 flag2 flag3 )
 .TE
 .TP
-.B RESTRICT\fR = \fI[strip,mirror,fetch,userpriv]
+.B RESTRICT
 This should be a space delimited list of portage features to restrict.
 You may use conditional syntax to vary restrictions as seen above in DEPEND.
 .PD 0
@@ -792,7 +792,7 @@ Disables userpriv for specific packages.
 .RE
 .PD 1
 .TP
-.B PROPERTIES\fR = \fI[interactive,live]
+.B PROPERTIES
 A space delimited list of properties, with conditional syntax support.
 .PD 0
 .RS
