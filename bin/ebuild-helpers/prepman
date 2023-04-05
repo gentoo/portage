@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Note: this really does nothing these days. It's going to be banned
 # when the last consumers are gone.
+
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+eqawarn "QA Notice: '${0##*/}' is not allowed in ebuild scope"
 
 exit 0
