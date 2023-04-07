@@ -4,6 +4,7 @@
 __all__ = ["dbapi"]
 
 import re
+import warnings
 
 import portage
 
@@ -21,7 +22,7 @@ from portage.const import MERGING_IDENTIFIER
 from portage import os
 from portage import auxdbkeys
 from portage.eapi import _get_eapi_attrs
-from portage.exception import InvalidData
+from portage.exception import InvalidBinaryPackageFormat, InvalidData
 from portage.localization import _
 from _emerge.Package import Package
 
@@ -410,7 +411,10 @@ class dbapi:
                 updates_list, metadata, parent=pkg
             )
             if metadata_updates:
-                aux_update(cpv, metadata_updates)
+                try:
+                    aux_update(cpv, metadata_updates)
+                except InvalidBinaryPackageFormat as e:
+                    warnings.warn(e)
                 if onUpdate:
                     onUpdate(maxval, i + 1)
             if onProgress:
