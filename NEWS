@@ -15,6 +15,10 @@ Breaking changes:
   it from CI without addressing the situation which was already suboptimal (insufficient
   testing) wasn't deemed acceptable.
 
+* Inline most code from prepinfo in install_qa_check() (bug #899898).
+  Output a deprecation warning for prepinfo and prepman when they are called
+  from an ebuild.
+
 Cleanups:
 * Drop support for pygcrypt
 
