@@ -118,6 +118,9 @@ gcc_warn_check() {
 			# warning: argument value A will result in undefined behaviour (Clang)
 			'warning: .*\[-Wargument-undefined-behaviour\]'
 
+			# general sensible warnings (will be rejected by modern compilers soon)
+			'warning: .*\[-Wimplicit-int\]'
+
 			# this may be valid code :/
 			#': warning: multi-character character constant'
 			# need to check these two ...
