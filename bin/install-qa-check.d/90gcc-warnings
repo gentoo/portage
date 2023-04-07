@@ -19,6 +19,7 @@ gcc_warn_check() {
 			# only will and does, no might :)
 			'warning: .*will.*\[-Wstrict-aliasing\]'
 			'warning: .*does.*\[-Wstrict-aliasing\]'
+			'warning: .*\[-Wrestrict\]'
 			# strict aliasing violation in C++ (Clang)
 			'warning: .*\[-Wundefined-reinterpret-cast\]'
 
@@ -44,6 +45,8 @@ gcc_warn_check() {
 			'warning: .*will always overflow destination buffer'
 			# compile-time part of FORTIFY_SOURCE
 			'warning: .*\[-Wstringop-overflow\]'
+			'warning: .*\[-Wstringop-overread\]'
+			'warning: .*\[-Wstringop-truncation\]'
 			# clang-only, equivalent of -Wstringop-overflow
 			'warning: .*\[-Wfortify-source\]'
 			'warning: .*assuming pointer wraparound does not occur'
@@ -86,6 +89,7 @@ gcc_warn_check() {
 			# -Wformat variants
 			'warning: .*too few arguments for format'
 			'warning: .*missing sentinel in function call.*\[-Wformat=\]'
+			'warning: .*\[-Wformat-truncation\]'
 			# format ... expects a matching ... argument
 			# (iow, too few arguments for format in new wording :))
 			'warning: .*matching.*\[-Wformat=\]'
@@ -104,6 +108,8 @@ gcc_warn_check() {
 			# more specific form of -Wincompatible-pointer-types (Clang)
 			'warning: .*\[-Wincompatible-function-pointer-types\]'
 			# these will fail with CFI (https://reviews.llvm.org/D134831)
+			# (gcc lacks -strict)
+			#'warning: .*\[-Wcast-function-type\]'
 			'warning: .*\[-Wcast-function-type-strict\]'
 			# using wrong deallocator, e.g. using free() on object allocated using my_malloc()
 			# when my_malloc() is annotated as needing my_free().
@@ -117,9 +123,12 @@ gcc_warn_check() {
 			'warning: .*\[-Wodr\]'
 			# warning: argument value A will result in undefined behaviour (Clang)
 			'warning: .*\[-Wargument-undefined-behaviour\]'
+			'warning: .*\[-Wnull-dereference\]'
 
 			# general sensible warnings (will be rejected by modern compilers soon)
+			'warning: .*\[-Wmain\]'
 			'warning: .*\[-Wimplicit-int\]'
+			'warning: .*\[-Wstring-compare\]'
 
 			# this may be valid code :/
 			#': warning: multi-character character constant'

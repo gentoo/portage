@@ -1,3 +1,18 @@
+portage-3.0.47 (UNRELEASED)
+---------------
+
+Features:
+* install-qa-check.d: 90gcc-warnings: Add additional code quality warnings:
+  - -Wrestrict
+  - -Wstringop-overread
+  - -Wstringop-truncation
+  - -Wformat-truncation
+  - -Wcast-function-type
+  - -Wnull-dereference
+  - -Wmain
+  - -Wimplicit-int
+  - -Wstring-compare
+
 portage-3.0.46 (2023-04-07)
 ---------------
 
