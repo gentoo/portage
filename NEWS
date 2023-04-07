@@ -60,6 +60,9 @@ Features:
   for a time for compatibility.
 
 Bug fixes:
+* dbapi: Handle mismatched binpkg structure during pkgmoves (bug #877271,
+  bug #903917, bug #903926).
+
 * tests: util/test_shelve: fix test failure if the backend for the shelve module
   does not create the shelve db using the literal filename.
 
