@@ -648,7 +648,7 @@ main() {
 	if [[ ! -w ${TMPDIR} ]] ; then
 		die "TMPDIR is not writable: ${TMPDIR}"
 	fi
-	trap 'cd / ; rm -rf "${TMPDIR}"' EXIT
+	trap 'set -u ; cd / ; rm -rf "${TMPDIR}"' EXIT
 	cd "${TMPDIR}" || exit 1
 
 	${keep} || DISTDIR=${TMPDIR}
