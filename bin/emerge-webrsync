@@ -65,7 +65,8 @@ nvecho() { [[ ${PORTAGE_QUIET} == 1 ]] && echo "$@" ; }
 
 # Unfortunately, gentoo-functions doesn't yet have a die() (bug #878505)
 die() {
-	eerror "$@" && exit 1
+	eerror "$@"
+	exit 1
 }
 
 argv0=$0
