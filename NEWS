@@ -17,6 +17,8 @@ Features:
   - -Wmain
   - -Wimplicit-int
   - -Wstring-compare
+* install-qa-check.d: cython-dep: Report packages that are using Cython
+  but are missing BDEPEND on it.
 
 Bug fixes:
 * econf now checks for proper end of string in "configure --help" output for
