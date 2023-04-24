@@ -119,8 +119,9 @@ class dispatch:
             if os.path.isfile(self.options["log-file"]) or not os.path.exists(
                 self.options["log-file"]
             ):
+                old_umask = os.umask(0o077)
                 open(self.options["log-file"], "w").close()  # Truncate it
-                os.chmod(self.options["log-file"], 0o600)
+                os.umask(old_umask)
 
         pager = self.options.get("pager")
         if pager is None or not cmd_var_is_valid(pager):
