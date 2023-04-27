@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -16,14 +16,14 @@ if [[ ${helper} == dodoc ]] ; then
 	fi
 	export INSOPTIONS=-m0644
 	export DIROPTIONS=""
-	export _E_INSDESTTREE_=usr/share/doc/${PF}/${_E_DOCDESTTREE_}
+	export __E_INSDESTTREE=usr/share/doc/${PF}/${__E_DOCDESTTREE}
 else
 	if ! ___eapi_has_DESTTREE_INSDESTTREE; then
 		[[ -n ${INSDESTTREE} ]] &&
 			die "${0##*/}: \${INSDESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 	else
 		# backwards compatibility
-		_E_INSDESTTREE_=${INSDESTTREE}
+		__E_INSDESTTREE=${INSDESTTREE}
 	fi
 fi
 
@@ -42,20 +42,20 @@ if ! ___eapi_has_prefix_variables; then
 	export ED="${D}"
 fi
 
-if [[ ${_E_INSDESTTREE_#${D}} != "${_E_INSDESTTREE_}" ]]; then
+if [[ ${__E_INSDESTTREE#${D}} != "${__E_INSDESTTREE}" ]]; then
 	__vecho "-------------------------------------------------------" 1>&2
 	__vecho "You should not use \${D} or \${ED} with helpers." 1>&2
-	__vecho "  --> ${_E_INSDESTTREE_}" 1>&2
+	__vecho "  --> ${__E_INSDESTTREE}" 1>&2
 	__vecho "-------------------------------------------------------" 1>&2
 	__helpers_die "${helper} used with \${D} or \${ED}"
 	exit 1
 fi
 if [[ -n ${EPREFIX} && \
-		${_E_INSDESTTREE_#${EPREFIX}} != "${_E_INSDESTTREE_}" ]]
+		${__E_INSDESTTREE#${EPREFIX}} != "${__E_INSDESTTREE}" ]]
 then
 	__vecho "-------------------------------------------------------" 1>&2
 	__vecho "You should not use \${EPREFIX} with helpers." 1>&2
-	__vecho "  --> ${_E_INSDESTTREE_}" 1>&2
+	__vecho "  --> ${__E_INSDESTTREE}" 1>&2
 	__vecho "-------------------------------------------------------" 1>&2
 	__helpers_die "${helper} used with \${EPREFIX}"
 	exit 1
@@ -94,7 +94,7 @@ fi
 
 DOINS_ARGS+=(
 	"--helper=${helper}"
-	"--dest=${ED%/}/${_E_INSDESTTREE_#/}"
+	"--dest=${ED%/}/${__E_INSDESTTREE#/}"
 )
 
 # Explicitly set PYTHONPATH to non empty.

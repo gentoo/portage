@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -19,16 +19,16 @@ if ! ___eapi_has_DESTTREE_INSDESTTREE; then
 		die "${0##*/}: \${DESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 else
 	# backwards compatibility
-	_E_DESTTREE_=${DESTTREE}
+	__E_DESTTREE=${DESTTREE}
 fi
 
 # newer EAPIs force /usr consistently with other /usr/share helpers
 if ! ___eapi_domo_respects_into; then
-	_E_DESTTREE_=/usr
+	__E_DESTTREE=/usr
 fi
 
-if [ ! -d "${ED%/}/${_E_DESTTREE_#/}/share/locale" ] ; then
-	install -d "${ED%/}/${_E_DESTTREE_#/}/share/locale/"
+if [ ! -d "${ED%/}/${__E_DESTTREE#/}/share/locale" ] ; then
+	install -d "${ED%/}/${__E_DESTTREE#/}/share/locale/"
 fi
 
 ret=0
@@ -36,7 +36,7 @@ ret=0
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
 		mytiny="${x##*/}"
-		mydir="${ED%/}/${_E_DESTTREE_#/}/share/locale/${mytiny%.*}/LC_MESSAGES"
+		mydir="${ED%/}/${__E_DESTTREE#/}/share/locale/${mytiny%.*}/LC_MESSAGES"
 		if [ ! -d "${mydir}" ] ; then
 			install -d "${mydir}"
 		fi

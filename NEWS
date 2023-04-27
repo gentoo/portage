@@ -25,6 +25,9 @@ Bug fixes:
   all options starting with "--with-", "--disable-" or "--enable-", in order
   to pass them to configure. This follows a change in PMS (bug #815169).
 
+* All _E_*DESTTREE_ variables to renamed to __E_*DESTTREE, in order to move
+  them to the __* namespace which is reserved for the package manager.
+
 portage-3.0.46 (2023-04-07)
 ---------------
 

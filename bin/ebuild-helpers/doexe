@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -13,8 +13,8 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
-if [[ ! -d ${ED%/}/${_E_EXEDESTTREE_#/} ]] ; then
-	install -d "${ED%/}/${_E_EXEDESTTREE_#/}"
+if [[ ! -d ${ED%/}/${__E_EXEDESTTREE#/} ]] ; then
+	install -d "${ED%/}/${__E_EXEDESTTREE#/}"
 fi
 
 TMP=$(mktemp -d "${T}/.doexe_tmp_XXXXXX")
@@ -33,7 +33,7 @@ for x in "$@" ; do
 	fi
 
 	if [ -e "${mysrc}" ] ; then
-		install ${EXEOPTIONS} "${mysrc}" "${ED%/}/${_E_EXEDESTTREE_#/}"
+		install ${EXEOPTIONS} "${mysrc}" "${ED%/}/${__E_EXEDESTTREE#/}"
 	else
 		echo "!!! ${0##*/}: ${mysrc} does not exist" 1>&2
 		false

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -18,7 +18,7 @@ if ! ___eapi_has_DESTTREE_INSDESTTREE; then
 		die "${0##*/}: \${DESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 else
 	# backwards compatibility
-	_E_DESTTREE_=${DESTTREE}
+	__E_DESTTREE=${DESTTREE}
 fi
 
 # Setup ABI cruft
@@ -30,7 +30,7 @@ unset LIBDIR_VAR
 
 # We need this to default to lib so that things dont break
 CONF_LIBDIR=${CONF_LIBDIR:-lib}
-libdir="${ED%/}/${_E_DESTTREE_#/}/${CONF_LIBDIR}"
+libdir="${ED%/}/${__E_DESTTREE#/}/${CONF_LIBDIR}"
 
 if [[ $# -lt 1 ]] ; then
 	__helpers_die "${0##*/}: at least one argument needed"

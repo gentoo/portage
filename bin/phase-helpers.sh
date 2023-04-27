@@ -6,11 +6,11 @@ if ___eapi_has_DESTTREE_INSDESTTREE; then
 	export DESTTREE=/usr
 	export INSDESTTREE=""
 else
-	export _E_DESTTREE_=/usr
-	export _E_INSDESTTREE_=""
+	export __E_DESTTREE=/usr
+	export __E_INSDESTTREE=""
 fi
-export _E_EXEDESTTREE_=""
-export _E_DOCDESTTREE_=""
+export __E_EXEDESTTREE=""
+export __E_DOCDESTTREE=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
@@ -26,14 +26,14 @@ declare -a PORTAGE_DOSTRIP_SKIP=()
 
 into() {
 	if [[ "$1" == "/" ]]; then
-		export _E_DESTTREE_=""
+		export __E_DESTTREE=""
 	else
-		export _E_DESTTREE_=$1
+		export __E_DESTTREE=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]]; then
-			install -d "${ED%/}/${_E_DESTTREE_#/}"
+		if [[ ! -d "${ED%/}/${__E_DESTTREE#/}" ]]; then
+			install -d "${ED%/}/${__E_DESTTREE#/}"
 
 			local ret=$?
 			if [[ ${ret} -ne 0 ]] ; then
@@ -44,20 +44,20 @@ into() {
 	fi
 
 	if ___eapi_has_DESTTREE_INSDESTTREE; then
-		export DESTTREE=${_E_DESTTREE_}
+		export DESTTREE=${__E_DESTTREE}
 	fi
 }
 
 insinto() {
 	if [[ "${1}" == "/" ]]; then
-		export _E_INSDESTTREE_=""
+		export __E_INSDESTTREE=""
 	else
-		export _E_INSDESTTREE_=${1}
+		export __E_INSDESTTREE=${1}
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]]; then
-			install -d "${ED%/}/${_E_INSDESTTREE_#/}"
+		if [[ ! -d "${ED%/}/${__E_INSDESTTREE#/}" ]]; then
+			install -d "${ED%/}/${__E_INSDESTTREE#/}"
 
 			local ret=$?
 			if [[ ${ret} -ne 0 ]] ; then
@@ -68,20 +68,20 @@ insinto() {
 	fi
 
 	if ___eapi_has_DESTTREE_INSDESTTREE; then
-		export INSDESTTREE=${_E_INSDESTTREE_}
+		export INSDESTTREE=${__E_INSDESTTREE}
 	fi
 }
 
 exeinto() {
 	if [[ "${1}" == "/" ]]; then
-		export _E_EXEDESTTREE_=""
+		export __E_EXEDESTTREE=""
 	else
-		export _E_EXEDESTTREE_="${1}"
+		export __E_EXEDESTTREE="${1}"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]]; then
-			install -d "${ED%/}/${_E_EXEDESTTREE_#/}"
+		if [[ ! -d "${ED%/}/${__E_EXEDESTTREE#/}" ]]; then
+			install -d "${ED%/}/${__E_EXEDESTTREE#/}"
 
 			local ret=$?
 			if [[ ${ret} -ne 0 ]] ; then
@@ -94,14 +94,14 @@ exeinto() {
 
 docinto() {
 	if [[ "${1}" == "/" ]]; then
-		export _E_DOCDESTTREE_=""
+		export __E_DOCDESTTREE=""
 	else
-		export _E_DOCDESTTREE_="${1}"
+		export __E_DOCDESTTREE="${1}"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]]; then
-			install -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}"
+		if [[ ! -d "${ED%/}/usr/share/doc/${PF}/${__E_DOCDESTTREE#/}" ]]; then
+			install -d "${ED%/}/usr/share/doc/${PF}/${__E_DOCDESTTREE#/}"
 			local ret=$?
 			if [[ ${ret} -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"

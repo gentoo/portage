@@ -152,8 +152,8 @@ class OptionsClass:
             self.ED = os.environ.get("ED", "")
         if self.ED:
             self.ED = normalize_path(self.ED)
-        if "_E_DOCDESTTREE_" in os.environ:
-            self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
+        if "__E_DOCDESTTREE" in os.environ:
+            self.DOCDESTTREE = os.environ["__E_DOCDESTTREE"]
             if self.DOCDESTTREE:
                 self.DOCDESTTREE = normalize_path(self.DOCDESTTREE)
 

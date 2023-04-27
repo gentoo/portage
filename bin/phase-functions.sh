@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -605,11 +605,11 @@ __dyn_install() {
 		export DESTTREE=/usr
 		export INSDESTTREE=""
 	else
-		export _E_DESTTREE_=/usr
-		export _E_INSDESTTREE_=""
+		export __E_DESTTREE=/usr
+		export __E_INSDESTTREE=""
 	fi
-	export _E_EXEDESTTREE_=""
-	export _E_DOCDESTTREE_=""
+	export __E_EXEDESTTREE=""
+	export __E_DOCDESTTREE=""
 
 	__ebuild_phase src_install
 	>> "${PORTAGE_BUILDDIR}/.installed" || \
