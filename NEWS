@@ -28,6 +28,8 @@ Bug fixes:
 * All _E_*DESTTREE_ variables to renamed to __E_*DESTTREE, in order to move
   them to the __* namespace which is reserved for the package manager.
 
+* The PVR variable includes -r0 if explicitly specified (bug #875362).
+
 portage-3.0.46 (2023-04-07)
 ---------------
 
