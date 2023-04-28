@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
@@ -443,14 +443,10 @@ def doebuild_environment(
     mysettings["PN"] = mysplit[0]
     mysettings["PV"] = mysplit[1]
     mysettings["PR"] = mysplit[2]
+    mysettings["PVR"] = mypv[len(mysplit[0]) + 1 :]
 
     if noiselimit < 0:
         mysettings["PORTAGE_QUIET"] = "1"
-
-    if mysplit[2] == "r0":
-        mysettings["PVR"] = mysplit[1]
-    else:
-        mysettings["PVR"] = mysplit[1] + "-" + mysplit[2]
 
     # All temporary directories should be subdirectories of
     # $PORTAGE_TMPDIR/portage, since it's common for /tmp and /var/tmp
