@@ -1,3 +1,6 @@
+Bug fixes:
+* fowners, fperms: Fix handling of relative pathnames (bug #905223).
+
 portage-3.0.47 (2023-04-30)
 ---------------
 
