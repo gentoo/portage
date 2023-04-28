@@ -3,6 +3,8 @@
 
 import itertools
 
+import pytest
+
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -637,6 +639,7 @@ class OrChoicesTestCase(TestCase):
 
 
 class OrChoicesLibpostprocTestCase(TestCase):
+    @pytest.mark.xfail(reason="Irrelevant blocker conflict")
     def testOrChoicesLibpostproc(self):
         # This test case is expected to fail after the fix for bug 706278,
         # since the "undesirable" slot upgrade which triggers a blocker conflict
