@@ -6,6 +6,8 @@ Security:
   bug #597800. Note that 'sync-type = webrsync' in repos.conf already
   handled PGP verification when configured to do so (and it is by default).
 
+* dispatch-conf: Avoid race when accessing log file (bug #903973).
+
 Features:
 * install-qa-check.d: 90gcc-warnings: Add additional code quality warnings:
   - -Wrestrict
