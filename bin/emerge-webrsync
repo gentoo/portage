@@ -274,7 +274,7 @@ check_file_signature_gemato() {
 	if type -P gemato > /dev/null; then
 		local gemato_args=(
 			openpgp-verify-detached
-			-K /usr/share/openpgp-keys/gentoo-release.asc
+			-K "${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
 		)
 
 		[[ ${PORTAGE_QUIET} == 1 ]] && gemato_args+=( --quiet )
