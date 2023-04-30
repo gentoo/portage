@@ -368,7 +368,7 @@ unpack() {
 						"secondary suffix '${y}' which is unofficially" \
 						"supported with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
-				$1 -c -- "${srcdir}${x}" | tar xof -
+				$1 -c -- "${srcdir}${x}" | tar xokf -
 				__assert_sigpipe_ok "${myfail}"
 			else
 				local cwd_dest=${x##*/}
@@ -386,7 +386,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
-				tar xof "${srcdir}${x}" || die "${myfail}"
+				tar xokf "${srcdir}${x}" || die "${myfail}"
 				;;
 			tgz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -404,7 +404,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tbz' or 'tbz2'."
 				fi
-				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${x}" | tar xof -
+				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${x}" | tar xokf -
 				__assert_sigpipe_ok "${myfail}"
 				;;
 			zip|jar)
@@ -557,7 +557,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'txz'."
 				fi
 				if ___eapi_unpack_supports_txz; then
-					XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
+					XZ_OPT="-T$(___makeopts_jobs)" tar xokf "${srcdir}${x}" || die "${myfail}"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
