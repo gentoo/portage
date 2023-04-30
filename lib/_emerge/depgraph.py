@@ -101,6 +101,8 @@ from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 from _emerge.resolver.output import Display, format_unmatched_atom
 
+from _emerge.stdout_spinner import stdout_spinner # Imported for type annotation
+
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
     "_dep_check_graph_interface",
@@ -11446,7 +11448,7 @@ def _spinner_stop(spinner):
     portage.writemsg_stdout(f"Dependency resolution took {darkgreen(time_fmt)} s.\n\n")
 
 
-def backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
+def backtrack_depgraph(settings: portage.package.ebuild.config.config, trees: dict, myopts: dict, myparams: dict, myaction, myfiles: [str], spinner: stdout_spinner) -> (bool, depgraph, [str]):
     """
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
