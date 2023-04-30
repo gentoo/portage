@@ -3,6 +3,11 @@ portage-3.0.48 (UNRELEASED)
 Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
 
+* emerge-webrsync: Be less alarmist when a user is syncing with Portage
+  (not calling emerge-webrsync directly) with sync-type='webrsync'. We
+  were emitting a misleading warning about the validation method in use
+  which might in fact encourage people to use the older method.
+
 Cleanups:
 * Convert printf-style %-formats into fstrings.
 

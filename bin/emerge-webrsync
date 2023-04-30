@@ -109,20 +109,16 @@ do_debug=0
 keep=false
 
 handle_pgp_setup() {
-	has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
-
-	if [[ ${webrsync_gpg} -eq 1 ]]; then
-		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
-	fi
-
-	repo_has_webrsync_verify=$(
-		has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature	| LC_ALL=C tr '[:upper:]' '[:lower:]') true yes
-	)
-
 	# WEBRSYNC_VERIFY_SIGNATURE=0: disable PGP verification
 	# WEBRSYNC_VERIFY_SIGNATURE=1: use gemato for verification, fallback to regular gpg
 	# WEBRSYNC_VERIFY_SIGNATURE=2: use legacy FEATURES="webrsync-gpg"
 	WEBRSYNC_VERIFY_SIGNATURE=1
+
+	has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
+
+	repo_has_webrsync_verify=$(
+		has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature	| LC_ALL=C tr '[:upper:]' '[:lower:]') true yes
+	)
 
 	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] || [[ ${repo_has_webrsync_verify} -eq 1 ]]; then
 		# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
@@ -134,10 +130,18 @@ handle_pgp_setup() {
 		fi
 
 		WEBRSYNC_VERIFY_SIGNATURE=2
-	elif has webrsync-gpg ${FEATURES}; then
+	elif [[ ${webrsync_gpg} -eq 1 ]] then
+		# We only warn if FEATURES="webrsync-gpg" is in make.conf, not if
+		# Portage is calling us for 'type=webrsync' with verification.
+		# TODO: Change the Portage path to fully use gemato and unify the lot.
+		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
 		WEBRSYNC_VERIFY_SIGNATURE=2
 	elif [[ -n ${no_pgp_verify} ]]; then
 		WEBRSYNC_VERIFY_SIGNATURE=0
+	else
+		# The default at the beginning of handle_pgp_setup is WEBRSYNC_VERIFY_SIGNATURE=1
+		# i.e. gemato.
+		:;
 	fi
 
 	case "${WEBRSYNC_VERIFY_SIGNATURE}" in
@@ -148,7 +152,7 @@ handle_pgp_setup() {
 			[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "PGP verification method: gemato"
 			;;
 		2)
-			ewarn "PGP verification method: legacy FEATURES=webrsync-gpg"
+			[[ ${PORTAGE_QUIET} -eq 1 ]] || ewarn "PGP verification method: legacy gpg path"
 			;;
 		*)
 			die "Unknown WEBRSYNC_VERIFY_SIGNATURE state: \${WEBRSYNC_VERIFY_SIGNATURE}=${WEBRSYNC_VERIFY_SIGNATURE}"
