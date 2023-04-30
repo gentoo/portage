@@ -109,6 +109,9 @@ class WebRsync(SyncBase):
                     self._refresh_keys(openpgp_env)
                     self.spawn_kwargs["env"]["PORTAGE_GPG_DIR"] = openpgp_env.home
                     self.spawn_kwargs["env"]["PORTAGE_TEMP_GPG_DIR"] = openpgp_env.home
+                    self.spawn_kwargs["env"][
+                        "PORTAGE_GPG_KEY"
+                    ] = self.repo.sync_openpgp_key_path
                 except (GematoException, asyncio.TimeoutError) as e:
                     writemsg_level(
                         f"!!! Verification impossible due to keyring problem:\n{e}\n",
