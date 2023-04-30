@@ -19,6 +19,12 @@ for arg; do
 		args+=( "${arg}" )
 	else
 		args+=( "${ED%/}/${arg#/}" )
+		# remove the QA warning after 2024-12-31
+		if [[ ${arg:0:1} != / ]]; then
+			eqawarn "${0##*/}: Path '${arg}' does not start with '/'."
+			eqawarn "This is unsupported. Add a slash for a path in \${ED},"
+			eqawarn "or use 'chown' for a path relative to the working dir."
+		fi
 	fi
 done
 
