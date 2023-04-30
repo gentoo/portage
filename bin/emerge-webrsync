@@ -129,11 +129,12 @@ handle_pgp_setup() {
 			die "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
 		fi
 
-		WEBRSYNC_VERIFY_SIGNATURE=2
-	elif [[ ${webrsync_gpg} -eq 1 ]] then
+		# Use gemato for the standard Portage-calling-us case w/ sync-type='webrsync'.
+		WEBRSYNC_VERIFY_SIGNATURE=1
+	elif [[ ${webrsync_gpg} -eq 1 ]]; then
 		# We only warn if FEATURES="webrsync-gpg" is in make.conf, not if
-		# Portage is calling us for 'type=webrsync' with verification.
-		# TODO: Change the Portage path to fully use gemato and unify the lot.
+		# Portage is calling us for 'sync-type=webrsync' with verification, because
+		# that path uses gemato now (plus the user can't help it, obviously).
 		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
 		WEBRSYNC_VERIFY_SIGNATURE=2
 	elif [[ -n ${no_pgp_verify} ]]; then
@@ -152,7 +153,7 @@ handle_pgp_setup() {
 			[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "PGP verification method: gemato"
 			;;
 		2)
-			[[ ${PORTAGE_QUIET} -eq 1 ]] || ewarn "PGP verification method: legacy gpg path"
+			ewarn "PGP verification method: legacy gpg path"
 			;;
 		*)
 			die "Unknown WEBRSYNC_VERIFY_SIGNATURE state: \${WEBRSYNC_VERIFY_SIGNATURE}=${WEBRSYNC_VERIFY_SIGNATURE}"
