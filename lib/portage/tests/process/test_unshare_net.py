@@ -5,9 +5,12 @@ import errno
 import os
 import platform
 
+import pytest
+
 import portage.process
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
+
 
 CLONE_NEWNET = 0x40000000
 
@@ -19,18 +22,19 @@ ping -c 1 -W 1 ::1 || exit 1
 ping -c 1 -W 1 fd::1 || exit 1
 """
 
+ABILITY_TO_UNSHARE = portage.process._unshare_validate(CLONE_NEWNET)
+
 
 class UnshareNetTestCase(TestCase):
+    @pytest.mark.skipif(platform.system() != "Linux", reason="not Linux")
+    @pytest.mark.skipif(
+        portage.process.find_binary("ping") is None, reason="ping not found"
+    )
+    @pytest.mark.skipif(
+        ABILITY_TO_UNSHARE != 0,
+        reason=f"Unable to unshare: {errno.errorcode.get(ABILITY_TO_UNSHARE, '?')}",
+    )
     def testUnshareNet(self):
-        if platform.system() != "Linux":
-            self.skipTest("not Linux")
-        if portage.process.find_binary("ping") is None:
-            self.skipTest("ping not found")
-
-        errno_value = portage.process._unshare_validate(CLONE_NEWNET)
-        if errno_value != 0:
-            self.skipTest(f"Unable to unshare: {errno.errorcode.get(errno_value, '?')}")
-
         env = os.environ.copy()
         env["IPV6"] = "1" if portage.process._has_ipv6() else ""
         self.assertEqual(
