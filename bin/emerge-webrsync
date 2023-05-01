@@ -290,10 +290,6 @@ check_file_signature_gemato() {
 		)
 
 		[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
-		# Portage is calling us so it'll handle refreshing if configured to do so.
-		# Don't repeat its work.
-		[[ -n ${PORTAGE_TEMP_GPG_DIR} ]] && gemato_args+=( --no-refresh-keys --no-wkd )
-
 		[[ ${PORTAGE_QUIET} == 1 ]] && gemato_args+=( --quiet )
 		[[ ${do_debug} == 1 ]] && gemato_args+=( --debug )
 
