@@ -19,7 +19,6 @@ from portage.dep.soname.parse import parse_soname_deps
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
-from portage.localization import _
 from _emerge.Task import Task
 
 
@@ -344,11 +343,8 @@ class Package(Task):
                             continue
                         if atom.slot_operator_built:
                             e = InvalidDependString(
-                                _(
-                                    "Improper context for slot-operator "
-                                    '"built" atom syntax: %s'
-                                )
-                                % (atom.unevaluated_atom,)
+                                'Improper context for slot-operator "built" '
+                                f"atom syntax: {atom.unevaluated_atom}"
                             )
                             self._metadata_exception(k, e)
 

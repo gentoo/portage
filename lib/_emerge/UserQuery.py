@@ -54,10 +54,7 @@ class UserQuery:
             while True:
                 try:
                     response = input(
-                        "[%s] "
-                        % "/".join(
-                            [colours[i](responses[i]) for i in range(len(responses))]
-                        )
+                        f"[{'/'.join([colours[i](responses[i]) for i in range(len(responses))])}] "
                     )
                 except UnicodeDecodeError as e:
                     response = _unicode_decode(e.object).rstrip("\n")

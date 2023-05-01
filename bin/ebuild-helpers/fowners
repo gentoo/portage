@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if ! ___eapi_has_prefix_variables; then
-	EPREFIX= ED=${D}
+	ED=${D}
 fi
 
+args=()
 got_owner=
 for arg; do
-	[[ ${arg} == -* ]] && continue
-
-	if [[ ! ${got_owner} ]]; then
+	if [[ ${arg} == -* ]]; then
+		args+=( "${arg}" )
+	elif [[ ! ${got_owner} ]]; then
+		# the first non-option is the owner and must not be prefixed
 		got_owner=1
-		continue
-	fi
-
-	if [[ ${arg} != /* ]]; then
-		eqawarn "Relative path passed to '${0##*/}': ${arg}"
-		eqawarn "This is unsupported. Please use 'chown' when you need to work on files"
-		eqawarn "outside the installation image (\${ED})."
+		args+=( "${arg}" )
+	else
+		args+=( "${ED%/}/${arg#/}" )
+		# remove the QA warning after 2024-12-31
+		if [[ ${arg:0:1} != / ]]; then
+			eqawarn "${0##*/}: Path '${arg}' does not start with '/'."
+			eqawarn "This is unsupported. Add a slash for a path in \${ED},"
+			eqawarn "or use 'chown' for a path relative to the working dir."
+		fi
 	fi
 done
 
-
-# we can't prefix all arguments because
-# chown takes random options
-slash="/"
-chown "${@/#${slash}/${ED%/}${slash}}"
+chown "${args[@]}"
 ret=$?
 
 [[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
