@@ -4,7 +4,12 @@ Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
 
 * emerge-webrsync: Switch Portage to use gemato for when it shells out
-  to emerge-webrsync for repositories configured with sync-type=webrsync.
+  to emerge-webrsync for repositories configured with sync-type=webrsync
+  (bug #905358).
+
+  This unifies some of the logic between Portage and emerge-webrsync:
+  both of them now use the same main path for PGP verification (i.e.
+  gemato).
 
 Cleanups:
 * Convert printf-style %-formats into fstrings.
