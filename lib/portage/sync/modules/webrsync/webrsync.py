@@ -5,7 +5,6 @@ import logging
 import portage
 from portage import os
 from portage.util import writemsg_level
-from portage.util.futures import asyncio
 from portage.output import create_color_func
 from portage.sync.syncbase import SyncBase
 
@@ -14,7 +13,6 @@ bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 
 try:
-    from gemato.exceptions import GematoException
     import gemato.openpgp
 except ImportError:
     gemato = None
@@ -99,23 +97,13 @@ class WebRsync(SyncBase):
                     )
                     return (1, False)
 
-                openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
-
-                out = portage.output.EOutput(quiet=quiet)
-                try:
-                    out.einfo(f"Using keys from {self.repo.sync_openpgp_key_path}")
-                    with open(self.repo.sync_openpgp_key_path, "rb") as f:
-                        openpgp_env.import_key(f)
-                    self._refresh_keys(openpgp_env)
-                    self.spawn_kwargs["env"]["PORTAGE_GPG_DIR"] = openpgp_env.home
-                    self.spawn_kwargs["env"]["PORTAGE_TEMP_GPG_DIR"] = openpgp_env.home
-                except (GematoException, asyncio.TimeoutError) as e:
-                    writemsg_level(
-                        f"!!! Verification impossible due to keyring problem:\n{e}\n",
-                        level=logging.ERROR,
-                        noiselevel=-1,
-                    )
-                    return (1, False)
+                self.spawn_kwargs["env"]["PORTAGE_SYNC_WEBRSYNC_GPG"] = True
+                self.spawn_kwargs["env"][
+                    "PORTAGE_GPG_KEY"
+                ] = self.repo.sync_openpgp_key_path
+                self.spawn_kwargs["env"][
+                    "PORTAGE_GPG_KEY_SERVER"
+                ] = self.repo.sync_openpgp_key_server
 
             webrsync_cmd = [self.bin_command]
             if verbose:

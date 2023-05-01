@@ -1,13 +1,21 @@
 portage-3.0.48 (UNRELEASED)
----------------
+--------------
 Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
+
+* emerge-webrsync: Switch Portage to use gemato for when it shells out
+  to emerge-webrsync for repositories configured with sync-type=webrsync
+  (bug #905358).
+
+  This unifies some of the logic between Portage and emerge-webrsync:
+  both of them now use the same main path for PGP verification (i.e.
+  gemato).
 
 Cleanups:
 * Convert printf-style %-formats into fstrings.
 
 portage-3.0.47 (2023-04-30)
----------------
+--------------
 
 Security:
 * emerge-webrsync (the standalone tool) now verifies PGP signatures, see
@@ -41,7 +49,7 @@ Bug fixes:
 * The PVR variable includes -r0 if explicitly specified (bug #875362).
 
 portage-3.0.46 (2023-04-07)
----------------
+--------------
 
 Breaking changes:
 * Drop STREEBOG{256,512} support
@@ -485,7 +493,7 @@ Bug fixes:
 * sync: git: Fix sync printing local repo path (bug #875812)
 
 portage-3.0.38.1 (2022-10-04)
---------------
+----------------
 
 Bug fixes:
 * ecompress: Fix typo in ___makeopts_jobs (bug #874597).
