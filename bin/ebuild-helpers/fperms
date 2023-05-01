@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -8,27 +8,28 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
+args=()
 got_mode=
 for arg; do
 	# - can either be an option or a mode string
-	[[ ${arg} == -* && ${arg} != -[ugorwxXst] ]] && continue
-
-	if [[ ! ${got_mode} ]]; then
+	if [[ ${arg} == -* && ${arg} != -[ugorwxXst] ]]; then
+		args+=( "${arg}" )
+	elif [[ ! ${got_mode} ]]; then
+		# the first non-option is the mode and must not be prefixed
 		got_mode=1
-		continue
-	fi
-
-	if [[ ${arg} != /* ]]; then
-		eqawarn "Relative path passed to '${0##*/}': ${arg}"
-		eqawarn "This is unsupported. Please use 'chmod' when you need to work on files"
-		eqawarn "outside the installation image (\${ED})."
+		args+=( "${arg}" )
+	else
+		args+=( "${ED%/}/${arg#/}" )
+		# remove the QA warning after 2024-12-31
+		if [[ ${arg:0:1} != / ]]; then
+			eqawarn "${0##*/}: Path '${arg}' does not start with '/'."
+			eqawarn "This is unsupported. Add a slash for a path in \${ED},"
+			eqawarn "or use 'chmod' for a path relative to the working dir."
+		fi
 	fi
 done
 
-# we can't prefix all arguments because
-# chmod takes random options
-slash="/"
-chmod "${@/#${slash}/${ED%/}${slash}}"
+chmod "${args[@]}"
 ret=$?
 [[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

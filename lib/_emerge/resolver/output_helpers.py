@@ -150,8 +150,9 @@ class _PackageCounters:
                 myoutput.append("s")
         if self.restrict_fetch_satisfied < self.restrict_fetch:
             myoutput.append(
-                bad(" (%s unsatisfied)")
-                % (self.restrict_fetch - self.restrict_fetch_satisfied)
+                bad(
+                    f" ({self.restrict_fetch - self.restrict_fetch_satisfied} unsatisfied)"
+                )
             )
         if self.blocks > 0:
             myoutput.append(f"\nConflict: {self.blocks} block")
@@ -159,7 +160,7 @@ class _PackageCounters:
                 myoutput.append("s")
             if self.blocks_satisfied < self.blocks:
                 myoutput.append(
-                    bad(" (%s unsatisfied)") % (self.blocks - self.blocks_satisfied)
+                    bad(f" ({self.blocks - self.blocks_satisfied} unsatisfied)")
                 )
             else:
                 myoutput.append(" (all satisfied)")
@@ -205,8 +206,7 @@ class _DisplayConfig:
             except ValueError as e:
                 writemsg(f"!!! {str(e)}\n", noiselevel=-1)
                 writemsg(
-                    "!!! Unable to parse COLUMNWIDTH='%s'\n"
-                    % frozen_config.settings["COLUMNWIDTH"],
+                    f"!!! Unable to parse COLUMNWIDTH='{frozen_config.settings['COLUMNWIDTH']}'\n",
                     noiselevel=-1,
                 )
                 del e

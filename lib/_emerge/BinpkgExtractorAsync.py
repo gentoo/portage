@@ -5,7 +5,6 @@ import logging
 
 from _emerge.SpawnProcess import SpawnProcess
 import portage
-from portage.localization import _
 from portage.util.compression_probe import (
     compression_probe,
     _compressors,
@@ -21,6 +20,7 @@ from portage.binpkg import get_binpkg_format
 import signal
 import subprocess
 import tarfile
+import textwrap
 
 
 class BinpkgExtractorAsync(SpawnProcess):
@@ -72,9 +72,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             decomp_cmd = None
         if decomp_cmd is None:
             self.scheduler.output(
-                "!!! %s\n"
-                % _("File compression header unrecognized: %s")
-                % self.pkg_path,
+                f"!!! File compression header unrecognized: {self.pkg_path}\n",
                 log_path=self.logfile,
                 background=self.background,
                 level=logging.ERROR,
@@ -104,15 +102,9 @@ class BinpkgExtractorAsync(SpawnProcess):
             if find_binary(decompression_binary) is None:
                 missing_package = decomp.get("package")
                 self.scheduler.output(
-                    "!!! %s\n"
-                    % _(
-                        "File compression unsupported %s.\n Command was: %s.\n Maybe missing package: %s"
-                    )
-                    % (
-                        self.pkg_path,
-                        varexpand(decomp_cmd, mydict=self.env),
-                        missing_package,
-                    ),
+                    f"!!! File compression unsupported {self.pkg_path}.\n"
+                    f" Command was: {varexpand(decomp_cmd, mydict=self.env)}.\n"
+                    f" Missing package: {missing_package}\n",
                     log_path=self.logfile,
                     background=self.background,
                     level=logging.ERROR,
@@ -129,26 +121,30 @@ class BinpkgExtractorAsync(SpawnProcess):
         self.args = [
             self._shell_binary,
             "-c",
-            (
-                "cmd0=(head -c %d -- %s) cmd1=(%s) cmd2=(tar -xp %s -C %s -f -); "
-                + '"${cmd0[@]}" | "${cmd1[@]}" | "${cmd2[@]}"; '
-                + "p=(${PIPESTATUS[@]}) ; for i in {0..2}; do "
-                + "if [[ ${p[$i]} != 0 && ${p[$i]} != %d ]] ; then "
-                + 'echo command $(eval "echo \\"\'\\${cmd$i[*]}\'\\"") '
-                + "failed with status ${p[$i]} ; exit ${p[$i]} ; fi ; done; "
-                + "if [ ${p[$i]} != 0 ] ; then "
-                + 'echo command $(eval "echo \\"\'\\${cmd$i[*]}\'\\"") '
-                + "failed with status ${p[$i]} ; exit ${p[$i]} ; fi ; "
-                + "exit 0 ;"
+            textwrap.dedent(
+                f"""
+                    cmd0=(head -c {pkg_xpak.filestat.st_size - pkg_xpak.xpaksize} -- {portage._shell_quote(self.pkg_path)})
+                    cmd1=({decomp_cmd})
+                    cmd2=(tar -xp {tar_options} -C {portage._shell_quote(self.image_dir)} -f -);
+                """
+                """
+                    "${cmd0[@]}" | "${cmd1[@]}" | "${cmd2[@]}";
+                    p=(${PIPESTATUS[@]}) ; for i in {0..2}; do
+                """
+                f"""
+                    if [[ ${{p[$i]}} != 0 && ${{p[$i]}} != {128 + signal.SIGPIPE} ]] ; then
+                """
+                """
+                    echo command $(eval "echo \\"'\\${cmd$i[*]}'\\"") failed with status ${p[$i]} ;
+                    exit ${p[$i]} ; fi ; done;
+                    if [ ${p[$i]} != 0 ] ; then
+                    echo command $(eval "echo \\"'\\${cmd$i[*]}'\\"") failed with status ${p[$i]} ;
+                    exit ${p[$i]} ; fi ;
+                    exit 0 ;
+                """
             )
-            % (
-                pkg_xpak.filestat.st_size - pkg_xpak.xpaksize,
-                portage._shell_quote(self.pkg_path),
-                decomp_cmd,
-                tar_options,
-                portage._shell_quote(self.image_dir),
-                128 + signal.SIGPIPE,
-            ),
+            .replace("\n", " ")
+            .strip(),
         ]
 
         SpawnProcess._start(self)

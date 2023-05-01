@@ -191,13 +191,11 @@ class JobStatusDisplay:
         max_avg = max(avg)
 
         if max_avg < 10:
-            digits = 2
+            return ", ".join(f"{x:.2f}" for x in avg)
         elif max_avg < 100:
-            digits = 1
+            return ", ".join(f"{x:.1f}" for x in avg)
         else:
-            digits = 0
-
-        return ", ".join(("%%.%df" % digits) % x for x in avg)
+            return ", ".join(f"{x:.0f}" for x in avg)
 
     def display(self):
         """

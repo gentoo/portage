@@ -11,7 +11,6 @@ from _emerge.SubProcess import SubProcess
 import portage
 from portage import os
 from portage.const import BASH_BINARY
-from portage.localization import _
 from portage.output import EOutput
 from portage.util import writemsg_level
 from portage.util._async.BuildLogger import BuildLogger
@@ -271,7 +270,7 @@ class SpawnProcess(SubProcess):
                         if e.errno == errno.EPERM:
                             # Reported with hardened kernel (bug #358211).
                             writemsg_level(
-                                "!!! kill: (%i) - Operation not permitted\n" % (p,),
+                                f"!!! kill: ({p}) - Operation not permitted\n",
                                 level=logging.ERROR,
                                 noiselevel=-1,
                             )
@@ -291,11 +290,9 @@ class SpawnProcess(SubProcess):
             if pids:
                 msg = []
                 msg.append(
-                    _("Failed to kill pid(s) in '%(cgroup)s': %(pids)s")
-                    % dict(
-                        cgroup=os.path.join(self.cgroup, "cgroup.procs"),
-                        pids=" ".join(str(pid) for pid in pids),
-                    )
+                    "Failed to kill pid(s) in "
+                    f"'{os.path.join(self.cgroup, 'cgroup.procs')}': "
+                    f"{' '.join(str(pid) for pid in pids)}"
                 )
 
                 self._elog("eerror", msg)

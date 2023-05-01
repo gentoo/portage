@@ -266,14 +266,13 @@ class slot_conflict_handler:
             for pkg in pkgs:
                 msg.append(indent)
                 msg.append(
-                    "%s %s"
-                    % (
-                        pkg,
+                    f"{pkg} "
+                    + str(
                         pkg_use_display(
                             pkg,
                             self.depgraph._frozen_config.myopts,
                             modified_use=self.depgraph._pkg_use_enabled(pkg),
-                        ),
+                        )
                     )
                 )
                 parent_atoms = self.all_parents.get(pkg)
@@ -368,19 +367,12 @@ class slot_conflict_handler:
                                         msg = (
                                             "\n\n!!! BUG: Detected "
                                             "USE dep match inconsistency:\n"
-                                            "\tppkg: %s\n"
-                                            "\tviolated_atom: %s\n"
-                                            "\tatom: %s unevaluated: %s\n"
-                                            "\tother_pkg: %s IUSE: %s USE: %s\n"
-                                            % (
-                                                ppkg,
-                                                violated_atom,
-                                                atom,
-                                                atom.unevaluated_atom,
-                                                other_pkg,
-                                                sorted(other_pkg.iuse.all),
-                                                sorted(_pkg_use_enabled(other_pkg)),
-                                            )
+                                            f"\tppkg: {ppkg}\n"
+                                            f"\tviolated_atom: {violated_atom}\n"
+                                            f"\tatom: {atom} unevaluated: {atom.unevaluated_atom}\n"
+                                            f"\tother_pkg: {other_pkg} "
+                                            f"IUSE: {sorted(other_pkg.iuse.all)} "
+                                            f"USE: {sorted(_pkg_use_enabled(other_pkg))}\n"
                                         )
                                         writemsg(msg, noiselevel=-2)
                                         raise AssertionError(
@@ -703,13 +695,11 @@ class slot_conflict_handler:
                         msg.append(2 * indent)
                         if len(selected_for_display) > 1:
                             msg.append(
-                                "(and %d more with the same problems)\n"
-                                % omitted_parents
+                                f"(and {omitted_parents} more with the same problems)\n"
                             )
                         else:
                             msg.append(
-                                "(and %d more with the same problem)\n"
-                                % omitted_parents
+                                f"(and {omitted_parents} more with the same problem)\n"
                             )
                 else:
                     msg.append(" (no parents)\n")
@@ -824,11 +814,7 @@ class slot_conflict_handler:
                     ):
                         if self.debug:
                             writemsg(
-                                (
-                                    "%s has pending USE changes. "
-                                    "Rejecting configuration.\n"
-                                )
-                                % (pkg,),
+                                f"{pkg} has pending USE changes. Rejecting configuration.\n",
                                 noiselevel=-1,
                             )
                         return False
@@ -857,11 +843,8 @@ class slot_conflict_handler:
                     # Version range does not match.
                     if self.debug:
                         writemsg(
-                            (
-                                "%s does not satify all version "
-                                "requirements. Rejecting configuration.\n"
-                            )
-                            % (pkg,),
+                            f"{pkg} does not satify all version "
+                            "requirements. Rejecting configuration.\n",
                             noiselevel=-1,
                         )
                     return False
@@ -871,11 +854,7 @@ class slot_conflict_handler:
                     # FIXME: This needs to support use dep defaults.
                     if self.debug:
                         writemsg(
-                            (
-                                "%s misses needed flags from IUSE."
-                                " Rejecting configuration.\n"
-                            )
-                            % (pkg,),
+                            f"{pkg} misses needed flags from IUSE. Rejecting configuration.\n",
                             noiselevel=-1,
                         )
                     return False
@@ -909,11 +888,8 @@ class slot_conflict_handler:
                     # part of the conflict, isn't it?)
                     if self.debug:
                         writemsg(
-                            (
-                                "%s: installed package would need USE"
-                                " changes. Rejecting configuration.\n"
-                            )
-                            % (pkg,),
+                            f"{pkg}: installed package would need USE changes. "
+                            "Rejecting configuration.\n",
                             noiselevel=-1,
                         )
                     return False
@@ -1185,11 +1161,8 @@ class slot_conflict_handler:
                     is_valid_solution = False
                     if self.debug:
                         writemsg(
-                            (
-                                "new conflict introduced: %s"
-                                " does not match %s from %s\n"
-                            )
-                            % (pkg, new_atom, ppkg),
+                            f"new conflict introduced: {pkg} does not match "
+                            f"{new_atom} from {ppkg}\n",
                             noiselevel=-1,
                         )
                     break

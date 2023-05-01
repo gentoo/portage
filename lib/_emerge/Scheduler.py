@@ -2218,11 +2218,11 @@ class Scheduler(PollScheduler):
                 if atom is not None:
                     if hasattr(world_set, "add"):
                         self._status_msg(
-                            ('Recording %s in "world" ' + "favorites file...") % atom
+                            f'Recording {atom} in "world" favorites file...'
                         )
                         logger.log(
-                            " === (%s of %s) Updating world file (%s)"
-                            % (pkg_count.curval, pkg_count.maxval, pkg.cpv)
+                            f" === ({pkg_count.curval} of {pkg_count.maxval}) "
+                            f"Updating world file ({pkg.cpv})"
                         )
                         world_set.add(atom)
                     else:
