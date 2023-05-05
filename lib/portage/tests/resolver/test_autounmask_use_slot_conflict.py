@@ -1,5 +1,7 @@
-# Copyright 2017-2021 Gentoo Authors
+# Copyright 2017-2021, 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import pytest
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
@@ -9,6 +11,7 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class AutounmaskUseSlotConflictTestCase(TestCase):
+    @pytest.mark.xfail()
     def testAutounmaskUseSlotConflict(self):
         self.todo = True
 
