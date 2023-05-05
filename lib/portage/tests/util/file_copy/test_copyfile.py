@@ -1,8 +1,10 @@
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017, 2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import shutil
 import tempfile
+
+import pytest
 
 from portage import os
 from portage.tests import TestCase
@@ -56,10 +58,12 @@ class CopyFileSparseTestCase(TestCase):
             # This last part of the test is expected to fail when sparse
             # copy is not implemented, so set the todo flag in order
             # to tolerate failures.
-            self.todo = True
+            ## self.todo = True
 
             # If sparse blocks were preserved, then both files should
             # consume the same number of blocks.
+
+            pytest.xfail(reason="sparse copy is not implemented")
             self.assertEqual(os.stat(src_path).st_blocks, os.stat(dest_path).st_blocks)
         finally:
             shutil.rmtree(tempdir)
