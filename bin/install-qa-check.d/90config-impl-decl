@@ -43,6 +43,7 @@ add_default_skips() {
 
 	# Functions not available on Linux
 	[[ ${CHOST} == *linux* ]] && QA_CONFIG_IMPL_DECL_SKIP+=(
+		res_getservers
 		res_ndestroy
 	)
 }
