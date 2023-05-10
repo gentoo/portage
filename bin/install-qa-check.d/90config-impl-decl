@@ -40,6 +40,11 @@ add_default_skips() {
 		# https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
 		"__atomic_*"
 	)
+
+	# Functions not available on Linux
+	[[ ${CHOST} == *linux* ]] && QA_CONFIG_IMPL_DECL_SKIP+=(
+		res_ndestroy
+	)
 }
 
 find_log_targets() {
