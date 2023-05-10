@@ -19,6 +19,18 @@
 #
 # See also: bug 892651
 
+# Same as the "has" function, but allows wildcards in the array
+is_in() {
+	local needle=$1
+	shift
+
+	local x
+	for x in "$@"; do
+		[[ "${needle}" = ${x} ]] && return 0
+	done
+	return 1
+}
+
 find_log_targets() {
 	local log_targets=(
 		'config.log'
@@ -80,7 +92,7 @@ config_impl_decl_check() {
 				continue
 			fi
 
-			has "${func}" "${QA_CONFIG_IMPL_DECL_SKIP[@]}" && continue
+			is_in "${func}" "${QA_CONFIG_IMPL_DECL_SKIP[@]}" && continue
 
 			files+=( "${l}" )
 			lines+=( "${line}" )
