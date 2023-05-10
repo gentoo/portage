@@ -31,6 +31,17 @@ is_in() {
 	return 1
 }
 
+add_default_skips() {
+	# Skip built-in functions provided by the compiler
+	QA_CONFIG_IMPL_DECL_SKIP+=(
+		"__builtin_*"
+		# https://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html
+		"__sync_*"
+		# https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
+		"__atomic_*"
+	)
+}
+
 find_log_targets() {
 	local log_targets=(
 		'config.log'
@@ -67,6 +78,8 @@ config_impl_decl_check() {
 	local re_uni
 	local re_asc
 	local is_utf8
+
+	add_default_skips
 
 	# Given the UTF-8 character type, both gcc and clang may enclose the
 	# function name between the LEFT SINGLE QUOTATION MARK and RIGHT SINGLE
