@@ -1,3 +1,9 @@
+portage-3.0.49 (UNRELEASED)
+--------------
+Breaking changes:
+* Output deprecation warnings for portageq, prepstrip and prepallstrip
+  when they are called from an ebuild (bug #906129, bug #906156).
+
 portage-3.0.48 (UNRELEASED)
 --------------
 Bug fixes:
