@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import difflib
@@ -33,12 +33,10 @@ declare -- _EUTILS_ECLASS="1"
 declare -- f
 get_libdir ()
 {
-    local CONF_LIBDIR;
-    if [ -n "${CONF_LIBDIR_OVERRIDE}" ]; then
-        echo ${CONF_LIBDIR_OVERRIDE};
-    else
-        get_abi_LIBDIR;
-    fi
+    local libdir_var="LIBDIR_${ABI}";
+    local libdir="lib";
+    [[ -n ${ABI} && -n ${!libdir_var} ]] && libdir=${!libdir_var};
+    echo "${libdir}"
 }
 make_wrapper ()
 {
@@ -65,12 +63,10 @@ declare -- _EUTILS_ECLASS="1"
 declare -- f
 get_libdir ()
 {
-    local CONF_LIBDIR;
-    if [ -n "${CONF_LIBDIR_OVERRIDE}" ]; then
-        echo ${CONF_LIBDIR_OVERRIDE};
-    else
-        get_abi_LIBDIR;
-    fi
+    local libdir_var="LIBDIR_${ABI}";
+    local libdir="lib";
+    [[ -n ${ABI} && -n ${!libdir_var} ]] && libdir=${!libdir_var};
+    echo "${libdir}"
 }
 make_wrapper ()
 {

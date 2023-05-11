@@ -681,13 +681,13 @@ econf() {
 		fi
 
 		# If the profile defines a location to install libs to aside from default, pass it on.
-		# If the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
-		local CONF_LIBDIR LIBDIR_VAR="LIBDIR_${ABI}"
-		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
-			CONF_LIBDIR=${!LIBDIR_VAR}
+		# If the ebuild passes in --libdir, they're responsible for the libdir fun.
+		local libdir libdir_var="LIBDIR_${ABI}"
+		if [[ -n ${ABI} && -n ${!libdir_var} ]] ; then
+			libdir=${!libdir_var}
 		fi
 
-		if [[ -n ${CONF_LIBDIR} ]] && ! __hasgq --libdir=\* "$@" ; then
+		if [[ -n ${libdir} ]] && ! __hasgq --libdir=\* "$@" ; then
 			export CONF_PREFIX=$(__hasg --exec-prefix=\* "$@")
 			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(__hasg --prefix=\* "$@")
 
@@ -695,10 +695,10 @@ econf() {
 			CONF_PREFIX=${CONF_PREFIX#*=}
 
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
-			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
+			[[ ${libdir} != /* ]] && libdir="/${libdir}"
 
 			conf_args+=(
-				--libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${CONF_LIBDIR}")"
+				--libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${libdir}")"
 			)
 		fi
 
@@ -751,17 +751,15 @@ einstall() {
 		local ED=${D}
 	fi
 
-	LIBDIR_VAR="LIBDIR_${ABI}"
-	if [[ -n "${ABI}" && -n "${!LIBDIR_VAR}" ]]; then
-		CONF_LIBDIR="${!LIBDIR_VAR}"
+	local libdir libdir_var="LIBDIR_${ABI}"
+	if [[ -n "${ABI}" && -n "${!libdir_var}" ]]; then
+		libdir="${!libdir_var}"
 	fi
-	unset LIBDIR_VAR
 
-	if [[ -n "${CONF_LIBDIR}" && "${CONF_PREFIX:+set}" = set ]]; then
-		EI_DESTLIBDIR="${D%/}/${CONF_PREFIX}/${CONF_LIBDIR}"
-		EI_DESTLIBDIR="$(__strip_duplicate_slashes "${EI_DESTLIBDIR}")"
-		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
-		unset EI_DESTLIBDIR
+	if [[ -n "${libdir}" && "${CONF_PREFIX:+set}" = set ]]; then
+		local destlibdir="${D%/}/${CONF_PREFIX}/${libdir}"
+		destlibdir="$(__strip_duplicate_slashes "${destlibdir}")"
+		LOCAL_EXTRA_EINSTALL="libdir=${destlibdir} ${LOCAL_EXTRA_EINSTALL}"
 	fi
 
 	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then

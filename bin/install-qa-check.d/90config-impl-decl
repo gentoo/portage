@@ -19,6 +19,38 @@
 #
 # See also: bug 892651
 
+# Same as the "has" function, but allows wildcards in the array
+is_in() {
+	local needle=$1
+	shift
+
+	local x
+	for x in "$@"; do
+		[[ "${needle}" = ${x} ]] && return 0
+	done
+	return 1
+}
+
+add_default_skips() {
+	# Skip built-in functions provided by the compiler
+	QA_CONFIG_IMPL_DECL_SKIP+=(
+		"__builtin_*"
+		# https://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html
+		"__sync_*"
+		# https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
+		"__atomic_*"
+	)
+
+	# Functions not available on Linux
+	[[ ${CHOST} == *linux* ]] && QA_CONFIG_IMPL_DECL_SKIP+=(
+		acl
+		acl_get_perm_np
+		res_getservers
+		res_ndestroy
+		statacl
+	)
+}
+
 find_log_targets() {
 	local log_targets=(
 		'config.log'
@@ -56,6 +88,8 @@ config_impl_decl_check() {
 	local re_asc
 	local is_utf8
 
+	add_default_skips
+
 	# Given the UTF-8 character type, both gcc and clang may enclose the
 	# function name between the LEFT SINGLE QUOTATION MARK and RIGHT SINGLE
 	# QUOTATION MARK codepoints.
@@ -80,7 +114,7 @@ config_impl_decl_check() {
 				continue
 			fi
 
-			has "${func}" "${QA_CONFIG_IMPL_DECL_SKIP[@]}" && continue
+			is_in "${func}" "${QA_CONFIG_IMPL_DECL_SKIP[@]}" && continue
 
 			files+=( "${l}" )
 			lines+=( "${line}" )

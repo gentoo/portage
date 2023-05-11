@@ -22,15 +22,13 @@ else
 fi
 
 # Setup ABI cruft
-LIBDIR_VAR="LIBDIR_${ABI}"
-if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
-	CONF_LIBDIR=${!LIBDIR_VAR}
+libdir="lib"
+libdir_var="LIBDIR_${ABI}"
+if [[ -n ${ABI} && -n ${!libdir_var} ]] ; then
+	libdir=${!libdir_var}
 fi
-unset LIBDIR_VAR
 
-# We need this to default to lib so that things dont break
-CONF_LIBDIR=${CONF_LIBDIR:-lib}
-libdir="${ED%/}/${__E_DESTTREE#/}/${CONF_LIBDIR}"
+libdir="${ED%/}/${__E_DESTTREE#/}/${libdir}"
 
 if [[ $# -lt 1 ]] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
