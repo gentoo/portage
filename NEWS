@@ -3,6 +3,10 @@ portage-3.0.54 (UNRELEASED)
 
 TODO
 
+Breaking changes:
+* Finally ban non-PMS helpers portageq, prepinfo, prepman, prepstrip and
+  prepallstrip (bug #899898, bug #906129, bug #906156).
+
 portage-3.0.53 (2023-10-20)
 --------------
 
