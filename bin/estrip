@@ -30,9 +30,8 @@ if ${PORTAGE_RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	${FEATURES_installsources} || exit 0
 fi
 
-[[ ${__PORTAGE_HELPER} == prepstrip ]] && prepstrip=true || prepstrip=false
+prepstrip=false
 
-if ! ${prepstrip}; then
 while [[ $# -gt 0 ]] ; do
 	case $1 in
 	--ignore)
@@ -130,7 +129,6 @@ while [[ $# -gt 0 ]] ; do
 	shift
 done
 set -- "${ED}"
-fi
 
 PRESERVE_XATTR=false
 if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then

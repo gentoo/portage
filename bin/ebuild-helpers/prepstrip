@@ -4,10 +4,5 @@
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-if ___eapi_has_dostrip; then
-	die "${0##*/}: ${0##*/} has been banned for EAPI '${EAPI}'; use 'dostrip' instead"
-fi
-
-eqawarn "QA Notice: '${0##*/}' is not allowed in ebuild scope"
-
-__PORTAGE_HELPER=prepstrip exec "${PORTAGE_BIN_PATH}"/estrip "${@}"
+die "'${0##*/}' is not allowed in ebuild scope"
+exit 1
