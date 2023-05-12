@@ -265,7 +265,7 @@ install_qa_check() {
 			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
 			"${PORTAGE_BIN_PATH}"/estrip --dequeue
 		else
-			prepallstrip
+			"${PORTAGE_BIN_PATH}"/estrip --prepallstrip
 		fi
 	fi
 }
@@ -302,7 +302,7 @@ __dyn_instprep() {
 			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
 			"${PORTAGE_BIN_PATH}"/estrip --dequeue
 		else
-			prepallstrip
+			"${PORTAGE_BIN_PATH}"/estrip --prepallstrip
 		fi
 	fi
 

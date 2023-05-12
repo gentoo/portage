@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
@@ -115,6 +115,11 @@ while [[ $# -gt 0 ]] ; do
 		;;
 	--dequeue)
 		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		break
+		;;
+	--prepallstrip)
+		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
+		prepstrip=true
 		break
 		;;
 	*)
