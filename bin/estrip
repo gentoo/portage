@@ -114,7 +114,7 @@ while [[ $# -gt 0 ]] ; do
 		exit 0
 		;;
 	--dequeue)
-		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
 		break
 		;;
 	--prepallstrip)
