@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -7,5 +7,7 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 if ___eapi_has_dostrip; then
 	die "${0##*/}: ${0##*/} has been banned for EAPI '${EAPI}'; use 'dostrip' instead"
 fi
+
+eqawarn "QA Notice: '${0##*/}' is not allowed in ebuild scope"
 
 __PORTAGE_HELPER=prepstrip exec "${PORTAGE_BIN_PATH}"/estrip "${@}"
