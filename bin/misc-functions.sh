@@ -147,19 +147,6 @@ install_qa_check() {
 		# Portage regenerates this on the installed system.
 		rm -f "${ED%/}"/usr/share/info/dir{,.info}{,.Z,.gz,.bz2,.lzma,.lz,.xz,.zst} \
 			|| die "rm failed"
-		# Recurse into subdirs. Remove this code after 2023-12-31. #899898
-		while read -r -d '' x; do
-			( shopt -s failglob; : "${x}"/.keepinfodir* ) 2>/dev/null \
-				&& continue
-			for f in "${x}"/dir{,.info}{,.Z,.gz,.bz2,.lzma,.lz,.xz,.zst}; do
-				if [[ -e ${f} ]]; then
-					eqawarn "QA Notice: Removing Info directory file '${f}'."
-					eqawarn "Relying on this behavior is deprecated and may"
-					eqawarn "cause file collisions in future."
-					rm -f "${f}" || die "rm failed"
-				fi
-			done
-		done < <(find "${ED%/}"/usr/share/info -mindepth 1 -type d -print0)
 	fi
 
 	# If binpkg-docompress is enabled, apply compression before creating

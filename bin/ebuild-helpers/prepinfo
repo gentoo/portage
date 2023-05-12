@@ -4,37 +4,5 @@
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-eqawarn "QA Notice: '${0##*/}' is not allowed in ebuild scope"
-
-if ! ___eapi_has_prefix_variables ; then
-	ED=${D}
-fi
-
-if [[ -z ${1} ]] ; then
-	infodir="/usr/share/info"
-else
-	if [[ -d ${ED%/}/${1#/}/share/info ]] ; then
-		infodir="${1#/}/share/info"
-	else
-		infodir="${1#/}/info"
-	fi
-fi
-
-if [[ ! -d ${ED%/}/${infodir#/} ]] ; then
-	if [[ -n $1 ]] ; then
-		__vecho "${0##*/}: '${infodir}' does not exist!"
-		exit 1
-	else
-		exit 0
-	fi
-fi
-
-find "${ED%/}/${infodir#/}" -type d -print0 | while read -r -d $'\0' x ; do
-	for f in "${x}"/.keepinfodir*; do
-		[[ -e ${f} ]] && continue 2
-	done
-
-	rm -f "${x}"/dir{,.info}{,.Z,.gz,.bz2,.lzma,.lz,.xz,.zst}
-done
-
-exit 0
+die "'${0##*/}' is not allowed in ebuild scope"
+exit 1
