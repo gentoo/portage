@@ -4,5 +4,5 @@
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-eqawarn "QA Notice: '${0##*/}' is not allowed in ebuild scope"
-exec "${PORTAGE_BIN_PATH}"/portageq-wrapper "$@"
+die "'${0##*/}' is not allowed in ebuild scope"
+exit 1
