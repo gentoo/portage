@@ -8,7 +8,7 @@ cd "${PORTAGE_PYM_PATH}" || exit 1
 IFS=":"
 set -f # in case ${PATH} contains any shell glob characters
 
-for path in ${PATH}; do
+for path in "${PORTAGE_BIN_PATH}" ${PATH}; do
 	[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
 	[[ -x ${path}/portageq ]] || continue
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
