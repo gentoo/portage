@@ -963,7 +963,7 @@ ___best_version_and_has_version_common() {
 	if [[ -n ${PORTAGE_IPC_DAEMON} ]] ; then
 		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}")
 	else
-		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-helpers/portageq "${FUNCNAME[1]}" "${root}" "${atom}")
+		cmd+=("${PORTAGE_BIN_PATH}"/portageq-wrapper "${FUNCNAME[1]}" "${root}" "${atom}")
 	fi
 
 	"${cmd[@]}"
