@@ -731,8 +731,7 @@ def find_packages():
 def find_scripts():
     for dirpath, _dirnames, filenames in os.walk("bin"):
         for f in filenames:
-            if f not in ["deprecated-path"]:
-                yield os.path.join(dirpath, f)
+            yield os.path.join(dirpath, f)
 
 
 def get_manpages():
@@ -844,7 +843,6 @@ setup(
             ],
             ["$portage_setsdir", ["cnf/sets/portage.conf"]],
             ["$docdir", ["NEWS", "RELEASE-NOTES"]],
-            ["$portage_base/bin", ["bin/deprecated-path"]],
             ["$portage_confdir/repo.postsync.d", ["cnf/repo.postsync.d/example"]],
         ],
         [

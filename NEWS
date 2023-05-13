@@ -21,6 +21,8 @@ Cleanups:
 * Move the internal portageq wrapper script out of the ebuild-helpers
   directory.
 
+* Drop unused deprecated-path script.
+
 portage-3.0.47 (2023-04-30)
 --------------
 
