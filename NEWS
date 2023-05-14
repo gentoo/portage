@@ -1,15 +1,9 @@
-portage-3.0.49 (UNRELEASED)
+portage-3.0.48 (UNRELEASED)
 --------------
 Breaking changes:
 * Output deprecation warnings for portageq, prepstrip and prepallstrip
   when they are called from an ebuild (bug #906129, bug #906156).
 
-Cleanups:
-* Move the internal portageq wrapper script out of the ebuild-helpers
-  directory.
-
-portage-3.0.48 (UNRELEASED)
---------------
 Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
 
@@ -23,6 +17,9 @@ Bug fixes:
 
 Cleanups:
 * Convert printf-style %-formats into fstrings.
+
+* Move the internal portageq wrapper script out of the ebuild-helpers
+  directory.
 
 portage-3.0.47 (2023-04-30)
 --------------
