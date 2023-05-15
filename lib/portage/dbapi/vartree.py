@@ -5422,6 +5422,7 @@ class dblink:
         srcroot = normalize_path(srcroot).rstrip(sep) + sep
         destroot = normalize_path(destroot).rstrip(sep) + sep
         calc_prelink = "prelink-checksums" in self.settings.features
+        ignore_mtime = "ignore-mtime" in self.settings.features
 
         protect_if_modified = (
             "config-protect-if-modified" in self.settings.features
@@ -5830,6 +5831,13 @@ class dblink:
                         hardlink_candidates.append(mydest)
                         zing = ">>>"
                     else:
+                        if not ignore_mtime:
+                            mymtime = thismtime if thismtime is not None else mymtime
+                            try:
+                                os.utime(mydest, ns=(mymtime, mymtime))
+                            except OSError:
+                                # utime can fail here with EPERM
+                                pass
                         zing = "==="
 
                     try:
