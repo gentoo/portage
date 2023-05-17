@@ -27,9 +27,9 @@ _compressors = {
         "package": "app-arch/lz4",
     },
     "lzip": {
-        "compress": "lzip ${BINPKG_COMPRESS_FLAGS}",
-        "decompress": "lzip -d",
-        "package": "app-arch/lzip",
+        "compress": "plzip -n {JOBS} ${BINPKG_COMPRESS_FLAGS}",
+        "decompress": "plzip -n {JOBS} -d",
+        "package": "app-arch/plzip",
     },
     "lzop": {
         "compress": "lzop ${BINPKG_COMPRESS_FLAGS}",
