@@ -302,6 +302,8 @@ check_file_signature_gemato() {
 			# a keyring problem).
 			die "signature verification failed"
 		fi
+	else
+		return 127
 	fi
 
 	return "${r}"
@@ -346,6 +348,13 @@ check_file_signature() {
 			1)
 				check_file_signature_gemato "${signature}" "${file}"
 				r=$?
+
+				if [[ ${r} -eq 127 ]] ; then
+					ewarn "Falling back to gpg as gemato is not installed"
+					check_file_signature_gpg_unwrapped "${signature}" "${file}"
+					r=$?
+				fi
+
 				;;
 			2)
 				check_file_signature_gpg_unwrapped "${signature}" "${file}"
