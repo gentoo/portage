@@ -361,6 +361,11 @@ check_file_signature() {
 				r=$?
 				;;
 		esac
+
+		if [[ ${r} != 0 ]] ; then
+			eerror "Error occurred in check_file_signature: ${r}. Aborting."
+			die "Verification error occured."
+		fi
 	else
 		r=0
 	fi
