@@ -15,6 +15,9 @@ Bug fixes:
   both of them now use the same main path for PGP verification (i.e.
   gemato).
 
+* emerge-webrsync: Fall back correctly to manual gpg (rather than aborting
+  entirely) if gemato is not installed (bug #905868).
+
 Cleanups:
 * Convert printf-style %-formats into fstrings.
 
