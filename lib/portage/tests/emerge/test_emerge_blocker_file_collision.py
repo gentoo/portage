@@ -1,4 +1,4 @@
-# Copyright 2016 Gentoo Foundation
+# Copyright 2016, 2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
