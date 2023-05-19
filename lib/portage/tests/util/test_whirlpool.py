@@ -1,10 +1,14 @@
-# Copyright 2011-2022 Gentoo Authors
+# Copyright 2011-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import pytest
 
 from portage.tests import TestCase
 from portage.util.whirlpool import CWhirlpool, PyWhirlpool
+
+
+CWHIRLPOOL_AVAILABLE = CWhirlpool.is_available
+CWHIRLPOOL_NOT_AVAILABLE_MSG = "C Whirlpool extension is not importable"
 
 
 class WhirlpoolTestCase(TestCase):
@@ -29,8 +33,10 @@ class WhirlpoolTestCase(TestCase):
         )
 
     @pytest.mark.skipif(
-        not CWhirlpool.is_available,
-        reason="C Whirlpool extension is not importable",
+        not CWHIRLPOOL_AVAILABLE,
+        reason=CWHIRLPOOL_NOT_AVAILABLE_MSG,
     )
     def testCWhirlpool(self):
+        if not CWHIRLPOOL_AVAILABLE:
+            self.skipTest(CWHIRLPOOL_NOT_AVAILABLE_MSG)
         self.testBundledWhirlpool(CWhirlpool)
