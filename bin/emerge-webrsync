@@ -314,7 +314,26 @@ check_file_signature_gpg_unwrapped() {
 	local file="$2"
 
 	if type -P gpg > /dev/null; then
-		if gnupg_status=$(gpg --homedir "${PORTAGE_GPG_DIR}" --batch \
+		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
+			local key="${PORTAGE_GPG_KEY}"
+		else
+			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+		fi
+
+		local gpgdir="${PORTAGE_GPG_DIR}"
+		if [[ -z ${gpgdir} ]] ; then
+			gpgdir=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
+			if [[ ! -w ${gpgdir} ]] ; then
+				die "gpgdir is not writable: ${gpgdir}"
+			fi
+
+			# If we're created our own temporary directory, it's okay for us
+			# to import the keyring by ourselves. But we'll avoid doing it
+			# if the user has set PORTAGE_GPG_DIR by themselves.
+			gpg --no-default-keyring --homedir "${gpgdir}" --batch --import "${key}"
+		fi
+
+		if gnupg_status=$(gpg --no-default-keyring --homedir "${gpgdir}" --batch \
 			--status-fd 1 --verify "${signature}" "${file}"); then
 			while read -r line; do
 				if [[ ${line} == "[GNUPG:] GOODSIG"* ]]; then
