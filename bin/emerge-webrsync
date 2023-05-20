@@ -574,7 +574,7 @@ do_latest_snapshot() {
 	# Daily snapshots are created at 00:45 and are not
 	# available until after 01:00. Don't waste time trying
 	# to fetch a snapshot before it's been created.
-	if [[ ${start_hour} -lt 1 ]] ; then
+	if [[ ${start_hour#0} -lt 1 ]] ; then
 		(( start_time -= 86400 ))
 	fi
 
