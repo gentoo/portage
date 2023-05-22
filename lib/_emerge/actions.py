@@ -3522,9 +3522,6 @@ def run_action(emerge_config):
             noiselevel=-1,
         )
         return 0
-    if emerge_config.action == "help":
-        emerge_help()
-        return 0
 
     spinner = stdout_spinner()
     if "candy" in emerge_config.target_config.settings.features:
