@@ -9,10 +9,6 @@ Features:
   contents have changed. This is particularly beneficial on CoW filesystems
   with snapshots. This is always enabled. See bug #722270.
 
-  This also adds an additional optional optimization to overwrite only if
-  the hashes have changed, via FEATURES="ignore-mtime". Note that this violates
-  a condition in PMS so should not be relied upon. It is off by default.
-
 Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
 
