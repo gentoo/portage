@@ -533,12 +533,6 @@ If your GPG is auto unlocked on login, you do not need this.
 .B icecream
 Enable portage support for the icecream package.
 .TP
-.B ignore\-mtime
-Do not update mtime if the target file is equal. This can be useful on some
-filesystems to better utilize features like snapshots and data deduplication,
-however this violates the preservation of file modification times as stipulated
-in the PMS.
-.TP
 .B installsources
 Install source code into /usr/src/debug/${CATEGORY}/${PF} (also see
 \fBsplitdebug\fR). This feature works only if debugedit is installed, CFLAGS

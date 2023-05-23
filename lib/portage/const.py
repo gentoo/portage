@@ -159,7 +159,6 @@ SUPPORTED_FEATURES = frozenset(
         "getbinpkg",
         "gpg-keepalive",
         "icecream",
-        "ignore-mtime",
         "installsources",
         "ipc-sandbox",
         "keeptemp",
