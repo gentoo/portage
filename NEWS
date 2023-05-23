@@ -4,6 +4,15 @@ Breaking changes:
 * Output deprecation warnings for portageq, prepstrip and prepallstrip
   when they are called from an ebuild (bug #906129, bug #906156).
 
+Features:
+* Optimize merge process by only writing files to disk if a package's
+  contents have changed. This is particularly beneficial on CoW filesystems
+  with snapshots. This is always enabled. See bug #722270.
+
+  This also adds an additional optional optimization to overwrite only if
+  the hashes have changed, via FEATURES="ignore-mtime". Note that this violates
+  a condition in PMS so should not be relied upon. It is off by default.
+
 Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
 
