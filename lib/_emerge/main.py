@@ -13,8 +13,10 @@ portage.proxy.lazyimport.lazyimport(
     "logging",
     "portage.dep:Atom",
     "portage.util:writemsg_level",
+    "portage.util:writemsg_stdout",
     "textwrap",
     "_emerge.actions:load_emerge_config,run_action," + "validate_ebuild_environment",
+    "_emerge.actions:emerge_version",
     "_emerge.help:emerge_help",
     "_emerge.is_valid_package_atom:insert_category_into_atom",
 )
@@ -1256,6 +1258,10 @@ def emerge_main(args=None):
     # Portage needs to ensure a sane umask for the files it creates.
     os.umask(0o22)
     emerge_config = load_emerge_config(action=myaction, args=myfiles, opts=myopts)
+
+    if myaction == "version":
+        writemsg_stdout(emerge_version(emerge_config) + "\n", noiselevel=-1)
+        return os.EX_OK
 
     # Make locale variables from configuration files (make.defaults, make.conf) affect locale of emerge process.
     for locale_var_name in (

@@ -772,6 +772,89 @@ def action_config(settings, trees, myopts, myfiles):
     return retval
 
 
+def get_libc_version(vardb):
+    libcver = []
+    libclist = set()
+    for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
+        if not atom.blocker:
+            libclist.update(vardb.match(atom))
+    if libclist:
+        for cpv in sorted(libclist):
+            libc_split = portage.catpkgsplit(cpv)[1:]
+            if libc_split[-1] == "r0":
+                libc_split = libc_split[:-1]
+            libcver.append("-".join(libc_split))
+        return libcver
+    return ["unavailable"]
+
+
+def get_profilever(portdir, profile, vardb):
+    profilever = None
+    repositories = vardb.settings.repositories
+    if profile:
+        profilever = relative_profile_path(portdir, profile)
+        if profilever is None:
+            try:
+                for parent in portage.grabfile(os.path.join(profile, "parent")):
+                    profilever = relative_profile_path(
+                        portdir, os.path.join(profile, parent)
+                    )
+                    if profilever is not None:
+                        break
+                    colon = parent.find(":")
+                    if colon != -1:
+                        p_repo_name = parent[:colon]
+                        try:
+                            p_repo_loc = repositories.get_location_for_name(p_repo_name)
+                        except KeyError:
+                            pass
+                        else:
+                            profilever = relative_profile_path(
+                                p_repo_loc,
+                                os.path.join(
+                                    p_repo_loc, "profiles", parent[colon + 1 :]
+                                ),
+                            )
+                            if profilever is not None:
+                                break
+            except portage.exception.PortageException:
+                pass
+
+            if profilever is None:
+                try:
+                    profilever = "!" + os.readlink(profile)
+                except OSError:
+                    pass
+
+    if profilever is None:
+        profilever = "unavailable"
+
+    return profilever
+
+
+def emerge_version(emerge_config):
+    portagever = portage.VERSION
+    pythonver = (
+        "python"
+        f" {sys.version_info[0]}"
+        f".{sys.version_info[1]}"
+        f".{sys.version_info[2]}"
+        f"-{sys.version_info[3]}"
+        f"-{sys.version_info[4]}"
+    )
+    profilever = get_profilever(
+        emerge_config.target_config.settings["PORTDIR"],
+        emerge_config.target_config.settings.profile_path,
+        emerge_config.target_config.trees["vartree"].dbapi,
+    )
+    gccver = getgccversion()
+    libcver = get_libc_version(emerge_config.target_config.trees["vartree"].dbapi)[0]
+    kernelver = platform.release()
+    architecture = platform.machine()
+    ver = f"Portage {portagever} ({pythonver}, {profilever}, {gccver}, {libcver}, {kernelver} {architecture})"
+    return ver
+
+
 def action_depclean(
     settings, trees, ldpath_mtimes, myopts, action, myfiles, spinner, scheduler=None
 ):
@@ -2799,71 +2882,13 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
         f"-{sys.version_info[3]}"
         f"-{sys.version_info[4]}"
     )
-    profilever = None
-    repositories = vardb.settings.repositories
-    if profile:
-        profilever = relative_profile_path(portdir, profile)
-        if profilever is None:
-            try:
-                for parent in portage.grabfile(os.path.join(profile, "parent")):
-                    profilever = relative_profile_path(
-                        portdir, os.path.join(profile, parent)
-                    )
-                    if profilever is not None:
-                        break
-                    colon = parent.find(":")
-                    if colon != -1:
-                        p_repo_name = parent[:colon]
-                        try:
-                            p_repo_loc = repositories.get_location_for_name(p_repo_name)
-                        except KeyError:
-                            pass
-                        else:
-                            profilever = relative_profile_path(
-                                p_repo_loc,
-                                os.path.join(
-                                    p_repo_loc, "profiles", parent[colon + 1 :]
-                                ),
-                            )
-                            if profilever is not None:
-                                break
-            except portage.exception.PortageException:
-                pass
 
-            if profilever is None:
-                try:
-                    profilever = "!" + os.readlink(profile)
-                except OSError:
-                    pass
-
-    if profilever is None:
-        profilever = "unavailable"
-
-    libcver = []
-    libclist = set()
-    for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
-        if not atom.blocker:
-            libclist.update(vardb.match(atom))
-    if libclist:
-        for cpv in sorted(libclist):
-            libc_split = portage.catpkgsplit(cpv)[1:]
-            if libc_split[-1] == "r0":
-                libc_split = libc_split[:-1]
-            libcver.append("-".join(libc_split))
-    else:
-        libcver = ["unavailable"]
-
+    profilever = get_profilever(portdir, profile, vardb)
+    libcver = get_libc_version(vardb)
     gccver = getgccversion(chost)
     unameout = platform.release() + " " + platform.machine()
 
-    return "Portage {} ({}, {}, {}, {}, {})".format(
-        portage.VERSION,
-        pythonver,
-        profilever,
-        gccver,
-        ",".join(libcver),
-        unameout,
-    )
+    return f"Portage {portage.VERSION} ({pythonver}, {profilever}, {gccver}, {','.join(libcver)}, {unameout})"
 
 
 class _emerge_config(SlotObject):
@@ -3508,20 +3533,6 @@ def run_action(emerge_config):
                 noiselevel=-1,
             )
             return 1
-
-    if emerge_config.action == "version":
-        writemsg_stdout(
-            getportageversion(
-                emerge_config.target_config.settings["PORTDIR"],
-                None,
-                emerge_config.target_config.settings.profile_path,
-                emerge_config.target_config.settings.get("CHOST"),
-                emerge_config.target_config.trees["vartree"].dbapi,
-            )
-            + "\n",
-            noiselevel=-1,
-        )
-        return 0
 
     spinner = stdout_spinner()
     if "candy" in emerge_config.target_config.settings.features:
