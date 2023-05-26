@@ -24,7 +24,7 @@ tasks:
   - setup-pylint: |
       for py in "${PYTHON_VERSIONS[@]}"; do
         source ".venv-$py/bin/activate"
-        pip install pylint
+        pip install pylint pytest
         deactivate
       done
 
