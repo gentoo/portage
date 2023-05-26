@@ -620,7 +620,7 @@ call_has_and_best_version() {
             "INFOPATH": "",
             "PATH": path,
             "PKGDIR": pkgdir,
-            "PORTAGE_INST_GID": str(os.getuid()),  # str(portage.data.portage_gid),
+            "PORTAGE_INST_GID": str(os.getgid()),  # str(portage.data.portage_gid),
             "PORTAGE_INST_UID": str(os.getuid()),  # str(portage.data.portage_uid),
             "PORTAGE_PYTHON": portage_python,
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),

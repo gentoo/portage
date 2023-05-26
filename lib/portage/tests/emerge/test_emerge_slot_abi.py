@@ -129,8 +129,8 @@ class SlotAbiEmergeTestCase(TestCase):
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
             "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
             "PYTHONPATH": pythonpath,
-            "PORTAGE_INST_GID": str(os.getuid()),
-            "PORTAGE_INST_UID": str(os.getgid()),
+            "PORTAGE_INST_GID": str(os.getgid()),
+            "PORTAGE_INST_UID": str(os.getuid()),
         }
 
         if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
