@@ -9,6 +9,9 @@ Features:
   contents have changed. This is particularly beneficial on CoW filesystems
   with snapshots. This is always enabled. See bug #722270.
 
+Cleanups:
+* Begin porting to pytest!
+
 Bug fixes:
 * fowners, fperms: Fix handling of relative pathnames (bug #905223).
 
