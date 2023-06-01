@@ -1,4 +1,4 @@
-portage-3.0.48 (UNRELEASED)
+portage-3.0.48 (2023-06-01)
 --------------
 Breaking changes:
 * Output deprecation warnings for portageq, prepstrip and prepallstrip
