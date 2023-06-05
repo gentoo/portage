@@ -8,3 +8,7 @@ __pycache__/
 setup.cfg
 .*.swp
 *.vim
+.mypy_cache
+dist
+*.egg-info/
+MANIFEST

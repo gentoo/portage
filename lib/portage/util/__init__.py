@@ -1,4 +1,4 @@
-# Copyright 2004-2020 Gentoo Authors
+# Copyright 2004-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.cache.mappings import UserDict
@@ -87,7 +87,7 @@ portage.proxy.lazyimport.lazyimport(
 noiselimit = 0
 
 
-def initialize_logger(level=logging.WARNING):
+def initialize_logger(level=logging.WARNING) -> None:
     """Sets up basic logging of portage activities
     Args:
             level: the level to emit messages at ('info', 'debug', 'warning' ...)
@@ -97,7 +97,7 @@ def initialize_logger(level=logging.WARNING):
     logging.basicConfig(level=level, format="[%(levelname)-4s] %(message)s")
 
 
-def writemsg(mystr, noiselevel=0, fd=None):
+def writemsg(mystr: str, noiselevel: int = 0, fd=None) -> None:
     """Prints out warning and debug messages based on the noiselimit setting"""
     global noiselimit
     if fd is None:
@@ -118,24 +118,23 @@ def writemsg(mystr, noiselevel=0, fd=None):
         fd.flush()
 
 
-def writemsg_stdout(mystr, noiselevel=0):
+def writemsg_stdout(mystr: str, noiselevel: int = 0) -> None:
     """Prints messages stdout based on the noiselimit setting"""
     writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
 
-def writemsg_level(msg, level=0, noiselevel=0):
+def writemsg_level(msg: str, level: int = 0, noiselevel: int = 0):
     """
     Show a message for the given level as defined by the logging module
-    (default is 0). When level >= logging.WARNING then the message is
+    (default is 0). 
+    
+    When level >= logging.WARNING then the message is
     sent to stderr, otherwise it is sent to stdout. The noiselevel is
     passed directly to writemsg().
-
-    @type msg: str
-    @param msg: a message string, including newline if appropriate
-    @type level: int
-    @param level: a numeric logging level (see the logging module)
-    @type noiselevel: int
-    @param noiselevel: passed directly to writemsg
+    Takes three parameters
+    1. msg  - the message to output
+    2. level - the numeric logging level (see python's logging module)
+    3. noiselevel - portage's logging level, passed directly to writemsg
     """
     if level >= logging.WARNING:
         fd = sys.stderr

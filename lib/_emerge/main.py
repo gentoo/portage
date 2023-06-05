@@ -1163,8 +1163,10 @@ def profile_check(trees, myaction):
 
 def emerge_main(args=None):
     """
-    @param args: command arguments (default: sys.argv[1:])
-    @type args: list
+    Entry point of emerge
+
+    Processes command line arguments and decides what the current run of emerge
+    should by creating `emerge_config`
     """
     if args is None:
         args = sys.argv[1:]
