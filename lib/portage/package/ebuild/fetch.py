@@ -240,20 +240,15 @@ def _ensure_distdir(settings, distdir):
     userpriv = portage.data.secpass >= 2 and "userpriv" in settings.features
     write_test_file = os.path.join(distdir, ".__portage_test_write__")
 
-    try:
-        st = os.stat(distdir)
-    except OSError:
-        st = None
-
-    if st is not None and stat.S_ISDIR(st.st_mode):
-        if not (userfetch or userpriv):
-            return
-        if _userpriv_test_write_file(settings, write_test_file):
-            return
+    if _userpriv_test_write_file(settings, write_test_file):
+        return
 
     _userpriv_test_write_file_cache.pop(write_test_file, None)
+
+    already_exists = os.path.isdir(distdir)
+
     if ensure_dirs(distdir, gid=dir_gid, mode=dirmode, mask=modemask):
-        if st is None:
+        if not already_exists:
             # The directory has just been created
             # and therefore it must be empty.
             return
