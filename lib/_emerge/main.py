@@ -21,6 +21,7 @@ portage.proxy.lazyimport.lazyimport(
 from portage import os
 from portage.sync import _SUBMODULE_PATH_MAP
 
+from typing import Optional, List
 
 options = [
     "--alphabetical",
@@ -1161,12 +1162,12 @@ def profile_check(trees, myaction):
     return os.EX_OK
 
 
-def emerge_main(args=None):
+def emerge_main(args: Optional[List[str]] = None):
     """
     Entry point of emerge
 
-    Processes command line arguments and decides what the current run of emerge
-    should by creating `emerge_config`
+    Processes command line arguments (default: sys.argv[1:]) and decides
+    what the current run of emerge should by creating `emerge_config`
     """
     if args is None:
         args = sys.argv[1:]
