@@ -1608,7 +1608,22 @@ def _check_temp_dir(settings):
     # for those people.
     checkdir = first_existing(os.path.join(settings["PORTAGE_TMPDIR"], "portage"))
 
-    if not os.access(checkdir, os.W_OK):
+    try:
+        with tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir) as fd:
+            os.chmod(fd.name, 0o755)
+            if not os.access(fd.name, os.X_OK):
+                writemsg(
+                    _(
+                        "Can not execute files in %s\n"
+                        "Likely cause is that you've mounted it with one of the\n"
+                        "following mount options: 'noexec', 'user', 'users'\n\n"
+                        "Please make sure that portage can execute files in this directory.\n"
+                    )
+                    % checkdir,
+                    noiselevel=-1,
+                )
+                return 1
+    except PermissionError:
         writemsg(
             _(
                 "%s is not writable.\n"
@@ -1618,21 +1633,6 @@ def _check_temp_dir(settings):
             noiselevel=-1,
         )
         return 1
-
-    with tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir) as fd:
-        os.chmod(fd.name, 0o755)
-        if not os.access(fd.name, os.X_OK):
-            writemsg(
-                _(
-                    "Can not execute files in %s\n"
-                    "Likely cause is that you've mounted it with one of the\n"
-                    "following mount options: 'noexec', 'user', 'users'\n\n"
-                    "Please make sure that portage can execute files in this directory.\n"
-                )
-                % checkdir,
-                noiselevel=-1,
-            )
-            return 1
 
     return os.EX_OK
 
