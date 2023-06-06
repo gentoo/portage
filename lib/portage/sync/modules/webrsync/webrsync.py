@@ -97,7 +97,7 @@ class WebRsync(SyncBase):
                     )
                     return (1, False)
 
-                self.spawn_kwargs["env"]["PORTAGE_SYNC_WEBRSYNC_GPG"] = True
+                self.spawn_kwargs["env"]["PORTAGE_SYNC_WEBRSYNC_GPG"] = "1"
                 self.spawn_kwargs["env"][
                     "PORTAGE_GPG_KEY"
                 ] = self.repo.sync_openpgp_key_path
