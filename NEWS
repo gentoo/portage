@@ -1,3 +1,9 @@
+portage-3.0.48.1 (2023-06-06)
+----------------
+
+Bug fixes:
+* sync: webrsync: Fix syncing with keyserver explicitly specified (bug #907816).
+
 portage-3.0.48 (2023-06-01)
 --------------
 Breaking changes:

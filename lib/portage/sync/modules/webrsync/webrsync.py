@@ -103,7 +103,7 @@ class WebRsync(SyncBase):
                 ] = self.repo.sync_openpgp_key_path
                 self.spawn_kwargs["env"][
                     "PORTAGE_GPG_KEY_SERVER"
-                ] = self.repo.sync_openpgp_key_server
+                ] = self.repo.sync_openpgp_keyserver
 
             webrsync_cmd = [self.bin_command]
             if verbose:
