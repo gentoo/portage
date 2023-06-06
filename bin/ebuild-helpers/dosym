@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -33,7 +33,7 @@ if [[ ${option_r} ]]; then
 	dosym_canonicalize() {
 		local path slash i prev out IFS=/
 
-		path=( ${1} )
+		read -r -d '' -a path <<< "${1}"
 		[[ ${1} == /* ]] && slash=/
 
 		while true; do
@@ -41,7 +41,7 @@ if [[ ${option_r} ]]; then
 			# or as a special case, "/.." at the beginning of the path.
 			# Also drop empty and "." path components as we go along.
 			prev=
-			for i in ${!path[@]}; do
+			for i in "${!path[@]}"; do
 				if [[ -z ${path[i]} || ${path[i]} == . ]]; then
 					unset "path[i]"
 				elif [[ ${path[i]} != .. ]]; then
