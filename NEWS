@@ -4,6 +4,9 @@ Bug fixes:
 * emerge-webrsync: Give a nicer error message if the requested key isn't
   on the filesystem (bug #905868).
 
+* Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
+  directories (bug #485100, bug #890812).
+
 portage-3.0.48.1 (2023-06-06)
 ----------------
 
