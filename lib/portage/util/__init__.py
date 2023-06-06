@@ -72,7 +72,7 @@ import string
 import sys
 import traceback
 import glob
-from typing import Optional
+from typing import Optional, TextIO
 
 import portage
 
@@ -97,8 +97,15 @@ def initialize_logger(level=logging.WARNING) -> None:
     logging.basicConfig(level=level, format="[%(levelname)-4s] %(message)s")
 
 
-def writemsg(mystr: str, noiselevel: int = 0, fd=None) -> None:
-    """Prints out warning and debug messages based on the noiselimit setting"""
+def writemsg(mystr: str, noiselevel: int = 0, fd: Optional[TextIO] = None) -> None:
+    """
+    Prints out warning and debug messages based on the noiselimit setting
+
+    Takes three arguments
+    1. mystr: The message to write
+    2. noiselevel: The noiselevel of the message
+    3. fd: file descriptor - where to write the message to
+    """
     global noiselimit
     if fd is None:
         fd = sys.stderr
@@ -126,8 +133,8 @@ def writemsg_stdout(mystr: str, noiselevel: int = 0) -> None:
 def writemsg_level(msg: str, level: int = 0, noiselevel: int = 0):
     """
     Show a message for the given level as defined by the logging module
-    (default is 0). 
-    
+    (default is 0).
+
     When level >= logging.WARNING then the message is
     sent to stderr, otherwise it is sent to stdout. The noiselevel is
     passed directly to writemsg().
