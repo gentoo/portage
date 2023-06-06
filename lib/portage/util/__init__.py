@@ -130,7 +130,7 @@ def writemsg_stdout(mystr: str, noiselevel: int = 0) -> None:
     writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
 
-def writemsg_level(msg: str, level: int = 0, noiselevel: int = 0):
+def writemsg_level(msg: str, level: int = 0, noiselevel: int = 0) -> None:
     """
     Show a message for the given level as defined by the logging module
     (default is 0).
