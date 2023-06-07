@@ -1,4 +1,4 @@
-/* Copyright 2017-2020 Gentoo Authors
+/* Copyright 2017-2023 Gentoo Authors
  * Distributed under the terms of the GNU General Public License v2
  */
 
@@ -195,7 +195,7 @@ do_lseek_data(int fd_out, int fd_in, off_t *off_out) {
  * If a syscall is interrupted by a signal, then the function will
  * automatically resume copying a the appropriate location which is
  * tracked internally by the offset_out variable.
- * 
+ *
  * Return: The length of the output file on success. Raise OSError
  * on failure.
  */
