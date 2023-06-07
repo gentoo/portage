@@ -33,7 +33,7 @@ if [[ ${option_r} ]]; then
 	dosym_canonicalize() {
 		local path slash i prev out IFS=/
 
-		read -r -d '' -a path < <(echo -n "${1}")
+		read -r -d '' -a path < <(printf '%s\0' "${1}")
 		[[ ${1} == /* ]] && slash=/
 
 		while true; do
@@ -58,7 +58,7 @@ if [[ ${option_r} ]]; then
 		done
 
 		out="${slash}${path[*]}"
-		echo "${out:-.}"
+		printf "%s\n" "${out:-.}"
 	}
 
 	# Expansion makes sense only for an absolute target path
