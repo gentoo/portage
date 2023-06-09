@@ -3,7 +3,8 @@
 
 import argparse
 import subprocess
-import sys
+
+import pytest
 
 import portage
 from portage import shutil, os
@@ -21,7 +22,6 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
 from portage.util import ensure_dirs, find_updated_config_files, shlex_split
 from portage.util.futures import asyncio
-from portage.output import colorize
 
 
 _INSTALL_SOMETHING = """
@@ -223,26 +223,24 @@ class BinhostContentMap(Mapping):
             raise KeyError(request_path)
 
 
-def test_simple_emerge():
-    debug = False
+@pytest.mark.parametrize("binpkg_format", SUPPORTED_GENTOO_BINPKG_FORMATS)
+def test_simple_emerge(binpkg_format):
+    playground = ResolverPlayground(
+        ebuilds=_AVAILABLE_EBUILDS,
+        installed=_INSTALLED_EBUILDS,
+        debug=False,
+        user_config={
+            "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
+        },
+    )
 
-    for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
-        playground = ResolverPlayground(
-            ebuilds=_AVAILABLE_EBUILDS,
-            installed=_INSTALLED_EBUILDS,
-            debug=debug,
-            user_config={
-                "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
-            },
+    loop = asyncio._wrap_loop()
+    loop.run_until_complete(
+        asyncio.ensure_future(
+            _async_test_simple(playground, _METADATA_XML_FILES, loop=loop),
+            loop=loop,
         )
-
-        loop = asyncio._wrap_loop()
-        loop.run_until_complete(
-            asyncio.ensure_future(
-                _async_test_simple(playground, _METADATA_XML_FILES, loop=loop),
-                loop=loop,
-            )
-        )
+    )
 
 
 async def _async_test_simple(playground, metadata_xml_files, loop):
