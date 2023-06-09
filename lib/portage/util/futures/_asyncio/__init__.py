@@ -36,10 +36,7 @@ from asyncio import (
     TimeoutError,
 )
 
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 import portage
 
