@@ -223,32 +223,9 @@ class BinhostContentMap(Mapping):
             raise KeyError(request_path)
 
 
-@pytest.mark.parametrize("binpkg_format", SUPPORTED_GENTOO_BINPKG_FORMATS)
-def test_simple_emerge(binpkg_format):
-    playground = ResolverPlayground(
-        ebuilds=_AVAILABLE_EBUILDS,
-        installed=_INSTALLED_EBUILDS,
-        debug=False,
-        user_config={
-            "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
-        },
-    )
-
-    loop = asyncio._wrap_loop()
-    loop.run_until_complete(
-        asyncio.ensure_future(
-            _async_test_simple(playground, _METADATA_XML_FILES, loop=loop),
-            loop=loop,
-        )
-    )
-
-
-async def _async_test_simple(playground, metadata_xml_files, loop):
-    debug = playground.debug
-    settings = playground.settings
+def make_test_commands(settings, trees, binhost_uri):
     eprefix = settings["EPREFIX"]
     eroot = settings["EROOT"]
-    trees = playground.trees
     portdb = trees[eroot]["porttree"].dbapi
     test_repo_location = settings.repositories["test_repo"].location
     var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
@@ -321,18 +298,6 @@ async def _async_test_simple(playground, metadata_xml_files, loop):
     cross_prefix = os.path.join(eprefix, "cross_prefix")
     cross_root = os.path.join(eprefix, "cross_root")
     cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
-
-    binhost_dir = os.path.join(eprefix, "binhost")
-    binhost_address = "127.0.0.1"
-    binhost_remote_path = "/binhost"
-    binhost_server = AsyncHTTPServer(
-        binhost_address, BinhostContentMap(binhost_remote_path, binhost_dir), loop
-    ).__enter__()
-    binhost_uri = "http://{address}:{port}{path}".format(
-        address=binhost_address,
-        port=binhost_server.server_port,
-        path=binhost_remote_path,
-    )
 
     binpkg_format = settings.get("BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0])
     assert binpkg_format in ("xpak", "gpkg")
@@ -554,7 +519,7 @@ async def _async_test_simple(playground, metadata_xml_files, loop):
     with open(binrepos_conf_file, "w") as f:
         f.write("[test-binhost]\n")
         f.write(f"sync-uri = {binhost_uri}\n")
-    fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
+    fetchcommand = portage.util.shlex_split(settings["FETCHCOMMAND"])
     fetch_bin = portage.process.find_binary(fetchcommand[0])
     if fetch_bin is not None:
         test_commands = test_commands + (
@@ -571,6 +536,56 @@ async def _async_test_simple(playground, metadata_xml_files, loop):
             lambda: shutil.rmtree(pkgdir),
             lambda: os.rename(binhost_dir, pkgdir),
         )
+    return test_commands
+
+
+@pytest.mark.parametrize("binpkg_format", SUPPORTED_GENTOO_BINPKG_FORMATS)
+def test_simple_emerge(binpkg_format):
+    playground = ResolverPlayground(
+        ebuilds=_AVAILABLE_EBUILDS,
+        installed=_INSTALLED_EBUILDS,
+        debug=False,
+        user_config={
+            "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
+        },
+    )
+
+    loop = asyncio._wrap_loop()
+    loop.run_until_complete(
+        asyncio.ensure_future(
+            _async_test_simple(playground, _METADATA_XML_FILES, loop=loop),
+            loop=loop,
+        )
+    )
+
+
+async def _async_test_simple(playground, metadata_xml_files, loop):
+    debug = playground.debug
+    settings = playground.settings
+    trees = playground.trees
+    eprefix = settings["EPREFIX"]
+    binhost_dir = os.path.join(eprefix, "binhost")
+    binhost_address = "127.0.0.1"
+    binhost_remote_path = "/binhost"
+    binhost_server = AsyncHTTPServer(
+        binhost_address, BinhostContentMap(binhost_remote_path, binhost_dir), loop
+    ).__enter__()
+    binhost_uri = "http://{address}:{port}{path}".format(
+        address=binhost_address,
+        port=binhost_server.server_port,
+        path=binhost_remote_path,
+    )
+
+    test_commands = make_test_commands(settings, trees, binhost_uri)
+
+    test_repo_location = settings.repositories["test_repo"].location
+    var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
+    cachedir = os.path.join(var_cache_edb, "dep")
+    cachedir_pregen = os.path.join(test_repo_location, "metadata", "md5-cache")
+
+    cross_prefix = os.path.join(eprefix, "cross_prefix")
+    cross_root = os.path.join(eprefix, "cross_root")
+    cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
 
     distdir = playground.distdir
     pkgdir = playground.pkgdir
@@ -611,7 +626,7 @@ async def _async_test_simple(playground, metadata_xml_files, loop):
         "PKGDIR": pkgdir,
         "PORTAGE_INST_GID": str(os.getgid()),  # str(portage.data.portage_gid),
         "PORTAGE_INST_UID": str(os.getuid()),  # str(portage.data.portage_uid),
-        "PORTAGE_PYTHON": portage_python,
+        "PORTAGE_PYTHON": portage._python_interpreter,
         "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
         "PORTAGE_TMPDIR": portage_tmpdir,
         "PORTAGE_LOGDIR": portage_tmpdir,
@@ -667,7 +682,6 @@ slotmove =app-doc/pms-3 2 3
 move dev-util/git dev-vcs/git
 """
                 )
-
         if debug:
             # The subprocess inherits both stdout and stderr, for
             # debugging purposes.
