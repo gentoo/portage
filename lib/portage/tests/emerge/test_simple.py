@@ -24,38 +24,7 @@ from portage.util.futures import asyncio
 from portage.output import colorize
 
 
-class BinhostContentMap(Mapping):
-    def __init__(self, remote_path, local_path):
-        self._remote_path = remote_path
-        self._local_path = local_path
-
-    def __getitem__(self, request_path):
-        safe_path = os.path.normpath(request_path)
-        if not safe_path.startswith(self._remote_path + "/"):
-            raise KeyError(request_path)
-        local_path = os.path.join(
-            self._local_path, safe_path[len(self._remote_path) + 1 :]
-        )
-        try:
-            with open(local_path, "rb") as f:
-                return f.read()
-        except OSError:
-            raise KeyError(request_path)
-
-
-class SimpleEmergeTestCase(TestCase):
-    def _have_python_xml(self):
-        try:
-            __import__("xml.etree.ElementTree")
-            __import__("xml.parsers.expat").parsers.expat.ExpatError
-        except (AttributeError, ImportError):
-            return False
-        return True
-
-    def testSimple(self):
-        debug = False
-
-        install_something = """
+_INSTALL_SOMETHING = """
 S="${WORKDIR}"
 
 pkg_pretend() {
@@ -142,96 +111,129 @@ call_has_and_best_version() {
 
 """
 
-        ebuilds = {
-            "dev-libs/A-1": {
-                "EAPI": "5",
-                "IUSE": "+flag",
-                "KEYWORDS": "x86",
-                "LICENSE": "GPL-2",
-                "MISC_CONTENT": install_something,
-                "RDEPEND": "flag? ( dev-libs/B[flag] )",
-            },
-            "dev-libs/B-1": {
-                "EAPI": "5",
-                "IUSE": "+flag",
-                "KEYWORDS": "x86",
-                "LICENSE": "GPL-2",
-                "MISC_CONTENT": install_something,
-            },
-            "dev-libs/C-1": {
-                "EAPI": "7",
-                "KEYWORDS": "~x86",
-                "RDEPEND": "dev-libs/D[flag]",
-                "MISC_CONTENT": install_something,
-            },
-            "dev-libs/D-1": {
-                "EAPI": "7",
-                "KEYWORDS": "~x86",
-                "IUSE": "flag",
-                "MISC_CONTENT": install_something,
-            },
-            "virtual/foo-0": {
-                "EAPI": "5",
-                "KEYWORDS": "x86",
-                "LICENSE": "GPL-2",
-            },
-        }
+_EBUILDS_TO_INSTALL = {
+    "dev-libs/A-1": {
+        "EAPI": "5",
+        "IUSE": "+flag",
+        "KEYWORDS": "x86",
+        "LICENSE": "GPL-2",
+        "MISC_CONTENT": _INSTALL_SOMETHING,
+        "RDEPEND": "flag? ( dev-libs/B[flag] )",
+    },
+    "dev-libs/B-1": {
+        "EAPI": "5",
+        "IUSE": "+flag",
+        "KEYWORDS": "x86",
+        "LICENSE": "GPL-2",
+        "MISC_CONTENT": _INSTALL_SOMETHING,
+    },
+    "dev-libs/C-1": {
+        "EAPI": "7",
+        "KEYWORDS": "~x86",
+        "RDEPEND": "dev-libs/D[flag]",
+        "MISC_CONTENT": _INSTALL_SOMETHING,
+    },
+    "dev-libs/D-1": {
+        "EAPI": "7",
+        "KEYWORDS": "~x86",
+        "IUSE": "flag",
+        "MISC_CONTENT": _INSTALL_SOMETHING,
+    },
+    "virtual/foo-0": {
+        "EAPI": "5",
+        "KEYWORDS": "x86",
+        "LICENSE": "GPL-2",
+    },
+}
 
-        installed = {
-            "dev-libs/A-1": {
-                "EAPI": "5",
-                "IUSE": "+flag",
-                "KEYWORDS": "x86",
-                "LICENSE": "GPL-2",
-                "RDEPEND": "flag? ( dev-libs/B[flag] )",
-                "USE": "flag",
-            },
-            "dev-libs/B-1": {
-                "EAPI": "5",
-                "IUSE": "+flag",
-                "KEYWORDS": "x86",
-                "LICENSE": "GPL-2",
-                "USE": "flag",
-            },
-            "dev-libs/depclean-me-1": {
-                "EAPI": "5",
-                "IUSE": "",
-                "KEYWORDS": "x86",
-                "LICENSE": "GPL-2",
-                "USE": "",
-            },
-            "app-misc/depclean-me-1": {
-                "EAPI": "5",
-                "IUSE": "",
-                "KEYWORDS": "x86",
-                "LICENSE": "GPL-2",
-                "RDEPEND": "dev-libs/depclean-me",
-                "USE": "",
-            },
-        }
+_INSTALLED_EBUILDS = {
+    "dev-libs/A-1": {
+        "EAPI": "5",
+        "IUSE": "+flag",
+        "KEYWORDS": "x86",
+        "LICENSE": "GPL-2",
+        "RDEPEND": "flag? ( dev-libs/B[flag] )",
+        "USE": "flag",
+    },
+    "dev-libs/B-1": {
+        "EAPI": "5",
+        "IUSE": "+flag",
+        "KEYWORDS": "x86",
+        "LICENSE": "GPL-2",
+        "USE": "flag",
+    },
+    "dev-libs/depclean-me-1": {
+        "EAPI": "5",
+        "IUSE": "",
+        "KEYWORDS": "x86",
+        "LICENSE": "GPL-2",
+        "USE": "",
+    },
+    "app-misc/depclean-me-1": {
+        "EAPI": "5",
+        "IUSE": "",
+        "KEYWORDS": "x86",
+        "LICENSE": "GPL-2",
+        "RDEPEND": "dev-libs/depclean-me",
+        "USE": "",
+    },
+}
 
-        metadata_xml_files = (
-            (
-                "dev-libs/A",
-                {
-                    "flags": "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
-                },
-            ),
-            (
-                "dev-libs/B",
-                {
-                    "flags": "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
-                },
-            ),
+_METADATA_XML_FILES = (
+    (
+        "dev-libs/A",
+        {
+            "flags": "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+        },
+    ),
+    (
+        "dev-libs/B",
+        {
+            "flags": "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+        },
+    ),
+)
+
+
+def _have_python_xml():
+    try:
+        __import__("xml.etree.ElementTree")
+        __import__("xml.parsers.expat").parsers.expat.ExpatError
+    except (AttributeError, ImportError):
+        return False
+    return True
+
+
+class BinhostContentMap(Mapping):
+    def __init__(self, remote_path, local_path):
+        self._remote_path = remote_path
+        self._local_path = local_path
+
+    def __getitem__(self, request_path):
+        safe_path = os.path.normpath(request_path)
+        if not safe_path.startswith(self._remote_path + "/"):
+            raise KeyError(request_path)
+        local_path = os.path.join(
+            self._local_path, safe_path[len(self._remote_path) + 1 :]
         )
+        try:
+            with open(local_path, "rb") as f:
+                return f.read()
+        except OSError:
+            raise KeyError(request_path)
+
+
+class SimpleEmergeTestCase(TestCase):
+    def testSimple(self):
+        debug = False
 
         for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
             with self.subTest(binpkg_format=binpkg_format):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
                 playground = ResolverPlayground(
-                    ebuilds=ebuilds,
-                    installed=installed,
+                    ebuilds=_EBUILDS_TO_INSTALL,
+                    installed=_INSTALLED_EBUILDS,
                     debug=debug,
                     user_config={
                         "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
@@ -242,7 +244,7 @@ call_has_and_best_version() {
                 loop.run_until_complete(
                     asyncio.ensure_future(
                         self._async_test_simple(
-                            playground, metadata_xml_files, loop=loop
+                            playground, _METADATA_XML_FILES, loop=loop
                         ),
                         loop=loop,
                     )
@@ -332,7 +334,7 @@ call_has_and_best_version() {
         rm_cmd = (rm_binary,)
 
         egencache_extra_args = []
-        if self._have_python_xml():
+        if _have_python_xml():
             egencache_extra_args.append("--update-use-local-desc")
 
         test_ebuild = portdb.findname("dev-libs/A-1")
