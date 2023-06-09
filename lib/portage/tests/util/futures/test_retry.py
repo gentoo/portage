@@ -1,13 +1,10 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from concurrent.futures import Future, ThreadPoolExecutor
 import contextlib
 
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 import weakref
 import time

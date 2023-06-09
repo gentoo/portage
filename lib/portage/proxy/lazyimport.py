@@ -1,15 +1,11 @@
-# Copyright 2009-2020 Gentoo Authors
+# Copyright 2009-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lazyimport"]
 
 import sys
 import types
-
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 from portage.proxy.objectproxy import ObjectProxy
 

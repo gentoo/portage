@@ -1,13 +1,8 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
 import tempfile
-
-try:
-    import dummy_threading
-except ImportError:
-    dummy_threading = None
 
 from portage import os
 from portage import shutil
@@ -23,20 +18,16 @@ class AsynchronousLockTestCase(TestCase):
         try:
             path = os.path.join(tempdir, "lock_me")
             for force_async in (True, False):
-                for force_dummy in (
-                    (False,) if dummy_threading is None else (True, False)
-                ):
-                    async_lock = AsynchronousLock(
-                        path=path,
-                        scheduler=scheduler,
-                        _force_async=force_async,
-                        _force_thread=True,
-                        _force_dummy=force_dummy,
-                    )
-                    async_lock.start()
-                    self.assertEqual(async_lock.wait(), os.EX_OK)
-                    self.assertEqual(async_lock.returncode, os.EX_OK)
-                    scheduler.run_until_complete(async_lock.async_unlock())
+                async_lock = AsynchronousLock(
+                    path=path,
+                    scheduler=scheduler,
+                    _force_async=force_async,
+                    _force_thread=True,
+                )
+                async_lock.start()
+                self.assertEqual(async_lock.wait(), os.EX_OK)
+                self.assertEqual(async_lock.returncode, os.EX_OK)
+                scheduler.run_until_complete(async_lock.async_unlock())
 
                 async_lock = AsynchronousLock(
                     path=path,

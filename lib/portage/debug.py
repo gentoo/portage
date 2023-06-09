@@ -1,13 +1,9 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import sys
-
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 import portage.const
 from portage.util import writemsg

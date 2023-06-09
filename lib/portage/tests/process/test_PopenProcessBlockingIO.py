@@ -1,13 +1,7 @@
-# Copyright 2012-2022 Gentoo Authors
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
-
-try:
-    import threading
-except ImportError:
-    # dummy_threading will not suffice
-    threading = None
 
 from portage import os
 from portage.tests import TestCase
@@ -58,12 +52,6 @@ class PopenPipeBlockingIOTestCase(TestCase):
         return consumer.getvalue().decode("ascii", "replace")
 
     def testPopenPipeBlockingIO(self):
-        if threading is None:
-            skip_reason = "threading disabled"
-            self.portage_skip = "threading disabled"
-            self.assertFalse(True, skip_reason)
-            return
-
         for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14):
             test_string = x * "a"
             output = self._testPipeReader(test_string)

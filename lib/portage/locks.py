@@ -1,6 +1,9 @@
-# portage: Lock management code
-# Copyright 2004-2021 Gentoo Authors
+# Copyright 2004-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+"""
+Portage: Lock management code
+"""
 
 __all__ = [
     "lockdir",

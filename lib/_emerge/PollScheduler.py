@@ -1,10 +1,7 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 from portage.util.futures import asyncio
 from portage.util._async.SchedulerInterface import SchedulerInterface
