@@ -1,6 +1,9 @@
 Bug fixes:
 * dosym: Prevent globbing of argument in dosym_canonicalize().
 
+* emerge-webrsync: Give a nicer error message if the requested key isn't
+  on the filesystem (bug #905868).
+
 portage-3.0.48.1 (2023-06-06)
 ----------------
 

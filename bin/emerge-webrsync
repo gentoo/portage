@@ -279,6 +279,11 @@ check_file_signature_gemato() {
 			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
 		fi
 
+		if [[ ! -f "${key}" ]] ; then
+			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+		fi
+
 		local keyserver
 		if [[ -n ${PORTAGE_GPG_KEY_SERVER} ]] ; then
 			keyserver="--keyserver ${PORTAGE_GPG_KEY_SERVER}"
@@ -318,6 +323,11 @@ check_file_signature_gpg_unwrapped() {
 			local key="${PORTAGE_GPG_KEY}"
 		else
 			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+		fi
+
+		if [[ ! -f "${key}" ]] ; then
+			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
 		fi
 
 		local gpgdir="${PORTAGE_GPG_DIR}"
