@@ -63,7 +63,7 @@ class SlotConflictBlockedPruneTestCase(TestCase):
                 ["@world"],
                 options={"--deep": True, "--update": True, "--verbose": True},
                 success=True,
-                mergelist=["x11-base/xwayland-23.1.1"],
+                mergelist=[],
             ),
         )
 

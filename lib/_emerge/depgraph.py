@@ -1287,9 +1287,7 @@ class depgraph:
                 pkg.root, pkg.slot_atom
             ):
                 any_selected = True
-                if chosen_pkg > pkg or (
-                    not chosen_pkg.installed and chosen_pkg.version == pkg.version
-                ):
+                if not chosen_pkg.installed and chosen_pkg.version == pkg.version:
                     missed_update = False
                     break
             if any_selected and missed_update:
