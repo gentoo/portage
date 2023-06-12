@@ -100,6 +100,10 @@ from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 from _emerge.resolver.output import Display, format_unmatched_atom
 
+# Type annotation imports
+from typing import Any, Optional, Dict, List, Tuple, Union
+from _emerge.stdout_spinner import stdout_spinner
+
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
     "_dep_check_graph_interface",
@@ -11385,8 +11389,17 @@ def _spinner_stop(spinner):
     portage.writemsg_stdout(f"Dependency resolution took {darkgreen(time_fmt)} s.\n\n")
 
 
-def backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
+def backtrack_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    myopts: Dict[str, Any],
+    myparams: Dict[str, Union[int, str, bool]],
+    myaction: Optional[str],
+    myfiles: List[str],
+    spinner: stdout_spinner,
+) -> Tuple[Any, depgraph, List[str]]:
     """
+
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
     _spinner_start(spinner, myopts)
@@ -11398,7 +11411,15 @@ def backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spi
         _spinner_stop(spinner)
 
 
-def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
+def _backtrack_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    myopts: Dict[str, Any],
+    myparams: Dict[str, Union[int, str, bool]],
+    myaction: Optional[str],
+    myfiles: List[str],
+    spinner: stdout_spinner,
+) -> Tuple[Any, depgraph, List[str]]:
     debug = "--debug" in myopts
     mydepgraph = None
     max_retries = myopts.get("--backtrack", 10)
@@ -11494,7 +11515,14 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
     return (success, mydepgraph, favorites)
 
 
-def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
+def resume_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    mtimedb: Any,
+    myopts: Dict[str, str],
+    myparams: Dict[str, Any],
+    spinner: stdout_spinner,
+):
     """
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
@@ -11505,7 +11533,14 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
         _spinner_stop(spinner)
 
 
-def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
+def _resume_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    mtimedb: Any,
+    myopts: Dict[str, str],
+    myparams: Dict[str, Any],
+    spinner: stdout_spinner,
+):
     """
     Construct a depgraph for the given resume list. This will raise
     PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.
