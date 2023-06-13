@@ -209,6 +209,16 @@ class SecuritySetTestCase(TestCase):
                 # Two valid arches followed by an invalid one
                 "arch": "amd64 sparc $$$$",
             },
+            {
+                "glsa_id": "201301-07",
+                "pkgname": "A-vulnerable",
+                "cp": "cat/A-vulnerable",
+                "unaffected_range": "None",
+                "affected_range": "lt",
+                "unaffected_version": "2.2",
+                "affected_version": "2.2",
+                "arch": "*",
+            },
         )
 
         world = ["cat/A"]
