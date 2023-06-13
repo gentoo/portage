@@ -4042,6 +4042,16 @@ class depgraph:
                         inst_pkg, modified_use=self._pkg_use_enabled(inst_pkg)
                     )
                 ]
+                # Do not allow slotted deps to be satisfied by wrong slots.
+                # Otherwise, slot-operator-dependent packages may rebuild
+                # before the slotted package they are dependent on.
+                if child and atom.slot_operator == "=":
+                    inst_pkgs = [
+                        inst_pkg
+                        for inst_pkg in inst_pkgs
+                        if inst_pkg.slot == child.slot
+                        and inst_pkg.sub_slot == child.sub_slot
+                    ]
                 if inst_pkgs:
                     for inst_pkg in inst_pkgs:
                         if self._pkg_visibility_check(inst_pkg):
@@ -4161,6 +4171,14 @@ class depgraph:
                             inst_pkg, modified_use=self._pkg_use_enabled(inst_pkg)
                         )
                     ]
+                    # Do not allow slotted deps to be satisfied by wrong slots.
+                    if child and atom.slot_operator == "=":
+                        inst_pkgs = [
+                            inst_pkg
+                            for inst_pkg in inst_pkgs
+                            if inst_pkg.slot == child.slot
+                            and inst_pkg.sub_slot == child.sub_slot
+                        ]
                     if inst_pkgs:
                         for inst_pkg in inst_pkgs:
                             if self._pkg_visibility_check(inst_pkg):

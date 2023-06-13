@@ -94,15 +94,15 @@ class PerlRebuildBugTestCase(TestCase):
                 ambiguous_merge_order=True,
                 merge_order_assertions=(
                     (
-                        "dev-perl/Locale-gettext-1.70.0-r1",
                         "dev-lang/perl-5.36.0-r2",
+                        "dev-perl/Locale-gettext-1.70.0-r1",
                     ),
                 ),
                 mergelist=[
-                    "dev-perl/Locale-gettext-1.70.0-r1",
                     "sys-devel/automake-1.16.5",
                     "sys-libs/zlib-1.2.13-r1",
                     "dev-lang/perl-5.36.0-r2",
+                    "dev-perl/Locale-gettext-1.70.0-r1",
                     "sys-apps/help2man-1.49.3",
                 ],
             ),
