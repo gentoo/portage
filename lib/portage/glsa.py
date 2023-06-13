@@ -268,7 +268,13 @@ def makeAtom(pkgname, versionNode):
     @rtype:		String
     @return:	the portage atom
     """
-    op = opMapping[versionNode.getAttribute("range")]
+    rangetype = versionNode.getAttribute("range")
+    if rangetype in opMapping:
+        op = opMapping[rangetype]
+    else:
+        raise GlsaFormatException(
+            _(f"Invalid range found for '{pkgname}': {rangetype}")
+        )
     version = getText(versionNode, format="strip")
     rValue = f"{op}{pkgname}-{version}"
     try:
@@ -292,7 +298,11 @@ def makeVersion(versionNode):
     @rtype:		String
     @return:	the version string
     """
-    op = opMapping[versionNode.getAttribute("range")]
+    rangetype = versionNode.getAttribute("range")
+    if rangetype in opMapping:
+        op = opMapping[rangetype]
+    else:
+        raise GlsaFormatException(_(f"Invalid range found: {rangetype}"))
     version = getText(versionNode, format="strip")
     rValue = f"{op}{version}"
     try:
