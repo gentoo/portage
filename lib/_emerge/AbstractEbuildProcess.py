@@ -3,10 +3,7 @@
 
 import functools
 import io
-import platform
 import stat
-import subprocess
-import tempfile
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -79,91 +76,6 @@ class AbstractEbuildProcess(SpawnProcess):
             self.returncode = 1
             self._async_wait()
             return
-
-        # Check if the cgroup hierarchy is in place. If it's not, mount it.
-        if (
-            os.geteuid() == 0
-            and platform.system() == "Linux"
-            and "cgroup" in self.settings.features
-            and self.phase not in _global_pid_phases
-        ):
-            cgroup_root = "/sys/fs/cgroup"
-            cgroup_portage = os.path.join(cgroup_root, "portage")
-
-            try:
-                # cgroup tmpfs
-                if not os.path.ismount(cgroup_root):
-                    # we expect /sys/fs to be there already
-                    if not os.path.isdir(cgroup_root):
-                        os.mkdir(cgroup_root, 0o755)
-                    subprocess.check_call(
-                        [
-                            "mount",
-                            "-t",
-                            "tmpfs",
-                            "-o",
-                            "rw,nosuid,nodev,noexec,mode=0755",
-                            "tmpfs",
-                            cgroup_root,
-                        ]
-                    )
-
-                # portage subsystem
-                if not os.path.ismount(cgroup_portage):
-                    if not os.path.isdir(cgroup_portage):
-                        os.mkdir(cgroup_portage, 0o755)
-                    subprocess.check_call(
-                        [
-                            "mount",
-                            "-t",
-                            "cgroup",
-                            "-o",
-                            "rw,nosuid,nodev,noexec,none,name=portage",
-                            "tmpfs",
-                            cgroup_portage,
-                        ]
-                    )
-                    with open(os.path.join(cgroup_portage, "release_agent"), "w") as f:
-                        f.write(
-                            os.path.join(
-                                self.settings["PORTAGE_BIN_PATH"],
-                                "cgroup-release-agent",
-                            )
-                        )
-                    with open(
-                        os.path.join(cgroup_portage, "notify_on_release"), "w"
-                    ) as f:
-                        f.write("1")
-                else:
-                    # Update release_agent if it no longer exists, because
-                    # it refers to a temporary path when portage is updating
-                    # itself.
-                    release_agent = os.path.join(cgroup_portage, "release_agent")
-                    try:
-                        with open(release_agent) as f:
-                            release_agent_path = f.readline().rstrip("\n")
-                    except OSError:
-                        release_agent_path = None
-
-                    if release_agent_path is None or not os.path.exists(
-                        release_agent_path
-                    ):
-                        with open(release_agent, "w") as f:
-                            f.write(
-                                os.path.join(
-                                    self.settings["PORTAGE_BIN_PATH"],
-                                    "cgroup-release-agent",
-                                )
-                            )
-
-                cgroup_path = tempfile.mkdtemp(
-                    dir=cgroup_portage,
-                    prefix=f"{self.settings['CATEGORY']}:{self.settings['PF']}.",
-                )
-            except (subprocess.CalledProcessError, OSError):
-                pass
-            else:
-                self.cgroup = cgroup_path
 
         if self.background:
             # Automatically prevent color codes from showing up in logs,

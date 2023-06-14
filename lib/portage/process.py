@@ -295,7 +295,6 @@ def spawn(
     unshare_ipc=False,
     unshare_mount=False,
     unshare_pid=False,
-    cgroup=None,
     warn_on_large_env=False,
 ):
     """
@@ -344,8 +343,6 @@ def spawn(
     @type unshare_mount: Boolean
     @param unshare_pid: If True, PID ns will be unshared from the spawned process
     @type unshare_pid: Boolean
-    @param cgroup: CGroup path to bind the process to
-    @type cgroup: String
 
     logfile requires stdout and stderr to be assigned to this process (ie not pointed
        somewhere else.)
@@ -479,7 +476,6 @@ def spawn(
                     unshare_mount,
                     unshare_pid,
                     unshare_flags,
-                    cgroup,
                 )
             except SystemExit:
                 raise
@@ -656,7 +652,6 @@ def _exec(
     unshare_mount,
     unshare_pid,
     unshare_flags,
-    cgroup,
 ):
     """
     Execute a given binary with options
@@ -694,8 +689,6 @@ def _exec(
     @type unshare_pid: Boolean
     @param unshare_flags: Flags for the unshare(2) function
     @type unshare_flags: Integer
-    @param cgroup: CGroup path to bind the process to
-    @type cgroup: String
     @rtype: None
     @return: Never returns (calls os.execve)
     """
@@ -742,13 +735,6 @@ def _exec(
     signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
     _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
-
-    # Add to cgroup
-    # it's better to do it from the child since we can guarantee
-    # it is done before we start forking children
-    if cgroup:
-        with open(os.path.join(cgroup, "cgroup.procs"), "a") as f:
-            f.write("%d\n" % portage.getpid())
 
     # Unshare (while still uid==0)
     if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
