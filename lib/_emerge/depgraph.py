@@ -102,7 +102,6 @@ from _emerge.resolver.output import Display, format_unmatched_atom
 
 # Type annotation imports
 from typing import Any, Optional, Dict, List, Tuple, Union
-from _emerge.stdout_spinner import stdout_spinner
 
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
@@ -11396,7 +11395,7 @@ def backtrack_depgraph(
     myparams: Dict[str, Union[int, str, bool]],
     myaction: Optional[str],
     myfiles: List[str],
-    spinner: stdout_spinner,
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
 ) -> Tuple[Any, depgraph, List[str]]:
     """
 
@@ -11418,7 +11417,7 @@ def _backtrack_depgraph(
     myparams: Dict[str, Union[int, str, bool]],
     myaction: Optional[str],
     myfiles: List[str],
-    spinner: stdout_spinner,
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
 ) -> Tuple[Any, depgraph, List[str]]:
     debug = "--debug" in myopts
     mydepgraph = None
@@ -11521,7 +11520,7 @@ def resume_depgraph(
     mtimedb: Any,
     myopts: Dict[str, str],
     myparams: Dict[str, Any],
-    spinner: stdout_spinner,
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
 ):
     """
     Raises PackageSetNotFound if myfiles contains a missing package set.
@@ -11539,7 +11538,7 @@ def _resume_depgraph(
     mtimedb: Any,
     myopts: Dict[str, str],
     myparams: Dict[str, Any],
-    spinner: stdout_spinner,
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
 ):
     """
     Construct a depgraph for the given resume list. This will raise
