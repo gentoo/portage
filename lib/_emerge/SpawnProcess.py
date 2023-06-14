@@ -1,10 +1,7 @@
 # Copyright 2008-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import errno
 import functools
-import logging
-import signal
 import sys
 
 from _emerge.SubProcess import SubProcess
@@ -12,7 +9,6 @@ import portage
 from portage import os
 from portage.const import BASH_BINARY
 from portage.output import EOutput
-from portage.util import writemsg_level
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._pty import _create_pty_or_pipe
@@ -39,7 +35,6 @@ class SpawnProcess(SubProcess):
         "path_lookup",
         "pre_exec",
         "close_fds",
-        "cgroup",
         "unshare_ipc",
         "unshare_mount",
         "unshare_pid",
@@ -235,9 +230,6 @@ class SpawnProcess(SubProcess):
 
     def _unregister(self):
         SubProcess._unregister(self)
-        if self.cgroup is not None:
-            self._cgroup_cleanup()
-            self.cgroup = None
         if self._main_task is not None:
             self._main_task.done() or self._main_task.cancel()
 
@@ -249,61 +241,6 @@ class SpawnProcess(SubProcess):
                     self._main_task_cancel = None
                 self._main_task.cancel()
         SubProcess._cancel(self)
-        self._cgroup_cleanup()
-
-    def _cgroup_cleanup(self):
-        if self.cgroup:
-
-            def get_pids(cgroup):
-                try:
-                    with open(os.path.join(cgroup, "cgroup.procs")) as f:
-                        return [int(p) for p in f.read().split()]
-                except OSError:
-                    # removed by cgroup-release-agent
-                    return []
-
-            def kill_all(pids, sig):
-                for p in pids:
-                    try:
-                        os.kill(p, sig)
-                    except OSError as e:
-                        if e.errno == errno.EPERM:
-                            # Reported with hardened kernel (bug #358211).
-                            writemsg_level(
-                                f"!!! kill: ({p}) - Operation not permitted\n",
-                                level=logging.ERROR,
-                                noiselevel=-1,
-                            )
-                        elif e.errno != errno.ESRCH:
-                            raise
-
-            # step 1: kill all orphans (loop in case of new forks)
-            remaining = self._CGROUP_CLEANUP_RETRY_MAX
-            while remaining:
-                remaining -= 1
-                pids = get_pids(self.cgroup)
-                if pids:
-                    kill_all(pids, signal.SIGKILL)
-                else:
-                    break
-
-            if pids:
-                msg = []
-                msg.append(
-                    "Failed to kill pid(s) in "
-                    f"'{os.path.join(self.cgroup, 'cgroup.procs')}': "
-                    f"{' '.join(str(pid) for pid in pids)}"
-                )
-
-                self._elog("eerror", msg)
-
-            # step 2: remove the cgroup
-            try:
-                os.rmdir(self.cgroup)
-            except OSError:
-                # it may be removed already, or busy
-                # we can't do anything good about it
-                pass
 
     def _elog(self, elog_funcname, lines):
         elog_func = getattr(EOutput(), elog_funcname)

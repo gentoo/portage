@@ -139,7 +139,6 @@ SUPPORTED_FEATURES = frozenset(
         "candy",
         "case-insensitive-fs",
         "ccache",
-        "cgroup",
         "chflags",
         "clean-logs",
         "collision-protect",

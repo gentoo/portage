@@ -1,6 +1,11 @@
 portage-3.0.49 (UNRELEASED)
 --------------
 
+Breaking changes:
+* FEATURES=cgroup was removed since it was based on version 1 cgroups, which
+  caused some issues and version 1 cgroups are obsolete. Use
+  FEATURES=pid-sandbox instead.
+
 Bug fixes:
 * Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
   directories (bug #485100, bug #890812).
