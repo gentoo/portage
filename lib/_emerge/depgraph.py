@@ -2226,7 +2226,7 @@ class depgraph:
                 if parent in built_slot_operator_parents:
                     if hasattr(atom, "_orig_atom"):
                         # If atom is the result of virtual expansion, then
-                        # derefrence it to _orig_atom so that it will be correctly
+                        # dereference it to _orig_atom so that it will be correctly
                         # handled as a built slot operator dependency when
                         # appropriate (see bug 764764).
                         atom = atom._orig_atom
