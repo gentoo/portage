@@ -1,6 +1,7 @@
-# deps.py -- Portage dependency resolution functions
-# Copyright 2003-2021 Gentoo Authors
+# Copyright 2003-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+"""deps.py -- Portage dependency resolution functions"""
 
 __all__ = [
     "Atom",
@@ -79,7 +80,7 @@ _extended_cat = r"[\w+*][\w+.*-]*"
 _slot_dep_re_cache = {}
 
 
-def _get_slot_dep_re(eapi_attrs):
+def _get_slot_dep_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
     cache_key = eapi_attrs.slot_operator
     slot_re = _slot_dep_re_cache.get(cache_key)
     if slot_re is not None:
@@ -96,7 +97,11 @@ def _get_slot_dep_re(eapi_attrs):
     return slot_re
 
 
-def _match_slot(atom, pkg):
+def _match_slot(atom, pkg) -> bool:
+    """
+    @type atom: portage.dep.Atom
+    @type pkg: _emerge.Package.Package 
+    """
     if pkg.slot == atom.slot:
         if not atom.sub_slot:
             return True
@@ -108,7 +113,7 @@ def _match_slot(atom, pkg):
 _atom_re = None
 
 
-def _get_atom_re(eapi_attrs):
+def _get_atom_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
     global _atom_re
     if _atom_re is not None:
         return _atom_re
