@@ -1,11 +1,22 @@
+portage-3.0.49 (UNRELEASED)
+--------------
+
 Bug fixes:
+* Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
+  directories (bug #485100, bug #890812).
+
+* depgraph: Don't ignore downgrades as missed_updates (bug #622270).
+
+* depgraph: Do not allow slotted deps to be satisfied by wrong slots
+  (bug #463976, bug #592880, bug #596664, bug #631490, bug #764365, bug #793992).
+
+  This is the notorious "Perl rebuild" bug where Perl modules would get rebuilt
+  _before_ a new dev-lang/perl and therefore be broken at runtime.
+
 * dosym: Prevent globbing of argument in dosym_canonicalize().
 
 * emerge-webrsync: Give a nicer error message if the requested key isn't
   on the filesystem (bug #905868).
-
-* Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
-  directories (bug #485100, bug #890812).
 
 * glsa-check: appropriately handle more error cases with invalid GLSAs
   (bug #905660)
