@@ -30,8 +30,8 @@ class SecuritySetTestCase(TestCase):
   <access>remote</access>
   <affected>
     <package name="%(cp)s" auto="yes" arch="%(arch)s">
-      <unaffected range="ge">%(unaffected_version)s</unaffected>
-      <vulnerable range="lt">%(unaffected_version)s</vulnerable>
+      <unaffected range="%(unaffected_range)s">%(unaffected_version)s</unaffected>
+      <vulnerable range="%(affected_range)s">%(affected_version)s</vulnerable>
     </package>
   </affected>
   <background>
@@ -96,21 +96,30 @@ class SecuritySetTestCase(TestCase):
                 "glsa_id": "201301-01",
                 "pkgname": "A-vulnerable",
                 "cp": "cat/A-vulnerable",
+                "unaffected_range": "ge",
+                "affected_range": "lt",
                 "unaffected_version": "2.2",
+                "affected_version": "2.2",
                 "arch": "*",
             },
             {
                 "glsa_id": "201301-02",
                 "pkgname": "B-not-vulnerable",
                 "cp": "cat/B-not-vulnerable",
+                "unaffected_range": "ge",
+                "affected_range": "lt",
                 "unaffected_version": "4.4",
+                "affected_version": "4.4",
                 "arch": "*",
             },
             {
                 "glsa_id": "201301-03",
                 "pkgname": "NotInstalled",
                 "cp": "cat/NotInstalled",
+                "unaffected_range": "ge",
+                "affected_range": "lt",
                 "unaffected_version": "3.5",
+                "affected_version": "3.5",
                 "arch": "*",
             },
         )
@@ -171,7 +180,10 @@ class SecuritySetTestCase(TestCase):
                 "glsa_id": "201301-04",
                 "pkgname": "A-vulnerable",
                 "cp": "cat/A-vulnerable",
+                "unaffected_range": "ge",
+                "affected_range": "lt",
                 "unaffected_version": "2.2",
+                "affected_version": "2.2",
                 # Use an invalid delimiter (comma)
                 "arch": "amd64,sparc",
             },
@@ -179,7 +191,10 @@ class SecuritySetTestCase(TestCase):
                 "glsa_id": "201301-05",
                 "pkgname": "A-vulnerable",
                 "cp": "cat/A-vulnerable",
+                "unaffected_range": "ge",
+                "affected_range": "lt",
                 "unaffected_version": "2.2",
+                "affected_version": "2.2",
                 # Use an invalid arch (~arch)
                 "arch": "~amd64",
             },
@@ -187,7 +202,10 @@ class SecuritySetTestCase(TestCase):
                 "glsa_id": "201301-06",
                 "pkgname": "A-vulnerable",
                 "cp": "cat/A-vulnerable",
+                "unaffected_range": "ge",
+                "affected_range": "lt",
                 "unaffected_version": "2.2",
+                "affected_version": "2.2",
                 # Two valid arches followed by an invalid one
                 "arch": "amd64 sparc $$$$",
             },
