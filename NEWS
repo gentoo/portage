@@ -7,6 +7,9 @@ Bug fixes:
 * Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
   directories (bug #485100, bug #890812).
 
+* glsa-check: appropriately handle more error cases with invalid GLSAs
+  (bug #905660)
+
 portage-3.0.48.1 (2023-06-06)
 ----------------
 
