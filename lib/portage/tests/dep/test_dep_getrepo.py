@@ -9,7 +9,6 @@ class DepGetRepo(TestCase):
     """A simple testcase for isvalidatom"""
 
     def testDepGetRepo(self):
-
         repo_char = "::"
         repos = ("a", "repo-name", "repo_name", "repo123", None)
         cpvs = ["sys-apps/portage"]

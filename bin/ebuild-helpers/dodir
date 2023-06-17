@@ -10,5 +10,5 @@ fi
 
 install -d ${DIROPTIONS} "${@/#/${ED%/}/}"
 ret=$?
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
-exit $ret
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}

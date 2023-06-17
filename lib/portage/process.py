@@ -6,6 +6,7 @@
 import atexit
 import errno
 import fcntl
+import logging
 import multiprocessing
 import platform
 import signal
@@ -15,6 +16,9 @@ import sys
 import traceback
 import os as _os
 
+from dataclasses import dataclass
+from functools import lru_cache
+
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -22,7 +26,7 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
-    "portage.util:dump_traceback,writemsg",
+    "portage.util:dump_traceback,writemsg,writemsg_level",
 )
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
@@ -86,14 +90,12 @@ if _fd_dir is not None:
                     raise
                 return range(max_fd_limit)
 
-elif os.path.isdir("/proc/%s/fd" % portage.getpid()):
+elif os.path.isdir(f"/proc/{portage.getpid()}/fd"):
     # In order for this function to work in forked subprocesses,
     # os.getpid() must be called from inside the function.
     def get_open_fds():
         return (
-            int(fd)
-            for fd in os.listdir("/proc/%s/fd" % portage.getpid())
-            if fd.isdigit()
+            int(fd) for fd in os.listdir(f"/proc/{portage.getpid()}/fd") if fd.isdigit()
         )
 
 else:
@@ -120,7 +122,6 @@ def sanitize_fds():
     not be inherited by child processes.
     """
     if _set_inheritable is not None:
-
         whitelist = frozenset(
             [
                 portage._get_stdin().fileno(),
@@ -264,6 +265,37 @@ def cleanup():
     pass
 
 
+@dataclass(frozen=True)
+class EnvStats:
+    env_size: int
+    env_largest_name: str
+    env_largest_size: int
+
+
+def calc_env_stats(env) -> EnvStats:
+    @lru_cache(1024)
+    def encoded_length(s):
+        return len(os.fsencode(s))
+
+    env_size = 0
+    env_largest_name = None
+    env_largest_size = 0
+    for env_name, env_value in env.items():
+        env_name_size = encoded_length(env_name)
+        env_value_size = encoded_length(env_value)
+        # Add two for '=' and the terminating null byte.
+        total_size = env_name_size + env_value_size + 2
+        if total_size > env_largest_size:
+            env_largest_name = env_name
+            env_largest_size = total_size
+        env_size += total_size
+
+    return EnvStats(env_size, env_largest_name, env_largest_size)
+
+
+env_too_large_warnings = 0
+
+
 def spawn(
     mycommand,
     env=None,
@@ -284,6 +316,7 @@ def spawn(
     unshare_mount=False,
     unshare_pid=False,
     cgroup=None,
+    warn_on_large_env=False,
 ):
     """
     Spawns a given command.
@@ -344,6 +377,18 @@ def spawn(
         mycommand = mycommand.split()
 
     env = os.environ if env is None else env
+
+    env_stats = None
+    if warn_on_large_env:
+        env_stats = calc_env_stats(env)
+
+        global env_too_large_warnings
+        if env_stats.env_size > 1024 * 96 and env_too_large_warnings < 3:
+            env_too_large_warnings += 1
+            writemsg_level(
+                f"WARNING: New process environment is large, executing {mycommand} may fail. Size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)",
+                logging.WARNING,
+            )
 
     # If an absolute path to an executable file isn't given
     # search for it unless we've been told not to.
@@ -459,10 +504,26 @@ def spawn(
             except SystemExit:
                 raise
             except Exception as e:
+                if isinstance(e, OSError) and e.errno == errno.E2BIG:
+                    # If exec() failed with E2BIG, then this is
+                    # potentially because the environment variables
+                    # grew to large. The following will gather some
+                    # stats about the environment and print a
+                    # diagnostic message to help identifying the
+                    # culprit. See also
+                    # - https://bugs.gentoo.org/721088
+                    # - https://bugs.gentoo.org/830187
+                    if not env_stats:
+                        env_stats = calc_env_stats(env)
+
+                    writemsg(
+                        f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
+                    )
+
                 # We need to catch _any_ exception so that it doesn't
                 # propagate out of this function and cause exiting
                 # with anything other than os._exit()
-                writemsg("%s:\n   %s\n" % (e, " ".join(mycommand)), noiselevel=-1)
+                writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
                 traceback.print_exc()
                 sys.stderr.flush()
 
@@ -478,7 +539,7 @@ def spawn(
             os._exit(1)
 
     if not isinstance(pid, int):
-        raise AssertionError("fork returned non-integer: %s" % (repr(pid),))
+        raise AssertionError(f"fork returned non-integer: {repr(pid)}")
 
     # Add the pid to our local and the global pid lists.
     mypids.append(pid)
@@ -495,7 +556,6 @@ def spawn(
 
     # Otherwise we clean them up.
     while mypids:
-
         # Pull the last reader in the pipe chain. If all processes
         # in the pipe are well behaved, it will die when the process
         # it is reading from dies.
@@ -549,7 +609,7 @@ def _has_ipv6():
                 # [Errno 99] Cannot assign requested address.
                 sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
                 sock.bind(("::1", 0))
-            except EnvironmentError:
+            except OSError:
                 __has_ipv6 = False
             else:
                 __has_ipv6 = True
@@ -592,9 +652,9 @@ def _configure_loopback_interface():
             rtnl.add_address(ifindex, socket.AF_INET, "10.0.0.1", 8)
             if _has_ipv6():
                 rtnl.add_address(ifindex, socket.AF_INET6, "fd::1", 8)
-    except EnvironmentError as e:
+    except OSError as e:
         writemsg(
-            "Unable to configure loopback interface: %s\n" % e.strerror, noiselevel=-1
+            f"Unable to configure loopback interface: {e.strerror}\n", noiselevel=-1
         )
 
 
@@ -727,7 +787,6 @@ def _exec(
                     if errno_value == 0 and libc.unshare(unshare_flags) != 0:
                         errno_value = ctypes.get_errno()
                     if errno_value != 0:
-
                         involved_features = []
                         if unshare_ipc:
                             involved_features.append("ipc-sandbox")
@@ -1032,7 +1091,6 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
     # explicitly requested for it to remain open by adding
     # it to the keys of fd_pipes.
     while reverse_map:
-
         oldfd, newfds = reverse_map.popitem()
         old_fdflags = None
 
@@ -1058,7 +1116,6 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
                     fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
 
             if _set_inheritable is not None:
-
                 inheritable_state = None
                 if not (old_fdflags is None or _FD_CLOEXEC is None):
                     inheritable_state = not bool(old_fdflags & _FD_CLOEXEC)

@@ -18,6 +18,7 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 # used instead.
 __check_bash_version() {
 	# Figure out which min version of bash we require.
+	# Adjust patsub_replacement logic below on new EAPI!
 	local maj min
 	if ___eapi_bash_3_2 ; then
 		maj=3 min=2
@@ -50,10 +51,23 @@ __check_bash_version() {
 	if ___eapi_bash_3_2 && [[ ${BASH_VERSINFO[0]} -gt 3 ]] ; then
 		shopt -s compat32
 	fi
+
+	# patsub_replacement is a new option in bash-5.2 that is also default-on
+	# in that release. The default value is not gated by BASH_COMPAT (see bug #881383),
+	# hence we need to disable it for older Bashes to avoid behaviour changes in ebuilds
+	# and eclasses.
+	#
+	# New EAPI note: a newer EAPI (after 8) may well adopt Bash 5.2 as its minimum version.
+	# If it does, this logic will need to be adjusted to only disable patsub_replacement
+	# for < ${new_api}!
+	if (( BASH_VERSINFO[0] >= 6 || ( BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 2 ) )) ; then
+		shopt -u patsub_replacement
+	fi
+
 }
 __check_bash_version
 
-if [[ $EBUILD_PHASE != depend ]] ; then
+if [[ ${EBUILD_PHASE} != depend ]] ; then
 	source "${PORTAGE_BIN_PATH}/phase-functions.sh" || die
 	source "${PORTAGE_BIN_PATH}/save-ebuild-env.sh" || die
 	source "${PORTAGE_BIN_PATH}/phase-helpers.sh" || die
@@ -104,29 +118,29 @@ export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 # when they are done.
 
 __qa_source() {
-	local shopts=$(shopt) OLDIFS="$IFS"
+	local bashopts="${BASHOPTS:?}" OLDIFS="${IFS}"
 	local retval
 	source "$@"
 	retval=$?
 	set +e
-	[[ $shopts != $(shopt) ]] &&
+	[[ "${BASHOPTS}" != "${bashopts}" ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while sourcing '$*'"
-	[[ "$IFS" != "$OLDIFS" ]] &&
+	[[ "${IFS}" != "${OLDIFS}" ]] &&
 		eqawarn "QA Notice: Global IFS changed and was not restored while sourcing '$*'"
-	return $retval
+	return ${retval}
 }
 
 __qa_call() {
-	local shopts=$(shopt) OLDIFS="$IFS"
+	local bashopts="${BASHOPTS:?}" OLDIFS="${IFS}"
 	local retval
 	"$@"
 	retval=$?
 	set +e
-	[[ $shopts != $(shopt) ]] &&
+	[[ "${BASHOPTS}" != "${bashopts}" ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while calling '$*'"
-	[[ "$IFS" != "$OLDIFS" ]] &&
+	[[ "${IFS}" != "${OLDIFS}" ]] &&
 		eqawarn "QA Notice: Global IFS changed and was not restored while calling '$*'"
-	return $retval
+	return ${retval}
 }
 
 EBUILD_SH_ARGS="$*"
@@ -142,7 +156,7 @@ if ___eapi_has_ENV_UNSET; then
 	unset x
 fi
 
-[[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
+[[ ${PORTAGE_QUIET} != "" ]] && export PORTAGE_QUIET
 
 # sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (e.g. /usr/lib64/conftest)
 __sb_append_var() {
@@ -164,11 +178,11 @@ addread "/:${PORTAGE_TMPDIR}/portage"
 [[ -n ${PORTAGE_GPG_DIR} ]] && addpredict "${PORTAGE_GPG_DIR}"
 
 # Avoid sandbox violations in temporary directories.
-if [[ -w $T ]] ; then
-	export TEMP=$T
-	export TMP=$T
-	export TMPDIR=$T
-elif [[ $SANDBOX_ON = 1 ]] ; then
+if [[ -w ${T} ]] ; then
+	export TEMP=${T}
+	export TMP=${T}
+	export TMPDIR=${T}
+elif [[ ${SANDBOX_ON} = 1 ]] ; then
 	for x in TEMP TMP TMPDIR ; do
 		[[ -n ${!x} ]] && addwrite "${!x}"
 	done
@@ -178,7 +192,7 @@ fi
 # The sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON=0
 
-# Ensure that $PWD is sane whenever possible, to protect against
+# Ensure that ${PWD} is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
 # See bug #239560, bug #469338, and bug #595028.
 # EAPI 8 requires us to use an empty directory here.
@@ -196,9 +210,9 @@ umask 022
 # Sources all eclasses in parameters
 declare -ix ECLASS_DEPTH=0
 inherit() {
-	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
+	ECLASS_DEPTH=$((${ECLASS_DEPTH} + 1))
 	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
-		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
+		debug-print "*** Multiple Inheritance (Level: ${ECLASS_DEPTH})"
 
 		# Since ECLASS_DEPTH > 1, the following variables are locals from the
 		# previous inherit call in the call stack.
@@ -224,13 +238,13 @@ inherit() {
 	local B_IDEPEND
 	local B_PROPERTIES
 	local B_RESTRICT
-	while [[ "$1" ]]; do
+	while [[ "${1}" ]]; do
 		location=""
 		potential_location=""
 
-		ECLASS="$1"
-		__export_funcs_var=__export_functions_$ECLASS_DEPTH
-		unset $__export_funcs_var
+		ECLASS="${1}"
+		__export_funcs_var=__export_functions_${ECLASS_DEPTH}
+		unset ${__export_funcs_var}
 
 		if [[ ${EBUILD_PHASE} != depend && ${EBUILD_PHASE} != nofetch && \
 			${EBUILD_PHASE} != *rm && ${EMERGE_FROM} != "binary" && \
@@ -242,8 +256,8 @@ inherit() {
 			# disabled for nofetch, since that can be called by repoman and
 			# that triggers bug #407449 due to repoman not exporting
 			# non-essential variables such as INHERITED.
-			if ! has $ECLASS $INHERITED $__INHERITED_QA_CACHE ; then
-				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF $EBUILD_PHASE"
+			if ! has ${ECLASS} ${INHERITED} ${__INHERITED_QA_CACHE} ; then
+				eqawarn "QA Notice: Eclass '${ECLASS}' inherited illegally in ${CATEGORY}/${PF} ${EBUILD_PHASE}"
 			fi
 		fi
 
@@ -255,7 +269,7 @@ inherit() {
 				break
 			fi
 		done
-		debug-print "inherit: $1 -> $location"
+		debug-print "inherit: ${1} -> ${location}"
 		[[ -z ${location} ]] && die "${1}.eclass could not be found by inherit()"
 
 		# Inherits in QA checks can't handle metadata assignments
@@ -287,11 +301,11 @@ inherit() {
 				unset RESTRICT
 			fi
 
-			#turn on glob expansion
+			# Turn on glob expansion
 			set +f
 		fi
 
-		__qa_source "$location" || die "died sourcing $location in inherit()"
+		__qa_source "${location}" || die "died sourcing ${location} in inherit()"
 
 		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
 			# Turn off glob expansion
@@ -350,15 +364,15 @@ inherit() {
 
 			if [[ -n ${!__export_funcs_var} ]] ; then
 				for x in ${!__export_funcs_var} ; do
-					debug-print "EXPORT_FUNCTIONS: $x -> ${ECLASS}_$x"
-					declare -F "${ECLASS}_$x" >/dev/null || \
-						die "EXPORT_FUNCTIONS: ${ECLASS}_$x is not defined"
-					eval "$x() { ${ECLASS}_$x \"\$@\" ; }" > /dev/null
+					debug-print "EXPORT_FUNCTIONS: ${x} -> ${ECLASS}_${x}"
+					declare -F "${ECLASS}_${x}" >/dev/null || \
+						die "EXPORT_FUNCTIONS: ${ECLASS}_${x} is not defined"
+					eval "$x() { ${ECLASS}_${x} \"\$@\" ; }" > /dev/null
 				done
 			fi
 			unset $__export_funcs_var
 
-			has $1 $INHERITED || export INHERITED="$INHERITED $1"
+			has $1 ${INHERITED} || export INHERITED="${INHERITED} $1"
 			if [[ ${ECLASS_DEPTH} -eq 1 ]]; then
 				export PORTAGE_EXPLICIT_INHERIT="${PORTAGE_EXPLICIT_INHERIT} $1"
 			fi
@@ -375,10 +389,10 @@ inherit() {
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
-	if [[ -z "$ECLASS" ]]; then
+	if [[ -z "${ECLASS}" ]]; then
 		die "EXPORT_FUNCTIONS without a defined ECLASS"
 	fi
-	eval $__export_funcs_var+=\" $*\"
+	eval ${__export_funcs_var}+=\" $*\"
 }
 
 PORTAGE_BASHRCS_SOURCED=0
@@ -395,24 +409,25 @@ PORTAGE_BASHRCS_SOURCED=0
 #    function for the current phase.
 #
 __source_all_bashrcs() {
-	[[ $PORTAGE_BASHRCS_SOURCED = 1 ]] && return 0
-	PORTAGE_BASHRCS_SOURCED=1
-	local x
+	[[ ${PORTAGE_BASHRCS_SOURCED} = 1 ]] && return 0
 
+	PORTAGE_BASHRCS_SOURCED=1
+
+	local x
 	local OCC="${CC}" OCXX="${CXX}"
 
-	if [[ $EBUILD_PHASE != depend ]] ; then
-		# source the existing profile.bashrcs.
+	if [[ ${EBUILD_PHASE} != depend ]] ; then
+		# Source the existing profile.bashrcs.
 		while read -r x; do
 			__try_source "${x}"
 		done <<<"${PORTAGE_BASHRC_FILES}"
 	fi
 
-	# The user's bashrc is the ONLY non-portage bit of code
+	# The user's bashrc is the ONLY non-Portage bit of code
 	# that can change shopts without a QA violation.
 	__try_source --no-qa "${PORTAGE_BASHRC}"
 
-	if [[ $EBUILD_PHASE != depend ]] ; then
+	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
 
@@ -428,10 +443,11 @@ __source_all_bashrcs() {
 # files.
 __source_env_files() {
 	local argument=()
-	if [[ $1 == --no-qa ]]; then
+	if [[ ${1} == --no-qa ]]; then
 		argument=( --no-qa )
-	shift
+		shift
 	fi
+
 	for x in "${1}"/${CATEGORY}/{${PN},${PN}:${SLOT%/*},${P},${PF}}; do
 		__try_source "${argument[@]}" "${x}"
 	done
@@ -445,25 +461,28 @@ __source_env_files() {
 # If --no-qa is specified, source the file with source instead of __qa_source.
 __try_source() {
 	local qa=true
-	if [[ $1 == --no-qa ]]; then
+	if [[ ${1} == --no-qa ]]; then
 		qa=false
 		shift
 	fi
-	if [[ -r $1 && -f $1 ]]; then
+
+	if [[ -r ${1} && -f ${1} ]]; then
 		local debug_on=false
-		if [[ "$PORTAGE_DEBUG" == "1" ]] && [[ "${-/x/}" == "$-" ]]; then
+
+		if [[ "${PORTAGE_DEBUG}" == "1" ]] && [[ "${-/x/}" == "$-" ]]; then
 			debug_on=true
 		fi
-		$debug_on && set -x
+
+		${debug_on} && set -x
 		# If $- contains x, then tracing has already been enabled
-		# elsewhere for some reason. We preserve it's state so as
+		# elsewhere for some reason. We preserve its state so as
 		# not to interfere.
 		if ! ${qa} ; then
 			source "${1}"
 		else
 			__qa_source "${1}"
 		fi
-		$debug_on && set +x
+		${debug_on} && set +x
 	fi
 }
 # === === === === === === === === === === === === === === === === === ===
@@ -497,7 +516,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 		fi
 		if [[ ${EBUILD_PHASE} == depend ]] ; then
 			FUNC_SRC="${BIN}() {
-				if [[ \$ECLASS_DEPTH -gt 0 ]]; then
+				if [[ \${ECLASS_DEPTH} -gt 0 ]]; then
 					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
 				else
 					eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
@@ -521,7 +540,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 			${BODY}
 			}"
 		fi
-		eval "$FUNC_SRC" || echo "error creating QA interceptor ${BIN}" >&2
+		eval "${FUNC_SRC}" || echo "error creating QA interceptor ${BIN}" >&2
 	done
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
@@ -530,23 +549,22 @@ fi
 export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
 trap 'exit 1' SIGTERM
 
-if ! has "$EBUILD_PHASE" clean cleanrm depend && \
-	! [[ $EMERGE_FROM = ebuild && $EBUILD_PHASE = setup ]] && \
-	[[ -f "${T}"/environment ]]; then
+if ! has "${EBUILD_PHASE}" clean cleanrm depend && ! [[ ${EMERGE_FROM} = ebuild && ${EBUILD_PHASE} = setup ]] && [[ -f "${T}"/environment ]]; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
 	# NOTE: export ${FOO}=... requires quoting, unlike normal exports
-	__preprocess_ebuild_env || \
-		die "error processing environment"
+	__preprocess_ebuild_env || die "error processing environment"
+
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
 		export PORTAGE_${x}="${!x}"
 	done
 	PORTAGE_SANDBOX_ON=${SANDBOX_ON}
 	export SANDBOX_ON=1
-	source "${T}"/environment || \
-		die "error sourcing environment"
+
+	source "${T}"/environment || die "error sourcing environment"
+
 	# We have to temporarily disable sandbox since the
 	# SANDBOX_{DENY,READ,PREDICT,WRITE} values we've just loaded
 	# may be unusable (triggering in spurious sandbox violations)
@@ -557,17 +575,18 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 		if [[ -z "${!x}" ]]; then
 			export ${x}="${!y}"
 		elif [[ -n "${!y}" && "${!y}" != "${!x}" ]]; then
-			# filter out dupes
+			# Filter out dupes
 			export ${x}="$(printf "${!y}:${!x}" | tr ":" "\0" | \
 				sort -z -u | tr "\0" ":")"
 		fi
 		export ${x}="${!x%:}"
 		unset PORTAGE_${x}
 	done
+
 	unset x y
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
-	[[ -n $EAPI ]] || EAPI=0
+	[[ -n ${EAPI} ]] || EAPI=0
 fi
 
 # Convert quoted paths to array.
@@ -575,11 +594,9 @@ eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.
-if ! has "$EBUILD_PHASE" clean cleanrm ; then
-	if [[ $EBUILD_PHASE = setup && $EMERGE_FROM = ebuild ]] || \
-		[[ $EBUILD_PHASE = depend || ! -f $T/environment || \
-		-f $PORTAGE_BUILDDIR/.ebuild_changed || \
-		" ${FEATURES} " == *" noauto "* ]] ; then
+if ! has "${EBUILD_PHASE}" clean cleanrm ; then
+	if [[ ${EBUILD_PHASE} = setup && ${EMERGE_FROM} = ebuild ]] || \
+	[[ ${EBUILD_PHASE} = depend || ! -f ${T}/environment || -f ${PORTAGE_BUILDDIR}/.ebuild_changed || " ${FEATURES} " == *" noauto "* ]] ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
 		# during sourcing of ebuilds and eclasses.
 		__source_all_bashrcs
@@ -588,7 +605,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# from cache. In order to make INHERITED content independent of
 		# EBUILD_PHASE during inherit() calls, we unset INHERITED after
 		# we make a backup copy for QA checks.
-		__INHERITED_QA_CACHE=$INHERITED
+		__INHERITED_QA_CACHE=${INHERITED}
 
 		# Catch failed globbing attempts in case ebuild writer forgot to
 		# escape '*' or likes.
@@ -607,11 +624,11 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 		unset PORTAGE_EXPLICIT_INHERIT
 
-		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
-			source "$EBUILD" || die "error sourcing ebuild"
+		if [[ ${PORTAGE_DEBUG} != 1 || ${-/x/} != $- ]] ; then
+			source "${EBUILD}" || die "error sourcing ebuild"
 		else
 			set -x
-			source "$EBUILD" || die "error sourcing ebuild"
+			source "${EBUILD}" || die "error sourcing ebuild"
 			set +x
 		fi
 
@@ -651,11 +668,10 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
 			PROPERTIES=${PORTAGE_PROPERTIES}
 			RESTRICT=${PORTAGE_RESTRICT}
-			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
-			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
+			[[ -e ${PORTAGE_BUILDDIR}/.ebuild_changed ]] && rm "${PORTAGE_BUILDDIR}/.ebuild_changed"
 		fi
 
-		# alphabetically ordered by $EBUILD_PHASE value
+		# alphabetically ordered by ${EBUILD_PHASE} value
 		case ${EAPI} in
 			0|1)
 				_valid_phases="src_compile pkg_config pkg_info src_install
@@ -675,41 +691,39 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		esac
 
 		DEFINED_PHASES=
-		for _f in $_valid_phases ; do
-			if declare -F $_f >/dev/null ; then
+		for _f in ${_valid_phases} ; do
+			if declare -F ${_f} >/dev/null ; then
 				_f=${_f#pkg_}
 				DEFINED_PHASES+=" ${_f#src_}"
 			fi
 		done
-		[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
+		[[ -n ${DEFINED_PHASES} ]] || DEFINED_PHASES=-
 
 		unset _f _valid_phases
 
-		if [[ $EBUILD_PHASE != depend ]] ; then
+		if [[ ${EBUILD_PHASE} != depend ]] ; then
 
-			if has distcc $FEATURES ; then
-				[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
+			if has distcc ${FEATURES} ; then
+				[[ -n ${DISTCC_LOG} ]] && addwrite "${DISTCC_LOG%/*}"
 			fi
 
-			if has ccache $FEATURES ; then
-
-				if [[ -n $CCACHE_DIR ]] ; then
-					addread "$CCACHE_DIR"
-					addwrite "$CCACHE_DIR"
+			if has ccache ${FEATURES} ; then
+				if [[ -n ${CCACHE_DIR} ]] ; then
+					addread "${CCACHE_DIR}"
+					addwrite "${CCACHE_DIR}"
 				fi
 
-				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
+				[[ -n ${CCACHE_SIZE} ]] && ccache -M ${CCACHE_SIZE} &> /dev/null
 			fi
 		fi
 	fi
 fi
 
-if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}
-then
+if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT} ; then
 	export DEBUGBUILD=1
 fi
 
-if [[ $EBUILD_PHASE = depend ]] ; then
+if [[ ${EBUILD_PHASE} = depend ]] ; then
 	export SANDBOX_ON="0"
 	set -f
 
@@ -737,10 +751,11 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
 	# declare them only after it has already run.
-	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
+	declare -r ${PORTAGE_READONLY_METADATA} ${PORTAGE_READONLY_VARS}
 	if ___eapi_has_prefix_variables; then
 		declare -r ED EPREFIX EROOT
 	fi
+
 	if ___eapi_has_BROOT; then
 		declare -r BROOT
 	fi
@@ -749,11 +764,12 @@ else
 	# then it might not have USE=test like it's supposed to here.
 	if [[ ${EBUILD_PHASE} == test && ${EBUILD_FORCE_TEST} == 1 ]] &&
 		___in_portage_iuse test && ! has test ${USE} ; then
+
 		export USE="${USE} test"
 	fi
 	declare -r USE
 
-	if [[ -n $EBUILD_SH_ARGS ]] ; then
+	if [[ -n ${EBUILD_SH_ARGS} ]] ; then
 		(
 			# Don't allow subprocesses to inherit the pipe which
 			# emerge uses to monitor ebuild.sh.

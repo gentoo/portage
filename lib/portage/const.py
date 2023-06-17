@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # BEGIN PREFIX LOCAL
@@ -10,7 +10,6 @@ from portage.const_autotool import *
 # END PREFIX LOCAL
 
 import os
-import sys
 
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
@@ -183,7 +182,6 @@ SUPPORTED_FEATURES = frozenset(
         "fakeroot",
         "fixlafiles",
         "force-mirror",
-        "force-prefix",
         "getbinpkg",
         "gpg-keepalive",
         "icecream",
@@ -241,6 +239,7 @@ SUPPORTED_FEATURES = frozenset(
         "userpriv",
         "usersandbox",
         "usersync",
+        "warn-on-large-env",
         "webrsync-gpg",
         "xattr",
     )
@@ -289,10 +288,7 @@ LIVE_ECLASSES = frozenset(
 
 SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 
-if sys.version_info.major < 3:
-    SUPPORTED_GENTOO_BINPKG_FORMATS = ("xpak",)
-else:
-    SUPPORTED_GENTOO_BINPKG_FORMATS = ("xpak", "gpkg")
+SUPPORTED_GENTOO_BINPKG_FORMATS = ("xpak", "gpkg")
 
 SUPPORTED_XPAK_EXTENSIONS = (".tbz2", ".xpak")
 SUPPORTED_GPKG_EXTENSIONS = (".gpkg.tar",)

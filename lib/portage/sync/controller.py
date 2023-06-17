@@ -137,7 +137,7 @@ class SyncManager:
         if repo.sync_type in self.module_names:
             tasks = [self.module_controller.get_class(repo.sync_type)]
         else:
-            msg = "\n%s: Sync module '%s' is not an installed/known type'\n" % (
+            msg = "\n{}: Sync module '{}' is not an installed/known type'\n".format(
                 bad("ERROR"),
                 repo.sync_type,
             )
@@ -176,7 +176,7 @@ class SyncManager:
         self.exitcode = exitcode
         self.updatecache_flg = updatecache_flg
         if exitcode == 0:
-            msg = "=== Sync completed for %s" % self.repo.name
+            msg = f"=== Sync completed for {self.repo.name}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n")
         if self.callback:
@@ -190,7 +190,7 @@ class SyncManager:
             _hooks = self.hooks["postsync.d"]
         for filepath in _hooks:
             writemsg_level(
-                "Spawning post_sync hook: %s\n" % (_unicode_decode(_hooks[filepath])),
+                f"Spawning post_sync hook: {_unicode_decode(_hooks[filepath])}\n",
                 level=logging.ERROR,
                 noiselevel=4,
             )
@@ -212,7 +212,7 @@ class SyncManager:
         return succeeded
 
     def pre_sync(self, repo):
-        msg = ">>> Syncing repository '%s' into '%s'..." % (repo.name, repo.location)
+        msg = f">>> Syncing repository '{repo.name}' into '{repo.location}'..."
         self.logger(self.xterm_titles, msg)
         writemsg_level(msg + "\n")
         try:
@@ -248,7 +248,7 @@ class SyncManager:
                             pw = pwd.getpwuid(int(username))
                     except (ValueError, KeyError):
                         writemsg(
-                            "!!! User '%s' invalid or does not exist\n" % username,
+                            f"!!! User '{username}' invalid or does not exist\n",
                             noiselevel=-1,
                         )
                         return (logname, user, group, home)
@@ -266,7 +266,7 @@ class SyncManager:
                             pw = grp.getgrgid(int(groupname))
                     except (ValueError, KeyError):
                         writemsg(
-                            "!!! Group '%s' invalid or does not exist\n" % groupname,
+                            f"!!! Group '{groupname}' invalid or does not exist\n",
                             noiselevel=-1,
                         )
                         return (logname, user, group, home)
@@ -364,7 +364,6 @@ class SyncManager:
         if updatecache_flg and os.path.exists(
             os.path.join(repo.location, "metadata", "md5-cache")
         ):
-
             # Only update cache for repo.location since that's
             # the only one that's been synced here.
             action_metadata(

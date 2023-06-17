@@ -9,6 +9,8 @@ from portage import os
 from portage.package.ebuild.fetch import DistfileName
 from .DeletionTask import DeletionTask
 
+logger = logging.getLogger(__name__)
+
 
 class DeletionIterator:
     def __init__(self, config):
@@ -34,11 +36,9 @@ class DeletionIterator:
             )
             if self._config.content_db is None
             else itertools.chain.from_iterable(
-                (
-                    self._config.content_db.get_filenames_translate(filename)
-                    for filename in itertools.chain.from_iterable(
-                        layout.get_filenames(distdir) for layout in self._config.layouts
-                    )
+                self._config.content_db.get_filenames_translate(filename)
+                for filename in itertools.chain.from_iterable(
+                    layout.get_filenames(distdir) for layout in self._config.layouts
                 )
             )
         )
@@ -61,7 +61,7 @@ class DeletionIterator:
                         break
             else:
                 if exceptions:
-                    logging.error(
+                    logger.error(
                         "stat failed on '%s' in distfiles: %s\n"
                         % (filename, "; ".join(str(x) for x in exceptions))
                     )
@@ -91,7 +91,6 @@ class DeletionIterator:
                 self._config.scheduled_deletion_count += 1
 
                 if deletion_db is None or deletion_delay is None:
-
                     yield DeletionTask(
                         background=True,
                         distfile=filename,
@@ -103,11 +102,10 @@ class DeletionIterator:
                     deletion_entry = deletion_db.get(filename)
 
                     if deletion_entry is None:
-                        logging.debug("add '%s' to deletion db" % filename)
+                        logger.debug(f"add '{filename}' to deletion db")
                         deletion_db[filename] = start_time
 
                     elif deletion_entry + deletion_delay <= start_time:
-
                         yield DeletionTask(
                             background=True,
                             distfile=filename,
@@ -123,4 +121,4 @@ class DeletionIterator:
                     except KeyError:
                         pass
                     else:
-                        logging.debug("drop '%s' from deletion db" % filename)
+                        logger.debug(f"drop '{filename}' from deletion db")

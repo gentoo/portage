@@ -22,7 +22,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
     _cache_threshold = 5
 
     class BlockerData:
-
         __slots__ = ("__weakref__", "atoms", "counter")
 
         def __init__(self, counter, atoms):
@@ -62,7 +61,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
                 pass
             else:
                 writemsg(
-                    "!!! Error loading '%s': %s\n" % (self._cache_filename, str(e)),
+                    f"!!! Error loading '{self._cache_filename}': {str(e)}\n",
                     noiselevel=-1,
                 )
             del e
@@ -145,7 +144,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
                 portage.util.apply_secpass_permissions(
                     self._cache_filename, gid=portage.portage_gid, mode=0o644
                 )
-            except (IOError, OSError):
+            except OSError:
                 pass
             self._modified.clear()
 

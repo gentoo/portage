@@ -1,7 +1,6 @@
 # Copyright 2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -15,7 +14,6 @@ from portage.output import colorize
 
 class SlotChangeWithoutRevBumpTestCase(TestCase):
     def testSlotChangeWithoutRevBump(self):
-
         ebuilds = {
             "app-arch/libarchive-3.1.1": {"EAPI": "5", "SLOT": "0/13"},
             "app-arch/libarchive-3.0.4-r1": {"EAPI": "5", "SLOT": "0"},
@@ -87,7 +85,7 @@ class SlotChangeWithoutRevBumpTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
                 try:

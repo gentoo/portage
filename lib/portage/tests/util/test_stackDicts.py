@@ -8,7 +8,6 @@ from portage.util import stack_dicts
 
 class StackDictsTestCase(TestCase):
     def testStackDictsPass(self):
-
         tests = [
             ([{"a": "b"}, {"b": "c"}], {"a": "b", "b": "c"}, False, [], False),
             ([{"a": "b"}, {"a": "c"}], {"a": "b c"}, True, [], False),
@@ -22,7 +21,6 @@ class StackDictsTestCase(TestCase):
             self.assertEqual(result, test[1])
 
     def testStackDictsFail(self):
-
         tests = [
             ([None, {}], None, False, [], True),
             ([{"a": "b"}, {"a": "c"}], {"a": "b c"}, False, [], False),

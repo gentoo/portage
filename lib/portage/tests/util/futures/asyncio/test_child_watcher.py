@@ -37,7 +37,6 @@ class ChildWatcherTestCase(TestCase):
                 future.set_result((pid, returncode, args))
 
             async def watch_pid():
-
                 with asyncio.get_child_watcher() as watcher:
                     pids = spawn([true_binary], returnpid=True)
                     watcher.add_child_handler(pids[0], callback, *args_tuple)

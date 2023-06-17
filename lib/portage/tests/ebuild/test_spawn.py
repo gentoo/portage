@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import io
 import tempfile
 import portage
 from portage import os
@@ -23,7 +22,7 @@ class SpawnTestCase(TestCase):
             null_fd = os.open("/dev/null", os.O_RDWR)
             test_string = 2 * "blah blah blah\n"
             proc = SpawnProcess(
-                args=[BASH_BINARY, "-c", "echo -n '%s'" % test_string],
+                args=[BASH_BINARY, "-c", f"echo -n '{test_string}'"],
                 env={},
                 fd_pipes={0: portage._get_stdin().fileno(), 1: null_fd, 2: null_fd},
                 scheduler=global_event_loop(),
@@ -32,9 +31,8 @@ class SpawnTestCase(TestCase):
             proc.start()
             os.close(null_fd)
             self.assertEqual(proc.wait(), os.EX_OK)
-            f = io.open(
+            f = open(
                 _unicode_encode(logfile, encoding=_encodings["fs"], errors="strict"),
-                mode="r",
                 encoding=_encodings["content"],
                 errors="strict",
             )
@@ -49,7 +47,7 @@ class SpawnTestCase(TestCase):
             if logfile:
                 try:
                     os.unlink(logfile)
-                except EnvironmentError as e:
+                except OSError as e:
                     if e.errno != errno.ENOENT:
                         raise
                     del e

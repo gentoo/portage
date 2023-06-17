@@ -54,7 +54,7 @@ class UseReduceTestCase:
                 subset=self.subset,
             )
         except InvalidDependString as e:
-            raise InvalidDependString("%s: %s" % (e, self.deparray))
+            raise InvalidDependString(f"{e}: {self.deparray}")
 
 
 class UseReduce(TestCase):
@@ -65,7 +65,6 @@ class UseReduce(TestCase):
         return False
 
     def testUseReduce(self):
-
         EAPI_WITH_SRC_URI_ARROWS = "2"
         EAPI_WITHOUT_SRC_URI_ARROWS = "0"
 

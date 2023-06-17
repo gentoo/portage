@@ -12,7 +12,6 @@
 #
 
 import atexit
-import io
 import re
 import subprocess
 import sys
@@ -49,13 +48,7 @@ from portage.dispatch_conf import (
 from portage.process import find_binary, spawn
 from portage.util import writemsg, writemsg_stdout
 
-FIND_EXTANT_CONFIGS = (
-    "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
-)
 DIFF_CONTENTS = "diff -Nu '%s' '%s'"
-
-if "case-insensitive-fs" in portage.settings.features:
-    FIND_EXTANT_CONFIGS = FIND_EXTANT_CONFIGS.replace("-name '._cfg", "-iname '._cfg")
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0o077)
@@ -78,6 +71,7 @@ while SCRATCH_DIR is None:
         if e.errno != 17:
             raise
 os.umask(oldmask)
+
 
 # Ensure the scratch dir is deleted
 def cleanup(mydir=SCRATCH_DIR):
@@ -116,7 +110,7 @@ class dispatch:
 
         perform_conf_update_session_hooks("pre-session")
 
-        config_root = portage.settings["EPREFIX"] or os.sep
+        config_root = portage.settings["EROOT"]
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:
@@ -125,8 +119,9 @@ class dispatch:
             if os.path.isfile(self.options["log-file"]) or not os.path.exists(
                 self.options["log-file"]
             ):
+                old_umask = os.umask(0o077)
                 open(self.options["log-file"], "w").close()  # Truncate it
-                os.chmod(self.options["log-file"], 0o600)
+                os.umask(old_umask)
 
         pager = self.options.get("pager")
         if pager is None or not cmd_var_is_valid(pager):
@@ -160,18 +155,29 @@ class dispatch:
                 continue
 
             basename = "*"
-            find_opts = "-name '.*' -type d -prune -o"
+            find_opts = ["-name", ".*", "-type", "d", "-prune", "-o"]
             if not os.path.isdir(path):
                 path, basename = os.path.split(path)
-                find_opts = "-maxdepth 1"
+                find_opts = ["-maxdepth", "1"]
+            if "case-insensitive-fs" in portage.settings.features:
+                find_opts += ["-iname"]
+            else:
+                find_opts += ["-name"]
+            find_opts += [
+                f"._cfg????_{basename}",
+                "!",
+                "-name",
+                ".*~",
+                "!",
+                "-iname",
+                ".*.bak",
+                "-print",
+            ]
 
             try:
+                # Find existing configs
                 path_list = _unicode_decode(
-                    subprocess.check_output(
-                        portage.util.shlex_split(
-                            FIND_EXTANT_CONFIGS % (path, find_opts, basename)
-                        )
-                    ),
+                    subprocess.check_output(["find", path] + find_opts),
                     errors="strict",
                 ).splitlines()
             except subprocess.CalledProcessError:
@@ -340,7 +346,7 @@ class dispatch:
 
                 print()
                 writemsg_stdout(
-                    ">> (%i of %i) -- %s\n" % (count, len(confs), conf["current"]),
+                    f">> ({count} of {len(confs)}) -- {conf['current']}\n",
                     noiselevel=-1,
                 )
                 print(
@@ -416,14 +422,14 @@ class dispatch:
                         os.unlink(mrgconf)
                     break
                 else:
-                    raise AssertionError("Invalid Input: %s" % c)
+                    raise AssertionError(f"Invalid Input: {c}")
 
         if auto_zapped:
             print()
             print(" One or more updates are frozen and have been automatically zapped:")
             print()
             for frozen in auto_zapped:
-                writemsg_stdout("  * '%s'\n" % frozen, noiselevel=-1)
+                writemsg_stdout(f"  * '{frozen}'\n", noiselevel=-1)
             print()
 
         perform_conf_update_session_hooks("post-session")
@@ -433,7 +439,7 @@ class dispatch:
         the diff of what changed into the configured log file."""
         if "log-file" in self.options:
             status, output = diff(curconf, newconf)
-            with io.open(
+            with open(
                 self.options["log-file"], mode="a", encoding=_encodings["stdio"]
             ) as f:
                 f.write(output + "\n")
@@ -442,10 +448,9 @@ class dispatch:
 
         try:
             os.rename(newconf, curconf)
-        except (IOError, os.error) as why:
+        except (OSError, os.error) as why:
             writemsg(
-                "dispatch-conf: Error renaming %s to %s: %s; fatal\n"
-                % (newconf, curconf, str(why)),
+                f"dispatch-conf: Error renaming {newconf} to {curconf}: {str(why)}; fatal\n",
                 noiselevel=-1,
             )
             return

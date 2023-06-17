@@ -8,7 +8,6 @@ from portage.dep import isjustname
 
 class IsJustName(TestCase):
     def testIsJustName(self):
-
         cats = ("", "sys-apps/", "foo/", "virtual/")
         pkgs = ("portage", "paludis", "pkgcore", "notARealPkg")
         vers = ("", "-2.0-r3", "-1.0_pre2", "-3.1b")
@@ -19,10 +18,10 @@ class IsJustName(TestCase):
                     if len(ver):
                         self.assertFalse(
                             isjustname(cat + pkg + ver),
-                            msg="isjustname(%s) is True!" % (cat + pkg + ver),
+                            msg=f"isjustname({cat + pkg + ver}) is True!",
                         )
                     else:
                         self.assertTrue(
                             isjustname(cat + pkg + ver),
-                            msg="isjustname(%s) is False!" % (cat + pkg + ver),
+                            msg=f"isjustname({cat + pkg + ver}) is False!",
                         )

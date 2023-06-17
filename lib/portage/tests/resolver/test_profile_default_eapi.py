@@ -1,7 +1,6 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 
 from portage import os, _encodings
 from portage.const import USER_CONFIG_PATH
@@ -13,7 +12,6 @@ from portage.util import ensure_dirs
 
 class ProfileDefaultEAPITestCase(TestCase):
     def testProfileDefaultEAPI(self):
-
         repo_configs = {
             "test_repo": {
                 "layout.conf": (
@@ -108,13 +106,13 @@ class ProfileDefaultEAPITestCase(TestCase):
             for prof_path, data in profile_info:
                 ensure_dirs(prof_path)
                 for k, v in data.items():
-                    with io.open(
+                    with open(
                         os.path.join(prof_path, k),
                         mode="w",
                         encoding=_encodings["repo.content"],
                     ) as f:
                         for line in v:
-                            f.write("%s\n" % line)
+                            f.write(f"{line}\n")
 
             # The config must be reloaded in order to account
             # for the above profile customizations.

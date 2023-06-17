@@ -13,7 +13,6 @@ portage._disable_legacy_globals()
 
 
 def main(args):
-
     if args and isinstance(args[0], bytes):
         for i, x in enumerate(args):
             args[i] = portage._unicode_decode(x, errors="strict")

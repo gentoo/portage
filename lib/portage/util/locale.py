@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 # Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -78,19 +77,19 @@ def _check_locale(silent):
         if uc != ruc:
             msg.extend(
                 [
-                    "  %s -> %s" % (chars(lc), chars(ruc)),
+                    f"  {chars(lc)} -> {chars(ruc)}",
                     "  %28s: %s" % ("expected", chars(uc)),
                 ]
             )
         if lc != rlc:
             msg.extend(
                 [
-                    "  %s -> %s" % (chars(uc), chars(rlc)),
+                    f"  {chars(uc)} -> {chars(rlc)}",
                     "  %28s: %s" % ("expected", chars(lc)),
                 ]
             )
         writemsg_level(
-            "".join(["!!! %s\n" % l for l in msg]), level=logging.ERROR, noiselevel=-1
+            "".join([f"!!! {l}\n" for l in msg]), level=logging.ERROR, noiselevel=-1
         )
         return False
 

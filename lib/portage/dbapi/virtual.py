@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.dbapi import dbapi
@@ -212,22 +212,3 @@ class fakedbapi(dbapi):
         if metadata is None:
             raise KeyError(cpv)
         metadata.update(values)
-
-
-class testdbapi:
-    """A dbapi instance with completely fake functions to get by hitting disk
-    TODO(antarus):
-    This class really needs to be rewritten to have better stubs; but these work for now.
-    The dbapi classes themselves need unit tests...and that will be a lot of work.
-    """
-
-    def __init__(self):
-        self.cpvs = {}
-
-        def f(*args, **kwargs):
-            return True
-
-        fake_api = dir(dbapi)
-        for call in fake_api:
-            if not hasattr(self, call):
-                setattr(self, call, f)

@@ -12,6 +12,7 @@ from unittest.runner import TextTestResult as _TextTestResult
 
 import portage
 from portage import os
+from portage.util import no_color
 from portage import _encodings
 from portage import _unicode_decode
 from portage.output import colorize
@@ -69,7 +70,7 @@ def main():
 
     argv0 = Path(sys.argv[0])
 
-    usage = "usage: %s [options] [tests to run]" % argv0.name
+    usage = f"usage: {argv0.name} [options] [tests to run]"
     parser = argparse.ArgumentParser(usage=usage)
     parser.add_argument(
         "-l", "--list", help="list all tests", action="store_true", dest="list_tests"
@@ -78,7 +79,7 @@ def main():
     options = parser.parse_args(args=sys.argv)
 
     if (
-        os.environ.get("NOCOLOR") in ("yes", "true")
+        no_color(os.environ)
         or os.environ.get("TERM") == "dumb"
         or not sys.stdout.isatty()
     ):
@@ -89,7 +90,7 @@ def main():
         for mydir in getTestDirs(basedir):
             testsubdir = mydir.name
             for name in getTestNames(mydir):
-                print("%s/%s/%s.py" % (testdir, testsubdir, name))
+                print(f"{testdir}/{testsubdir}/{name}.py")
         return os.EX_OK
 
     if len(options.tests) > 1:
@@ -120,7 +121,7 @@ def getTestFromCommandLine(args, base_path):
         f = realpath.relative_to(path)
 
         if not f.name.startswith("test") or not f.suffix == ".py":
-            raise Exception("Invalid argument: '%s'" % arg)
+            raise Exception(f"Invalid argument: '{arg}'")
 
         mymodule = f.stem
         result.extend(getTestsFromFiles(path, base_path, [mymodule]))
@@ -181,7 +182,7 @@ class TextTestResult(_TextTestResult):
     """
 
     def __init__(self, stream, descriptions, verbosity):
-        super(TextTestResult, self).__init__(stream, descriptions, verbosity)
+        super().__init__(stream, descriptions, verbosity)
         self.todoed = []
         self.portage_skipped = []
 
@@ -273,17 +274,17 @@ class TestCase(unittest.TestCase):
                 testMethod()
                 ok = True
             except unittest.SkipTest as e:
-                result.addPortageSkip(self, "%s: SKIP: %s" % (testMethod, str(e)))
+                result.addPortageSkip(self, f"{testMethod}: SKIP: {str(e)}")
             except self.failureException:
                 if self.portage_skip is not None:
                     if self.portage_skip is True:
-                        result.addPortageSkip(self, "%s: SKIP" % testMethod)
+                        result.addPortageSkip(self, f"{testMethod}: SKIP")
                     else:
                         result.addPortageSkip(
-                            self, "%s: SKIP: %s" % (testMethod, self.portage_skip)
+                            self, f"{testMethod}: SKIP: {self.portage_skip}"
                         )
                 elif self.todo:
-                    result.addTodo(self, "%s: TODO" % testMethod)
+                    result.addTodo(self, f"{testMethod}: TODO")
                 else:
                     result.addFailure(self, sys.exc_info())
             except (KeyboardInterrupt, SystemExit):
@@ -322,13 +323,13 @@ class TestCase(unittest.TestCase):
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
-            raise self.failureException("%s not raised: %s" % (excName, msg))
+            raise self.failureException(f"{excName} not raised: {msg}")
 
     def assertNotExists(self, path):
         """Make sure |path| does not exist"""
         path = Path(path)
         if path.exists():
-            raise self.failureException("path exists when it should not: %s" % path)
+            raise self.failureException(f"path exists when it should not: {path}")
 
 
 class TextTestRunner(unittest.TextTestRunner):

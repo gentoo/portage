@@ -312,25 +312,19 @@ class digraph:
             writemsg(s, noiselevel=-1)
 
         for node in self.nodes:
-            output("%s " % (node,))
+            output(f"{node} ")
             if self.nodes[node][0]:
                 output("depends on\n")
             else:
                 output("(no children)\n")
             for child, priorities in self.nodes[node][0].items():
-                output(
-                    "  %s (%s)\n"
-                    % (
-                        child,
-                        priorities[-1],
-                    )
-                )
+                output(f"  {child} ({priorities[-1]})\n")
 
     def bfs(self, start, ignore_priority=None):
         if start not in self:
             raise KeyError(start)
 
-        queue, enqueued = deque([(None, start)]), set([start])
+        queue, enqueued = deque([(None, start)]), {start}
         while queue:
             parent, n = queue.popleft()
             yield parent, n

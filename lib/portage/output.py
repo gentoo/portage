@@ -4,7 +4,6 @@
 __docformat__ = "epytext"
 
 import errno
-import io
 import itertools
 import re
 import subprocess
@@ -134,7 +133,7 @@ codes["0xAAAA00"] = codes["brown"]
 codes["darkyellow"] = codes["0xAAAA00"]
 
 
-# Colors from /etc/init.d/functions.sh
+# Colors from /lib/gentoo/functions.sh
 _styles["BAD"] = ("red",)
 _styles["BRACKET"] = ("blue",)
 _styles["ERR"] = ("red",)
@@ -188,9 +187,8 @@ def _parse_color_map(config_root="/", onerror=None):
         return token
 
     try:
-        with io.open(
+        with open(
             _unicode_encode(myfile, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["content"],
             errors="replace",
         ) as f:
@@ -251,7 +249,7 @@ def _parse_color_map(config_root="/", onerror=None):
                     _styles[k] = tuple(code_list)
                 elif k in codes:
                     codes[k] = "".join(code_list)
-    except (IOError, OSError) as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise FileNotFound(myfile)
         elif e.errno == errno.EACCES:
@@ -286,7 +284,7 @@ def xtermTitle(mystr, raw=False):
         if len(mystr) > _max_xtermTitle_len:
             mystr = mystr[:_max_xtermTitle_len]
         if not raw:
-            mystr = "\x1b]0;%s\x07" % mystr
+            mystr = f"\x1b]0;{mystr}\x07"
 
         # avoid potential UnicodeEncodeError
         mystr = _unicode_encode(
@@ -336,7 +334,7 @@ def xtermTitleReset():
             home = os.environ.get("HOME", "")
             if home != "" and pwd.startswith(home):
                 pwd = "~" + pwd[len(home) :]
-            default_xterm_title = "\x1b]0;%s@%s:%s\x07" % (
+            default_xterm_title = "\x1b]0;{}@{}:{}\x07".format(
                 os.environ.get("LOGNAME", ""),
                 os.environ.get("HOSTNAME", "").split(".", 1)[0],
                 pwd,
@@ -388,7 +386,7 @@ def colormap():
         "QAWARN",
         "WARN",
     ):
-        mycolors.append("PORTAGE_COLOR_{}=$'{}'".format(c, style_to_ansi_code(c)))
+        mycolors.append(f"PORTAGE_COLOR_{c}=$'{style_to_ansi_code(c)}'")
     return "\n".join(mycolors)
 
 
@@ -534,7 +532,7 @@ def get_term_size(fd=None):
 
     try:
         proc = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, stderr=fd)
-    except EnvironmentError as e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
         # stty command not found
@@ -808,12 +806,12 @@ class ProgressBar:
         self._set_desc()
 
     def _set_desc(self):
-        self._desc = "%s%s" % (
+        self._desc = "{}{}".format(
             "%s: " % self._title if self._title else "",
             "%s" % self._label if self._label else "",
         )
         if len(self._desc) > self._desc_max_length:  # truncate if too long
-            self._desc = "%s..." % self._desc[: self._desc_max_length - 3]
+            self._desc = f"{self._desc[:self._desc_max_length - 3]}..."
         if len(self._desc):
             self._desc = self._desc.ljust(self._desc_max_length)
 
@@ -900,7 +898,7 @@ class TermProgressBar(ProgressBar):
                 position = 0.5
             self._position = position
             bar_width = int(offset * max_bar_width)
-            image = "%s%s%s" % (
+            image = "{}{}{}".format(
                 self._desc,
                 _percent,
                 "["
@@ -914,7 +912,7 @@ class TermProgressBar(ProgressBar):
         percentage = 100 * curval // maxval
         max_bar_width = bar_space - 1
         _percent = ("%d%% " % percentage).rjust(percentage_str_width)
-        image = "%s%s" % (self._desc, _percent)
+        image = f"{self._desc}{_percent}"
 
         if cols < min_columns:
             return image
@@ -958,7 +956,7 @@ def _init(config_root="/"):
     try:
         _parse_color_map(
             config_root=config_root,
-            onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1),
+            onerror=lambda e: writemsg(f"{str(e)}\n", noiselevel=-1),
         )
     except FileNotFound:
         pass
@@ -966,12 +964,11 @@ def _init(config_root="/"):
         writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
         del e
     except PortageException as e:
-        writemsg("%s\n" % str(e), noiselevel=-1)
+        writemsg(f"{str(e)}\n", noiselevel=-1)
         del e
 
 
 class _LazyInitColorMap(portage.proxy.objectproxy.ObjectProxy):
-
     __slots__ = ("_attr",)
 
     def __init__(self, attr):

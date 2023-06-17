@@ -1,4 +1,4 @@
-# Copyright 2011-2021 Gentoo Authors
+# Copyright 2011-2021, 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -39,7 +39,7 @@ class BinhostContentMap(Mapping):
         try:
             with open(local_path, "rb") as f:
                 return f.read()
-        except EnvironmentError:
+        except OSError:
             raise KeyError(request_path)
 
 
@@ -53,7 +53,6 @@ class SimpleEmergeTestCase(TestCase):
         return True
 
     def testSimple(self):
-
         debug = False
 
         install_something = """
@@ -235,7 +234,7 @@ call_has_and_best_version() {
                     installed=installed,
                     debug=debug,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 
@@ -250,7 +249,6 @@ call_has_and_best_version() {
                 )
 
     async def _async_test_simple(self, playground, metadata_xml_files, loop):
-
         debug = playground.debug
         settings = playground.settings
         eprefix = settings["EPREFIX"]
@@ -564,9 +562,9 @@ call_has_and_best_version() {
 
         # Test binhost support if FETCHCOMMAND is available.
         binrepos_conf_file = os.path.join(os.sep, eprefix, BINREPOS_CONF_FILE)
-        with open(binrepos_conf_file, "wt") as f:
+        with open(binrepos_conf_file, "w") as f:
             f.write("[test-binhost]\n")
-            f.write("sync-uri = {}\n".format(binhost_uri))
+            f.write(f"sync-uri = {binhost_uri}\n")
         fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
         fetch_bin = portage.process.find_binary(fetchcommand[0])
         if fetch_bin is not None:
@@ -622,8 +620,8 @@ call_has_and_best_version() {
             "INFOPATH": "",
             "PATH": path,
             "PKGDIR": pkgdir,
-            "PORTAGE_INST_GID": str(portage.data.portage_gid),
-            "PORTAGE_INST_UID": str(portage.data.portage_uid),
+            "PORTAGE_INST_GID": str(os.getgid()),  # str(portage.data.portage_gid),
+            "PORTAGE_INST_UID": str(os.getuid()),  # str(portage.data.portage_uid),
             "PORTAGE_PYTHON": portage_python,
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
             "PORTAGE_TMPDIR": portage_tmpdir,
@@ -695,7 +693,6 @@ move dev-util/git dev-vcs/git
                 stdout = subprocess.PIPE
 
             for args in test_commands:
-
                 if hasattr(args, "__call__"):
                     args()
                     continue
@@ -720,7 +717,7 @@ move dev-util/git dev-vcs/git
                         portage.writemsg(output)
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
                 )
         finally:
             binhost_server.__exit__(None, None, None)

@@ -1,4 +1,4 @@
-/* Copyright 2017-2020 Gentoo Authors
+/* Copyright 2017-2023 Gentoo Authors
  * Distributed under the terms of the GNU General Public License v2
  */
 
@@ -16,25 +16,20 @@ static PyObject * _reflink_linux_file_copy(PyObject *, PyObject *);
 
 static PyMethodDef reflink_linuxMethods[] = {
     {
-            "file_copy",
-            _reflink_linux_file_copy,
-            METH_VARARGS,
-            "Copy between two file descriptors, "
-            "with reflink and sparse file support."
+            .ml_name = "file_copy",
+            .ml_meth = _reflink_linux_file_copy,
+            .ml_flags = METH_VARARGS,
+            .ml_doc = "Copy between two file descriptors with reflink and sparse file support."
     },
     {NULL, NULL, 0, NULL}
 };
 
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
-    "reflink_linux",                                /* m_name */
-    "Module for reflink_linux copy operations",     /* m_doc */
-    -1,                                             /* m_size */
-    reflink_linuxMethods,                           /* m_methods */
-    NULL,                                           /* m_reload */
-    NULL,                                           /* m_traverse */
-    NULL,                                           /* m_clear */
-    NULL,                                           /* m_free */
+    .m_name = "reflink_linux",
+    .m_doc = "Module for reflink_linux copy operations",
+    .m_size = -1,
+    .m_methods = reflink_linuxMethods,
 };
 
 PyMODINIT_FUNC
@@ -200,7 +195,7 @@ do_lseek_data(int fd_out, int fd_in, off_t *off_out) {
  * If a syscall is interrupted by a signal, then the function will
  * automatically resume copying a the appropriate location which is
  * tracked internally by the offset_out variable.
- * 
+ *
  * Return: The length of the output file on success. Raise OSError
  * on failure.
  */

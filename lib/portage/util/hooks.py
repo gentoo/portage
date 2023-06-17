@@ -46,7 +46,7 @@ def perform_hooks(rel_directory, *argv, prefix="/"):
 
         if retval != portage.os.EX_OK:
             writemsg_level(
-                " %s Spawn failed for: %s, %s\n" % (bad("*"), name, filepath),
+                f" {bad('*')} Spawn failed for: {name}, {filepath}\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )

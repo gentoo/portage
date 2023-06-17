@@ -5,7 +5,6 @@
 from portage.cache import fs_template
 from portage.cache import cache_errors
 import errno
-import io
 import stat
 import tempfile
 import os as _os
@@ -17,17 +16,16 @@ from portage.versions import _pkg_str
 
 
 class database(fs_template.FsBased):
-
     autocommits = True
 
     def __init__(self, *args, **config):
-        super(database, self).__init__(*args, **config)
+        super().__init__(*args, **config)
         self.location = os.path.join(
             self.location, self.label.lstrip(os.path.sep).rstrip(os.path.sep)
         )
         write_keys = set(self._known_keys)
         write_keys.add("_eclasses_")
-        write_keys.add("_%s_" % (self.validation_chf,))
+        write_keys.add(f"_{self.validation_chf}_")
         self._write_keys = sorted(write_keys)
         if not self.readonly and not os.path.exists(self.location):
             self._ensure_dirs()
@@ -36,9 +34,8 @@ class database(fs_template.FsBased):
         # Don't use os.path.join, for better performance.
         fp = self.location + _os.sep + cpv
         try:
-            with io.open(
+            with open(
                 _unicode_encode(fp, encoding=_encodings["fs"], errors="strict"),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as myf:
@@ -51,7 +48,7 @@ class database(fs_template.FsBased):
                     # that uses mtime mangling.
                     d["_mtime_"] = _os.fstat(myf.fileno())[stat.ST_MTIME]
                 return d
-        except (IOError, OSError) as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise cache_errors.CacheCorruption(cpv, e)
             raise KeyError(cpv, e)
@@ -66,17 +63,17 @@ class database(fs_template.FsBased):
     def _setitem(self, cpv, values):
         try:
             fd, fp = tempfile.mkstemp(dir=self.location)
-        except EnvironmentError as e:
+        except OSError as e:
             raise cache_errors.CacheCorruption(cpv, e)
 
-        with io.open(
+        with open(
             fd, mode="w", encoding=_encodings["repo.content"], errors="backslashreplace"
         ) as myf:
             for k in self._write_keys:
                 v = values.get(k)
                 if not v:
                     continue
-                myf.write("%s=%s\n" % (k, v))
+                myf.write(f"{k}={v}\n")
 
         self._ensure_access(fp)
 
@@ -85,7 +82,7 @@ class database(fs_template.FsBased):
         new_fp = os.path.join(self.location, cpv)
         try:
             os.rename(fp, new_fp)
-        except EnvironmentError as e:
+        except OSError as e:
             success = False
             try:
                 if errno.ENOENT == e.errno:
@@ -93,7 +90,7 @@ class database(fs_template.FsBased):
                         self._ensure_dirs(cpv)
                         os.rename(fp, new_fp)
                         success = True
-                    except EnvironmentError as e:
+                    except OSError as e:
                         raise cache_errors.CacheCorruption(cpv, e)
                 else:
                     raise cache_errors.CacheCorruption(cpv, e)
@@ -150,7 +147,6 @@ class database(fs_template.FsBased):
 
 
 class md5_database(database):
-
     validation_chf = "md5"
     store_eclass_paths = False
 

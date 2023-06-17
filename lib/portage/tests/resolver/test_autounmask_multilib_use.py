@@ -1,5 +1,7 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013, 2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+import pytest
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
@@ -9,8 +11,8 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class AutounmaskMultilibUseTestCase(TestCase):
+    @pytest.mark.xfail()
     def testAutounmaskMultilibUse(self):
-
         self.todo = True
 
         ebuilds = {

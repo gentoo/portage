@@ -4,11 +4,10 @@
 
 doc = """Helper tool for converting installed files to custom prefixes.
 
-In other words, eprefixy $D for Gentoo/Prefix."""
+In other words, eprefixy ${D} for Gentoo/Prefix."""
 __doc__ = doc
 
 import argparse
-import io
 import os
 import stat
 import sys
@@ -52,7 +51,7 @@ class IsTextFile:
 
     def _is_text_encoding(self, filename):
         try:
-            for line in io.open(filename, mode="r", encoding=self._encoding):
+            for line in open(filename, encoding=self._encoding):
                 pass
         except UnicodeDecodeError:
             return False
@@ -67,17 +66,17 @@ def chpath_inplace(filename, is_text_file, old, new):
     modified = False
     orig_stat = os.lstat(filename)
     try:
-        f = io.open(filename, buffering=0, mode="r+b")
-    except IOError:
+        f = open(filename, buffering=0, mode="r+b")
+    except OSError:
         try:
             orig_mode = stat.S_IMODE(os.lstat(filename).st_mode)
         except OSError as e:
-            sys.stderr.write("%s: %s\n" % (e, filename))
+            sys.stderr.write(f"{e}: {filename}\n")
             return
         temp_mode = 0o200 | orig_mode
         os.chmod(filename, temp_mode)
         try:
-            f = io.open(filename, buffering=0, mode="r+b")
+            f = open(filename, buffering=0, mode="r+b")
         finally:
             os.chmod(filename, orig_mode)
 
@@ -144,11 +143,12 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser(description=doc)
-    parser.add_argument("location", default=None, help="root directory (e.g. $D)")
+    parser.add_argument("location", default=None, help="root directory (e.g. ${D})")
     parser.add_argument("old", default=None, help="original build prefix (e.g. /)")
-    parser.add_argument("new", default=None, help="new install prefix (e.g. $EPREFIX)")
+    parser.add_argument(
+        "new", default=None, help="new install prefix (e.g. ${EPREFIX})"
+    )
     opts = parser.parse_args(argv)
 
     location, old, new = opts.location, opts.old, opts.new

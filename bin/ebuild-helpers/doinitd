@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -15,4 +15,4 @@ if ! ___eapi_doinitd_respects_exeopts; then
 	export DIROPTIONS=""
 fi
 
-_E_EXEDESTTREE_='/etc/init.d/' exec doexe "$@"
+__E_EXEDESTTREE='/etc/init.d/' exec doexe "$@"

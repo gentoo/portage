@@ -33,11 +33,10 @@ class pkg_node(str):
 
 
 def pkg_desc_index_line_format(cp, pkgs, desc):
-    return "%s %s: %s\n" % (cp, " ".join(_pkg_str(cpv).version for cpv in pkgs), desc)
+    return f"{cp} {' '.join(_pkg_str(cpv).version for cpv in pkgs)}: {desc}\n"
 
 
 def pkg_desc_index_line_read(line, repo=None):
-
     try:
         pkgs, desc = line.split(":", 1)
     except ValueError:

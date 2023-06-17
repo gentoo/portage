@@ -1,0 +1,141 @@
+# Check for implicit function declaration warnings in configure logs
+#
+# ebuilds should set the QA_CONFIG_IMPL_DECL_SKIP array to skip known false
+# positives.
+#
+# Some examples of logs to look for:
+# bash: work/bash-5.1/config.log
+#       ^---  easy
+# python: work/Python-3.10.9/config.log
+#         ^---  easy
+# gcc: work/build/config.log
+#      ^---  can be out-of-tree
+# clang: work/x/y/clang-abi_x86_64.amd64/CMakeFiles/CMakeError.log
+#        ^---  can be non-autotools (and very deep)
+# systemd-utils: work/systemd-stable-251.10-abi_x86_64.amd64/meson-logs/meson-log.txt
+#                ^---  can be non-autotools
+#
+# Adapted from macports portconfigure.tcl with love.
+#
+# See also: bug 892651
+
+# Same as the "has" function, but allows wildcards in the array
+is_in() {
+	local needle=$1
+	shift
+
+	local x
+	for x in "$@"; do
+		[[ "${needle}" = ${x} ]] && return 0
+	done
+	return 1
+}
+
+add_default_skips() {
+	# Skip built-in functions provided by the compiler
+	QA_CONFIG_IMPL_DECL_SKIP+=(
+		"__builtin_*"
+		# https://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html
+		"__sync_*"
+		# https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
+		"__atomic_*"
+	)
+
+	# Functions not available on Linux
+	[[ ${CHOST} == *linux* ]] && QA_CONFIG_IMPL_DECL_SKIP+=(
+		acl
+		acl_get_perm_np
+		res_getservers
+		res_ndestroy
+		statacl
+	)
+}
+
+find_log_targets() {
+	local log_targets=(
+		'config.log'
+		'CMakeError.log'
+		'meson-log.txt'
+	)
+	local find_args=()
+	local log
+
+	# Find config logs. Assume the dirs can have spaces in them, even though
+	# that is hella evil and goes against good filesystem manners!
+	for log in "${log_targets[@]}"; do
+		find_args+=( '-name' "${log}" '-o' )
+	done
+	unset -v 'find_args[-1]'
+	printf '%s\0' "${WORKDIR}" |
+		find -files0-from - -type f \( "${find_args[@]}" \) -print0
+}
+
+has_utf8_ctype() {
+	# Use python to check if the locale is UTF-8 since tools like locale(1) may
+	# not exist (eg, musl systems).
+	[[ "$("${PORTAGE_PYTHON:-/usr/bin/python}" -c 'import locale; print(locale.getlocale()[1])')" == UTF-8 ]]
+}
+
+config_impl_decl_check() {
+	local files=()
+	local lines=()
+	local funcs=()
+	local l
+	local entry
+	local line
+	local func
+	local re_uni
+	local re_asc
+	local is_utf8
+
+	add_default_skips
+
+	# Given the UTF-8 character type, both gcc and clang may enclose the
+	# function name between the LEFT SINGLE QUOTATION MARK and RIGHT SINGLE
+	# QUOTATION MARK codepoints.
+	re_uni=$' function \u2018([^\u2019]+)\u2019'
+
+	# This variant matches ASCII single quotes.
+	re_asc=$' function \x27([^\x27]+)\x27'
+
+	# Is UTF-8 the effective character type?
+	has_utf8_ctype; is_utf8=$(( $? == 0 ))
+
+	# Iterate over every log file found and check for '-Wimplicit-function-declaration'
+	while IFS= read -rd '' l; do
+		while IFS= read -ru3 entry; do
+			# Strip ANSI codes (color and erase in line have been seen at least)
+			entry="$(printf '%s\n' "${entry}" | LC_ALL='C' sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g')"
+
+			line="${entry%%:*}"
+			if [[ ${is_utf8} -eq 1 && ${entry} =~ ${re_uni} ]] || [[ ${entry} =~ ${re_asc} ]]; then
+				func="${BASH_REMATCH[1]}"
+			else
+				continue
+			fi
+
+			is_in "${func}" "${QA_CONFIG_IMPL_DECL_SKIP[@]}" && continue
+
+			files+=( "${l}" )
+			lines+=( "${line}" )
+			funcs+=( "${func}" )
+		# Using -I to ignore binary files is a GNU extension for grep
+		done 3< <(grep -nEI -e '-W(error=)?implicit-function-declaration' "${l}")
+	done < <(find_log_targets)
+
+	# Drop out early if no impl decls found (all the arrays are the same size)
+	[[ ${#files[@]} -eq 0 ]] && return
+
+	eqawarn 'QA Notice: Found the following implicit function declarations in configure logs:'
+	for l in "${!files[@]}"; do
+		eqawarn "  ${files[l]}:${lines[l]} - ${funcs[l]}"
+		eqatag 'config.log-impl-decl' "line=${lines[l]}" "func=${funcs[l]}" "${files[l]}"
+	done
+	eqawarn 'Check that no features were accidentally disabled.'
+	eqawarn 'See https://wiki.gentoo.org/wiki/Modern_C_porting.'
+}
+
+config_impl_decl_check
+: # guarantee successful exit
+
+# vim:ft=sh noexpandtab:

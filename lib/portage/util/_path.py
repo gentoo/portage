@@ -12,7 +12,7 @@ def exists_raise_eaccess(path):
         os.stat(path)
     except OSError as e:
         if e.errno == PermissionDenied.errno:
-            raise PermissionDenied("stat('%s')" % path)
+            raise PermissionDenied(f"stat('{path}')")
         return False
     else:
         return True
@@ -23,7 +23,7 @@ def isdir_raise_eaccess(path):
         st = os.stat(path)
     except OSError as e:
         if e.errno == PermissionDenied.errno:
-            raise PermissionDenied("stat('%s')" % path)
+            raise PermissionDenied(f"stat('{path}')")
         return False
     else:
         return stat.S_ISDIR(st.st_mode)

@@ -6,7 +6,6 @@ from portage._sets import SETPREFIX
 
 
 class SetArg(DependencyArg):
-
     __slots__ = ("name", "pset")
 
     def __init__(self, pset=None, **kwargs):

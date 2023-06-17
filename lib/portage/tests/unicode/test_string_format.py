@@ -21,37 +21,34 @@ class StringFormatTestCase(TestCase):
     )
 
     def testDependencyArg(self):
-
         self.assertEqual(_encodings["content"], "utf_8")
 
         for arg_unicode in self.unicode_strings:
             arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings["content"])
             dependency_arg = DependencyArg(arg=arg_unicode)
 
-            formatted_str = "%s" % (dependency_arg,)
+            formatted_str = f"{dependency_arg}"
             self.assertEqual(formatted_str, arg_unicode)
 
             # Test the __str__ method which returns unicode in python3
-            formatted_str = "%s" % (dependency_arg,)
+            formatted_str = f"{dependency_arg}"
             self.assertEqual(formatted_str, arg_unicode)
 
     def testPortageException(self):
-
         self.assertEqual(_encodings["content"], "utf_8")
 
         for arg_unicode in self.unicode_strings:
             arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings["content"])
             e = PortageException(arg_unicode)
 
-            formatted_str = "%s" % (e,)
+            formatted_str = f"{e}"
             self.assertEqual(formatted_str, arg_unicode)
 
             # Test the __str__ method which returns unicode in python3
-            formatted_str = "%s" % (e,)
+            formatted_str = f"{e}"
             self.assertEqual(formatted_str, arg_unicode)
 
     def testUseFlagDisplay(self):
-
         self.assertEqual(_encodings["content"], "utf_8")
 
         for enabled in (True, False):
@@ -59,9 +56,9 @@ class StringFormatTestCase(TestCase):
                 for arg_unicode in self.unicode_strings:
                     e = UseFlagDisplay(arg_unicode, enabled, forced)
 
-                    formatted_str = "%s" % (e,)
+                    formatted_str = f"{e}"
                     self.assertEqual(isinstance(formatted_str, str), True)
 
                     # Test the __str__ method which returns unicode in python3
-                    formatted_str = "%s" % (e,)
+                    formatted_str = f"{e}"
                     self.assertEqual(isinstance(formatted_str, str), True)

@@ -101,7 +101,7 @@ class TestFakedbapi(TestCase):
                 self.assertEqual(
                     fakedb.match(atom),
                     expected_result,
-                    "fakedb.match('%s') = %s != %s" % (atom, result, expected_result),
+                    f"fakedb.match('{atom}') = {result} != {expected_result}",
                 )
         finally:
             shutil.rmtree(tempdir)

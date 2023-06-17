@@ -105,7 +105,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                                     f"{bold('#')}='/var/db update'",
                                     f"{bold('@')}='/var/db move'\n",
                                     f"{bold('s')}='/var/db SLOT move'",
-                                    f"{bold('%')}='binary move'"
+                                    f"{bold('%')}='binary move'",
                                     f"{bold('S')}='binary SLOT move'\n",
                                     f"{bold('p')}='update /etc/portage/package.*'\n",
                                 )
@@ -195,7 +195,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 
     if world_modified:
         world_list.sort()
-        write_atomic(world_file, "".join("%s\n" % (x,) for x in world_list))
+        write_atomic(world_file, "".join(f"{x}\n" for x in world_list))
         if world_warnings:
             # XXX: print warning that we've updated world entries
             # and the old name still matches something (from an overlay)?

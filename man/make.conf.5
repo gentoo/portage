@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Nov 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Mar 2023" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -112,10 +112,18 @@ ACCEPT_RESTRICT="*"
 ACCEPT_RESTRICT="* -bindist"
 .fi
 .TP
+.B BINPKG_FORMAT
+This variable sets the format used for tar binary packages. Possible
+values are \fIxpak\fI or \fIgpkg\fI.  If \fBBINPKG_FORMAT\fR is set to \fIxpak\fR,
+packages will have the file extension .tbz2 for any compression type for historical
+reasons.  If \fBBINPKG_FORMAT\fR is set to \fIxpak\fR, and FEATURES="binpkg-multi-instance"
+is set, packages will have the file extension .xpak.  If \fBBINPKG_FORMAT\fR is set
+to \fIgpkg\fR, packages will have the file extension .gpkg.
+.TP
 \fBBINPKG_COMPRESS\fR = \fI"compression"\fR
 This variable is used to determine the compression used for \fIbinary
-packages\fR. Supported settings and compression algorithms are: bzip2, gzip,
-lz4, lzip, lzop, xz, zstd.
+packages\fR.  Supported settings and compression algorithms are: bzip2, gzip,
+lz4, lzip, lzop, xz, zstd.  See note for \fBBINPKG_FORMAT\fR on file suffix.
 .br
 Defaults to "zstd".
 .br
@@ -135,6 +143,18 @@ Defaults to "".
 .nf
 # Set it to use compression level 9:
 BINPKG_COMPRESS_FLAGS="-9"
+.fi
+.TP
+\fBBINPKG_COMPRESS_FLAGS_[format]\fR = \fI"arguments for [format] compression \
+command"\fR
+This variable is used to add additional arguments only for the specified \
+[format] compression command selected by \fBBINPKG_COMPRESS\fR.
+\fBBINPKG_COMPRESS_FLAGS\fR will be ignored when using [format] compression.
+.br
+.I Example:
+.nf
+# Set only zstd to use compression level 9:
+BINPKG_COMPRESS_FLAGS_ZSTD="-9"
 .fi
 .TP
 \fBBINPKG_GPG_SIGNING_BASE_COMMAND\fR = \fI"GPG command and arguments \
@@ -375,11 +395,11 @@ This feature is enabled by default.
 .B binpkg-request-signature
 Binary packages are requested to be signed by trusted GPG signature.
 Portage will reject to process any binary package without a valid GPG
-signature. The verify command is defined in 
+signature. The verify command is defined in
 \fBBINPKG_GPG_VERIFY_COMMAND\fR variable.
 .TP
 .B binpkg-signing
-Binary packages will be signed by given GPG command. The signing command 
+Binary packages will be signed by given GPG command. The signing command
 is defined in \fBBINPKG_GPG_SIGNING_COMMAND\fR variable.
 .TP
 .B buildpkg
@@ -504,12 +524,6 @@ fixes (order of flags, duplicated entries, ...)
 .B force\-mirror
 Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
 except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
-.TP
-.B force\-prefix
-Enable prefix support for all ebuilds, regardless of EAPI, since older EAPIs
-would otherwise be useless with prefix configurations. This brings
-compatibility with the prefix branch of portage, which also supports EPREFIX
-for all EAPIs (for obvious reasons).
 .TP
 .B getbinpkg
 Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
@@ -805,6 +819,9 @@ It is the user's responsibility to ensure correct ownership, since otherwise
 Portage would have to waste time validating ownership for each and every sync
 operation.
 .TP
+.B warn-on-large-env
+Warn if portage is about to execute a child process with a large environment.
+.TP
 .B webrsync-gpg
 Enable GPG verification when using \fIemerge\-webrsync\fR. This feature is
 deprecated and has been replaced by the \fBrepos.conf\fR
@@ -928,13 +945,19 @@ For more information, see \fBmake\fR(1). Also see \fBemerge\fR(1) for
 information about analogous \fB\-\-jobs\fR and \fB\-\-load\-average\fR options.
 Defaults to the number of processors if left unset.
 .TP
+\fBNO_COLOR\fR = \fI[any string]\fR
+Set to any nonempty string (e.g. "1") to disable color by default.
+.br
+Defaults to unset.
+.TP
 \fBNOCOLOR\fR = \fI["true" | "false"]\fR
-Defines if color should be disabled by default.
+Defines if color should be disabled by default.  Deprecated in favor
+of \fBNO_COLOR\fR.
 .br
 Defaults to false.
 .TP
 \fBPKGDIR\fR = \fI[path]\fR
-Defines the location where created .tbz2 binary packages will be
+Defines the location where created .tbz2 or .gpkg binary packages will be
 stored when the \fBemerge\fR(1) \fB\-\-buildpkg\fR option is enabled.
 By default, a given package is stored in a subdirectory corresponding
 to its category. However, for backward compatibility with the layout
@@ -953,7 +976,7 @@ See \fIPORTAGE_LOGDIR_CLEAN\fR below. Deprecated.
 \fBPORTAGE_BINHOST\fR = \fI[space delimited URI list]\fR
 This is a list of hosts from which portage will grab prebuilt\-binary packages.
 Each entry in the list must specify the full address of a directory
-serving tbz2's for your system (this directory must contain a 'Packages' index
+serving tbz2/gpkgs for your system (this directory must contain a 'Packages' index
 file). This is only used when running with
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1)
 for more information. The \fBPORTAGE_BINHOST\fR variable is deprecated in
@@ -971,7 +994,8 @@ setting as the base URI.
 .TP
 .B PORTAGE_BINPKG_FORMAT
 This variable sets default format used for binary packages. Possible values
-are tar and rpm or both.
+are tar and rpm or both. It is very uncommon to set this and is likely
+not what you want. You probably want \fBBINPKG_FORMAT\fR instead.
 .TP
 .B PORTAGE_BINPKG_TAR_OPTS
 This variable contains options to be passed to the tar command for creation
@@ -1085,6 +1109,22 @@ will set idle io priority. For more information about ionice, see
 .br
 Portage will also set the autogroup-nice value (see fBsched\fR(7))), if
 FEATURES="pid\-sandbox" is enabled.
+.TP
+\fBPORTAGE_SCHEDULING_POLICY\fR = \fI[policy name]\fR Allows changing the
+current scheduling policy. The supported options are \fBother\fR, \fBbatch\fR,
+\fBidle\fR, \fBfifo\fR, \fBround-robin\fR and \fBdeadline\fR. When unset, the
+scheduling policy remains unchanged, by default Linux uses 'other' policy.
+Users that wish to minimize the Portage's impact on system responsiveness
+should set scheduling policy to \fBidle\fR, which significantly reduces the
+disruption to the rest of the system by scheduling Portage as extremely low
+priority processes. see \fBsched\fR(7) for more information.
+.TP
+\fBPORTAGE_SCHEDULING_PRIORITY\fR = \fI[priority]\fR
+Allows changing the priority (1-99) of the current scheduling policy, only
+applies if PORTAGE _SCHEDULING_POLICY is set to 'fifo' or 'round-robin',
+for others the only supported priority is 0, If unset, defaults to lowest
+priority of the selected scheduling policy. For more information about
+scheduler, see \fBsched\fR(7). This variable is unset by default.
 .TP
 .B PORTAGE_LOG_FILTER_FILE_CMD
 This variable specifies a command that filters build log output to a

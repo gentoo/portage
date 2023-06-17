@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
-import io
 import os
 import sys
 import textwrap
@@ -44,7 +43,7 @@ def parse_args(argv):
 
     usage += "\n"
     usage += "Required Arguments:\n\n"
-    usage += "  src_pkg_dir  - the source $PKGDIR\n"
+    usage += "  src_pkg_dir  - the source ${PKGDIR}\n"
     usage += "  snapshot_dir - destination snapshot " + "directory (must not exist)\n"
     usage += (
         "  snapshot_uri - URI which refers to "
@@ -67,7 +66,7 @@ def parse_args(argv):
     options, args = parser.parse_known_args(argv[1:])
 
     if len(args) != 4:
-        parser.error("Required 4 arguments, got %d" % (len(args),))
+        parser.error(f"Required 4 arguments, got {len(args)}")
 
     return parser, options, args
 
@@ -79,37 +78,34 @@ def main(argv):
     src_pkgs_index = os.path.join(src_pkg_dir, "Packages")
 
     if not os.path.isdir(src_pkg_dir):
-        parser.error("src_pkg_dir is not a directory: '%s'" % (src_pkg_dir,))
+        parser.error(f"src_pkg_dir is not a directory: '{src_pkg_dir}'")
 
     if not os.path.isfile(src_pkgs_index):
         parser.error(
-            "src_pkg_dir does not contain a "
-            + "'Packages' index: '%s'" % (src_pkg_dir,)
+            "src_pkg_dir does not contain a " + f"'Packages' index: '{src_pkg_dir}'"
         )
 
     parse_result = urlparse(snapshot_uri)
     if not (parse_result.scheme and parse_result.netloc and parse_result.path):
-        parser.error("snapshot_uri is not a valid URI: '%s'" % (snapshot_uri,))
+        parser.error(f"snapshot_uri is not a valid URI: '{snapshot_uri}'")
 
     if os.path.isdir(snapshot_dir):
-        parser.error("snapshot_dir already exists: '%s'" % snapshot_dir)
+        parser.error(f"snapshot_dir already exists: '{snapshot_dir}'")
 
+    dirname_ss_dir = os.path.dirname(snapshot_dir)
     try:
-        os.makedirs(os.path.dirname(snapshot_dir))
+        os.makedirs(dirname_ss_dir)
     except OSError:
         pass
-    if not os.path.isdir(os.path.dirname(snapshot_dir)):
-        parser.error(
-            "snapshot_dir parent could not be created: '%s'"
-            % os.path.dirname(snapshot_dir)
-        )
+    if not os.path.isdir(dirname_ss_dir):
+        parser.error(f"snapshot_dir parent could not be created: '{dirname_ss_dir}'")
 
     try:
         os.makedirs(binhost_dir)
     except OSError:
         pass
     if not os.path.isdir(binhost_dir):
-        parser.error("binhost_dir could not be created: '%s'" % binhost_dir)
+        parser.error(f"binhost_dir could not be created: '{binhost_dir}'")
 
     cp_opts = "RP"
     if options.hardlinks == "n":
@@ -117,7 +113,7 @@ def main(argv):
     else:
         cp_opts += "l"
 
-    cp_cmd = "cp -%s %s %s" % (
+    cp_cmd = "cp -{} {} {}".format(
         cp_opts,
         portage._shell_quote(src_pkg_dir),
         portage._shell_quote(snapshot_dir),
@@ -127,11 +123,10 @@ def main(argv):
     if not (os.WIFEXITED(ret) and os.WEXITSTATUS(ret) == os.EX_OK):
         return 1
 
-    infile = io.open(
+    infile = open(
         portage._unicode_encode(
             src_pkgs_index, encoding=portage._encodings["fs"], errors="strict"
         ),
-        mode="r",
         encoding=portage._encodings["repo.content"],
         errors="strict",
     )
@@ -149,7 +144,7 @@ def main(argv):
         else:
             if not line.strip():
                 # end of header
-                outfile.write("URI: %s\n\n" % snapshot_uri)
+                outfile.write(f"URI: {snapshot_uri}\n\n")
                 break
             outfile.write(line)
 

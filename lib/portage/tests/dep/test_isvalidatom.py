@@ -25,7 +25,6 @@ class IsValidAtomTestCase:
 
 class IsValidAtom(TestCase):
     def testIsValidAtom(self):
-
         test_cases = (
             IsValidAtomTestCase("sys-apps/portage", True),
             IsValidAtomTestCase("=sys-apps/portage-2.1", True),
@@ -230,5 +229,5 @@ class IsValidAtom(TestCase):
                     )
                 ),
                 test_case.expected,
-                msg="isvalidatom(%s) != %s" % (test_case.atom, test_case.expected),
+                msg=f"isvalidatom({test_case.atom}) != {test_case.expected}",
             )

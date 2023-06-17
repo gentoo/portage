@@ -10,11 +10,9 @@ portage.proxy.lazyimport.lazyimport(
 
 
 class EbuildProcess(AbstractEbuildProcess):
-
     __slots__ = ("actionmap",)
 
     def _spawn(self, args, **kwargs):
-
         actionmap = self.actionmap
         if actionmap is None:
             actionmap = _spawn_actionmap(self.settings)

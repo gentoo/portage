@@ -13,12 +13,12 @@
 __save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
-		unset S _E_DESTTREE _E_INSDESTTREE _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
+		unset S __E_DESTTREE __E_INSDESTTREE __E_DOCDESTTREE __E_EXEDESTTREE \
 			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
 			PORTAGE_DOCOMPRESS_SKIP PORTAGE_DOSTRIP PORTAGE_DOSTRIP_SKIP
-		if [[ -n $PYTHONPATH &&
-			${PYTHONPATH%%:*} -ef $PORTAGE_PYM_PATH ]] ; then
-			if [[ $PYTHONPATH == *:* ]] ; then
+		if [[ -n ${PYTHONPATH} &&
+			${PYTHONPATH%%:*} -ef ${PORTAGE_PYM_PATH} ]] ; then
+			if [[ ${PYTHONPATH} == *:* ]] ; then
 				export PYTHONPATH=${PYTHONPATH#*:}
 			else
 				unset PYTHONPATH
@@ -43,7 +43,7 @@ __save_ebuild_env() {
 	for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 		src_compile src_test src_install pkg_preinst pkg_postinst \
 		pkg_prerm pkg_postrm pkg_config pkg_info pkg_pretend ; do
-		unset -f default_$x __eapi{0,1,2,3,4}_$x
+		unset -f default_${x} __eapi{0,1,2,3,4}_${x}
 	done
 	unset x
 
@@ -97,7 +97,7 @@ __save_ebuild_env() {
 		ECLASS_DEPTH ENDCOL FAKEROOTKEY \
 		HOME \
 		LAST_E_CMD LAST_E_LEN LD_PRELOAD MISC_FUNCTIONS_ARGS MOPREFIX \
-		NOCOLOR PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
+		NOCOLOR NO_COLOR PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
 		PORTAGE_BASHRC_FILES PORTAGE_BASHRCS_SOURCED \
 		PORTAGE_COLOR_BAD PORTAGE_COLOR_BRACKET PORTAGE_COLOR_ERR \
 		PORTAGE_COLOR_GOOD PORTAGE_COLOR_HILITE PORTAGE_COLOR_INFO \

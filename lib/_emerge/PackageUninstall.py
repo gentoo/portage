@@ -35,7 +35,6 @@ class PackageUninstall(CompositeTask):
     )
 
     def _start(self):
-
         vardb = self.pkg.root_config.trees["vartree"].dbapi
         dbdir = vardb.getpath(self.pkg.cpv)
         if not os.path.exists(dbdir):
@@ -93,8 +92,8 @@ class PackageUninstall(CompositeTask):
             self._async_unlock_builddir(returncode=retval)
             return
 
-        self._writemsg_level(">>> Unmerging %s...\n" % (self.pkg.cpv,), noiselevel=-1)
-        self._emergelog("=== Unmerging... (%s)" % (self.pkg.cpv,))
+        self._writemsg_level(f">>> Unmerging {self.pkg.cpv}...\n", noiselevel=-1)
+        self._emergelog(f"=== Unmerging... ({self.pkg.cpv})")
 
         cat, pf = portage.catsplit(self.pkg.cpv)
         unmerge_task = MergeProcess(
@@ -115,9 +114,9 @@ class PackageUninstall(CompositeTask):
 
     def _unmerge_exit(self, unmerge_task):
         if self._final_exit(unmerge_task) != os.EX_OK:
-            self._emergelog(" !!! unmerge FAILURE: %s" % (self.pkg.cpv,))
+            self._emergelog(f" !!! unmerge FAILURE: {self.pkg.cpv}")
         else:
-            self._emergelog(" >>> unmerge success: %s" % (self.pkg.cpv,))
+            self._emergelog(f" >>> unmerge success: {self.pkg.cpv}")
             self.world_atom(self.pkg)
         self._async_unlock_builddir(returncode=self.returncode)
 
@@ -150,7 +149,6 @@ class PackageUninstall(CompositeTask):
         emergelog("notitles" not in self.settings.features, msg)
 
     def _writemsg_level(self, msg, level=0, noiselevel=0):
-
         log_path = self.settings.get("PORTAGE_LOG_FILE")
         background = self.background
 

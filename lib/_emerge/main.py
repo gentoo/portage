@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -21,6 +21,7 @@ portage.proxy.lazyimport.lazyimport(
 from portage import os
 from portage.sync import _SUBMODULE_PATH_MAP
 
+from typing import Optional, List
 
 options = [
     "--alphabetical",
@@ -52,6 +53,7 @@ options = [
     "--tree",
     "--unordered-display",
     "--update",
+    "--update-if-installed",
 ]
 
 shortmapping = {
@@ -162,6 +164,7 @@ def insert_optional_args(args):
         "--jobs": valid_integers,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
+        "--onlydeps-with-ideps": y_or_n,
         "--onlydeps-with-rdeps": y_or_n,
         "--package-moves": y_or_n,
         "--quiet": y_or_n,
@@ -573,8 +576,12 @@ def parse_opts(tmpcmdline, silent=False):
             + "Emerge will ignore matching binary packages. ",
             "action": "append",
         },
+        "--onlydeps-with-ideps": {
+            "help": "modify interpretation of dependencies to include IDEPEND",
+            "choices": true_y_or_n,
+        },
         "--onlydeps-with-rdeps": {
-            "help": "modify interpretation of depedencies",
+            "help": "modify interpretation of dependencies",
             "choices": true_y_or_n,
         },
         "--rebuild-exclude": {
@@ -671,7 +678,7 @@ def parse_opts(tmpcmdline, silent=False):
             "action": "store",
         },
         "--root-deps": {
-            "help": "modify interpretation of depedencies",
+            "help": "modify interpretation of dependencies",
             "choices": ("True", "rdeps"),
         },
         "--search-index": {
@@ -975,7 +982,6 @@ def parse_opts(tmpcmdline, silent=False):
         myoptions.selective = True
 
     if myoptions.backtrack is not None:
-
         try:
             backtrack = int(myoptions.backtrack)
         except (OverflowError, ValueError):
@@ -1156,10 +1162,12 @@ def profile_check(trees, myaction):
     return os.EX_OK
 
 
-def emerge_main(args=None):
+def emerge_main(args: Optional[List[str]] = None):
     """
-    @param args: command arguments (default: sys.argv[1:])
-    @type args: list
+    Entry point of emerge
+
+    Processes command line arguments (default: sys.argv[1:]) and decides
+    what the current run of emerge should by creating `emerge_config`
     """
     if args is None:
         args = sys.argv[1:]

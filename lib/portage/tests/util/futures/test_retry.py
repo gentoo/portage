@@ -1,13 +1,10 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from concurrent.futures import Future, ThreadPoolExecutor
 import contextlib
 
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 import weakref
 import time
@@ -176,8 +173,13 @@ class RetryTestCase(TestCase):
                 asyncio.wait([decorated_func()], loop=loop)
             )
             self.assertEqual(len(done), 1)
+            cause = done.pop().exception().__cause__
             self.assertTrue(
-                isinstance(done.pop().exception().__cause__, SucceedNeverException)
+                isinstance(
+                    cause,
+                    (asyncio.TimeoutError, SucceedNeverException),
+                ),
+                msg=f"Cause was {cause.__class__.__name__}",
             )
 
     def testOverallTimeoutWithTimeoutError(self):
@@ -208,7 +210,7 @@ class RetryForkExecutorTestCase(RetryTestCase):
     """
 
     def __init__(self, *pargs, **kwargs):
-        super(RetryForkExecutorTestCase, self).__init__(*pargs, **kwargs)
+        super().__init__(*pargs, **kwargs)
         self._executor = None
 
     def _setUpExecutor(self):

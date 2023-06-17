@@ -8,7 +8,6 @@ from portage.util import grabdict, writedict
 
 
 class CleanConfig:
-
     short_desc = "Discard any no longer installed configs from emerge's tracker list"
 
     @staticmethod
@@ -33,7 +32,7 @@ class CleanConfig:
         keys = sorted(configs)
         for config in keys:
             if not os.path.exists(config):
-                messages.append("  %s" % config)
+                messages.append(f"  {config}")
             if onProgress:
                 onProgress(maxval, i + 1)
                 i += 1
@@ -61,7 +60,7 @@ class CleanConfig:
             if not os.path.exists(full_path):
                 modified = True
                 configs.pop(config)
-                messages.append("  %s" % config)
+                messages.append(f"  {config}")
             if onProgress:
                 onProgress(maxval, i + 1)
                 i += 1

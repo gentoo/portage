@@ -37,12 +37,12 @@ _compressors = {
         "package": "app-arch/lzop",
     },
     "xz": {
-        "compress": "xz ${BINPKG_COMPRESS_FLAGS}",
-        "decompress": "xz -d",
+        "compress": "xz -T{JOBS} --memlimit-compress=50% -q ${BINPKG_COMPRESS_FLAGS}",
+        "decompress": "xz -T{JOBS} -d",
         "package": "app-arch/xz-utils",
     },
     "zstd": {
-        "compress": "zstd ${BINPKG_COMPRESS_FLAGS}",
+        "compress": "zstd -T{JOBS} ${BINPKG_COMPRESS_FLAGS}",
         # If the compression windowLog was larger than the default of 27,
         # then --long=windowLog needs to be passed to the decompressor.
         # Therefore, pass a larger --long=31 value to the decompressor
@@ -95,7 +95,7 @@ def compression_probe(f):
                 _unicode_encode(f, encoding=_encodings["fs"], errors="strict"),
                 mode="rb",
             )
-        except IOError as e:
+        except OSError as e:
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(f)
             elif e.errno in (errno.ENOENT, errno.ESTALE):
@@ -111,7 +111,6 @@ def compression_probe(f):
 
 
 def _compression_probe_file(f):
-
     m = _compression_re.match(f.read(_max_compression_re_len))
     if m is not None:
         for k, v in m.groupdict().items():

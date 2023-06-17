@@ -41,8 +41,7 @@ def find_built_slot_operator_atoms(pkg):
 def _find_built_slot_operator(dep_struct):
     for x in dep_struct:
         if isinstance(x, list):
-            for atom in _find_built_slot_operator(x):
-                yield atom
+            yield from _find_built_slot_operator(x)
         elif isinstance(x, Atom) and x.slot_operator_built:
             yield x
 
@@ -59,7 +58,6 @@ def ignore_built_slot_operator_deps(dep_struct):
 
 
 def evaluate_slot_operator_equal_deps(settings, use, trees):
-
     metadata = settings.configdict["pkg"]
     eapi = metadata["EAPI"]
     eapi_attrs = _get_eapi_attrs(eapi)
@@ -107,10 +105,7 @@ def _eval_deps(dep_struct, vardbs):
                     except (KeyError, InvalidData):
                         pass
                     else:
-                        slot_part = "%s/%s=" % (
-                            best_version.slot,
-                            best_version.sub_slot,
-                        )
+                        slot_part = f"{best_version.slot}/{best_version.sub_slot}="
                         x = x.with_slot(slot_part)
                         dep_struct[i] = x
                         break

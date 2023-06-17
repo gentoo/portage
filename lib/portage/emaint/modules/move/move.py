@@ -82,12 +82,12 @@ class MoveHandler:
                                 # If this update has already been applied to the same
                                 # package build then silently continue.
                                 for maybe_applied in match(
-                                    "={}".format(cpv.replace(cpv.cp, str(newcp), 1))
+                                    f"={cpv.replace(cpv.cp, str(newcp), 1)}"
                                 ):
                                     if maybe_applied.build_time == build_time:
                                         break
                                 else:
-                                    errors.append("'%s' moved to '%s'" % (cpv, newcp))
+                                    errors.append(f"'{cpv}' moved to '{newcp}'")
                 elif update_cmd[0] == "slotmove":
                     pkg, origslot, newslot = update_cmd[1:]
                     atom = pkg.with_slot(origslot)
@@ -98,8 +98,7 @@ class MoveHandler:
                             continue
                         if repo_match(cpv.repo):
                             errors.append(
-                                "'%s' slot moved from '%s' to '%s'"
-                                % (cpv, origslot, newslot)
+                                f"'{cpv}' slot moved from '{origslot}' to '{newslot}'"
                             )
                 if onProgress:
                     onProgress(0, 0)
@@ -121,7 +120,7 @@ class MoveHandler:
                 pkg = _pkg_str(cpv, metadata=metadata, settings=settings)
             except InvalidData:
                 continue
-            metadata = dict((k, metadata[k]) for k in self._update_keys)
+            metadata = {k: metadata[k] for k in self._update_keys}
             try:
                 updates = allupdates[pkg.repo]
             except KeyError:
@@ -133,7 +132,7 @@ class MoveHandler:
                 continue
             metadata_updates = portage.update_dbentries(updates, metadata, parent=pkg)
             if metadata_updates:
-                errors.append("'%s' has outdated metadata" % cpv)
+                errors.append(f"'{cpv}' has outdated metadata")
             if onProgress:
                 onProgress(maxval, i + 1)
 
@@ -178,7 +177,6 @@ class MoveHandler:
 
 
 class MoveInstalled(MoveHandler):
-
     short_desc = "Perform package move updates for installed packages"
 
     @staticmethod
@@ -193,7 +191,6 @@ class MoveInstalled(MoveHandler):
 
 
 class MoveBinary(MoveHandler):
-
     short_desc = "Perform package move updates for binary packages"
 
     @staticmethod

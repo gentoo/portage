@@ -1,4 +1,4 @@
-# Copyright 2003-2020 Gentoo Authors
+# Copyright 2003-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
@@ -10,7 +10,6 @@ import xml.dom.minidom
 
 from functools import reduce
 
-import io
 from io import StringIO
 
 from portage import _encodings, _unicode_decode, _unicode_encode
@@ -38,6 +37,8 @@ opMapping = {
 }
 NEWLINE_ESCAPE = "!;\\n"  # some random string to mark newlines that should be preserved
 SPACE_ESCAPE = "!;_"  # some random string to mark spaces that should be preserved
+# See PMS 3.1.7 "Keyword names"
+ARCH_REGEX = re.compile(r"^\*$|^[-_a-z0-9 ]+$")
 
 
 def get_applied_glsas(settings):
@@ -267,7 +268,13 @@ def makeAtom(pkgname, versionNode):
     @rtype:		String
     @return:	the portage atom
     """
-    op = opMapping[versionNode.getAttribute("range")]
+    rangetype = versionNode.getAttribute("range")
+    if rangetype in opMapping:
+        op = opMapping[rangetype]
+    else:
+        raise GlsaFormatException(
+            _(f"Invalid range found for '{pkgname}': {rangetype}")
+        )
     version = getText(versionNode, format="strip")
     rValue = f"{op}{pkgname}-{version}"
     try:
@@ -291,7 +298,11 @@ def makeVersion(versionNode):
     @rtype:		String
     @return:	the version string
     """
-    op = opMapping[versionNode.getAttribute("range")]
+    rangetype = versionNode.getAttribute("range")
+    if rangetype in opMapping:
+        op = opMapping[rangetype]
+    else:
+        raise GlsaFormatException(_(f"Invalid range found: {rangetype}"))
     version = getText(versionNode, format="strip")
     rValue = f"{op}{version}"
     try:
@@ -740,7 +751,13 @@ class Glsa:
         for k in self.packages:
             pkg = self.packages[k]
             for path in pkg:
-                if path["arch"] == "*" or self.config["ARCH"] in path["arch"].split():
+                if not ARCH_REGEX.match(path["arch"]):
+                    raise GlsaFormatException(
+                        f"Unrecognized arch list in {self.nr} (wrong delimiter?): {path['arch']}"
+                    )
+
+                arches = path["arch"].split()
+                if path["arch"] == "*" or self.config["ARCH"] in arches:
                     for v in path["vul_atoms"]:
                         rValue = rValue or (
                             len(match(v, self.vardbapi)) > 0
@@ -778,7 +795,7 @@ class Glsa:
         @return:	None
         """
         if not self.isInjected():
-            checkfile = io.open(
+            checkfile = open(
                 _unicode_encode(
                     os.path.join(self.config["EROOT"], PRIVATE_PATH, "glsa_injected"),
                     encoding=_encodings["fs"],
@@ -804,11 +821,11 @@ class Glsa:
         @return:	list of package-versions that have to be merged
         """
         return list(
-            set(
+            {
                 update
                 for (vuln, update) in self.getAffectionTable(least_change)
                 if update
-            )
+            }
         )
 
     def getAffectionTable(self, least_change=True):

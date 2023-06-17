@@ -9,7 +9,6 @@ from portage.util._async.ForkProcess import ForkProcess
 
 
 class ManifestProcess(ForkProcess):
-
     __slots__ = ("cp", "distdir", "fetchlist_dict", "repo_config")
 
     MODIFIED = 16
@@ -38,11 +37,7 @@ class ManifestProcess(ForkProcess):
             modified = mf.write(sign=False)
         except PermissionDenied as e:
             portage.writemsg(
-                "!!! %s: %s\n"
-                % (
-                    _("Permission Denied"),
-                    e,
-                ),
+                f"!!! {_('Permission Denied')}: {e}\n",
                 noiselevel=-1,
             )
             return 1

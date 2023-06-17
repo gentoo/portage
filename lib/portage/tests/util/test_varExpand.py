@@ -8,10 +8,9 @@ from portage.util import varexpand
 
 class VarExpandTestCase(TestCase):
     def testVarExpandPass(self):
-
         varDict = {"a": "5", "b": "7", "c": "-5"}
         for key in varDict:
-            result = varexpand("$%s" % key, varDict)
+            result = varexpand(f"${key}", varDict)
 
             self.assertFalse(
                 result != varDict[key],
@@ -56,42 +55,36 @@ class VarExpandTestCase(TestCase):
             result = varexpand(test[0], varDict)
             self.assertFalse(
                 result != test[1],
-                msg="Got %s != %s from varexpand(%s, %s)"
-                % (result, test[1], test[0], varDict),
+                msg=f"Got {result} != {test[1]} from varexpand({test[0]}, {varDict})",
             )
 
     def testVarExpandDoubleQuotes(self):
-
         varDict = {"a": "5"}
         tests = [('"${a}"', '"5"')]
         for test in tests:
             result = varexpand(test[0], varDict)
             self.assertFalse(
                 result != test[1],
-                msg="Got %s != %s from varexpand(%s, %s)"
-                % (result, test[1], test[0], varDict),
+                msg=f"Got {result} != {test[1]} from varexpand({test[0]}, {varDict})",
             )
 
     def testVarExpandSingleQuotes(self):
-
         varDict = {"a": "5"}
         tests = [("'${a}'", "'${a}'")]
         for test in tests:
             result = varexpand(test[0], varDict)
             self.assertFalse(
                 result != test[1],
-                msg="Got %s != %s from varexpand(%s, %s)"
-                % (result, test[1], test[0], varDict),
+                msg=f"Got {result} != {test[1]} from varexpand({test[0]}, {varDict})",
             )
 
     def testVarExpandFail(self):
-
         varDict = {"a": "5", "b": "7", "c": "15"}
 
         testVars = ["fail"]
 
         for var in testVars:
-            result = varexpand("$%s" % var, varDict)
+            result = varexpand(f"${var}", varDict)
             self.assertFalse(
                 len(result),
                 msg="Got %s == %s, from varexpand(%s, %s)"

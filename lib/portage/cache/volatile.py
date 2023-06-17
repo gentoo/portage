@@ -6,7 +6,6 @@ from portage.cache import template
 
 
 class database(template.database):
-
     autocommits = True
     serialize_eclasses = False
     store_eclass_paths = False
@@ -14,7 +13,7 @@ class database(template.database):
     def __init__(self, *args, **config):
         config.pop("gid", None)
         config.pop("perms", None)
-        super(database, self).__init__(*args, **config)
+        super().__init__(*args, **config)
         self._data = {}
         self._delitem = self._data.__delitem__
 

@@ -1,7 +1,6 @@
-# Copyright 2014-2015 Gentoo Foundation
+# Copyright 2014-2015, 2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 from functools import partial
 import shutil
 import stat
@@ -129,7 +128,7 @@ src_install() {
                 path = os.path.join(dir_path, name)
                 st = os.lstat(path)
                 if stat.S_ISREG(st.st_mode):
-                    with io.open(path, mode="a", encoding=_encodings["stdio"]) as f:
+                    with open(path, mode="a", encoding=_encodings["stdio"]) as f:
                         f.write("modified at %d\n" % time.time())
                 elif stat.S_ISLNK(st.st_mode):
                     old_dest = os.readlink(path)
@@ -218,8 +217,8 @@ src_install() {
             "INFODIR": "",
             "INFOPATH": "",
             "PATH": path,
-            "PORTAGE_INST_GID": str(portage.data.portage_gid),
-            "PORTAGE_INST_UID": str(portage.data.portage_uid),
+            "PORTAGE_INST_GID": str(os.getgid()),  # str(portage.data.portage_gid),
+            "PORTAGE_INST_UID": str(os.getuid()),  # str(portage.data.portage_uid),
             "PORTAGE_PYTHON": portage_python,
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
             "PORTAGE_TMPDIR": portage_tmpdir,
@@ -263,7 +262,6 @@ src_install() {
                 stdout = subprocess.PIPE
 
             for args in test_commands:
-
                 if hasattr(args, "__call__"):
                     args()
                     continue
@@ -288,7 +286,7 @@ src_install() {
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
                 )
         finally:
             playground.cleanup()

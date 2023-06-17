@@ -1,7 +1,6 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -15,7 +14,6 @@ from portage.output import colorize
 
 class SonameDowngradeTestCase(TestCase):
     def testSingleSlot(self):
-
         ebuilds = {
             "dev-libs/icu-49": {},
             "dev-libs/icu-4.8": {},
@@ -134,7 +132,7 @@ class SonameDowngradeTestCase(TestCase):
             with self.subTest(binpkg_format=binpkg_format):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
-                user_config["make.conf"] = ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                user_config["make.conf"] = (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
                     binpkgs=binpkgs,
                     ebuilds=ebuilds,
@@ -155,7 +153,6 @@ class SonameDowngradeTestCase(TestCase):
                     playground.cleanup()
 
     def testTwoSlots(self):
-
         ebuilds = {
             "dev-libs/glib-1.2.10": {"SLOT": "1"},
             "dev-libs/glib-2.30.2": {"SLOT": "2"},
@@ -233,7 +230,7 @@ class SonameDowngradeTestCase(TestCase):
             with self.subTest(binpkg_format=binpkg_format):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
-                user_config["make.conf"] = ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                user_config["make.conf"] = (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
                     ebuilds=ebuilds,
                     binpkgs=binpkgs,

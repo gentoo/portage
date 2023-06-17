@@ -144,7 +144,6 @@ class FakeVartree(vartree):
         return self._aux_get(cpv, wants)
 
     def _apply_dynamic_deps(self, pkg, live_metadata):
-
         try:
             if live_metadata is None:
                 raise _DynamicDepsNotApplicable()
@@ -193,7 +192,7 @@ class FakeVartree(vartree):
 
     def dynamic_deps_preload(self, pkg, metadata):
         if metadata is not None:
-            metadata = dict((k, metadata.get(k, "")) for k in self._portdb_keys)
+            metadata = {k: metadata.get(k, "") for k in self._portdb_keys}
         self._apply_dynamic_deps(pkg, metadata)
         self._aux_get_history.add(pkg.cpv)
 
@@ -234,7 +233,6 @@ class FakeVartree(vartree):
                 self.dbapi.aux_get = self._aux_get_wrapper
 
     def _sync(self):
-
         real_vardb = self._root_config.trees["vartree"].dbapi
         current_cpv_set = frozenset(real_vardb.cpv_all())
         pkg_vardb = self.dbapi
@@ -249,7 +247,6 @@ class FakeVartree(vartree):
         root_config = self._pkg_root_config
         validation_keys = ["COUNTER", "_mtime_"]
         for cpv in current_cpv_set:
-
             pkg_hash_key = Package._gen_hash_key(
                 cpv=cpv, installed=True, root_config=root_config, type_name="installed"
             )
@@ -332,7 +329,7 @@ def perform_global_updates(mycpv, aux_dict, mydb, myupdates):
         pkg = _pkg_str(mycpv, metadata=aux_dict, settings=mydb.settings)
     except InvalidData:
         return
-    aux_dict = dict((k, aux_dict[k]) for k in Package._dep_keys)
+    aux_dict = {k: aux_dict[k] for k in Package._dep_keys}
     try:
         mycommands = myupdates[pkg.repo]
     except KeyError:

@@ -167,4 +167,4 @@ class StandardTest(TestCase):
         """Make sure the exported API matches"""
         for mod in self.MODULES:
             for f in self.FUNCS:
-                self.assertTrue(hasattr(mod, f), "%s func missing in %s" % (f, mod))
+                self.assertTrue(hasattr(mod, f), f"{f} func missing in {mod}")

@@ -46,7 +46,7 @@ class database:
 
         if self.serialize_eclasses and "_eclasses_" in d:
             for chf_type in chf_types:
-                if "_%s_" % chf_type not in d:
+                if f"_{chf_type}_" not in d:
                     # Skip the reconstruct_eclasses call, since it's
                     # a waste of time if it contains a different chf_type
                     # than the current one. In the past, it was possible
@@ -77,7 +77,7 @@ class database:
         # those that egencache uses to avoid redundant writes.
         d.pop("INHERITED", None)
 
-        mtime_required = not any(d.get("_%s_" % x) for x in chf_types if x != "mtime")
+        mtime_required = not any(d.get(f"_{x}_") for x in chf_types if x != "mtime")
 
         mtime = d.get("_mtime_")
         if not mtime:
@@ -89,7 +89,7 @@ class database:
                 mtime = int(mtime)
             except ValueError:
                 raise cache_errors.CacheCorruption(
-                    cpv, "_mtime_ conversion to int failed: %s" % (mtime,)
+                    cpv, f"_mtime_ conversion to int failed: {mtime}"
                 )
             d["_mtime_"] = mtime
         return d
@@ -111,16 +111,17 @@ class database:
             return extern_ec_dict
         chf_getter = operator.attrgetter(chf_type)
         if paths:
-            intern_ec_dict = dict(
-                (k, (v.eclass_dir, chf_getter(v))) for k, v in extern_ec_dict.items()
-            )
+            intern_ec_dict = {
+                k: (v.eclass_dir, chf_getter(v)) for k, v in extern_ec_dict.items()
+            }
         else:
-            intern_ec_dict = dict((k, chf_getter(v)) for k, v in extern_ec_dict.items())
+            intern_ec_dict = {k: chf_getter(v) for k, v in extern_ec_dict.items()}
         return intern_ec_dict
 
     def __setitem__(self, cpv, values):
         """set a cpv to values
-        This shouldn't be overriden in derived classes since it handles the readonly checks"""
+        This shouldn't be overriden in derived classes since it handles the readonly checks
+        """
         if self.readonly:
             raise cache_errors.ReadOnlyRestriction()
         d = None
@@ -156,7 +157,8 @@ class database:
 
     def __delitem__(self, cpv):
         """delete a key from the cache.
-        This shouldn't be overriden in derived classes since it handles the readonly checks"""
+        This shouldn't be overriden in derived classes since it handles the readonly checks
+        """
         if self.readonly:
             raise cache_errors.ReadOnlyRestriction()
         if not self.autocommits:
@@ -240,7 +242,7 @@ class database:
         return False
 
     def _validate_entry(self, chf_type, entry, ebuild_hash, eclass_db):
-        hash_key = "_%s_" % chf_type
+        hash_key = f"_{chf_type}_"
         try:
             entry_hash = entry[hash_key]
         except KeyError:
@@ -311,12 +313,11 @@ def serialize_eclasses(eclass_dict, chf_type="mtime", paths=True):
     getter = operator.attrgetter(chf_type)
     if paths:
         return "\t".join(
-            "%s\t%s\t%s" % (k, v.eclass_dir, getter(v))
+            f"{k}\t{v.eclass_dir}\t{getter(v)}"
             for k, v in sorted(eclass_dict.items(), key=_keysorter)
         )
     return "\t".join(
-        "%s\t%s" % (k, getter(v))
-        for k, v in sorted(eclass_dict.items(), key=_keysorter)
+        f"{k}\t{getter(v)}" for k, v in sorted(eclass_dict.items(), key=_keysorter)
     )
 
 
@@ -349,11 +350,11 @@ def reconstruct_eclasses(cpv, eclass_string, chf_type="mtime", paths=True):
     if paths:
         if len(eclasses) % 3 != 0:
             raise cache_errors.CacheCorruption(
-                cpv, "_eclasses_ was of invalid len %i" % len(eclasses)
+                cpv, f"_eclasses_ was of invalid len {len(eclasses)}"
             )
     elif len(eclasses) % 2 != 0:
         raise cache_errors.CacheCorruption(
-            cpv, "_eclasses_ was of invalid len %i" % len(eclasses)
+            cpv, f"_eclasses_ was of invalid len {len(eclasses)}"
         )
     d = {}
     try:
@@ -367,11 +368,11 @@ def reconstruct_eclasses(cpv, eclass_string, chf_type="mtime", paths=True):
                 d[name] = converter(val)
     except IndexError:
         raise cache_errors.CacheCorruption(
-            cpv, "_eclasses_ was of invalid len %i" % len(eclasses)
+            cpv, f"_eclasses_ was of invalid len {len(eclasses)}"
         )
     except ValueError:
         raise cache_errors.CacheCorruption(
-            cpv, "_eclasses_ not valid for chf_type {}".format(chf_type)
+            cpv, f"_eclasses_ not valid for chf_type {chf_type}"
         )
     del eclasses
     return d

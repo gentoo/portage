@@ -1,27 +1,8 @@
 #!/usr/bin/env bash
-# Copyright 2009-2015 Gentoo Foundation
+# Copyright 2009-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-scriptpath=${BASH_SOURCE[0]}
-scriptname=${scriptpath##*/}
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-# Use safe cwd, avoiding unsafe import for bug #469338.
-cd "${PORTAGE_PYM_PATH}" || exit 1
-
-IFS=':'
-set -f # in case ${PATH} contains any shell glob characters
-
-for path in ${PATH}; do
-	[[ -x ${path}/${scriptname} ]] || continue
-	[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
-	[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
-	# BEGIN PREFIX LOCAL: use Prefix Python fallback
-	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-		exec "${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" \
-			"${path}/${scriptname}" "$@"
-	# END PREFIX LOCAL
-done
-
-unset IFS
-echo "${scriptname}: command not found" 1>&2
-exit 127
+eqawarn "QA Notice: '${0##*/}' is not allowed in ebuild scope"
+exec "${PORTAGE_BIN_PATH}"/portageq-wrapper "$@"

@@ -74,9 +74,7 @@ class PackageKeywordsFile(ConfigLoaderKlass):
     default_loader = KeyListFileLoader
 
     def __init__(self, filename):
-        super(PackageKeywordsFile, self).__init__(
-            self.default_loader(filename, validator=None)
-        )
+        super().__init__(self.default_loader(filename, validator=None))
 
 
 class PackageUseFile(ConfigLoaderKlass):
@@ -87,9 +85,7 @@ class PackageUseFile(ConfigLoaderKlass):
     default_loader = KeyListFileLoader
 
     def __init__(self, filename):
-        super(PackageUseFile, self).__init__(
-            self.default_loader(filename, validator=None)
-        )
+        super().__init__(self.default_loader(filename, validator=None))
 
 
 class PackageMaskFile(ConfigLoaderKlass):
@@ -107,9 +103,7 @@ class PackageMaskFile(ConfigLoaderKlass):
     default_loader = ItemFileLoader
 
     def __init__(self, filename):
-        super(PackageMaskFile, self).__init__(
-            self.default_loader(filename, validator=None)
-        )
+        super().__init__(self.default_loader(filename, validator=None))
 
 
 class PortageModulesFile(ConfigLoaderKlass):
@@ -120,6 +114,4 @@ class PortageModulesFile(ConfigLoaderKlass):
     default_loader = KeyValuePairFileLoader
 
     def __init__(self, filename):
-        super(PortageModulesFile, self).__init__(
-            self.default_loader(filename, validator=None)
-        )
+        super().__init__(self.default_loader(filename, validator=None))

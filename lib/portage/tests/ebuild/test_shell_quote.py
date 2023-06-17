@@ -101,6 +101,6 @@ class ShellQuoteTestCase(TestCase):
             ("?abcxyz?", '"?abcxyz?"'),
         ]
 
-        for (data, expected_result) in test_data:
+        for data, expected_result in test_data:
             result = _shell_quote(data)
             self.assertEqual(result, expected_result)

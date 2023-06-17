@@ -38,7 +38,6 @@ _xattr_excluder_cache = {}
 
 
 def _get_xattr_excluder(pattern):
-
     try:
         value = _xattr_excluder_cache[pattern]
     except KeyError:
@@ -49,11 +48,9 @@ def _get_xattr_excluder(pattern):
 
 
 class _xattr_excluder:
-
     __slots__ = ("_pattern_split",)
 
     def __init__(self, pattern):
-
         if pattern is None:
             self._pattern_split = None
         else:
@@ -65,7 +62,6 @@ class _xattr_excluder:
                 self._pattern_split = tuple(pattern)
 
     def __call__(self, attr):
-
         if self._pattern_split is None:
             return False
 
@@ -81,7 +77,7 @@ def _copyxattr(src, dest, exclude=None):
     """Copy the extended attributes from |src| to |dest|"""
     try:
         attrs = xattr.list(src)
-    except (OSError, IOError) as e:
+    except OSError as e:
         if e.errno != OperationNotSupported.errno:
             raise
         attrs = ()
@@ -97,7 +93,7 @@ def _copyxattr(src, dest, exclude=None):
         try:
             xattr.set(dest, attr, xattr.get(src, attr))
             raise_exception = False
-        except (OSError, IOError):
+        except OSError:
             raise_exception = True
         if raise_exception:
             raise OperationNotSupported(
@@ -107,6 +103,35 @@ def _copyxattr(src, dest, exclude=None):
                 )
                 % (_unicode_decode(dest), _unicode_decode(attr))
             )
+
+
+def _cmpxattr(src, dest, exclude=None):
+    """
+    Compares extended attributes between |src| and |dest| and returns True
+    if they are equal or xattrs are not supported, False otherwise
+    """
+    try:
+        src_attrs = xattr.list(src)
+        dest_attrs = xattr.list(dest)
+    except OSError as e:
+        if e.errno != OperationNotSupported.errno:
+            raise
+        return True
+
+    if src_attrs:
+        if exclude is not None and isinstance(src_attrs[0], bytes):
+            exclude = exclude.encode(_encodings["fs"])
+    exclude = _get_xattr_excluder(exclude)
+
+    src_attrs = {attr for attr in src_attrs if not exclude(attr)}
+    dest_attrs = {attr for attr in dest_attrs if not exclude(attr)}
+    if src_attrs != dest_attrs:
+        return False
+
+    for attr in src_attrs:
+        if xattr.get(src, attr) != xattr.get(dest, attr):
+            return False
+    return True
 
 
 def movefile(
@@ -149,15 +174,15 @@ def movefile(
         raise
     except Exception as e:
         writemsg(
-            "!!! %s\n" % _("Stating source file failed... movefile()"), noiselevel=-1
+            f"!!! {_('Stating source file failed... movefile()')}\n", noiselevel=-1
         )
-        writemsg("!!! %s\n" % (e,), noiselevel=-1)
+        writemsg(f"!!! {e}\n", noiselevel=-1)
         return None
 
     destexists = 1
     try:
         dstat = os.lstat(dest)
-    except (OSError, IOError):
+    except OSError:
         dstat = os.lstat(os.path.dirname(dest))
         destexists = 0
 
@@ -232,11 +257,9 @@ def movefile(
         except SystemExit as e:
             raise
         except Exception as e:
-            writemsg(
-                "!!! %s\n" % _("failed to properly create symlink:"), noiselevel=-1
-            )
-            writemsg("!!! %s -> %s\n" % (dest, target), noiselevel=-1)
-            writemsg("!!! %s\n" % (e,), noiselevel=-1)
+            writemsg(f"!!! {_('failed to properly create symlink:')}\n", noiselevel=-1)
+            writemsg(f"!!! {dest} -> {target}\n", noiselevel=-1)
+            writemsg(f"!!! {e}\n", noiselevel=-1)
             return None
 
     hardlinked = False
@@ -246,9 +269,7 @@ def movefile(
     # and them use os.rename() to replace the destination.
     if hardlink_candidates:
         head, tail = os.path.split(dest)
-        hardlink_tmp = os.path.join(
-            head, ".%s._portage_merge_.%s" % (tail, portage.getpid())
-        )
+        hardlink_tmp = os.path.join(head, f".{tail}._portage_merge_.{portage.getpid()}")
         try:
             os.unlink(hardlink_tmp)
         except OSError as e:
@@ -258,7 +279,7 @@ def movefile(
                     % (hardlink_tmp,),
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg(f"!!! {e}\n", noiselevel=-1)
                 return None
             del e
         for hardlink_src in hardlink_candidates:
@@ -274,7 +295,7 @@ def movefile(
                         _("!!! Failed to rename %s to %s\n") % (hardlink_tmp, dest),
                         noiselevel=-1,
                     )
-                    writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                    writemsg(f"!!! {e}\n", noiselevel=-1)
                     return None
                 hardlinked = True
                 try:
@@ -297,12 +318,11 @@ def movefile(
             if e.errno != errno.EXDEV:
                 # Some random error.
                 writemsg(
-                    "!!! %s\n"
-                    % _("Failed to move %(src)s to %(dest)s")
+                    f"!!! {_('Failed to move %(src)s to %(dest)s')}\n"
                     % {"src": src, "dest": dest},
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg(f"!!! {e}\n", noiselevel=-1)
                 return None
             # Invalid cross-device-link 'bind' mounted or actually Cross-Device
     if renamefailed:
@@ -332,19 +352,18 @@ def movefile(
                         )
                         msg = textwrap.wrap(msg, 65)
                         for line in msg:
-                            writemsg("!!! %s\n" % (line,), noiselevel=-1)
+                            writemsg(f"!!! {line}\n", noiselevel=-1)
                         raise
                 _rename(dest_tmp_bytes, dest_bytes)
                 _os.unlink(src_bytes)
                 success = True
             except Exception as e:
                 writemsg(
-                    "!!! %s\n"
-                    % _("copy %(src)s -> %(dest)s failed.")
+                    f"!!! {_('copy %(src)s -> %(dest)s failed.')}\n"
                     % {"src": src, "dest": dest},
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg(f"!!! {e}\n", noiselevel=-1)
                 return None
             finally:
                 if not success:
@@ -365,7 +384,7 @@ def movefile(
                     },
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % a, noiselevel=-1)
+                writemsg(f"!!! {a}\n", noiselevel=-1)
                 return None  # failure
 
     # In Python <3.3 always use stat_obj[stat.ST_MTIME] for the integral timestamp
@@ -395,8 +414,8 @@ def movefile(
             newmtime = os.stat(dest).st_mtime_ns
         except OSError as e:
             writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
-            writemsg("!!! %s\n" % dest, noiselevel=-1)
-            writemsg("!!! %s\n" % str(e), noiselevel=-1)
+            writemsg(f"!!! {dest}\n", noiselevel=-1)
+            writemsg(f"!!! {str(e)}\n", noiselevel=-1)
             return None
 
     if bsd_chflags:

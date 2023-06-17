@@ -14,8 +14,8 @@ shopt -s expand_aliases
 
 assert() {
 	local x pipestatus=${PIPESTATUS[*]}
-	for x in $pipestatus ; do
-		[[ $x -eq 0 ]] || die "$@"
+	for x in ${pipestatus} ; do
+		[[ ${x} -eq 0 ]] || die "$@"
 	done
 }
 
@@ -36,13 +36,13 @@ __assert_sigpipe_ok() {
 	# as the exit status."
 
 	local x pipestatus=${PIPESTATUS[*]}
-	for x in $pipestatus ; do
+	for x in ${pipestatus} ; do
 		# Allow SIGPIPE through (128 + 13)
-		[[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]] && die "$@"
+		[[ ${x} -ne 0 && ${x} -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]] && die "$@"
 	done
 
 	# Require normal success for the last process (tar).
-	[[ $x -eq 0 ]] || die "$@"
+	[[ ${x} -eq 0 ]] || die "$@"
 }
 
 shopt -s extdebug
@@ -91,10 +91,10 @@ __dump_trace() {
 
 nonfatal() {
 	if ! ___eapi_has_nonfatal; then
-		die "$FUNCNAME() not supported in this EAPI"
+		die "${FUNCNAME}() not supported in this EAPI"
 	fi
 	if [[ $# -lt 1 ]]; then
-		die "$FUNCNAME(): Missing argument"
+		die "${FUNCNAME}(): Missing argument"
 	fi
 
 	PORTAGE_NONFATAL=1 "$@"
@@ -157,14 +157,14 @@ die() {
 	# When a helper binary dies automatically in EAPI 4 and later, we don't
 	# get a stack trace, so at least report the phase that failed.
 	local phase_str=
-	[[ -n $EBUILD_PHASE ]] && phase_str=" ($EBUILD_PHASE phase)"
+	[[ -n ${EBUILD_PHASE} ]] && phase_str=" (${EBUILD_PHASE} phase)"
 	eerror "ERROR: ${CATEGORY}/${PF}::${PORTAGE_REPO_NAME} failed${phase_str}:"
 	eerror "  ${*:-(no error message)}"
 	eerror
 	# __dump_trace is useless when the main script is a helper binary
 	local main_index
 	(( main_index = ${#BASH_SOURCE[@]} - 1 ))
-	if has ${BASH_SOURCE[$main_index]##*/} ebuild.sh misc-functions.sh ; then
+	if has ${BASH_SOURCE[${main_index}]##*/} ebuild.sh misc-functions.sh ; then
 	__dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
@@ -198,13 +198,13 @@ die() {
 	# misc-functions.sh, since those are the only cases where the environment
 	# contains the hook functions. When necessary (like for __helpers_die), die
 	# hooks are automatically called later by a misc-functions.sh invocation.
-	if has ${BASH_SOURCE[$main_index]##*/} ebuild.sh misc-functions.sh && \
+	if has ${BASH_SOURCE[${main_index}]##*/} ebuild.sh misc-functions.sh && \
 		[[ ${EBUILD_PHASE} != depend ]] ; then
 		local x
-		for x in $EBUILD_DEATH_HOOKS; do
+		for x in ${EBUILD_DEATH_HOOKS}; do
 			${x} "$@" >&2 1>&2
 		done
-		> "$PORTAGE_BUILDDIR/.die_hooks"
+		> "${PORTAGE_BUILDDIR}/.die_hooks"
 	fi
 
 	if [[ -n ${PORTAGE_LOG_FILE} ]] ; then
@@ -229,8 +229,8 @@ die() {
 	eerror "Working directory: '$(pwd)'"
 	[[ -n ${S} ]] && eerror "S: '${S}'"
 
-	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
-	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 1
+	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && > "${PORTAGE_EBUILD_EXIT_FILE}"
+	[[ -n ${PORTAGE_IPC_DAEMON} ]] && "${PORTAGE_BIN_PATH}"/ebuild-ipc exit 1
 
 	# subshell die support
 	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID:-$(__bashpid)} != ${EBUILD_MASTER_PID} ]] ; then
@@ -262,7 +262,7 @@ __elog_base() {
 			;;
 	esac
 	echo -e "$@" | while read -r ; do
-		echo "$messagetype $REPLY" >> \
+		echo "${messagetype} ${REPLY}" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
 	return 0
@@ -398,18 +398,20 @@ __unset_colors() {
 }
 
 __set_colors() {
-	COLS=${COLUMNS:-0}      # bash's internal COLUMNS variable
+	# bash's internal COLUMNS variable
+	COLS=${COLUMNS:-0}
+
 	# Avoid wasteful stty calls during the "depend" phases.
 	# If stdout is a pipe, the parent process can export COLUMNS
 	# if it's relevant. Use an extra subshell for stty calls, in
 	# order to redirect "/dev/tty: No such device or address"
 	# error from bash to /dev/null.
-	[[ $COLS == 0 && $EBUILD_PHASE != depend ]] && \
+	[[ ${COLS} == 0 && ${EBUILD_PHASE} != depend ]] && \
 		COLS=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
 
 	# Now, ${ENDCOL} will move us to the end of the
-	# column;  irregardless of character width
+	# column; regardless of character width
 	ENDCOL=$'\e[A\e['$(( COLS - 8 ))'C'
 	if [[ -n "${PORTAGE_COLORMAP}" ]]; then
 		eval ${PORTAGE_COLORMAP}
@@ -432,14 +434,21 @@ RC_INDENTATION=''
 RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
 
-case "${NOCOLOR:-false}" in
+
+
+if [[ -z ${NO_COLOR} ]] ; then
+	case ${NOCOLOR:-false} in
 	yes|true)
 		__unset_colors
 		;;
 	no|false)
 		__set_colors
 		;;
-esac
+	esac
+else
+	__unset_colors
+fi
+
 
 # BEGIN PREFIX LOCAL
 # In Prefix every platform has USERLAND=GNU, even FreeBSD.  Since I
@@ -476,11 +485,19 @@ if [[ -z ${XARGS} ]] ; then
 fi
 
 ___makeopts_jobs() {
-	# Copied from eutils.eclass:makeopts_jobs()
-	local jobs
-	jobs=$(echo " ${MAKEOPTS} " | \
-		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p') || die
-	echo ${jobs:-1}
+	# Copied from multiprocessing.eclass:makeopts_jobs
+	# This assumes the first .* will be more greedy than the second .*
+	# since POSIX doesn't specify a non-greedy match (i.e. ".*?").
+	local jobs=$(echo " ${MAKEOPTS} " | sed -r -n \
+		-e 's:.*[[:space:]](-[a-z]*j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p' || die)
+
+	# Fallbacks for if MAKEOPTS parsing failed
+	[[ -n ${jobs} ]] || \
+		jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null) || \
+		jobs=$(sysctl -n hw.ncpu 2>/dev/null) || \
+		jobs=1
+
+	echo ${jobs}
 }
 
 # Run ${XARGS} in parallel for detected number of CPUs, if supported.
@@ -625,7 +642,7 @@ else
 fi
 
 # debug-print() gets called from many places with verbose status information useful
-# for tracking down problems. The output is in $T/eclass-debug.log.
+# for tracking down problems. The output is in ${T}/eclass-debug.log.
 # You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.
 # The special "on" setting echoes the information, mixing it with the rest of the
 # emerge output.
@@ -634,9 +651,9 @@ fi
 #
 # (TODO: in the future, might use e* from /lib/gentoo/functions.sh?)
 debug-print() {
-	# if $T isn't defined, we're in dep calculation mode and
+	# If ${T} isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
-	[[ $EBUILD_PHASE = depend || ! -d ${T} || ${#} -eq 0 ]] && return 0
+	[[ ${EBUILD_PHASE} = depend || ! -d ${T} || ${#} -eq 0 ]] && return 0
 
 	if [[ ${ECLASS_DEBUG_OUTPUT} == on ]]; then
 		printf 'debug: %s\n' "${@}" >&2
@@ -644,10 +661,11 @@ debug-print() {
 		printf 'debug: %s\n' "${@}" >> "${ECLASS_DEBUG_OUTPUT}"
 	fi
 
-	if [[ -w $T ]] ; then
-		# default target
+	if [[ -w ${T} ]] ; then
+		# Default target
 		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
-		# let the portage user own/write to this file
+
+		# Let the portage user own/write to this file
 		# PREFIX LOCAL: fallback to configured group
 		chgrp "${PORTAGE_GRPNAME:-${PORTAGE_GROUP}}" "${T}/eclass-debug.log"
 		chmod g+w "${T}/eclass-debug.log"

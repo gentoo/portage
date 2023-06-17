@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -20,32 +20,68 @@
 # Alternative (legacy) PORTAGE_GPG_DIR configuration:
 # gpg key import
 # KEY_ID=0x96D8BF6D
-# gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
-# gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
+# gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys ${KEY_ID}
+# gpg --homedir /etc/portage/gnupg --edit-key ${KEY_ID} trust
 #
 
-# Only echo if in verbose mode
-vvecho() { [[ ${do_verbose} -eq 1 ]] && echo "$@" ; }
-# Only echo if not in verbose mode
-nvecho() { [[ ${do_verbose} -eq 0 ]] && echo "$@" ; }
-# warning echos
-wecho() { echo "${argv0##*/}: warning: $*" 1>&2 ; }
-# error echos
-eecho() { echo "${argv0##*/}: error: $*" 1>&2 ; }
+# Opportunistically use gentoo-functions for nicer output
+functions_script="${EPREFIX:-/}/lib/gentoo/functions.sh"
+source "${functions_script}" || {
+	echo "${argv0}: Could not source ${functions_script}!" 1>&2
+
+	ebegin() {
+		printf '%s*%s %s ... ' "${GOOD}" "${NORMAL}" "$*"
+	}
+
+	eend() {
+		local r=${1:-0}
+		shift
+		if [[ $r -eq 0 ]] ; then
+			printf '[ %sok%s ]\n' "${GOOD}" "${NORMAL}"
+		else
+			printf '%s [ %s!!%s ]\n' "$*" "${BAD}" "${NORMAL}"
+		fi
+		return "${r}"
+	}
+
+	einfo() {
+		echo "${argv0##*/}: $*"
+	}
+
+	ewarn() {
+		echo "${argv0##*/}: warning: $*" 1>&2
+	}
+
+	eerror() {
+		echo "${argv0##*/}: error: $*" 1>&2
+	}
+
+}
+
+# Only echo if in normal mode
+vvecho() { [[ ${PORTAGE_QUIET} != 1 ]] && echo "$@" ; }
+# Only echo if in quiet mode
+nvecho() { [[ ${PORTAGE_QUIET} == 1 ]] && echo "$@" ; }
+
+# Unfortunately, gentoo-functions doesn't yet have a die() (bug #878505)
+die() {
+	eerror "$@"
+	exit 1
+}
 
 argv0=$0
 
 # Use portageq from the same directory/prefix as the current script, so
 # that we don't have to rely on PATH including the current EPREFIX.
 scriptpath=${BASH_SOURCE[0]}
-if [ -x "${scriptpath%/*}/portageq" ]; then
+if [[ -x "${scriptpath%/*}/portageq" ]]; then
 	portageq=${scriptpath%/*}/portageq
 elif type -P portageq > /dev/null ; then
 	portageq=portageq
 else
-	eecho "could not find 'portageq'; aborting"
-	exit 1
+	die "could not find 'portageq'; aborting"
 fi
+
 # PREFIX LOCAL: retrieve PORTAGE_USER/PORTAGE_GROUP
 eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
@@ -66,54 +102,85 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 repo_name=gentoo
 repo_location=$(__repo_attr "${repo_name}" location)
 if [[ -z ${repo_location} ]]; then
-	eecho "Repository '${repo_name}' not found"
-	exit 1
+	die "Repository '${repo_name}' not found"
 fi
 repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
-if [ -n "${PORTAGE_NICENESS}" ]; then
-	renice $PORTAGE_NICENESS $$ > /dev/null
+if [[ -n "${PORTAGE_NICENESS}" ]]; then
+	renice "${PORTAGE_NICENESS}" $$ > /dev/null
 fi
 
-do_verbose=0
 do_debug=0
 keep=false
 
-has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
+handle_pgp_setup() {
+	# WEBRSYNC_VERIFY_SIGNATURE=0: disable PGP verification
+	# WEBRSYNC_VERIFY_SIGNATURE=1: use gemato for verification, fallback to regular gpg
+	# WEBRSYNC_VERIFY_SIGNATURE=2: use legacy FEATURES="webrsync-gpg"
+	WEBRSYNC_VERIFY_SIGNATURE=1
 
-if [[ ${webrsync_gpg} -eq 1 ]]; then
-	wecho "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
-fi
+	has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
 
-if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] ||
-	has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature |
-	LC_ALL=C tr '[:upper:]' '[:lower:]') true yes; then
-	# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
-	# calls for backward compatibility (this triggers a deprecation warning
-	# above). Since direct emerge-webrsync calls do not use gemato for secure
-	# key refresh, this behavior will not be supported in a future release.
-	if [[ ! ( -d ${PORTAGE_GPG_DIR} && ${webrsync_gpg} -eq 1 ) &&
-		-z ${PORTAGE_TEMP_GPG_DIR} ]]; then
-		eecho "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
-		exit 1
+	repo_has_webrsync_verify=$(
+		has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature	| LC_ALL=C tr '[:upper:]' '[:lower:]') true yes
+	)
+
+	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] || [[ ${repo_has_webrsync_verify} -eq 1 ]]; then
+		# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
+		# calls for backward compatibility (this triggers a deprecation warning
+		# above). Since direct emerge-webrsync calls do not use gemato for secure
+		# key refresh, this behavior will not be supported in a future release.
+		if [[ ! ( -d ${PORTAGE_GPG_DIR} && ${webrsync_gpg} -eq 1 ) && -z ${PORTAGE_TEMP_GPG_DIR} ]]; then
+			die "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
+		fi
+
+		# Use gemato for the standard Portage-calling-us case w/ sync-type='webrsync'.
+		WEBRSYNC_VERIFY_SIGNATURE=1
+	elif [[ ${webrsync_gpg} -eq 1 ]]; then
+		# We only warn if FEATURES="webrsync-gpg" is in make.conf, not if
+		# Portage is calling us for 'sync-type=webrsync' with verification, because
+		# that path uses gemato now (plus the user can't help it, obviously).
+		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
+		WEBRSYNC_VERIFY_SIGNATURE=2
+	elif [[ -n ${no_pgp_verify} ]]; then
+		WEBRSYNC_VERIFY_SIGNATURE=0
+	else
+		# The default at the beginning of handle_pgp_setup is WEBRSYNC_VERIFY_SIGNATURE=1
+		# i.e. gemato.
+		:;
 	fi
-	WEBSYNC_VERIFY_SIGNATURE=1
-elif has webrsync-gpg ${FEATURES}; then
-	WEBSYNC_VERIFY_SIGNATURE=1
-else
-	WEBSYNC_VERIFY_SIGNATURE=0
-fi
-[[ -n ${PORTAGE_TEMP_GPG_DIR} ]] && PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
-if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
-	eecho "please set PORTAGE_GPG_DIR in make.conf"
-	exit 1
-fi
+
+	case "${WEBRSYNC_VERIFY_SIGNATURE}" in
+		0)
+			[[ ${PORTAGE_QUIET} -eq 1 ]] || ewarn "PGP verification method: disabled"
+			;;
+		1)
+			[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "PGP verification method: gemato"
+			;;
+		2)
+			ewarn "PGP verification method: legacy gpg path"
+			;;
+		*)
+			die "Unknown WEBRSYNC_VERIFY_SIGNATURE state: \${WEBRSYNC_VERIFY_SIGNATURE}=${WEBRSYNC_VERIFY_SIGNATURE}"
+			;;
+	esac
+
+	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]]; then
+		PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
+	fi
+
+	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 2 && -z "${PORTAGE_GPG_DIR}" ]]; then
+		die "Please set PORTAGE_GPG_DIR in make.conf!"
+	fi
+}
 
 do_tar() {
-	local file=$1; shift
+	local file=$1
+	shift
 	local decompressor
+
 	case ${file} in
 		*.xz)   decompressor="xzcat" ;;
 		*.bz2)  decompressor="bzcat" ;;
@@ -133,15 +200,16 @@ get_date_part() {
 	local utc_time_in_secs="$1"
 	local part="$2"
 
-	if	[[ ${USERLAND} == BSD ]] ; then
-		date -r ${utc_time_in_secs} -u +"${part}"
+	if [[ ${USERLAND} == BSD ]] ; then
+		date -r "${utc_time_in_secs}" -u +"${part}"
 	else
-		date -d @${utc_time_in_secs} -u +"${part}"
+		date -d "@${utc_time_in_secs}" -u +"${part}"
 	fi
 }
 
 get_utc_second_from_string() {
 	local s="$1"
+
 	if [[ ${USERLAND} == BSD ]] ; then
 		# Specify zeros for the least significant digits, or else those
 		# digits are inherited from the current system clock time.
@@ -151,10 +219,10 @@ get_utc_second_from_string() {
 	fi
 }
 
-get_portage_timestamp() {
+get_repository_timestamp() {
 	local portage_current_timestamp=0
 
-	if [ -f "${repo_location}/metadata/timestamp.x" ]; then
+	if [[ -f "${repo_location}/metadata/timestamp.x" ]]; then
 		portage_current_timestamp=$(cut -f 1 -d " " "${repo_location}/metadata/timestamp.x" )
 	fi
 
@@ -166,17 +234,18 @@ fetch_file() {
 	local FILE="$2"
 	local opts
 
-	if [ "${FETCHCOMMAND/wget/}" != "${FETCHCOMMAND}" ]; then
+	if [[ "${FETCHCOMMAND/wget/}" != "${FETCHCOMMAND}" ]]; then
 		opts="--continue $(nvecho -q)"
-	elif [ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]; then
+	elif [[ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]]; then
 		opts="--continue-at - $(nvecho -s -f)"
 	else
 		rm -f "${DISTDIR}/${FILE}"
 	fi
 
-	__vecho "Fetching file ${FILE} ..."
-	# already set DISTDIR=
+	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Fetching file ${FILE} ..."
+	# Already set DISTDIR=
 	eval "${FETCHCOMMAND} ${opts}"
+
 	if [[ $? -eq 0 && -s ${DISTDIR}/${FILE} ]] ; then
 		return 0
 	else
@@ -190,19 +259,116 @@ check_file_digest() {
 	local file="$2"
 	local r=1
 
-	__vecho "Checking digest ..."
+	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Checking digest ..."
 
 	if type -P md5sum > /dev/null; then
 		local md5sum_output=$(md5sum "${file}")
 		local digest_content=$(< "${digest}")
-		[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ] && r=0
+		[[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ]] && r=0
 	elif type -P md5 > /dev/null; then
-		[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ] && r=0
+		[[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ]] && r=0
 	else
-		eecho "cannot check digest: no suitable md5/md5sum binaries found"
+		die "cannot check digest: no suitable md5/md5sum binaries found"
 	fi
 
 	return "${r}"
+}
+
+check_file_signature_gemato() {
+	local signature="$1"
+	local file="$2"
+	local r=1
+
+	if type -P gemato > /dev/null; then
+		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
+			local key="${PORTAGE_GPG_KEY}"
+		else
+			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+		fi
+
+		if [[ ! -f "${key}" ]] ; then
+			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+		fi
+
+		local keyserver
+		if [[ -n ${PORTAGE_GPG_KEY_SERVER} ]] ; then
+			keyserver="--keyserver ${PORTAGE_GPG_KEY_SERVER}"
+		fi
+
+		local gemato_args=(
+			openpgp-verify-detached
+			-K "${key}"
+		)
+
+		[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
+		[[ ${PORTAGE_QUIET} == 1 ]] && gemato_args+=( --quiet )
+		[[ ${do_debug} == 1 ]] && gemato_args+=( --debug )
+
+		gemato "${gemato_args[@]}" -- "${signature}" "${file}"
+		r=$?
+
+		if [[ ${r} -ne 0 ]]; then
+			# Exit early since it's typically inappropriate to
+			# try other mirrors in this case (it may indicate
+			# a keyring problem).
+			die "signature verification failed"
+		fi
+	else
+		return 127
+	fi
+
+	return "${r}"
+}
+
+check_file_signature_gpg_unwrapped() {
+	local signature="$1"
+	local file="$2"
+
+	if type -P gpg > /dev/null; then
+		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
+			local key="${PORTAGE_GPG_KEY}"
+		else
+			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+		fi
+
+		if [[ ! -f "${key}" ]] ; then
+			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+		fi
+
+		local gpgdir="${PORTAGE_GPG_DIR}"
+		if [[ -z ${gpgdir} ]] ; then
+			gpgdir=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
+			if [[ ! -w ${gpgdir} ]] ; then
+				die "gpgdir is not writable: ${gpgdir}"
+			fi
+
+			# If we're created our own temporary directory, it's okay for us
+			# to import the keyring by ourselves. But we'll avoid doing it
+			# if the user has set PORTAGE_GPG_DIR by themselves.
+			gpg --no-default-keyring --homedir "${gpgdir}" --batch --import "${key}"
+		fi
+
+		if gnupg_status=$(gpg --no-default-keyring --homedir "${gpgdir}" --batch \
+			--status-fd 1 --verify "${signature}" "${file}"); then
+			while read -r line; do
+				if [[ ${line} == "[GNUPG:] GOODSIG"* ]]; then
+					r=0
+					break
+				fi
+			done <<< "${gnupg_status}"
+		fi
+
+		if [[ ${r} -ne 0 ]]; then
+			# Exit early since it's typically inappropriate to
+			# try other mirrors in this case (it may indicate
+			# a keyring problem).
+			die "signature verification failed"
+		fi
+	else
+		die "cannot check signature: gpg binary not found"
+	fi
 }
 
 check_file_signature() {
@@ -211,30 +377,30 @@ check_file_signature() {
 	local r=1
 	local gnupg_status line
 
-	if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]; then
+	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} != 0 ]]; then
+		[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Checking signature ..."
 
-		__vecho "Checking signature ..."
+		case ${WEBRSYNC_VERIFY_SIGNATURE} in
+			1)
+				check_file_signature_gemato "${signature}" "${file}"
+				r=$?
 
-		if type -P gpg > /dev/null; then
-			if gnupg_status=$(gpg --homedir "${PORTAGE_GPG_DIR}" --batch \
-				--status-fd 1 --verify "${signature}" "${file}"); then
-				while read -r line; do
-					if [[ ${line} == "[GNUPG:] GOODSIG"* ]]; then
-						r=0
-						break
-					fi
-				done <<< "${gnupg_status}"
-			fi
-			if [[ ${r} -ne 0 ]]; then
-				# Exit early since it's typically inappropriate to
-				# try other mirrors in this case (it may indicate
-				# a keyring problem).
-				eecho "signature verification failed"
-				exit 1
-			fi
-		else
-			eecho "cannot check signature: gpg binary not found"
-			exit 1
+				if [[ ${r} -eq 127 ]] ; then
+					ewarn "Falling back to gpg as gemato is not installed"
+					check_file_signature_gpg_unwrapped "${signature}" "${file}"
+					r=$?
+				fi
+
+				;;
+			2)
+				check_file_signature_gpg_unwrapped "${signature}" "${file}"
+				r=$?
+				;;
+		esac
+
+		if [[ ${r} != 0 ]] ; then
+			eerror "Error occurred in check_file_signature: ${r}. Aborting."
+			die "Verification error occured."
 		fi
 	else
 		r=0
@@ -252,7 +418,7 @@ get_snapshot_timestamp() {
 sync_local() {
 	local file="$1"
 
-	__vecho "Syncing local tree ..."
+	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Syncing local repository ..."
 
 	# PREFIX LOCAL: use PORTAGE_USER and PORTAGE_GROUP
 	local ownership="${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage}"
@@ -271,37 +437,45 @@ sync_local() {
 	if type -P tarsync > /dev/null ; then
 		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
 		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
+
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
 			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
-			eecho "tarsync failed; tarball is corrupt? (${file})"
+
+			eerror "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
 	else
 		if ! do_tar "${file}" -x --strip-components=1 -f -; then
-			eecho "tar failed to extract the image. tarball is corrupt? (${file})"
+			eerror "tar failed to extract the image. tarball is corrupt? (${file})"
 			return 1
 		fi
 
 		# Free disk space
 		${keep} || rm -f "${file}"
 
-		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
+		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} $(nvecho -q)"
 		if chown ${ownership} . > /dev/null 2>&1; then
 			chown -R ${ownership} .
 			rsync_opts+=" --owner --group"
 		fi
-		chmod 755 .
-		rsync ${rsync_opts} . "${repo_location%%/}"
 
-		__vecho "Cleaning up ..."
+		chmod 755 .
+		rsync ${rsync_opts} . "${repo_location%%/}" || {
+			eerror "rsync failed: $?"
+			die "Aborting because of rsync failure"
+		}
+
+		[[ ${PORTAGE_QUIET} == 1 ]] || einfo "Cleaning up ..."
 	fi
 
 	if has metadata-transfer ${FEATURES} ; then
-		__vecho "Updating cache ..."
+		einfo "Updating cache ..."
 		emerge --metadata
 	fi
-	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
-	[ -x "${post_sync}" ] && "${post_sync}"
+
+	local post_sync=${PORTAGE_CONFIGROOT%/}/etc/portage/bin/post_sync
+	[[ -x "${post_sync}" ]] && "${post_sync}"
+
 	# --quiet suppresses output if there are no relevant news items
 	has news ${FEATURES} && emerge --check-news --quiet
 	return 0
@@ -319,38 +493,40 @@ do_snapshot() {
 	local mirror
 
 	local compressions=""
+
 	type -P xzcat > /dev/null && compressions="${compressions} ${repo_name}:xz portage:xz"
 	type -P bzcat > /dev/null && compressions="${compressions} ${repo_name}:bz2 portage:bz2"
-	type -P  zcat > /dev/null && compressions="${compressions} ${repo_name}:gz portage:gz"
+	type -P zcat > /dev/null && compressions="${compressions} ${repo_name}:gz portage:gz"
 	if [[ -z ${compressions} ]] ; then
-		eecho "unable to locate any decompressors (xzcat or bzcat or zcat)"
-		exit 1
+		die "unable to locate any decompressors (xzcat or bzcat or zcat)"
 	fi
 
 	for mirror in ${GENTOO_MIRRORS} ; do
-
 		mirror=${mirror%/}
-		__vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
+		[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
 		for compression in ${compressions} ; do
 			local name=${compression%%:*}
+
 			compression=${compression#*:}
+
 			local file="${name}-${date}.tar.${compression}"
 			local digest="${file}.md5sum"
 			local signature="${file}.gpgsig"
 
-			if [ -s "${DISTDIR}/${file}" -a -s "${DISTDIR}/${digest}" -a -s "${DISTDIR}/${signature}" ] ; then
+			if [[ -s "${DISTDIR}/${file}" && -s "${DISTDIR}/${digest}" && -s "${DISTDIR}/${signature}" ]] ; then
 				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
 				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
 			fi
 
-			if [ ${have_files} -eq 0 ] ; then
+			if [[ ${have_files} -eq 0 ]] ; then
 				fetch_file "${mirror}/snapshots/${digest}" "${digest}" && \
-				fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
-				fetch_file "${mirror}/snapshots/${file}" "${file}" && \
-				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
-				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
+					fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
+					fetch_file "${mirror}/snapshots/${file}" "${file}" && \
+					check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
+					check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
+
 				have_files=1
 			fi
 
@@ -359,49 +535,46 @@ do_snapshot() {
 			# we want to try and retrieve
 			# from a different mirror
 			#
-			if [ ${have_files} -eq 1 ]; then
+			if [[ ${have_files} -eq 1 ]]; then
+				[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Getting snapshot timestamp ..."
 
-				__vecho "Getting snapshot timestamp ..."
-				local snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
+				local snapshot_timestamp
+				snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 
-				if [ ${ignore_timestamp} == 0 ]; then
-					if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
-						wecho "portage is newer than snapshot"
+				if [[ ${ignore_timestamp} == 0 ]]; then
+					if [[ ${snapshot_timestamp} -lt $(get_repository_timestamp) ]]; then
+						ewarn "Repository (age) is newer than fetched snapshot"
 						have_files=0
 					fi
 				else
-					local utc_seconds=$(get_utc_second_from_string "${date}")
+					local utc_seconds
+					utc_seconds=$(get_utc_second_from_string "${date}")
 
-					#
-					# Check that this snapshot
-					# is what it claims to be ...
-					#
-					if [ ${snapshot_timestamp} -lt ${utc_seconds} ] || \
-						[ ${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]; then
+					# Check that this snapshot is what the age it claims to be
+					if [[ ${snapshot_timestamp} -lt ${utc_seconds} || \
+						${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]]; then
 
-						wecho "snapshot timestamp is not in acceptable period"
+						ewarn "Snapshot timestamp is not within acceptable period!"
 						have_files=0
 					fi
 				fi
 			fi
 
-			if [ ${have_files} -eq 1 ]; then
+			if [[ ${have_files} -eq 1 ]]; then
 				break
 			else
-				#
 				# Remove files and use a different mirror
-				#
 				rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
 			fi
 		done
 
-		[ ${have_files} -eq 1 ] && break
+		[[ ${have_files} -eq 1 ]] && break
 	done
 
-	if [ ${have_files} -eq 1 ]; then
+	if [[ ${have_files} -eq 1 ]]; then
 		sync_local "${DISTDIR}/${file}" && r=0
 	else
-		__vecho "${date} snapshot was not found"
+		ewarn "${date} snapshot was not found"
 	fi
 
 	${keep} || rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
@@ -412,7 +585,7 @@ do_latest_snapshot() {
 	local attempts=0
 	local r=1
 
-	__vecho "Fetching most recent snapshot ..."
+	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Fetching most recent snapshot ..."
 
 	# The snapshot for a given day is generated at 00:45 UTC on the following
 	# day, so the current day's snapshot (going by UTC time) hasn't been
@@ -423,41 +596,49 @@ do_latest_snapshot() {
 	# are considered to be approximately equal.
 	local min_time_diff=$(( 2 * 60 * 60 ))
 
-	local existing_timestamp=$(get_portage_timestamp)
+	local existing_timestamp
 	local timestamp_difference
 	local timestamp_problem
 	local approx_snapshot_time
-	local start_time=$(get_utc_date_in_seconds)
-	local start_hour=$(get_date_part ${start_time} "%H")
+	local start_time
+	local start_hour
+	local snapshot_date
+	local snapshot_date_seconds
+
+	existing_timestamp=$(get_repository_timestamp)
+	start_time=$(get_utc_date_in_seconds)
+	start_hour=$(get_date_part "${start_time}" "%H")
 
 	# Daily snapshots are created at 00:45 and are not
 	# available until after 01:00. Don't waste time trying
 	# to fetch a snapshot before it's been created.
-	if [ ${start_hour} -lt 1 ] ; then
+	if [[ ${start_hour#0} -lt 1 ]] ; then
 		(( start_time -= 86400 ))
 	fi
-	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
-	local snapshot_date_seconds=$(get_utc_second_from_string ${snapshot_date})
 
-	while (( ${attempts} <  40 )) ; do
+	snapshot_date=$(get_date_part "${start_time}" "%Y%m%d")
+	snapshot_date_seconds=$(get_utc_second_from_string "${snapshot_date}")
+
+	while (( ${attempts} < 40 )) ; do
 		(( attempts++ ))
 		(( snapshot_date_seconds -= 86400 ))
 		# snapshots are created at 00:45
 		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 2700 ))
 		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
-		[ ${timestamp_difference} -lt 0 ] && (( timestamp_difference = -1 * timestamp_difference ))
-		snapshot_date=$(get_date_part ${snapshot_date_seconds} "%Y%m%d")
+
+		[[ ${timestamp_difference} -lt 0 ]] && (( timestamp_difference = -1 * timestamp_difference ))
+		snapshot_date=$(get_date_part "${snapshot_date_seconds}" "%Y%m%d")
 
 		timestamp_problem=""
-		if [ ${timestamp_difference} -eq 0 ]; then
+		if [[ ${timestamp_difference} -eq 0 ]]; then
 			timestamp_problem="is identical to"
-		elif [ ${timestamp_difference} -lt ${min_time_diff} ]; then
+		elif [[ ${timestamp_difference} -lt ${min_time_diff} ]]; then
 			timestamp_problem="is possibly identical to"
-		elif [ ${approx_snapshot_time} -lt ${existing_timestamp} ] ; then
+		elif [[ ${approx_snapshot_time} -lt ${existing_timestamp} ]] ; then
 			timestamp_problem="is newer than"
 		fi
 
-		if [ -n "${timestamp_problem}" ]; then
+		if [[ -n "${timestamp_problem}" ]]; then
 			ewarn "Latest snapshot date: ${snapshot_date}"
 			ewarn
 			ewarn "Approximate snapshot timestamp: ${approx_snapshot_time}"
@@ -492,9 +673,10 @@ usage() {
 
 	Options:
 	  --revert=yyyymmdd   Revert to snapshot
+	  --no-pgp-verify     Disable PGP verification of snapshot
 	  -k, --keep          Keep snapshots in DISTDIR (don't delete)
 	  -q, --quiet         Only output errors
-	  -v, --verbose       Enable verbose output
+	  -v, --verbose       Enable verbose output (no-op)
 	  -x, --debug         Enable debug output
 	  -h, --help          This help screen (duh!)
 	EOF
@@ -516,47 +698,47 @@ main() {
 			-h|--help)    usage ;;
 			-k|--keep)    keep=true ;;
 			-q|--quiet)   PORTAGE_QUIET=1 ;;
-			-v|--verbose) do_verbose=1 ;;
+			-v|--verbose) unset PORTAGE_QUIET ;;
 			-x|--debug)   do_debug=1 ;;
 			--revert=*)   revert_date=${v} ;;
+			--no-pgp-verify) no_pgp_verify=1 ;;
 			*)            usage "Invalid option '${arg}'" ;;
 		esac
 	done
 
+	handle_pgp_setup
+
 	[[ -d ${repo_location} ]] || mkdir -p "${repo_location}"
 	if [[ ! -w ${repo_location} ]] ; then
-		eecho "Repository '${repo_name}' is not writable: ${repo_location}"
-		exit 1
+		die "Repository '${repo_name}' is not writable: ${repo_location}"
 	fi
 
 	[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
 	TMPDIR=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
 	if [[ ! -w ${TMPDIR} ]] ; then
-		eecho "TMPDIR is not writable: ${TMPDIR}"
-		exit 1
+		die "TMPDIR is not writable: ${TMPDIR}"
 	fi
-	trap 'cd / ; rm -rf "${TMPDIR}"' EXIT
+	trap 'set -u ; cd / ; rm -rf "${TMPDIR}"' EXIT
 	cd "${TMPDIR}" || exit 1
 
 	${keep} || DISTDIR=${TMPDIR}
-	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
+	[[ ! -d "${DISTDIR}" ]] && mkdir -p "${DISTDIR}"
 
 	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
-		eecho "DISTDIR is not writable: ${DISTDIR}"
-		exit 1
+		die "DISTDIR is not writable: ${DISTDIR}"
 	fi
 
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
-	if [[ -n ${repo_sync_type} &&  ${repo_sync_type} != rsync && ${repo_sync_type} != webrsync ]] ; then
-		echo "The current sync-type attribute of repository 'gentoo' is not set to 'rsync' or 'webrsync':" >&2
-		echo >&2
-		echo "  sync-type=${repo_sync_type}" >&2
-		echo >&2
-		echo "If you intend to use emerge-webrsync then please" >&2
-		echo "adjust sync-type and sync-uri attributes to refer to rsync." >&2
-		echo "emerge-webrsync exiting due to abnormal sync-type setting." >&2
-		exit 1
+	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync && ${repo_sync_type} != webrsync ]] ; then
+		eerror "The current sync-type attribute of repository 'gentoo' is not set to 'rsync' or 'webrsync':"
+		eerror
+		eerror "  sync-type=${repo_sync_type}"
+		eerror
+		eerror "If you intend to use emerge-webrsync then please"
+		eerror "adjust sync-type and sync-uri attributes to refer to rsync."
+		eerror "emerge-webrsync exiting due to abnormal sync-type setting."
+		die
 	fi
 
 	[[ ${do_debug} -eq 1 ]] && set -x

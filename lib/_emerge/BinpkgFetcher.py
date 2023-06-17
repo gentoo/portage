@@ -11,35 +11,33 @@ import stat
 import sys
 import portage
 from portage import os
-from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
-from portage.exception import FileNotFound, InvalidBinaryPackageFormat
+from portage.binpkg import get_binpkg_format
+from portage.exception import FileNotFound
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
 
 
 class BinpkgFetcher(CompositeTask):
-
-    __slots__ = ("pkg", "pretend", "logfile", "pkg_path")
+    __slots__ = ("pkg", "pretend", "logfile", "pkg_path", "pkg_allocated_path")
 
     def __init__(self, **kwargs):
         CompositeTask.__init__(self, **kwargs)
 
         pkg = self.pkg
         bintree = pkg.root_config.trees["bintree"]
-        binpkg_path = None
+        instance_key = bintree.dbapi._instance_key(pkg.cpv)
 
-        if bintree._remote_has_index:
-            instance_key = bintree.dbapi._instance_key(pkg.cpv)
-            binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
-            if binpkg_path:
-                self.pkg_path = binpkg_path + ".partial"
-            else:
-                self.pkg_path = (
-                    pkg.root_config.trees["bintree"].getname(pkg.cpv, allocate_new=True)
-                    + ".partial"
-                )
-        else:
-            raise FileNotFound("Binary packages index not found")
+        binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
+        if not binpkg_path:
+            raise FileNotFound(
+                f"PATH not found in the binpkg index, the binhost's portage is probably out of date."
+            )
+        binpkg_format = get_binpkg_format(binpkg_path)
+
+        self.pkg_allocated_path = pkg.root_config.trees["bintree"].getname(
+            pkg.cpv, allocate_new=True, remote_binpkg_format=binpkg_format
+        )
+        self.pkg_path = self.pkg_allocated_path + ".partial"
 
     def _start(self):
         fetcher = _BinpkgFetcherProcess(
@@ -98,7 +96,6 @@ class BinpkgFetcher(CompositeTask):
 
 
 class _BinpkgFetcherProcess(SpawnProcess):
-
     __slots__ = ("pkg", "pretend", "locked", "pkg_path", "_lock_obj")
 
     def _start(self):
@@ -123,17 +120,11 @@ class _BinpkgFetcherProcess(SpawnProcess):
         resumecommand = None
         if bintree._remote_has_index:
             remote_metadata = bintree._remotepkgs[bintree.dbapi._instance_key(pkg.cpv)]
-            binpkg_format = remote_metadata.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
-            if binpkg_format not in SUPPORTED_GENTOO_BINPKG_FORMATS:
-                raise InvalidBinaryPackageFormat(binpkg_format)
             rel_uri = remote_metadata.get("PATH")
             if not rel_uri:
-                if binpkg_format == "xpak":
-                    rel_uri = pkg.cpv + ".tbz2"
-                elif binpkg_format == "gpkg":
-                    rel_uri = pkg.cpv + ".gpkg.tar"
+                # Assume that the remote index is out of date. No path should
+                # never happen in new portage versions.
+                rel_uri = pkg.cpv + ".tbz2"
             remote_base_uri = remote_metadata["BASE_URI"]
             uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
             fetchcommand = remote_metadata.get("FETCHCOMMAND")
@@ -142,7 +133,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
             raise FileNotFound("Binary packages index not found")
 
         if pretend:
-            portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
+            portage.writemsg_stdout(f"\n{uri}\n", noiselevel=-1)
             self.returncode = os.EX_OK
             self._async_wait()
             return
@@ -253,8 +244,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
             else:
                 result.set_exception(
                     AssertionError(
-                        "AsynchronousLock failed with returncode %s"
-                        % (async_lock.returncode,)
+                        f"AsynchronousLock failed with returncode {async_lock.returncode}"
                     )
                 )
 

@@ -21,7 +21,6 @@ from .ManifestProcess import ManifestProcess
 
 
 class ManifestTask(CompositeTask):
-
     __slots__ = (
         "cp",
         "distdir",
@@ -233,7 +232,7 @@ class ManifestTask(CompositeTask):
                 "rb",
             ) as f:
                 return self._PGP_HEADER not in f.readline()
-        except IOError as e:
+        except OSError as e:
             if e.errno in (errno.ENOENT, errno.ESTALE):
                 return False
             raise

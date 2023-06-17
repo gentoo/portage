@@ -1,7 +1,6 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -251,7 +250,7 @@ class MultirepoTestCase(TestCase):
                     installed=installed,
                     sets=sets,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 
@@ -404,7 +403,7 @@ class MultirepoTestCase(TestCase):
             with self.subTest(binpkg_format=binpkg_format):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
-                user_config["make.conf"] = ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                user_config["make.conf"] = (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
                     ebuilds=ebuilds, installed=installed, user_config=user_config
                 )

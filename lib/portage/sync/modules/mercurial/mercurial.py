@@ -35,9 +35,9 @@ class MercurialSync(NewBase):
             if not os.path.exists(self.repo.location):
                 os.makedirs(self.repo.location)
                 self.logger(
-                    self.xterm_titles, "Created new directory %s" % self.repo.location
+                    self.xterm_titles, f"Created new directory {self.repo.location}"
                 )
-        except IOError:
+        except OSError:
             return (1, False)
 
         sync_uri = self.repo.sync_uri
@@ -49,22 +49,22 @@ class MercurialSync(NewBase):
             shlexed_env = shlex_split(
                 self.repo.module_specific_options["sync-mercurial-env"]
             )
-            env = dict(
-                (k, v)
+            env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-mercurial-clone-env"):
             shlexed_env = shlex_split(
                 self.repo.module_specific_options["sync-mercurial-clone-env"]
             )
-            clone_env = dict(
-                (k, v)
+            clone_env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(clone_env)
 
         if self.settings.get("PORTAGE_QUIET") == "1":
@@ -74,7 +74,7 @@ class MercurialSync(NewBase):
                 " %s"
                 % self.repo.module_specific_options["sync-mercurial-clone-extra-opts"]
             )
-        hg_cmd = "%s clone%s %s ." % (
+        hg_cmd = "{} clone{} {} .".format(
             self.bin_command,
             hg_cmd_opts,
             portage._shell_quote(sync_uri),
@@ -84,10 +84,10 @@ class MercurialSync(NewBase):
         exitcode = portage.process.spawn(
             shlex_split(hg_cmd),
             cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
-            msg = "!!! hg clone error in %s" % self.repo.location
+            msg = f"!!! hg clone error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
@@ -105,22 +105,22 @@ class MercurialSync(NewBase):
             shlexed_env = shlex_split(
                 self.repo.module_specific_options["sync-mercurial-env"]
             )
-            env = dict(
-                (k, v)
+            env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-mercurial-pull-env"):
             shlexed_env = shlex_split(
                 self.repo.module_specific_options["sync-mercurial-pull-env"]
             )
-            pull_env = dict(
-                (k, v)
+            pull_env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(pull_env)
 
         if self.settings.get("PORTAGE_QUIET") == "1":
@@ -130,7 +130,7 @@ class MercurialSync(NewBase):
                 " %s"
                 % self.repo.module_specific_options["sync-mercurial-pull-extra-opts"]
             )
-        hg_cmd = "%s pull -u%s" % (self.bin_command, hg_cmd_opts)
+        hg_cmd = f"{self.bin_command} pull -u{hg_cmd_opts}"
         writemsg_level(hg_cmd + "\n")
 
         rev_cmd = [self.bin_command, "id", "--id", "--rev", "tip"]
@@ -141,10 +141,10 @@ class MercurialSync(NewBase):
         exitcode = portage.process.spawn(
             shlex_split(hg_cmd),
             cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
-            msg = "!!! hg pull error in %s" % self.repo.location
+            msg = f"!!! hg pull error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)

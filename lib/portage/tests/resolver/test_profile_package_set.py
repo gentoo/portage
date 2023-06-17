@@ -1,7 +1,6 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 
 from portage import os, _encodings
 from portage.tests import TestCase
@@ -14,7 +13,6 @@ from portage.util import ensure_dirs
 
 class ProfilePackageSetTestCase(TestCase):
     def testProfilePackageSet(self):
-
         repo_configs = {
             "test_repo": {
                 "layout.conf": ("profile-formats = profile-set",),
@@ -98,13 +96,13 @@ class ProfilePackageSetTestCase(TestCase):
                 prof_path = os.path.join(profile_root, p)
                 ensure_dirs(prof_path)
                 for k, v in data.items():
-                    with io.open(
+                    with open(
                         os.path.join(prof_path, k),
                         mode="w",
                         encoding=_encodings["repo.content"],
                     ) as f:
                         for line in v:
-                            f.write("%s\n" % line)
+                            f.write(f"{line}\n")
 
             # The config must be reloaded in order to account
             # for the above profile customizations.

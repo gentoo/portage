@@ -41,7 +41,13 @@ from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
-from portage.exception import InvalidAtom, InvalidData, ParseError, GPGException
+from portage.exception import (
+    InvalidAtom,
+    InvalidData,
+    ParseError,
+    GPGException,
+    InvalidBinaryPackageFormat,
+)
 from portage.output import (
     colorize,
     create_color_func,
@@ -109,7 +115,6 @@ def action_build(
     myfiles=DeprecationWarning,
     spinner=None,
 ):
-
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_build() now expects "
@@ -173,7 +178,7 @@ def action_build(
                 getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
             )
         except ParseError as e:
-            writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n" % e, noiselevel=-1)
+            writemsg(f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n", noiselevel=-1)
             return 1
 
     # validate the state of the resume data
@@ -220,7 +225,7 @@ def action_build(
         # "myopts" is a list for backward compatibility.
         resume_opts = mtimedb["resume"].get("myopts", [])
         if isinstance(resume_opts, list):
-            resume_opts = dict((k, True) for k in resume_opts)
+            resume_opts = {k: True for k in resume_opts}
         for opt in ("--ask", "--color", "--skipfirst", "--tree"):
             resume_opts.pop(opt, None)
 
@@ -230,7 +235,7 @@ def action_build(
         myopts.update(resume_opts)
 
         if "--debug" in myopts:
-            writemsg_level("myopts %s\n" % (myopts,))
+            writemsg_level(f"myopts {myopts}\n")
 
         # Adjust config according to options of the command being resumed.
         for myroot in trees:
@@ -279,7 +284,7 @@ def action_build(
         prefix = bad(" * ")
         writemsg(prefix + "\n")
         for line in textwrap.wrap(msg, 72):
-            writemsg("%s%s\n" % (prefix, line))
+            writemsg(f"{prefix}{line}\n")
         writemsg(prefix + "\n")
 
     if resume:
@@ -351,7 +356,7 @@ def action_build(
                 for line in textwrap.wrap(msg, 72):
                     out.eerror(line)
             elif isinstance(e, portage.exception.PackageNotFound):
-                out.eerror("An expected package is " + "not available: %s" % str(e))
+                out.eerror("An expected package is " + f"not available: {str(e)}")
                 out.eerror("")
                 msg = (
                     "The resume list contains one or more "
@@ -373,11 +378,12 @@ def action_build(
                 for task, atoms in dropped_tasks.items():
                     if not atoms:
                         writemsg(
-                            "  %s is masked or unavailable\n" % (task,), noiselevel=-1
+                            f"  {task} is masked or unavailable\n",
+                            noiselevel=-1,
                         )
                     else:
                         writemsg(
-                            "  %s requires %s\n" % (task, ", ".join(atoms)),
+                            f"  {task} requires {', '.join(atoms)}\n",
                             noiselevel=-1,
                         )
 
@@ -431,7 +437,7 @@ def action_build(
                         )
                     except ParseError as e:
                         writemsg(
-                            "\n\n!!!%s.\nSee make.conf(5) for more info.\n" % e,
+                            f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n",
                             noiselevel=-1,
                         )
                         return 1
@@ -543,7 +549,6 @@ def action_build(
                 return retval
 
     else:
-
         if not mergelist_shown:
             # If we haven't already shown the merge list above, at
             # least show warnings about missed updates and such.
@@ -566,7 +571,6 @@ def action_build(
         )
 
         if need_write_bindb or need_write_vardb:
-
             eroots = set()
             ebuild_eroots = set()
             for x in mydepgraph.altlist():
@@ -578,9 +582,7 @@ def action_build(
             for eroot in eroots:
                 if need_write_vardb and not trees[eroot]["vartree"].dbapi.writable:
                     writemsg_level(
-                        "!!! %s\n"
-                        % _("Read-only file system: %s")
-                        % trees[eroot]["vartree"].dbapi._dbroot,
+                        f"!!! Read-only file system: {trees[eroot]['vartree'].dbapi._dbroot}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -597,9 +599,7 @@ def action_build(
                     and not trees[eroot]["bintree"].dbapi.writable
                 ):
                     writemsg_level(
-                        "!!! %s\n"
-                        % _("Read-only file system: %s")
-                        % trees[eroot]["bintree"].pkgdir,
+                        f"!!! Read-only file system: {trees[eroot]['bintree'].pkgdir}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -614,6 +614,22 @@ def action_build(
                         in trees[eroot]["root_config"].settings.features
                     )
                 ):
+                    for binpkg_gpg_config in (
+                        "BINPKG_GPG_SIGNING_GPG_HOME",
+                        "BINPKG_GPG_SIGNING_KEY",
+                    ):
+                        if not trees[eroot]["root_config"].settings.get(
+                            binpkg_gpg_config
+                        ):
+                            writemsg_level(
+                                colorize(
+                                    "BAD", f"!!! {binpkg_gpg_config} is not set\n"
+                                ),
+                                level=logging.ERROR,
+                                noiselevel=-1,
+                            )
+                            return 1
+
                     portage.writemsg_stdout(">>> Unlocking GPG... ")
                     sys.stdout.flush()
                     gpg = GPG(trees[eroot]["root_config"].settings)
@@ -621,7 +637,7 @@ def action_build(
                         gpg.unlock()
                     except GPGException as e:
                         writemsg_level(
-                            colorize("BAD", "!!! %s\n" % e),
+                            colorize("BAD", f"!!! {e}\n"),
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -683,7 +699,7 @@ def action_config(settings, trees, myopts, myfiles):
         sys.exit(1)
     if not is_valid_package_atom(myfiles[0], allow_repo=True):
         portage.writemsg(
-            "!!! '%s' is not a valid package atom.\n" % myfiles[0], noiselevel=-1
+            f"!!! '{myfiles[0]}' is not a valid package atom.\n", noiselevel=-1
         )
         portage.writemsg("!!! Please check ebuild(5) for full details.\n")
         portage.writemsg(
@@ -725,7 +741,7 @@ def action_config(settings, trees, myopts, myfiles):
 
     print()
     if "--ask" in myopts:
-        if uq.query("Ready to configure %s?" % pkg, enter_invalid) == "No":
+        if uq.query(f"Ready to configure {pkg}?", enter_invalid) == "No":
             sys.exit(128 + signal.SIGINT)
     else:
         print("Configuring pkg...")
@@ -800,8 +816,7 @@ def action_depclean(
     msg.append("unless *all* required dependencies have been resolved.  As a\n")
     msg.append("consequence of this, it often becomes necessary to run \n")
     msg.append(
-        "%s" % good("`emerge --update --newuse --deep @world`")
-        + " prior to depclean.\n"
+        f"{good('`emerge --update --newuse --deep @world`')}" + " prior to depclean.\n"
     )
 
     if action == "depclean" and "--quiet" not in myopts and not myfiles:
@@ -821,13 +836,12 @@ def action_depclean(
                 matched_packages = True
             else:
                 writemsg_level(
-                    "--- Couldn't find '%s' to %s.\n"
-                    % (x.replace("null/", ""), action),
+                    f"--- Couldn't find '{x.replace('null/', '')}' to {action}.\n",
                     level=logging.WARN,
                     noiselevel=-1,
                 )
         if not matched_packages:
-            writemsg_level(">>> No packages selected for removal by %s\n" % action)
+            writemsg_level(f">>> No packages selected for removal by {action}\n")
             return 0
 
     # The calculation is done in a separate function so that depgraph
@@ -868,10 +882,10 @@ def action_depclean(
             set_atoms[k] = root_config.sets[k].getAtoms()
 
     print("Packages installed:   " + str(len(vardb.cpv_all())))
-    print("Packages in world:    %d" % len(set_atoms["selected"]))
-    print("Packages in system:   %d" % len(set_atoms["system"]))
+    print(f"Packages in world:    {len(set_atoms['selected'])}")
+    print(f"Packages in system:   {len(set_atoms['system'])}")
     if set_atoms["profile"]:
-        print("Packages in profile:  %d" % len(set_atoms["profile"]))
+        print(f"Packages in profile:  {len(set_atoms['profile'])}")
     print("Required packages:    " + str(req_pkg_count))
     if "--pretend" in myopts:
         print("Number to remove:     " + str(len(cleanlist)))
@@ -925,8 +939,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             # A nested set could not be resolved, so ignore nested sets.
             set_atoms[k] = root_config.sets[k].getAtoms()
             writemsg_level(
-                _("!!! The set '%s' " "contains a non-existent set named '%s'.\n")
-                % (k, e),
+                f"!!! The set '{k}' contains a non-existent set named '{e}'.\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -949,8 +962,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         world_atoms = bool(root_config.setconfig.getSetAtoms("world"))
     except portage.exception.PackageSetNotFound as e:
         writemsg_level(
-            _("!!! The set '%s' " "contains a non-existent set named '%s'.\n")
-            % ("world", e),
+            f"!!! The set 'world' contains a non-existent set named '{e}'.\n",
             level=logging.ERROR,
             noiselevel=-1,
         )
@@ -981,9 +993,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
     real_vardb = trees[eroot]["vartree"].dbapi
 
     if action == "depclean":
-
         if args_set:
-
             if deselect:
                 # Start with an empty set.
                 selected_set = InternalPackageSet()
@@ -1009,7 +1019,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     continue
 
     elif action == "prune":
-
         if deselect:
             # Start with an empty set.
             selected_set = InternalPackageSet()
@@ -1022,7 +1031,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         protected_set.update(vardb.cp_all())
 
         if not args_set:
-
             # Try to prune everything that's slotted.
             for cp in vardb.cp_all():
                 if len(vardb.cp_list(cp)) > 1:
@@ -1038,8 +1046,8 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             if not pkgs_for_cp or pkg not in pkgs_for_cp:
                 raise AssertionError(
                     "package expected in matches: "
-                    + "cp = %s, cpv = %s matches = %s"
-                    % (pkg.cp, pkg.cpv, [str(x) for x in pkgs_for_cp])
+                    f"cp = {pkg.cp}, cpv = {pkg.cpv}, "
+                    f"matches = {[str(x) for x in pkgs_for_cp]}"
                 )
 
             highest_version = pkgs_for_cp[-1]
@@ -1051,8 +1059,8 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             if len(pkgs_for_cp) <= 1:
                 raise AssertionError(
                     "more packages expected: "
-                    + "cp = %s, cpv = %s matches = %s"
-                    % (pkg.cp, pkg.cpv, [str(x) for x in pkgs_for_cp])
+                    f"cp = {pkg.cp}, cpv = {pkg.cpv}, "
+                    f"matches = {[str(x) for x in pkgs_for_cp]}"
                 )
 
             try:
@@ -1090,7 +1098,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         return _depclean_result(1, [], False, 0, resolver)
 
     def unresolved_deps():
-
         soname_deps = set()
         unresolvable = set()
         for dep in resolver._dynamic_config._initially_unsatisfied_deps:
@@ -1111,12 +1118,12 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             msg.append("Broken soname dependencies found:")
             msg.append("")
             for atom, parent in soname_deps:
-                msg.append("  %s required by:" % (atom,))
-                msg.append("    %s" % (parent,))
+                msg.append(f"  {atom} required by:")
+                msg.append(f"    {parent}")
                 msg.append("")
 
             writemsg_level(
-                "".join("%s%s\n" % (prefix, line) for line in msg),
+                "".join(f"{prefix}{line}\n" for line in msg),
                 level=logging.WARNING,
                 noiselevel=-1,
             )
@@ -1125,7 +1132,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             return False
 
         if unresolvable and not allow_missing_deps:
-
             if "--debug" in myopts:
                 writemsg("\ndigraph:\n\n", noiselevel=-1)
                 resolver._dynamic_config.digraph.debug_print()
@@ -1157,12 +1163,10 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     and atom != atom.unevaluated_atom
                     and vardb.match(Atom(str(atom)))
                 ):
-                    msg.append(
-                        "  %s (%s) pulled in by:" % (atom.unevaluated_atom, atom)
-                    )
+                    msg.append(f"  {atom.unevaluated_atom} ({atom}) pulled in by:")
                 else:
-                    msg.append("  %s pulled in by:" % (atom,))
-                msg.append("    %s" % (parent,))
+                    msg.append(f"  {atom} pulled in by:")
+                msg.append(f"    {parent}")
                 msg.append("")
             msg.extend(
                 textwrap.wrap(
@@ -1199,10 +1203,10 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                 msg.append("")
                 msg.append(
                     "If you would like to ignore "
-                    + "dependencies then use %s." % good("--nodeps")
+                    + f"dependencies then use {good('--nodeps')}."
                 )
             writemsg_level(
-                "".join("%s%s\n" % (prefix, line) for line in msg),
+                "".join(f"{prefix}{line}\n" for line in msg),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -1246,17 +1250,14 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             # atoms in separate groups.
             atoms = sorted(atoms, reverse=True, key=operator.attrgetter("package"))
             parent_strs.append(
-                "%s requires %s"
-                % (
-                    getattr(parent, "cpv", parent),
-                    ", ".join(str(atom) for atom in atoms),
-                )
+                f"{getattr(parent, 'cpv', parent)} requires "
+                f"{', '.join(str(atom) for atom in atoms)}"
             )
         parent_strs.sort()
         msg = []
-        msg.append("  %s pulled in by:\n" % (child_node.cpv,))
+        msg.append(f"  {child_node.cpv} pulled in by:\n")
         for parent_str in parent_strs:
-            msg.append("    %s\n" % (parent_str,))
+            msg.append(f"    {parent_str}\n")
         msg.append("\n")
         portage.writemsg_stdout("".join(msg), noiselevel=-1)
 
@@ -1269,7 +1270,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         return -1
 
     def create_cleanlist():
-
         if "--debug" in myopts:
             writemsg("\ndigraph:\n\n", noiselevel=-1)
             graph.debug_print()
@@ -1279,7 +1279,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
         if action == "depclean":
             if args_set:
-
                 for pkg in sorted(vardb, key=cmp_sort_key(cmp_pkg_cpv)):
                     arg_atom = None
                     try:
@@ -1302,7 +1301,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         show_parents(pkg)
 
         elif action == "prune":
-
             for atom in args_set:
                 for pkg in vardb.match_pkgs(atom):
                     if pkg not in graph:
@@ -1311,15 +1309,13 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         show_parents(pkg)
 
         if not pkgs_to_remove:
-            writemsg_level(">>> No packages selected for removal by %s\n" % action)
+            writemsg_level(f">>> No packages selected for removal by {action}\n")
             if "--verbose" not in myopts:
                 writemsg_level(
-                    ">>> To see reverse dependencies, use %s\n" % good("--verbose")
+                    f">>> To see reverse dependencies, use {good('--verbose')}\n"
                 )
             if action == "prune":
-                writemsg_level(
-                    ">>> To ignore dependencies, use %s\n" % good("--nodeps")
-                )
+                writemsg_level(f">>> To ignore dependencies, use {good('--nodeps')}\n")
 
         return pkgs_to_remove
 
@@ -1341,7 +1337,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                 break
 
     if depclean_lib_check and (preserve_libs_restrict or not preserve_libs):
-
         # Check if any of these packages are the sole providers of libraries
         # with consumers that have not been selected for removal. If so, these
         # packages and any dependencies need to be added to the graph.
@@ -1353,7 +1348,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         writemsg_level(">>> Checking for lib consumers...\n")
 
         for pkg in cleanlist:
-
             if preserve_libs and "preserve-libs" not in pkg.restrict:
                 # Any needed libraries will be preserved
                 # when this package is unmerged, so there's
@@ -1390,7 +1384,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                 continue
 
             for lib, lib_consumers in consumers.items():
-
                 soname = linkmap.getSoname(lib)
 
                 consumer_providers = []
@@ -1409,7 +1402,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             consumer_map[pkg] = consumers
 
         if consumer_map:
-
             search_files = set()
             for consumers in consumer_map.values():
                 for lib, consumer_providers in consumers.items():
@@ -1492,7 +1484,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
             prefix = bad(" * ")
             writemsg_level(
-                "".join(prefix + "%s\n" % line for line in textwrap.wrap(msg, 70)),
+                "".join(prefix + f"{line}\n" for line in textwrap.wrap(msg, 70)),
                 level=logging.WARNING,
                 noiselevel=-1,
             )
@@ -1511,13 +1503,13 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     consumer.mycpv for consumer in unique_consumers
                 )
                 msg.append("")
-                msg.append("  %s pulled in by:" % (pkg.cpv,))
+                msg.append(f"  {pkg.cpv} pulled in by:")
                 for consumer in unique_consumers:
                     libs = consumer_libs[consumer]
-                    msg.append("    %s needs %s" % (consumer, ", ".join(sorted(libs))))
+                    msg.append(f"    {consumer} needs {', '.join(sorted(libs))}")
             msg.append("")
             writemsg_level(
-                "".join(prefix + "%s\n" % line for line in msg),
+                "".join(prefix + f"{line}\n" for line in msg),
                 level=logging.WARNING,
                 noiselevel=-1,
             )
@@ -1596,17 +1588,17 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
                 if debug:
                     writemsg_level(
-                        "\nParent:    %s\n" % (node,),
+                        f"\nParent:    {node}\n",
                         noiselevel=-1,
                         level=logging.DEBUG,
                     )
                     writemsg_level(
-                        "Depstring: %s\n" % (depstr,),
+                        f"Depstring: {depstr}\n",
                         noiselevel=-1,
                         level=logging.DEBUG,
                     )
                     writemsg_level(
-                        "Priority:  %s\n" % (priority,),
+                        f"Priority:  {priority}\n",
                         noiselevel=-1,
                         level=logging.DEBUG,
                     )
@@ -1626,7 +1618,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
                 if debug:
                     writemsg_level(
-                        "Candidates: [%s]\n" % ", ".join("'%s'" % (x,) for x in atoms),
+                        "Candidates: [{}]\n".format(", ".join(f"'{x}'" for x in atoms)),
                         noiselevel=-1,
                         level=logging.DEBUG,
                     )
@@ -1642,7 +1634,6 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         continue
                     for child_node in matches:
                         if child_node in clean_set:
-
                             mypriority = priority.copy()
                             if atom.slot_operator_built:
                                 if mypriority.buildtime:
@@ -1746,7 +1737,7 @@ def action_deselect(settings, trees, opts, atoms):
 
                 for cpv in vardb.match(atom):
                     pkg = vardb._pkg_str(cpv, None)
-                    expanded_atoms.add(Atom("%s:%s" % (pkg.cp, pkg.slot)))
+                    expanded_atoms.add(Atom(f"{pkg.cp}:{pkg.slot}"))
 
         discard_atoms = set()
         for atom in world_set:
@@ -1766,7 +1757,6 @@ def action_deselect(settings, trees, opts, atoms):
                         break
         if discard_atoms:
             for atom in sorted(discard_atoms):
-
                 if pretend:
                     action_desc = "Would remove"
                 else:
@@ -1778,8 +1768,8 @@ def action_deselect(settings, trees, opts, atoms):
                     filename = "world"
 
                 writemsg_stdout(
-                    '>>> %s %s from "%s" favorites file...\n'
-                    % (action_desc, colorize("INFORM", str(atom)), filename),
+                    f">>> {action_desc} {colorize('INFORM', str(atom))} "
+                    f'from "{filename}" favorites file...\n',
                     noiselevel=-1,
                 )
 
@@ -1823,7 +1813,6 @@ class _info_pkgs_ver:
 
 
 def action_info(settings, trees, myopts, myfiles):
-
     # See if we can find any packages installed matching the strings
     # passed on the command line
     mypkgs = []
@@ -1870,19 +1859,17 @@ def action_info(settings, trees, myopts, myfiles):
                     break
 
         if not cp_exists:
-            xinfo = '"%s"' % x.unevaluated_atom
+            xinfo = f'"{x.unevaluated_atom}"'
             # Discard null/ from failed cpv_expand category expansion.
             xinfo = xinfo.replace("null/", "")
             if settings["ROOT"] != "/":
-                xinfo = "%s for %s" % (xinfo, eroot)
+                xinfo = f"{xinfo} for {eroot}"
             writemsg(
-                "\nemerge: there are no ebuilds to satisfy %s.\n"
-                % colorize("INFORM", xinfo),
+                f"\nemerge: there are no ebuilds to satisfy {colorize('INFORM', xinfo)}.\n",
                 noiselevel=-1,
             )
 
             if myopts.get("--misspell-suggestions", "y") != "n":
-
                 writemsg("\nemerge: searching for similar names...", noiselevel=-1)
 
                 search_index = myopts.get("--search-index", "y") != "n"
@@ -1900,8 +1887,7 @@ def action_info(settings, trees, myopts, myfiles):
                     )
                 elif len(matches) > 1:
                     writemsg(
-                        "\nemerge: Maybe you meant any of these: %s?\n"
-                        % (", ".join(matches),),
+                        f"\nemerge: Maybe you meant any of these: {', '.join(matches)}?\n",
                         noiselevel=-1,
                     )
                 else:
@@ -1932,18 +1918,18 @@ def action_info(settings, trees, myopts, myfiles):
         append(header_width * "=")
         append(header_title.rjust(int(header_width / 2 + len(header_title) / 2)))
     append(header_width * "=")
-    append("System uname: %s" % (platform.platform(aliased=1),))
+    append(f"System uname: {platform.platform(aliased=1)}")
 
     vm_info = get_vm_info()
     if "ram.total" in vm_info:
-        line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] // 1024)
+        line = f"KiB Mem:  {vm_info['ram.total'] // 1024:10d} total"
         if "ram.free" in vm_info:
-            line += ",%10d free" % (vm_info["ram.free"] // 1024,)
+            line += f",{vm_info['ram.free'] // 1024:10d} free"
         append(line)
     if "swap.total" in vm_info:
-        line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] // 1024)
+        line = f"KiB Swap: {vm_info['swap.total'] // 1024:10d} total"
         if "swap.free" in vm_info:
-            line += ",%10d free" % (vm_info["swap.free"] // 1024,)
+            line += f",{vm_info['swap.free'] // 1024:10d} free"
         append(line)
 
     for repo in repos:
@@ -1952,7 +1938,7 @@ def action_info(settings, trees, myopts, myfiles):
         )
         head_commit = None
         if last_sync:
-            append("Timestamp of repository %s: %s" % (repo.name, last_sync[0]))
+            append(f"Timestamp of repository {repo.name}: {last_sync[0]}")
         if repo.sync_type:
             sync = portage.sync.module_controller.get_class(repo.sync_type)()
             options = {"repo": repo}
@@ -1961,7 +1947,7 @@ def action_info(settings, trees, myopts, myfiles):
             except NotImplementedError:
                 head_commit = (1, False)
         if head_commit and head_commit[0] == os.EX_OK:
-            append("Head commit of repository %s: %s" % (repo.name, head_commit[1]))
+            append(f"Head commit of repository {repo.name}: {head_commit[1]}")
 
     # Searching contents for the /bin/sh provider is somewhat
     # slow. Therefore, use the basename of the symlink target
@@ -1977,7 +1963,7 @@ def action_info(settings, trees, myopts, myfiles):
         os.path.realpath(os.path.join(os.sep, portage.const.EPREFIX, "bin", "sh"))
     )
     try:
-        Atom("null/%s" % basename)
+        Atom(f"null/{basename}")
     except InvalidAtom:
         matches = None
     else:
@@ -1989,7 +1975,7 @@ def action_info(settings, trees, myopts, myfiles):
             # If the name is ambiguous, then restrict our match
             # to the app-shells category.
             matches = trees[trees._running_eroot]["vartree"].dbapi.match(
-                "app-shells/%s" % basename
+                f"app-shells/{basename}"
             )
 
     if matches:
@@ -1999,11 +1985,11 @@ def action_info(settings, trees, myopts, myfiles):
         # Omit app-shells category from the output.
         if name.startswith("app-shells/"):
             name = name[len("app-shells/") :]
-        sh_str = "%s %s" % (name, version)
+        sh_str = f"{name} {version}"
     else:
         sh_str = basename
 
-    append("sh %s" % sh_str)
+    append(f"sh {sh_str}")
 
     ld_names = []
     if chost:
@@ -2020,7 +2006,7 @@ def action_info(settings, trees, myopts, myfiles):
             output = _unicode_decode(proc.communicate()[0]).splitlines()
             proc.wait()
             if proc.wait() == os.EX_OK and output:
-                append("ld %s" % (output[0]))
+                append(f"ld {output[0]}")
                 break
 
     try:
@@ -2071,7 +2057,7 @@ def action_info(settings, trees, myopts, myfiles):
         try:
             x = Atom(x)
         except InvalidAtom:
-            append("%-20s %s" % (x + ":", "[NOT VALID]"))
+            append(f"{x + ':':<20s} [NOT VALID]")
         else:
             for atom in expand_new_virt(vardb, x):
                 if not atom.blocker:
@@ -2108,14 +2094,14 @@ def action_info(settings, trees, myopts, myfiles):
             if matched_cp == orig_atom.cp:
                 provide_suffix = ""
             else:
-                provide_suffix = " (%s)" % (orig_atom,)
+                provide_suffix = f" ({orig_atom})"
 
             ver_map[ver] = _info_pkgs_ver(ver, repo_suffix, provide_suffix)
 
     for cp in sorted(cp_map):
         versions = sorted(cp_map[cp].values())
         versions = ", ".join(ver.toString() for ver in versions)
-        append("%s %s" % ((cp + ":").ljust(cp_max_len + 1), versions))
+        append(f"{(cp + ':').ljust(cp_max_len + 1)} {versions}")
 
     append("Repositories:\n")
     for repo in repos:
@@ -2195,7 +2181,7 @@ def action_info(settings, trees, myopts, myfiles):
 
                 v = _hide_url_passwd(v)
 
-                append('%s="%s"' % (k, v))
+                append(f'{k}="{v}"')
             else:
                 use = set(v.split())
                 for varname in use_expand:
@@ -2205,11 +2191,11 @@ def action_info(settings, trees, myopts, myfiles):
                             use.remove(f)
                 use = list(use)
                 use.sort()
-                use = ['USE="%s"' % " ".join(use)]
+                use = [f"USE=\"{' '.join(use)}\""]
                 for varname in use_expand:
                     myval = settings.get(varname)
                     if myval:
-                        use.append('%s="%s"' % (varname, myval))
+                        use.append(f'{varname}="{myval}"')
                 append(" ".join(use))
         else:
             unset_vars.append(k)
@@ -2265,25 +2251,25 @@ def action_info(settings, trees, myopts, myfiles):
 
             if pkg_type == "installed":
                 append(
-                    "\n%s was built with the following:"
-                    % colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo))
+                    f"\n{colorize('INFORM', str(pkg.cpv + _repo_separator + pkg.repo))} "
+                    "was built with the following:"
                 )
             elif pkg_type == "ebuild":
                 append(
-                    "\n%s would be built with the following:"
-                    % colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo))
+                    f"\n{colorize('INFORM', str(pkg.cpv + _repo_separator + pkg.repo))} "
+                    "would be built with the following:"
                 )
             elif pkg_type == "binary":
                 append(
-                    "\n%s (non-installed binary) was built with the following:"
-                    % colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo))
+                    f"\n{colorize('INFORM', str(pkg.cpv + _repo_separator + pkg.repo))} "
+                    "(non-installed binary) was built with the following:"
                 )
 
-            append("%s" % pkg_use_display(pkg, myopts))
+            append(f"{pkg_use_display(pkg, myopts)}")
             if pkg_type == "installed":
                 for myvar in mydesiredvars:
                     if metadata[myvar].split() != settings.get(myvar, "").split():
-                        append('%s="%s"' % (myvar, metadata[myvar]))
+                        append(f'{myvar}="{metadata[myvar]}"')
             append("")
             append("")
             writemsg_stdout("\n".join(output_buffer), noiselevel=-1)
@@ -2294,7 +2280,7 @@ def action_info(settings, trees, myopts, myfiles):
                     continue
 
             writemsg_stdout(
-                ">>> Attempting to run pkg_info() for '%s'\n" % pkg.cpv, noiselevel=-1
+                f">>> Attempting to run pkg_info() for '{pkg.cpv}'\n", noiselevel=-1
             )
 
             if pkg_type == "installed":
@@ -2304,9 +2290,12 @@ def action_info(settings, trees, myopts, myfiles):
             elif pkg_type == "binary":
                 binpkg_file = bindb.bintree.getname(pkg.cpv)
                 ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
-                binpkg_format = pkg.cpv._metadata.get("BINPKG_FORMAT", None)
-                if not binpkg_format:
+                try:
                     binpkg_format = get_binpkg_format(binpkg_file)
+                except InvalidBinaryPackageFormat as e:
+                    out.ewarn(e)
+                    continue
+
                 if binpkg_format == "xpak":
                     ebuild_file_contents = portage.xpak.tbz2(binpkg_file).getfile(
                         ebuild_file_name
@@ -2324,7 +2313,7 @@ def action_info(settings, trees, myopts, myfiles):
                 file.close()
 
             if not ebuildpath or not os.path.exists(ebuildpath):
-                out.ewarn("No ebuild found for '%s'" % pkg.cpv)
+                out.ewarn(f"No ebuild found for '{pkg.cpv}'")
                 continue
 
             if pkg_type == "installed":
@@ -2393,9 +2382,7 @@ def action_search(root_config, myopts, myfiles, spinner):
             try:
                 searchinstance.execute(mysearch)
             except re.error as comment:
-                print(
-                    '\n!!! Regular expression error in "%s": %s' % (mysearch, comment)
-                )
+                print(f'\n!!! Regular expression error in "{mysearch}": {comment}')
                 sys.exit(1)
             searchinstance.output()
 
@@ -2407,7 +2394,6 @@ def action_sync(
     opts=DeprecationWarning,
     action=DeprecationWarning,
 ):
-
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_sync() now expects "
@@ -2431,7 +2417,7 @@ def action_sync(
         print_results(msgs)
     elif msgs and not success:
         writemsg_level(
-            "".join("%s\n" % (line,) for line in msgs),
+            "".join(f"{line}\n" for line in msgs),
             level=logging.ERROR,
             noiselevel=-1,
         )
@@ -2454,7 +2440,6 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
         if is_valid_package_atom(x, allow_repo=True) or (
             ignore_missing_eq and is_valid_package_atom("=" + x)
         ):
-
             try:
                 atom = dep_expand(x, mydb=vardb, settings=settings)
             except portage.exception.AmbiguousPackageName as e:
@@ -2466,12 +2451,10 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                     + "fully-qualified ebuild names instead:"
                 )
                 for line in textwrap.wrap(msg, 70):
-                    writemsg_level(
-                        "!!! %s\n" % (line,), level=logging.ERROR, noiselevel=-1
-                    )
+                    writemsg_level(f"!!! {line}\n", level=logging.ERROR, noiselevel=-1)
                 for i in e.args[0]:
                     writemsg_level(
-                        "    %s\n" % colorize("INFORM", i),
+                        f"    {colorize('INFORM', i)}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -2480,11 +2463,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
             else:
                 if atom.use and atom.use.conditional:
                     writemsg_level(
-                        (
-                            "\n\n!!! '%s' contains a conditional "
-                            + "which is not allowed.\n"
-                        )
-                        % (x,),
+                        f"\n\n!!! '{x}' contains a conditional which is not allowed.\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -2498,7 +2477,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
         elif x.startswith(os.sep):
             if not x.startswith(eroot):
                 writemsg_level(
-                    ("!!! '%s' does not start with" + " $EROOT.\n") % x,
+                    f"!!! '{x}' does not start with $EROOT.\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -2515,10 +2494,10 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                 ext_atom = Atom(x, allow_repo=True, allow_wildcard=True)
             except InvalidAtom:
                 msg = []
-                msg.append("'%s' is not a valid package atom." % (x,))
+                msg.append(f"'{x}' is not a valid package atom.")
                 msg.append("Please check ebuild(5) for full details.")
                 writemsg_level(
-                    "".join("!!! %s\n" % line for line in msg),
+                    "".join(f"!!! {line}\n" for line in msg),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -2550,10 +2529,10 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
 
         else:
             msg = []
-            msg.append("'%s' is not a valid package atom." % (x,))
+            msg.append(f"'{x}' is not a valid package atom.")
             msg.append("Please check ebuild(5) for full details.")
             writemsg_level(
-                "".join("!!! %s\n" % line for line in msg),
+                "".join(f"!!! {line}\n" for line in msg),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -2579,11 +2558,11 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
         if owners:
             for cpv in owners:
                 pkg = vardb._pkg_str(cpv, None)
-                atom = "%s:%s" % (pkg.cp, pkg.slot)
+                atom = f"{pkg.cp}:{pkg.slot}"
                 valid_atoms.append(portage.dep.Atom(atom))
         else:
             writemsg_level(
-                ("!!! '%s' is not claimed " + "by any package.\n") % lookup_owners[0],
+                f"!!! '{lookup_owners[0]}' is not claimed by any package.\n",
                 level=logging.WARNING,
                 noiselevel=-1,
             )
@@ -2698,9 +2677,9 @@ def adjust_config(myopts, settings):
     try:
         CLEAN_DELAY = int(settings.get("CLEAN_DELAY", str(CLEAN_DELAY)))
     except ValueError as e:
-        portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+        portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: CLEAN_DELAY='%s'\n" % settings["CLEAN_DELAY"],
+            f"!!! Unable to parse integer: CLEAN_DELAY='{settings['CLEAN_DELAY']}'\n",
             noiselevel=-1,
         )
     settings["CLEAN_DELAY"] = str(CLEAN_DELAY)
@@ -2712,10 +2691,10 @@ def adjust_config(myopts, settings):
             settings.get("EMERGE_WARNING_DELAY", str(EMERGE_WARNING_DELAY))
         )
     except ValueError as e:
-        portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+        portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: EMERGE_WARNING_DELAY='%s'\n"
-            % settings["EMERGE_WARNING_DELAY"],
+            "!!! Unable to parse integer: "
+            f"EMERGE_WARNING_DELAY='{settings['EMERGE_WARNING_DELAY']}'\n",
             noiselevel=-1,
         )
     settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
@@ -2746,15 +2725,15 @@ def adjust_config(myopts, settings):
         PORTAGE_DEBUG = int(settings.get("PORTAGE_DEBUG", str(PORTAGE_DEBUG)))
         if PORTAGE_DEBUG not in (0, 1):
             portage.writemsg(
-                "!!! Invalid value: PORTAGE_DEBUG='%i'\n" % PORTAGE_DEBUG, noiselevel=-1
+                f"!!! Invalid value: PORTAGE_DEBUG='{PORTAGE_DEBUG}'\n",
+                noiselevel=-1,
             )
             portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n", noiselevel=-1)
             PORTAGE_DEBUG = 0
     except ValueError as e:
-        portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+        portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n"
-            % settings["PORTAGE_DEBUG"],
+            f"!!! Unable to parse integer: PORTAGE_DEBUG='{settings['PORTAGE_DEBUG']}'\n",
             noiselevel=-1,
         )
         del e
@@ -2763,7 +2742,7 @@ def adjust_config(myopts, settings):
     settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
     settings.backup_changes("PORTAGE_DEBUG")
 
-    if settings.get("NOCOLOR") not in ("yes", "true"):
+    if not portage.util.no_color(settings):
         portage.output.havecolor = 1
 
     # The explicit --color < y | n > option overrides the NOCOLOR environment
@@ -2771,15 +2750,15 @@ def adjust_config(myopts, settings):
     if "--color" in myopts:
         if "y" == myopts["--color"]:
             portage.output.havecolor = 1
-            settings["NOCOLOR"] = "false"
+            settings["NO_COLOR"] = ""
         else:
             portage.output.havecolor = 0
-            settings["NOCOLOR"] = "true"
-        settings.backup_changes("NOCOLOR")
+            settings["NO_COLOR"] = "true"
+        settings.backup_changes("NO_COLOR")
     elif settings.get("TERM") == "dumb" or not sys.stdout.isatty():
         portage.output.havecolor = 0
-        settings["NOCOLOR"] = "true"
-        settings.backup_changes("NOCOLOR")
+        settings["NO_COLOR"] = "true"
+        settings.backup_changes("NO_COLOR")
 
     if "--pkg-format" in myopts:
         settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]
@@ -2787,19 +2766,18 @@ def adjust_config(myopts, settings):
 
 
 def display_missing_pkg_set(root_config, set_name):
-
     msg = []
     msg.append(
-        ("emerge: There are no sets to satisfy '%s'. " + "The following sets exist:")
-        % colorize("INFORM", set_name)
+        f"emerge: There are no sets to satisfy '{colorize('INFORM', set_name)}'. "
+        "The following sets exist:"
     )
     msg.append("")
 
     for s in sorted(root_config.sets):
-        msg.append("    %s" % s)
+        msg.append(f"    {s}")
     msg.append("")
 
-    writemsg_level("".join("%s\n" % l for l in msg), level=logging.ERROR, noiselevel=-1)
+    writemsg_level("".join(f"{l}\n" for l in msg), level=logging.ERROR, noiselevel=-1)
 
 
 def relative_profile_path(portdir, abs_profile):
@@ -2813,7 +2791,14 @@ def relative_profile_path(portdir, abs_profile):
 
 
 def getportageversion(portdir, _unused, profile, chost, vardb):
-    pythonver = "python %d.%d.%d-%s-%d" % sys.version_info[:]
+    pythonver = (
+        "python"
+        f" {sys.version_info[0]}"
+        f".{sys.version_info[1]}"
+        f".{sys.version_info[2]}"
+        f"-{sys.version_info[3]}"
+        f"-{sys.version_info[4]}"
+    )
     profilever = None
     repositories = vardb.settings.repositories
     if profile:
@@ -2871,7 +2856,7 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
     gccver = getgccversion(chost)
     unameout = platform.release() + " " + platform.machine()
 
-    return "Portage %s (%s, %s, %s, %s, %s)" % (
+    return "Portage {} ({}, {}, {}, {}, {})".format(
         portage.VERSION,
         pythonver,
         profilever,
@@ -2882,7 +2867,6 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 
 
 class _emerge_config(SlotObject):
-
     __slots__ = ("action", "args", "opts", "running_config", "target_config", "trees")
 
     # Support unpack as tuple, for load_emerge_config backward compatibility.
@@ -2899,7 +2883,6 @@ class _emerge_config(SlotObject):
 
 
 def load_emerge_config(emerge_config=None, env=None, **kargs):
-
     if emerge_config is None:
         emerge_config = _emerge_config(**kargs)
 
@@ -3018,7 +3001,7 @@ def validate_ebuild_environment(trees):
         msg = (
             "WARNING: The FEATURES variable contains one "
             + "or more values that should be disabled under "
-            + "normal circumstances: %s" % " ".join(features_warn)
+            + f"normal circumstances: {' '.join(features_warn)}"
         )
         out = portage.output.EOutput()
         for line in textwrap.wrap(msg, 65):
@@ -3031,9 +3014,9 @@ def check_procfs():
     procfs_path = "/proc"
     if platform.system() not in ("Linux",) or os.path.ismount(procfs_path):
         return os.EX_OK
-    msg = "It seems that %s is not mounted. You have been warned." % procfs_path
+    msg = f"It seems that {procfs_path} is not mounted. You have been warned."
     writemsg_level(
-        "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+        "".join(f"!!! {l}\n" for l in textwrap.wrap(msg, 70)),
         level=logging.ERROR,
         noiselevel=-1,
     )
@@ -3046,7 +3029,7 @@ def config_protect_check(trees):
         if not settings.get("CONFIG_PROTECT"):
             msg = "!!! CONFIG_PROTECT is empty"
             if settings["ROOT"] != "/":
-                msg += " for '%s'" % root
+                msg += f" for '{root}'"
             msg += "\n"
             writemsg_level(msg, level=logging.WARN, noiselevel=-1)
 
@@ -3054,6 +3037,7 @@ def config_protect_check(trees):
 def apply_priorities(settings):
     ionice(settings)
     nice(settings)
+    set_scheduling_policy(settings)
 
 
 def nice(settings):
@@ -3062,14 +3046,12 @@ def nice(settings):
     except (OSError, ValueError) as e:
         out = portage.output.EOutput()
         out.eerror(
-            "Failed to change nice value to '%s'"
-            % settings.get("PORTAGE_NICENESS", "0")
+            f"Failed to change nice value to '{settings.get('PORTAGE_NICENESS', '0')}'"
         )
-        out.eerror("%s\n" % str(e))
+        out.eerror(f"{str(e)}\n")
 
 
 def ionice(settings):
-
     ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
     if ionice_cmd:
         ionice_cmd = portage.util.shlex_split(ionice_cmd)
@@ -3088,10 +3070,56 @@ def ionice(settings):
 
     if rval != os.EX_OK:
         out = portage.output.EOutput()
-        out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
+        out.eerror(f"PORTAGE_IONICE_COMMAND returned {rval}")
         out.eerror(
             "See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions."
         )
+
+
+def set_scheduling_policy(settings):
+    scheduling_policy = settings.get("PORTAGE_SCHEDULING_POLICY")
+    scheduling_priority = settings.get("PORTAGE_SCHEDULING_PRIORITY")
+
+    if platform.system() != "Linux" or not scheduling_policy:
+        return os.EX_OK
+
+    # IDs sourced from linux/sched.h kernel's header.
+    policies = {
+        "other": 0,
+        "fifo": 1,
+        "round-robin": 2,
+        "batch": 3,
+        "idle": 5,
+        "deadline": 6,
+    }
+
+    out = portage.output.EOutput()
+
+    if scheduling_policy in policies:
+        policy = policies[scheduling_policy]
+    else:
+        out.eerror("Invalid policy in PORTAGE_SCHEDULING_POLICY.")
+        out.eerror(
+            "See the make.conf(5) man page for PORTAGE_SCHEDULING_POLICY usage instructions."
+        )
+        return os.EX_USAGE
+
+    if not scheduling_priority:
+        scheduling_priority = os.sched_get_priority_min(policy)
+    else:
+        scheduling_priority = int(scheduling_priority)
+        if scheduling_priority not in range(
+            os.sched_get_priority_min(policy), os.sched_get_priority_max(policy) + 1
+        ):
+            out.eerror("Invalid priority in PORTAGE_SCHEDULING_PRIORITY.")
+            out.eerror(
+                "See the make.conf(5) man page for PORTAGE_SCHEDULING_PRIORITY usage instructions."
+            )
+            return os.EX_USAGE
+
+    os.sched_setscheduler(portage.getpid(), policy, os.sched_param(scheduling_priority))
+
+    return os.EX_OK
 
 
 def setconfig_fallback(root_config):
@@ -3118,26 +3146,25 @@ def get_missing_sets(root_config):
 
 def missing_sets_warning(root_config, missing_sets):
     if len(missing_sets) > 2:
-        missing_sets_str = ", ".join('"%s"' % s for s in missing_sets[:-1])
-        missing_sets_str += ', and "%s"' % missing_sets[-1]
+        missing_sets_str = ", ".join(f'"{s}"' for s in missing_sets[:-1])
+        missing_sets_str += f', and "{missing_sets[-1]}"'
     elif len(missing_sets) == 2:
-        missing_sets_str = '"%s" and "%s"' % tuple(missing_sets)
+        missing_sets_str = f'"{missing_sets[0]}" and "{missing_sets[1]}"'
     else:
-        missing_sets_str = '"%s"' % missing_sets[-1]
+        missing_sets_str = f'"{missing_sets[-1]}"'
     msg = [
-        "emerge: incomplete set configuration, "
-        + "missing set(s): %s" % missing_sets_str
+        "emerge: incomplete set configuration, " + f"missing set(s): {missing_sets_str}"
     ]
     if root_config.sets:
-        msg.append("        sets defined: %s" % ", ".join(root_config.sets))
+        msg.append(f"        sets defined: {', '.join(root_config.sets)}")
     global_config_path = portage.const.GLOBAL_CONFIG_PATH
     if portage.const.EPREFIX:
         global_config_path = os.path.join(
             portage.const.EPREFIX, portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep)
         )
     msg.append(
-        "        This usually means that '%s'"
-        % (os.path.join(global_config_path, "sets/portage.conf"),)
+        "        This usually means that "
+        f"'{os.path.join(global_config_path, 'sets/portage.conf')}'"
     )
     msg.append("        is missing or corrupt.")
     msg.append("        Falling back to default world and system set configuration!!!")
@@ -3215,7 +3242,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 
     # display errors that occurred while loading the SetConfig instance
     for e in setconfig.errors:
-        print(colorize("BAD", "Error during set creation: %s" % e))
+        print(colorize("BAD", f"Error during set creation: {e}"))
 
     unmerge_actions = ("unmerge", "prune", "clean", "depclean", "rage-clean")
 
@@ -3248,11 +3275,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
                 set_atoms = setconfig.getSetAtoms(s)
             except portage.exception.PackageSetNotFound as e:
                 writemsg_level(
-                    (
-                        "emerge: the given set '%s' "
-                        + "contains a non-existent set named '%s'.\n"
-                    )
-                    % (s, e),
+                    f"emerge: the given set '{s}' contains a non-existent set named '{e}'.\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -3262,12 +3285,8 @@ def expand_set_arguments(myfiles, myaction, root_config):
                 ):
                     writemsg_level(
                         (
-                            "Use `emerge --deselect %s%s` to "
+                            f"Use `emerge --deselect {SETPREFIX}{e}` to "
                             "remove this set from world_sets.\n"
-                        )
-                        % (
-                            SETPREFIX,
-                            e,
                         ),
                         level=logging.ERROR,
                         noiselevel=-1,
@@ -3275,7 +3294,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
                 return (None, 1)
             if myaction in unmerge_actions and not sets[s].supportsOperation("unmerge"):
                 writemsg_level(
-                    "emerge: the given set '%s' does " % s
+                    f"emerge: the given set '{s}' does "
                     + "not support unmerge operations\n",
                     level=logging.ERROR,
                     noiselevel=-1,
@@ -3283,16 +3302,14 @@ def expand_set_arguments(myfiles, myaction, root_config):
                 retval = 1
             elif not set_atoms:
                 writemsg_level(
-                    "emerge: '%s' is an empty set\n" % s,
+                    f"emerge: '{s}' is an empty set\n",
                     level=logging.INFO,
                     noiselevel=-1,
                 )
             else:
                 newargs.extend(set_atoms)
             for error_msg in sets[s].errors:
-                writemsg_level(
-                    "%s\n" % (error_msg,), level=logging.ERROR, noiselevel=-1
-                )
+                writemsg_level(f"{error_msg}\n", level=logging.ERROR, noiselevel=-1)
         else:
             newargs.append(a)
     return (newargs, retval)
@@ -3320,7 +3337,7 @@ def repo_name_check(trees):
         )
         msg.append("")
         for p in missing_repo_names:
-            msg.append("\t%s/profiles/repo_name" % (p,))
+            msg.append(f"\t{p}/profiles/repo_name")
         msg.append("")
         msg.extend(
             textwrap.wrap(
@@ -3332,7 +3349,7 @@ def repo_name_check(trees):
         )
         msg.append("\n")
         writemsg_level(
-            "".join("%s\n" % l for l in msg), level=logging.WARNING, noiselevel=-1
+            "".join(f"{l}\n" for l in msg), level=logging.WARNING, noiselevel=-1
         )
 
     return bool(missing_repo_names)
@@ -3356,9 +3373,9 @@ def repo_name_duplicate_check(trees):
         msg.append("  profiles/repo_name entries:")
         msg.append("")
         for k in sorted(ignored_repos):
-            msg.append("  %s overrides" % ", ".join(k))
+            msg.append(f"  {', '.join(k)} overrides")
             for path in ignored_repos[k]:
-                msg.append("    %s" % (path,))
+                msg.append(f"    {path}")
             msg.append("")
         msg.extend(
             "  " + x
@@ -3371,14 +3388,13 @@ def repo_name_duplicate_check(trees):
         )
         msg.append("\n")
         writemsg_level(
-            "".join("%s\n" % l for l in msg), level=logging.WARNING, noiselevel=-1
+            "".join(f"{l}\n" for l in msg), level=logging.WARNING, noiselevel=-1
         )
 
     return bool(ignored_repos)
 
 
 def run_action(emerge_config):
-
     # skip global updates prior to sync, since it's called after sync
     if (
         emerge_config.action not in ("help", "info", "sync", "version")
@@ -3449,11 +3465,13 @@ def run_action(emerge_config):
 
             try:
                 mytrees["bintree"].populate(
-                    getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
+                    getbinpkgs="--getbinpkg" in emerge_config.opts,
+                    getbinpkg_refresh=True,
+                    **kwargs,
                 )
             except ParseError as e:
                 writemsg(
-                    "\n\n!!!%s.\nSee make.conf(5) for more info.\n" % (e,),
+                    f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n",
                     noiselevel=-1,
                 )
                 return 1
@@ -3470,8 +3488,7 @@ def run_action(emerge_config):
         and emerge_config.opts.get("--autounmask") == "n"
     ):
         writemsg_level(
-            " %s --autounmask-continue has been disabled by --autounmask=n\n"
-            % warn("*"),
+            f" {warn('*')} --autounmask-continue has been disabled by --autounmask=n\n",
             level=logging.WARNING,
             noiselevel=-1,
         )
@@ -3486,11 +3503,7 @@ def run_action(emerge_config):
                 problematic = "PORTAGE_BINPKG_FORMAT"
 
             writemsg_level(
-                (
-                    "emerge: %s is not set correctly. Format "
-                    + "'%s' is not supported.\n"
-                )
-                % (problematic, fmt),
+                f"emerge: {problematic} is not set correctly. Format '{fmt}' is not supported.\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -3508,9 +3521,6 @@ def run_action(emerge_config):
             + "\n",
             noiselevel=-1,
         )
-        return 0
-    if emerge_config.action == "help":
-        emerge_help()
         return 0
 
     spinner = stdout_spinner()
@@ -3543,7 +3553,7 @@ def run_action(emerge_config):
 
     if emerge_config.action == "list-sets":
         writemsg_stdout(
-            "".join("%s\n" % s for s in sorted(emerge_config.target_config.sets))
+            "".join(f"{s}\n" for s in sorted(emerge_config.target_config.sets))
         )
         return os.EX_OK
     if emerge_config.action == "check-news":
@@ -3565,8 +3575,7 @@ def run_action(emerge_config):
         and emerge_config.args
     ):
         writemsg(
-            "emerge: unexpected argument(s) for --resume: %s\n"
-            % " ".join(emerge_config.args),
+            f"emerge: unexpected argument(s) for --resume: {' '.join(emerge_config.args)}\n",
             noiselevel=-1,
         )
         return 1
@@ -3691,7 +3700,7 @@ def run_action(emerge_config):
                 # access is required but the user is not in the portage group.
                 if "--ask" in emerge_config.opts:
                     writemsg_stdout(
-                        "This action requires %s access...\n" % (access_desc,),
+                        f"This action requires {access_desc} access...\n",
                         noiselevel=-1,
                     )
                     if portage.data.secpass < 1 and not need_superuser:
@@ -3708,7 +3717,7 @@ def run_action(emerge_config):
                     emerge_config.opts["--pretend"] = True
                     emerge_config.opts.pop("--ask")
                 else:
-                    sys.stderr.write(("emerge: %s access is required\n") % access_desc)
+                    sys.stderr.write(f"emerge: {access_desc} access is required\n")
                     if portage.data.secpass < 1 and not need_superuser:
                         portage.data.portage_group_warning()
                     return 1
@@ -3720,7 +3729,10 @@ def run_action(emerge_config):
 
     emerge_log_dir = emerge_config.target_config.settings.get("EMERGE_LOG_DIR")
     default_log_dir = os.path.join(
-        os.sep, portage.const.EPREFIX.lstrip(os.sep), "var", "log"
+        os.sep,
+        emerge_config.target_config.settings["BROOT"].lstrip(os.sep),
+        "var",
+        "log",
     )
     for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
         if x in emerge_config.opts:
@@ -3729,10 +3741,10 @@ def run_action(emerge_config):
                 log_dir = emerge_log_dir if emerge_log_dir else default_log_dir
                 disable_emergelog = not all(
                     os.access(logfile, os.W_OK)
-                    for logfile in set(
+                    for logfile in {
                         first_existing(os.path.join(log_dir, logfile))
                         for logfile in ("emerge.log", "emerge-fetch.log")
-                    )
+                    }
                 )
                 break
             else:
@@ -3757,7 +3769,7 @@ def run_action(emerge_config):
             except portage.exception.PortageException as e:
                 writemsg_level(
                     "!!! Error creating directory for "
-                    + "EMERGE_LOG_DIR='%s':\n!!! %s\n" % (emerge_log_dir, e),
+                    + f"EMERGE_LOG_DIR='{emerge_log_dir}':\n!!! {e}\n",
                     noiselevel=-1,
                     level=logging.ERROR,
                 )
@@ -3776,7 +3788,7 @@ def run_action(emerge_config):
         time_str = _unicode_decode(
             time_str, encoding=_encodings["content"], errors="replace"
         )
-        emergelog(xterm_titles, "Started emerge on: %s" % time_str)
+        emergelog(xterm_titles, f"Started emerge on: {time_str}")
         myelogstr = ""
         if emerge_config.opts:
             opt_list = []
@@ -3786,9 +3798,9 @@ def run_action(emerge_config):
                 elif isinstance(arg, list):
                     # arguments like --exclude that use 'append' action
                     for x in arg:
-                        opt_list.append("%s=%s" % (opt, x))
+                        opt_list.append(f"{opt}={x}")
                 else:
-                    opt_list.append("%s=%s" % (opt, arg))
+                    opt_list.append(f"{opt}={arg}")
             myelogstr = " ".join(opt_list)
         if emerge_config.action:
             myelogstr += " --" + emerge_config.action
@@ -3800,7 +3812,7 @@ def run_action(emerge_config):
 
     def emergeexitsig(signum, frame):
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal": signum})
+        portage.util.writemsg(f"\n\nExiting on signal {signum}\n")
         sys.exit(128 + signum)
 
     signal.signal(signal.SIGTERM, emergeexitsig)
@@ -3817,8 +3829,7 @@ def run_action(emerge_config):
     if emerge_config.action in ("config", "metadata", "regen", "sync"):
         if "--pretend" in emerge_config.opts:
             sys.stderr.write(
-                ("emerge: The '%s' action does " + "not support '--pretend'.\n")
-                % emerge_config.action
+                f"emerge: The '{emerge_config.action}' action does not support '--pretend'.\n"
             )
             return 1
 
@@ -3888,7 +3899,6 @@ def run_action(emerge_config):
         return rval
 
     elif emerge_config.action == "info":
-
         # Ensure atoms are valid before calling unmerge().
         vardb = emerge_config.target_config.trees["vartree"].dbapi
         portdb = emerge_config.target_config.trees["porttree"].dbapi
@@ -3922,11 +3932,11 @@ def run_action(emerge_config):
                     )
                     for line in textwrap.wrap(msg, 70):
                         writemsg_level(
-                            "!!! %s\n" % (line,), level=logging.ERROR, noiselevel=-1
+                            f"!!! {line}\n", level=logging.ERROR, noiselevel=-1
                         )
                     for i in e.args[0]:
                         writemsg_level(
-                            "    %s\n" % colorize("INFORM", i),
+                            f"    {colorize('INFORM', i)}\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -3934,10 +3944,10 @@ def run_action(emerge_config):
                     return 1
                 continue
             msg = []
-            msg.append("'%s' is not a valid package atom." % (x,))
+            msg.append(f"'{x}' is not a valid package atom.")
             msg.append("Please check ebuild(5) for full details.")
             writemsg_level(
-                "".join("!!! %s\n" % line for line in msg),
+                "".join(f"!!! {line}\n" for line in msg),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -3965,10 +3975,10 @@ def run_action(emerge_config):
             except OSError:
                 pass
             msg = []
-            msg.append("'%s' is not a valid package atom." % (x,))
+            msg.append(f"'{x}' is not a valid package atom.")
             msg.append("Please check ebuild(5) for full details.")
             writemsg_level(
-                "".join("!!! %s\n" % line for line in msg),
+                "".join(f"!!! {line}\n" for line in msg),
                 level=logging.ERROR,
                 noiselevel=-1,
             )

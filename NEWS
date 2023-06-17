@@ -1,5 +1,630 @@
-portage-3.0.35 (UNRELEASED)
+portage-3.0.49 (UNRELEASED)
 --------------
+
+Bug fixes:
+* Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
+  directories (bug #485100, bug #890812).
+
+* depgraph: Don't ignore downgrades as missed_updates (bug #622270).
+
+* depgraph: Do not allow slotted deps to be satisfied by wrong slots
+  (bug #463976, bug #592880, bug #596664, bug #631490, bug #764365, bug #793992).
+
+  This is the notorious "Perl rebuild" bug where Perl modules would get rebuilt
+  _before_ a new dev-lang/perl and therefore be broken at runtime.
+
+* dosym: Prevent globbing of argument in dosym_canonicalize().
+
+* emerge-webrsync: Give a nicer error message if the requested key isn't
+  on the filesystem (bug #905868).
+
+* glsa-check: appropriately handle more error cases with invalid GLSAs
+  (bug #905660)
+
+portage-3.0.48.1 (2023-06-06)
+----------------
+
+Bug fixes:
+* sync: webrsync: Fix syncing with keyserver explicitly specified (bug #907816).
+
+portage-3.0.48 (2023-06-01)
+--------------
+
+Breaking changes:
+* Output deprecation warnings for portageq, prepstrip and prepallstrip
+  when they are called from an ebuild (bug #906129, bug #906156).
+
+Features:
+* Optimize merge process by only writing files to disk if a package's
+  contents have changed. This is particularly beneficial on CoW filesystems
+  with snapshots. This is always enabled. See bug #722270.
+
+Cleanups:
+* Begin porting to pytest!
+
+Bug fixes:
+* fowners, fperms: Fix handling of relative pathnames (bug #905223).
+
+* emerge-webrsync: Switch Portage to use gemato for when it shells out
+  to emerge-webrsync for repositories configured with sync-type=webrsync
+  (bug #905358).
+
+  This unifies some of the logic between Portage and emerge-webrsync:
+  both of them now use the same main path for PGP verification (i.e.
+  gemato).
+
+* emerge-webrsync: Fall back correctly to manual gpg (rather than aborting
+  entirely) if gemato is not installed (bug #905868).
+
+Cleanups:
+* Convert printf-style %-formats into fstrings.
+
+* Move the internal portageq wrapper script out of the ebuild-helpers
+  directory.
+
+* Drop unused deprecated-path script.
+
+portage-3.0.47 (2023-04-30)
+--------------
+
+Security:
+* emerge-webrsync (the standalone tool) now verifies PGP signatures, see
+  bug #597800. Note that 'sync-type = webrsync' in repos.conf already
+  handled PGP verification when configured to do so (and it is by default).
+
+* dispatch-conf: Avoid race when accessing log file (bug #903973).
+
+Features:
+* install-qa-check.d: 90gcc-warnings: Add additional code quality warnings:
+  - -Wrestrict
+  - -Wstringop-overread
+  - -Wstringop-truncation
+  - -Wformat-truncation
+  - -Wcast-function-type
+  - -Wnull-dereference
+  - -Wmain
+  - -Wimplicit-int
+  - -Wstring-compare
+* install-qa-check.d: cython-dep: Report packages that are using Cython
+  but are missing BDEPEND on it.
+
+Bug fixes:
+* econf now checks for proper end of string in "configure --help" output for
+  all options starting with "--with-", "--disable-" or "--enable-", in order
+  to pass them to configure. This follows a change in PMS (bug #815169).
+
+* All _E_*DESTTREE_ variables to renamed to __E_*DESTTREE, in order to move
+  them to the __* namespace which is reserved for the package manager.
+
+* The PVR variable includes -r0 if explicitly specified (bug #875362).
+
+portage-3.0.46 (2023-04-07)
+--------------
+
+Breaking changes:
+* Drop STREEBOG{256,512} support
+
+  Support was originally added in https://bugs.gentoo.org/597736, but
+  exclusively via two modules (pygost and pygcrypt) which aren't packaged in
+  Gentoo - or seemingly any other major distribution.
+
+  We're dropping both pygost and pygcrypt compatibility: pygost has been
+  removed from pypi and pygcrypt is inactive upstream.
+
+  pygost being yanked from pypi made CI start to fail too and silently dropping
+  it from CI without addressing the situation which was already suboptimal (insufficient
+  testing) wasn't deemed acceptable.
+
+* Inline most code from prepinfo in install_qa_check() (bug #899898).
+  Output a deprecation warning for prepinfo and prepman when they are called
+  from an ebuild.
+
+Cleanups:
+* Drop support for pygcrypt
+
+  The codepath has been disabled since 2017 because of https://bugs.gentoo.org/615620,
+  so let's finally clean it up.
+
+  pygcrypt *prior to 2017* was used for RMD160/WHIRLPOOL/SHA3_256/SHA3_512
+  if hashlib didn't provide these *and* the sha3 module didn't either.
+
+  pygcrypt last received a release in 2017 too.
+
+* Drop support for pyblake2, sha3
+
+  We've only supported >= Python 3.6 for quite some time, so these codepaths are
+  obsolete given hashlib will always provide support for BLAKE2 and SHA3.
+
+  Neither pyblake2 nor sha3 are even packaged in Gentoo anymore either (the
+  Python bindings).
+
+* Drop most of the pycrypto/pycryptodome fallbacks
+
+  >= Python 3.6 includes support for BLAKE2 and SHA3 in hashlib, so these
+  aren't needed anymore.
+
+  pycrypto fallback support continues to exist for RMD160.
+
+* Drop support for WHIRLPOOL logic via mhash
+
+  Drop mhash fallback logic for WHIRLPOOL as we already have:
+      hashlib > pycrypto > bundled C > bundled pure Python
+  in terms of priority for providers.
+
+Features:
+* Respect the NO_COLOR environment variable for disabling color.
+
+  The new quasi-standard for disabling ANSI color is to check for the NO_COLOR
+  environment variable and disable color when the variable has a nonempty value.
+  See bug #898224. Portage previously used NOCOLOR. It continues to support NOCOLOR
+  for a time for compatibility.
+
+* ci: enable running Portage tests on sourcehut builds
+
+  The build manifests and supporting files can be found in .builds/
+
+  Current limitations compared to GitHub actions:
+
+  - Does not test with PyPy (see bug #903709)
+  - Runs all all tests on each push (unless pushed with `-o skip-ci` which skips
+    all tests)
+  - Runs lint and ci jobs concurrently, but each Python version within those is
+    tested sequentially. This means tests will take longer to complete, unless
+    the run fails partway through (~1h vs ~15-20m).
+
+  Benefits compared to GitHub actions:
+
+  - Can monitor test progress over SSH
+  - Can investigate failed tests over SSH
+  - ... not GitHub ;)
+
+Bug fixes:
+* dbapi: Handle mismatched binpkg structure during pkgmoves (bug #877271,
+  bug #903917, bug #903926).
+
+* tests: util/test_shelve: fix test failure if the backend for the shelve module
+  does not create the shelve db using the literal filename.
+
+portage-3.0.45.3 (2023-03-19)
+----------------
+
+Features:
+* New portage FEATURE warn-on-large-env, to emit a warning if portage
+  executes an ebuild-related child process with a large environment.
+
+Bug fixes:
+* repository: config: Handle more error cases when determining repository
+  volatility (bug #900683).
+
+portage-3.0.45.2 (2023-03-04)
+----------------
+
+Bug fixes:
+* repository: config: Fix initial sync of repositories (bug #899208). Regression
+  from portage-3.0.45, but the real bug is from portage-3.0.42.
+
+portage-3.0.45.1 (2023-02-27)
+----------------
+
+Bug fixes:
+* install-qa-check.d/90config-impl-decl: fix handling of non-ASCII quotes when
+  extracting the function name. Detect "-Werror=implicit-function-declaration"
+  as used by GCC.
+
+portage-3.0.45 (2023-02-26)
+--------------
+
+Features:
+* Support new ELF machine code: AMDGPU (bug #795825)
+
+* ebuild: Set GNUMAKEFLAGS="--output-sync=line" to ensure build logs are written
+  to synchronously when running GNU make in parallel. This option is only set if
+  MAKEOPTS and GNUMAKEFLAGS are left unset by the user.
+
+* emerge: add --onlydeps-with-ideps=<y|n> option (bug #890777)
+
+* emerge: add --update-if-installed option. This is useful for one-shot
+  emerge commands to be run across several machines to upgrade packages
+  only if they're installed.
+
+* install-qa-check.d: 60pkgconfig: add opt-in QA_PKGCONFIG_VERSION check
+
+* install-qa-check.d: add 90config-impl-decl to detect -Wimplicit-function-declaration
+  in config.log, CMakeError.log, and meson-log.txt. ebuilds can add functions to
+  the QA_CONFIG_IMPL_DECL_SKIP array to skip false positives.
+
+  The following entries are created in qa.log under the tag 'config.log-impl-decl':
+
+  * 'line' - line number in the config log where the warning is found
+  * 'func' - the function that is implicitly declared
+
+  (bug #892651)
+
+* emerge: Log completion of package installs.
+
+Bug fixes:
+* gpkg: Handle out-of-space errors (bug #891391).
+
+* gpkg: GPG signed gpkg will be ignored for profiles updates.
+
+* binpkg: Show warning if the binhost is missing metadata (outdated). (bug #884869)
+
+* binpkg: Improve error handling for binpkg detection. (bug #893638)
+
+* portage(5): List volatile option as a separate entry (bug #888585).
+
+* emaint: Changed default action for emaint target sync to 'auto'.
+
+* tests: news: significantly improved test coverage (bug #889330).
+
+* git: also report sync errors for volatile repos. Portage would previously simply
+  report success if an volatile repository failed to sync (bug #895526).
+
+* git: correct detection of volatile repositories (bug #895526).
+
+* ebuild(5): alphabetize QA_* vars
+
+portage-3.0.44 (2023-01-15)
+--------------
+
+Features:
+* emerge: Show time taken to calculate dependency resolution with
+  emerge --verbose.
+
+* cleanups: Use flynt on the codebase to upgrade to Python f-strings everywhere.
+
+* process: Show diagnostic message if exec failed with E2BIG
+
+Bug fixes:
+* ebuild: the PATH variable exported to ebuilds has been changed:
+  The PATH setting from /etc/profile.env is appended to portage-internal
+  paths, and ROOTPATH is no longer included (bug #607696, #693308, #888543).
+
+* emerge: Fix installation of binpkgs by path (bug #873202, bug #890291).
+
+* Fix crash with pypy when PORTAGE_SCHEDULING_POLICY has been set (bug #876031).
+
+portage-3.0.43 (2023-01-02)
+--------------
+
+Bug fixes:
+* news: Fix matching profile paths with Display-If-Profile in some cases.
+
+* checksum: Rewrite Whirlpool implementation as a C extension to substantially improve
+  performance (bug #885909).
+
+  This only takes effect with OpenSSL 3 and newer (unnecessary otherwise).
+
+  Whirlpool is considered deprecated within Portage and we recommend that
+  repository maintainers remove it from `metadata/layout.conf`!
+
+* sync: git: Fix "is shallow git repository" check.
+
+* bin: Rewrite signal handling which will now correctly rethrow SIGINT
+  and not confuse shells (bug #887817).
+
+* bin: Pass -S to file(1) to avoid seccomp sandbox issues (bug #811462, bug #889046).
+
+  Files being installed by Portage are generally trusted but also the
+  syscalls allowed by file are quite broad anyway.
+
+  Things can go catastrophically wrong if file misses valid input,
+  as we may have invalid VDB metadata.
+
+portage-3.0.42 (2022-12-26)
+--------------
+
+Breaking changes:
+* Portage changed its git sync behaviour for repositories with sync-type=git.
+
+  Recently in Portage 3.0.39 (for sync depth) and Portage 3.0.40 (git reset/clobbering),
+  Portage started doing two things:
+
+  1. Clobbering changes to repositories with sync-type=git
+
+  If git is pulling from a CDN, Portage may on one sync receive state X, but
+  on a subsequent sync receive state X-1. This can cause an odd state
+  where git wants to resolve conflicts and manual intervention is required,
+  hence needing git reset.
+
+  This situation was often worse with sync-depth=1 and would lead
+  to orphaned files hence needing git clean.
+
+  2. Defaulted to sync-depth=clone-depth=1.
+
+  The motivation here was because of disk space growing unbounded
+  otherwise, as a full disk could lead to sync failure. It also makes sense
+  when considered within the school of thought / motivation listed above
+  (prioritising a successful sync and then making an optimisation
+  based on how we achieve that).
+
+  Portage 3.0.42 will now only make a repository shallow if:
+  1. volatile=yes and it is a new sync (i.e. it was not deep before), or
+  2. volatile=no  and sync-depth is unset in repos.conf.
+
+  --
+
+  To allow users to opt-out of these destructive changes, we now
+  have a repository setting called 'volatile'.
+
+  * If volatile=yes, the repository is assumed to be user-modifiable
+    and Portage will NOT prioritise successful sync over preserving
+    repository state.
+
+  * If volatile=no, the repository is assumed to only be modified
+    by Portage, and Portage will try its best to ensure syncs continue
+    to work.
+
+  The default value of 'volatile' is determined as follows:
+  - If the repository is under /var/db/repos or if it is owned by either
+    'portage' or 'root', then it defaults to 'no'. That is, portage
+    assumes full control over the repository, potentially performing
+    destructive changes to the repository.
+  - If the repository is not under /var/db/repos or owned by a different
+    user than 'portage' or 'root', then it defaults to 'yes'. That is,
+    portage assumes the repository is user owned and does *not* perform
+    any destructive changes.
+
+Features:
+* cnf: make.conf.example.loong: add for the loong arch (bug #884135).
+
+* sync: git: only perform destructive operations like 'git reset' to keep
+  sync working and the repository in a predictable state for sync-type=git
+  repositories if the repository is not marked volatile.
+
+* sync: git: only perform shallow updates if the repository is a shallow one
+  or if the repository is not marked volatile.
+
+* sync: git: run 'git clean' in git repositories if they are marked as
+  non-volatile.
+
+Bug fixes:
+* glsa: Abort if a GLSA's arch list doesn't match the expected format (bug #882797).
+
+* install-qa-check.d: 60pkgconfig: avoid using grep -P (PCRE) unnecessarily (bug #884285).
+
+* etc-update: Apply defences for patsub_replacement being default on in Bash 5.2
+  (bug #881383).
+
+* make.conf(5): Note the various file suffixes / file extensions used
+  for binary packages.
+
+* logging: Write logs under BROOT, not EPREFIX.
+
+portage-3.0.41 (2022-11-04)
+--------------
+
+Features:
+* vartree: On collisions which are non-fatal (e.g. orphaned files when using
+  FEATURES="protect-owned"), Portage now has friendlier output
+  by using ewarn rather than eerror.
+
+* cleanups: Use pyupgrade on the codebase (up to Python 3.8) to use newer
+  idioms.
+
+Bug fixes:
+* Fixed possible corruption of GPKG multi-instance binary packages on upgrade.
+  Bug #877271.
+
+portage-3.0.40 (2022-12-01)
+--------------
+
+Features:
+* Optimize _slot_operator_check_reverse_dependencies by caching using
+  lru_cache. In a ChromeOS use case, this patch decreases the running time from
+  311s to 197s with almost no memory usage increase. See bug #883071.
+
+* config: /etc/portage/sets.conf can now be a directory. Ditto for the Portage extension
+  supporting sets.conf in ebuild repositories.
+
+* sets: Tests added for VariableSet changes to check @golang-rebuild works as
+  intended.
+
+* cleanups: Drop long-obsolete Jython compatibility code.
+
+* cleanups: Use designated initializer syntax in src/ (C bits).
+
+* Add support for a distinct SYSROOT location that is not equal to / or ROOT.
+  This is only expected to be used for cross-bootstrapping a new system from
+  scratch using a crossdev environment under /usr/${CHOST}.
+
+Bug fixes:
+* ebuild: Handle Bash 5.2's change in behavior which enables the shopt
+  'patsub_replacement' by default. This is needed to avoid breaking existing
+  working ebuilds. Future EAPIs will need to adjust the logic
+  added by this change. See bug #881383.
+
+* sync: Clobber repositories using sync-type=git to match rsync behavior. This
+  helps with issues where git-synced repositories can become confused
+  if the remote is a CDN and then starts to diverge, preventing further
+  syncs.
+
+* portage: sets: Fix DeprecationWarning in sets.
+
+* install-qa-check.d: 90gcc-warnings: Disable -Wimplicit-function-declaration being
+  fatal for now. The number of failures in bug #870412 is too large for the time
+  being.
+
+* Fix definition of ESYSROOT to use SYSROOT's prefix. For a given location, we
+  were basing ESYSROOT on the prefix of that location instead of the prefix used
+  by the SYSROOT location. For example, if BROOT=/foo, ROOT=/bar, EPREFIX=/baz,
+  EROOT=/bar/baz, and SYSROOT=/ then ESYSROOT should be /foo, not /baz.
+
+* depgraph: Resolve atoms using the correct root. This bug may have played out
+  in different ways, but one example was a rebuild in / causing the same package
+  to be added to ROOT, even when it had no other reason to be. See bug #520112.
+
+* env-update: Also generate PATH definition in systemd user environment file
+  /etc/environment.d/10-gentoo-env.conf
+
+* bintree: Properly assign filenames for remote binpkgs.
+
+* --disable-static is only passed for libtool-enabled configure scripts in EAPI 8.
+  This avoids annoying warnings when a configure script has a flag such as
+  --disable-static_link that would then trigger a QA warning (bug #814380).
+
+portage-3.0.39 (2022-11-20)
+--------------
+
+Features:
+* gpkg: Call xz and zstd with -T N where N is the number of jobs from ${MAKEOPTS}
+  for parallel compression (xz & zstd) and decompression (xz with newer versions).
+
+* gpkg: Add per format compression flags for binpkgs. This adds new config
+  options BINPKG_COMPRESS_FLAGS_[format] to be used for different compression
+  methods. General BINPKG_COMPRESS_FLAGS will be ignored if current method had
+  specified BINPKG_COMPRESS_FLAGS_[format] (bug #871573).
+
+* sync: git: git will sync with --depth=1 unless otherwise specified in repos.conf
+  (bug #824782).
+
+* install-qa-check.d: 90gcc-warnings: Add additional code quality warnings
+  which are indicative of problems with LTO in particular:
+  * -Wbuiltin-declaration-mismatch
+  * -Wlto-type-mismatch (LTO esp.)
+  * -Wmismatched-dealloc
+  * -Wodr (LTO esp.)
+  * -Wreturn-type
+  * -Wstringop-overflow (GCC, FORTIFY_SOURCE)
+  * -Wfortify-source (Clang, FORTIFY_SOURCE)
+  * -Wstrlcpy-strlcat-size
+  * -Wstrncat-size
+  * -Wsuspicious-bzero
+  * -Wvarargs
+  * -Wargument-undefined-behaviour (Clang)
+  * -Wincompatible-function-pointer-types (Clang, becomes fatal in Clang 16)
+    (note we already have -Wincompatible-pointer-types in the list for GCC)
+  * -Wundefined-reinterpret-cast (Clang, C++ strict aliasing)
+  * -Wcast-function-type-strict (Clang, CFI)
+  * Further -Wformat matches for missing specifiers.
+    In future, we may warn on all -Wformat (in particular because of e.g.
+    time_t & LFS).
+
+* install-qa-check.d: 90gcc-warnings: Always die on -Wimplicit-function-declaration
+  and remove bin/check-implicit-pointer-usage.py of dubious licencing (it was
+  broken since GCC 4.5 because of output changes anyway, bug #365655).
+
+  -Wimplicit-function-declaration becomes an error in Clang 16 onwards and
+  GCC is likely to do the same from 14 onwards. See bug #870412.
+
+* ecompress, etc: Support additional compression suffixes for texinfo:
+  .Z, .bz2, .lzma, .lz, .xz, .zst (bug #757525).
+
+Bug fixes:
+* binpkg: Deprecate BINPKG_FORMAT in the binpkg manifest ('Packages') because
+  it can become out-of-sync with reality and shouldn't be relied upon anyway
+  (bug #877419).
+
+* binpkg: Add various asserts / integrity checks to detect structure mismatches
+  and detect problems earlier (bug #877357, bug #877271, bug #877419).
+
+* binpkg: gpkg: Try to correct mismatched structures (old/new gpkg structure)
+  (bug #877271).
+
+* binpkg: gpkg: Handle package renames ('updates') where the same category was
+  used but with a new package name (bug #877357).
+
+* binpkg: gpkg: Don't silence compressor stderr to ease debugging (bug #877215).
+
+* Manifest: Fix Manifest.addFile() calls and add tests (bug #875860).
+
+* ecompress, etc: Pass --quiet to xz to reduce noise from "reducing threads"
+  messages.
+
+* ecompress, etc: Pass --memlimit-compress=50% to xz to avoid breakage
+  on 32-bit systems with large -Tn. Required for < xz-5.3.3_alpha and
+  has an equivalent effect to the limiting that comes with newer xz versions.
+  We don't need it for decompression as it's there by default in newer xz
+  and it's a no-op in older xz.
+
+* emerge(1), make.conf(5), xpak(5): document BINPKG_FORMAT and the gpkg binary
+  packate format further.
+
+* sync: git: Fix sync printing local repo path (bug #875812)
+
+portage-3.0.38.1 (2022-10-04)
+----------------
+
+Bug fixes:
+* ecompress: Fix typo in ___makeopts_jobs (bug #874597).
+
+portage-3.0.38 (2022-10-01)
+--------------
+
+Features:
+* unpack now calls xz(1) with -T N where N is the number of jobs from ${MAKEOPTS}.
+  This allows decompression in parallel with new enough xz (>= xz-utils 5.3.3 alpha)
+  and where the source file was compressed using the parallel xz compressor
+  (which becomes the default with newer xz too).
+
+* portage: sets: Parse INCLUDES/EXCLUDES in VariableSet which allows properly
+  checking for dependencies. Update @golang-rebuild accordingly which now
+  includes all packages depending on dev-lang/go (bug #827974, bug #865115)
+
+* cnf: Provide a @rust-rebuild set, similar to @golang-rebuild.
+
+* bin: ecompress: xz, zstd: Pass -T N where N is the number of jobs from ${MAKEOPTS}
+  to xz, zstd for parallel compression.
+
+* bin: ecompress: xz: Pass -9 to xz for compression level like we do for bzip2 & gzip.
+
+Bug fixes:
+* emerge: Scheduler: Fix filenames for binpkgs in some cases - reuse existing
+  filename and don't allocate a new one (bug #872392).
+
+* dbapi: bintree: Avoid fetching 'Packages' multiple times (bug #864259).
+
+* binpkg: Handle failure of various BINPKG_COMPRESS_* commands (bug #871570).
+
+* data: Fix PORTAGE_USERNAME default (bug #873088).
+
+* bin: isolated-functions.sh: return number of CPUs in ___makeopts_jobs as default
+  instead of 1 to match Portage's behavior on the Python side.
+
+* bin: ecompress: Recognize .lz, .lzo, .lz4, and .zst as compressed file
+  suffixes for the purposes of the internal compressed file collision check.
+
+* bin: ecompress: zstd: Set '-q --rm' in PORTAGE_COMPRESS_FLAGS to behave
+  like other compressors.
+
+* portage: _global_updates: Fix update summary output.
+
+portage-3.0.37 (2022-09-23)
+--------------
+
+Bug fixes:
+* _emerge: SpawnProcess: Avoid sandbox violations with PROPERTIES="interactive"
+  when accessing /dev/tty* (bug #870310).
+
+* _emerge: Binpkg: Don't create empty stray binpkgs (bug #870283).
+
+* bin: gpkg-sign: Check gpg configuration before using (bug #869470).
+
+* portage: gpkg: Allow missing files (needed for when ebuilds touch
+  ${EROOT} in pkg_*) when creating binpkgs with quickpkg (bug #870229).
+
+* portage: getbinpkg: Fix --getbinpkgonly command list with e.g. rsync (bug #866197).
+
+* portage: checksum: Fix PORTAGE_CHECKSUM_FILTER. Regression from 3.0.31.
+
+portage-3.0.36 (2022-09-09)
+--------------
+
+Bug fixes:
+* The layout of gpkg (new binpkg format) packages has been fixed (bug #865905).
+
+* Fix getbinpkg fetching (bug #864160).
+
+portage-3.0.35 (2022-08-23)
+--------------
+
+Features:
+* Portage can now set scheduling policies using the PORTAGE_SCHEDULING_POLICY
+  and PORTAGE_SCHEDULING_PRIORITY variables. See make.conf.example for details.
+
+  See also https://wiki.gentoo.org/wiki/Portage_niceness.
+
+* The header of build.log now contains the package's slot (bug #864382).
 
 Bug fixes:
 * xml: Fix XML node parsing (resulted in duplicate USE flag descriptions
@@ -7,7 +632,75 @@ Bug fixes:
   consumer (gentoolkit, and only as of its most recent releases), so
   impact is not severe.
 
+* portage: dbapi: porttree: fix _set_porttrees() to operate correctly if passed
+  a generator. Fixes e.g. blank emerge --metadata caches in /var/cache/edb
+  which affected eix (bug #865635). Regression from 3.0.31.
+
+* logging: don't clutter with a global logger and instead scope to
+  each module. Allows further logging refactoring in future.
+
+* estrip: fix double slash for older EAPIs (bug #862600).
+
+* estrip: avoid spurious NEEDED warning when no ELF files installed for
+  < EAPI 7 (bug #749624, bug #862606).
+
+* estrip: apply scanelf optimisation for EAPI 7+ too (bug #749624, bug #862606).
+
+* dispatch-conf: respect (E)ROOT
+
+* install-qa-check.d: 60pkgconfig: drop noisy pkg-config mismatched Version
+  field check (bug 857654).
+
+* install-qa-check.d: 60pkgconfig: fix --validate check by adding
+  ${ED}/usr/{lib*,share} to search path.
+
+* install-qa-check.d: 60pkgconfig: only check defined variables for
+  ${EPREFIX} compliance (bug 860825).
+
+* install-qa-check.d: 60pkgconfig: display the detected version from
+  the .pc file (improves the QA warning output), and hint to the user/developer
+  about the existence of QA_PKGCONFIG_VERSION to silence the warning.
+
+* install-qa-check.d: 60pkgconfig: use eqatag for nicer output.
+
+* install-qa-check.d: 60pkgconfig: use ver_test where possible in version
+  comparison checks to avoid warning if the Version field in the .pc file
+  is equivalent to the ebuild version.
+
+* install-qa-check.d: 80libraries: include Darwin/Mach-O objects in checks.
+
+* install-qa-check.d: 80multilib-strict: use file/find from Prefix instead
+  of absolute paths in /usr/bin.
+
+* install-qa-checks.d: 90gcc-warnings: add arm64, aarch64 (used by Apple),
+  loongarch64, riscv64, s390x to list of 64-bit arches which affects the
+  severity of some warnings (like pointer truncation).
+
+* install-qa-check.d: 90world-writable: include EPREFIX in paths.
+
+* portage: output: update obsolete /etc/init.d/functions.sh path.
+
+* bin: style tweaks to conform to Gentoo style (mostly variable bracing).
+
+* doins: fix D check, add EPREFIX check
+
+* misc-functions.sh: add Prefix fixups, like including EPREFIX in
+  INSTALL_MASK for /usr/share for noman, noinfo, nodoc.
+
+* phase-function.sh: mark ED, EROOT read-only variables
+
+* eapi.sh: cleanup obsolete references to unofficial 5-hdepend EAPI.
+
+* isolated-functions.sh: sync __makeopts_jobs implementation with
+  multiprocessing.eclass.
+
 * ebuild(1): improve descriptions of various phase functions.
+
+* emerge(1): mention --with-bdeps=n behavior for both --usepkg (-k) and
+  --usepkgonly (-K) (bug #863422).
+
+* ecompress: add option to lz4 in order to be able to compress multiple
+  files at once (bug #672916).
 
 portage-3.0.34 (2022-07-20)
 --------------

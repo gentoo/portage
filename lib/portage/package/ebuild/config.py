@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -135,8 +135,7 @@ def autouse(myvartree, use_cache=1, mysettings=None):
 def check_config_instance(test):
     if not isinstance(test, config):
         raise TypeError(
-            "Invalid type for config object: %s (should be %s)"
-            % (test.__class__, config)
+            f"Invalid type for config object: {test.__class__} (should be {config})"
         )
 
 
@@ -148,7 +147,7 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
             return top_dict[x][key]
     if EmptyOnError:
         return ""
-    raise KeyError("Key not found in list; '%s'" % key)
+    raise KeyError(f"Key not found in list; '{key}'")
 
 
 def _lazy_iuse_regex(iuse_implicit):
@@ -160,7 +159,7 @@ def _lazy_iuse_regex(iuse_implicit):
     # Escape anything except ".*" which is supposed to pass through from
     # _get_implicit_iuse().
     regex = sorted(re.escape(x) for x in iuse_implicit)
-    regex = "^(%s)$" % "|".join(regex)
+    regex = f"^({'|'.join(regex)})$"
     regex = regex.replace("\\.\\*", ".*")
     return regex
 
@@ -168,7 +167,7 @@ def _lazy_iuse_regex(iuse_implicit):
 class _iuse_implicit_match_cache:
     def __init__(self, settings):
         self._iuse_implicit_re = re.compile(
-            "^(%s)$" % "|".join(settings._get_implicit_iuse())
+            f"^({'|'.join(settings._get_implicit_iuse())})$"
         )
         self._cache = {}
 
@@ -426,7 +425,6 @@ class config:
             eprefix = locations_manager.eprefix
             config_root = locations_manager.config_root
             sysroot = locations_manager.sysroot
-            esysroot = locations_manager.esysroot
             broot = locations_manager.broot
             abs_user_config = locations_manager.abs_user_config
             make_conf_paths = [
@@ -469,6 +467,7 @@ class config:
             locations_manager.set_root_override(make_conf.get("ROOT"))
             target_root = locations_manager.target_root
             eroot = locations_manager.eroot
+            esysroot = locations_manager.esysroot
             self.global_config_path = locations_manager.global_config_path
 
             # The expand_map is used for variable substitution
@@ -554,9 +553,7 @@ class config:
                 user_auxdbmodule is not None
                 and user_auxdbmodule in self._module_aliases
             ):
-                warnings.warn(
-                    "'%s' is deprecated: %s" % (user_auxdbmodule, modules_file)
-                )
+                warnings.warn(f"'{user_auxdbmodule}' is deprecated: {modules_file}")
 
             self.modules["default"] = {
                 "portdbapi.auxdbmodule": "portage.cache.flat_hash.mtime_md5_database",
@@ -589,9 +586,9 @@ class config:
                 env = os.environ
 
             # Avoid potential UnicodeDecodeError exceptions later.
-            env_unicode = dict(
-                (_unicode_decode(k), _unicode_decode(v)) for k, v in env.items()
-            )
+            env_unicode = {
+                _unicode_decode(k): _unicode_decode(v) for k, v in env.items()
+            }
 
             self.backupenv = env_unicode
 
@@ -707,7 +704,7 @@ class config:
                     )
                     for x in profiles_complex
                 ]
-            except EnvironmentError as e:
+            except OSError as e:
                 _raise_exc(e)
 
             self.packages = tuple(stack_lists(packages_list, incremental=1))
@@ -1114,7 +1111,6 @@ class config:
             except OSError:
                 pass
             else:
-
                 if portage.data._unprivileged_mode(eroot_or_parent, eroot_st):
                     unprivileged = True
 
@@ -1346,7 +1342,7 @@ class config:
                     _("!!! Directory initialization failed: '%s'\n") % mydir,
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
 
     @property
     def _keywords_manager(self):
@@ -1582,6 +1578,17 @@ class config:
                     noiselevel=-1,
                 )
             else:
+                if (
+                    self.get(
+                        f"BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}", None
+                    )
+                    is not None
+                ):
+                    compression["compress"] = compression["compress"].replace(
+                        "${BINPKG_COMPRESS_FLAGS}",
+                        f"${{BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}}}",
+                    )
+
                 try:
                     compression_binary = shlex_split(
                         portage.util.varexpand(compression["compress"], mydict=self)
@@ -1672,7 +1679,6 @@ class config:
         self.regenerate()
 
     class _lazy_vars:
-
         __slots__ = ("built_use", "settings", "values")
 
         def __init__(self, built_use, settings):
@@ -1742,9 +1748,9 @@ class config:
         def __getitem__(self, key):
             prefix = key.lower() + "_"
             prefix_len = len(prefix)
-            expand_flags = set(
+            expand_flags = {
                 x[prefix_len:] for x in self._use if x[:prefix_len] == prefix
-            )
+            }
             var_split = self._use_expand_dict.get(key, "").split()
             # Preserve the order of var_split because it can matter for things
             # like LINGUAS.
@@ -2180,7 +2186,7 @@ class config:
                 "fi; "
                 "[[ -n ${___PORTAGE_IUSE_HASH[$1]} ]]; "
                 "}"
-            ) % " ".join('["%s"]=1' % x for x in portage_iuse)
+            ) % " ".join(f'["{x}"]=1' for x in portage_iuse)
         else:
             portage_iuse = self._get_implicit_iuse()
             portage_iuse.update(explicit_iuse)
@@ -2222,7 +2228,7 @@ class config:
         # Use the calculated USE flags to regenerate the USE_EXPAND flags so
         # that they are consistent. For optimal performance, use slice
         # comparison instead of startswith().
-        use_expand_split = set(x.lower() for x in self.get("USE_EXPAND", "").split())
+        use_expand_split = {x.lower() for x in self.get("USE_EXPAND", "").split()}
         lazy_use_expand = self._lazy_use_expand(
             self,
             unfiltered_use,
@@ -2233,7 +2239,7 @@ class config:
             self._use_expand_dict,
         )
 
-        use_expand_iuses = dict((k, set()) for k in use_expand_split)
+        use_expand_iuses = {k: set() for k in use_expand_split}
         for x in portage_iuse:
             x_split = x.split("_")
             if len(x_split) == 1:
@@ -2298,7 +2304,7 @@ class config:
                     if k in protected_keys or k in non_user_variables:
                         writemsg(
                             "!!! Illegal variable "
-                            + "'%s' assigned in '%s'\n" % (k, penvfile),
+                            + f"'{k}' assigned in '{penvfile}'\n",
                             noiselevel=-1,
                         )
                     elif k in incrementals:
@@ -2796,10 +2802,8 @@ class config:
 
         myflags = set()
         for mykey, incremental_list in increment_lists.items():
-
             myflags.clear()
             for mysplit in incremental_list:
-
                 for x in mysplit:
                     if x == "-*":
                         # "-*" is a special "minus" var that means "unset all settings".
@@ -2899,7 +2903,6 @@ class config:
             iuse = [x.lstrip("+-") for x in iuse.split()]
         myflags = set()
         for curdb in self.uvlist:
-
             for k in use_expand_unprefixed:
                 v = curdb.get(k)
                 if v is None:
@@ -3048,9 +3051,9 @@ class config:
             for k in use_expand:
                 prefix = k.lower() + "_"
                 prefix_len = len(prefix)
-                expand_flags = set(
+                expand_flags = {
                     x[prefix_len:] for x in myflags if x[:prefix_len] == prefix
-                )
+                }
                 var_split = use_expand_dict.get(k, "").split()
                 var_split = [x for x in var_split if x in expand_flags]
                 var_split.extend(sorted(expand_flags.difference(var_split)))
@@ -3155,7 +3158,6 @@ class config:
                 return ""
 
     def _getitem(self, mykey):
-
         if mykey in self._constant_keys:
             # These two point to temporary values when
             # portage plans to update itself.
@@ -3181,7 +3183,7 @@ class config:
                 return ":".join(value)
 
             if mykey == "PORTAGE_GID":
-                return "%s" % portage_gid
+                return f"{portage_gid}"
 
         for d in self.lookuplist:
             try:
@@ -3254,8 +3256,7 @@ class config:
         "set a value; will be thrown away at reset() time"
         if not isinstance(myvalue, str):
             raise ValueError(
-                "Invalid type being used as a value: '%s': '%s'"
-                % (str(mykey), str(myvalue))
+                f"Invalid type being used as a value: '{str(mykey)}': '{str(myvalue)}'"
             )
 
         # Avoid potential UnicodeDecodeError exceptions later.
@@ -3349,14 +3350,9 @@ class config:
         if not (src_like_phase and eapi_attrs.broot):
             mydict.pop("BROOT", None)
 
-        # Prefix variables are supported beginning with EAPI 3, or when
-        # force-prefix is in FEATURES, since older EAPIs would otherwise be
-        # useless with prefix configurations. This brings compatibility with
-        # the prefix branch of portage, which also supports EPREFIX for all
-        # EAPIs (for obvious reasons).
         if phase == "depend" or (
-            "force-prefix" not in self.features
-            and eapi is not None
+            # Prefix variables are supported beginning with EAPI 3.
+            eapi is not None
             and not eapi_supports_prefix(eapi)
         ):
             mydict.pop("ED", None)

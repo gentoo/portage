@@ -3,7 +3,6 @@
 
 
 class DependencyArg:
-
     __slots__ = ("arg", "force_reinstall", "internal", "reset_depth", "root_config")
 
     def __init__(
@@ -33,4 +32,4 @@ class DependencyArg:
         return hash((self.arg, self.root_config.root))
 
     def __str__(self):
-        return "%s" % (self.arg,)
+        return f"{self.arg}"

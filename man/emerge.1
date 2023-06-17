@@ -1,11 +1,11 @@
-.TH "EMERGE" "1" "Dec 2021" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Mar 2023" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
 .TP
 .BR emerge
-[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIfile\fR |
-\fI@set\fR | \fIatom\fR] ...
+[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2 file\fR | \fIgpkg file\fR |
+\fIfile\fR | \fI@set\fR | \fIatom\fR] ...
 .TP
 .BR emerge
 \fB\-\-sync\fR [\fIrepo\fR | \fIalias\fR] ...
@@ -30,8 +30,8 @@ distribution.
 .SH "EBUILDS, TBZ2S, SETS AND ATOMS"
 \fBemerge\fR primarily installs packages.  You can specify
 packages to install in five possible ways: an \fIatom\fR,
-a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR, or
-a \fItbz2file\fR.
+a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR, a
+a \fItbz2\fR file, or a \fIgpkg\fR file.
 .LP
 .TP
 .BR ebuild
@@ -47,10 +47,16 @@ The \fIebuild\fR may also be an actual filename, such as
 \fBWARNING:\fR The implementation of \fBemerge /path/to/ebuild\fR is broken and
 so this syntax shouldn't be used.
 .TP
-.BR tbz2file
-A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
+.BR "tbz2 file"
+A \fItbz2\fR file must be a valid .tbz2 created with \fBebuild
 <package>\-<version>.ebuild package\fR or \fBemerge \-\-buildpkg
 [category/]<package>\fR or \fBquickpkg [category/]<package>\fR.
+.TP
+.BR "gpkg file"
+A \fIgpkg\fR file must be a valid .gpkg created with \fBebuild
+<package>\-<version>.ebuild package\fR or \fBemerge \-\-buildpkg
+[category/]<package>\fR or \fBquickpkg [category/]<package>\fR
+with \fBBINPKG_FORMAT="gpkg"\fR.
 .TP
 .BR file
 A \fIfile\fR must be a file or directory that has been installed by one or
@@ -99,9 +105,9 @@ specific \fBSLOT\fR by appending a colon and a \fBSLOT\fR. Example:
 If no action is specified, the action is to merge in the specified
 packages, satisfying any dependencies that they may have.  The
 arguments can be \fIatoms\fR, \fIsets\fR, installed \fIfiles\fR,
-\fIebuilds\fR, or \fItbz2s\fR.
+\fIebuilds\fR, \fItbz2s\fR, or \fIgpkgs\fR.
 \fBNote that you need to use the \-\-usepkg
-option if you want to install a tbz2\fR.  The packages are added
+option if you want to install a tbz2 or a gpkg.\fR  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.
 .TP
@@ -457,10 +463,10 @@ naturally oppose eachother.
 Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers
 or if you administrate multiple Gentoo Linux systems (build once,
-emerge tbz2s everywhere) as well as disaster recovery. The package
+emerge tbz2s or gpkgs everywhere) as well as disaster recovery. The package
 will be created in the \fBPKGDIR\fR directory (see \fBmake.conf\fR(5)).
 An alternative for already\-merged
-packages is to use \fBquickpkg\fR(1) which creates a tbz2 from the
+packages is to use \fBquickpkg\fR(1) which creates a tbz2 or gpkg from the
 live filesystem.
 .TP
 .BR \-\-buildpkg\-exclude " ATOMS"
@@ -507,9 +513,10 @@ has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
 information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-color < y | n >"
-Enable or disable color output.  This option will override \fINOCOLOR\fR
-(see \fBmake.conf\fR(5)) and may also be used to force color output when stdout
-is not a tty (by default, color is disabled unless stdout is a tty).
+Enable or disable color output.  This option will override \fINO_COLOR\fR
+and \fINOCOLOR\fR (see \fBmake.conf\fR(5)) and may also be used to force
+color output when stdout is not a tty (by default, color is disabled
+unless stdout is a tty).
 .TP
 .BR \-\-columns
 Used alongside \fB\-\-pretend\fR to cause the package name, new version,
@@ -794,6 +801,11 @@ Include run time dependencies when \fB\-\-onlydeps\fR is specified.
 When this is disabled only build time dependencies are included. This
 option is enabled by default.
 .TP
+.BR "\-\-onlydeps\-with\-ideps < y | n >"
+Include install time dependencies when \fB\-\-onlydeps\fR and
+\fB\-\-onlydeps\-with\-rdeps=n\fR are both specified. This option is
+disabled by default.
+.TP
 .BR "\-\-package\-moves [ y | n ]"
 Perform package moves when necessary. This option is enabled
 by default. Package moves are typically applied immediately
@@ -1043,6 +1055,12 @@ the command line are greedy, meaning that unspecific
 atoms may match multiple versions of slotted packages.
 This option also implies the \fB\-\-selective\fR option.
 .TP
+.BR \-\-update\-if\-installed
+Acts similar to \fB\-\-update\fR except it updates packages
+passed as arguments to the best version available only if they are
+already installed.  This is useful for oneshot commands across
+a series of systems to upgrade away from a buggy version.
+.TP
 .BR "\-\-use\-ebuild\-visibility [ y | n ]"
 Use unbuilt ebuild metadata for visibility
 checks on built packages.
@@ -1056,13 +1074,16 @@ Tells emerge to use binary packages (from $PKGDIR) if they are available, thus
 possibly avoiding some time\-consuming compiles.  This option is useful for CD
 installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to
 have emerge "pull" binary packages from the CD in order to satisfy
-dependencies.
+dependencies.  Note this option implies \fB\-\-with\-bdeps=n\fR.  To include
+build time dependencies, \fB\-\-with\-bdeps=y\fR must be specified explicitly.
 .TP
 .BR "\-\-usepkgonly [ y | n ]" ", " \-K
 Tells emerge to only use binary packages (from $PKGDIR).  All the binary
 packages must be available at the time of dependency calculation or emerge
 will simply abort.  Portage does not use ebuild repositories when calculating
-dependency information so all masking information is ignored.
+dependency information so all masking information is ignored.  Like \fB\-k\fR
+above, this option implies \fB\-\-with\-bdeps=n\fR.  To include build time
+dependencies, \fB\-\-with\-bdeps=y\fR must be specified explicitly.
 .TP
 .BR "\-\-usepkg\-exclude\-live [ y | n ]"
 Tells emerge to not install from binary packages for live ebuilds.

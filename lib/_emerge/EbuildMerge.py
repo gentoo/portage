@@ -10,7 +10,6 @@ from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 
 
 class EbuildMerge(CompositeTask):
-
     __slots__ = (
         "exit_hook",
         "find_blockers",
@@ -70,19 +69,19 @@ class EbuildMerge(CompositeTask):
         pkg_path = self.pkg_path
         logger = self.logger
         if "noclean" not in self.settings.features:
-            short_msg = "emerge: (%s of %s) %s Clean Post" % (
+            short_msg = "emerge: ({} of {}) {} Clean Post".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
             )
             logger.log(
-                (" === (%s of %s) " + "Post-Build Cleaning (%s::%s)")
-                % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path),
+                f" === ({pkg_count.curval} of {pkg_count.maxval}) "
+                f"Post-Build Cleaning ({pkg.cpv}::{pkg_path})",
                 short_msg=short_msg,
             )
         logger.log(
-            " ::: completed emerge (%s of %s) %s to %s"
-            % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root)
+            f" ::: completed emerge ({pkg_count.curval} of {pkg_count.maxval}) "
+            f"{pkg.cpv} to {pkg.root}"
         )
 
         self._start_exit_hook(self.returncode)

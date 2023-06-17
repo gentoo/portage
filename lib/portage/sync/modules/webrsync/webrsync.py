@@ -1,28 +1,33 @@
 """WebRsync module for portage"""
 
-import io
 import logging
 
 import portage
 from portage import os
 from portage.util import writemsg_level
-from portage.util.futures import asyncio
 from portage.output import create_color_func
+from portage.sync.syncbase import SyncBase
 
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from portage.sync.syncbase import SyncBase
 
 try:
-    from gemato.exceptions import GematoException
     import gemato.openpgp
 except ImportError:
     gemato = None
 
 
 class WebRsync(SyncBase):
-    """WebRSync sync class"""
+    """WebRSync sync class
+
+    This class implements syncing via calls to an external binary, either:
+    - emerge-delta-webrsync (if sync-webrsync-delta is set), or
+    - emerge-webrsync
+
+    It wraps them and performs PGP verification if sync-webrsync-verify-signature
+    is set via gemato.
+    """
 
     short_desc = "Perform sync operations on webrsync based repositories"
 
@@ -46,7 +51,7 @@ class WebRsync(SyncBase):
             self.bin_command = portage.process.find_binary(self._bin_command)
             self.bin_pkg = ">=app-portage/emerge-delta-webrsync-3.7.5"
 
-        return super(WebRsync, self).has_bin
+        return super().has_bin
 
     def sync(self, **kwargs):
         """Sync the repository"""
@@ -67,7 +72,6 @@ class WebRsync(SyncBase):
             if self.repo.module_specific_options.get(
                 "sync-webrsync-verify-signature", "false"
             ).lower() in ("true", "yes"):
-
                 if not self.repo.sync_openpgp_key_path:
                     writemsg_level(
                         "!!! sync-openpgp-key-path is not set\n",
@@ -93,24 +97,13 @@ class WebRsync(SyncBase):
                     )
                     return (1, False)
 
-                openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
-
-                out = portage.output.EOutput(quiet=quiet)
-                try:
-                    out.einfo("Using keys from %s" % (self.repo.sync_openpgp_key_path,))
-                    with io.open(self.repo.sync_openpgp_key_path, "rb") as f:
-                        openpgp_env.import_key(f)
-                    self._refresh_keys(openpgp_env)
-                    self.spawn_kwargs["env"]["PORTAGE_GPG_DIR"] = openpgp_env.home
-                    self.spawn_kwargs["env"]["PORTAGE_TEMP_GPG_DIR"] = openpgp_env.home
-                except (GematoException, asyncio.TimeoutError) as e:
-                    writemsg_level(
-                        "!!! Verification impossible due to keyring problem:\n%s\n"
-                        % (e,),
-                        level=logging.ERROR,
-                        noiselevel=-1,
-                    )
-                    return (1, False)
+                self.spawn_kwargs["env"]["PORTAGE_SYNC_WEBRSYNC_GPG"] = "1"
+                self.spawn_kwargs["env"][
+                    "PORTAGE_GPG_KEY"
+                ] = self.repo.sync_openpgp_key_path
+                self.spawn_kwargs["env"][
+                    "PORTAGE_GPG_KEY_SERVER"
+                ] = self.repo.sync_openpgp_keyserver
 
             webrsync_cmd = [self.bin_command]
             if verbose:
@@ -125,7 +118,7 @@ class WebRsync(SyncBase):
 
             exitcode = portage.process.spawn(webrsync_cmd, **self.spawn_kwargs)
             if exitcode != os.EX_OK:
-                msg = "!!! emerge-webrsync error in %s" % self.repo.location
+                msg = f"!!! emerge-webrsync error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
@@ -136,7 +129,12 @@ class WebRsync(SyncBase):
 
 
 class PyWebRsync(SyncBase):
-    """WebRSync sync class"""
+    """PyWebRsync sync class
+
+    TODO: Implement the sync parts from the emerge-webrsync external
+          binary to avoid split logic for various components, which
+          is how we ended up with bug #597800.
+    """
 
     short_desc = "Perform sync operations on webrsync based repositories"
 
@@ -149,4 +147,6 @@ class PyWebRsync(SyncBase):
 
     def sync(self, **kwargs):
         """Sync the repository"""
-        pass
+        raise NotImplementedError(
+            "Python impl. of webrsync backend is not yet implemented"
+        )

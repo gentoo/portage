@@ -1,7 +1,6 @@
 # Copyright 2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 
 from portage import (
     _encodings,
@@ -60,18 +59,17 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
     @return: list of tuple(filename, tuple(unresolved sonames))
     """
     try:
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(metadata_dir, "REQUIRES"),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="rt",
             encoding=_encodings["repo.content"],
             errors="strict",
         ) as f:
             requires = frozenset(parse_soname_deps(f.read()))
-    except EnvironmentError:
+    except OSError:
         return []
 
     unresolved_by_category = {}
@@ -82,9 +80,8 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
             )
 
     needed_filename = os.path.join(metadata_dir, "NEEDED.ELF.2")
-    with io.open(
+    with open(
         _unicode_encode(needed_filename, encoding=_encodings["fs"], errors="strict"),
-        mode="rt",
         encoding=_encodings["repo.content"],
         errors="strict",
     ) as f:

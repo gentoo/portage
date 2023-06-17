@@ -1,0 +1,45 @@
+# Check for missing dev-python/cython dep based on output
+# from setuptools cythonize() support
+
+cython_dep_check() {
+	[[ ${CATEGORY}/${PN} == dev-python/cython ]] && return
+	# grepping log files is expensive, so do it only for ebuilds using
+	# distutils-r1
+	has distutils-r1 ${INHERITED} || return
+	[[ ${BDEPEND} == *dev-python/cython* ]] && return
+
+	# Evaluate misc gcc warnings
+	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
+		# In debug mode, the grep calls will produce false positives
+		# if they're shown in the trace.
+		local reset_debug=0
+		if [[ ${-/x/} != $- ]] ; then
+			set +x
+			reset_debug=1
+		fi
+
+		local grep_cmd=grep
+		[[ ${PORTAGE_LOG_FILE} = *.gz ]] && grep_cmd=zgrep
+
+		# Force C locale to work around slow multibyte locales, bug #160234
+		# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
+		# binary when we run in the C locale.
+		local f=$(
+			LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -a "Cythonizing" \
+				"${PORTAGE_LOG_FILE}" | uniq
+		)
+		if [[ -n ${f} ]] ; then
+			__vecho -ne '\n'
+			eqawarn "QA Notice: Package seems to be missing a BDEPEND on dev-python/cython."
+			eqawarn "${f}"
+			__vecho -ne '\n'
+		fi
+
+		[[ ${reset_debug} = 1 ]] && set -x
+	fi
+}
+
+cython_dep_check
+: # guarantee successful exit
+
+# vim:ft=sh

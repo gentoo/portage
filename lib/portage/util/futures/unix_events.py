@@ -70,11 +70,11 @@ class _AsyncioEventLoopPolicy(_PortageEventLoopPolicy):
 
     def get_event_loop(self):
         self._check_recursion()
-        return super(_AsyncioEventLoopPolicy, self).get_event_loop()
+        return super().get_event_loop()
 
     def get_child_watcher(self):
         self._check_recursion()
-        return super(_AsyncioEventLoopPolicy, self).get_child_watcher()
+        return super().get_child_watcher()
 
 
 DefaultEventLoopPolicy = _AsyncioEventLoopPolicy

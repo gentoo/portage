@@ -9,6 +9,7 @@
 #  Jeremy Wohl's dispatch-conf script and the portage chkcontents script.
 #
 
+import subprocess
 import sys
 
 from os import path as osp
@@ -27,8 +28,6 @@ import portage.dispatch_conf
 from portage import os
 from portage.checksum import perform_md5
 
-FIND_EXTANT_CONTENTS = "find %s -name CONTENTS"
-
 MANDATORY_OPTS = ["archive-dir"]
 
 
@@ -45,12 +44,14 @@ def archive_conf():
         args += [conf]
         md5_match_hash[conf] = ""
 
-    # Find all the CONTENT files in VDB_PATH.
-    with os.popen(
-        FIND_EXTANT_CONTENTS
-        % (os.path.join(portage.settings["EROOT"], portage.VDB_PATH))
-    ) as f:
-        content_files += f.readlines()
+    # Find all the CONTENTS files in VDB_PATH.
+    eroot_vdb_path = os.path.join(portage.settings["EROOT"], portage.VDB_PATH)
+    find = subprocess.run(
+        ["find", eroot_vdb_path, "-type", "f", "-name", "CONTENTS"],
+        capture_output=True,
+        text=True,
+    )
+    content_files += find.stdout.splitlines()
 
     # Search for the saved md5 checksum of all the specified config files
     # and see if the current file is unmodified or not.
@@ -59,10 +60,10 @@ def archive_conf():
         for filename in content_files:
             filename = filename.rstrip()
             try:
-                contents = open(filename, "r")
-            except IOError as e:
+                contents = open(filename)
+            except OSError as e:
                 print(
-                    "archive-conf: Unable to open %s: %s" % (filename, e),
+                    f"archive-conf: Unable to open {filename}: {e}",
                     file=sys.stderr,
                 )
                 sys.exit(1)

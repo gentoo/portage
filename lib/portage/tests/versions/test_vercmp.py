@@ -10,7 +10,6 @@ class VerCmpTestCase(TestCase):
     """A simple testCase for portage.versions.vercmp()"""
 
     def testVerCmpGreater(self):
-
         tests = [
             ("6.0", "5.0"),
             ("5.0", "5"),
@@ -27,7 +26,7 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) <= 0,
-                msg="%s < %s? Wrong!" % (test[0], test[1]),
+                msg=f"{test[0]} < {test[1]}? Wrong!",
             )
 
     def testVerCmpLess(self):
@@ -57,11 +56,10 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) >= 0,
-                msg="%s > %s? Wrong!" % (test[0], test[1]),
+                msg=f"{test[0]} > {test[1]}? Wrong!",
             )
 
     def testVerCmpEqual(self):
-
         tests = [
             ("4.0", "4.0"),
             ("1.0", "1.0"),
@@ -73,11 +71,10 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) != 0,
-                msg="%s != %s? Wrong!" % (test[0], test[1]),
+                msg=f"{test[0]} != {test[1]}? Wrong!",
             )
 
     def testVerNotEqual(self):
-
         tests = [
             ("1", "2"),
             ("1.0_alpha", "1.0_pre"),
@@ -96,5 +93,5 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) == 0,
-                msg="%s == %s? Wrong!" % (test[0], test[1]),
+                msg=f"{test[0]} == {test[1]}? Wrong!",
             )

@@ -1,15 +1,11 @@
-# Copyright 2009-2020 Gentoo Authors
+# Copyright 2009-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lazyimport"]
 
 import sys
 import types
-
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 from portage.proxy.objectproxy import ObjectProxy
 
@@ -89,7 +85,6 @@ def _unregister_module_proxy(name):
 
 
 class _LazyImport(ObjectProxy):
-
     __slots__ = ("_scope", "_alias", "_name", "_target")
 
     def __init__(self, scope, alias, name):
@@ -116,7 +111,6 @@ class _LazyImport(ObjectProxy):
 
 
 class _LazyImportFrom(_LazyImport):
-
     __slots__ = ("_attr_name",)
 
     def __init__(self, scope, name, attr_name, alias):
@@ -136,7 +130,7 @@ class _LazyImportFrom(_LazyImport):
         except AttributeError:
             # Try to import it as a submodule
             try:
-                __import__("%s.%s" % (name, attr_name))
+                __import__(f"{name}.{attr_name}")
             except ImportError:
                 pass
             # If it's a submodule, this will succeed. Otherwise, it may

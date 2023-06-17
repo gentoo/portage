@@ -18,7 +18,7 @@ def bin_entry_point():
     """
     script_path = os.path.join(PORTAGE_BIN_PATH, os.path.basename(sys.argv[0]))
     if os.access(script_path, os.X_OK):
-        with open(script_path, "rt") as f:
+        with open(script_path) as f:
             shebang = f.readline()
         python_match = re.search(r"/python[\d\.]*\s+([^/]*)\s+$", shebang)
         if python_match:

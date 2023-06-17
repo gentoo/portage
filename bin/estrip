@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
 
 # avoid multiple calls to `has`.  this creates things like:
 #   FEATURES_foo=false
-# if "foo" is not in $FEATURES
+# if "foo" is not in ${FEATURES}
 tf() { "$@" && echo true || echo false ; }
 exp_tf() {
 	local flag var=$1
@@ -63,19 +63,63 @@ while [[ $# -gt 0 ]] ; do
 			fi
 		done
 
-		if [[ ${find_paths[@]} ]]; then
+		if (( ${#find_paths[@]} )); then
+			# We can avoid scanelf calls for binaries we already
+			# checked in install_qa_check (where we generate
+			# NEEDED for everything installed).
+			#
+			# EAPI 7+ has controlled stripping (dostrip) though
+			# which is why estrip has the queue/dequeue logic,
+			# so we need to take the intersection of:
+			# 1. files scanned earlier (all ELF installed)
+			#    (note that this should be a superset of 2., so we don't
+			#    need to worry about unknown files appearing)
+			#
+			# 2. the files we're interested in right now
+			scanelf_results=()
+			if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
+				# The arguments may not be exact files (probably aren't), but search paths/directories
+				# which should then be searched recursively.
+				while IFS= read -r needed_entry ; do
+					for find_path in "${find_paths[@]}" ; do
+						# NEEDED has a bunch of entries like:
+						# /usr/lib64/libfoo.so libc.so
+						#
+						# find_path entries may be exact paths (like /usr/lib64/libfoo.so)
+						# or instead /usr/lib64, or ${ED}/usr, etc.
+						#
+						# We check if the beginning (i.e. first entry) of the NEEDED line
+						# matches the path given
+						# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
+						needed_entry_file="${needed_entry% *}"
+						if [[ "${needed_entry_file}" =~ ^${find_path##${D}} ]] ; then
+							scanelf_results+=( "${D}${needed_entry_file}" )
+						fi
+					done
+				done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+			else
+				mapfile -t scanelf_results < <(scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}")
+			fi
+
 			while IFS= read -r path; do
 				>> "${path}.estrip" || die
 			done < <(
-				scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}"
+				(( ${#scanelf_results[@]} )) && printf "%s\n" "${scanelf_results[@]}"
 				find "${find_paths[@]}" -type f ! -type l -name '*.a'
 			)
+
+			unset scanelf_results needed_entry needed_entry_file find_path
 		fi
 
 		exit 0
 		;;
 	--dequeue)
-		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
+		break
+		;;
+	--prepallstrip)
+		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
+		prepstrip=true
 		break
 		;;
 	*)
@@ -104,6 +148,7 @@ if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 			"${PORTAGE_PYTHON:-/usr/bin/python}" \
 			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
 		}
+
 		restore_xattrs() {
 			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 			"${PORTAGE_PYTHON:-/usr/bin/python}" \
@@ -112,7 +157,7 @@ if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 	fi
 fi
 
-# look up the tools we might be using
+# Look up the tools we might be using
 for t in STRIP:strip OBJCOPY:objcopy READELF:readelf RANLIB:ranlib ; do
 	v=${t%:*} # STRIP
 	t=${t#*:} # strip
@@ -147,6 +192,7 @@ if [[ -z ${debugedit} ]]; then
 	debugedit_paths=(
 		"${EPREFIX}/usr/libexec/rpm/debugedit"
 	)
+
 	for x in "${debugedit_paths[@]}"; do
 		if [[ -x ${x} ]]; then
 			debugedit=${x}
@@ -159,7 +205,7 @@ debugedit_warned=false
 
 __multijob_init
 
-# Setup $T filesystem layout that we care about.
+# Setup ${T} filesystem layout that we care about.
 tmpdir="${T}/prepstrip"
 rm -rf "${tmpdir}"
 mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
@@ -168,6 +214,7 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 save_elf_sources() {
 	${FEATURES_installsources} || return 0
 	${PORTAGE_RESTRICT_installsources} && return 0
+
 	if ! ${debugedit_found} ; then
 		if ! ${debugedit_warned} ; then
 			debugedit_warned=true
@@ -194,6 +241,7 @@ save_elf_sources() {
 __try_symlink() {
 	local target=$1
 	local name=$2
+
 	# Check for an existing link before and after in case we are racing against
 	# another process.
 	[[ -L ${name} ]] ||
@@ -251,20 +299,23 @@ save_elf_debug() {
 			${OBJCOPY} ${objcopy_flags} "${src}" "${dst}" &&
 			${OBJCOPY} --add-gnu-debuglink="${dst}" "${src}"
 		fi
+
 		# Only do the following if the debug file was
 		# successfully created (see bug #446774).
 		if [[ $? -eq 0 ]] ; then
 			local args="a-x,o-w"
 			[[ -g ${src} || -u ${src} ]] && args+=",go-r"
 			chmod ${args} "${dst}"
-			# symlink so we can read the name back.
+
+			# Symlink so we can read the name back.
 			__try_symlink "${dst}" "${inode_debug}"
 
-			# if we don't already have build-id from debugedit, look it up
+			# If we don't already have build-id from debugedit, look it up
 			if [[ -z ${buildid} ]] ; then
 				# convert the readelf output to something useful
 				buildid=$(${READELF} -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 			fi
+
 			if [[ -n ${buildid} ]] ; then
 				local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
 				local buildid_file="${buildid_dir}/${buildid:2}"
@@ -309,11 +360,11 @@ process_elf() {
 	fi
 
 	if ${strip_this} ; then
-
-		# see if we can split & strip at the same time
+		# See if we can split & strip at the same time
 		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
 			local shortname="${x##*/}.debug"
 			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID:-$(__bashpid)}"
+
 			${already_stripped} || \
 			${STRIP} ${strip_flags} \
 				-f "${splitdebug}" \
@@ -322,8 +373,7 @@ process_elf() {
 			save_elf_debug "${x}" "${inode_link}_debug" "${splitdebug}"
 		else
 			save_elf_debug "${x}" "${inode_link}_debug"
-			${already_stripped} || \
-			${STRIP} ${strip_flags} "${x}"
+			${already_stripped} || ${STRIP} ${strip_flags} "${x}"
 		fi
 	fi
 
@@ -367,6 +417,7 @@ if ! ${PORTAGE_RESTRICT_binchecks} ; then
 	# parallel though.
 	log=${tmpdir}/scanelf-already-stripped.log
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED%/}/##" > "${log}"
+
 	(
 	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
@@ -402,17 +453,26 @@ if  [[ ${USERLAND} == BSD ]] ; then
 else
 	get_inode_number() { stat -c '%i' "$1"; }
 fi
+
 cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
+
 if ${prepstrip}; then
 while read -r x ; do
 	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
 	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
 done < <(
-	# Use sort -u to eliminate duplicates for bug #445336.
+	# NEEDED may not exist for some packages (bug #862606)
+	if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
+		while IFS= read -r needed_entry ; do
+			needed_entry="${needed_entry% *}"
+			needed_contents+=( "${D%/}${needed_entry}" )
+		done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+	fi
+
+	# Use sort -u to eliminate duplicates (bug #445336).
 	(
+		[[ -n ${needed_contents[@]} ]] && printf "%s\n" "${needed_contents[@]}"
 		find "$@" -type f ! -type l -name '*.a'
-		cut -d ' ' -f1 < "${PORTAGE_BUILDDIR}"/build-info/NEEDED \
-			| sed -e "s:^:${D}:"
 	) | LC_ALL=C sort -u
 )
 else
@@ -434,7 +494,7 @@ do
 
 	(
 	__multijob_child_init
-	f=$(file "${x}") || exit 0
+	f=$(file -S "${x}") || exit 0
 	[[ -z ${f} ]] && exit 0
 
 	if ${SKIP_STRIP} ; then
@@ -443,8 +503,8 @@ do
 		strip_this=true
 	else
 		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
-		#  the for loop from expanding the globs.
-		# The eval echo is to support STRIP_MASK="/*/{booga,bar}" sex.
+		# the for loop from expanding the globs.
+		# The eval echo is to support STRIP_MASK="/*/{booga,bar}".
 		set -o noglob
 		strip_this=true
 		for m in $(eval echo ${STRIP_MASK}) ; do
@@ -466,7 +526,7 @@ do
 	# or kernel modules as debuginfo for intermediatary
 	# files (think crt*.o from gcc/glibc) is useless and
 	# actually causes problems.  install sources for all
-	# elf types though cause that stuff is good.
+	# elf types though because that stuff is good.
 
 	buildid=
 	if [[ ${f} == *"current ar archive"* ]] ; then
@@ -499,8 +559,9 @@ if [[ -s ${tmpdir}/debug.sources ]] && \
 then
 	__vecho "installsources: rsyncing source files"
 	[[ -d ${D%/}/${prepstrip_sources_dir#/} ]] || mkdir -p "${D%/}/${prepstrip_sources_dir#/}"
-	# skip installation of ".../<foo>" (system headers? why inner slashes are forbidden?)
-	# skip syncing of ".../foo/" (complete directories)
+
+	# Skip installation of ".../<foo>" (system headers? why inner slashes are forbidden?)
+	# Skip syncing of ".../foo/" (complete directories)
 	grep -zv -e '/<[^/>]*>$' -e '/$' "${tmpdir}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \
 		rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D%/}/${prepstrip_sources_dir#/}/" )
@@ -508,8 +569,7 @@ then
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
-	while read -r -d $'\0' emptydir
-	do
+	while read -r -d $'\0' emptydir; do
 		>> "${emptydir}"/.keepdir
 	done < <(find "${D%/}/${prepstrip_sources_dir#/}/" -type d -empty -print0)
 fi

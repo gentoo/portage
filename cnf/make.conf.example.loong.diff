@@ -1,0 +1,56 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ===========
++#
++# All LoongArch64 systems built with the LP64D ABI, which is the default,
++# should use this host setting:
++CHOST="loongarch64-unknown-linux-gnu"
++
+ # Host and optimization settings
+ # ==============================
+ #
+@@ -39,9 +46,29 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -march=<cpu-model> tells the compiler to take full advantage of the ABI and
++# instructions available on a certain LoongArch CPU model (none defined at the
++# present), micro-architecture (e.g. LA464), or generic ISA level (e.g.
++# loongarch64 = as defined in the LoongArch ISA manual v1.00). This will
++# produce code which may not run on other LoongArch CPUs supporting different
++# ISA levels or modules.
++#
++# -mtune=<cpu-model> results in code optimised for a specific CPU
++# model, micro-architecture (e.g. LA464) or generic ISA level, without
++# breaking compatibility with other LoongArch CPUs supporting the same ISA.
++#
++# -mabi=<abi-string> specifies the ABI, i.e. the integer and floating-point
++# calling convention to use. Care should be taken while setting both -march
++# and -mabi, as some calling conventions are impossible to implement on some
++# ISAs.
++#
++# Please refer to the section "LoongArch Options" of the GCC manual and/or the
++# 《龙芯架构工具链约定》/ "LoongArch Toolchain Conventions" document for a
++# list of possible values for these options.
+ #
++# Decent examples:
+ #CFLAGS="-O2 -pipe"
++#CFLAGS="-march=la464 -mtune=la464 -O2 -pipe"
+ #
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+@@ -76,7 +103,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~loong"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

@@ -1,7 +1,6 @@
 # Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 import re
 import textwrap
@@ -164,7 +163,6 @@ class UpdateDbentryTestCase(TestCase):
             self.assertEqual(result, output_str)
 
     def testUpdateDbentryDbapiTestCase(self):
-
         ebuilds = {
             "dev-libs/A-2::dont_apply_updates": {
                 "RDEPEND": "dev-libs/M dev-libs/N dev-libs/P",
@@ -237,7 +235,7 @@ class UpdateDbentryTestCase(TestCase):
                     installed=installed,
                     world=world,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 

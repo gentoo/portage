@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright: 2009-2020 Gentoo Authors
 # Author(s): Petteri Räty (betelgeuse@gentoo.org)
 # License: GPL2
@@ -21,11 +20,10 @@ class NoValueException(Exception):
 
 
 class database(fs_template.FsBased):
-
     autocommits = True
 
     def __init__(self, *args, **config):
-        super(database, self).__init__(*args, **config)
+        super().__init__(*args, **config)
         self.portdir = self.label
         self.ns = xattr.NS_USER + ".gentoo.cache"
         self.keys = set(self._known_keys)
@@ -57,7 +55,7 @@ class database(fs_template.FsBased):
             while True:
                 self.__set(path, "test_max", s)
                 s += hundred
-        except IOError as e:
+        except OSError as e:
             # ext based give wrong errno
             # https://bugzilla.kernel.org/show_bug.cgi?id=12793
             if e.errno in (errno.E2BIG, errno.ENOSPC):
@@ -67,7 +65,7 @@ class database(fs_template.FsBased):
 
         try:
             self.__remove(path, "test_max")
-        except IOError as e:
+        except OSError as e:
             if e.errno != errno.ENODATA:
                 raise
 
@@ -88,7 +86,7 @@ class database(fs_template.FsBased):
     def __get(self, path, key, default=None):
         try:
             return xattr.get(path, key, namespace=self.ns)
-        except IOError as e:
+        except OSError as e:
             if not default is None and errno.ENODATA == e.errno:
                 return default
             raise NoValueException()
@@ -135,7 +133,7 @@ class database(fs_template.FsBased):
                     parts += 1
 
                 # Only the first entry carries the number of parts
-                self.__set(path, key, "%s:%s" % (parts, s[0:max_len]))
+                self.__set(path, key, f"{parts}:{s[0:max_len]}")
 
                 # Write out the rest
                 for i in range(1, parts):
@@ -143,7 +141,7 @@ class database(fs_template.FsBased):
                     val = s[start : start + max_len]
                     self.__set(path, key + str(i), val)
             else:
-                self.__set(path, key, "%s:%s" % (1, s))
+                self.__set(path, key, f"{1}:{s}")
 
     def _delitem(self, cpv):
         pass  # Will be gone with the ebuild
@@ -152,7 +150,6 @@ class database(fs_template.FsBased):
         return os.path.exists(self.__get_path(cpv))
 
     def __iter__(self):
-
         for root, dirs, files in os.walk(self.portdir):
             for file in files:
                 try:
@@ -166,4 +163,4 @@ class database(fs_template.FsBased):
                     pn_pv = file[:-7]
                     path = os.path.join(root, file)
                     if self.__has_cache(path):
-                        yield "%s/%s/%s" % (cat, os.path.basename(root), file[:-7])
+                        yield f"{cat}/{os.path.basename(root)}/{file[:-7]}"

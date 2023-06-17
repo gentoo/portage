@@ -1,11 +1,7 @@
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-try:
-    import threading
-except ImportError:
-    # dummy_threading will not suffice
-    threading = None
+import threading
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
@@ -15,10 +11,13 @@ class PipeReaderBlockingIO(AbstractPollTask):
     """
     Reads output from one or more files and saves it in memory, for
     retrieval via the getvalue() method. This is driven by a thread
-    for each input file, in order to support blocking IO.  This may
-    be useful for using threads to handle blocking IO with Jython,
-    since Jython lacks the fcntl module which is needed for
+    for each input file, in order to support blocking IO.  This is
+    historically useful for using threads to handle blocking IO with
+    Jython, since Jython lacks the fcntl module which is needed for
     non-blocking IO (see http://bugs.jython.org/issue1074).
+
+    Portage does not currently support Jython, but re-introducing
+    support in The Future (TM) may be possible.
     """
 
     __slots__ = ("input_files", "_read_data", "_terminate", "_threads", "_thread_rlock")
@@ -38,11 +37,7 @@ class PipeReaderBlockingIO(AbstractPollTask):
                 self._threads[f] = t
 
     def _reader_thread(self, f):
-        try:
-            terminated = self._terminate.is_set
-        except AttributeError:
-            # Jython 2.7.0a2
-            terminated = self._terminate.isSet
+        terminated = self._terminate.is_set
         bufsize = self._bufsize
         while not terminated():
             buf = f.read(bufsize)

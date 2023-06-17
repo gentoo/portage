@@ -26,6 +26,8 @@ import sys
 from portage.util import movefile
 from portage.util.file_copy import copyfile
 
+logger = logging.getLogger("portage.bin.doins")
+
 
 def _warn(helper, msg):
     """Output warning message to stderr.
@@ -34,7 +36,7 @@ def _warn(helper, msg):
             helper: helper executable name.
             msg: Message to be output.
     """
-    print("!!! %s: %s\n" % (helper, msg), file=sys.stderr)
+    print(f"!!! {helper}: {msg}\n", file=sys.stderr)
 
 
 def _parse_group(group):
@@ -109,7 +111,7 @@ def _parse_install_options(
     # Because parsing '--mode' option is partially supported. If unknown
     # arg for --mode is passed, namespace.mode is set to None.
     if remaining or namespace.mode is None:
-        _warn(helper, "Unknown install options: %s, %r" % (options, remaining))
+        _warn(helper, f"Unknown install options: {options}, {remaining!r}")
         if is_strict:
             sys.exit(1)
         _warn(
@@ -199,7 +201,7 @@ class _InsInProcessInstallRunner:
             if self._parsed_options.preserve_timestamps:
                 _set_timestamps(sstat, dest)
         except Exception:
-            logging.exception(
+            logger.exception(
                 "Failed to copy file: " "_parsed_options=%r, source=%r, dest_dir=%r",
                 self._parsed_options,
                 source,
@@ -251,7 +253,7 @@ class _InsInProcessInstallRunner:
         ):
             return True
 
-        _warn(self._helper, "%s and %s are same file." % (source, dest))
+        _warn(self._helper, f"{source} and {dest} are same file.")
         return False
 
 
@@ -383,7 +385,7 @@ class _InstallRunner:
         except Exception:
             if self._helpers_can_die:
                 raise
-            logging.exception("install_dir failed.")
+            logger.exception("install_dir failed.")
 
 
 def _doins(opts, install_runner, relpath, source_root):
@@ -410,11 +412,11 @@ def _doins(opts, install_runner, relpath, source_root):
     source = os.path.join(source_root, relpath)
     dest = os.path.join(opts.dest, relpath)
     if os.path.islink(source):
-        # Our fake $DISTDIR contains symlinks that should not be
-        # reproduced inside $D. In order to ensure that things like
-        # dodoc "$DISTDIR"/foo.pdf work as expected, we dereference
+        # Our fake ${DISTDIR} contains symlinks that should not be
+        # reproduced inside ${D}. In order to ensure that things like
+        # dodoc "${DISTDIR}"/foo.pdf work as expected, we dereference
         # symlinked files that refer to absolute paths inside
-        # $PORTAGE_ACTUAL_DISTDIR/.
+        # ${PORTAGE_ACTUAL_DISTDIR}/.
         try:
             if opts.preserve_symlinks and not os.readlink(source).startswith(
                 opts.distdir
@@ -428,7 +430,7 @@ def _doins(opts, install_runner, relpath, source_root):
                 os.symlink(linkto, dest)
                 return True
         except Exception:
-            logging.exception(
+            logger.exception(
                 "Failed to create symlink: " "opts=%r, relpath=%r, source_root=%r",
                 opts,
                 relpath,
@@ -532,7 +534,7 @@ def _install_dir(opts, install_runner, source):
     """
     if not opts.recursive:
         if opts.helper == "dodoc":
-            _warn(opts.helper, "%s is a directory" % (source,))
+            _warn(opts.helper, f"{source} is a directory")
             return False
         # Neither success nor fail. Return None to indicate skipped.
         return None

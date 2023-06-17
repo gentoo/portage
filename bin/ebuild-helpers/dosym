@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 option_r=
-if ___eapi_has_dosym_r && [[ $1 == -r ]]; then
+if ___eapi_has_dosym_r && [[ ${1} == -r ]]; then
 	option_r=t
 	shift
 fi
@@ -24,7 +24,7 @@ if [[ ${2} == */ ]] || [[ -d ${ED%/}/${2#/} && ! -L ${ED%/}/${2#/} ]] ; then
 	__helpers_die "${0##*/}: dosym target omits basename: '${2}'"
 fi
 
-target=$1
+target=${1}
 
 if [[ ${option_r} ]]; then
 	# Transparent bash-only replacement for GNU "realpath -m -s".
@@ -33,15 +33,15 @@ if [[ ${option_r} ]]; then
 	dosym_canonicalize() {
 		local path slash i prev out IFS=/
 
-		path=( $1 )
-		[[ $1 == /* ]] && slash=/
+		read -r -d '' -a path < <(printf '%s\0' "${1}")
+		[[ ${1} == /* ]] && slash=/
 
 		while true; do
 			# Find first instance of non-".." path component followed by "..",
 			# or as a special case, "/.." at the beginning of the path.
 			# Also drop empty and "." path components as we go along.
 			prev=
-			for i in ${!path[@]}; do
+			for i in "${!path[@]}"; do
 				if [[ -z ${path[i]} || ${path[i]} == . ]]; then
 					unset "path[i]"
 				elif [[ ${path[i]} != .. ]]; then
@@ -58,7 +58,7 @@ if [[ ${option_r} ]]; then
 		done
 
 		out="${slash}${path[*]}"
-		echo "${out:-.}"
+		printf "%s\n" "${out:-.}"
 	}
 
 	# Expansion makes sense only for an absolute target path
@@ -87,6 +87,6 @@ destdir=${2%/*}
 [[ ! -d ${ED%/}/${destdir#/} ]] && dodir "${destdir}"
 ln -snf "${target}" "${ED%/}/${2#/}"
 
-ret=$?
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
-exit $ret
+ret=${?}
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}

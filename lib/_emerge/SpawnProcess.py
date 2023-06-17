@@ -11,11 +11,11 @@ from _emerge.SubProcess import SubProcess
 import portage
 from portage import os
 from portage.const import BASH_BINARY
-from portage.localization import _
 from portage.output import EOutput
 from portage.util import writemsg_level
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
+from portage.util._pty import _create_pty_or_pipe
 from portage.util.futures import asyncio
 
 
@@ -61,7 +61,6 @@ class SpawnProcess(SubProcess):
     _CGROUP_CLEANUP_RETRY_MAX = 8
 
     def _start(self):
-
         if self.fd_pipes is None:
             self.fd_pipes = {}
         else:
@@ -202,12 +201,12 @@ class SpawnProcess(SubProcess):
     def _async_wait(self):
         # Allow _main_task to exit normally rather than via cancellation.
         if self._main_task is None:
-            super(SpawnProcess, self)._async_wait()
+            super()._async_wait()
 
     def _async_waitpid(self):
         # Allow _main_task to exit normally rather than via cancellation.
         if self._main_task is None:
-            super(SpawnProcess, self)._async_waitpid()
+            super()._async_waitpid()
 
     def _can_log(self, slave_fd):
         return True
@@ -217,7 +216,11 @@ class SpawnProcess(SubProcess):
         @type fd_pipes: dict
         @param fd_pipes: pipes from which to copy terminal size if desired.
         """
-        return os.pipe()
+        stdout_pipe = None
+        if not self.background:
+            stdout_pipe = fd_pipes.get(1)
+        got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
+        return (master_fd, slave_fd)
 
     def _spawn(self, args, **kwargs):
         spawn_func = portage.process.spawn
@@ -253,9 +256,9 @@ class SpawnProcess(SubProcess):
 
             def get_pids(cgroup):
                 try:
-                    with open(os.path.join(cgroup, "cgroup.procs"), "r") as f:
+                    with open(os.path.join(cgroup, "cgroup.procs")) as f:
                         return [int(p) for p in f.read().split()]
-                except EnvironmentError:
+                except OSError:
                     # removed by cgroup-release-agent
                     return []
 
@@ -267,7 +270,7 @@ class SpawnProcess(SubProcess):
                         if e.errno == errno.EPERM:
                             # Reported with hardened kernel (bug #358211).
                             writemsg_level(
-                                "!!! kill: (%i) - Operation not permitted\n" % (p,),
+                                f"!!! kill: ({p}) - Operation not permitted\n",
                                 level=logging.ERROR,
                                 noiselevel=-1,
                             )
@@ -287,11 +290,9 @@ class SpawnProcess(SubProcess):
             if pids:
                 msg = []
                 msg.append(
-                    _("Failed to kill pid(s) in '%(cgroup)s': %(pids)s")
-                    % dict(
-                        cgroup=os.path.join(self.cgroup, "cgroup.procs"),
-                        pids=" ".join(str(pid) for pid in pids),
-                    )
+                    "Failed to kill pid(s) in "
+                    f"'{os.path.join(self.cgroup, 'cgroup.procs')}': "
+                    f"{' '.join(str(pid) for pid in pids)}"
                 )
 
                 self._elog("eerror", msg)

@@ -3,7 +3,6 @@
 
 
 class IpcCommand:
-
     __slots__ = ()
 
     def __call__(self, argv):

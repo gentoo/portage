@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 """
@@ -9,7 +8,6 @@ accepts a list of directories and returns a list of mounts which need to be
 remounted RW, then add "elif ostype == (the ostype value for your OS)" to
 get_ro_checker().
 """
-import io
 import logging
 import os
 
@@ -45,9 +43,8 @@ def linux_ro_checker(dir_list):
     invalids = []
 
     try:
-        with io.open(
+        with open(
             "/proc/self/mountinfo",
-            mode="r",
             encoding=_encodings["content"],
             errors="replace",
         ) as f:
@@ -86,7 +83,7 @@ def linux_ro_checker(dir_list):
 
     # If /proc/self/mountinfo can't be read, assume that there are no RO
     # filesystems and return.
-    except EnvironmentError:
+    except OSError:
         writemsg_level(
             _("!!! /proc/self/mountinfo cannot be read"),
             level=logging.WARNING,

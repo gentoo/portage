@@ -5,7 +5,6 @@ import copy
 
 
 class BacktrackParameter:
-
     __slots__ = (
         "circular_dependency",
         "needed_unstable_keywords",
@@ -79,7 +78,6 @@ class BacktrackParameter:
 
 
 class _BacktrackNode:
-
     __slots__ = (
         "parameter",
         "depth",
@@ -100,7 +98,6 @@ class _BacktrackNode:
 
 
 class Backtracker:
-
     __slots__ = (
         "_max_depth",
         "_unexplored_nodes",
@@ -151,7 +148,6 @@ class Backtracker:
         """
 
         for pkg, mask_info in runtime_pkg_mask.items():
-
             if (
                 "missing dependency" in mask_info
                 or "slot_operator_mask_built" in mask_info
@@ -206,7 +202,7 @@ class Backtracker:
 
         new_node.parameter.runtime_pkg_mask.setdefault(dep.parent, {})[
             "missing dependency"
-        ] = set([(dep.parent, dep.root, dep.atom)])
+        ] = {(dep.parent, dep.root, dep.atom)}
 
         self._add(new_node)
 
@@ -274,7 +270,7 @@ class Backtracker:
         # Not all config changes require a restart, that's why they can appear together
         # with other conflicts.
         if "config" in infos:
-            self._feedback_config(infos["config"], explore=(len(infos) == 1))
+            self._feedback_config(infos["config"], explore=len(infos) == 1)
 
         # There is at most one of the following types of conflicts for a given restart.
         if "slot conflict" in infos:

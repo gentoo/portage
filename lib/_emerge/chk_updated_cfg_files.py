@@ -16,13 +16,13 @@ def chk_updated_cfg_files(eroot, config_protect):
 
     for x in result:
         writemsg_level(
-            "\n %s " % (colorize("WARN", "* " + _("IMPORTANT:"))),
+            f"\n {colorize('WARN', '* ' + _('IMPORTANT:'))} ",
             level=logging.INFO,
             noiselevel=-1,
         )
         if not x[1]:  # it's a protected file
             writemsg_level(
-                _("config file '%s' needs updating.\n") % x[0],
+                f"config file '{x[0]}' needs updating.\n",
                 level=logging.INFO,
                 noiselevel=-1,
             )
@@ -32,13 +32,13 @@ def chk_updated_cfg_files(eroot, config_protect):
                 tail = tail[len("._cfg0000_") :]
                 fpath = os.path.join(head, tail)
                 writemsg_level(
-                    _("config file '%s' needs updating.\n") % fpath,
+                    f"config file '{fpath}' needs updating.\n",
                     level=logging.INFO,
                     noiselevel=-1,
                 )
             else:
                 writemsg_level(
-                    _("%d config files in '%s' need updating.\n") % (len(x[1]), x[0]),
+                    f"{len(x[1])} config files in '{x[0]}' need updating.\n",
                     level=logging.INFO,
                     noiselevel=-1,
                 )

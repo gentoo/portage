@@ -6,7 +6,6 @@ from portage import os
 
 
 class CompositeTask(AsynchronousTask):
-
     __slots__ = ("_current_task",)
 
     _TASK_QUEUED = -1
@@ -54,7 +53,7 @@ class CompositeTask(AsynchronousTask):
         for detecting bugs.
         """
         if task is not self._current_task:
-            raise AssertionError("Unrecognized task: %s" % (task,))
+            raise AssertionError(f"Unrecognized task: {task}")
 
     def _default_exit(self, task):
         """

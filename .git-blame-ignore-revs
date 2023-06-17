@@ -6,3 +6,9 @@ a5092f11f31b6a9d54a34423088a7bb8e70bc1c6
 baf79da44e543cc0fd12f64a2c99b49b66727f39
 # Blacken previously missed Python files
 9fe091668c8a1d988c02c849ac1bece6eb764d0b
+# bin: style tweaks
+cb8eda531dad92bec9293c89f93db9b581245fd3
+# chore(bintree): removed useless ``if True:``
+a83507be7ce04d3ac421f9cbe8b63816809b0f4e
+# */*: rerun black w/ 23.1.0
+4ceb199aab8035fdf2ebd244e213ca63c29b4d5f

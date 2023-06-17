@@ -63,7 +63,6 @@ from portage import _unicode_encode
 
 
 class EbuildPhase(CompositeTask):
-
     __slots__ = ("actionmap", "fd_pipes", "phase", "settings") + ("_ebuild_lock",)
 
     # FEATURES displayed prior to setup phase
@@ -97,12 +96,11 @@ class EbuildPhase(CompositeTask):
         self._start_task(AsyncTaskFuture(future=future), self._async_start_exit)
 
     async def _async_start(self):
-
         need_builddir = self.phase not in EbuildProcess._phases_without_builddir
 
         if need_builddir:
             phase_completed_file = os.path.join(
-                self.settings["PORTAGE_BUILDDIR"], ".%sed" % self.phase.rstrip("e")
+                self.settings["PORTAGE_BUILDDIR"], f".{self.phase.rstrip('e')}ed"
             )
             if not os.path.exists(phase_completed_file):
                 # If the phase is really going to run then we want
@@ -115,7 +113,6 @@ class EbuildPhase(CompositeTask):
             ensure_dirs(os.path.join(self.settings["PORTAGE_BUILDDIR"], "empty"))
 
         if self.phase in ("nofetch", "pretend", "setup"):
-
             use = self.settings.get("PORTAGE_BUILT_USE")
             if use is None:
                 use = self.settings["PORTAGE_USE"]
@@ -137,22 +134,22 @@ class EbuildPhase(CompositeTask):
                     maint_str = "<invalid metadata.xml>"
 
             msg = []
-            msg.append("Package:    %s" % self.settings.mycpv)
+            msg.append(f"Package:    {self.settings.mycpv}:{self.settings['SLOT']}")
             if self.settings.get("PORTAGE_REPO_NAME"):
-                msg.append("Repository: %s" % self.settings["PORTAGE_REPO_NAME"])
+                msg.append(f"Repository: {self.settings['PORTAGE_REPO_NAME']}")
             if maint_str:
-                msg.append("Maintainer: %s" % maint_str)
+                msg.append(f"Maintainer: {maint_str}")
             if upstr_str:
-                msg.append("Upstream:   %s" % upstr_str)
+                msg.append(f"Upstream:   {upstr_str}")
 
-            msg.append("USE:        %s" % use)
+            msg.append(f"USE:        {use}")
             relevant_features = []
             enabled_features = self.settings.features
             for x in self._features_display:
                 if x in enabled_features:
                     relevant_features.append(x)
             if relevant_features:
-                msg.append("FEATURES:   %s" % " ".join(relevant_features))
+                msg.append(f"FEATURES:   {' '.join(relevant_features)}")
 
             # Force background=True for this header since it's intended
             # for the log and it doesn't necessarily need to be visible
@@ -395,7 +392,6 @@ class EbuildPhase(CompositeTask):
         self.wait()
 
     def _post_phase_exit(self, post_phase):
-
         self._assert_current(post_phase)
 
         log_path = None
@@ -408,7 +404,7 @@ class EbuildPhase(CompositeTask):
             self._append_temp_log(post_phase.logfile, log_path)
 
         if self._final_exit(post_phase) != os.EX_OK:
-            writemsg("!!! post %s failed; exiting.\n" % self.phase, noiselevel=-1)
+            writemsg(f"!!! post {self.phase} failed; exiting.\n", noiselevel=-1)
             self._die_hooks()
             return
 
@@ -417,7 +413,6 @@ class EbuildPhase(CompositeTask):
         return
 
     def _append_temp_log(self, temp_log, log_path):
-
         temp_file = open(
             _unicode_encode(temp_log, encoding=_encodings["fs"], errors="strict"), "rb"
         )
@@ -434,7 +429,6 @@ class EbuildPhase(CompositeTask):
         os.unlink(temp_log)
 
     def _open_log(self, log_path):
-
         f = open(
             _unicode_encode(log_path, encoding=_encodings["fs"], errors="strict"),
             mode="ab",
@@ -541,7 +535,6 @@ class EbuildPhase(CompositeTask):
 
 
 class _PostPhaseCommands(CompositeTask):
-
     __slots__ = ("commands", "elog", "fd_pipes", "logfile", "phase", "settings")
 
     def _start(self):
@@ -560,9 +553,7 @@ class _PostPhaseCommands(CompositeTask):
         tasks = TaskSequence()
         for kwargs, commands in cmds:
             # Select args intended for MiscFunctionsProcess.
-            kwargs = dict(
-                (k, v) for k, v in kwargs.items() if k in ("ld_preload_sandbox",)
-            )
+            kwargs = {k: v for k, v in kwargs.items() if k in ("ld_preload_sandbox",)}
             tasks.add(
                 MiscFunctionsProcess(
                     background=self.background,
@@ -572,14 +563,13 @@ class _PostPhaseCommands(CompositeTask):
                     phase=self.phase,
                     scheduler=self.scheduler,
                     settings=self.settings,
-                    **kwargs
+                    **kwargs,
                 )
             )
 
         self._start_task(tasks, self._commands_exit)
 
     def _commands_exit(self, task):
-
         if self._default_exit(task) != os.EX_OK:
             self._async_wait()
             return
@@ -611,7 +601,6 @@ class _PostPhaseCommands(CompositeTask):
             self._default_final_exit(task)
 
     async def _soname_deps_qa(self):
-
         vardb = QueryCommand.get_db()[self.settings["EROOT"]]["vartree"].dbapi
 
         all_provides = await self.scheduler.run_in_executor(
@@ -644,7 +633,7 @@ class _PostPhaseCommands(CompositeTask):
             qa_msg = ["QA Notice: Unresolved soname dependencies:"]
             qa_msg.append("")
             qa_msg.extend(
-                "\t%s: %s" % (filename, " ".join(sorted(soname_deps)))
+                f"\t{filename}: {' '.join(sorted(soname_deps))}"
                 for filename, soname_deps in unresolved
             )
             qa_msg.append("")

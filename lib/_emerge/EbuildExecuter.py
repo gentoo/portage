@@ -13,7 +13,6 @@ from portage.eapi import (
 
 
 class EbuildExecuter(CompositeTask):
-
     __slots__ = ("pkg", "settings")
 
     _phases = ("prepare", "configure", "compile", "test", "install")
@@ -28,10 +27,10 @@ class EbuildExecuter(CompositeTask):
         if eapi_exports_replace_vars(settings["EAPI"]):
             vardb = pkg.root_config.trees["vartree"].dbapi
             settings["REPLACING_VERSIONS"] = " ".join(
-                set(
+                {
                     portage.versions.cpv_getversion(match)
                     for match in vardb.match(pkg.slot_atom) + vardb.match("=" + pkg.cpv)
-                )
+                }
             )
 
         setup_phase = EbuildPhase(
@@ -46,7 +45,6 @@ class EbuildExecuter(CompositeTask):
         self.scheduler.scheduleSetup(setup_phase)
 
     def _setup_exit(self, setup_phase):
-
         if self._default_exit(setup_phase) != os.EX_OK:
             self.wait()
             return
@@ -70,7 +68,6 @@ class EbuildExecuter(CompositeTask):
             self._start_task(unpack_phase, self._unpack_exit)
 
     def _unpack_exit(self, unpack_phase):
-
         if self._default_exit(unpack_phase) != os.EX_OK:
             self.wait()
             return

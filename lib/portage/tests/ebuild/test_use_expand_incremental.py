@@ -1,7 +1,6 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import io
 
 from portage import os, _encodings
 from portage.dep import Atom
@@ -13,7 +12,6 @@ from portage.util import ensure_dirs
 
 class UseExpandIncrementalTestCase(TestCase):
     def testUseExpandIncremental(self):
-
         profiles = (
             (
                 "base",
@@ -100,13 +98,13 @@ class UseExpandIncrementalTestCase(TestCase):
                 prof_path = os.path.join(profile_root, p)
                 ensure_dirs(prof_path)
                 for k, v in data.items():
-                    with io.open(
+                    with open(
                         os.path.join(prof_path, k),
                         mode="w",
                         encoding=_encodings["repo.content"],
                     ) as f:
                         for line in v:
-                            f.write("%s\n" % line)
+                            f.write(f"{line}\n")
 
             # The config must be reloaded in order to account
             # for the above profile customizations.
@@ -122,7 +120,7 @@ class UseExpandIncrementalTestCase(TestCase):
                 settings.setcpv(pkg)
                 expected = frozenset(expected_use)
                 got = frozenset(settings["PORTAGE_USE"].split())
-                self.assertEqual(got, expected, "%s != %s" % (got, expected))
+                self.assertEqual(got, expected, f"{got} != {expected}")
 
         finally:
             playground.cleanup()

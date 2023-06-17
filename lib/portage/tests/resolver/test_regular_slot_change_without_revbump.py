@@ -1,7 +1,6 @@
 # Copyright 2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -15,7 +14,6 @@ from portage.output import colorize
 
 class RegularSlotChangeWithoutRevBumpTestCase(TestCase):
     def testRegularSlotChangeWithoutRevBumpTestCase(self):
-
         ebuilds = {
             "dev-libs/boost-1.52.0": {"SLOT": "0"},
             "app-office/libreoffice-4.0.0.2": {
@@ -58,7 +56,7 @@ class RegularSlotChangeWithoutRevBumpTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 

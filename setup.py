@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1998-2022 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -47,7 +47,7 @@ autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.b
 ).startswith("pip-")
 venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
 create_entry_points = bool(autodetect_pip or venv_prefix)
-with open(os.path.join(os.path.dirname(__file__), "README.md"), "rt") as f:
+with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
     long_description = f.read()
 
 # TODO:
@@ -66,6 +66,7 @@ x_scripts = {
         "bin/glsa-check",
         "bin/portageq",
         "bin/quickpkg",
+        "bin/gpkg-sign",
     ],
     "sbin": [
         "bin/archive-conf",
@@ -84,6 +85,9 @@ x_scripts = {
 x_c_helpers = {
     "portage.util.libc": [
         "src/portage_util_libc.c",
+    ],
+    "portage.util._whirlpool": [
+        "src/portage_util__whirlpool.c",
     ],
 }
 
@@ -128,7 +132,7 @@ class build_man(Command):
                 if not newer(source, target) and not newer(__file__, target):
                     continue
 
-                print("copying and updating %s -> %s" % (source, target))
+                print(f"copying and updating {source} -> {target}")
 
                 with codecs.open(source, "r", "utf8") as f:
                     data = f.readlines()
@@ -161,10 +165,10 @@ class docbook(Command):
         with open("doc/fragment/date", "w"):
             pass
         with open("doc/fragment/version", "w") as f:
-            f.write("<releaseinfo>%s</releaseinfo>" % self.distribution.get_version())
+            f.write(f"<releaseinfo>{self.distribution.get_version()}</releaseinfo>")
 
         for f in self.doc_formats:
-            print("Building docs in %s format..." % f)
+            print(f"Building docs in {f} format...")
             subprocess.check_call(
                 ["xmlto", "-o", "doc", "-m", "doc/custom.xsl", f, "doc/portage.docbook"]
             )
@@ -327,7 +331,7 @@ class x_clean(clean):
                 break
 
         for f in get_doc_outfiles():
-            print("removing %s" % repr(f))
+            print(f"removing {repr(f)}")
             os.remove(f)
 
         if os.path.isdir("doc/fragment"):
@@ -349,12 +353,12 @@ class x_clean(clean):
 
         conf_dir = os.path.join(top_dir, "cnf")
         if os.path.islink(conf_dir):
-            print("removing %s symlink" % repr(conf_dir))
+            print(f"removing {repr(conf_dir)} symlink")
             os.unlink(conf_dir)
 
         pni_file = os.path.join(top_dir, ".portage_not_installed")
         if os.path.exists(pni_file):
-            print("removing %s" % repr(pni_file))
+            print(f"removing {repr(pni_file)}")
             os.unlink(pni_file)
 
     def clean_man(self):
@@ -452,7 +456,7 @@ class x_install_data(install_data):
 
     def run(self):
         def re_sub_file(path, pattern, repl):
-            print("Rewriting %s" % path)
+            print(f"Rewriting {path}")
             with codecs.open(path, "r", "utf-8") as f:
                 data = f.read()
             data = re.sub(pattern, repl, data, flags=re.MULTILINE)
@@ -507,7 +511,7 @@ class x_install_lib(install_lib):
 
         def rewrite_file(path, val_dict):
             path = os.path.join(self.install_dir, path)
-            print("Rewriting %s" % path)
+            print(f"Rewriting {path}")
             with codecs.open(path, "r", "utf-8") as f:
                 data = f.read()
 
@@ -529,7 +533,7 @@ class x_install_lib(install_lib):
 
         def re_sub_file(path, pattern_repl_items):
             path = os.path.join(self.install_dir, path)
-            print("Rewriting %s" % path)
+            print(f"Rewriting {path}")
             with codecs.open(path, "r", "utf-8") as f:
                 data = f.read()
             for pattern, repl in pattern_repl_items:
@@ -559,10 +563,7 @@ class x_install_lib(install_lib):
                     ),
                     (
                         r"^(EPREFIX\s*=\s*)(.*)",
-                        lambda m: "{}{}".format(
-                            m.group(1),
-                            '__import__("sys").prefix',
-                        ),
+                        lambda m: f'{m.group(1)}__import__("sys").prefix',
                     ),
                 ),
             )
@@ -674,11 +675,11 @@ class build_tests(x_build_scripts_custom):
         if os.path.exists(conf_dir):
             if not os.path.islink(conf_dir):
                 raise SystemError(
-                    "%s exists and is not a symlink (collision)" % repr(conf_dir)
+                    f"{repr(conf_dir)} exists and is not a symlink (collision)"
                 )
             os.unlink(conf_dir)
         conf_src = os.path.relpath("cnf", self.top_dir)
-        print("Symlinking %s -> %s" % (conf_dir, conf_src))
+        print(f"Symlinking {conf_dir} -> {conf_src}")
         os.symlink(conf_src, conf_dir)
 
         source_path = os.path.realpath(__file__)
@@ -730,8 +731,7 @@ def find_packages():
 def find_scripts():
     for dirpath, _dirnames, filenames in os.walk("bin"):
         for f in filenames:
-            if f not in ["deprecated-path"]:
-                yield os.path.join(dirpath, f)
+            yield os.path.join(dirpath, f)
 
 
 def get_manpages():
@@ -748,7 +748,7 @@ def get_manpages():
         topdir = dirpath[len("man/") :]
         if not topdir or linguas is None or topdir in linguas:
             for g, mans in groups.items():
-                yield [os.path.join("$mandir", topdir, "man%s" % g), mans]
+                yield [os.path.join("$mandir", topdir, f"man{g}"), mans]
 
 
 class build_ext(_build_ext):
@@ -787,7 +787,6 @@ def venv_data_files(locations):
 
         abs_source_path = os.path.abspath(source_path)
         for root, dirs, files in os.walk(abs_source_path):
-
             root_offset = root[len(abs_source_path) :].lstrip("/")
             dest_path = os.path.join(dest_prefix, root_offset)
 
@@ -817,10 +816,10 @@ def get_data_files(regular_files, venv_files):
 
 setup(
     name="portage",
-    version="3.0.34",
+    version="3.0.48.1",
     url="https://wiki.gentoo.org/wiki/Project:Portage",
     project_urls={
-        "Release Notes": "https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES",
+        "Release Notes": "https://gitweb.gentoo.org/proj/portage.git/plain/NEWS",
         "Documentation": "https://wiki.gentoo.org/wiki/Handbook:AMD64/Working/Portage",
     },
     author="Gentoo Portage Development Team",
@@ -844,7 +843,6 @@ setup(
             ],
             ["$portage_setsdir", ["cnf/sets/portage.conf"]],
             ["$docdir", ["NEWS", "RELEASE-NOTES"]],
-            ["$portage_base/bin", ["bin/deprecated-path"]],
             ["$portage_confdir/repo.postsync.d", ["cnf/repo.postsync.d/example"]],
         ],
         [
@@ -869,9 +867,7 @@ setup(
     ),
     entry_points={
         "console_scripts": [
-            "{}=portage.util.bin_entry_point:bin_entry_point".format(
-                os.path.basename(path)
-            )
+            f"{os.path.basename(path)}=portage.util.bin_entry_point:bin_entry_point"
             for path in itertools.chain.from_iterable(x_scripts.values())
         ],
     }

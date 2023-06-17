@@ -10,12 +10,11 @@ from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages
 from portage.exception import InvalidAtom
 from portage.package.ebuild._ipc.IpcCommand import IpcCommand
-from portage.util import normalize_path
+from portage.util import normalize_path, no_color
 from portage.versions import best
 
 
 class QueryCommand(IpcCommand):
-
     __slots__ = (
         "phase",
         "settings",
@@ -53,7 +52,7 @@ class QueryCommand(IpcCommand):
 
         root = normalize_path(root or os.sep).rstrip(os.sep) + os.sep
         if root not in db:
-            return ("", "%s: Invalid ROOT: %s\n" % (cmd, root), 3)
+            return ("", f"{cmd}: Invalid ROOT: {root}\n", 3)
 
         portdb = db[root]["porttree"].dbapi
         vardb = db[root]["vartree"].dbapi
@@ -63,12 +62,12 @@ class QueryCommand(IpcCommand):
             try:
                 atom = Atom(args[0], allow_repo=allow_repo)
             except InvalidAtom:
-                return ("", "%s: Invalid atom: %s\n" % (cmd, args[0]), 2)
+                return ("", f"{cmd}: Invalid atom: {args[0]}\n", 2)
 
             try:
                 atom = Atom(args[0], allow_repo=allow_repo, eapi=eapi)
             except InvalidAtom as e:
-                warnings.append("QA Notice: %s: %s" % (cmd, e))
+                warnings.append(f"QA Notice: {cmd}: {e}")
 
             use = self.settings.get("PORTAGE_BUILT_USE")
             if use is None:
@@ -88,7 +87,7 @@ class QueryCommand(IpcCommand):
             return ("", warnings_str, returncode)
         if cmd == "best_version":
             m = best(vardb.match(atom))
-            return ("%s\n" % m, warnings_str, 0)
+            return (f"{m}\n", warnings_str, 0)
         if cmd in (
             "master_repositories",
             "repository_path",
@@ -98,7 +97,7 @@ class QueryCommand(IpcCommand):
         ):
             repo = _repo_name_re.match(args[0])
             if repo is None:
-                return ("", "%s: Invalid repository: %s\n" % (cmd, args[0]), 2)
+                return ("", f"{cmd}: Invalid repository: {args[0]}\n", 2)
             try:
                 repo = portdb.repositories[args[0]]
             except KeyError:
@@ -106,15 +105,15 @@ class QueryCommand(IpcCommand):
 
             if cmd == "master_repositories":
                 return (
-                    "%s\n" % " ".join(x.name for x in repo.masters),
+                    f"{' '.join(x.name for x in repo.masters)}\n",
                     warnings_str,
                     0,
                 )
             if cmd == "repository_path":
-                return ("%s\n" % repo.location, warnings_str, 0)
+                return (f"{repo.location}\n", warnings_str, 0)
             if cmd == "available_eclasses":
                 return (
-                    "%s\n" % " ".join(sorted(repo.eclass_db.eclasses)),
+                    f"{' '.join(sorted(repo.eclass_db.eclasses))}\n",
                     warnings_str,
                     0,
                 )
@@ -123,7 +122,7 @@ class QueryCommand(IpcCommand):
                     eclass = repo.eclass_db.eclasses[args[1]]
                 except KeyError:
                     return ("", warnings_str, 1)
-                return ("%s\n" % eclass.location, warnings_str, 0)
+                return (f"{eclass.location}\n", warnings_str, 0)
             if cmd == "license_path":
                 paths = reversed(
                     [
@@ -133,9 +132,9 @@ class QueryCommand(IpcCommand):
                 )
                 for path in paths:
                     if os.path.exists(path):
-                        return ("%s\n" % path, warnings_str, 0)
+                        return (f"{path}\n", warnings_str, 0)
                 return ("", warnings_str, 1)
-        return ("", "Invalid command: %s\n" % cmd, 3)
+        return ("", f"Invalid command: {cmd}\n", 3)
 
     def _elog(self, elog_funcname, lines):
         """
@@ -150,9 +149,7 @@ class QueryCommand(IpcCommand):
         elog_func = getattr(elog_messages, elog_funcname)
         global_havecolor = portage.output.havecolor
         try:
-            portage.output.havecolor = self.settings.get(
-                "NOCOLOR", "false"
-            ).lower() in ("no", "false")
+            portage.output.havecolor = not no_color(self.settings)
             for line in lines:
                 elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
         finally:

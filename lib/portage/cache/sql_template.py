@@ -27,7 +27,7 @@ class SQLDatabase(template.database):
 		pkgid INTEGER PRIMARY KEY, label VARCHAR(255), cpv VARCHAR(255), UNIQUE(label, cpv))"
         % SCHEMA_PACKAGE_NAME
     )
-    SCHEMA_PACKAGE_DROP = "DROP TABLE %s" % SCHEMA_PACKAGE_NAME
+    SCHEMA_PACKAGE_DROP = f"DROP TABLE {SCHEMA_PACKAGE_NAME}"
 
     SCHEMA_VALUES_NAME = "values_cache"
     SCHEMA_VALUES_CREATE = (
@@ -35,7 +35,7 @@ class SQLDatabase(template.database):
 		key varchar(255), value text, UNIQUE(pkgid, key))"
         % (SCHEMA_VALUES_NAME, SCHEMA_PACKAGE_NAME)
     )
-    SCHEMA_VALUES_DROP = "DROP TABLE %s" % SCHEMA_VALUES_NAME
+    SCHEMA_VALUES_DROP = f"DROP TABLE {SCHEMA_VALUES_NAME}"
     SCHEMA_INSERT_CPV_INTO_PACKAGE = (
         "INSERT INTO %s (label, cpv) VALUES(%%s, %%s)" % SCHEMA_PACKAGE_NAME
     )
@@ -53,7 +53,7 @@ class SQLDatabase(template.database):
         """initialize the instance.
         derived classes shouldn't need to override this"""
 
-        super(SQLDatabase, self).__init__(location, label, auxdbkeys, *args, **config)
+        super().__init__(location, label, auxdbkeys, *args, **config)
 
         config.setdefault("host", "127.0.0.1")
         config.setdefault("autocommit", self.autocommits)
@@ -76,7 +76,7 @@ class SQLDatabase(template.database):
         if not self._table_exists(self.SCHEMA_PACKAGE_NAME):
             if self.readonly:
                 raise cache_errors.ReadOnlyRestriction(
-                    "table %s doesn't exist" % self.SCHEMA_PACKAGE_NAME
+                    f"table {self.SCHEMA_PACKAGE_NAME} doesn't exist"
                 )
             try:
                 self.con.execute(self.SCHEMA_PACKAGE_CREATE)
@@ -86,7 +86,7 @@ class SQLDatabase(template.database):
         if not self._table_exists(self.SCHEMA_VALUES_NAME):
             if self.readonly:
                 raise cache_errors.ReadOnlyRestriction(
-                    "table %s doesn't exist" % self.SCHEMA_VALUES_NAME
+                    f"table {self.SCHEMA_VALUES_NAME} doesn't exist"
                 )
             try:
                 self.con.execute(self.SCHEMA_VALUES_CREATE)
@@ -122,7 +122,7 @@ class SQLDatabase(template.database):
         if len(rows) == 0:
             raise KeyError(cpv)
 
-        vals = dict([(k, "") for k in self._known_keys])
+        vals = {k: "" for k in self._known_keys}
         vals.update(dict(rows))
         return vals
 
@@ -157,7 +157,6 @@ class SQLDatabase(template.database):
             self.db.close()
 
     def _setitem(self, cpv, values):
-
         try:
             # insert.
             try:
@@ -255,8 +254,7 @@ class SQLDatabase(template.database):
 
         try:
             self.con.execute(
-                "SELECT cpv FROM %s WHERE label=%s"
-                % (self.SCHEMA_PACKAGE_NAME, self.label)
+                f"SELECT cpv FROM {self.SCHEMA_PACKAGE_NAME} WHERE label={self.label}"
             )
         except self._BaseError as e:
             raise cache_errors.GeneralCacheCorruption(e)
@@ -309,7 +307,7 @@ class SQLDatabase(template.database):
             v = v.replace("%", "\\%")
             v = v.replace(".*", "%")
             query_list.append(
-                "(key=%s AND value LIKE %s)" % (self._sfilter(k), self._sfilter(v))
+                f"(key={self._sfilter(k)} AND value LIKE {self._sfilter(v)})"
             )
 
         if len(query_list):

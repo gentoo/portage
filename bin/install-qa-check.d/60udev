@@ -8,10 +8,11 @@ udev_check() {
 		[[ ${x} == ${ED%/}/lib/udev/rules.d/* ]] && continue
 		f+="  ${x#${ED%/}}\n"
 	done
-	if [[ -n $f ]] ; then
+
+	if [[ -n ${f} ]] ; then
 		eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
 		eqawarn
-		eqawarn "$f"
+		eqawarn "${f}"
 	fi
 }
 

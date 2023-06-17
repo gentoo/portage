@@ -20,7 +20,6 @@ from portage.util import writemsg_level
 
 
 class circular_dependency_handler:
-
     MAX_AFFECTING_USE = 10
 
     def __init__(self, depgraph, graph):
@@ -88,29 +87,15 @@ class circular_dependency_handler:
             parent = self.shortest_cycle[pos - 1]
             priorities = self.graph.nodes[parent][0][pkg]
             if pos > 0:
-                msg.append(
-                    indent
-                    + "%s (%s)"
-                    % (
-                        pkg,
-                        priorities[-1],
-                    )
-                )
+                msg.append(indent + f"{pkg} ({priorities[-1]})")
             else:
-                msg.append(indent + "%s depends on" % pkg)
+                msg.append(indent + f"{pkg} depends on")
             indent += " "
 
         pkg = self.shortest_cycle[0]
         parent = self.shortest_cycle[-1]
         priorities = self.graph.nodes[parent][0][pkg]
-        msg.append(
-            indent
-            + "%s (%s)"
-            % (
-                pkg,
-                priorities[-1],
-            )
-        )
+        msg.append(indent + f"{pkg} ({priorities[-1]})")
 
         return "\n".join(msg)
 
@@ -265,7 +250,6 @@ class circular_dependency_handler:
                     changed_parent
                 )
                 for ppkg, atom in parent_parent_atoms:
-
                     atom = atom.unevaluated_atom
                     if not atom.use:
                         continue
@@ -292,7 +276,7 @@ class circular_dependency_handler:
                         changes.append(colorize("red", "+" + flag))
                     else:
                         changes.append(colorize("blue", "-" + flag))
-                msg = "- %s (Change USE: %s)\n" % (parent.cpv, " ".join(changes))
+                msg = f"- {parent.cpv} (Change USE: {' '.join(changes)})\n"
                 if followup_change:
                     msg += (
                         " (This change might require USE changes on parent packages.)"

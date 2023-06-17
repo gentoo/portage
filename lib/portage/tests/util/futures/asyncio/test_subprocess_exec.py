@@ -35,7 +35,6 @@ class SubprocessExecTestCase(TestCase):
 
         def test(loop):
             async def test_coroutine():
-
                 proc = await create_subprocess_exec(
                     echo_binary,
                     *args_tuple,
@@ -110,7 +109,6 @@ class SubprocessExecTestCase(TestCase):
         echo_binary = echo_binary.encode()
 
         def test(loop):
-
             pr, pw = os.pipe()
 
             cat_proc = loop.run_until_complete(

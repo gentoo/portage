@@ -8,7 +8,6 @@ from portage.dep import get_operator
 
 class GetOperator(TestCase):
     def testGetOperator(self):
-
         # get_operator does not validate operators
         tests = [
             ("~", "~"),
@@ -30,7 +29,7 @@ class GetOperator(TestCase):
                     self.assertEqual(
                         result,
                         test[1],
-                        msg="get_operator(%s) != %s" % (test[0] + atom, test[1]),
+                        msg=f"get_operator({test[0] + atom}) != {test[1]}",
                     )
 
         result = get_operator("sys-apps/portage")

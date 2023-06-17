@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
 	export DESTTREE=/usr
 	export INSDESTTREE=""
 else
-	export _E_DESTTREE_=/usr
-	export _E_INSDESTTREE_=""
+	export __E_DESTTREE=/usr
+	export __E_INSDESTTREE=""
 fi
-export _E_EXEDESTTREE_=""
-export _E_DOCDESTTREE_=""
+export __E_EXEDESTTREE=""
+export __E_DOCDESTTREE=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
-# Do not compress files which are smaller than this (in bytes). #169260
+# Do not compress files which are smaller than this (in bytes), bug #169260
 export PORTAGE_DOCOMPRESS_SIZE_LIMIT="128"
 declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
 declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
@@ -26,83 +26,86 @@ declare -a PORTAGE_DOSTRIP_SKIP=()
 
 into() {
 	if [[ "$1" == "/" ]]; then
-		export _E_DESTTREE_=""
+		export __E_DESTTREE=""
 	else
-		export _E_DESTTREE_=$1
+		export __E_DESTTREE=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]]; then
-			install -d "${ED%/}/${_E_DESTTREE_#/}"
+		if [[ ! -d "${ED%/}/${__E_DESTTREE#/}" ]]; then
+			install -d "${ED%/}/${__E_DESTTREE#/}"
+
 			local ret=$?
-			if [[ $ret -ne 0 ]] ; then
+			if [[ ${ret} -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
-				return $ret
+				return ${ret}
 			fi
 		fi
 	fi
 
 	if ___eapi_has_DESTTREE_INSDESTTREE; then
-		export DESTTREE=${_E_DESTTREE_}
+		export DESTTREE=${__E_DESTTREE}
 	fi
 }
 
 insinto() {
-	if [[ "$1" == "/" ]]; then
-		export _E_INSDESTTREE_=""
+	if [[ "${1}" == "/" ]]; then
+		export __E_INSDESTTREE=""
 	else
-		export _E_INSDESTTREE_=$1
+		export __E_INSDESTTREE=${1}
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]]; then
-			install -d "${ED%/}/${_E_INSDESTTREE_#/}"
+		if [[ ! -d "${ED%/}/${__E_INSDESTTREE#/}" ]]; then
+			install -d "${ED%/}/${__E_INSDESTTREE#/}"
+
 			local ret=$?
-			if [[ $ret -ne 0 ]] ; then
+			if [[ ${ret} -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
-				return $ret
+				return ${ret}
 			fi
 		fi
 	fi
 
 	if ___eapi_has_DESTTREE_INSDESTTREE; then
-		export INSDESTTREE=${_E_INSDESTTREE_}
+		export INSDESTTREE=${__E_INSDESTTREE}
 	fi
 }
 
 exeinto() {
-	if [[ "$1" == "/" ]]; then
-		export _E_EXEDESTTREE_=""
+	if [[ "${1}" == "/" ]]; then
+		export __E_EXEDESTTREE=""
 	else
-		export _E_EXEDESTTREE_="$1"
+		export __E_EXEDESTTREE="${1}"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]]; then
-			install -d "${ED%/}/${_E_EXEDESTTREE_#/}"
+		if [[ ! -d "${ED%/}/${__E_EXEDESTTREE#/}" ]]; then
+			install -d "${ED%/}/${__E_EXEDESTTREE#/}"
+
 			local ret=$?
-			if [[ $ret -ne 0 ]] ; then
+			if [[ ${ret} -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
-				return $ret
+				return ${ret}
 			fi
 		fi
 	fi
 }
 
 docinto() {
-	if [[ "$1" == "/" ]]; then
-		export _E_DOCDESTTREE_=""
+	if [[ "${1}" == "/" ]]; then
+		export __E_DOCDESTTREE=""
 	else
-		export _E_DOCDESTTREE_="$1"
+		export __E_DOCDESTTREE="${1}"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [[ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]]; then
-			install -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}"
+		if [[ ! -d "${ED%/}/usr/share/doc/${PF}/${__E_DOCDESTTREE#/}" ]]; then
+			install -d "${ED%/}/usr/share/doc/${PF}/${__E_DOCDESTTREE#/}"
 			local ret=$?
-			if [[ $ret -ne 0 ]] ; then
+			if [[ ${ret} -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
-				return $ret
+				return ${ret}
 			fi
 		fi
 	fi
@@ -128,7 +131,7 @@ exeopts() {
 
 libopts() {
 	if ! ___eapi_has_dolib_libopts; then
-		die "'${FUNCNAME}' has been banned for EAPI '$EAPI'"
+		die "'${FUNCNAME}' has been banned for EAPI '${EAPI}'"
 	fi
 
 	export LIBOPTIONS="$@"
@@ -141,8 +144,9 @@ docompress() {
 	___eapi_has_docompress || die "'docompress' not supported in this EAPI"
 
 	local f g
-	if [[ $1 = "-x" ]]; then
+	if [[ ${1} = "-x" ]]; then
 		shift
+
 		for f; do
 			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
 			[[ ${f:0:1} = / ]] || f="/${f}"
@@ -229,13 +233,13 @@ use() {
 		found=1
 	fi
 
-	if [[ $EBUILD_PHASE = depend ]] ; then
+	if [[ ${EBUILD_PHASE} = depend ]] ; then
 		# TODO: Add a registration interface for eclasses to register
 		# any number of phase hooks, so that global scope eclass
 		# initialization can by migrated to phase hooks in new EAPIs.
-		# Example: add_phase_hook before pkg_setup $ECLASS_pre_pkg_setup
-		#if [[ -n $EAPI ]] && ! has "$EAPI" 0 1 2 3 ; then
-		#	die "use() called during invalid phase: $EBUILD_PHASE"
+		# Example: add_phase_hook before pkg_setup ${ECLASS}_pre_pkg_setup
+		#if [[ -n ${EAPI} ]] && ! has "${EAPI}" 0 1 2 3 ; then
+		#	die "use() called during invalid phase: ${EBUILD_PHASE}"
 		#fi
 		true
 
@@ -251,6 +255,7 @@ use() {
 				# is not well defined for earlier EAPIs (see bug #449708).
 				die "USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}"
 			fi
+
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
 		fi
@@ -268,7 +273,7 @@ use() {
 }
 
 use_with() {
-	if [[ -z "$1" ]]; then
+	if [[ -z "${1}" ]]; then
 		echo "!!! use_with() called without a parameter." >&2
 		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
 		return 1
@@ -281,7 +286,7 @@ use_with() {
 	fi
 	local UWORD=${2:-$1}
 
-	if use $1; then
+	if use ${1}; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
 	else
 		echo "--without-${UWORD}"
@@ -290,7 +295,7 @@ use_with() {
 }
 
 use_enable() {
-	if [[ -z "$1" ]]; then
+	if [[ -z "${1}" ]]; then
 		echo "!!! use_enable() called without a parameter." >&2
 		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
 		return 1
@@ -303,7 +308,7 @@ use_enable() {
 	fi
 	local UWORD=${2:-$1}
 
-	if use $1; then
+	if use ${1}; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
 	else
 		echo "--disable-${UWORD}"
@@ -318,6 +323,7 @@ unpack() {
 	local suffix suffix_insensitive
 	local myfail
 	local eapi=${EAPI:-0}
+
 	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
@@ -362,12 +368,12 @@ unpack() {
 						"secondary suffix '${y}' which is unofficially" \
 						"supported with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
-				$1 -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail"
+				$1 -c -- "${srcdir}${x}" | tar xof -
+				__assert_sigpipe_ok "${myfail}"
 			else
 				local cwd_dest=${x##*/}
 				cwd_dest=${cwd_dest%.*}
-				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "$myfail"
+				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "${myfail}"
 			fi
 		}
 
@@ -380,7 +386,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
-				tar xof "$srcdir$x" || die "$myfail"
+				tar xof "${srcdir}${x}" || die "${myfail}"
 				;;
 			tgz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -389,7 +395,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tgz'."
 				fi
-				tar xozf "$srcdir$x" || die "$myfail"
+				tar xozf "${srcdir}${x}" || die "${myfail}"
 				;;
 			tbz|tbz2)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -398,8 +404,8 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tbz' or 'tbz2'."
 				fi
-				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail"
+				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${x}" | tar xof -
+				__assert_sigpipe_ok "${myfail}"
 				;;
 			zip|jar)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -412,7 +418,7 @@ unpack() {
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
 				( set +x ; while true ; do echo n || break ; done ) | \
-				unzip -qo "${srcdir}${x}" || die "$myfail"
+				unzip -qo "${srcdir}${x}" || die "${myfail}"
 				;;
 			gz|z)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -438,7 +444,7 @@ unpack() {
 					my_output="$(7z x -y "${srcdir}${x}")"
 					if [[ $? -ne 0 ]]; then
 						echo "${my_output}" >&2
-						die "$myfail"
+						die "${myfail}"
 					fi
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
@@ -452,7 +458,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'rar' or 'RAR'."
 				fi
 				if ___eapi_unpack_supports_rar; then
-					unrar x -idq -o+ "${srcdir}${x}" || die "$myfail"
+					unrar x -idq -o+ "${srcdir}${x}" || die "${myfail}"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -466,7 +472,7 @@ unpack() {
 						"Instead use 'LHA', 'LHa', 'lha', or 'lzh'."
 				fi
 				if ___eapi_unpack_supports_lha; then
-					lha xfq "${srcdir}${x}" || die "$myfail"
+					lha xfq "${srcdir}${x}" || die "${myfail}"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -478,7 +484,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'a'."
 				fi
-				ar x "${srcdir}${x}" || die "$myfail"
+				ar x "${srcdir}${x}" || die "${myfail}"
 				;;
 			deb)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -487,6 +493,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'deb'."
 				fi
+
 				# Unpacking .deb archives can not always be done with
 				# `ar`.  For instance on AIX this doesn't work out.
 				# If `ar` is not the GNU binutils version and we have
@@ -497,24 +504,27 @@ unpack() {
 					type -P deb2targz > /dev/null; then
 					y=${x##*/}
 					local created_symlink=0
-					if [[ ! "$srcdir$x" -ef "$y" ]]; then
+
+					if [[ ! "${srcdir}${x}" -ef "${y}" ]]; then
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
-						ln -sf "$srcdir$x" "$y" || die "$myfail"
+						ln -sf "${srcdir}${x}" "${y}" || die "${myfail}"
 						created_symlink=1
 					fi
-					deb2targz "$y" || die "$myfail"
-					if [[ $created_symlink = 1 ]]; then
+
+					deb2targz "${y}" || die "${myfail}"
+
+					if [[ ${created_symlink} = 1 ]]; then
 						# Clean up the symlink so the ebuild
 						# doesn't inadvertently install it.
-						rm -f "$y"
+						rm -f "${y}"
 					fi
 					mv -f "${y%.deb}".tar.gz data.tar.gz \
 						|| mv -f "${y%.deb}".tar.xz data.tar.xz \
-						|| die "$myfail"
+						|| die "${myfail}"
 				else
-					ar x "$srcdir$x" || die "$myfail"
+					ar x "${srcdir}${x}" || die "${myfail}"
 				fi
 				;;
 			lzma)
@@ -534,7 +544,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'xz'."
 				fi
 				if ___eapi_unpack_supports_xz; then
-					__unpack_tar "xz -d"
+					__unpack_tar "xz -T$(___makeopts_jobs) -d"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -547,7 +557,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'txz'."
 				fi
 				if ___eapi_unpack_supports_txz; then
-					tar xof "$srcdir$x" || die "$myfail"
+					XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -557,6 +567,7 @@ unpack() {
 				;;
 		esac
 	done
+
 	# Do not chmod '.' since it's probably ${WORKDIR} and PORTAGE_WORKDIR_MODE
 	# should be preserved.
 	find . -mindepth 1 -maxdepth 1 ! -type l -print0 | \
@@ -580,38 +591,42 @@ econf() {
 
 	__hasgq() { __hasg "$@" >/dev/null ; }
 
-	local phase_func=$(__ebuild_arg_to_phase "$EBUILD_PHASE")
-	if [[ -n $phase_func ]] ; then
+	local phase_func=$(__ebuild_arg_to_phase "${EBUILD_PHASE}")
+	if [[ -n ${phase_func} ]] ; then
 		if ! ___eapi_has_src_configure; then
-			[[ $phase_func != src_compile ]] && \
+			[[ ${phase_func} != src_compile ]] && \
 				eqawarn "QA Notice: econf called in" \
-					"$phase_func instead of src_compile"
+					"${phase_func} instead of src_compile"
 		else
-			[[ $phase_func != src_configure ]] && \
+			[[ ${phase_func} != src_configure ]] && \
 				eqawarn "QA Notice: econf called in" \
-					"$phase_func instead of src_configure"
+					"${phase_func} instead of src_configure"
 		fi
 	fi
 
 	: ${ECONF_SOURCE:=.}
 	if [[ -x "${ECONF_SOURCE}/configure" ]]; then
-		if [[ -n $CONFIG_SHELL && \
-			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
+		if [[ -n ${CONFIG_SHELL} && \
+			"$(head -n1 "${ECONF_SOURCE}/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
+
 			cp -p "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
 			sed -i \
-				-e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" \
+				-e "1s:^#![[:space:]]*/bin/sh:#!${CONFIG_SHELL}:" \
 				"${ECONF_SOURCE}/configure._portage_tmp_.${pid}" \
 				|| die "Substition of shebang in '${ECONF_SOURCE}/configure' failed"
+
 			# Preserve timestamp, see bug #440304
 			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
 			mv -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
 		fi
+
 		if [[ -e "${EPREFIX}"/usr/share/gnuconfig/ ]]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
 				__vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
-				# Make sure we do this atomically incase we're run in parallel. #487478
+
+				# Make sure we do this atomically incase we're run in parallel, bug #487478
 				cp -f "${EPREFIX}"/usr/share/gnuconfig/"${x##*/}" "${x}.${pid}"
 				mv -f "${x}.${pid}" "${x}"
 			done
@@ -628,20 +643,22 @@ econf() {
 			fi
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
-				if [[ ${conf_help} == *--disable-dependency-tracking* ]]; then
+				if [[ ${conf_help} == \
+						*--disable-dependency-tracking[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-dependency-tracking )
 				fi
 			fi
 
 			if ___eapi_econf_passes_--disable-silent-rules; then
-				if [[ ${conf_help} == *--disable-silent-rules* ]]; then
+				if [[ ${conf_help} == \
+						*--disable-silent-rules[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-silent-rules )
 				fi
 			fi
 
 			if ___eapi_econf_passes_--disable-static; then
-				if [[ ${conf_help} == *--disable-static* || \
-						${conf_help} == *--enable-static* ]]; then
+				if [[ ${conf_help} == *--enable-shared[^A-Za-z0-9+_.-]* &&
+						${conf_help} == *--enable-static[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-static )
 				fi
 			fi
@@ -657,27 +674,31 @@ econf() {
 			fi
 
 			if ___eapi_econf_passes_--with-sysroot; then
-				if [[ ${conf_help} == *--with-sysroot* ]]; then
+				if [[ ${conf_help} == *--with-sysroot[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --with-sysroot="${ESYSROOT:-/}" )
 				fi
 			fi
 		fi
 
 		# If the profile defines a location to install libs to aside from default, pass it on.
-		# If the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
-		local CONF_LIBDIR LIBDIR_VAR="LIBDIR_${ABI}"
-		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
-			CONF_LIBDIR=${!LIBDIR_VAR}
+		# If the ebuild passes in --libdir, they're responsible for the libdir fun.
+		local libdir libdir_var="LIBDIR_${ABI}"
+		if [[ -n ${ABI} && -n ${!libdir_var} ]] ; then
+			libdir=${!libdir_var}
 		fi
-		if [[ -n ${CONF_LIBDIR} ]] && ! __hasgq --libdir=\* "$@" ; then
+
+		if [[ -n ${libdir} ]] && ! __hasgq --libdir=\* "$@" ; then
 			export CONF_PREFIX=$(__hasg --exec-prefix=\* "$@")
 			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(__hasg --prefix=\* "$@")
+
 			: ${CONF_PREFIX:=${EPREFIX}/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
+
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
-			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
+			[[ ${libdir} != /* ]] && libdir="/${libdir}"
+
 			conf_args+=(
-				--libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${CONF_LIBDIR}")"
+				--libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${libdir}")"
 			)
 		fi
 
@@ -700,12 +721,12 @@ econf() {
 		__vecho "${ECONF_SOURCE}/configure" "$@"
 
 		if ! "${ECONF_SOURCE}/configure" "$@" ; then
-
 			if [[ -s config.log ]]; then
 				echo
 				echo "!!! Please attach the following file when seeking support:"
 				echo "!!! ${PWD}/config.log"
 			fi
+
 			# econf dies unconditionally in EAPIs 0 to 3
 			___eapi_helpers_can_die || die "econf failed"
 			__helpers_die "econf failed"
@@ -720,7 +741,7 @@ econf() {
 
 einstall() {
 	if ! ___eapi_has_einstall; then
-		die "'${FUNCNAME}' has been banned for EAPI '$EAPI'"
+		die "'${FUNCNAME}' has been banned for EAPI '${EAPI}'"
 		exit 1
 	fi
 
@@ -729,16 +750,16 @@ einstall() {
 	if ! ___eapi_has_prefix_variables; then
 		local ED=${D}
 	fi
-	LIBDIR_VAR="LIBDIR_${ABI}"
-	if [[ -n "${ABI}" && -n "${!LIBDIR_VAR}" ]]; then
-		CONF_LIBDIR="${!LIBDIR_VAR}"
+
+	local libdir libdir_var="LIBDIR_${ABI}"
+	if [[ -n "${ABI}" && -n "${!libdir_var}" ]]; then
+		libdir="${!libdir_var}"
 	fi
-	unset LIBDIR_VAR
-	if [[ -n "${CONF_LIBDIR}" && "${CONF_PREFIX:+set}" = set ]]; then
-		EI_DESTLIBDIR="${D%/}/${CONF_PREFIX}/${CONF_LIBDIR}"
-		EI_DESTLIBDIR="$(__strip_duplicate_slashes "${EI_DESTLIBDIR}")"
-		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
-		unset EI_DESTLIBDIR
+
+	if [[ -n "${libdir}" && "${CONF_PREFIX:+set}" = set ]]; then
+		local destlibdir="${D%/}/${CONF_PREFIX}/${libdir}"
+		destlibdir="$(__strip_duplicate_slashes "${destlibdir}")"
+		LOCAL_EXTRA_EINSTALL="libdir=${destlibdir} ${LOCAL_EXTRA_EINSTALL}"
 	fi
 
 	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
@@ -753,6 +774,7 @@ einstall() {
 				${MAKEOPTS} -j1 \
 				"$@" ${EXTRA_EMAKE} install
 		fi
+
 		if ! ${MAKE:-make} prefix="${ED%/}/usr" \
 			datadir="${ED%/}/usr/share" \
 			infodir="${ED%/}/usr/share/info" \
@@ -803,13 +825,14 @@ __eapi0_src_test() {
 	if ___eapi_default_src_test_disables_parallel_jobs; then
 		internal_opts+=" -j1"
 	fi
-	if $emake_cmd ${internal_opts} check -n &> /dev/null; then
+
+	if ${emake_cmd} ${internal_opts} check -n &> /dev/null; then
 		__vecho "${emake_cmd} ${internal_opts} check" >&2
-		$emake_cmd ${internal_opts} check || \
+		${emake_cmd} ${internal_opts} check || \
 			die "Make check failed. See above for details."
-	elif $emake_cmd ${internal_opts} test -n &> /dev/null; then
+	elif ${emake_cmd} ${internal_opts} test -n &> /dev/null; then
 		__vecho "${emake_cmd} ${internal_opts} test" >&2
-		$emake_cmd ${internal_opts} test || \
+		${emake_cmd} ${internal_opts} test || \
 			die "Make test failed. See above for details."
 	fi
 }
@@ -904,6 +927,7 @@ ___best_version_and_has_version_common() {
 			if ! ___eapi_best_version_and_has_version_support_--host-root; then
 				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
 			fi
+
 			if ___eapi_has_prefix_variables; then
 				# Since portageq requires the root argument be consistent
 				# with EPREFIX, ensure consistency here (bug #655414).
@@ -936,13 +960,15 @@ ___best_version_and_has_version_common() {
 			fi ;;
 	esac
 
-	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+	if [[ -n ${PORTAGE_IPC_DAEMON} ]] ; then
 		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}")
 	else
-		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-helpers/portageq "${FUNCNAME[1]}" "${root}" "${atom}")
+		cmd+=("${PORTAGE_BIN_PATH}"/portageq-wrapper "${FUNCNAME[1]}" "${root}" "${atom}")
 	fi
+
 	"${cmd[@]}"
 	local retval=$?
+
 	case "${retval}" in
 		0|1)
 			return ${retval}
@@ -1040,6 +1066,7 @@ if ___eapi_has_eapply; then
 				-p1 -f -g0 --no-backup-if-mismatch
 				"${patch_options[@]}"
 			)
+
 			# Try applying with -F0 first, output a verbose warning
 			# if fuzz factor is necessary
 			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
@@ -1056,7 +1083,7 @@ if ___eapi_has_eapply; then
 
 		local patch_options=() files=()
 		local i found_doublehyphen
-		# first, try to split on --
+		# First, try to split on --
 		for (( i = 1; i <= ${#@}; ++i )); do
 			if [[ ${@:i:1} == -- ]]; then
 				patch_options=( "${@:1:i-1}" )
@@ -1066,7 +1093,7 @@ if ___eapi_has_eapply; then
 			fi
 		done
 
-		# then, try to split on first non-option
+		# Then, try to split on first non-option
 		if [[ -z ${found_doublehyphen} ]]; then
 			for (( i = 1; i <= ${#@}; ++i )); do
 				if [[ ${@:i:1} != -* ]]; then
@@ -1076,7 +1103,7 @@ if ___eapi_has_eapply; then
 				fi
 			done
 
-			# ensure that no options were interspersed with files
+			# Ensure that no options were interspersed with files
 			for i in "${files[@]}"; do
 				if [[ ${i} == -* ]]; then
 					die "eapply: all options must be passed before non-options"
@@ -1119,7 +1146,7 @@ if ___eapi_has_eapply; then
 			else
 				_eapply_patch "${f}"
 
-				# in case of nonfatal
+				# In case of nonfatal
 				[[ ${failed} -ne 0 ]] && return "${failed}"
 			fi
 		done
@@ -1132,6 +1159,7 @@ if ___eapi_has_eapply_user; then
 	eapply_user() {
 		[[ ${EBUILD_PHASE} == prepare ]] || \
 			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
+
 		# Keep path in __dyn_prepare in sync!
 		local tagfile=${T}/.portage_user_patches_applied
 		[[ -f ${tagfile} ]] && return

@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class EAPITestCase(TestCase):
     def testEAPI(self):
-
         ebuilds = {
             # EAPI-1: IUSE-defaults
             "dev-libs/A-1.0": {"EAPI": 0, "IUSE": "+foo"},
@@ -177,6 +176,49 @@ class EAPITestCase(TestCase):
                 ["=dev-libs/C-1"], success=True, mergelist=["dev-libs/C-1"]
             ),
             ResolverPlaygroundTestCase(["=dev-libs/C-2"], success=False),
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    def testBdepend(self):
+        ebuilds = {
+            "dev-libs/A-1.0": {"EAPI": 7},
+            "dev-libs/B-1.0": {"EAPI": 7, "BDEPEND": "dev-libs/A"},
+        }
+
+        # Verify that BDEPEND is considered at all.
+        test_case = ResolverPlaygroundTestCase(
+            ["=dev-libs/B-1.0"],
+            success=True,
+            mergelist=["dev-libs/A-1.0", "dev-libs/B-1.0"],
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds, debug=True)
+        try:
+            playground.run_TestCase(test_case)
+            self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    def testIdepend(self):
+        ebuilds = {
+            "dev-libs/A-1.0": {"EAPI": 8},
+            "dev-libs/B-1.0": {"EAPI": 8, "IDEPEND": "dev-libs/A"},
+        }
+
+        test_cases = (
+            # Verify that IDEPEND is considered at all.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/B-1.0"],
+                success=True,
+                mergelist=["dev-libs/A-1.0", "dev-libs/B-1.0"],
+            ),
         )
 
         playground = ResolverPlayground(ebuilds=ebuilds)

@@ -14,7 +14,6 @@ from portage.const import EPREFIX
 
 
 def chk_updated_info_files(root, infodirs, prev_mtimes):
-
     # PREFIX LOCAL
     if os.path.exists(EPREFIX + "/usr/bin/install-info"):
         out = portage.output.EOutput()
@@ -40,7 +39,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
             if portage.util.noiselimit >= 0:
                 out.einfo("Regenerating GNU info directory index...")
 
-            dir_extensions = ("", ".gz", ".bz2")
+            dir_extensions = ("", ".gz", ".bz2", ".xz", ".lz", ".lz4", ".zst", ".lzma")
             icount = 0
             badcount = 0
             errmsg = ""
@@ -72,7 +71,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                             try:
                                 os.rename(dir_file + ext, dir_file + ext + ".old")
                                 moved_old_dir = True
-                            except EnvironmentError as e:
+                            except OSError as e:
                                 if e.errno != errno.ENOENT:
                                     raise
                                 del e
@@ -81,8 +80,8 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                         proc = subprocess.Popen(
                             [
                                 # PREFIX LOCAL
-                                "%s/usr/bin/install-info", EPREFIX,
-                                "--dir-file=%s" % os.path.join(inforoot, "dir"),
+                                f"{EPREFIX}/usr/bin/install-info",
+                                f"--dir-file={os.path.join(inforoot, 'dir')}",
                                 os.path.join(inforoot, x),
                             ],
                             env=dict(os.environ, LANG="C", LANGUAGE="C"),
@@ -119,7 +118,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                     for ext in dir_extensions:
                         try:
                             os.rename(dir_file + ext + ".old", dir_file + ext)
-                        except EnvironmentError as e:
+                        except OSError as e:
                             if e.errno != errno.ENOENT:
                                 raise
                             del e
@@ -129,7 +128,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                 for ext in dir_extensions:
                     try:
                         os.unlink(dir_file + ext + ".old")
-                    except EnvironmentError as e:
+                    except OSError as e:
                         if e.errno != errno.ENOENT:
                             raise
                         del e

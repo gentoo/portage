@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -14,8 +14,11 @@ from _emerge.PipeReader import PipeReader
 
 class PopenPipeTestCase(TestCase):
     """
-    Test PopenProcess, which can be useful for Jython support, since it
-    uses the subprocess.Popen instead of os.fork().
+    Test PopenProcess, which is historically useful for Jython support,
+    since it uses the subprocess.Popen instead of os.fork().
+
+    Portage does not currently support Jython, but re-introducing support
+    in The Future (TM) may be possible.
     """
 
     _echo_cmd = "echo -n '%s'"
@@ -49,7 +52,6 @@ class PopenPipeTestCase(TestCase):
         return consumer.getvalue().decode("ascii", "replace")
 
     def _testPipeLogger(self, test_string):
-
         producer = PopenProcess(
             proc=subprocess.Popen(
                 ["bash", "-c", self._echo_cmd % test_string],
@@ -61,7 +63,6 @@ class PopenPipeTestCase(TestCase):
 
         fd, log_file_path = tempfile.mkstemp()
         try:
-
             consumer = PipeLogger(
                 background=True,
                 input_fd=producer.proc.stdout,
@@ -90,10 +91,10 @@ class PopenPipeTestCase(TestCase):
             test_string = x * "a"
             output = self._testPipeReader(test_string)
             self.assertEqual(
-                test_string, output, "x = %s, len(output) = %s" % (x, len(output))
+                test_string, output, f"x = {x}, len(output) = {len(output)}"
             )
 
             output = self._testPipeLogger(test_string)
             self.assertEqual(
-                test_string, output, "x = %s, len(output) = %s" % (x, len(output))
+                test_string, output, f"x = {x}, len(output) = {len(output)}"
             )

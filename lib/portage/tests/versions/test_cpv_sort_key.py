@@ -7,7 +7,6 @@ from portage.versions import cpv_sort_key
 
 class CpvSortKeyTestCase(TestCase):
     def testCpvSortKey(self):
-
         tests = [
             (
                 ("a/b-2_alpha", "a", "b", "a/b-2", "a/a-1", "a/b-1"),

@@ -6,7 +6,6 @@ __all__ = ("ForkExecutor",)
 import collections
 import functools
 import os
-import sys
 import traceback
 
 from portage.util._async.AsyncFunction import AsyncFunction
@@ -92,9 +91,7 @@ class ForkExecutor:
                 # distinguish between kill and crash
                 future.set_exception(
                     Exception(
-                        "pid {} crashed or killed, exitcode {}".format(
-                            proc.pid, proc.returncode
-                        )
+                        f"pid {proc.pid} crashed or killed, exitcode {proc.returncode}"
                     )
                 )
 
@@ -123,7 +120,7 @@ class _ExceptionWithTraceback:
         tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
         tb = "".join(tb)
         self.exc = exc
-        self.tb = '\n"""\n%s"""' % tb
+        self.tb = f'\n"""\n{tb}"""'
 
     def __reduce__(self):
         return _rebuild_exc, (self.exc, self.tb)
@@ -140,9 +137,3 @@ class _RemoteTraceback(Exception):
 def _rebuild_exc(exc, tb):
     exc.__cause__ = _RemoteTraceback(tb)
     return exc
-
-
-if sys.version_info < (3,):
-    # Python 2 does not support exception chaining, so
-    # don't bother to preserve the traceback.
-    _ExceptionWithTraceback = lambda exc: exc

@@ -14,12 +14,17 @@ __all__ = [
 ]
 
 from collections import OrderedDict
-
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Pattern, Match
 import fnmatch
-import io
 import logging
 import os as _os
 import re
+
+if TYPE_CHECKING:
+    import portage.dbapi.vartree
+    import portage.package.ebuild.config
+
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -59,7 +64,14 @@ class NewsManager:
 
     """
 
-    def __init__(self, portdb, vardb, news_path, unread_path, language_id="en"):
+    def __init__(
+        self,
+        portdb: "portage.dbapi.porttree.portdbapi",
+        vardb: "portage.dbapi.vartree.vardbapi",
+        news_path: str,
+        unread_path: str,
+        language_id: str = "en",
+    ) -> None:
         self.news_path = news_path
         self.unread_path = unread_path
         self.language_id = language_id
@@ -77,11 +89,11 @@ class NewsManager:
         self._dir_mode = 0o0074
         self._mode_mask = 0o0000
 
-        portdir = portdb.repositories.mainRepoLocation()
-        profiles_base = None
+        portdir: Optional[str] = portdb.repositories.mainRepoLocation()
+        profiles_base: Optional[str] = None
         if portdir is not None:
-            profiles_base = os.path.join(portdir, "profiles", os.path.sep)
-        profile_path = None
+            profiles_base = os.path.join(portdir, ("profiles" + os.path.sep))
+        profile_path: Optional[str] = None
         if profiles_base is not None and portdb.settings.profile_path:
             profile_path = normalize_path(
                 os.path.realpath(portdb.settings.profile_path)
@@ -90,19 +102,19 @@ class NewsManager:
                 profile_path = profile_path[len(profiles_base) :]
         self._profile_path = profile_path
 
-    def _unread_filename(self, repoid):
+    def _unread_filename(self, repoid: str) -> str:
         return os.path.join(self.unread_path, f"news-{repoid}.unread")
 
-    def _skip_filename(self, repoid):
+    def _skip_filename(self, repoid: str) -> str:
         return os.path.join(self.unread_path, f"news-{repoid}.skip")
 
-    def _news_dir(self, repoid):
-        repo_path = self.portdb.getRepositoryPath(repoid)
+    def _news_dir(self, repoid: str) -> str:
+        repo_path: Optional[str] = self.portdb.getRepositoryPath(repoid)
         if repo_path is None:
             raise AssertionError(_(f"Invalid repoID: {repoid}"))
         return os.path.join(repo_path, self.news_path)
 
-    def updateItems(self, repoid):
+    def updateItems(self, repoid: str) -> None:
         """
         Figure out which news items from NEWS_PATH are both unread and relevant to
         the user (according to the GLEP 42 standards of relevancy).  Then add these
@@ -125,23 +137,23 @@ class NewsManager:
         if not os.access(self.unread_path, os.W_OK):
             return
 
-        news_dir = self._news_dir(repoid)
+        news_dir: str = self._news_dir(repoid)
         try:
-            news = _os.listdir(
+            news: list[str] = _os.listdir(
                 _unicode_encode(news_dir, encoding=_encodings["fs"], errors="strict")
             )
         except OSError:
             return
 
-        skip_filename = self._skip_filename(repoid)
-        unread_filename = self._unread_filename(repoid)
-        unread_lock = lockfile(unread_filename, wantnewlockfile=1)
+        skip_filename: str = self._skip_filename(repoid)
+        unread_filename: str = self._unread_filename(repoid)
+        unread_lock: Optional[bool] = lockfile(unread_filename, wantnewlockfile=1)
         try:
             try:
-                unread = set(grabfile(unread_filename))
-                unread_orig = unread.copy()
-                skip = set(grabfile(skip_filename))
-                skip_orig = skip.copy()
+                unread: set[str | tuple[str, str]] = set(grabfile(unread_filename))
+                unread_orig: set[str | tuple[str, str]] = unread.copy()
+                skip: set[str | tuple[str, str]] = set(grabfile(skip_filename))
+                skip_orig: set[str | tuple[str, str]] = skip.copy()
             except PermissionDenied:
                 return
 
@@ -200,7 +212,7 @@ class NewsManager:
         finally:
             unlockfile(unread_lock)
 
-    def getUnreadItems(self, repoid, update=False):
+    def getUnreadItems(self, repoid: str, update: bool = False) -> int:
         """
         Determine if there are unread relevant items in news.repoid.unread.
         If there are unread items return their number.
@@ -212,7 +224,7 @@ class NewsManager:
             self.updateItems(repoid)
 
         unread_filename = self._unread_filename(repoid)
-        unread_lock = None
+        unread_lock: Optional[bool] = None
         try:
             unread_lock = lockfile(unread_filename, wantnewlockfile=1)
         except (
@@ -232,11 +244,11 @@ class NewsManager:
                 unlockfile(unread_lock)
 
 
-_formatRE = re.compile(r"News-Item-Format:\s*([^\s]*)\s*$")
-_installedRE = re.compile("Display-If-Installed:(.*)\n")
-_profileRE = re.compile("Display-If-Profile:(.*)\n")
-_keywordRE = re.compile("Display-If-Keyword:(.*)\n")
-_valid_profile_RE = re.compile(r"^[^*]+(/\*)?$")
+_formatRE: Pattern[str] = re.compile(r"News-Item-Format:\s*([^\s]*)\s*$")
+_installedRE: Pattern[str] = re.compile("Display-If-Installed:(.*)\n")
+_profileRE: Pattern[str] = re.compile("Display-If-Profile:(.*)\n")
+_keywordRE: Pattern[str] = re.compile("Display-If-Keyword:(.*)\n")
+_valid_profile_RE: Pattern[str] = re.compile(r"^[^*]+(/\*)?$")
 
 
 class NewsItem:
@@ -250,7 +262,7 @@ class NewsItem:
     Creation of a news item involves passing in the path to the particular news item.
     """
 
-    def __init__(self, path, name):
+    def __init__(self, path: str, name: str):
         """
         For a given news item we only want if it path is a file.
         """
@@ -259,7 +271,12 @@ class NewsItem:
         self._parsed = False
         self._valid = True
 
-    def isRelevant(self, vardb, config, profile):
+    def isRelevant(
+        self,
+        vardb: "portage.dbapi.vartree.vardbapi",
+        config: "portage.package.ebuild.config.config",
+        profile: Optional[str],
+    ) -> bool:
         """
         This function takes a dict of keyword arguments; one should pass in any
         objects need to do to lookups (like what keywords we are on, what profile,
@@ -278,36 +295,40 @@ class NewsItem:
         if not len(self.restrictions):
             return True
 
-        kwargs = {"vardb": vardb, "config": config, "profile": profile}
+        kwargs: dict[str, Any] = {"vardb": vardb, "config": config, "profile": profile}
 
-        all_match = all(
-            restriction.checkRestriction(**kwargs)
-            for values in self.restrictions.values()
-            for restriction in values
-        )
+        all_match: bool = True
+        for values in self.restrictions.values():
+            matches = [restriction.checkRestriction(**kwargs) for restriction in values]
+            any_match = any(matches)
+
+            # If, for a single restriction, we didn't match anything, then we obviously
+            # didn't match everything, so just bail out.
+            if not any_match:
+                all_match = False
+                break
 
         return all_match
 
-    def isValid(self):
+    def isValid(self) -> bool:
         if not self._parsed:
             self.parse()
         return self._valid
 
-    def parse(self):
-        with io.open(
+    def parse(self) -> None:
+        with open(
             _unicode_encode(self.path, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["content"],
             errors="replace",
         ) as f:
             lines = f.readlines()
         self.restrictions = {}
         invalids = []
-        news_format = None
+        news_format: Optional[str] = None
 
         # Look for News-Item-Format
         for i, line in enumerate(lines):
-            format_match = _formatRE.match(line)
+            format_match: Optional[Match[str]] = _formatRE.match(line)
             if format_match is not None:
                 news_format = format_match.group(1)
                 if fnmatch.fnmatch(news_format, "[12].*"):
@@ -362,7 +383,7 @@ class DisplayRestriction:
     are met, then it is displayed
     """
 
-    def isValid(self):
+    def isValid(self) -> bool:
         return True
 
     def checkRestriction(self, **kwargs):
@@ -379,7 +400,7 @@ class DisplayProfileRestriction(DisplayRestriction):
         self.profile = profile
         self.format = news_format
 
-    def isValid(self):
+    def isValid(self) -> bool:
         return (
             not fnmatch.fnmatch(self.format, "1.*")
             or "*" not in self.profile
@@ -387,7 +408,7 @@ class DisplayProfileRestriction(DisplayRestriction):
             or _valid_profile_RE.match(self.profile)
         )
 
-    def checkRestriction(self, **kwargs):
+    def checkRestriction(self, **kwargs) -> bool:
         if fnmatch.fnmatch(self.format, "2.*") and self.profile.endswith("/*"):
             return kwargs["profile"].startswith(self.profile[:-1])
         return kwargs["profile"] == self.profile
@@ -403,7 +424,7 @@ class DisplayKeywordRestriction(DisplayRestriction):
         self.keyword = keyword
         self.format = news_format
 
-    def checkRestriction(self, **kwargs):
+    def checkRestriction(self, **kwargs) -> bool:
         return kwargs["config"].get("ARCH", "") == self.keyword
 
 
@@ -417,18 +438,23 @@ class DisplayInstalledRestriction(DisplayRestriction):
         self.atom = atom
         self.format = news_format
 
-    def isValid(self):
+    def isValid(self) -> bool:
         if fnmatch.fnmatch(self.format, "1.*"):
             return isvalidatom(self.atom, eapi="0")
         if fnmatch.fnmatch(self.format, "2.*"):
             return isvalidatom(self.atom, eapi="5")
         return isvalidatom(self.atom)
 
-    def checkRestriction(self, **kwargs):
+    def checkRestriction(self, **kwargs) -> Optional[Match[str]]:
         return kwargs["vardb"].match(self.atom)
 
 
-def count_unread_news(portdb, vardb, repos=None, update=True):
+def count_unread_news(
+    portdb: "portage.dbapi.porttree.portdbapi",
+    vardb: "portage.dbapi.vartree.vardbapi",
+    repos: Optional[List[Any]] = None,
+    update: bool = True,
+) -> Dict[str, int]:
     """
     Returns a dictionary mapping repos to integer counts of unread news items.
     By default, this will scan all repos and check for new items that have
@@ -474,20 +500,23 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
     return news_counts
 
 
-def display_news_notifications(news_counts):
+def display_news_notifications(news_counts: Dict[Any, int]) -> None:
     """
     Display a notification for unread news items, using a dictionary mapping
     repos to integer counts, like that returned from count_unread_news().
+
+    @param news_count: mapping of repos to integer counts of unread news items
+    @type news_count: dict
     """
-    newsReaderDisplay = False
+    news_reader_display = False
     for repo, count in news_counts.items():
         if count > 0:
-            if not newsReaderDisplay:
-                newsReaderDisplay = True
+            if not news_reader_display:
+                news_reader_display = True
                 print()
             print(colorize("WARN", " * IMPORTANT:"), end=" ")
             print(f"{count} news items need reading for repository '{repo}'.")
 
-    if newsReaderDisplay:
+    if news_reader_display:
         print(colorize("WARN", " *"), end=" ")
         print(f"Use {colorize('GOOD', 'eselect news read')} to view new items.\n")

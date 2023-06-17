@@ -1,7 +1,9 @@
-# Copyright 2013-2020 Gentoo Authors
+# Copyright 2013-2020, 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import itertools
+
+import pytest
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
@@ -75,7 +77,6 @@ class OrChoicesTestCase(TestCase):
             playground.cleanup()
 
     def testInitiallyUnsatisfied(self):
-
         ebuilds = {
             "app-misc/A-1": {"EAPI": "5", "SLOT": "0/1"},
             "app-misc/A-2": {"EAPI": "5", "SLOT": "0/2"},
@@ -113,7 +114,6 @@ class OrChoicesTestCase(TestCase):
             playground.cleanup()
 
     def testUseMask(self):
-
         profile = {
             "use.mask": ("abi_ppc_32",),
         }
@@ -151,7 +151,6 @@ class OrChoicesTestCase(TestCase):
             playground.cleanup()
 
     def testConflictMissedUpdate(self):
-
         ebuilds = {
             "dev-lang/ocaml-4.02.1": {
                 "EAPI": "5",
@@ -640,6 +639,7 @@ class OrChoicesTestCase(TestCase):
 
 
 class OrChoicesLibpostprocTestCase(TestCase):
+    @pytest.mark.xfail(reason="Irrelevant blocker conflict")
     def testOrChoicesLibpostproc(self):
         # This test case is expected to fail after the fix for bug 706278,
         # since the "undesirable" slot upgrade which triggers a blocker conflict

@@ -16,7 +16,6 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 
 import fcntl
-import io
 
 
 class EbuildMetadataPhase(SubProcess):
@@ -48,9 +47,8 @@ class EbuildMetadataPhase(SubProcess):
     def _start(self):
         ebuild_path = self.ebuild_hash.location
 
-        with io.open(
+        with open(
             _unicode_encode(ebuild_path, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -201,7 +199,6 @@ class EbuildMetadataPhase(SubProcess):
                 # EAPI from _parse_eapi_ebuild_head, we don't write cache
                 # entries for unsupported EAPIs.
                 if self.eapi_supported:
-
                     if metadata.get("INHERITED", False):
                         metadata[
                             "_eclasses_"

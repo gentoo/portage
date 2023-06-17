@@ -26,11 +26,11 @@ from portage.localization import _
 # SHA256: hashlib
 # SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
-# WHIRLPOOL: hashlib, mhash, bundled
-# BLAKE2B (512): hashlib (3.6+), pyblake2, pycrypto
-# BLAKE2S (512): hashlib (3.6+), pyblake2, pycrypto
-# SHA3_256: hashlib (3.6+), pysha3, pycrypto
-# SHA3_512: hashlib (3.6+), pysha3, pycrypto
+# WHIRLPOOL: hashlib, bundled (C), bundled (Python)
+# BLAKE2B (512): hashlib
+# BLAKE2S (512): hashlib
+# SHA3_256: hashlib
+# SHA3_512: hashlib
 
 
 # Dict of all available hash functions
@@ -43,7 +43,7 @@ def _open_file(filename):
         return open(
             _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
         )
-    except IOError as e:
+    except OSError as e:
         func_call = f"open('{_unicode_decode(filename)}')"
         if e.errno == errno.EPERM:
             raise portage.exception.OperationNotPermitted(func_call)
@@ -56,7 +56,6 @@ def _open_file(filename):
 
 
 class _generate_hash_function:
-
     __slots__ = ("_hashobject",)
 
     def __init__(self, hashtype, hashobject, origin="unknown"):
@@ -100,10 +99,15 @@ class _generate_hash_function:
 # Define hash functions, try to use the best module available. Preferred
 # modules should go first, latter ones should check if the hashes aren't
 # already defined.
-
-
-# Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
+# Use hashlib if available and prefer it over pycrypto and internal fallbacks.
+#
 # Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
+# We keep fallbacks for RMD160/WHIRLPOOL for now as newer OpenSSLs don't expose them
+# by default.
+# See also
+# - https://github.com/python/cpython/issues/91257
+# - https://github.com/python/cpython/issues/92876
+# - https://bugs.gentoo.org/846389
 _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
 _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
 _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
@@ -111,7 +115,6 @@ _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
 for local_name, hash_name in (
     ("RMD160", "ripemd160"),
     ("WHIRLPOOL", "whirlpool"),
-    # available since Python 3.6
     ("BLAKE2B", "blake2b"),
     ("BLAKE2S", "blake2s"),
     ("SHA3_256", "sha3_256"),
@@ -127,76 +130,6 @@ for local_name, hash_name in (
         )
 
 
-# Support using pyblake2 as fallback for python<3.6
-if "BLAKE2B" not in hashfunc_map or "BLAKE2S" not in hashfunc_map:
-    try:
-        import pyblake2
-
-        _generate_hash_function("BLAKE2B", pyblake2.blake2b, origin="pyblake2")
-        _generate_hash_function("BLAKE2S", pyblake2.blake2s, origin="pyblake2")
-    except ImportError:
-        pass
-
-
-# Support using pysha3 as fallback for python<3.6
-if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
-    try:
-        import sha3
-
-        _generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
-        _generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
-    except ImportError:
-        pass
-
-
-# Support pygcrypt as fallback using optimized routines from libgcrypt
-# (GnuPG).
-gcrypt_algos = frozenset(
-    ("RMD160", "WHIRLPOOL", "SHA3_256", "SHA3_512", "STREEBOG256", "STREEBOG512")
-)
-# Note: currently disabled due to resource exhaustion bugs in pygcrypt.
-# Please do not reenable until upstream has a fix.
-# https://bugs.gentoo.org/615620
-if False:
-    # if gcrypt_algos.difference(hashfunc_map):
-    try:
-        import binascii
-        import pygcrypt.hashcontext
-
-        class GCryptHashWrapper:
-            def __init__(self, algo):
-                self._obj = pygcrypt.hashcontext.HashContext(algo=algo, secure=False)
-
-            def update(self, data):
-                self._obj.write(data)
-
-            def hexdigest(self):
-                return binascii.b2a_hex(self._obj.read()).decode()
-
-        name_mapping = {
-            "RMD160": "ripemd160",
-            "WHIRLPOOL": "whirlpool",
-            "SHA3_256": "sha3-256",
-            "SHA3_512": "sha3-512",
-            "STREEBOG256": "stribog256",
-            "STREEBOG512": "stribog512",
-        }
-
-        for local_name, gcry_name in name_mapping.items():
-            try:
-                pygcrypt.hashcontext.HashContext(algo=gcry_name)
-            except Exception:  # yes, it throws Exception...
-                pass
-            else:
-                _generate_hash_function(
-                    local_name,
-                    functools.partial(GCryptHashWrapper, gcry_name),
-                    origin="pygcrypt",
-                )
-    except ImportError:
-        pass
-
-
 # Use pycrypto when available, prefer it over the internal fallbacks
 # Check for 'new' attributes, since they can be missing if the module
 # is broken somehow.
@@ -208,112 +141,38 @@ if "RMD160" not in hashfunc_map:
         if rmd160hash_ is not None:
             _generate_hash_function("RMD160", rmd160hash_, origin="pycrypto")
     except ImportError:
-        pass
+        # Try to use mhash if available
+        # mhash causes GIL presently, so it gets less priority than hashlib and
+        # pycrypto. However, it might be the only accelerated implementation of
+        # WHIRLPOOL available.
+        try:
+            import mhash
 
-# The following hashes were added in pycryptodome (pycrypto fork)
-if "BLAKE2B" not in hashfunc_map:
-    try:
-        from Crypto.Hash import BLAKE2b
-
-        blake2bhash_ = getattr(BLAKE2b, "new", None)
-        if blake2bhash_ is not None:
-            _generate_hash_function(
-                "BLAKE2B",
-                functools.partial(blake2bhash_, digest_bytes=64),
-                origin="pycrypto",
-            )
-    except ImportError:
-        pass
-
-if "BLAKE2S" not in hashfunc_map:
-    try:
-        from Crypto.Hash import BLAKE2s
-
-        blake2shash_ = getattr(BLAKE2s, "new", None)
-        if blake2shash_ is not None:
-            _generate_hash_function(
-                "BLAKE2S",
-                functools.partial(blake2shash_, digest_bytes=32),
-                origin="pycrypto",
-            )
-    except ImportError:
-        pass
-
-if "SHA3_256" not in hashfunc_map:
-    try:
-        from Crypto.Hash import SHA3_256
-
-        sha3_256hash_ = getattr(SHA3_256, "new", None)
-        if sha3_256hash_ is not None:
-            _generate_hash_function("SHA3_256", sha3_256hash_, origin="pycrypto")
-    except ImportError:
-        pass
-
-if "SHA3_512" not in hashfunc_map:
-    try:
-        from Crypto.Hash import SHA3_512
-
-        sha3_512hash_ = getattr(SHA3_512, "new", None)
-        if sha3_512hash_ is not None:
-            _generate_hash_function("SHA3_512", sha3_512hash_, origin="pycrypto")
-    except ImportError:
-        pass
-
-
-# Try to use mhash if available
-# mhash causes GIL presently, so it gets less priority than hashlib and
-# pycrypto. However, it might be the only accelerated implementation of
-# WHIRLPOOL available.
-if "RMD160" not in hashfunc_map or "WHIRLPOOL" not in hashfunc_map:
-    try:
-        import mhash
-
-        for local_name, hash_name in (
-            ("RMD160", "RIPEMD160"),
-            ("WHIRLPOOL", "WHIRLPOOL"),
-        ):
-            if local_name not in hashfunc_map and hasattr(
-                mhash, "MHASH_%s" % hash_name
-            ):
-                _generate_hash_function(
-                    local_name,
-                    functools.partial(
-                        mhash.MHASH, getattr(mhash, "MHASH_%s" % hash_name)
-                    ),
-                    origin="mhash",
-                )
-    except ImportError:
-        pass
-
-
-# Support pygost as fallback streebog provider
-# It's mostly provided as a reference implementation; it's pure Python,
-# slow and reads all data to memory (i.e. doesn't hash on update()...)
-if "STREEBOG256" not in hashfunc_map or "STREEBOG512" not in hashfunc_map:
-    try:
-        import pygost.gost34112012
-
-        _generate_hash_function(
-            "STREEBOG256",
-            functools.partial(pygost.gost34112012.GOST34112012, digest_size=32),
-            origin="pygost",
-        )
-        _generate_hash_function(
-            "STREEBOG512",
-            functools.partial(pygost.gost34112012.GOST34112012, digest_size=64),
-            origin="pygost",
-        )
-    except ImportError:
-        pass
+            for local_name, hash_name in (("RMD160", "RIPEMD160"),):
+                if local_name not in hashfunc_map and hasattr(
+                    mhash, f"MHASH_{hash_name}"
+                ):
+                    _generate_hash_function(
+                        local_name,
+                        functools.partial(
+                            mhash.MHASH, getattr(mhash, f"MHASH_{hash_name}")
+                        ),
+                        origin="mhash",
+                    )
+        except ImportError:
+            pass
 
 
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
     # Bundled WHIRLPOOL implementation
-    _whirlpool_unaccelerated = True
-    from portage.util.whirlpool import new as _new_whirlpool
+    from portage.util.whirlpool import CWhirlpool, PyWhirlpool
 
-    _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
+    if CWhirlpool.is_available:
+        _generate_hash_function("WHIRLPOOL", CWhirlpool, origin="bundled-c")
+    else:
+        _whirlpool_unaccelerated = True
+        _generate_hash_function("WHIRLPOOL", PyWhirlpool, origin="bundled-py")
 
 
 # There is only one implementation for size
@@ -339,7 +198,7 @@ if os.path.exists(PRELINK_BINARY):
     proc.communicate()
     status = proc.wait()
     if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-        prelink_capable = 1
+        prelink_capable = True
     del cmd, proc, status
 
 
@@ -442,10 +301,10 @@ def _apply_hash_filter(digests, hash_filter):
     """
 
     verifiable_hash_types = set(digests).intersection(hashfunc_keys)
+    verifiable_hash_types.discard("size")
     modified = False
     if len(verifiable_hash_types) > 1:
-        verifiable_hash_types.discard("size")
-        for k in verifiable_hash_types:
+        for k in list(verifiable_hash_types):
             if not hash_filter(k):
                 modified = True
                 verifiable_hash_types.remove(k)
@@ -453,7 +312,11 @@ def _apply_hash_filter(digests, hash_filter):
                     break
 
     if modified:
-        digests = {k: v for k, v in digests.items() if k in verifiable_hash_types}
+        digests = {
+            k: v
+            for k, v in digests.items()
+            if k == "size" or k in verifiable_hash_types
+        }
 
     return digests
 
@@ -570,7 +433,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
                     f"{hashname} hash function not available (needs dev-python/pycrypto)"
                 )
             myhash, mysize = hashfunc_map[hashname].checksum_file(myfilename)
-        except (OSError, IOError) as e:
+        except OSError as e:
             if e.errno in (errno.ENOENT, errno.ESTALE):
                 raise portage.exception.FileNotFound(myfilename)
             elif e.errno == portage.exception.PermissionDenied.errno:

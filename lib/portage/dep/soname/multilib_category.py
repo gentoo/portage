@@ -51,6 +51,7 @@ from portage.util.elf.constants import (
     EM_68K,
     EM_AARCH64,
     EM_ALPHA,
+    EM_AMDGPU,
     EM_ARM,
     EM_ALTERA_NIOS2,
     EM_IA_64,
@@ -77,6 +78,7 @@ _machine_prefix_map = {
     EM_68K: "m68k",
     EM_AARCH64: "arm",
     EM_ALPHA: "alpha",
+    EM_AMDGPU: "amdgpu",
     EM_ALTERA_NIOS2: "nios2",
     EM_ARM: "arm",
     EM_IA_64: "ia64",
@@ -112,13 +114,11 @@ _mips_abi_map = {
 
 
 def _compute_suffix_loong(elf_header):
-
     loong_abi = elf_header.e_flags & EF_LOONGARCH_ABI_MASK
     return _loong_abi_map.get(loong_abi)
 
 
 def _compute_suffix_mips(elf_header):
-
     name = None
     mips_abi = elf_header.e_flags & EF_MIPS_ABI
 
@@ -179,7 +179,6 @@ def compute_multilib_category(elf_header):
     """
     category = None
     if elf_header.e_machine is not None:
-
         prefix = _machine_prefix_map.get(elf_header.e_machine)
         specialized_func = _specialized_funcs.get(prefix)
         suffix = None
@@ -197,6 +196,6 @@ def compute_multilib_category(elf_header):
         if prefix is None or suffix is None:
             category = None
         else:
-            category = "%s_%s" % (prefix, suffix)
+            category = f"{prefix}_{suffix}"
 
     return category

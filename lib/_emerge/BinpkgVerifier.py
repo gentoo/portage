@@ -22,7 +22,6 @@ class BinpkgVerifier(CompositeTask):
     __slots__ = ("logfile", "pkg", "_digests", "_pkg_path")
 
     def _start(self):
-
         bintree = self.pkg.root_config.trees["bintree"]
         digests = bintree._get_digests(self.pkg)
         if "size" not in digests:
@@ -43,7 +42,7 @@ class BinpkgVerifier(CompositeTask):
             if e.errno not in (errno.ENOENT, errno.ESTALE):
                 raise
             self.scheduler.output(
-                ("!!! Fetching Binary failed " "for '%s'\n") % self.pkg.cpv,
+                f"!!! Fetching Binary failed for '{self.pkg.cpv}'\n",
                 log_path=self.logfile,
                 background=self.background,
             )
@@ -69,7 +68,6 @@ class BinpkgVerifier(CompositeTask):
         )
 
     def _digester_exit(self, digester):
-
         if self._default_exit(digester) != os.EX_OK:
             self.wait()
             return
@@ -105,7 +103,7 @@ class BinpkgVerifier(CompositeTask):
                 path = path[: -len(".partial")]
             eout = EOutput()
             eout.ebegin(
-                "%s %s ;-)" % (os.path.basename(path), " ".join(sorted(self._digests)))
+                f"{os.path.basename(path)} {' '.join(sorted(self._digests))} ;-)"
             )
             eout.eend(0)
 
@@ -119,22 +117,18 @@ class BinpkgVerifier(CompositeTask):
         )
 
     def _digest_exception(self, name, value, expected):
-
         head, tail = os.path.split(self._pkg_path)
         temp_filename = _checksum_failure_temp_file(
             self.pkg.root_config.settings, head, tail
         )
 
         self.scheduler.output(
-            (
-                "\n!!! Digest verification failed:\n"
-                "!!! %s\n"
-                "!!! Reason: Failed on %s verification\n"
-                "!!! Got: %s\n"
-                "!!! Expected: %s\n"
-                "File renamed to '%s'\n"
-            )
-            % (self._pkg_path, name, value, expected, temp_filename),
+            "\n!!! Digest verification failed:\n"
+            f"!!! {self._pkg_path}\n"
+            f"!!! Reason: Failed on {name} verification\n"
+            f"!!! Got: {value}\n"
+            f"!!! Expected: {expected}\n"
+            f"File renamed to '{temp_filename}'\n",
             log_path=self.logfile,
             background=self.background,
         )

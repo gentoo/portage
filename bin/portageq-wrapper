@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Copyright 2009-2023 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+# Use safe cwd, avoiding unsafe import for bug #469338.
+cd "${PORTAGE_PYM_PATH}" || exit 1
+
+IFS=":"
+set -f # in case ${PATH} contains any shell glob characters
+
+for path in "${PORTAGE_BIN_PATH}" ${PATH}; do
+	[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
+	[[ -x ${path}/portageq ]] || continue
+	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+		exec "${PORTAGE_PYTHON:-/usr/bin/python}" "${path}/portageq" "$@"
+done
+
+echo "portageq: command not found" >&2
+exit 127

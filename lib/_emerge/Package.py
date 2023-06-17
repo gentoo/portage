@@ -19,12 +19,10 @@ from portage.dep.soname.parse import parse_soname_deps
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
-from portage.localization import _
 from _emerge.Task import Task
 
 
 class Package(Task):
-
     __hash__ = Task.__hash__
     __slots__ = (
         "built",
@@ -63,7 +61,6 @@ class Package(Task):
 
     metadata_keys = [
         "BDEPEND",
-        "BINPKG_FORMAT",
         "BUILD_ID",
         "BUILD_TIME",
         "CHOST",
@@ -126,7 +123,7 @@ class Package(Task):
         )
         if hasattr(self.cpv, "slot_invalid"):
             self._invalid_metadata(
-                "SLOT.invalid", "SLOT: invalid value: '%s'" % self._metadata["SLOT"]
+                "SLOT.invalid", f"SLOT: invalid value: '{self._metadata['SLOT']}'"
             )
         self.cpv_split = self.cpv.cpv_split
         self.category, self.pf = portage.catsplit(self.cpv)
@@ -134,7 +131,7 @@ class Package(Task):
         self.version = self.cpv.version
         self.slot = self.cpv.slot
         self.sub_slot = self.cpv.sub_slot
-        self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
+        self.slot_atom = Atom(f"{self.cp}{_slot_separator}{self.slot}")
         # sync metadata with validated repo (may be UNKNOWN_REPO)
         self._metadata["repository"] = self.cpv.repo
 
@@ -265,9 +262,8 @@ class Package(Task):
         repo_name=None,
         root_config=None,
         type_name=None,
-        **kwargs
+        **kwargs,
     ):
-
         if operation is None:
             if installed or onlydeps:
                 operation = "nomerge"
@@ -349,16 +345,13 @@ class Package(Task):
                             continue
                         if atom.slot_operator_built:
                             e = InvalidDependString(
-                                _(
-                                    "Improper context for slot-operator "
-                                    '"built" atom syntax: %s'
-                                )
-                                % (atom.unevaluated_atom,)
+                                'Improper context for slot-operator "built" '
+                                f"atom syntax: {atom.unevaluated_atom}"
                             )
                             self._metadata_exception(k, e)
 
         self._validated_atoms = tuple(
-            set(atom for atom in validated_atoms if isinstance(atom, Atom))
+            {atom for atom in validated_atoms if isinstance(atom, Atom)}
         )
 
         for k in self._use_conditional_misc_keys:
@@ -378,13 +371,13 @@ class Package(Task):
             if not _get_eapi_attrs(eapi).required_use:
                 self._invalid_metadata(
                     "EAPI.incompatible",
-                    "REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi,
+                    f"REQUIRED_USE set, but EAPI='{eapi}' doesn't allow it",
                 )
             else:
                 try:
                     check_required_use(v, (), self.iuse.is_valid_flag, eapi=eapi)
                 except InvalidDependString as e:
-                    self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+                    self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
         k = "SRC_URI"
         v = self._metadata.get(k)
@@ -406,13 +399,13 @@ class Package(Task):
             try:
                 self._provides = frozenset(parse_soname_deps(self._metadata[k]))
             except InvalidData as e:
-                self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+                self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
             k = "REQUIRES"
             try:
                 self._requires = frozenset(parse_soname_deps(self._metadata[k]))
             except InvalidData as e:
-                self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+                self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
     def copy(self):
         return Package(
@@ -483,9 +476,7 @@ class Package(Task):
         return masks
 
     def _eval_visiblity(self, masks):
-
         if masks is not False:
-
             if "EAPI.unsupported" in masks:
                 return False
 
@@ -536,7 +527,6 @@ class Package(Task):
         return pmask is not None
 
     def _metadata_exception(self, k, e):
-
         if k.endswith("DEPEND"):
             qacat = "dependency.syntax"
         else:
@@ -549,17 +539,17 @@ class Package(Task):
                     if getattr(error, "category", None) is None:
                         continue
                     categorized_error = True
-                    self._invalid_metadata(error.category, "%s: %s" % (k, error))
+                    self._invalid_metadata(error.category, f"{k}: {error}")
 
             if not categorized_error:
-                self._invalid_metadata(qacat, "%s: %s" % (k, e))
+                self._invalid_metadata(qacat, f"{k}: {e}")
         else:
             # For installed packages, show the path of the file
             # containing the invalid metadata, since the user may
             # want to fix the deps by hand.
             vardb = self.root_config.trees["vartree"].dbapi
             path = vardb.getpath(self.cpv, filename=k)
-            self._invalid_metadata(qacat, "%s: %s in '%s'" % (k, e, path))
+            self._invalid_metadata(qacat, f"{k}: {e} in '{path}'")
 
     def _invalid_metadata(self, msg_type, msg):
         if self._invalid is None:
@@ -583,9 +573,9 @@ class Package(Task):
 
         build_id_str = ""
         if isinstance(self.cpv.build_id, int) and self.cpv.build_id > 0:
-            build_id_str = "-%s" % self.cpv.build_id
+            build_id_str = f"-{self.cpv.build_id}"
 
-        s = "(%s, %s" % (
+        s = "({}, {}".format(
             portage.output.colorize(
                 cpv_color,
                 self.cpv
@@ -602,19 +592,18 @@ class Package(Task):
 
         if self.type_name == "installed":
             if self.root_config.settings["ROOT"] != "/":
-                s += " in '%s'" % self.root_config.settings["ROOT"]
+                s += f" in '{self.root_config.settings['ROOT']}'"
             if self.operation == "uninstall":
                 s += " scheduled for uninstall"
         else:
             if self.operation == "merge":
                 s += " scheduled for merge"
                 if self.root_config.settings["ROOT"] != "/":
-                    s += " to '%s'" % self.root_config.settings["ROOT"]
+                    s += f" to '{self.root_config.settings['ROOT']}'"
         s += ")"
         return s
 
     class _use_class:
-
         __slots__ = ("enabled", "_expand", "_expand_hidden", "_force", "_pkg", "_mask")
 
         # Share identical frozenset instances when available.
@@ -728,7 +717,6 @@ class Package(Task):
         return use_str
 
     class _iuse:
-
         __slots__ = (
             "__weakref__",
             "_iuse_implicit_match",
@@ -863,9 +851,7 @@ class Package(Task):
         return pkg
 
 
-_all_metadata_keys = set(x for x in portage.auxdbkeys)
-_all_metadata_keys.update(Package.metadata_keys)
-_all_metadata_keys = frozenset(_all_metadata_keys)
+_all_metadata_keys = frozenset(set(portage.auxdbkeys).union(Package.metadata_keys))
 
 _PackageMetadataWrapperBase = slot_dict_class(_all_metadata_keys)
 

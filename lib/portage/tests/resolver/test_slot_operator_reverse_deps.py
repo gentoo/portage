@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotOperatorReverseDepsTestCase(TestCase):
     def testSlotOperatorReverseDeps(self):
-
         ebuilds = {
             "media-libs/mesa-11.2.2": {
                 "EAPI": "6",

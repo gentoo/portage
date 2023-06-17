@@ -48,7 +48,6 @@ class EbuildIpcDaemon(FifoIpcDaemon):
                 # any exception when given corrupt data.
                 pass
             else:
-
                 self._reopen_input()
 
                 cmd_key = obj[0]
@@ -111,7 +110,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
             # This probably means that the client has been killed,
             # which causes open to fail with ENXIO.
             writemsg_level(
-                "!!! EbuildIpcDaemon %s: %s\n" % (_("failed to send reply"), e),
+                f"!!! EbuildIpcDaemon {_('failed to send reply')}: {e}\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )

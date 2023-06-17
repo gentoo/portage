@@ -48,7 +48,7 @@ class AuxdbTestCase(TestCase):
             "foo": ("inherit bar",),
             "bar": (
                 "EXPORT_FUNCTIONS src_prepare",
-                'DEPEND="{}"'.format(eclass_depend),
+                f'DEPEND="{eclass_depend}"',
                 "bar_src_prepare() { default; }",
             ),
         }
@@ -56,7 +56,7 @@ class AuxdbTestCase(TestCase):
         playground = ResolverPlayground(
             ebuilds=ebuilds,
             eclasses=eclasses,
-            user_config={"modules": ("portdbapi.auxdbmodule = %s" % auxdbmodule,)},
+            user_config={"modules": (f"portdbapi.auxdbmodule = {auxdbmodule}",)},
         )
 
         portdb = playground.trees[playground.eroot]["porttree"].dbapi
@@ -102,7 +102,6 @@ class AuxdbTestCase(TestCase):
     async def _test_mod_async(
         self, ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb
     ):
-
         for cpv, metadata in ebuilds.items():
             defined_phases, depend, eapi, inherited = await portdb.async_aux_get(
                 cpv, ["DEFINED_PHASES", "DEPEND", "EAPI", "INHERITED"]

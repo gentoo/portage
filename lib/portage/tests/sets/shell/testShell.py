@@ -17,12 +17,11 @@ class CommandOutputSetTestCase(TestCase):
         pass
 
     def testCommand(self):
-
         params = set(test_cps)
         command = find_binary("bash")
         command += " -c '"
         for a in params:
-            command += ' echo -e "%s" ; ' % a
+            command += f' echo -e "{a}" ; '
         command += "'"
         s = CommandOutputSet(command)
         atoms = s.getAtoms()

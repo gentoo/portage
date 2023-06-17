@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-import io
 
 import _emerge.emergelog
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -27,7 +26,6 @@ from portage.util.path import first_existing
 
 
 class EbuildBuild(CompositeTask):
-
     __slots__ = (
         "args_set",
         "config_pool",
@@ -83,7 +81,7 @@ class EbuildBuild(CompositeTask):
             settings.configdict["pkg"]["MERGE_TYPE"] = "source"
         ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
         if ebuild_path is None:
-            raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
+            raise AssertionError(f"ebuild not found for '{pkg.cpv}'")
         self._ebuild_path = ebuild_path
         portage.doebuild_environment(
             ebuild_path, "setup", settings=self.settings, db=portdb
@@ -101,7 +99,6 @@ class EbuildBuild(CompositeTask):
         if prefetcher is None:
             pass
         elif prefetcher.isAlive() and prefetcher.poll() is None:
-
             if not self.background:
                 fetch_log = os.path.join(
                     _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
@@ -109,7 +106,7 @@ class EbuildBuild(CompositeTask):
                 msg = (
                     "Fetching files in the background.",
                     "To view fetch progress, run in another terminal:",
-                    "tail -f %s" % fetch_log,
+                    f"tail -f {fetch_log}",
                 )
                 out = portage.output.EOutput()
                 for l in msg:
@@ -140,7 +137,6 @@ class EbuildBuild(CompositeTask):
         return success
 
     def _prefetch_exit(self, prefetcher):
-
         if self._was_cancelled():
             self.wait()
             return
@@ -219,13 +215,13 @@ class EbuildBuild(CompositeTask):
         lock_task.future.result()
         # Cleaning needs to happen before fetch, since the build dir
         # is used for log handling.
-        msg = " === (%s of %s) Cleaning (%s::%s)" % (
+        msg = " === ({} of {}) Cleaning ({}::{})".format(
             self.pkg_count.curval,
             self.pkg_count.maxval,
             self.pkg.cpv,
             self._ebuild_path,
         )
-        short_msg = "emerge: (%s of %s) %s Clean" % (
+        short_msg = "emerge: ({} of {}) {} Clean".format(
             self.pkg_count.curval,
             self.pkg_count.maxval,
             self.pkg.cpv,
@@ -298,7 +294,7 @@ class EbuildBuild(CompositeTask):
             already_fetched = already_fetched_task.future.result()
         except portage.exception.InvalidDependString as e:
             msg_lines = []
-            msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % (self.pkg.cpv, e)
+            msg = f"Fetch failed for '{self.pkg.cpv}' due to invalid SRC_URI: {e}"
             msg_lines.append(msg)
             fetcher._eerror(msg_lines)
             portage.elog.elog_process(self.pkg.cpv, self.settings)
@@ -318,7 +314,6 @@ class EbuildBuild(CompositeTask):
         self.scheduler.fetch.schedule(fetcher)
 
     def _fetch_exit(self, fetcher):
-
         if fetcher is not None and self._default_exit(fetcher) != os.EX_OK:
             self._fetch_failed()
             return
@@ -361,16 +356,15 @@ class EbuildBuild(CompositeTask):
             and not buildpkg_live_disabled
             and not self.opts.buildpkg_exclude.findAtomForPackage(pkg)
         ):
-
             self._buildpkg = True
 
-            msg = " === (%s of %s) Compiling/Packaging (%s::%s)" % (
+            msg = " === ({} of {}) Compiling/Packaging ({}::{})".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
                 ebuild_path,
             )
-            short_msg = "emerge: (%s of %s) %s Compile" % (
+            short_msg = "emerge: ({} of {}) {} Compile".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
@@ -378,13 +372,13 @@ class EbuildBuild(CompositeTask):
             logger.log(msg, short_msg=short_msg)
 
         else:
-            msg = " === (%s of %s) Compiling/Merging (%s::%s)" % (
+            msg = " === ({} of {}) Compiling/Merging ({}::{})".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
                 ebuild_path,
             )
-            short_msg = "emerge: (%s of %s) %s Compile" % (
+            short_msg = "emerge: ({} of {}) {} Compile".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
@@ -558,12 +552,12 @@ class EbuildBuild(CompositeTask):
         pkg = task.get_binpkg_info()
         infoloc = os.path.join(self.settings["PORTAGE_BUILDDIR"], "build-info")
         info = {
-            "BINPKGMD5": "%s\n" % pkg._metadata["MD5"],
+            "BINPKGMD5": f"{pkg._metadata['MD5']}\n",
         }
         if pkg.build_id is not None:
-            info["BUILD_ID"] = "%s\n" % pkg.build_id
+            info["BUILD_ID"] = f"{pkg.build_id}\n"
         for k, v in info.items():
-            with io.open(
+            with open(
                 _unicode_encode(
                     os.path.join(infoloc, k), encoding=_encodings["fs"], errors="strict"
                 ),
@@ -623,13 +617,13 @@ class EbuildBuild(CompositeTask):
             world_atom=world_atom,
         )
 
-        msg = " === (%s of %s) Merging (%s::%s)" % (
+        msg = " === ({} of {}) Merging ({}::{})".format(
             pkg_count.curval,
             pkg_count.maxval,
             pkg.cpv,
             ebuild_path,
         )
-        short_msg = "emerge: (%s of %s) %s Merge" % (
+        short_msg = "emerge: ({} of {}) {} Merge".format(
             pkg_count.curval,
             pkg_count.maxval,
             pkg.cpv,

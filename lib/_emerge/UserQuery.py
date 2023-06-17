@@ -54,10 +54,7 @@ class UserQuery:
             while True:
                 try:
                     response = input(
-                        "[%s] "
-                        % "/".join(
-                            [colours[i](responses[i]) for i in range(len(responses))]
-                        )
+                        f"[{'/'.join([colours[i](responses[i]) for i in range(len(responses))])}] "
                     )
                 except UnicodeDecodeError as e:
                     response = _unicode_decode(e.object).rstrip("\n")
@@ -67,7 +64,7 @@ class UserQuery:
                         # first value in responses.
                         if response.upper() == key[: len(response)].upper():
                             return key
-                print("Sorry, response '%s' not understood." % response, end=" ")
+                print(f"Sorry, response '{response}' not understood.", end=" ")
         except (EOFError, KeyboardInterrupt):
             print("Interrupted.")
             sys.exit(128 + signal.SIGINT)

@@ -88,7 +88,7 @@ class AsynchronousTask(SlotObject):
         """
         if self.returncode is None:
             if self.scheduler.is_running():
-                raise asyncio.InvalidStateError("Result is not ready for %s" % (self,))
+                raise asyncio.InvalidStateError(f"Result is not ready for {self}")
             self.scheduler.run_until_complete(self.async_wait())
         self._wait_hook()
         return self.returncode
@@ -193,7 +193,6 @@ class AsynchronousTask(SlotObject):
             self._start_hook()
 
         if self.returncode is not None and self._exit_listeners is not None:
-
             listeners = self._exit_listeners
             self._exit_listeners = None
             if self._exit_listener_handles is None:

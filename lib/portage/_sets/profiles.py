@@ -17,9 +17,7 @@ class PackagesSystemSet(PackageSet):
     _operations = ["merge"]
 
     def __init__(self, profiles, debug=False):
-        super(PackagesSystemSet, self).__init__(
-            allow_repo=any(allow_profile_repo_deps(x) for x in profiles)
-        )
+        super().__init__(allow_repo=any(allow_profile_repo_deps(x) for x in profiles))
         self._profiles = profiles
         self._debug = debug
         if profiles:
@@ -29,13 +27,13 @@ class PackagesSystemSet(PackageSet):
             description = desc_profile.location
         else:
             description = None
-        self.description = "System packages for profile %s" % description
+        self.description = f"System packages for profile {description}"
 
     def load(self):
         debug = self._debug
         if debug:
             writemsg_level(
-                "\nPackagesSystemSet: profiles: %s\n" % (self._profiles,),
+                f"\nPackagesSystemSet: profiles: {self._profiles}\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )
@@ -54,7 +52,7 @@ class PackagesSystemSet(PackageSet):
 
         if debug:
             writemsg_level(
-                "\nPackagesSystemSet: raw packages: %s\n" % (mylist,),
+                f"\nPackagesSystemSet: raw packages: {mylist}\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )
@@ -63,7 +61,7 @@ class PackagesSystemSet(PackageSet):
 
         if debug:
             writemsg_level(
-                "\nPackagesSystemSet: stacked packages: %s\n" % (mylist,),
+                f"\nPackagesSystemSet: stacked packages: {mylist}\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )

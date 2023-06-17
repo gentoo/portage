@@ -269,7 +269,6 @@ class PackageTracker:
             self._conflicts_cache = []
 
             for cp_key in self._multi_pkgs:
-
                 # Categorize packages according to cpv and slot.
                 slot_map = collections.defaultdict(list)
                 cpv_map = collections.defaultdict(list)
@@ -298,7 +297,7 @@ class PackageTracker:
                     if len(cpv_pkgs) > 1:
                         # Make sure this cpv conflict is not a slot conflict at the same time.
                         # Ignore it if it is.
-                        slots = set(pkg.slot for pkg in cpv_pkgs)
+                        slots = {pkg.slot for pkg in cpv_pkgs}
                         if len(slots) > 1:
                             self._conflicts_cache.append(
                                 PackageConflict(
@@ -332,8 +331,7 @@ class PackageTracker:
         """
         for cp_key in self._cp_pkg_map:
             if cp_key[0] == root:
-                for pkg in self._cp_pkg_map[cp_key]:
-                    yield pkg
+                yield from self._cp_pkg_map[cp_key]
 
         for cp_key in self._cp_vdb_pkg_map:
             if cp_key[0] == root:

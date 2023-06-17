@@ -127,7 +127,7 @@ if __name__ == "__main__":
         + "intact. The PATTERN is a space separated list of variable names"
         + " and it supports python regular expression syntax."
     )
-    usage = "usage: %s PATTERN" % os.path.basename(sys.argv[0])
+    usage = f"usage: {os.path.basename(sys.argv[0])} PATTERN"
     args = sys.argv[1:]
 
     if "-h" in args or "--help" in args:

@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import io
 import time
 import portage
 from portage import os
@@ -21,7 +20,7 @@ def process(mysettings, key, logentries, fulltext):
         logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
     else:
         logdir = os.path.join(
-            os.sep, mysettings["EPREFIX"].lstrip(os.sep), "var", "log", "portage"
+            os.sep, mysettings["BROOT"].lstrip(os.sep), "var", "log", "portage"
         )
 
     if not os.path.isdir(logdir):
@@ -41,14 +40,14 @@ def process(mysettings, key, logentries, fulltext):
     # TODO: Locking
     elogfilename = elogdir + "/summary.log"
     try:
-        elogfile = io.open(
+        elogfile = open(
             _unicode_encode(elogfilename, encoding=_encodings["fs"], errors="strict"),
             mode="a",
             encoding=_encodings["content"],
             errors="backslashreplace",
         )
-    except IOError as e:
-        func_call = "open('%s', 'a')" % elogfilename
+    except OSError as e:
+        func_call = f"open('{elogfilename}', 'a')"
         if e.errno == errno.EACCES:
             raise portage.exception.PermissionDenied(func_call)
         elif e.errno == errno.EPERM:

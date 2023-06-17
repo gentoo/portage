@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import io
 import functools
 import operator
 import os
@@ -44,7 +43,6 @@ class IndexedPortdb:
     )
 
     def __init__(self, portdb):
-
         self._portdb = portdb
 
         for k in self._copy_attrs:
@@ -55,7 +53,6 @@ class IndexedPortdb:
         self._unindexed_cp_map = None
 
     def _init_index(self):
-
         cp_map = {}
         desc_cache = {}
         self._desc_cache = desc_cache
@@ -77,8 +74,8 @@ class IndexedPortdb:
                 f = None
                 for filename in filenames:
                     try:
-                        f = io.open(filename, encoding=_encodings["repo.content"])
-                    except IOError as e:
+                        f = open(filename, encoding=_encodings["repo.content"])
+                    except OSError as e:
                         if e.errno not in (errno.ENOENT, errno.ESTALE):
                             raise
                     else:
@@ -119,7 +116,6 @@ class IndexedPortdb:
                 cp_group_iter = MultiIterGroupBy(streams, key=operator.attrgetter("cp"))
 
             for cp_group in cp_group_iter:
-
                 new_cp = None
                 cp_list = cp_map.get(cp_group[0].cp)
                 if cp_list is None:

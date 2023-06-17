@@ -1,7 +1,6 @@
 # Copyright 2015-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -15,7 +14,6 @@ from portage.output import colorize
 
 class BuildIdProfileFormatTestCase(TestCase):
     def testBuildIdProfileFormat(self):
-
         profile = {
             "packages": ("=app-misc/A-1-2::test_repo",),
             "package.mask": ("<app-misc/A-1::test_repo",),
@@ -149,7 +147,7 @@ class BuildIdProfileFormatTestCase(TestCase):
                 print(colorize("HILITE", binpkg_format), end=" ... ")
                 sys.stdout.flush()
                 _user_config = user_config.copy()
-                _user_config["make.conf"] += ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                _user_config["make.conf"] += (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
                     debug=False,
                     binpkgs=binpkgs,

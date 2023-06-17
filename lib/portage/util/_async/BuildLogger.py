@@ -60,7 +60,7 @@ class BuildLogger(AsynchronousTask):
                         scheduler=self.scheduler,
                     )
                     filter_proc.start()
-                except EnvironmentError:
+                except OSError:
                     # Maybe the command is missing or broken somehow...
                     os.close(filter_input)
                     os.close(stdin)

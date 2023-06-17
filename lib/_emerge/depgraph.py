@@ -1,12 +1,12 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import functools
-import io
 import logging
 import stat
 import textwrap
+import time
 import warnings
 import collections
 from collections import deque, OrderedDict
@@ -19,6 +19,7 @@ from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
     VCS_DIRS,
+    SUPPORTED_XPAK_EXTENSIONS,
     SUPPORTED_GPKG_EXTENSIONS,
 )
 from portage.dbapi import dbapi
@@ -39,12 +40,12 @@ from portage.dep._slot_operator import ignore_built_slot_operator_deps, strip_sl
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, _get_eapi_attrs
 from portage.exception import (
     InvalidAtom,
+    InvalidBinaryPackageFormat,
     InvalidData,
     InvalidDependString,
     PackageNotFound,
     PortageException,
 )
-from portage.localization import _
 from portage.output import colorize, create_color_func, darkgreen, green
 
 bad = create_color_func("BAD")
@@ -98,6 +99,9 @@ from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapi
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 from _emerge.resolver.output import Display, format_unmatched_atom
+
+# Type annotation imports
+from typing import Any, Optional, Dict, List, Tuple, Union
 
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
@@ -300,7 +304,6 @@ class _rebuild_config:
                 or dep_root_slot in self.rebuild_list
                 or not dep_pkg.installed
             ):
-
                 # A direct rebuild dependency is being installed. We
                 # should update the parent as well to the latest binary,
                 # if that binary is valid.
@@ -635,7 +638,6 @@ class _dynamic_depgraph_config:
 
 
 class depgraph:
-
     # Represents the depth of a node that is unreachable from explicit
     # user arguments (or their deep dependencies). Such nodes are pulled
     # in by the _complete_graph method.
@@ -695,7 +697,6 @@ class depgraph:
             return
 
         for myroot in self._frozen_config.trees:
-
             dynamic_deps = "dynamic_deps" in self._dynamic_config.myparams
             preload_installed_pkgs = "--nodeps" not in self._frozen_config.myopts
 
@@ -759,7 +760,6 @@ class depgraph:
                 yield proc
 
     class _dynamic_deps_proc_exit:
-
         __slots__ = ("_pkg", "_fake_vartree")
 
         def __init__(self, pkg, fake_vartree):
@@ -798,12 +798,10 @@ class depgraph:
             )
 
             for root in atoms:
-                writemsg_level(
-                    "   root: %s\n" % root, level=logging.DEBUG, noiselevel=-1
-                )
+                writemsg_level(f"   root: {root}\n", level=logging.DEBUG, noiselevel=-1)
                 for atom in atoms[root]:
                     writemsg_level(
-                        "      atom: %s\n" % atom, level=logging.DEBUG, noiselevel=-1
+                        f"      atom: {atom}\n", level=logging.DEBUG, noiselevel=-1
                     )
             writemsg_level("\n\n", level=logging.DEBUG, noiselevel=-1)
 
@@ -812,9 +810,7 @@ class depgraph:
         forced_rebuilds = {}
 
         for root, rebuild_atoms in atoms.items():
-
             for slot_atom in rebuild_atoms:
-
                 inst_pkg, reinst_pkg = self._select_pkg_from_installed(root, slot_atom)
 
                 if inst_pkg is reinst_pkg or reinst_pkg is None:
@@ -869,7 +865,6 @@ class depgraph:
 
                 if built_slot_op_atoms and reinst_pkg is not None:
                     for child in self._dynamic_config.digraph.child_nodes(reinst_pkg):
-
                         if child.installed:
                             continue
 
@@ -960,18 +955,18 @@ class depgraph:
                 slot_atom,
             ), deps in self._dynamic_config._slot_operator_deps.items():
                 writemsg_level(
-                    "   (%s, %s)\n" % (root, slot_atom),
+                    f"   ({root}, {slot_atom})\n",
                     level=logging.DEBUG,
                     noiselevel=-1,
                 )
                 for dep in deps:
                     writemsg_level(
-                        "      parent: %s\n" % dep.parent,
+                        f"      parent: {dep.parent}\n",
                         level=logging.DEBUG,
                         noiselevel=-1,
                     )
                     writemsg_level(
-                        "        child: %s (%s)\n" % (dep.child, dep.priority),
+                        f"        child: {dep.child} ({dep.priority})\n",
                         level=logging.DEBUG,
                         noiselevel=-1,
                     )
@@ -981,16 +976,14 @@ class depgraph:
             writemsg_level("forced rebuilds:\n", level=logging.DEBUG, noiselevel=-1)
 
             for root in forced_rebuilds:
-                writemsg_level(
-                    "   root: %s\n" % root, level=logging.DEBUG, noiselevel=-1
-                )
+                writemsg_level(f"   root: {root}\n", level=logging.DEBUG, noiselevel=-1)
                 for child in forced_rebuilds[root]:
                     writemsg_level(
-                        "      child: %s\n" % child, level=logging.DEBUG, noiselevel=-1
+                        f"      child: {child}\n", level=logging.DEBUG, noiselevel=-1
                     )
                     for parent in forced_rebuilds[root][child]:
                         writemsg_level(
-                            "         parent: %s\n" % parent,
+                            f"         parent: {parent}\n",
                             level=logging.DEBUG,
                             noiselevel=-1,
                         )
@@ -999,7 +992,6 @@ class depgraph:
         self._forced_rebuilds = forced_rebuilds
 
     def _show_abi_rebuild_info(self):
-
         if not self._forced_rebuilds:
             return
 
@@ -1009,9 +1001,9 @@ class depgraph:
 
         for root in self._forced_rebuilds:
             for child in self._forced_rebuilds[root]:
-                writemsg_stdout("  %s causes rebuilds for:\n" % (child,), noiselevel=-1)
+                writemsg_stdout(f"  {child} causes rebuilds for:\n", noiselevel=-1)
                 for parent in self._forced_rebuilds[root][child]:
-                    writemsg_stdout("    %s\n" % (parent,), noiselevel=-1)
+                    writemsg_stdout(f"    {parent}\n", noiselevel=-1)
 
     def _eliminate_ignored_binaries(self):
         """
@@ -1019,11 +1011,9 @@ class depgraph:
         for which a more optimal alternative exists.
         """
         for pkg in list(self._dynamic_config.ignored_binaries):
-
             for selected_pkg in self._dynamic_config._package_tracker.match(
                 pkg.root, pkg.slot_atom
             ):
-
                 if selected_pkg > pkg:
                     self._dynamic_config.ignored_binaries.pop(pkg)
                     break
@@ -1143,18 +1133,14 @@ class depgraph:
             return
 
         writemsg(
-            "\n%s\n\n"
-            % colorize(
-                "WARN",
-                "!!! Detected ebuild dependency change(s) without revision bump:",
-            ),
+            f"\n{colorize('WARN','!!! Detected ebuild dependency change(s) without revision bump:')}\n\n",
             noiselevel=-1,
         )
 
         for pkg, ebuild in report_pkgs:
-            writemsg("    %s::%s" % (pkg.cpv, pkg.repo), noiselevel=-1)
+            writemsg(f"    {pkg.cpv}::{pkg.repo}", noiselevel=-1)
             if pkg.root_config.settings["ROOT"] != "/":
-                writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+                writemsg(f" for {pkg.root}", noiselevel=-1)
             writemsg("\n", noiselevel=-1)
 
         msg = []
@@ -1227,7 +1213,6 @@ class depgraph:
             self._show_ignored_binaries_changed_deps(ignored_binaries["changed_deps"])
 
     def _show_ignored_binaries_respect_use(self, respect_use):
-
         writemsg(
             "\n!!! The following binary packages have been ignored "
             + "due to non matching USE:\n\n",
@@ -1242,9 +1227,9 @@ class depgraph:
                 flag_display.append(flag)
             flag_display = " ".join(flag_display)
             # The user can paste this line into package.use
-            writemsg("    =%s %s" % (pkg.cpv, flag_display), noiselevel=-1)
+            writemsg(f"    ={pkg.cpv} {flag_display}", noiselevel=-1)
             if pkg.root_config.settings["ROOT"] != "/":
-                writemsg(" # for %s" % (pkg.root,), noiselevel=-1)
+                writemsg(f" # for {pkg.root}", noiselevel=-1)
             writemsg("\n", noiselevel=-1)
 
         msg = [
@@ -1260,7 +1245,6 @@ class depgraph:
             writemsg(line + "\n", noiselevel=-1)
 
     def _show_ignored_binaries_changed_deps(self, changed_deps):
-
         writemsg(
             "\n!!! The following binary packages have been "
             "ignored due to changed dependencies:\n\n",
@@ -1268,10 +1252,10 @@ class depgraph:
         )
 
         for pkg in changed_deps:
-            msg = "     %s%s%s" % (pkg.cpv, _repo_separator, pkg.repo)
+            msg = f"     {pkg.cpv}{_repo_separator}{pkg.repo}"
             if pkg.root_config.settings["ROOT"] != "/":
-                msg += " for %s" % pkg.root
-            writemsg("%s\n" % msg, noiselevel=-1)
+                msg += f" for {pkg.root}"
+            writemsg(f"{msg}\n", noiselevel=-1)
 
         msg = [
             "",
@@ -1286,7 +1270,6 @@ class depgraph:
             writemsg(line + "\n", noiselevel=-1)
 
     def _get_missed_updates(self):
-
         # In order to minimize noise, show only the highest
         # missed update from each SLOT.
         missed_updates = {}
@@ -1304,9 +1287,7 @@ class depgraph:
                 pkg.root, pkg.slot_atom
             ):
                 any_selected = True
-                if chosen_pkg > pkg or (
-                    not chosen_pkg.installed and chosen_pkg.version == pkg.version
-                ):
+                if not chosen_pkg.installed and chosen_pkg.version == pkg.version:
                     missed_update = False
                     break
             if any_selected and missed_update:
@@ -1324,7 +1305,6 @@ class depgraph:
         return missed_updates
 
     def _show_missed_update(self):
-
         missed_updates = self._get_missed_updates()
 
         if not missed_updates:
@@ -1350,7 +1330,6 @@ class depgraph:
         )
 
     def _show_missed_update_unsatisfied_dep(self, missed_updates):
-
         if not missed_updates:
             return
 
@@ -1358,7 +1337,6 @@ class depgraph:
         backtrack_masked = []
 
         for pkg, parent_atoms in missed_updates:
-
             try:
                 for parent, root, atom in parent_atoms:
                     self._show_unsatisfied_dep(
@@ -1377,7 +1355,7 @@ class depgraph:
 
             writemsg(str(pkg.slot_atom), noiselevel=-1)
             if pkg.root_config.settings["ROOT"] != "/":
-                writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+                writemsg(f" for {pkg.root}", noiselevel=-1)
             writemsg("\n\n", noiselevel=-1)
 
             selected_pkg = next(
@@ -1385,9 +1363,9 @@ class depgraph:
                 None,
             )
 
-            writemsg("  selected: %s\n" % (selected_pkg,), noiselevel=-1)
+            writemsg(f"  selected: {selected_pkg}\n", noiselevel=-1)
             writemsg(
-                "  skipped: %s (see unsatisfied dependency below)\n" % (pkg,),
+                f"  skipped: {pkg} (see unsatisfied dependency below)\n",
                 noiselevel=-1,
             )
 
@@ -1407,11 +1385,10 @@ class depgraph:
             for pkg, parent_atoms in backtrack_masked:
                 writemsg(str(pkg.slot_atom), noiselevel=-1)
                 if pkg.root_config.settings["ROOT"] != "/":
-                    writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+                    writemsg(f" for {pkg.root}", noiselevel=-1)
                 writemsg("\n", noiselevel=-1)
 
     def _show_missed_update_slot_conflicts(self, missed_updates):
-
         if not missed_updates:
             return
 
@@ -1425,19 +1402,18 @@ class depgraph:
         for pkg, parent_atoms in missed_updates:
             msg.append(str(pkg.slot_atom))
             if pkg.root_config.settings["ROOT"] != "/":
-                msg.append(" for %s" % (pkg.root,))
+                msg.append(f" for {pkg.root}")
             msg.append("\n\n")
 
             msg.append(indent)
             msg.append(
-                "%s %s"
-                % (
-                    pkg,
+                f"{pkg} "
+                + str(
                     pkg_use_display(
                         pkg,
                         self._frozen_config.myopts,
                         modified_use=self._pkg_use_enabled(pkg),
-                    ),
+                    )
                 )
             )
             msg.append(" conflicts with\n")
@@ -1466,7 +1442,7 @@ class depgraph:
                         use_display = ""
 
                     msg.append(2 * indent)
-                    msg.append("%s required by %s %s\n" % (atom, parent, use_display))
+                    msg.append(f"{atom} required by {parent} {use_display}\n")
                     msg.append(2 * indent)
                     msg.append(marker)
                     msg.append("\n")
@@ -1619,25 +1595,25 @@ class depgraph:
             """
 
             def __str__(self):
-                return "(%s)" % ",".join(str(pkg) for pkg in self)
+                return f"({','.join(str(pkg) for pkg in self)})"
 
         non_matching_forced = set()
         for conflict in conflicts:
             if debug:
                 writemsg_level("   conflict:\n", level=logging.DEBUG, noiselevel=-1)
                 writemsg_level(
-                    "      root: %s\n" % conflict.root,
+                    f"      root: {conflict.root}\n",
                     level=logging.DEBUG,
                     noiselevel=-1,
                 )
                 writemsg_level(
-                    "      atom: %s\n" % conflict.atom,
+                    f"      atom: {conflict.atom}\n",
                     level=logging.DEBUG,
                     noiselevel=-1,
                 )
                 for pkg in conflict:
                     writemsg_level(
-                        "      pkg: %s\n" % pkg, level=logging.DEBUG, noiselevel=-1
+                        f"      pkg: {pkg}\n", level=logging.DEBUG, noiselevel=-1
                     )
 
             all_parent_atoms = set()
@@ -1660,18 +1636,17 @@ class depgraph:
 
                 if debug:
                     writemsg_level(
-                        "      parent: %s\n" % parent,
+                        f"      parent: {parent}\n",
                         level=logging.DEBUG,
                         noiselevel=-1,
                     )
                     writemsg_level(
-                        "      arg, non-conflict: %s, %s\n"
-                        % (is_arg_parent, is_non_conflict_parent),
+                        f"      arg, non-conflict: {is_arg_parent}, {is_non_conflict_parent}\n",
                         level=logging.DEBUG,
                         noiselevel=-1,
                     )
                     writemsg_level(
-                        "         atom: %s\n" % atom, level=logging.DEBUG, noiselevel=-1
+                        f"         atom: {atom}\n", level=logging.DEBUG, noiselevel=-1
                     )
 
                 if is_non_conflict_parent:
@@ -1687,7 +1662,7 @@ class depgraph:
                 if debug:
                     for match in matched:
                         writemsg_level(
-                            "         match: %s\n" % match,
+                            f"         match: {match}\n",
                             level=logging.DEBUG,
                             noiselevel=-1,
                         )
@@ -1711,7 +1686,7 @@ class depgraph:
                     if debug:
                         for pkg in conflict:
                             writemsg_level(
-                                "         non-match: %s\n" % pkg,
+                                f"         non-match: {pkg}\n",
                                 level=logging.DEBUG,
                                 noiselevel=-1,
                             )
@@ -1803,20 +1778,20 @@ class depgraph:
             )
             for conflict in conflicts:
                 writemsg_level(
-                    "   Conflict: (%s, %s)\n" % (conflict.root, conflict.atom),
+                    f"   Conflict: ({conflict.root}, {conflict.atom})\n",
                     level=logging.DEBUG,
                     noiselevel=-1,
                 )
                 for pkg in conflict:
                     if pkg in forced:
                         writemsg_level(
-                            "      keep:   %s\n" % pkg,
+                            f"      keep:   {pkg}\n",
                             level=logging.DEBUG,
                             noiselevel=-1,
                         )
                     else:
                         writemsg_level(
-                            "      remove: %s\n" % pkg,
+                            f"      remove: {pkg}\n",
                             level=logging.DEBUG,
                             noiselevel=-1,
                         )
@@ -1919,15 +1894,14 @@ class depgraph:
         conflict_pkgs = []
         conflict_atoms = {}
         for pkg in slot_nodes:
-
             if (
                 self._dynamic_config._allow_backtracking
                 and pkg in self._dynamic_config._runtime_pkg_mask
             ):
                 if debug:
                     writemsg_level(
-                        "!!! backtracking loop detected: %s %s\n"
-                        % (pkg, self._dynamic_config._runtime_pkg_mask[pkg]),
+                        f"!!! backtracking loop detected: {pkg} "
+                        f"{self._dynamic_config._runtime_pkg_mask[pkg]}\n",
                         level=logging.DEBUG,
                         noiselevel=-1,
                     )
@@ -1970,7 +1944,6 @@ class depgraph:
                 )
 
     def _slot_confict_backtrack(self, root, slot_atom, all_parents, conflict_pkgs):
-
         debug = "--debug" in self._frozen_config.myopts
         existing_node = next(
             self._dynamic_config._package_tracker.match(
@@ -1992,11 +1965,11 @@ class depgraph:
             # atoms matched to_be_selected that did not
             # match to_be_masked.
             parent_atoms = self._dynamic_config._parent_atoms.get(to_be_masked, set())
-            conflict_atoms = set(
+            conflict_atoms = {
                 parent_atom
                 for parent_atom in all_parents
                 if parent_atom not in parent_atoms
-            )
+            }
 
             similar_pkgs = []
             if conflict_atoms:
@@ -2035,15 +2008,16 @@ class depgraph:
                 "",
                 "",
                 "backtracking due to slot conflict:",
-                "   first package:  %s" % existing_node,
-                "  package(s) to mask: %s" % str(to_be_masked),
-                "      slot: %s" % slot_atom,
-                "   parents: %s"
-                % ", ".join("(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents),
+                f"   first package:  {existing_node}",
+                f"  package(s) to mask: {str(to_be_masked)}",
+                f"      slot: {slot_atom}",
+                "   parents: {}".format(
+                    ", ".join(f"({ppkg}, '{atom}')" for ppkg, atom in all_parents)
+                ),
                 "",
             ]
             writemsg_level(
-                "".join("%s\n" % l for l in msg), noiselevel=-1, level=logging.DEBUG
+                "".join(f"{l}\n" for l in msg), noiselevel=-1, level=logging.DEBUG
             )
 
     def _slot_conflict_backtrack_abi(self, pkg, slot_nodes, conflict_atoms):
@@ -2103,9 +2077,7 @@ class depgraph:
 
         for unbuilt_child in chain(
             matches,
-            self._iter_match_pkgs(
-                root_config, "ebuild", Atom("=%s" % (dep.child.cpv,))
-            ),
+            self._iter_match_pkgs(root_config, "ebuild", Atom(f"={dep.child.cpv}")),
         ):
             if unbuilt_child in self._dynamic_config._runtime_pkg_mask:
                 continue
@@ -2134,13 +2106,12 @@ class depgraph:
                 "",
                 "",
                 "backtracking due to slot/sub-slot change:",
-                "   child package:  %s" % child,
-                "      child slot:  %s/%s" % (child.slot, child.sub_slot),
-                "       new child:  %s" % new_child_slot,
-                "  new child slot:  %s/%s"
-                % (new_child_slot.slot, new_child_slot.sub_slot),
-                "   parent package: %s" % dep.parent,
-                "   atom: %s" % dep.atom,
+                f"   child package:  {child}",
+                f"      child slot:  {child.slot}/{child.sub_slot}",
+                f"       new child:  {new_child_slot}",
+                f"  new child slot:  {new_child_slot.slot}/{new_child_slot.sub_slot}",
+                f"   parent package: {dep.parent}",
+                f"   atom: {dep.atom}",
                 "",
             ]
             writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
@@ -2177,14 +2148,14 @@ class depgraph:
                 "",
                 "",
                 "backtracking due to missed slot abi update:",
-                "   child package:  %s" % child,
+                f"   child package:  {child}",
             ]
             if new_child_slot is not None:
-                msg.append("   new child slot package:  %s" % new_child_slot)
-            msg.append("   parent package: %s" % dep.parent)
+                msg.append(f"   new child slot package:  {new_child_slot}")
+            msg.append(f"   parent package: {dep.parent}")
             if new_dep is not None:
-                msg.append("   new parent pkg: %s" % new_dep.parent)
-            msg.append("   atom: %s" % dep.atom)
+                msg.append(f"   new parent pkg: {new_dep.parent}")
+            msg.append(f"   atom: {dep.atom}")
             msg.append("")
             writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
         backtrack_infos = self._dynamic_config._backtrack_infos
@@ -2227,9 +2198,7 @@ class depgraph:
             return new_dep
 
         if self._dynamic_config._autounmask is True:
-
             for autounmask_level in self._autounmask_levels():
-
                 new_dep = self._slot_operator_update_probe(
                     dep, slot_conflict=True, autounmask_level=autounmask_level
                 )
@@ -2238,6 +2207,111 @@ class depgraph:
                     return new_dep
 
         return None
+
+    @functools.lru_cache(maxsize=100)
+    def _slot_operator_check_reverse_dependencies(
+        self, existing_pkg, candidate_pkg, replacement_parent=None
+    ):
+        """
+        Check if candidate_pkg satisfies all of existing_pkg's non-
+        slot operator parents.
+        """
+        debug = "--debug" in self._frozen_config.myopts
+        built_slot_operator_parents = set()
+        for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
+            if atom.soname or atom.slot_operator_built:
+                built_slot_operator_parents.add(parent)
+
+        for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
+            if isinstance(parent, Package):
+                if parent in built_slot_operator_parents:
+                    if hasattr(atom, "_orig_atom"):
+                        # If atom is the result of virtual expansion, then
+                        # dereference it to _orig_atom so that it will be correctly
+                        # handled as a built slot operator dependency when
+                        # appropriate (see bug 764764).
+                        atom = atom._orig_atom
+                    # This parent may need to be rebuilt, therefore
+                    # discard its soname and built slot operator
+                    # dependency components which are not necessarily
+                    # relevant.
+                    if atom.soname:
+                        continue
+                    elif atom.package and atom.slot_operator_built:
+                        # This discards the slot/subslot component.
+                        atom = atom.with_slot("=")
+
+                if replacement_parent is not None and (
+                    replacement_parent.slot_atom == parent.slot_atom
+                    or replacement_parent.cpv == parent.cpv
+                ):
+                    # This parent is irrelevant because we intend to
+                    # replace it with replacement_parent.
+                    continue
+
+                if any(
+                    pkg is not parent
+                    and (pkg.slot_atom == parent.slot_atom or pkg.cpv == parent.cpv)
+                    for pkg in self._dynamic_config._package_tracker.match(
+                        parent.root, Atom(parent.cp)
+                    )
+                ):
+                    # This parent may need to be eliminated due to a
+                    # slot conflict,  so its dependencies aren't
+                    # necessarily relevant.
+                    continue
+
+                if not self._too_deep(
+                    parent.depth
+                ) and not self._frozen_config.excluded_pkgs.findAtomForPackage(
+                    parent, modified_use=self._pkg_use_enabled(parent)
+                ):
+                    # Check for common reasons that the parent's
+                    # dependency might be irrelevant.
+                    if self._upgrade_available(parent):
+                        # This parent could be replaced by
+                        # an upgrade (bug 584626).
+                        continue
+                    if parent.installed and self._in_blocker_conflict(parent):
+                        # This parent could be uninstalled in order
+                        # to solve a blocker conflict (bug 612772).
+                        continue
+                    if self._dynamic_config.digraph.has_edge(parent, existing_pkg):
+                        # There is a direct circular dependency between
+                        # parent and existing_pkg. This type of
+                        # relationship tends to prevent updates
+                        # of packages (bug 612874). Since candidate_pkg
+                        # is available, we risk a missed update if we
+                        # don't try to eliminate this parent from the
+                        # graph. Therefore, we give candidate_pkg a
+                        # chance, and assume that it will be masked
+                        # by backtracking if necessary.
+                        continue
+
+            atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
+            if not atom_set.findAtomForPackage(
+                candidate_pkg, modified_use=self._pkg_use_enabled(candidate_pkg)
+            ):
+                if debug:
+                    parent_atoms = []
+                    for (
+                        other_parent,
+                        other_atom,
+                    ) in self._dynamic_config._parent_atoms.get(existing_pkg, []):
+                        if other_parent is parent:
+                            parent_atoms.append(other_atom)
+                    msg = (
+                        "",
+                        "",
+                        "_slot_operator_check_reverse_dependencies:",
+                        f"   candidate package does not match atom '{atom}': {candidate_pkg}",
+                        f"   parent: {parent}",
+                        f"   parent atoms: {' '.join(parent_atoms)}",
+                        "",
+                    )
+                    writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
+                return False
+        return True
 
     def _slot_operator_update_probe(
         self, dep, new_child_slot=False, slot_conflict=False, autounmask_level=None
@@ -2273,120 +2347,9 @@ class depgraph:
         want_downgrade = None
         want_downgrade_parent = None
 
-        def check_reverse_dependencies(
-            existing_pkg, candidate_pkg, replacement_parent=None
-        ):
-            """
-            Check if candidate_pkg satisfies all of existing_pkg's non-
-            slot operator parents.
-            """
-            built_slot_operator_parents = set()
-            for parent, atom in self._dynamic_config._parent_atoms.get(
-                existing_pkg, []
-            ):
-                if atom.soname or atom.slot_operator_built:
-                    built_slot_operator_parents.add(parent)
-
-            for parent, atom in self._dynamic_config._parent_atoms.get(
-                existing_pkg, []
-            ):
-                if isinstance(parent, Package):
-                    if parent in built_slot_operator_parents:
-                        if hasattr(atom, "_orig_atom"):
-                            # If atom is the result of virtual expansion, then
-                            # derefrence it to _orig_atom so that it will be correctly
-                            # handled as a built slot operator dependency when
-                            # appropriate (see bug 764764).
-                            atom = atom._orig_atom
-                        # This parent may need to be rebuilt, therefore
-                        # discard its soname and built slot operator
-                        # dependency components which are not necessarily
-                        # relevant.
-                        if atom.soname:
-                            continue
-                        elif atom.package and atom.slot_operator_built:
-                            # This discards the slot/subslot component.
-                            atom = atom.with_slot("=")
-
-                    if replacement_parent is not None and (
-                        replacement_parent.slot_atom == parent.slot_atom
-                        or replacement_parent.cpv == parent.cpv
-                    ):
-                        # This parent is irrelevant because we intend to
-                        # replace it with replacement_parent.
-                        continue
-
-                    if any(
-                        pkg is not parent
-                        and (pkg.slot_atom == parent.slot_atom or pkg.cpv == parent.cpv)
-                        for pkg in self._dynamic_config._package_tracker.match(
-                            parent.root, Atom(parent.cp)
-                        )
-                    ):
-                        # This parent may need to be eliminated due to a
-                        # slot conflict,  so its dependencies aren't
-                        # necessarily relevant.
-                        continue
-
-                    if not self._too_deep(
-                        parent.depth
-                    ) and not self._frozen_config.excluded_pkgs.findAtomForPackage(
-                        parent, modified_use=self._pkg_use_enabled(parent)
-                    ):
-                        # Check for common reasons that the parent's
-                        # dependency might be irrelevant.
-                        if self._upgrade_available(parent):
-                            # This parent could be replaced by
-                            # an upgrade (bug 584626).
-                            continue
-                        if parent.installed and self._in_blocker_conflict(parent):
-                            # This parent could be uninstalled in order
-                            # to solve a blocker conflict (bug 612772).
-                            continue
-                        if self._dynamic_config.digraph.has_edge(parent, existing_pkg):
-                            # There is a direct circular dependency between
-                            # parent and existing_pkg. This type of
-                            # relationship tends to prevent updates
-                            # of packages (bug 612874). Since candidate_pkg
-                            # is available, we risk a missed update if we
-                            # don't try to eliminate this parent from the
-                            # graph. Therefore, we give candidate_pkg a
-                            # chance, and assume that it will be masked
-                            # by backtracking if necessary.
-                            continue
-
-                atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
-                if not atom_set.findAtomForPackage(
-                    candidate_pkg, modified_use=self._pkg_use_enabled(candidate_pkg)
-                ):
-                    if debug:
-                        parent_atoms = []
-                        for (
-                            other_parent,
-                            other_atom,
-                        ) in self._dynamic_config._parent_atoms.get(existing_pkg, []):
-                            if other_parent is parent:
-                                parent_atoms.append(other_atom)
-                        msg = (
-                            "",
-                            "",
-                            "check_reverse_dependencies:",
-                            "   candidate package does not match atom '%s': %s"
-                            % (atom, candidate_pkg),
-                            "   parent: %s" % parent,
-                            "   parent atoms: %s" % " ".join(parent_atoms),
-                            "",
-                        )
-                        writemsg_level(
-                            "\n".join(msg), noiselevel=-1, level=logging.DEBUG
-                        )
-                    return False
-            return True
-
         for replacement_parent in self._iter_similar_available(
             dep.parent, dep.parent.slot_atom, autounmask_level=autounmask_level
         ):
-
             if replacement_parent is dep.parent:
                 continue
 
@@ -2396,7 +2359,9 @@ class depgraph:
                 if not want_downgrade_parent:
                     continue
 
-            if not check_reverse_dependencies(dep.parent, replacement_parent):
+            if not self._slot_operator_check_reverse_dependencies(
+                dep.parent, replacement_parent
+            ):
                 continue
 
             selected_atoms = None
@@ -2430,7 +2395,6 @@ class depgraph:
                         # so continue checking the rest of the atoms.
                         continue
                 else:
-
                     if atom.blocker or atom.cp != dep.child.cp:
                         continue
 
@@ -2509,10 +2473,12 @@ class depgraph:
                         if atom_not_selected:
                             break
 
-                    if not insignificant and check_reverse_dependencies(
-                        dep.child, pkg, replacement_parent=replacement_parent
+                    if (
+                        not insignificant
+                        and self._slot_operator_check_reverse_dependencies(
+                            dep.child, pkg, replacement_parent=replacement_parent
+                        )
                     ):
-
                         candidate_pkg_atoms.append((pkg, unevaluated_atom or atom))
                         candidate_pkgs.append(pkg)
 
@@ -2561,10 +2527,10 @@ class depgraph:
                     "",
                     "",
                     "slot_operator_update_probe:",
-                    "   existing child package:  %s" % dep.child,
-                    "   existing parent package: %s" % dep.parent,
-                    "   new child package:  %s" % selected[0],
-                    "   new parent package: %s" % replacement_parent,
+                    f"   existing child package:  {dep.child}",
+                    f"   existing parent package: {dep.parent}",
+                    f"   new child package:  {selected[0]}",
+                    f"   new parent package: {replacement_parent}",
                     "",
                 )
                 writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
@@ -2578,10 +2544,10 @@ class depgraph:
                 "",
                 "",
                 "slot_operator_update_probe:",
-                "   existing child package:  %s" % dep.child,
-                "   existing parent package: %s" % dep.parent,
-                "   new child package:  %s" % None,
-                "   new parent package: %s" % None,
+                f"   existing child package:  {dep.child}",
+                f"   existing parent package: {dep.parent}",
+                "   new child package:  None",
+                "   new parent package: None",
                 "",
             )
             writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
@@ -2589,7 +2555,6 @@ class depgraph:
         return None
 
     def _slot_operator_unsatisfied_probe(self, dep):
-
         if (
             dep.parent.installed
             and self._frozen_config.excluded_pkgs.findAtomForPackage(
@@ -2603,7 +2568,6 @@ class depgraph:
         for replacement_parent in self._iter_similar_available(
             dep.parent, dep.parent.slot_atom
         ):
-
             for atom in replacement_parent.validated_atoms:
                 if (
                     not atom.slot_operator == "="
@@ -2622,16 +2586,15 @@ class depgraph:
                 )
 
                 if pkg is not None:
-
                     if debug:
                         msg = (
                             "",
                             "",
                             "slot_operator_unsatisfied_probe:",
-                            "   existing parent package: %s" % dep.parent,
-                            "   existing parent atom: %s" % dep.atom,
-                            "   new parent package: %s" % replacement_parent,
-                            "   new child package:  %s" % pkg,
+                            f"   existing parent package: {dep.parent}",
+                            f"   existing parent atom: {dep.atom}",
+                            f"   new parent package: {replacement_parent}",
+                            f"   new child package:  {pkg}",
                             "",
                         )
                         writemsg_level(
@@ -2645,10 +2608,10 @@ class depgraph:
                 "",
                 "",
                 "slot_operator_unsatisfied_probe:",
-                "   existing parent package: %s" % dep.parent,
-                "   existing parent atom: %s" % dep.atom,
-                "   new parent package: %s" % None,
-                "   new child package:  %s" % None,
+                f"   existing parent package: {dep.parent}",
+                f"   existing parent atom: {dep.atom}",
+                "   new parent package: None",
+                "   new child package:  None",
                 "",
             )
             writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
@@ -2656,7 +2619,6 @@ class depgraph:
         return False
 
     def _slot_operator_unsatisfied_backtrack(self, dep):
-
         parent = dep.parent
 
         if "--debug" in self._frozen_config.myopts:
@@ -2664,8 +2626,8 @@ class depgraph:
                 "",
                 "",
                 "backtracking due to unsatisfied built slot-operator dep:",
-                "   parent package: %s" % parent,
-                "   atom: %s" % dep.atom,
+                f"   parent package: {parent}",
+                f"   atom: {dep.atom}",
                 "",
             )
             writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
@@ -2841,7 +2803,7 @@ class depgraph:
         SLOT may differ from the installed SLOT, so first search by cpv.
         """
         built_pkgs = []
-        for pkg in self._iter_similar_available(inst_pkg, Atom("=%s" % inst_pkg.cpv)):
+        for pkg in self._iter_similar_available(inst_pkg, Atom(f"={inst_pkg.cpv}")):
             if not pkg.built:
                 return pkg.slot_atom
             if not pkg.installed:
@@ -2875,9 +2837,7 @@ class depgraph:
         )
 
         for slot_key, slot_info in self._dynamic_config._slot_operator_deps.items():
-
             for dep in slot_info:
-
                 atom = dep.atom
 
                 if not (atom.soname or atom.slot_operator_built):
@@ -2944,7 +2904,6 @@ class depgraph:
         return None
 
     def _changed_deps(self, pkg):
-
         ebuild = None
         try:
             ebuild = self._pkg(pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
@@ -3108,7 +3067,6 @@ class depgraph:
         debug = "--debug" in self._frozen_config.myopts
         nodeps = "--nodeps" in self._frozen_config.myopts
         if dep.blocker:
-
             # Slot collision nodes are not allowed to block other packages since
             # blocker validation is only able to account for one package per slot.
             is_slot_conflict_parent = any(
@@ -3241,7 +3199,6 @@ class depgraph:
                     onlydeps=dep.onlydeps,
                 )
                 if dep_pkg is None:
-
                     # In order to suppress the sort of aggressive
                     # backtracking that can trigger undesirable downgrades
                     # as in bug 693836, do not backtrack if there's an
@@ -3266,13 +3223,13 @@ class depgraph:
                         msg.append("")
                         msg.append("")
                         msg.append("backtracking due to unsatisfied dep:")
-                        msg.append("    parent: %s" % dep.parent)
-                        msg.append("  priority: %s" % dep.priority)
-                        msg.append("      root: %s" % dep.root)
-                        msg.append("      atom: %s" % dep.atom)
+                        msg.append(f"    parent: {dep.parent}")
+                        msg.append(f"  priority: {dep.priority}")
+                        msg.append(f"      root: {dep.root}")
+                        msg.append(f"      atom: {dep.atom}")
                         msg.append("")
                         writemsg_level(
-                            "".join("%s\n" % l for l in msg),
+                            "".join(f"{l}\n" for l in msg),
                             noiselevel=-1,
                             level=logging.DEBUG,
                         )
@@ -3327,16 +3284,15 @@ class depgraph:
 
         if debug:
             writemsg_level(
-                "\n%s%s %s\n"
-                % (
-                    "Child:".ljust(15),
-                    pkg,
+                f"\n{'Child:':15}{pkg} "
+                + str(
                     pkg_use_display(
                         pkg,
                         self._frozen_config.myopts,
                         modified_use=self._pkg_use_enabled(pkg),
-                    ),
-                ),
+                    )
+                )
+                + "\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )
@@ -3344,7 +3300,7 @@ class depgraph:
                 # For PackageArg and AtomArg types, it's
                 # redundant to display the atom attribute.
                 writemsg_level(
-                    "%s%s\n" % ("Parent Dep:".ljust(15), myparent),
+                    f"{'Parent Dep:'.ljust(15)}{myparent}\n",
                     level=logging.DEBUG,
                     noiselevel=-1,
                 )
@@ -3357,10 +3313,9 @@ class depgraph:
                     and dep.atom.package
                     and dep.atom is not dep.atom.unevaluated_atom
                 ):
-                    uneval = " (%s)" % (dep.atom.unevaluated_atom,)
+                    uneval = f" ({dep.atom.unevaluated_atom})"
                 writemsg_level(
-                    "%s%s%s required by %s\n"
-                    % ("Parent Dep:".ljust(15), dep.atom, uneval, myparent),
+                    f"{'Parent Dep:':15}{dep.atom}{uneval} required by {myparent}\n",
                     level=logging.DEBUG,
                     noiselevel=-1,
                 )
@@ -3420,7 +3375,6 @@ class depgraph:
                 return 0
 
         if not pkg.onlydeps:
-
             existing_node, existing_node_matches = self._check_slot_conflict(
                 pkg, dep.atom
             )
@@ -3440,16 +3394,15 @@ class depgraph:
 
                         if debug:
                             writemsg_level(
-                                "%s%s %s\n"
-                                % (
-                                    "Re-used Child:".ljust(15),
-                                    pkg,
+                                f"{'Re-used Child:':15}{pkg} "
+                                + str(
                                     pkg_use_display(
                                         pkg,
                                         self._frozen_config.myopts,
                                         modified_use=self._pkg_use_enabled(pkg),
-                                    ),
-                                ),
+                                    )
+                                )
+                                + "\n",
                                 level=logging.DEBUG,
                                 noiselevel=-1,
                             )
@@ -3466,16 +3419,15 @@ class depgraph:
                     # missing dependencies, as discussed in bug 199856.
                     if debug:
                         writemsg_level(
-                            "%s%s %s\n"
-                            % (
-                                "Replace Child:".ljust(15),
-                                pkg,
+                            f"{'Replace Child:':15}{pkg} "
+                            + str(
                                 pkg_use_display(
                                     pkg,
                                     self._frozen_config.myopts,
                                     modified_use=self._pkg_use_enabled(pkg),
-                                ),
-                            ),
+                                )
+                            )
+                            + "\n",
                             level=logging.DEBUG,
                             noiselevel=-1,
                         )
@@ -3484,16 +3436,15 @@ class depgraph:
                 else:
                     if debug:
                         writemsg_level(
-                            "%s%s %s\n"
-                            % (
-                                "Slot Conflict:".ljust(15),
-                                existing_node,
+                            f"{'Slot Conflict:':15}{existing_node} "
+                            + str(
                                 pkg_use_display(
                                     existing_node,
                                     self._frozen_config.myopts,
                                     modified_use=self._pkg_use_enabled(existing_node),
-                                ),
-                            ),
+                                )
+                            )
+                            + "\n",
                             level=logging.DEBUG,
                             noiselevel=-1,
                         )
@@ -3632,7 +3583,7 @@ class depgraph:
         debug = "--debug" in self._frozen_config.myopts
         if debug:
             writemsg_level(
-                "Removing package: %s\n" % pkg, level=logging.DEBUG, noiselevel=-1
+                f"Removing package: {pkg}\n", level=logging.DEBUG, noiselevel=-1
             )
 
         try:
@@ -3652,11 +3603,11 @@ class depgraph:
 
         for child in children:
             try:
-                self._dynamic_config._parent_atoms[child] = set(
+                self._dynamic_config._parent_atoms[child] = {
                     (parent, atom)
                     for (parent, atom) in self._dynamic_config._parent_atoms[child]
                     if parent is not pkg
-                )
+                }
             except KeyError:
                 pass
 
@@ -3692,7 +3643,6 @@ class depgraph:
         self._dynamic_config._highest_pkg_cache_cp_map.clear()
 
     def _check_masks(self, pkg):
-
         slot_key = (pkg.root, pkg.slot_atom)
 
         # Check for upgrades in the same slot that are
@@ -3718,7 +3668,6 @@ class depgraph:
         slot_info.append(dep)
 
     def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
-
         if not self._add_pkg_soname_deps(pkg, allow_unsatisfied=allow_unsatisfied):
             return False
 
@@ -3757,7 +3706,8 @@ class depgraph:
         ):
             edepend["RDEPEND"] = ""
             edepend["PDEPEND"] = ""
-            edepend["IDEPEND"] = ""
+            if self._frozen_config.myopts.get("--onlydeps-with-ideps") in ("n", None):
+                edepend["IDEPEND"] = ""
 
         ignore_build_time_deps = False
         if pkg.built and not removal_action:
@@ -3845,15 +3795,15 @@ class depgraph:
                 continue
             if debug:
                 writemsg_level(
-                    "\nParent:    %s\n" % (pkg,), noiselevel=-1, level=logging.DEBUG
+                    f"\nParent:    {pkg}\n", noiselevel=-1, level=logging.DEBUG
                 )
                 writemsg_level(
-                    "Depstring: %s\n" % (dep_string,),
+                    f"Depstring: {dep_string}\n",
                     noiselevel=-1,
                     level=logging.DEBUG,
                 )
                 writemsg_level(
-                    "Priority:  %s\n" % (dep_priority,),
+                    f"Priority:  {dep_priority}\n",
                     noiselevel=-1,
                     level=logging.DEBUG,
                 )
@@ -4020,17 +3970,17 @@ class depgraph:
         strict = pkg.type_name != "installed"
 
         if debug:
-            writemsg_level(
-                "\nParent:    %s\n" % (pkg,), noiselevel=-1, level=logging.DEBUG
-            )
+            writemsg_level(f"\nParent:    {pkg}\n", noiselevel=-1, level=logging.DEBUG)
             dep_repr = portage.dep.paren_enclose(
                 dep_string, unevaluated_atom=True, opconvert=True
             )
             writemsg_level(
-                "Depstring: %s\n" % (dep_repr,), noiselevel=-1, level=logging.DEBUG
+                f"Depstring: {dep_repr}\n", noiselevel=-1, level=logging.DEBUG
             )
             writemsg_level(
-                "Priority:  %s\n" % (dep_priority,), noiselevel=-1, level=logging.DEBUG
+                f"Priority:  {dep_priority}\n",
+                noiselevel=-1,
+                level=logging.DEBUG,
             )
 
         try:
@@ -4052,7 +4002,7 @@ class depgraph:
 
         if debug:
             writemsg_level(
-                "Candidates: %s\n" % ([str(x) for x in selected_atoms[pkg]],),
+                f"Candidates: {[str(x) for x in selected_atoms[pkg]]}\n",
                 noiselevel=-1,
                 level=logging.DEBUG,
             )
@@ -4065,7 +4015,6 @@ class depgraph:
         for atom, child in self._minimize_children(
             pkg, dep_priority, root_config, selected_atoms[pkg]
         ):
-
             # If this was a specially generated virtual atom
             # from dep_check, map it back to the original, in
             # order to avoid distortion in places like display
@@ -4080,7 +4029,6 @@ class depgraph:
 
             mypriority = dep_priority.copy()
             if not atom.blocker:
-
                 if atom.slot_operator == "=":
                     if mypriority.buildtime:
                         mypriority.buildtime_slot_op = True
@@ -4094,6 +4042,16 @@ class depgraph:
                         inst_pkg, modified_use=self._pkg_use_enabled(inst_pkg)
                     )
                 ]
+                # Do not allow slotted deps to be satisfied by wrong slots.
+                # Otherwise, slot-operator-dependent packages may rebuild
+                # before the slotted package they are dependent on.
+                if child and atom.slot_operator == "=":
+                    inst_pkgs = [
+                        inst_pkg
+                        for inst_pkg in inst_pkgs
+                        if inst_pkg.slot == child.slot
+                        and inst_pkg.sub_slot == child.sub_slot
+                    ]
                 if inst_pkgs:
                     for inst_pkg in inst_pkgs:
                         if self._pkg_visibility_check(inst_pkg):
@@ -4161,20 +4119,18 @@ class depgraph:
         # here in order to avoid distorting the dependency graph like
         # <=portage-2.1.6.x did.
         for virt_dep, atoms in selected_atoms.items():
-
             virt_pkg = virt_dep.child
             if virt_pkg not in traversed_virt_pkgs:
                 continue
 
             if debug:
                 writemsg_level(
-                    "\nCandidates: %s: %s\n" % (virt_pkg.cpv, [str(x) for x in atoms]),
+                    f"\nCandidates: {virt_pkg.cpv}: {[str(x) for x in atoms]}\n",
                     noiselevel=-1,
                     level=logging.DEBUG,
                 )
 
             if not dep_priority.ignored or self._dynamic_config._traverse_ignored_deps:
-
                 inst_pkgs = [
                     inst_pkg
                     for inst_pkg in reversed(vardb.match_pkgs(virt_dep.atom))
@@ -4198,7 +4154,6 @@ class depgraph:
             for atom, child in self._minimize_children(
                 pkg, self._priority(runtime=True), root_config, atoms
             ):
-
                 # If this was a specially generated virtual atom
                 # from dep_check, map it back to the original, in
                 # order to avoid distortion in places like display
@@ -4216,6 +4171,14 @@ class depgraph:
                             inst_pkg, modified_use=self._pkg_use_enabled(inst_pkg)
                         )
                     ]
+                    # Do not allow slotted deps to be satisfied by wrong slots.
+                    if child and atom.slot_operator == "=":
+                        inst_pkgs = [
+                            inst_pkg
+                            for inst_pkg in inst_pkgs
+                            if inst_pkg.slot == child.slot
+                            and inst_pkg.sub_slot == child.sub_slot
+                        ]
                     if inst_pkgs:
                         for inst_pkg in inst_pkgs:
                             if self._pkg_visibility_check(inst_pkg):
@@ -4272,9 +4235,7 @@ class depgraph:
                             traversed_virt_pkgs.add(dep.child)
 
         if debug:
-            writemsg_level(
-                "\nExiting... %s\n" % (pkg,), noiselevel=-1, level=logging.DEBUG
-            )
+            writemsg_level(f"\nExiting... {pkg}\n", noiselevel=-1, level=logging.DEBUG)
 
         return 1
 
@@ -4301,8 +4262,7 @@ class depgraph:
             atom_pkg_map[atom] = dep_pkg
 
         if len(atom_pkg_map) < 2:
-            for item in atom_pkg_map.items():
-                yield item
+            yield from atom_pkg_map.items()
             return
 
         cp_pkg_map = {}
@@ -4401,14 +4361,13 @@ class depgraph:
                 if x and x[0] == "||":
                     disjunctions.append(x)
                 else:
-                    for y in self._queue_disjunctive_deps(
+                    yield from self._queue_disjunctive_deps(
                         pkg,
                         dep_root,
                         dep_priority,
                         x,
                         _disjunctions_recursive=disjunctions,
-                    ):
-                        yield y
+                    )
             else:
                 # Note: Eventually this will check for PROPERTIES=virtual
                 # or whatever other metadata gets implemented for this
@@ -4468,7 +4427,7 @@ class depgraph:
         categories = set()
         for db, pkg_type, built, installed, db_keys in dbs:
             for cat in db.categories:
-                if db.cp_list("%s/%s" % (cat, atom_pn)):
+                if db.cp_list(f"{cat}/{atom_pn}"):
                     categories.add(cat)
 
         deps = []
@@ -4564,7 +4523,9 @@ class depgraph:
         onlydeps = "--onlydeps" in self._frozen_config.myopts
         lookup_owners = []
         for x in myfiles:
-            if x.endswith(".tbz2") or x.endswith(SUPPORTED_GPKG_EXTENSIONS):
+            if x.endswith(SUPPORTED_XPAK_EXTENSIONS) or x.endswith(
+                SUPPORTED_GPKG_EXTENSIONS
+            ):
                 if not os.path.exists(x):
                     if os.path.exists(os.path.join(pkgsettings["PKGDIR"], "All", x)):
                         x = os.path.join(pkgsettings["PKGDIR"], "All", x)
@@ -4580,13 +4541,25 @@ class depgraph:
                             noiselevel=-1,
                         )
                         return 0, myfavorites
-                binpkg_format = get_binpkg_format(x)
+
+                try:
+                    binpkg_format = get_binpkg_format(x)
+                except InvalidBinaryPackageFormat as e:
+                    writemsg(
+                        colorize(
+                            "BAD",
+                            f"\n{e}\n",
+                        ),
+                        noiselevel=-1,
+                    )
+                    continue
+
                 if binpkg_format == "xpak":
                     mytbz2 = portage.xpak.tbz2(x)
                     mykey = None
                     cat = mytbz2.getfile("CATEGORY")
                 elif binpkg_format == "gpkg":
-                    mygpkg = portage.gpkg.gpkg(self.frozen_config, None, x)
+                    mygpkg = portage.gpkg.gpkg(root_config.settings, None, x)
                     mykey = None
                     cat = mygpkg.get_metadata("CATEGORY")
                 else:
@@ -4596,13 +4569,18 @@ class depgraph:
                     cat = _unicode_decode(
                         cat.strip(), encoding=_encodings["repo.content"]
                     )
-                    mykey = cat + "/" + os.path.basename(x)[:-5]
+                    if binpkg_format == "xpak":
+                        mykey = cat + "/" + os.path.basename(x)[:-5]
+                    elif binpkg_format == "gpkg":
+                        mykey = cat + "/" + os.path.basename(x)[:-9]
+                    else:
+                        raise InvalidBinaryPackageFormat(x)
 
                 if mykey is None:
                     writemsg(
                         colorize(
                             "BAD",
-                            "\n*** Package is missing CATEGORY metadata: %s.\n\n" % x,
+                            f"\n*** Package is missing CATEGORY metadata: {x}.\n\n",
                         ),
                         noiselevel=-1,
                     )
@@ -4611,22 +4589,18 @@ class depgraph:
 
                 x = os.path.realpath(x)
                 for pkg in self._iter_match_pkgs(
-                    root_config, "binary", Atom("=%s" % mykey)
+                    root_config, "binary", Atom(f"={mykey}")
                 ):
                     if x == os.path.realpath(bindb.bintree.getname(pkg.cpv)):
                         break
                 else:
                     writemsg(
-                        "\n%s\n\n"
-                        % colorize(
+                        "\n"
+                        + colorize(
                             "BAD",
-                            "*** "
-                            + _(
-                                "You need to adjust PKGDIR to emerge "
-                                "this package: %s"
-                            )
-                            % x,
-                        ),
+                            f"*** You need to adjust PKGDIR to emerge this package: {x}",
+                        )
+                        + "\n\n",
                         noiselevel=-1,
                     )
                     self._dynamic_config._skip_restart = True
@@ -4639,9 +4613,9 @@ class depgraph:
                 tree_root = os.path.dirname(os.path.dirname(pkgdir))
                 cp = pkgdir[len(tree_root) + 1 :]
                 error_msg = (
-                    "\n\n!!! '%s' is not in a valid ebuild repository "
+                    f"\n\n!!! '{x}' is not in a valid ebuild repository "
                     "hierarchy or does not exist\n"
-                ) % x
+                )
                 if not portage.isvalidatom(cp):
                     writemsg(error_msg, noiselevel=-1)
                     return 0, myfavorites
@@ -4704,7 +4678,7 @@ class depgraph:
             elif x.startswith(os.path.sep):
                 if not x.startswith(eroot):
                     portage.writemsg(
-                        ("\n\n!!! '%s' does not start with" + " $EROOT.\n") % x,
+                        f"\n\n!!! '{x}' does not start with $EROOT.\n",
                         noiselevel=-1,
                     )
                     self._dynamic_config._skip_restart = True
@@ -4716,11 +4690,7 @@ class depgraph:
                 f = os.path.abspath(x)
                 if not f.startswith(eroot):
                     portage.writemsg(
-                        (
-                            "\n\n!!! '%s' (resolved from '%s') does not start with"
-                            + " $EROOT.\n"
-                        )
-                        % (f, x),
+                        f"\n\n!!! '{f}' (resolved from '{x}') does not start with $EROOT.\n",
                         noiselevel=-1,
                     )
                     self._dynamic_config._skip_restart = True
@@ -4743,17 +4713,14 @@ class depgraph:
                         for pset in list(depgraph_sets.sets.values()) + [sets[s]]:
                             for error_msg in pset.errors:
                                 writemsg_level(
-                                    "%s\n" % (error_msg,),
+                                    f"{error_msg}\n",
                                     level=logging.ERROR,
                                     noiselevel=-1,
                                 )
 
                         writemsg_level(
-                            (
-                                "emerge: the given set '%s' "
-                                "contains a non-existent set named '%s'.\n"
-                            )
-                            % (s, e),
+                            f"emerge: the given set '{s}' contains a non-existent set named "
+                            f"'{e}'.\n",
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -4762,14 +4729,8 @@ class depgraph:
                             and SETPREFIX + e.value in sets["selected"]
                         ):
                             writemsg_level(
-                                (
-                                    "Use `emerge --deselect %s%s` to "
-                                    "remove this set from world_sets.\n"
-                                )
-                                % (
-                                    SETPREFIX,
-                                    e,
-                                ),
+                                f"Use `emerge --deselect {SETPREFIX}{e}` to remove this set from "
+                                "world_sets.\n",
                                 level=logging.ERROR,
                                 noiselevel=-1,
                             )
@@ -4782,7 +4743,7 @@ class depgraph:
                     continue
                 if not is_valid_package_atom(x, allow_repo=True):
                     portage.writemsg(
-                        "\n\n!!! '%s' is not a valid package atom.\n" % x, noiselevel=-1
+                        f"\n\n!!! '{x}' is not a valid package atom.\n", noiselevel=-1
                     )
                     portage.writemsg("!!! Please check ebuild(5) for full details.\n")
                     portage.writemsg(
@@ -4863,11 +4824,7 @@ class depgraph:
 
                 if atom.use and atom.use.conditional:
                     writemsg(
-                        (
-                            "\n\n!!! '%s' contains a conditional "
-                            + "which is not allowed.\n"
-                        )
-                        % (x,),
+                        f"\n\n!!! '{x}' contains a conditional which is not allowed.\n",
                         noiselevel=-1,
                     )
                     writemsg("!!! Please check ebuild(5) for full details.\n")
@@ -4895,8 +4852,7 @@ class depgraph:
 
             if not owners:
                 portage.writemsg(
-                    ("\n\n!!! '%s' is not claimed " + "by any package.\n")
-                    % lookup_owners[0],
+                    f"\n\n!!! '{lookup_owners[0]}' is not claimed by any package.\n",
                     noiselevel=-1,
                 )
                 self._dynamic_config._skip_restart = True
@@ -4904,7 +4860,7 @@ class depgraph:
 
             for cpv in owners:
                 pkg = vardb._pkg_str(cpv, None)
-                atom = Atom("%s:%s" % (pkg.cp, pkg.slot))
+                atom = Atom(f"{pkg.cp}:{pkg.slot}")
                 args.append(AtomArg(arg=atom, atom=atom, root_config=root_config))
 
         if "--update" in self._frozen_config.myopts:
@@ -4973,7 +4929,6 @@ class depgraph:
         return self._resolve(myfavorites)
 
     def _gen_reinstall_sets(self):
-
         atom_list = []
         for root, atom in self._rebuild.rebuild_list:
             atom_list.append((root, "__auto_rebuild__", atom))
@@ -5006,13 +4961,14 @@ class depgraph:
         a favorite list."""
         debug = "--debug" in self._frozen_config.myopts
         onlydeps = "--onlydeps" in self._frozen_config.myopts
-        myroot = self._frozen_config.target_root
-        pkgsettings = self._frozen_config.pkgsettings[myroot]
-        pprovideddict = pkgsettings.pprovideddict
-        virtuals = pkgsettings.getvirtuals()
         args = self._dynamic_config._initial_arg_list[:]
 
         for arg in self._expand_set_args(args, add_to_digraph=True):
+            myroot = arg.root_config.root
+            pkgsettings = self._frozen_config.pkgsettings[myroot]
+            pprovideddict = pkgsettings.pprovideddict
+            virtuals = pkgsettings.getvirtuals()
+
             for atom in sorted(arg.pset.getAtoms()):
                 self._spinner_update()
                 dep = Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg)
@@ -5029,24 +4985,35 @@ class depgraph:
                         ):
                             if not self.need_restart():
                                 writemsg(
-                                    (
-                                        "\n\n!!! Problem "
-                                        + "resolving dependencies for %s\n"
-                                    )
-                                    % arg.arg,
+                                    f"\n\n!!! Problem resolving dependencies for {arg.arg}\n",
                                     noiselevel=-1,
                                 )
                             return 0, myfavorites
                         continue
                     if debug:
                         writemsg_level(
-                            "\n      Arg: %s\n     Atom: %s\n" % (arg, atom),
+                            f"\n      Arg: {arg}\n     Atom: {atom}\n",
                             noiselevel=-1,
                             level=logging.DEBUG,
                         )
                     pkg, existing_node = self._select_package(
                         myroot, atom, onlydeps=onlydeps
                     )
+
+                    # Is the package installed (at any version)?
+                    if pkg and "update_if_installed" in self._dynamic_config.myparams:
+                        package_is_installed = any(
+                            self._iter_match_pkgs(
+                                self._frozen_config.roots[myroot], "installed", atom
+                            )
+                        )
+
+                        # This package isn't eligible for selection in the
+                        # merge list as the user passed --update-if-installed
+                        # and it isn't installed.
+                        if not package_is_installed:
+                            continue
+
                     if not pkg:
                         pprovided_match = False
                         for virt_choice in virtuals.get(atom.cp, []):
@@ -5130,17 +5097,13 @@ class depgraph:
                             pass
                         elif isinstance(arg, SetArg):
                             writemsg(
-                                (
-                                    "\n\n!!! Problem resolving "
-                                    + "dependencies for %s from %s\n"
-                                )
-                                % (atom, arg.arg),
+                                f"\n\n!!! Problem resolving dependencies for {atom} from "
+                                f"{arg.arg}\n",
                                 noiselevel=-1,
                             )
                         else:
                             writemsg(
-                                ("\n\n!!! Problem resolving " + "dependencies for %s\n")
-                                % (atom,),
+                                f"\n\n!!! Problem resolving dependencies for {atom}\n",
                                 noiselevel=-1,
                             )
                         return 0, myfavorites
@@ -5149,12 +5112,15 @@ class depgraph:
                     raise  # Needed else can't exit
                 except Exception as e:
                     writemsg(
-                        "\n\n!!! Problem in '%s' dependencies.\n" % atom, noiselevel=-1
+                        f"\n\n!!! Problem in '{atom}' dependencies.\n", noiselevel=-1
                     )
-                    writemsg(
-                        "!!! %s %s\n" % (str(e), str(getattr(e, "__module__", None)))
-                    )
+                    writemsg(f"!!! {str(e)} {str(getattr(e, '__module__', None))}\n")
                     raise
+
+        try:
+            del myroot, pkgsettings, pprovideddict, virtuals
+        except NameError:
+            pass
 
         # Now that the root packages have been added to the graph,
         # process the dependencies.
@@ -5409,7 +5375,7 @@ class depgraph:
         slots.remove(highest_pkg.slot)
         while slots:
             slot = slots.pop()
-            slot_atom = portage.dep.Atom("%s:%s" % (highest_pkg.cp, slot))
+            slot_atom = portage.dep.Atom(f"{highest_pkg.cp}:{slot}")
             pkg, in_graph = self._select_package(root_config.root, slot_atom)
             if pkg is not None and pkg.cp == highest_pkg.cp and pkg < highest_pkg:
                 greedy_pkgs.append(pkg)
@@ -5674,7 +5640,7 @@ class depgraph:
             except InvalidDependString as e:
                 writemsg_level(
                     "!!! Invalid RDEPEND in "
-                    + "'%svar/db/pkg/%s/RDEPEND': %s\n" % (pkg.root, pkg.cpv, e),
+                    + f"'{pkg.root}var/db/pkg/{pkg.cpv}/RDEPEND': {e}\n",
                     noiselevel=-1,
                     level=logging.ERROR,
                 )
@@ -5713,7 +5679,7 @@ class depgraph:
                 raise
             writemsg_level(
                 "!!! Invalid RDEPEND in "
-                + "'%svar/db/pkg/%s/RDEPEND': %s\n" % (pkg.root, pkg.cpv, e),
+                + f"'{pkg.root}var/db/pkg/{pkg.cpv}/RDEPEND': {e}\n",
                 noiselevel=-1,
                 level=logging.ERROR,
             )
@@ -5748,7 +5714,7 @@ class depgraph:
         graph = self._dynamic_config.digraph
 
         def format_pkg(pkg):
-            pkg_name = "%s%s%s" % (pkg.cpv, _repo_separator, pkg.repo)
+            pkg_name = f"{pkg.cpv}{_repo_separator}{pkg.repo}"
             return pkg_name
 
         if target_atom is not None and isinstance(node, Package):
@@ -5773,7 +5739,7 @@ class depgraph:
                         usedep.append(flag)
                     else:
                         usedep.append("-" + flag)
-                pkg_name += "[%s]" % ",".join(usedep)
+                pkg_name += f"[{','.join(usedep)}]"
 
             dep_chain.append((pkg_name, node.type_name))
 
@@ -5827,7 +5793,7 @@ class depgraph:
                     node_type = "set"
                 else:
                     node_type = "argument"
-                dep_chain.append(("%s" % (node,), node_type))
+                dep_chain.append((f"{node}", node_type))
 
             elif node is not start_node:
                 for ppkg, patom in all_parents[child]:
@@ -5881,7 +5847,7 @@ class depgraph:
                             usedep.append(flag)
                         else:
                             usedep.append("-" + flag)
-                    pkg_name += "[%s]" % ",".join(usedep)
+                    pkg_name += f"[{','.join(usedep)}]"
 
                 dep_chain.append((pkg_name, node.type_name))
 
@@ -5923,7 +5889,7 @@ class depgraph:
                 if self._dynamic_config.digraph.parent_nodes(parent_arg):
                     selected_parent = parent_arg
                 else:
-                    dep_chain.append(("%s" % (parent_arg,), "argument"))
+                    dep_chain.append((f"{parent_arg}", "argument"))
                     selected_parent = None
 
             node = selected_parent
@@ -5936,9 +5902,9 @@ class depgraph:
         display_list = []
         for node, node_type in dep_chain:
             if node_type == "argument":
-                display_list.append("required by %s (argument)" % node)
+                display_list.append(f"required by {node} (argument)")
             else:
-                display_list.append("required by %s" % node)
+                display_list.append(f"required by {node}")
 
         msg = "# " + "\n# ".join(display_list) + "\n"
         return msg
@@ -5962,20 +5928,20 @@ class depgraph:
         backtrack_mask = False
         autounmask_broke_use_dep = False
         if atom.package:
-            xinfo = '"%s"' % atom.unevaluated_atom
+            xinfo = f'"{atom.unevaluated_atom}"'
             atom_without_use = atom.without_use
         else:
-            xinfo = '"%s"' % atom
+            xinfo = f'"{atom}"'
             atom_without_use = None
 
         if arg:
-            xinfo = '"%s"' % arg
+            xinfo = f'"{arg}"'
         if isinstance(myparent, AtomArg):
-            xinfo = '"%s"' % (myparent,)
+            xinfo = f'"{myparent}"'
         # Discard null/ from failed cpv_expand category expansion.
         xinfo = xinfo.replace("null/", "")
         if root != self._frozen_config._running_root.root:
-            xinfo = "%s for %s" % (xinfo, root)
+            xinfo = f"{xinfo} for {root}"
         masked_packages = []
         missing_use = []
         missing_use_adjustable = set()
@@ -6068,8 +6034,7 @@ class depgraph:
                                 pkg
                             ]
                             mreasons.append(
-                                "backtracking: %s"
-                                % ", ".join(sorted(backtrack_reasons))
+                                f"backtracking: {', '.join(sorted(backtrack_reasons))}"
                             )
                             backtrack_mask = True
                         if (
@@ -6100,7 +6065,7 @@ class depgraph:
                             except InvalidAtom:
                                 writemsg(
                                     "violated_conditionals raised "
-                                    + "InvalidAtom: '%s' parent: %s" % (atom, myparent),
+                                    + f"InvalidAtom: '{atom}' parent: {myparent}",
                                     noiselevel=-1,
                                 )
                                 raise
@@ -6191,7 +6156,7 @@ class depgraph:
 
             mreasons = []
             if missing_iuse:
-                mreasons.append("Missing IUSE: %s" % " ".join(missing_iuse))
+                mreasons.append(f"Missing IUSE: {' '.join(missing_iuse)}")
                 missing_iuse_reasons.append((pkg, mreasons))
             else:
                 need_enable = sorted((atom.use.enabled - use) & pkg.iuse.all)
@@ -6220,8 +6185,8 @@ class depgraph:
                     ):
                         required_use_warning = (
                             ", this change violates use flag constraints "
-                            + "defined by %s: '%s'"
-                            % (pkg.cpv, human_readable_required_use(required_use))
+                            f"defined by {pkg.cpv}: "
+                            f"'{human_readable_required_use(required_use)}'"
                         )
 
                 if need_enable or need_disable:
@@ -6229,7 +6194,7 @@ class depgraph:
                     changes.extend(colorize("red", "+" + x) for x in need_enable)
                     changes.extend(colorize("blue", "-" + x) for x in need_disable)
                     mreasons.append(
-                        "Change USE: %s" % " ".join(changes) + required_use_warning
+                        f"Change USE: {' '.join(changes)}" + required_use_warning
                     )
                     missing_use_reasons.append((pkg, mreasons))
 
@@ -6291,11 +6256,8 @@ class depgraph:
                         ):
                             required_use_warning = (
                                 ", this change violates use flag constraints "
-                                + "defined by %s: '%s'"
-                                % (
-                                    myparent.cpv,
-                                    human_readable_required_use(required_use),
-                                )
+                                f"defined by {myparent.cpv}: "
+                                f"'{human_readable_required_use(required_use)}'"
                             )
 
                     target_use = {}
@@ -6323,7 +6285,7 @@ class depgraph:
                             return True
 
                     mreasons.append(
-                        "Change USE: %s" % " ".join(changes) + required_use_warning
+                        f"Change USE: {' '.join(changes)}" + required_use_warning
                     )
                     if (myparent, mreasons) not in missing_use_reasons:
                         missing_use_reasons.append((myparent, mreasons))
@@ -6398,7 +6360,6 @@ class depgraph:
             show_req_use = required_use_unsatisfied[0]
 
         if show_req_use is not None:
-
             pkg = show_req_use
             output_cpv = pkg.cpv + _repo_separator + pkg.repo
             writemsg(
@@ -6410,7 +6371,7 @@ class depgraph:
                 noiselevel=-1,
             )
             use_display = pkg_use_display(pkg, self._frozen_config.myopts)
-            writemsg("- %s %s\n" % (output_cpv, use_display), noiselevel=-1)
+            writemsg(f"- {output_cpv} {use_display}\n", noiselevel=-1)
             writemsg(
                 "\n  The following REQUIRED_USE flag constraints "
                 + "are unsatisfied:\n",
@@ -6423,7 +6384,7 @@ class depgraph:
                 eapi=pkg.eapi,
             ).tounicode()
             writemsg(
-                "    %s\n" % human_readable_required_use(reduced_noise), noiselevel=-1
+                f"    {human_readable_required_use(reduced_noise)}\n", noiselevel=-1
             )
             normalized_required_use = " ".join(pkg._metadata["REQUIRED_USE"].split())
             if reduced_noise != normalized_required_use:
@@ -6433,7 +6394,7 @@ class depgraph:
                     noiselevel=-1,
                 )
                 writemsg(
-                    "    %s\n" % human_readable_required_use(normalized_required_use),
+                    f"    {human_readable_required_use(normalized_required_use)}\n",
                     noiselevel=-1,
                 )
             writemsg("\n", noiselevel=-1)
@@ -6479,10 +6440,10 @@ class depgraph:
                 writemsg("\n", noiselevel=-1)
                 msg = (
                     "The current version of portage supports "
-                    + "EAPI '%s'. You must upgrade to a newer version"
-                    + " of portage before EAPI masked packages can"
-                    + " be installed."
-                ) % portage.const.EAPI
+                    f"EAPI '{portage.const.EAPI}'. You must upgrade to a newer version"
+                    " of portage before EAPI masked packages can"
+                    " be installed."
+                )
                 writemsg("\n".join(textwrap.wrap(msg, 75)), noiselevel=-1)
             writemsg("\n", noiselevel=-1)
             mask_docs = True
@@ -6493,23 +6454,21 @@ class depgraph:
                     cp_exists = True
                     break
 
-            writemsg(
-                "\nemerge: there are no %s to satisfy "
-                % (
-                    "binary packages"
-                    if self._frozen_config.myopts.get("--usepkgonly", "y") == True
-                    else "ebuilds"
+            if self._frozen_config.myopts.get("--usepkgonly", "y"):
+                writemsg(
+                    f"\nemerge: there are no binary packages to satisfy {green(xinfo)}.\n",
+                    noiselevel=-1,
                 )
-                + green(xinfo)
-                + ".\n",
-                noiselevel=-1,
-            )
+            else:
+                writemsg(
+                    f"\nemerge: there are no ebuilds to satisfy {green(xinfo)}.\n",
+                    noiselevel=-1,
+                )
             if (
                 isinstance(myparent, AtomArg)
                 and not cp_exists
                 and self._frozen_config.myopts.get("--misspell-suggestions", "y") != "n"
             ):
-
                 writemsg("\nemerge: searching for similar names...", noiselevel=-1)
 
                 search_index = (
@@ -6531,8 +6490,7 @@ class depgraph:
                     )
                 elif len(matches) > 1:
                     writemsg(
-                        "\nemerge: Maybe you meant any of these: %s?\n"
-                        % (", ".join(matches),),
+                        f"\nemerge: Maybe you meant any of these: {', '.join(matches)}?\n",
                         noiselevel=-1,
                     )
                 else:
@@ -6546,8 +6504,7 @@ class depgraph:
             dep_chain = self._get_dep_chain(myparent, atom)
             for node, node_type in dep_chain:
                 msg.append(
-                    '(dependency required by "%s" [%s])'
-                    % (colorize("INFORM", "%s" % (node)), node_type)
+                    f'(dependency required by "{colorize("INFORM", str(node))}" [{node_type}])'
                 )
 
         if msg:
@@ -6566,10 +6523,9 @@ class depgraph:
             installed,
             db_keys,
         ) in self._dynamic_config._filtered_trees[root_config.root]["dbs"]:
-            for pkg in self._iter_match_pkgs(
+            yield from self._iter_match_pkgs(
                 root_config, pkg_type, atom, onlydeps=onlydeps
-            ):
-                yield pkg
+            )
 
     def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
         if atom.package:
@@ -6657,7 +6613,6 @@ class depgraph:
             and atom.slot is not None
             and not atom.slot_operator_built
         ):
-
             if "remove" in self._dynamic_config.myparams:
                 # We need to search the portdbapi, which is not in our
                 # normal dbs list, in order to find the real SLOT.
@@ -6780,7 +6735,6 @@ class depgraph:
         return not arg
 
     def _want_update_pkg(self, parent, pkg):
-
         if self._frozen_config.excluded_pkgs.findAtomForPackage(
             pkg, modified_use=self._pkg_use_enabled(pkg)
         ):
@@ -6871,9 +6825,7 @@ class depgraph:
             return self._pkg(pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
         except portage.exception.PackageNotFound:
             return next(
-                self._iter_match_pkgs(
-                    pkg.root_config, "ebuild", Atom("=%s" % (pkg.cpv,))
-                ),
+                self._iter_match_pkgs(pkg.root_config, "ebuild", Atom(f"={pkg.cpv}")),
                 None,
             )
 
@@ -6883,7 +6835,7 @@ class depgraph:
         except portage.exception.PackageNotFound:
             pkg_eb_visible = False
             for pkg_eb in self._iter_match_pkgs(
-                pkg.root_config, "ebuild", Atom("=%s" % (pkg.cpv,))
+                pkg.root_config, "ebuild", Atom(f"={pkg.cpv}")
             ):
                 if self._pkg_visibility_check(pkg_eb, autounmask_level):
                     pkg_eb_visible = True
@@ -6985,7 +6937,6 @@ class depgraph:
             autounmask_level.allow_unstable_keywords = True
 
             for missing_keyword, unmask in ((False, True), (True, True)):
-
                 autounmask_level.allow_missing_keywords = missing_keyword
                 autounmask_level.allow_unmasks = unmask
 
@@ -7042,7 +6993,6 @@ class depgraph:
         return pkg, existing
 
     def _pkg_visibility_check(self, pkg, autounmask_level=None, trust_graph=True):
-
         if pkg.visible:
             return True
 
@@ -7520,7 +7470,6 @@ class depgraph:
                             continue
 
                     if atom.package and atom.use is not None:
-
                         if (
                             autounmask_level
                             and autounmask_level.allow_use_changes
@@ -7771,13 +7720,7 @@ class depgraph:
         if "--debug" in self._frozen_config.myopts:
             for pkg in matched_packages:
                 portage.writemsg(
-                    "%s %s%s%s\n"
-                    % (
-                        (pkg.type_name + ":").rjust(10),
-                        pkg.cpv,
-                        _repo_separator,
-                        pkg.repo,
-                    ),
+                    f"{pkg.type_name + ':':>10} {pkg.cpv}{_repo_separator}{pkg.repo}\n",
                     noiselevel=-1,
                 )
 
@@ -8341,7 +8284,6 @@ class depgraph:
             # are already built.
             dep_keys = Package._runtime_keys
             for myroot in self._frozen_config.trees:
-
                 if (
                     self._frozen_config.myopts.get("--root-deps") is not None
                     and myroot != self._frozen_config.target_root
@@ -8404,7 +8346,7 @@ class depgraph:
                                 or blocker.priority.runtime_post
                             ]
                     if blockers is not None:
-                        blockers = set(blocker.atom for blocker in blockers)
+                        blockers = {blocker.atom for blocker in blockers}
 
                     # If this node has any blockers, create a "nomerge"
                     # node for it so that they can be enforced.
@@ -8455,7 +8397,7 @@ class depgraph:
                             # is thrown from cpv_expand due to multiple
                             # matches (this can happen if an atom lacks a
                             # category).
-                            show_invalid_depstring_notice(pkg, "%s" % (e,))
+                            show_invalid_depstring_notice(pkg, f"{e}")
                             del e
                             raise
                         if not success:
@@ -8492,9 +8434,7 @@ class depgraph:
                                 self._dynamic_config._blocker_parents.add(blocker, pkg)
                         except portage.exception.InvalidAtom as e:
                             depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
-                            show_invalid_depstring_notice(
-                                pkg, "Invalid Atom: %s" % (e,)
-                            )
+                            show_invalid_depstring_notice(pkg, f"Invalid Atom: {e}")
                             return False
                 for cpv in stale_cache:
                     del blocker_cache[cpv]
@@ -8700,7 +8640,6 @@ class depgraph:
         deep_system_deps = _find_deep_system_runtime_deps(mygraph)
 
         def cmp_merge_preference(node1, node2):
-
             if node1.operation == "uninstall":
                 if node2.operation == "uninstall":
                     return 0
@@ -8723,7 +8662,6 @@ class depgraph:
         mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
     def altlist(self, reversed=DeprecationWarning):  # pylint: disable=redefined-builtin
-
         if reversed is not DeprecationWarning:
             warnings.warn(
                 "The reversed parameter of "
@@ -8858,7 +8796,6 @@ class depgraph:
             ] = root_config
 
     def _resolve_conflicts(self):
-
         if (
             "complete" not in self._dynamic_config.myparams
             and self._dynamic_config._allow_backtracking
@@ -8873,7 +8810,6 @@ class depgraph:
         self._process_slot_conflicts()
 
     def _serialize_tasks(self):
-
         debug = "--debug" in self._frozen_config.myopts
 
         if debug:
@@ -8990,8 +8926,7 @@ class depgraph:
             except portage.exception.InvalidDependString as e:
                 portage.writemsg(
                     "!!! Invalid RDEPEND in "
-                    + "'%svar/db/pkg/%s/RDEPEND': %s\n"
-                    % (running_root, running_portage.cpv, e),
+                    f"'{running_root}var/db/pkg/{running_portage.cpv}/RDEPEND': {e}\n",
                     noiselevel=-1,
                 )
                 del e
@@ -9275,8 +9210,7 @@ class depgraph:
 
                     if debug:
                         writemsg(
-                            "\nruntime cycle digraph (%s nodes):\n\n"
-                            % (len(selected_nodes),),
+                            f"\nruntime cycle digraph ({len(selected_nodes)} nodes):\n\n",
                             noiselevel=-1,
                         )
                         cycle_digraph.debug_print()
@@ -9284,7 +9218,7 @@ class depgraph:
 
                         if leaves:
                             writemsg(
-                                "runtime cycle leaf: %s\n\n" % (selected_nodes[0],),
+                                f"runtime cycle leaf: {selected_nodes[0]}\n\n",
                                 noiselevel=-1,
                             )
 
@@ -9397,8 +9331,7 @@ class depgraph:
                         except portage.exception.InvalidDependString as e:
                             portage.writemsg(
                                 "!!! Invalid PROVIDE in "
-                                + "'%svar/db/pkg/%s/PROVIDE': %s\n"
-                                % (task.root, task.cpv, e),
+                                + f"'{task.root}var/db/pkg/{task.cpv}/PROVIDE': {e}\n",
                                 noiselevel=-1,
                             )
                             del e
@@ -9435,8 +9368,7 @@ class depgraph:
                         except portage.exception.InvalidDependString as e:
                             portage.writemsg(
                                 "!!! Invalid PROVIDE in "
-                                + "'%svar/db/pkg/%s/PROVIDE': %s\n"
-                                % (task.root, task.cpv, e),
+                                + f"'{task.root}var/db/pkg/{task.cpv}/PROVIDE': {e}\n",
                                 noiselevel=-1,
                             )
                             del e
@@ -9477,8 +9409,7 @@ class depgraph:
                         except portage.exception.InvalidDependString as e:
                             portage.writemsg(
                                 "!!! Invalid PROVIDE in "
-                                + "'%svar/db/pkg/%s/PROVIDE': %s\n"
-                                % (task.root, task.cpv, e),
+                                + f"'{task.root}var/db/pkg/{task.cpv}/PROVIDE': {e}\n",
                                 noiselevel=-1,
                             )
                             del e
@@ -9614,7 +9545,6 @@ class depgraph:
 
                 unsolved_cycle = False
                 if self._dynamic_config._allow_backtracking:
-
                     backtrack_infos = self._dynamic_config._backtrack_infos
                     backtrack_infos.setdefault("config", {})
                     circular_dependency = backtrack_infos["config"].setdefault(
@@ -9726,9 +9656,10 @@ class depgraph:
                 ]
                 for node in retlist:
                     if isinstance(node, Package) and node.operation == "uninstall":
-                        msg.append("\t%s" % (node,))
+                        msg.append(f"\t{node}")
+                temp_joined = "".join(f"{line}\n" for line in msg)
                 writemsg_level(
-                    "\n%s\n" % "".join("%s\n" % line for line in msg),
+                    f"\n{temp_joined}\n",
                     level=logging.DEBUG,
                     noiselevel=-1,
                 )
@@ -9866,7 +9797,6 @@ class depgraph:
                 self._dynamic_config._blocked_pkgs.child_nodes(blocker),
                 self._dynamic_config._blocker_parents.parent_nodes(blocker),
             ):
-
                 is_slot_conflict_pkg = False
                 for conflict in self._dynamic_config._package_tracker.slot_conflicts():
                     if conflict.root == pkg.root and conflict.atom == pkg.slot_atom:
@@ -9905,7 +9835,6 @@ class depgraph:
             msg = ["\n"]
             indent = "  "
             for pkg, parent_atoms in conflict_pkgs.items():
-
                 # Prefer packages that are not directly involved in a conflict.
                 # It can be essential to see all the packages here, so don't
                 # omit any. If the list is long, people can simply use a pager.
@@ -9921,7 +9850,7 @@ class depgraph:
                         if parent_atom not in preferred_parents:
                             ordered_list.append(parent_atom)
 
-                msg.append(indent + "%s pulled in by\n" % pkg)
+                msg.append(indent + f"{pkg} pulled in by\n")
 
                 for parent_atom in ordered_list:
                     parent, atom = parent_atom
@@ -9946,13 +9875,11 @@ class depgraph:
                             # issues with conditional use-flags missing
                             # from IUSE.
                             msg.append(
-                                "%s (%s) required by %s %s"
-                                % (atom.unevaluated_atom, atom, parent, use_display)
+                                f"{atom.unevaluated_atom} ({atom}) "
+                                f"required by {parent} {use_display}"
                             )
                         else:
-                            msg.append(
-                                "%s required by %s %s" % (atom, parent, use_display)
-                            )
+                            msg.append(f"{atom} required by {parent} {use_display}")
                     msg.append("\n")
 
                 msg.append("\n")
@@ -9963,7 +9890,6 @@ class depgraph:
             show_blocker_docs_link()
 
     def display(self, mylist, favorites=[], verbosity=None):
-
         # This is used to prevent display_problems() from
         # redundantly displaying this exact same merge list
         # again via _show_merge_list().
@@ -10062,20 +9988,18 @@ class depgraph:
                         if autounmask_unrestricted_atoms:
                             if is_latest:
                                 unstable_keyword_msg[root].append(
-                                    ">=%s %s\n" % (pkg.cpv, keyword)
+                                    f">={pkg.cpv} {keyword}\n"
                                 )
                             elif is_latest_in_slot:
                                 unstable_keyword_msg[root].append(
-                                    ">=%s:%s %s\n" % (pkg.cpv, pkg.slot, keyword)
+                                    f">={pkg.cpv}:{pkg.slot} {keyword}\n"
                                 )
                             else:
                                 unstable_keyword_msg[root].append(
-                                    "=%s %s\n" % (pkg.cpv, keyword)
+                                    f"={pkg.cpv} {keyword}\n"
                                 )
                         else:
-                            unstable_keyword_msg[root].append(
-                                "=%s %s\n" % (pkg.cpv, keyword)
-                            )
+                            unstable_keyword_msg[root].append(f"={pkg.cpv} {keyword}\n")
 
         p_mask_change_msg = {}
         for pkg in self._dynamic_config._needed_p_mask_changes:
@@ -10105,22 +10029,22 @@ class depgraph:
                             self._get_dep_chain_as_comment(pkg)
                         )
                         if filename:
-                            p_mask_change_msg[root].append("# %s:\n" % filename)
+                            p_mask_change_msg[root].append(f"# {filename}:\n")
                         if comment:
                             comment = [line for line in comment.splitlines() if line]
                             for line in comment:
-                                p_mask_change_msg[root].append("%s\n" % line)
+                                p_mask_change_msg[root].append(f"{line}\n")
                         if autounmask_unrestricted_atoms:
                             if is_latest:
-                                p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
+                                p_mask_change_msg[root].append(f">={pkg.cpv}\n")
                             elif is_latest_in_slot:
                                 p_mask_change_msg[root].append(
-                                    ">=%s:%s\n" % (pkg.cpv, pkg.slot)
+                                    f">={pkg.cpv}:{pkg.slot}\n"
                                 )
                             else:
-                                p_mask_change_msg[root].append("=%s\n" % pkg.cpv)
+                                p_mask_change_msg[root].append(f"={pkg.cpv}\n")
                         else:
-                            p_mask_change_msg[root].append("=%s\n" % pkg.cpv)
+                            p_mask_change_msg[root].append(f"={pkg.cpv}\n")
 
         use_changes_msg = {}
         for (
@@ -10152,15 +10076,15 @@ class depgraph:
                 )
                 if is_latest:
                     use_changes_msg[root].append(
-                        ">=%s %s\n" % (pkg.cpv, " ".join(adjustments))
+                        f">={pkg.cpv} {' '.join(adjustments)}\n"
                     )
                 elif is_latest_in_slot:
                     use_changes_msg[root].append(
-                        ">=%s:%s %s\n" % (pkg.cpv, pkg.slot, " ".join(adjustments))
+                        f">={pkg.cpv}:{pkg.slot} {' '.join(adjustments)}\n"
                     )
                 else:
                     use_changes_msg[root].append(
-                        "=%s %s\n" % (pkg.cpv, " ".join(adjustments))
+                        f"={pkg.cpv} {' '.join(adjustments)}\n"
                     )
 
         license_msg = {}
@@ -10178,16 +10102,15 @@ class depgraph:
                 license_msg[root].append(self._get_dep_chain_as_comment(pkg))
                 if is_latest:
                     license_msg[root].append(
-                        ">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses)))
+                        f">={pkg.cpv} {' '.join(sorted(missing_licenses))}\n"
                     )
                 elif is_latest_in_slot:
                     license_msg[root].append(
-                        ">=%s:%s %s\n"
-                        % (pkg.cpv, pkg.slot, " ".join(sorted(missing_licenses)))
+                        f">={pkg.cpv}:{pkg.slot} {' '.join(sorted(missing_licenses))}\n"
                     )
                 else:
                     license_msg[root].append(
-                        "=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses)))
+                        f"={pkg.cpv} {' '.join(sorted(missing_licenses))}\n"
                     )
 
         def find_config_file(abs_user_config, file_name):
@@ -10287,8 +10210,7 @@ class depgraph:
             for (abs_user_config, f), path in file_to_write_to.items():
                 if path is None:
                     problems.append(
-                        "!!! No file to write for '%s'\n"
-                        % os.path.join(abs_user_config, f)
+                        f"!!! No file to write for '{os.path.join(abs_user_config, f)}'\n"
                     )
 
             write_to_file = not problems
@@ -10308,15 +10230,12 @@ class depgraph:
             )
 
             if len(roots) > 1:
-                writemsg("\nFor %s:\n" % abs_user_config, noiselevel=-1)
+                writemsg(f"\nFor {abs_user_config}:\n", noiselevel=-1)
 
             def _writemsg(reason, file):
                 writemsg(
-                    (
-                        "\nThe following %s are necessary to proceed:\n"
-                        ' (see "%s" in the portage(5) man page for more details)\n'
-                    )
-                    % (colorize("BAD", reason), file),
+                    f"\nThe following {colorize('BAD', reason)} are necessary to proceed:\n"
+                    f' (see "{file}" in the portage(5) man page for more details)\n',
                     noiselevel=-1,
                 )
 
@@ -10350,22 +10269,19 @@ class depgraph:
         def write_changes(root, changes, file_to_write_to):
             file_contents = None
             try:
-                with io.open(
+                with open(
                     _unicode_encode(
                         file_to_write_to, encoding=_encodings["fs"], errors="strict"
                     ),
-                    mode="r",
                     encoding=_encodings["content"],
                     errors="replace",
                 ) as f:
                     file_contents = f.readlines()
-            except IOError as e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     file_contents = []
                 else:
-                    problems.append(
-                        "!!! Failed to read '%s': %s\n" % (file_to_write_to, e)
-                    )
+                    problems.append(f"!!! Failed to read '{file_to_write_to}': {e}\n")
             if file_contents is not None:
                 file_contents.extend(changes)
                 if not autounmask_continue and protect_obj[root].isprotected(
@@ -10381,7 +10297,7 @@ class depgraph:
                 try:
                     write_atomic(file_to_write_to, "".join(file_contents))
                 except PortageException:
-                    problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
+                    problems.append(f"!!! Failed to write '{file_to_write_to}'\n")
 
         if not quiet and (p_mask_change_msg or masked_by_missing_keywords):
             msg = [
@@ -10465,7 +10381,7 @@ class depgraph:
             ]
             writemsg("\n", noiselevel=-1)
             for line in msg:
-                writemsg(" %s %s\n" % (colorize("WARN", "*"), line), noiselevel=-1)
+                writemsg(f" {colorize('WARN', '*')} {line}\n", noiselevel=-1)
 
     def display_problems(self):
         """
@@ -10508,9 +10424,7 @@ class depgraph:
         for depgraph_sets in self._dynamic_config.sets.values():
             for pset in depgraph_sets.sets.values():
                 for error_msg in pset.errors:
-                    writemsg_level(
-                        "%s\n" % (error_msg,), level=logging.ERROR, noiselevel=-1
-                    )
+                    writemsg_level(f"{error_msg}\n", level=logging.ERROR, noiselevel=-1)
 
         # TODO: Add generic support for "set problem" handlers so that
         # the below warnings aren't special cases for world only.
@@ -10587,9 +10501,9 @@ class depgraph:
                 if refs:
                     problems_sets.update(refs)
                     refs.sort()
-                    ref_string = ", ".join(["'%s'" % name for name in refs])
+                    ref_string = ", ".join([f"'{name}'" for name in refs])
                     ref_string = " pulled in by " + ref_string
-                msg.append("  %s%s\n" % (colorize("INFORM", str(arg)), ref_string))
+                msg.append(f"  {colorize('INFORM', str(arg))}{ref_string}\n")
             msg.append("\n")
             if "selected" in problems_sets or "world" in problems_sets:
                 msg.append(
@@ -10715,11 +10629,11 @@ class depgraph:
                     added_favorites.add(myfavkey)
             except portage.exception.InvalidDependString as e:
                 writemsg(
-                    "\n\n!!! '%s' has invalid PROVIDE: %s\n" % (x.cpv, e), noiselevel=-1
+                    f"\n\n!!! '{x.cpv}' has invalid PROVIDE: {e}\n",
+                    noiselevel=-1,
                 )
                 writemsg(
-                    "!!! see '%s'\n\n"
-                    % os.path.join(x.root, portage.VDB_PATH, x.cpv, "PROVIDE"),
+                    f"!!! see '{os.path.join(x.root, portage.VDB_PATH, x.cpv, 'PROVIDE')}'\n\n",
                     noiselevel=-1,
                 )
                 del e
@@ -10746,9 +10660,7 @@ class depgraph:
             if "--ask" in self._frozen_config.myopts:
                 writemsg_stdout("\n", noiselevel=-1)
                 for a in all_added:
-                    writemsg_stdout(
-                        " %s %s\n" % (colorize("GOOD", "*"), a), noiselevel=-1
-                    )
+                    writemsg_stdout(f" {colorize('GOOD', '*')} {a}\n", noiselevel=-1)
                 writemsg_stdout("\n", noiselevel=-1)
                 prompt = (
                     "Would you like to add these packages to your world " "favorites?"
@@ -10764,8 +10676,8 @@ class depgraph:
                     else:
                         filename = "world"
                     writemsg_stdout(
-                        '>>> Recording %s in "%s" favorites file...\n'
-                        % (colorize("INFORM", str(a)), filename),
+                        f">>> Recording {colorize('INFORM', str(a))} "
+                        f'in "{filename}" favorites file...\n',
                         noiselevel=-1,
                     )
                 world_set.update(all_added)
@@ -11083,7 +10995,6 @@ class depgraph:
             and self._frozen_config.myopts.get("--autounmask-backtrack") != "y"
             and self._have_autounmask_changes()
         ):
-
             if (
                 self._frozen_config.myopts.get("--autounmask-continue") is True
                 and self._frozen_config.myopts.get("--autounmask-backtrack") != "n"
@@ -11232,7 +11143,7 @@ class _dep_check_composite_db(dbapi):
 
             while sub_slots:
                 slot, sub_slot = sub_slots.pop()
-                slot_atom = atom.with_slot("%s/%s" % (slot, sub_slot))
+                slot_atom = atom.with_slot(f"{slot}/{sub_slot}")
                 pkg, existing = self._depgraph._select_package(self._root, slot_atom)
                 if not pkg:
                     continue
@@ -11241,7 +11152,6 @@ class _dep_check_composite_db(dbapi):
                     # when appropriate for bug #526160.
                     selected = pkg
                     for candidate in self._iter_virt_update(pkg, atom_set):
-
                         if candidate.slot != slot:
                             continue
 
@@ -11290,7 +11200,6 @@ class _dep_check_composite_db(dbapi):
                     return False
 
         if pkg.cp.startswith("virtual/"):
-
             if not self._depgraph._virt_deps_visible(pkg, ignore_use=True):
                 return False
 
@@ -11352,18 +11261,15 @@ class _dep_check_composite_db(dbapi):
         return True
 
     def _iter_virt_update(self, pkg, atom_set):
-
         if (
             self._depgraph._select_atoms_parent is not None
             and self._depgraph._want_update_pkg(
                 self._depgraph._select_atoms_parent, pkg
             )
         ):
-
             for new_child in self._depgraph._iter_similar_available(
                 pkg, next(iter(atom_set))
             ):
-
                 if not self._depgraph._virt_deps_visible(new_child, ignore_use=True):
                     continue
 
@@ -11378,7 +11284,6 @@ class _dep_check_composite_db(dbapi):
                 yield new_child
 
     def _have_virt_update(self, pkg, atom_set):
-
         for new_child in self._iter_virt_update(pkg, atom_set):
             if pkg < new_child:
                 return True
@@ -11394,17 +11299,16 @@ class _dep_check_composite_db(dbapi):
 
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
-
     if "--quiet" in myopts:
         writemsg(
-            '!!! The short ebuild name "%s" is ambiguous. Please specify\n' % arg,
+            f'!!! The short ebuild name "{arg}" is ambiguous. Please specify\n',
             noiselevel=-1,
         )
         writemsg(
             "!!! one of the following fully-qualified ebuild names instead:\n\n",
             noiselevel=-1,
         )
-        for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
+        for cp in sorted({portage.dep_getkey(atom) for atom in atoms}):
             writemsg("    " + colorize("INFORM", cp) + "\n", noiselevel=-1)
         return
 
@@ -11420,11 +11324,11 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
     null_cp = portage.dep_getkey(insert_category_into_atom(arg, "null"))
     cat, atom_pn = portage.catsplit(null_cp)
     s.searchkey = atom_pn
-    for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
+    for cp in sorted({portage.dep_getkey(atom) for atom in atoms}):
         s.addCP(cp)
     s.output()
     writemsg(
-        '!!! The short ebuild name "%s" is ambiguous. Please specify\n' % arg,
+        f'!!! The short ebuild name "{arg}" is ambiguous. Please specify\n',
         noiselevel=-1,
     )
     writemsg(
@@ -11454,9 +11358,7 @@ def _spinner_start(spinner, myopts):
             if "--unordered-display" in myopts:
                 portage.writemsg_stdout(
                     "\n"
-                    + darkgreen(
-                        "These are the packages that " + "would be %s:" % action
-                    )
+                    + darkgreen("These are the packages that " + f"would be {action}:")
                     + "\n\n"
                 )
             else:
@@ -11464,7 +11366,7 @@ def _spinner_start(spinner, myopts):
                     "\n"
                     + darkgreen(
                         "These are the packages that "
-                        + "would be %s, in reverse order:" % action
+                        + f"would be {action}, in reverse order:"
                     )
                     + "\n\n"
                 )
@@ -11472,7 +11374,7 @@ def _spinner_start(spinner, myopts):
             portage.writemsg_stdout(
                 "\n"
                 + darkgreen(
-                    "These are the packages that " + "would be %s, in order:" % action
+                    "These are the packages that " + f"would be {action}, in order:"
                 )
                 + "\n\n"
             )
@@ -11483,6 +11385,7 @@ def _spinner_start(spinner, myopts):
 
     if show_spinner:
         portage.writemsg_stdout("Calculating dependencies  ")
+    spinner.start_time = time.time()
 
 
 def _spinner_stop(spinner):
@@ -11496,9 +11399,22 @@ def _spinner_stop(spinner):
 
     portage.writemsg_stdout("... done!\n")
 
+    stop_time = time.time()
+    time_fmt = f"{stop_time - spinner.start_time:.2f}"
+    portage.writemsg_stdout(f"Dependency resolution took {darkgreen(time_fmt)} s.\n\n")
 
-def backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
+
+def backtrack_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    myopts: Dict[str, Any],
+    myparams: Dict[str, Union[int, str, bool]],
+    myaction: Optional[str],
+    myfiles: List[str],
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
+) -> Tuple[Any, depgraph, List[str]]:
     """
+
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
     _spinner_start(spinner, myopts)
@@ -11510,8 +11426,15 @@ def backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spi
         _spinner_stop(spinner)
 
 
-def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
-
+def _backtrack_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    myopts: Dict[str, Any],
+    myparams: Dict[str, Union[int, str, bool]],
+    myaction: Optional[str],
+    myfiles: List[str],
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
+) -> Tuple[Any, depgraph, List[str]]:
     debug = "--debug" in myopts
     mydepgraph = None
     max_retries = myopts.get("--backtrack", 10)
@@ -11523,10 +11446,9 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
     frozen_config = _frozen_depgraph_config(settings, trees, myopts, myparams, spinner)
 
     while backtracker:
-
         if debug and mydepgraph is not None:
             writemsg_level(
-                "\n\nbacktracking try %s \n\n" % backtracked,
+                f"\n\nbacktracking try {backtracked} \n\n",
                 noiselevel=-1,
                 level=logging.DEBUG,
             )
@@ -11535,7 +11457,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
         backtrack_parameters = backtracker.get()
         if debug and backtrack_parameters.runtime_pkg_mask:
             writemsg_level(
-                "\n\nruntime_pkg_mask: %s \n\n" % backtrack_parameters.runtime_pkg_mask,
+                f"\n\nruntime_pkg_mask: {backtrack_parameters.runtime_pkg_mask} \n\n",
                 noiselevel=-1,
                 level=logging.DEBUG,
             )
@@ -11565,10 +11487,9 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
             backtracked += 1
 
     if backtracked and not success and not mydepgraph.need_display_problems():
-
         if debug:
             writemsg_level(
-                "\n\nbacktracking aborted after %s tries\n\n" % backtracked,
+                f"\n\nbacktracking aborted after {backtracked} tries\n\n",
                 noiselevel=-1,
                 level=logging.DEBUG,
             )
@@ -11609,7 +11530,14 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
     return (success, mydepgraph, favorites)
 
 
-def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
+def resume_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    mtimedb: Any,
+    myopts: Dict[str, str],
+    myparams: Dict[str, Any],
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
+):
     """
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
@@ -11620,7 +11548,14 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
         _spinner_stop(spinner)
 
 
-def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
+def _resume_depgraph(
+    settings: portage.package.ebuild.config.config,
+    trees: portage._trees_dict,
+    mtimedb: Any,
+    myopts: Dict[str, str],
+    myparams: Dict[str, Any],
+    spinner: "_emerge.stdout_spinner.stdout_spinner",
+):
     """
     Construct a depgraph for the given resume list. This will raise
     PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.
@@ -11739,7 +11674,7 @@ def get_mask_info(
     else:
         eapi = metadata["EAPI"]
         if not portage.eapi_is_supported(eapi):
-            mreasons = ["EAPI %s" % eapi]
+            mreasons = [f"EAPI {eapi}"]
         else:
             pkg = Package(
                 type_name=pkg_type,
@@ -11768,7 +11703,7 @@ def show_masked_packages(masked_packages):
     # show one of them to avoid redundant appearance.
     shown_cpvs = set()
     have_eapi_mask = False
-    for (root_config, pkgsettings, cpv, repo, metadata, mreasons) in masked_packages:
+    for root_config, pkgsettings, cpv, repo, metadata, mreasons in masked_packages:
         output_cpv = cpv
         if repo:
             output_cpv += _repo_separator + repo
@@ -11816,10 +11751,7 @@ def show_masked_packages(masked_packages):
             l_path = portdb.findLicensePath(l)
             if l_path is None:
                 continue
-            msg = ("A copy of the '%s' license" + " is located at '%s'.\n\n") % (
-                l,
-                l_path,
-            )
+            msg = f"A copy of the '{l}' license is located at '{l_path}'.\n\n"
             writemsg(msg, noiselevel=-1)
             shown_licenses.add(l)
     return have_eapi_mask
@@ -11869,7 +11801,7 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 
     if not pkg.installed:
         if not pkgsettings._accept_chost(pkg.cpv, pkg._metadata):
-            mreasons.append(_MaskReason("CHOST", "CHOST: %s" % pkg._metadata["CHOST"]))
+            mreasons.append(_MaskReason("CHOST", f"CHOST: {pkg._metadata['CHOST']}"))
 
     # BEGIN PREFIX LOCAL: check EPREFIX
     eprefix = pkgsettings["EPREFIX"]
@@ -11886,7 +11818,7 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
     if pkg.invalid:
         for msgs in pkg.invalid.values():
             for msg in msgs:
-                mreasons.append(_MaskReason("invalid", "invalid: %s" % (msg,)))
+                mreasons.append(_MaskReason("invalid", f"invalid: {msg}"))
 
     if not pkg._metadata["SLOT"]:
         mreasons.append(_MaskReason("invalid", "SLOT: undefined"))

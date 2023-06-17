@@ -10,7 +10,6 @@ class DepGetCPV(TestCase):
     """A simple testcase for isvalidatom"""
 
     def testDepGetCPV(self):
-
         prefix_ops = ["<", ">", "=", "~", "<=", ">=", "!=", "!<", "!>", "!~"]
 
         bad_prefix_ops = [">~", "<~", "~>", "~<"]

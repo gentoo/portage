@@ -32,7 +32,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util.env_update:env_update",
     "portage.util.install_mask:install_mask_dir,InstallMask,_raise_exc",
     "portage.util.listdir:dircache,listdir",
-    "portage.util.movefile:movefile",
+    "portage.util.movefile:movefile,_cmpxattr",
     "portage.util.path:first_existing,iter_parents",
     "portage.util.writeable_check:get_ro_checker",
     "portage.util._xattr:xattr",
@@ -98,6 +98,7 @@ from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
 import argparse
 import errno
+import filecmp
 import fnmatch
 import functools
 import gc
@@ -119,7 +120,6 @@ import warnings
 
 
 class vardbapi(dbapi):
-
     _excluded_dirs = ["CVS", "lost+found"]
     _excluded_dirs = [re.escape(x) for x in _excluded_dirs]
     _excluded_dirs = re.compile(
@@ -196,33 +196,31 @@ class vardbapi(dbapi):
         if vartree is None:
             vartree = portage.db[settings["EROOT"]]["vartree"]
         self.vartree = vartree
-        self._aux_cache_keys = set(
-            [
-                "BDEPEND",
-                "BUILD_TIME",
-                "CHOST",
-                "COUNTER",
-                "DEPEND",
-                "DESCRIPTION",
-                "EAPI",
-                "HOMEPAGE",
-                "BUILD_ID",
-                "IDEPEND",
-                "IUSE",
-                "KEYWORDS",
-                "LICENSE",
-                "PDEPEND",
-                "PROPERTIES",
-                "RDEPEND",
-                "repository",
-                "RESTRICT",
-                "SLOT",
-                "USE",
-                "DEFINED_PHASES",
-                "PROVIDES",
-                "REQUIRES",
-            ]
-        )
+        self._aux_cache_keys = {
+            "BDEPEND",
+            "BUILD_TIME",
+            "CHOST",
+            "COUNTER",
+            "DEPEND",
+            "DESCRIPTION",
+            "EAPI",
+            "HOMEPAGE",
+            "BUILD_ID",
+            "IDEPEND",
+            "IUSE",
+            "KEYWORDS",
+            "LICENSE",
+            "PDEPEND",
+            "PROPERTIES",
+            "RDEPEND",
+            "repository",
+            "RESTRICT",
+            "SLOT",
+            "USE",
+            "DEFINED_PHASES",
+            "PROVIDES",
+            "REQUIRES",
+        }
         self._aux_cache_obj = None
         self._aux_cache_filename = os.path.join(
             self._eroot, CACHE_PATH, "vdb_metadata.pickle"
@@ -356,7 +354,7 @@ class vardbapi(dbapi):
         """
         lock, counter = self._slot_locks.get(slot_atom, (None, 0))
         if lock is None:
-            lock_path = self.getpath("%s:%s" % (slot_atom.cp, slot_atom.slot))
+            lock_path = self.getpath(f"{slot_atom.cp}:{slot_atom.slot}")
             ensure_dirs(os.path.dirname(lock_path))
             lock = lockfile(lock_path, wantnewlockfile=True)
         self._slot_locks[slot_atom] = (lock, counter + 1)
@@ -475,7 +473,7 @@ class vardbapi(dbapi):
                         os.path.join(newpath, old_pf + ".ebuild"),
                         os.path.join(newpath, new_pf + ".ebuild"),
                     )
-                except EnvironmentError as e:
+                except OSError as e:
                     if e.errno != errno.ENOENT:
                         raise
                     del e
@@ -499,7 +497,7 @@ class vardbapi(dbapi):
         cat_dir = self.getpath(mysplit[0])
         try:
             dir_list = os.listdir(cat_dir)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(cat_dir)
             del e
@@ -515,7 +513,7 @@ class vardbapi(dbapi):
                 continue
             if len(mysplit) > 1:
                 if ps[0] == mysplit[1]:
-                    cpv = "%s/%s" % (mysplit[0], x)
+                    cpv = f"{mysplit[0]}/{x}"
                     metadata = dict(
                         zip(
                             self._aux_cache_keys,
@@ -556,7 +554,7 @@ class vardbapi(dbapi):
                     return [
                         x for x in os.listdir(p) if os.path.isdir(os.path.join(p, x))
                     ]
-                except EnvironmentError as e:
+                except OSError as e:
                     if e.errno == PermissionDenied.errno:
                         raise PermissionDenied(p)
                     del e
@@ -649,7 +647,7 @@ class vardbapi(dbapi):
             )
         try:
             curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
-        except (IOError, OSError):
+        except OSError:
             curmtime = 0
 
         if mycat not in self.matchcache or self.mtdircache[mycat] != curmtime:
@@ -683,7 +681,6 @@ class vardbapi(dbapi):
                 or not os.path.exists(self._cache_delta_filename)
             )
         ):
-
             ensure_dirs(os.path.dirname(self._aux_cache_filename))
 
             self._owners.populate()  # index any unindexed contents
@@ -720,7 +717,7 @@ class vardbapi(dbapi):
                     self._aux_cache_filename, encoding=_encodings["fs"], errors="strict"
                 ),
                 mode="rb",
-                **open_kwargs
+                **open_kwargs,
             ) as f:
                 mypickle = pickle.Unpickler(f)
                 try:
@@ -891,18 +888,17 @@ class vardbapi(dbapi):
                 results[x] = st[stat.ST_MTIME]
                 continue
             try:
-                with io.open(
+                with open(
                     _unicode_encode(
                         os.path.join(mydir, x),
                         encoding=_encodings["fs"],
                         errors="strict",
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 ) as f:
                     myd = f.read()
-            except IOError:
+            except OSError:
                 if (
                     x not in self._aux_cache_keys
                     and self._aux_cache_keys_re.match(x) is None
@@ -956,7 +952,7 @@ class vardbapi(dbapi):
         args = bunzip2_cmd + ["-c", env_file]
         try:
             proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             raise portage.exception.CommandNotFound(args[0])
@@ -1019,7 +1015,7 @@ class vardbapi(dbapi):
             else:
                 try:
                     os.unlink(os.path.join(self.getpath(cpv), k))
-                except EnvironmentError:
+                except OSError:
                     pass
         self._bump_mtime(cpv)
 
@@ -1098,9 +1094,7 @@ class vardbapi(dbapi):
         # Method parameters may override QUICKPKG_DEFAULT_OPTS.
         opts_list = portage.util.shlex_split(settings.get("QUICKPKG_DEFAULT_OPTS", ""))
         if include_config is not None:
-            opts_list.append(
-                "--include-config={}".format("y" if include_config else "n")
-            )
+            opts_list.append(f"--include-config={'y' if include_config else 'n'}")
         if include_unmodified_config is not None:
             opts_list.append(
                 "--include-unmodified-config={}".format(
@@ -1129,7 +1123,7 @@ class vardbapi(dbapi):
                 )
             await proc.wait()
             if proc.returncode != os.EX_OK:
-                raise PortageException("command failed: {}".format(tar_cmd))
+                raise PortageException(f"command failed: {tar_cmd}")
         elif binpkg_format == "gpkg":
             gpkg_tmp_fd, gpkg_tmp = tempfile.mkstemp(suffix=".gpkg.tar")
             os.close(gpkg_tmp_fd)
@@ -1152,7 +1146,7 @@ class vardbapi(dbapi):
                 _(
                     "Config files excluded by QUICKPKG_DEFAULT_OPTS (see quickpkg(1) man page):"
                 )
-            ] + ["\t{}".format(name) for name in excluded_config_files]
+            ] + [f"\t{name}" for name in excluded_config_files]
             out = io.StringIO()
             for line in log_lines:
                 portage.elog.messages.ewarn(line, phase="install", key=cpv, out=out)
@@ -1192,11 +1186,10 @@ class vardbapi(dbapi):
         del myroot
         counter = -1
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     self._counter_path, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
@@ -1207,8 +1200,8 @@ class vardbapi(dbapi):
                         _("!!! COUNTER file is corrupt: '%s'\n") % self._counter_path,
                         noiselevel=-1,
                     )
-                    writemsg("!!! %s\n" % (e,), noiselevel=-1)
-        except EnvironmentError as e:
+                    writemsg(f"!!! {e}\n", noiselevel=-1)
+        except OSError as e:
             # Silently allow ENOENT since files under
             # /var/cache/ are allowed to disappear.
             if e.errno != errno.ENOENT:
@@ -1216,7 +1209,7 @@ class vardbapi(dbapi):
                     _("!!! Unable to read COUNTER file: '%s'\n") % self._counter_path,
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
             del e
 
         if self._cached_counter == counter:
@@ -1328,16 +1321,15 @@ class vardbapi(dbapi):
             needed_filename = os.path.join(pkg.dbdir, LinkageMap._needed_aux_key)
             new_needed = None
             try:
-                with io.open(
+                with open(
                     _unicode_encode(
                         needed_filename, encoding=_encodings["fs"], errors="strict"
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 ) as f:
                     needed_lines = f.readlines()
-            except IOError as e:
+            except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
                     raise
             else:
@@ -1349,9 +1341,7 @@ class vardbapi(dbapi):
                     try:
                         entry = NeededEntry.parse(needed_filename, l)
                     except InvalidData as e:
-                        writemsg_level(
-                            "\n%s\n\n" % (e,), level=logging.ERROR, noiselevel=-1
-                        )
+                        writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                         continue
 
                     filename = os.path.join(root, entry.filename.lstrip(os.sep))
@@ -1553,7 +1543,6 @@ class vardbapi(dbapi):
                 return x
 
             while path_iter:
-
                 path = path_iter.pop()
                 if case_insensitive:
                     path = path.lower()
@@ -1609,8 +1598,7 @@ class vardbapi(dbapi):
                         del owners[:]
                         dblink_cache.clear()
                         gc.collect()
-                        for x in self._iter_owners_low_mem(path_iter):
-                            yield x
+                        yield from self._iter_owners_low_mem(path_iter)
                         return
                     else:
                         for cpv, p in owners:
@@ -1664,8 +1652,7 @@ class vardbapi(dbapi):
                 search_future = event_loop.create_future()
                 event_loop.call_soon(search_pkg, cpv, search_future)
                 event_loop.run_until_complete(search_future)
-                for result in search_future.result():
-                    yield result
+                yield from search_future.result()
 
 
 class vartree:
@@ -1674,7 +1661,6 @@ class vartree:
     def __init__(
         self, root=None, virtual=DeprecationWarning, categories=None, settings=None
     ):
-
         if settings is None:
             settings = portage.settings
 
@@ -1896,7 +1882,6 @@ class dblink:
         return isinstance(other, dblink) and self._hash_key == other._hash_key
 
     def _get_protect_obj(self):
-
         if self._protect_obj is None:
             self._protect_obj = ConfigProtect(
                 self._eroot,
@@ -1951,7 +1936,7 @@ class dblink:
             (slot,) = db.aux_get(self.mycpv, ["SLOT"])
             slot = slot.partition("/")[0]
 
-        slot_atoms.append(portage.dep.Atom("%s:%s" % (self.mycpv.cp, slot)))
+        slot_atoms.append(portage.dep.Atom(f"{self.mycpv.cp}:{slot}"))
 
         for blocker in self._blockers or []:
             slot_atoms.append(blocker.slot_atom)
@@ -2046,16 +2031,15 @@ class dblink:
         contents_file = os.path.join(self.dbdir, "CONTENTS")
         pkgfiles = {}
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     contents_file, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
                 mylines = f.readlines()
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             del e
@@ -2373,7 +2357,7 @@ class dblink:
         if others_in_slot is None:
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
             slot_matches = self.vartree.dbapi.match(
-                "%s:%s" % (portage.cpv_getkey(self.mycpv), slot)
+                f"{portage.cpv_getkey(self.mycpv)}:{slot}"
             )
             others_in_slot = []
             for cur_cpv in slot_matches:
@@ -2473,9 +2457,7 @@ class dblink:
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
-                showMessage(
-                    "%s\n" % (eapi_unsupported,), level=logging.ERROR, noiselevel=-1
-                )
+                showMessage(f"{eapi_unsupported}\n", level=logging.ERROR, noiselevel=-1)
             elif os.path.isfile(myebuildpath):
                 phase = EbuildPhase(
                     background=background,
@@ -2597,7 +2579,6 @@ class dblink:
                     scheduler.run_until_complete(builddir_lock.async_unlock())
 
         if log_path is not None:
-
             if not failures and "unmerge-logs" not in self.settings.features:
                 try:
                     os.unlink(log_path)
@@ -2672,9 +2653,7 @@ class dblink:
                 )
 
     def _show_unmerge(self, zing, desc, file_type, file_name):
-        self._display_merge(
-            "%s %s %s %s\n" % (zing, desc.ljust(8), file_type, file_name)
-        )
+        self._display_merge(f"{zing} {desc.ljust(8)} {file_type} {file_name}\n")
 
     def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
         """
@@ -2704,7 +2683,7 @@ class dblink:
             others_in_slot = []
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
             slot_matches = self.vartree.dbapi.match(
-                "%s:%s" % (portage.cpv_getkey(self.mycpv), slot)
+                f"{portage.cpv_getkey(self.mycpv)}:{slot}"
             )
             for cur_cpv in slot_matches:
                 if cur_cpv == self.mycpv:
@@ -2767,10 +2746,9 @@ class dblink:
                     # administrative and pkg_postinst stuff.
                     self._eerror(
                         "postrm",
-                        ["Could not chmod or unlink '%s': %s" % (file_name, ose)],
+                        [f"Could not chmod or unlink '{file_name}': {ose}"],
                     )
                 else:
-
                     # Even though the file no longer exists, we log it
                     # here so that _unmerge_dirs can see that we've
                     # removed a file from this device, and will record
@@ -2818,7 +2796,6 @@ class dblink:
                     infodirs_inodes.add((statobj.st_dev, statobj.st_ino))
 
             for i, objkey in enumerate(mykeys):
-
                 obj = normalize_path(objkey)
                 if os is _os_merge:
                     try:
@@ -2934,7 +2911,7 @@ class dblink:
                 ):
                     try:
                         unlink(obj, lstatobj)
-                    except EnvironmentError as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -2970,7 +2947,6 @@ class dblink:
                         and stat.S_ISDIR(statobj.st_mode)
                         and obj.startswith(real_root)
                     ):
-
                         relative_path = obj[real_root_len:]
                         try:
                             target_dir_contents = os.listdir(obj)
@@ -3023,7 +2999,7 @@ class dblink:
                     try:
                         unlink(obj, lstatobj)
                         show_unmerge("<<<", "", file_type, obj)
-                    except (OSError, IOError) as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -3047,7 +3023,7 @@ class dblink:
                         continue
                     try:
                         unlink(obj, lstatobj)
-                    except (OSError, IOError) as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -3091,7 +3067,7 @@ class dblink:
             flat_list.update(*protected_symlinks.values())
             flat_list = sorted(flat_list)
             for f in flat_list:
-                lines.append("\t%s" % (os.path.join(real_root, f.lstrip(os.sep))))
+                lines.append(f"\t{os.path.join(real_root, f.lstrip(os.sep))}")
             lines.append("")
             self._elog("elog", "postrm", lines)
 
@@ -3113,7 +3089,6 @@ class dblink:
         unlink,
         os,
     ):
-
         real_root = self.settings["ROOT"]
         show_unmerge = self._show_unmerge
         ignored_unlink_errnos = self._ignored_unlink_errnos
@@ -3136,7 +3111,7 @@ class dblink:
         msg.append("")
 
         for f in flat_list:
-            msg.append("\t%s" % os.path.join(real_root, f.lstrip(os.path.sep)))
+            msg.append(f"\t{os.path.join(real_root, f.lstrip(os.path.sep))}")
 
         msg.append("")
         msg.append("Use the UNINSTALL_IGNORE variable to exempt specific symlinks")
@@ -3188,7 +3163,7 @@ class dblink:
                     try:
                         unlink(obj, os.lstat(obj))
                         show_unmerge("<<<", "", "sym", obj)
-                    except (OSError, IOError) as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -3203,7 +3178,6 @@ class dblink:
     def _unmerge_dirs(
         self, dirs, infodirs_inodes, protected_symlinks, unmerge_desc, unlink, os
     ):
-
         show_unmerge = self._show_unmerge
         infodir_cleanup = self._infodir_cleanup
         ignored_unlink_errnos = self._ignored_unlink_errnos
@@ -3239,7 +3213,7 @@ class dblink:
                             if stat.S_ISREG(lstatobj.st_mode):
                                 unlink(child, lstatobj)
                                 show_unmerge("<<<", "", "obj", child)
-                        except EnvironmentError as e:
+                        except OSError as e:
                             if e.errno not in ignored_unlink_errnos:
                                 raise
                             del e
@@ -3273,7 +3247,7 @@ class dblink:
                 self._merged_path(os.path.realpath(parent_name), parent_stat)
 
                 show_unmerge("<<<", "", "dir", obj)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno not in ignored_rmdir_errnos:
                     raise
                 if e.errno != errno.ENOENT:
@@ -3305,7 +3279,7 @@ class dblink:
                         try:
                             unlink(obj, os.lstat(obj))
                             show_unmerge("<<<", "", "sym", obj)
-                        except (OSError, IOError) as e:
+                        except OSError as e:
                             if e.errno not in ignored_unlink_errnos:
                                 raise
                             del e
@@ -3422,7 +3396,6 @@ class dblink:
         if self.getcontents():
             basename = os_filename_arg.path.basename(destfile)
             if self._contents_basenames is None:
-
                 try:
                     for x in self._contents.keys():
                         _unicode_encode(
@@ -3442,9 +3415,9 @@ class dblink:
                     else:
                         os = portage.os
 
-                self._contents_basenames = set(
+                self._contents_basenames = {
                     os.path.basename(x) for x in self._contents.keys()
-                )
+                }
             if basename not in self._contents_basenames:
                 # This is a shortcut that, in most cases, allows us to
                 # eliminate this package as an owner without the need
@@ -3456,13 +3429,12 @@ class dblink:
             parent_path = os_filename_arg.path.dirname(destfile)
             try:
                 parent_stat = os_filename_arg.stat(parent_path)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e
                 return False
             if self._contents_inodes is None:
-
                 if os is _os_merge:
                     try:
                         for x in self._contents.keys():
@@ -3589,7 +3561,6 @@ class dblink:
         provider_nodes = set()
         # Create provider nodes and add them to the graph.
         for f_abs in old_contents:
-
             if os is _os_merge:
                 try:
                     _unicode_encode(
@@ -3919,7 +3890,6 @@ class dblink:
         self.vartree.dbapi._plib_registry.pruneNonExisting()
 
     def _collision_protect(self, srcroot, destroot, mypkglist, file_list, symlink_list):
-
         os = _os_merge
 
         real_relative_paths = {}
@@ -4003,7 +3973,7 @@ class dblink:
 
             try:
                 dest_lstat = os.lstat(dest_path)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     del e
                     continue
@@ -4018,14 +3988,14 @@ class dblink:
                         try:
                             dest_lstat = os.lstat(parent_path)
                             break
-                        except EnvironmentError as e:
+                        except OSError as e:
                             if e.errno != errno.ENOTDIR:
                                 raise
                             del e
                     if not dest_lstat:
                         raise AssertionError(
                             "unable to find non-directory "
-                            + "parent for '%s'" % dest_path
+                            + f"parent for '{dest_path}'"
                         )
                     dest_path = parent_path
                     f = os.path.sep + dest_path[len(destroot) :]
@@ -4147,7 +4117,6 @@ class dblink:
         inode_map = {}
         real_paths = set()
         for i, path in enumerate(file_paths):
-
             if os is _os_merge:
                 try:
                     _unicode_encode(path, encoding=_encodings["merge"], errors="strict")
@@ -4195,7 +4164,7 @@ class dblink:
         msg.append("")
         for path_list in suspicious_hardlinks:
             for path, s in path_list:
-                msg.append("\t%s" % path)
+                msg.append(f"\t{path}")
         msg.append("")
         msg.append(
             _("See the Gentoo Security Handbook " "guide for advice on how to proceed.")
@@ -4207,6 +4176,9 @@ class dblink:
 
     def _eqawarn(self, phase, lines):
         self._elog("eqawarn", phase, lines)
+
+    def _ewarn(self, phase, lines):
+        self._elog("ewarn", phase, lines)
 
     def _eerror(self, phase, lines):
         self._elog("eerror", phase, lines)
@@ -4361,18 +4333,17 @@ class dblink:
         slot = ""
         for var_name in ("CHOST", "SLOT"):
             try:
-                with io.open(
+                with open(
                     _unicode_encode(
                         os.path.join(inforoot, var_name),
                         encoding=_encodings["fs"],
                         errors="strict",
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 ) as f:
                     val = f.readline().strip()
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e
@@ -4409,6 +4380,9 @@ class dblink:
                     ],
                 )
 
+        def ewarn(lines):
+            self._ewarn("preinst", lines)
+
         def eerror(lines):
             self._eerror("preinst", lines)
 
@@ -4420,7 +4394,7 @@ class dblink:
         # Use _pkg_str discard the sub-slot part if necessary.
         slot = _pkg_str(self.mycpv, slot=slot).slot
         cp = self.mysplit[0]
-        slot_atom = "%s:%s" % (cp, slot)
+        slot_atom = f"{cp}:{slot}"
 
         self.lockdb()
         try:
@@ -4501,18 +4475,17 @@ class dblink:
         phase.start()
         phase.wait()
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     os.path.join(inforoot, "INSTALL_MASK"),
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
                 install_mask = InstallMask(f.read())
-        except EnvironmentError:
+        except OSError:
             install_mask = None
 
         if install_mask:
@@ -4533,7 +4506,6 @@ class dblink:
         eprefix_len = len(self.settings["EPREFIX"])
 
         while True:
-
             unicode_error = False
             eagain_error = False
 
@@ -4749,7 +4721,7 @@ class dblink:
             msg = textwrap.wrap(msg, 70)
             msg.append("")
             for f in rofilesystems:
-                msg.append("\t%s" % f)
+                msg.append(f"\t{f}")
             msg.append("")
             self._elog("eerror", "preinst", msg)
 
@@ -4778,15 +4750,15 @@ class dblink:
             msg = textwrap.wrap(msg, 70)
             msg.append("")
             for k, v in sorted(internal_collisions.items(), key=operator.itemgetter(0)):
-                msg.append("\t%s" % os.path.join(destroot, k.lstrip(os.path.sep)))
+                msg.append(f"\t{os.path.join(destroot, k.lstrip(os.path.sep))}")
                 for (file1, file2), differences in sorted(v.items()):
                     msg.append(
-                        "\t\t%s" % os.path.join(destroot, file1.lstrip(os.path.sep))
+                        f"\t\t{os.path.join(destroot, file1.lstrip(os.path.sep))}"
                     )
                     msg.append(
-                        "\t\t%s" % os.path.join(destroot, file2.lstrip(os.path.sep))
+                        f"\t\t{os.path.join(destroot, file2.lstrip(os.path.sep))}"
                     )
-                    msg.append("\t\t\tDifferences: %s" % ", ".join(differences))
+                    msg.append(f"\t\t\tDifferences: {', '.join(differences)}")
                     msg.append("")
             self._elog("eerror", "preinst", msg)
 
@@ -4815,7 +4787,7 @@ class dblink:
             msg = textwrap.wrap(msg, 70)
             msg.append("")
             for f in symlink_collisions:
-                msg.append("\t%s" % os.path.join(destroot, f.lstrip(os.path.sep)))
+                msg.append(f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}")
             msg.append("")
             self._elog("eerror", "preinst", msg)
 
@@ -4868,7 +4840,7 @@ class dblink:
             msg.append("")
 
             for f in collisions:
-                msg.append("\t%s" % os.path.join(destroot, f.lstrip(os.path.sep)))
+                msg.append(f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}")
 
             eerror(msg)
 
@@ -4897,26 +4869,28 @@ class dblink:
 
                     for pkg in owners:
                         pkg = self.vartree.dbapi._pkg_str(pkg.mycpv, None)
-                        pkg_info_str = "%s%s%s" % (pkg, _slot_separator, pkg.slot)
+                        pkg_info_str = f"{pkg}{_slot_separator}{pkg.slot}"
                         if pkg.repo != _unknown_repo:
-                            pkg_info_str += "%s%s" % (_repo_separator, pkg.repo)
+                            pkg_info_str += f"{_repo_separator}{pkg.repo}"
                         pkg_info_strs[pkg] = pkg_info_str
 
                 finally:
                     self.unlockdb()
 
+                collision_message_type = ewarn
+                if collision_protect or protect_owned and owners:
+                    collision_message_type = eerror
+
                 for pkg, owned_files in owners.items():
                     msg = []
                     msg.append(pkg_info_strs[pkg.mycpv])
                     for f in sorted(owned_files):
-                        msg.append(
-                            "\t%s" % os.path.join(destroot, f.lstrip(os.path.sep))
-                        )
+                        msg.append(f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}")
                     msg.append("")
-                    eerror(msg)
+                    collision_message_type(msg)
 
                 if not owners:
-                    eerror(
+                    collision_message_type(
                         [_("None of the installed" " packages claim the file(s)."), ""]
                     )
 
@@ -4956,10 +4930,12 @@ class dblink:
                 " If necessary, refer to your elog "
                 "messages for the whole content of the above message."
             )
-            eerror(wrap(msg, 70))
 
             if abort:
+                eerror(wrap(msg, 70))
                 return 1
+            else:
+                ewarn(wrap(msg, 70))
 
         # The merge process may move files out of the image directory,
         # which causes invalidation of the .installed flag.
@@ -4987,7 +4963,7 @@ class dblink:
             rval = self._pre_merge_backup(self._installed_instance, downgrade)
             if rval != os.EX_OK:
                 showMessage(
-                    _("!!! FAILED preinst: ") + "quickpkg: %s\n" % rval,
+                    _("!!! FAILED preinst: ") + f"quickpkg: {rval}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -5023,7 +4999,7 @@ class dblink:
         # write local package counter for recording
         if counter is None:
             counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbtmpdir, "COUNTER"),
                 encoding=_encodings["fs"],
@@ -5033,7 +5009,7 @@ class dblink:
             encoding=_encodings["repo.content"],
             errors="backslashreplace",
         ) as f:
-            f.write("%s" % counter)
+            f.write(f"{counter}")
 
         self.updateprotect()
 
@@ -5334,7 +5310,6 @@ class dblink:
         return backup_p
 
     def _merge_contents(self, srcroot, destroot, cfgfiledict):
-
         cfgfiledict_orig = cfgfiledict.copy()
 
         # open CONTENTS file (possibly overwriting old one) for recording
@@ -5485,7 +5460,6 @@ class dblink:
             mergelist = stufftomerge[:]
 
         while mergelist:
-
             relative_path = mergelist.pop()
             mysrc = join(srcroot, relative_path)
             mydest = join(destroot, relative_path)
@@ -5591,6 +5565,8 @@ class dblink:
                     destmd5,
                     mydest_link,
                 )
+                if protected and moveme:
+                    mydmode = None
 
             zing = "!!!"
             if not moveme:
@@ -5623,14 +5599,15 @@ class dblink:
                         msg.append(
                             _("Installation of a symlink is blocked by a directory:")
                         )
-                        msg.append("  '%s'" % mydest)
+                        msg.append(f"  '{mydest}'")
                         msg.append(
                             _("This symlink will be merged with a different name:")
                         )
-                        msg.append("  '%s'" % newdest)
+                        msg.append(f"  '{newdest}'")
                         msg.append("")
                         self._eerror("preinst", msg)
                         mydest = newdest
+                        mydmode = None
 
                 # if secondhand is None it means we're operating in "force" mode and should not create a second hand.
                 if (secondhand is not None) and (not os.path.exists(myrealto)):
@@ -5673,7 +5650,7 @@ class dblink:
                             ],
                         )
 
-                    showMessage("%s %s -> %s\n" % (zing, mydest, myto))
+                    showMessage(f"{zing} {mydest} -> {myto}\n")
                     outfile.write(
                         self._format_contents_line(
                             node_type="sym",
@@ -5689,7 +5666,7 @@ class dblink:
                         noiselevel=-1,
                     )
                     showMessage(
-                        "!!! %s -> %s\n" % (mydest, myto),
+                        f"!!! {mydest} -> {myto}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -5738,7 +5715,7 @@ class dblink:
                         stat.S_ISLNK(mydmode) and os.path.isdir(mydest)
                     ):
                         # a symlink to an existing directory will work for us; keep it:
-                        showMessage("--- %s/\n" % mydest)
+                        showMessage(f"--- {mydest}/\n")
                         if bsd_chflags:
                             bsd_chflags.lchflags(mydest, dflags)
                     else:
@@ -5749,9 +5726,9 @@ class dblink:
                         msg.append(
                             _("Installation of a directory is blocked by a file:")
                         )
-                        msg.append("  '%s'" % mydest)
+                        msg.append(f"  '{mydest}'")
                         msg.append(_("This file will be renamed to a different name:"))
-                        msg.append("  '%s'" % backup_dest)
+                        msg.append(f"  '{backup_dest}'")
                         msg.append("")
                         self._eerror("preinst", msg)
                         if (
@@ -5791,7 +5768,7 @@ class dblink:
                             bsd_chflags.lchflags(mydest, dflags)
                         os.chmod(mydest, mystat[0])
                         os.chown(mydest, mystat[4], mystat[5])
-                        showMessage(">>> %s/\n" % mydest)
+                        showMessage(f">>> {mydest}/\n")
                 else:
                     try:
                         # destination doesn't exist
@@ -5812,7 +5789,7 @@ class dblink:
                         del e
                     os.chmod(mydest, mystat[0])
                     os.chown(mydest, mystat[4], mystat[5])
-                    showMessage(">>> %s/\n" % mydest)
+                    showMessage(f">>> {mydest}/\n")
 
                 try:
                     self._merged_path(mydest, os.lstat(mydest))
@@ -5838,38 +5815,49 @@ class dblink:
                     msg.append(
                         _("Installation of a regular file is blocked by a directory:")
                     )
-                    msg.append("  '%s'" % mydest)
+                    msg.append(f"  '{mydest}'")
                     msg.append(_("This file will be merged with a different name:"))
-                    msg.append("  '%s'" % newdest)
+                    msg.append(f"  '{newdest}'")
                     msg.append("")
                     self._eerror("preinst", msg)
                     mydest = newdest
+                    mydmode = None
 
                 # whether config protection or not, we merge the new file the
                 # same way.  Unless moveme=0 (blocking directory)
                 if moveme:
-                    # Create hardlinks only for source files that already exist
-                    # as hardlinks (having identical st_dev and st_ino).
-                    hardlink_key = (mystat.st_dev, mystat.st_ino)
+                    # only replace the existing file if it differs, see #722270
+                    if self._needs_move(mysrc, mydest, mymode, mydmode):
+                        # Create hardlinks only for source files that already exist
+                        # as hardlinks (having identical st_dev and st_ino).
+                        hardlink_key = (mystat.st_dev, mystat.st_ino)
 
-                    hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
-                    if hardlink_candidates is None:
-                        hardlink_candidates = []
-                        self._hardlink_merge_map[hardlink_key] = hardlink_candidates
+                        hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
+                        if hardlink_candidates is None:
+                            hardlink_candidates = []
+                            self._hardlink_merge_map[hardlink_key] = hardlink_candidates
 
-                    mymtime = movefile(
-                        mysrc,
-                        mydest,
-                        newmtime=thismtime,
-                        sstat=mystat,
-                        mysettings=self.settings,
-                        hardlink_candidates=hardlink_candidates,
-                        encoding=_encodings["merge"],
-                    )
-                    if mymtime is None:
-                        return 1
-                    hardlink_candidates.append(mydest)
-                    zing = ">>>"
+                        mymtime = movefile(
+                            mysrc,
+                            mydest,
+                            newmtime=thismtime,
+                            sstat=mystat,
+                            mysettings=self.settings,
+                            hardlink_candidates=hardlink_candidates,
+                            encoding=_encodings["merge"],
+                        )
+                        if mymtime is None:
+                            return 1
+                        hardlink_candidates.append(mydest)
+                        zing = ">>>"
+                    else:
+                        mymtime = thismtime if thismtime is not None else mymtime
+                        try:
+                            os.utime(mydest, ns=(mymtime, mymtime))
+                        except OSError:
+                            # utime can fail here with EPERM
+                            pass
+                        zing = "==="
 
                     try:
                         self._merged_path(mydest, os.lstat(mydest))
@@ -5885,7 +5873,7 @@ class dblink:
                             mtime_ns=mymtime,
                         )
                     )
-                showMessage("%s %s\n" % (zing, mydest))
+                showMessage(f"{zing} {mydest}\n")
             else:
                 # we are merging a fifo or device node
                 zing = "!!!"
@@ -5933,7 +5921,6 @@ class dblink:
         dest_md5,
         dest_link,
     ):
-
         move_me = True
         protected = True
         force = False
@@ -5999,10 +5986,10 @@ class dblink:
         if md5_digest is not None:
             fields.append(md5_digest)
         elif symlink_target is not None:
-            fields.append("-> {}".format(symlink_target))
+            fields.append(f"-> {symlink_target}")
         if mtime_ns is not None:
             fields.append(str(mtime_ns // 1000000000))
-        return "{}\n".format(" ".join(fields))
+        return f"{' '.join(fields)}\n"
 
     def _merged_path(self, path, lstatobj, exists=True):
         previous_path = self._device_path_map.get(lstatobj.st_dev)
@@ -6030,7 +6017,6 @@ class dblink:
 
         returncode = None
         if platform.system() == "Linux":
-
             paths = []
             for path in self._device_path_map.values():
                 if path is not False:
@@ -6046,7 +6032,7 @@ class dblink:
         if returncode is None or returncode != os.EX_OK:
             try:
                 proc = subprocess.Popen(["sync"])
-            except EnvironmentError:
+            except OSError:
                 pass
             else:
                 proc.wait()
@@ -6090,7 +6076,6 @@ class dblink:
             # fail-clean is enabled, and the success/die hooks have
             # already been called by EbuildPhase.
             if os.path.isdir(self.settings["PORTAGE_BUILDDIR"]):
-
                 if retval == os.EX_OK:
                     phase = "success_hooks"
                 else:
@@ -6143,13 +6128,12 @@ class dblink:
         "returns contents of a file with whitespace converted to spaces"
         if not os.path.exists(self.dbdir + "/" + name):
             return ""
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, name),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -6162,13 +6146,12 @@ class dblink:
     def getfile(self, fname):
         if not os.path.exists(self.dbdir + "/" + fname):
             return ""
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, fname),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -6186,13 +6169,12 @@ class dblink:
     def getelements(self, ename):
         if not os.path.exists(self.dbdir + "/" + ename):
             return []
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, ename),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -6204,7 +6186,7 @@ class dblink:
         return myreturn
 
     def setelements(self, mylist, ename):
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, ename),
                 encoding=_encodings["fs"],
@@ -6215,14 +6197,13 @@ class dblink:
             errors="backslashreplace",
         ) as f:
             for x in mylist:
-                f.write("%s\n" % x)
+                f.write(f"{x}\n")
 
     def isregular(self):
         "Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
         return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
 
     def _pre_merge_backup(self, backup_dblink, downgrade):
-
         if "unmerge-backup" in self.settings.features or (
             downgrade and "downgrade-backup" in self.settings.features
         ):
@@ -6231,7 +6212,6 @@ class dblink:
         return os.EX_OK
 
     def _pre_unmerge_backup(self, background):
-
         if "unmerge-backup" in self.settings.features:
             logfile = None
             if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
@@ -6241,7 +6221,6 @@ class dblink:
         return os.EX_OK
 
     def _quickpkg_dblink(self, backup_dblink, background, logfile):
-
         build_time = backup_dblink.getfile("BUILD_TIME")
         try:
             build_time = int(build_time.strip())
@@ -6251,13 +6230,12 @@ class dblink:
         trees = QueryCommand.get_db()[self.settings["EROOT"]]
         bintree = trees["bintree"]
 
-        for binpkg in reversed(bintree.dbapi.match("={}".format(backup_dblink.mycpv))):
+        for binpkg in reversed(bintree.dbapi.match(f"={backup_dblink.mycpv}")):
             if binpkg.build_time == build_time:
                 return os.EX_OK
 
         self.lockdb()
         try:
-
             if not backup_dblink.exists():
                 # It got unmerged by a concurrent process.
                 return os.EX_OK
@@ -6291,7 +6269,7 @@ class dblink:
                 args=[
                     portage._python_interpreter,
                     quickpkg_binary,
-                    "=%s" % (backup_dblink.mycpv,),
+                    f"={backup_dblink.mycpv}",
                 ],
                 background=background,
                 env=env,
@@ -6304,6 +6282,24 @@ class dblink:
 
         finally:
             self.unlockdb()
+
+    def _needs_move(self, mysrc, mydest, mymode, mydmode):
+        """
+        Checks whether the given file at |mysrc| needs to be moved to |mydest| or if
+        they are identical.
+
+        Takes file mode and extended attributes into account.
+        Should only be used for regular files.
+        """
+        if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
+            return True
+
+        if "xattr" in self.settings.features:
+            excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
+            if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
+                return True
+
+        return not filecmp.cmp(mysrc, mydest, shallow=False)
 
 
 def merge(
@@ -6418,12 +6414,12 @@ def write_contents(contents, root, f):
         relative_filename = filename[root_len:]
         if entry_type == "obj":
             entry_type, mtime, md5sum = entry_data
-            line = "%s %s %s %s\n" % (entry_type, relative_filename, md5sum, mtime)
+            line = f"{entry_type} {relative_filename} {md5sum} {mtime}\n"
         elif entry_type == "sym":
             entry_type, mtime, link = entry_data
-            line = "%s %s -> %s %s\n" % (entry_type, relative_filename, link, mtime)
+            line = f"{entry_type} {relative_filename} -> {link} {mtime}\n"
         else:  # dir, dev, fif
-            line = "%s %s\n" % (entry_type, relative_filename)
+            line = f"{entry_type} {relative_filename}\n"
         f.write(line)
 
 
@@ -6471,7 +6467,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
         if path.startswith(root):
             arcname = "./" + path[len(root) :]
         else:
-            raise ValueError("invalid root argument: '%s'" % root)
+            raise ValueError(f"invalid root argument: '{root}'")
         live_path = path
         if (
             "dir" == contents_type

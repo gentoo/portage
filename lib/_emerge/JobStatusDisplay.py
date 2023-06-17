@@ -16,7 +16,6 @@ from _emerge.getloadavg import getloadavg
 
 
 class JobStatusDisplay:
-
     _bound_properties = ("curval", "failed", "running")
 
     # Don't update the display unless at least this much
@@ -127,7 +126,7 @@ class JobStatusDisplay:
         return True
 
     def _format_msg(self, msg):
-        return ">>> %s" % msg
+        return f">>> {msg}"
 
     def _erase(self):
         self._write(self._term_codes["carriage_return"] + self._term_codes["clr_eol"])
@@ -138,7 +137,6 @@ class JobStatusDisplay:
         self._displayed = True
 
     def _update(self, msg):
-
         if not self._isatty:
             self._write(self._format_msg(msg) + self._term_codes["newline"])
             self._displayed = True
@@ -150,7 +148,6 @@ class JobStatusDisplay:
         self._display(self._format_msg(msg))
 
     def displayMessage(self, msg):
-
         was_displayed = self._displayed
 
         if self._isatty and self._displayed:
@@ -194,13 +191,11 @@ class JobStatusDisplay:
         max_avg = max(avg)
 
         if max_avg < 10:
-            digits = 2
+            return ", ".join(f"{x:.2f}" for x in avg)
         elif max_avg < 100:
-            digits = 1
+            return ", ".join(f"{x:.1f}" for x in avg)
         else:
-            digits = 0
-
-        return ", ".join(("%%.%df" % digits) % x for x in avg)
+            return ", ".join(f"{x:.0f}" for x in avg)
 
     def display(self):
         """
@@ -228,10 +223,10 @@ class JobStatusDisplay:
     def _display_status(self):
         # Don't use len(self._completed_tasks) here since that also
         # can include uninstall tasks.
-        curval_str = "%s" % (self.curval,)
-        maxval_str = "%s" % (self.maxval,)
-        running_str = "%s" % (self.running,)
-        failed_str = "%s" % (self.failed,)
+        curval_str = f"{self.curval}"
+        maxval_str = f"{self.maxval}"
+        running_str = f"{self.running}"
+        failed_str = f"{self.failed}"
         load_avg_str = self._load_avg_str()
 
         color_output = io.StringIO()
@@ -292,5 +287,5 @@ class JobStatusDisplay:
             title_str = " ".join(plain_output.split())
             hostname = os.environ.get("HOSTNAME")
             if hostname is not None:
-                title_str = "%s: %s" % (hostname, title_str)
+                title_str = f"{hostname}: {title_str}"
             xtermTitle(title_str)

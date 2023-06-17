@@ -54,7 +54,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
             if errno.ENOENT == oe.errno:
                 pass
             elif errno.EPERM == oe.errno:
-                writemsg("%s\n" % oe, noiselevel=-1)
+                writemsg(f"{oe}\n", noiselevel=-1)
                 writemsg(
                     _("Operation Not Permitted: rmtree('%s')\n") % clean_dir,
                     noiselevel=-1,
@@ -72,7 +72,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
             if errno.EEXIST == oe.errno:
                 pass
             elif errno.EPERM == oe.errno:
-                writemsg("%s\n" % oe, noiselevel=-1)
+                writemsg(f"{oe}\n", noiselevel=-1)
                 writemsg(
                     _("Operation Not Permitted: makedirs('%s')\n") % dir_path,
                     noiselevel=-1,
@@ -151,7 +151,7 @@ def _adjust_perms_msg(settings, msg):
                 mode="ab",
             )
             log_file_real = log_file
-        except IOError:
+        except OSError:
 
             def write(msg):
                 pass
@@ -174,7 +174,6 @@ def _adjust_perms_msg(settings, msg):
 
 
 def _prepare_features_dirs(mysettings):
-
     # Use default ABI libdir in accordance with bug #355283.
     libdir = None
     default_abi = mysettings.get("DEFAULT_ABI")
@@ -237,11 +236,9 @@ def _prepare_features_dirs(mysettings):
                                 except OSError:
                                     continue
                                 if subdir_st.st_gid != portage_gid or (
-                                    (
-                                        stat.S_ISDIR(subdir_st.st_mode)
-                                        and not dirmode
-                                        == (stat.S_IMODE(subdir_st.st_mode) & dirmode)
-                                    )
+                                    stat.S_ISDIR(subdir_st.st_mode)
+                                    and not dirmode
+                                    == (stat.S_IMODE(subdir_st.st_mode) & dirmode)
                                 ):
                                     droppriv_fix = True
                                     break
@@ -293,7 +290,7 @@ def _prepare_features_dirs(mysettings):
 
             except PortageException as e:
                 failure = True
-                writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"\n!!! {str(e)}\n", noiselevel=-1)
                 writemsg(
                     _("!!! Failed resetting perms on %s='%s'\n")
                     % (kwargs["basedir_var"], basedir),
@@ -317,7 +314,7 @@ def _prepare_workdir(mysettings):
         else:
             raise ValueError()
         if parsed_mode & 0o7777 != parsed_mode:
-            raise ValueError("Invalid file mode: %s" % mode)
+            raise ValueError(f"Invalid file mode: {mode}")
         else:
             workdir_mode = parsed_mode
     except KeyError as e:
@@ -326,7 +323,7 @@ def _prepare_workdir(mysettings):
         )
     except ValueError as e:
         if len(str(e)) > 0:
-            writemsg("%s\n" % e)
+            writemsg(f"{e}\n")
         writemsg(
             _("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n")
             % (mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode))
@@ -364,7 +361,7 @@ def _prepare_workdir(mysettings):
                     mode=0o2770,
                 )
         except PortageException as e:
-            writemsg("!!! %s\n" % str(e), noiselevel=-1)
+            writemsg(f"!!! {str(e)}\n", noiselevel=-1)
             writemsg(
                 _("!!! Permission issues with PORTAGE_LOGDIR='%s'\n")
                 % mysettings["PORTAGE_LOGDIR"],
@@ -396,7 +393,7 @@ def _prepare_workdir(mysettings):
             log_subdir = os.path.join(logdir, "build", mysettings["CATEGORY"])
             mysettings["PORTAGE_LOG_FILE"] = os.path.join(
                 log_subdir,
-                "%s:%s.log%s" % (mysettings["PF"], logid_time, compress_log_ext),
+                f"{mysettings['PF']}:{logid_time}.log{compress_log_ext}",
             )
         else:
             log_subdir = logdir
@@ -417,16 +414,17 @@ def _prepare_workdir(mysettings):
             try:
                 _ensure_log_subdirs(logdir, log_subdir)
             except PortageException as e:
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg(f"!!! {e}\n", noiselevel=-1)
 
             if os.access(log_subdir, os.W_OK):
                 logdir_subdir_ok = True
             else:
                 writemsg(
-                    "!!! %s: %s\n" % (_("Permission Denied"), log_subdir), noiselevel=-1
+                    f"!!! {_('Permission Denied')}: {log_subdir}\n",
+                    noiselevel=-1,
                 )
 
-    tmpdir_log_path = os.path.join(mysettings["T"], "build.log%s" % compress_log_ext)
+    tmpdir_log_path = os.path.join(mysettings["T"], f"build.log{compress_log_ext}")
     if not logdir_subdir_ok:
         # NOTE: When sesandbox is enabled, the local SELinux security policies
         # may not allow output to be piped out of the sesandbox domain. The

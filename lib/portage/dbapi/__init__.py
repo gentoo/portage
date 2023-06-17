@@ -3,8 +3,8 @@
 
 __all__ = ["dbapi"]
 
-import functools
 import re
+import warnings
 
 import portage
 
@@ -22,7 +22,7 @@ from portage.const import MERGING_IDENTIFIER
 from portage import os
 from portage import auxdbkeys
 from portage.eapi import _get_eapi_attrs
-from portage.exception import InvalidData
+from portage.exception import InvalidBinaryPackageFormat, InvalidData
 from portage.localization import _
 from _emerge.Package import Package
 
@@ -46,7 +46,7 @@ class dbapi:
         """
         if self._categories is not None:
             return self._categories
-        self._categories = tuple(sorted(set(catsplit(x)[0] for x in self.cp_all())))
+        self._categories = tuple(sorted({catsplit(x)[0] for x in self.cp_all()}))
         return self._categories
 
     def close_caches(self):
@@ -351,11 +351,11 @@ class dbapi:
         if "/" + MERGING_IDENTIFIER in mypath:
             if os.path.exists(mypath):
                 writemsg(
-                    colorize("BAD", _("INCOMPLETE MERGE:")) + " %s\n" % mypath,
+                    colorize("BAD", _("INCOMPLETE MERGE:")) + f" {mypath}\n",
                     noiselevel=-1,
                 )
         else:
-            writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
+            writemsg(f"!!! Invalid db entry: {mypath}\n", noiselevel=-1)
 
     def update_ents(self, updates, onProgress=None, onUpdate=None):
         """
@@ -392,7 +392,7 @@ class dbapi:
                 pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
             except InvalidData:
                 continue
-            metadata = dict((k, metadata[k]) for k in update_keys)
+            metadata = {k: metadata[k] for k in update_keys}
             if repo_dict is None:
                 updates_list = updates
             else:
@@ -411,7 +411,10 @@ class dbapi:
                 updates_list, metadata, parent=pkg
             )
             if metadata_updates:
-                aux_update(cpv, metadata_updates)
+                try:
+                    aux_update(cpv, metadata_updates)
+                except InvalidBinaryPackageFormat as e:
+                    warnings.warn(e)
                 if onUpdate:
                     onUpdate(maxval, i + 1)
             if onProgress:
@@ -454,7 +457,7 @@ class dbapi:
                 and mycpv.sub_slot
                 and mycpv.sub_slot not in (mycpv.slot, newslot)
             ):
-                newslot = "%s/%s" % (newslot, mycpv.sub_slot)
+                newslot = f"{newslot}/{mycpv.sub_slot}"
             mydata = {"SLOT": newslot + "\n"}
             self.aux_update(mycpv, mydata)
         return moves

@@ -1,7 +1,6 @@
 # Copyright 2012-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 import textwrap
 
@@ -17,7 +16,6 @@ from portage.output import colorize
 
 class MoveEntTestCase(TestCase):
     def testMoveEnt(self):
-
         ebuilds = {
             "dev-libs/A-2::dont_apply_updates": {
                 "EAPI": "4",
@@ -60,7 +58,10 @@ class MoveEntTestCase(TestCase):
                     ebuilds=ebuilds,
                     installed=installed,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (
+                            f'BINPKG_FORMAT="{binpkg_format}"',
+                            'FEATURES="-binpkg-signing"',
+                        ),
                     },
                 )
 

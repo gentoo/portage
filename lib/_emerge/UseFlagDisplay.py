@@ -10,7 +10,6 @@ from portage.output import blue
 
 
 class UseFlagDisplay:
-
     __slots__ = ("name", "enabled", "forced")
 
     def __init__(self, name, enabled, forced):
@@ -26,7 +25,7 @@ class UseFlagDisplay:
             s = "-" + s
             s = blue(s)
         if self.forced:
-            s = "(%s)" % s
+            s = f"({s})"
         return s
 
     def _cmp_combined(a, b):
@@ -110,8 +109,6 @@ def pkg_use_display(pkg, opts, modified_use=None):
             flags.sort(key=UseFlagDisplay.sort_combined)
         else:
             flags.sort(key=UseFlagDisplay.sort_separated)
-        flag_displays.append(
-            '%s="%s"' % (varname, " ".join("%s" % (f,) for f in flags))
-        )
+        flag_displays.append(f"{varname}=\"{' '.join('{}'.format(f) for f in flags)}\"")
 
     return " ".join(flag_displays)

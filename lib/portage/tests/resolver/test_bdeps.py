@@ -1,7 +1,6 @@
 # Copyright 2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.tests import TestCase
@@ -15,7 +14,6 @@ from portage.output import colorize
 
 class BdepsTestCase(TestCase):
     def testImageMagickUpdate(self):
-
         ebuilds = {
             "app-misc/A-1": {
                 "EAPI": "6",
@@ -199,7 +197,7 @@ class BdepsTestCase(TestCase):
                     binpkgs=binpkgs,
                     world=world,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
                 try:

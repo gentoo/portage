@@ -3,7 +3,6 @@
 
 import io
 import random
-import sys
 import tarfile
 import tempfile
 from functools import partial
@@ -44,12 +43,6 @@ class test_gpkg_metadata_url_case(TestCase):
         return server
 
     def test_gpkg_get_metadata_url(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
-        if sys.version_info.major == 3 and sys.version_info.minor <= 6:
-            self.skipTest("http server not support change root dir")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -96,12 +89,6 @@ class test_gpkg_metadata_url_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_get_metadata_url_unknown_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
-        if sys.version_info.major == 3 and sys.version_info.minor <= 6:
-            self.skipTest("http server not support change root dir")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (

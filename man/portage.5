@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Apr 2021" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Apr 2023" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -447,7 +447,7 @@ to be removed by \fBemerge\fR(1) \fB\-\-depclean\fR actions (see the
 # you take care of the kernel
 sys-kernel/development-sources-2.6.7
 
-# you installed your own special copy of QT
+# you installed your own special copy of Qt
 x11-libs/qt-3.3.0
 
 # you have modular X but packages want monolithic
@@ -472,7 +472,7 @@ a '\-'.
 .nf
 # force docs for GTK 2.x
 =x11\-libs/gtk+\-2* doc
-# unforce mysql support for QT
+# unforce mysql support for Qt
 x11\-libs/qt \-mysql
 .fi
 .TP
@@ -494,7 +494,7 @@ a '\-'.
 .nf
 # mask docs for GTK 2.x
 =x11\-libs/gtk+\-2* doc
-# unmask mysql support for QT
+# unmask mysql support for Qt
 x11\-libs/qt \-mysql
 .fi
 .TP
@@ -603,11 +603,12 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .RE
 .TP
 .BR /etc/portage/
-Files in this directory including make.conf, repos.conf, and any file
-with a name that begins with "package." can be
-more than just a flat file.  If it is a directory, then all the files in that
-directory will be sorted in lexical order by file name and summed together
-as if it were a single file.
+Files in this directory, including make.conf, repos.conf, sets.conf,
+and any file with a name that begins with "package." can also be directories.
+
+If it is a directory, then all the files in that directory, excluding files
+that begin with '.' or end with '~', will be sorted in lexical order by file
+name and summed together as if they were a single file.
 
 .I Example:
 .nf
@@ -874,7 +875,7 @@ KEYWORDS.
 Per\-package USE flags.  Useful for tracking local USE flags or for
 enabling USE flags for certain packages only.  Perhaps you develop GTK
 and thus you want documentation for it, but you don't want
-documentation for QT.  Easy as pie my friend!
+documentation for Qt.  Easy as pie my friend!
 
 .I Format:
 .nf
@@ -890,7 +891,7 @@ assignments or defaults, you need to explicitly specify '\-*'.
 .nf
 # turn on docs for GTK 2.x
 =x11\-libs/gtk+\-2* doc
-# disable mysql support for QT
+# disable mysql support for Qt
 x11\-libs/qt \-mysql
 # set preferred video card for all packages
 */* VIDEO_CARDS: \-* radeon
@@ -979,7 +980,8 @@ yes, true.
 .TP
 .B clone\-depth
 Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
-the newest commit). If set to 0, the depth is unlimited.
+the newest commit). If set to 0, the depth is unlimited, because Git is
+not executed with "--depth #".
 .TP
 .B eclass\-overrides
 Makes given repository inherit eclasses from specified repositories.
@@ -1032,8 +1034,9 @@ overlay filesystems. Defaults to yes, true.
 Specifies CVS repository.
 .TP
 .B sync\-depth
-Specifies sync depth to use for DVCS repositories. If set to 0, the
-depth is unlimited. Defaults to 0.
+Specifies sync depth to use for DVCS repositories. Defaults to 1 (only
+the newest commit). If set to 0, the depth is unlimited, because Git is
+not executed with "--depth #".
 .TP
 .B sync\-git\-clone\-env
 Set environment variables for git when cloning repository (git clone).
@@ -1257,6 +1260,18 @@ Keep snapshots in \fBDISTDIR\fR (do not delete). Defaults to no, false.
 Require the detached tarball signature to contain a good OpenPGP
 signature. This uses the OpenPGP key(ring) specified by the
 sync\-openpgp\-key\-path setting. Defaults to no, false.
+.TP
+.B volatile = yes|no|true|false
+Specifies whether a repository is volatile.  Volatile repositories
+are assumed to contain changes made outside of Portage.  This prohibits
+optimizations from occurring by assuming the integrity of the repository
+and its caches may be violated.  Disabling this option allows local changes to
+be made to the repository for e.g. development safely.  For git-synced
+repositories, Portage will not perform destructive operations.
+Per default, repositories are considered volatile if their directory is owned
+by either 'root' or 'portage' and if it is under /var/db/repos. Otherwise,
+the repository is considered non volatile.
+.TP
 
 .RE
 
@@ -1454,6 +1469,14 @@ listed toward the left of the list.
 .TP
 .BR repo\-name " = <value of profiles/repo_name>"
 The name of this repository (overrides profiles/repo_name if it exists).
+.TP
+.BR properties\-allowed
+List of PROPERTIES tokens which are allowed for ebuilds within
+the repo.  If unset, any tokens is allowed.
+.TP
+.BR restrict\-allowed
+List of RESTRICT tokens which are allowed for ebuilds within
+the repo.  If unset, any tokens is allowed.
 .TP
 .BR sign\-commits " = [true|" false "]"
 Boolean value whether we should sign commits in this repo.

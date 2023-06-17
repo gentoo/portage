@@ -41,7 +41,7 @@ class ChangeLogTypeSort(str):
             return second in ("EBUILD", "MISC", "AUX")
         if first is None:
             return False
-        raise ValueError("Unknown file type '%s'" % first)
+        raise ValueError(f"Unknown file type '{first}'")
 
     def __lt__(self, other):
         """

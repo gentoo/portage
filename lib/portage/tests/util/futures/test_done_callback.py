@@ -7,7 +7,6 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 
 class FutureDoneCallbackTestCase(TestCase):
     def testFutureDoneCallback(self):
-
         event_loop = global_event_loop()
 
         def done_callback(finished):

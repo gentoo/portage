@@ -29,7 +29,6 @@ __all__ = [
 ]
 
 import re
-import sys
 import warnings
 
 from functools import lru_cache
@@ -462,9 +461,9 @@ def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
     for x in mylist:
         if isinstance(x, list):
             if opconvert and x and x[0] == "||":
-                mystrparts.append("%s ( %s )" % (x[0], paren_enclose(x[1:])))
+                mystrparts.append(f"{x[0]} ( {paren_enclose(x[1:])} )")
             else:
-                mystrparts.append("( %s )" % paren_enclose(x))
+                mystrparts.append(f"( {paren_enclose(x)} )")
         else:
             if unevaluated_atom:
                 x = getattr(x, "unevaluated_atom", x)
@@ -1025,7 +1024,6 @@ def flatten(mylist):
 
 
 class _use_dep:
-
     __slots__ = (
         "_eapi_attrs",
         "conditional",
@@ -1071,7 +1069,6 @@ class _use_dep:
         conditional=None,
         required=None,
     ):
-
         self._eapi_attrs = eapi_attrs
 
         if enabled_flags is not None:
@@ -1164,10 +1161,10 @@ class _use_dep:
     def __str__(self):
         if not self.tokens:
             return ""
-        return "[%s]" % (",".join(self.tokens),)
+        return f"[{','.join(self.tokens)}]"
 
     def __repr__(self):
-        return "portage.dep._use_dep(%s)" % repr(self.tokens)
+        return f"portage.dep._use_dep({repr(self.tokens)})"
 
     def evaluate_conditionals(self, use):
         """
@@ -1502,8 +1499,8 @@ class Atom(str):
                 allow_build_id = True
 
         blocker_prefix = ""
-        if "!" == s[:1]:
-            blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
+        if s[:1] == "!":
+            blocker = self._blocker(forbid_overlap=s[1:2] == "!")
             if blocker.overlap.forbid:
                 blocker_prefix = s[:2]
                 s = s[2:]
@@ -1670,13 +1667,7 @@ class Atom(str):
         if eapi is not None:
             if not isinstance(eapi, str):
                 raise TypeError(
-                    "expected eapi argument of "
-                    + "%s, got %s: %s"
-                    % (
-                        str,
-                        type(eapi),
-                        eapi,
-                    )
+                    "expected eapi argument of " + f"{str}, got {type(eapi)}: {eapi}"
                 )
             if self.slot and not eapi_attrs.slot_deps:
                 raise InvalidAtom(
@@ -1762,7 +1753,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         atom += _repo_separator + repo
@@ -1795,7 +1786,7 @@ class Atom(str):
                 False otherwise.
         """
         if not isinstance(other, Atom):
-            raise TypeError("expected %s, got %s" % (Atom, type(other)))
+            raise TypeError(f"expected {Atom}, got {type(other)}")
 
         if self == other:
             return True
@@ -1829,7 +1820,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         use_dep = self.use.evaluate_conditionals(use)
@@ -1862,7 +1853,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         use_dep = self.use.violated_conditionals(other_use, is_valid_flag, parent_use)
@@ -1883,7 +1874,7 @@ class Atom(str):
             if self.slot is not None:
                 atom += self.slot
             if self.sub_slot is not None:
-                atom += "/%s" % self.sub_slot
+                atom += f"/{self.sub_slot}"
             if self.slot_operator is not None:
                 atom += self.slot_operator
         use_dep = self.use._eval_qa_conditionals(use_mask, use_force)
@@ -1957,17 +1948,13 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
         return result
 
     def __iter__(self):
-        for k in self._normal:
-            yield k
-        for k in self._extended:
-            yield k
+        yield from self._normal
+        yield from self._extended
 
     def iteritems(self):
         try:
-            for item in self._normal.items():
-                yield item
-            for item in self._extended.items():
-                yield item
+            yield from self._normal.items()
+            yield from self._extended.items()
         except AttributeError:
             pass  # FEATURES=python-trace
 
@@ -1988,7 +1975,6 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
         return self._normal.setdefault(cp, default)
 
     def __getitem__(self, cp):
-
         if not isinstance(cp, str):
             raise KeyError(cp)
 
@@ -2506,7 +2492,6 @@ def match_from_list(mydep, candidate_list):
     mylist = []
 
     if mydep.extended_syntax:
-
         for x in candidate_list:
             cp = getattr(x, "cp", None)
             if cp is None:
@@ -2521,7 +2506,6 @@ def match_from_list(mydep, candidate_list):
                 mylist.append(x)
 
         if mylist and mydep.operator == "=*":
-
             candidate_list = mylist
             mylist = []
             # Currently, only \*\w+\* is supported.
@@ -2832,7 +2816,6 @@ def get_required_use_flags(required_use, eapi=None):
 
 
 class _RequiredUseLeaf:
-
     __slots__ = ("_satisfied", "_token")
 
     def __init__(self, token, satisfied):
@@ -2844,7 +2827,6 @@ class _RequiredUseLeaf:
 
 
 class _RequiredUseBranch:
-
     __slots__ = ("_children", "_operator", "_parent", "_satisfied")
 
     def __init__(self, operator=None, parent=None):
@@ -2857,7 +2839,6 @@ class _RequiredUseBranch:
         return self._satisfied
 
     def tounicode(self):
-
         include_parens = self._parent is not None
         tokens = []
         if self._operator is not None:

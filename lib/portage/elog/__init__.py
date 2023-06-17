@@ -2,7 +2,6 @@
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 
 import portage
 
@@ -59,7 +58,7 @@ def _combine_logentries(logentries):
         for msgtype, msgcontent in logentries[phase]:
             if previous_type != msgtype:
                 previous_type = msgtype
-                rValue.append("%s: %s" % (msgtype, phase))
+                rValue.append(f"{msgtype}: {phase}")
             if isinstance(msgcontent, str):
                 rValue.append(msgcontent.rstrip("\n"))
             else:
@@ -200,8 +199,8 @@ def elog_process(cpv, mysettings, phasefilter=None):
                     )
                     % str(s)
                 )
-                writemsg("%s\n" % str(e), noiselevel=-1)
+                writemsg(f"{str(e)}\n", noiselevel=-1)
             except AlarmSignal:
-                writemsg("Timeout in elog_process for system '%s'\n" % s, noiselevel=-1)
+                writemsg(f"Timeout in elog_process for system '{s}'\n", noiselevel=-1)
             except PortageException as e:
-                writemsg("%s\n" % str(e), noiselevel=-1)
+                writemsg(f"{str(e)}\n", noiselevel=-1)

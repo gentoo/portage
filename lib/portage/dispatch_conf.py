@@ -6,7 +6,6 @@
 # written by Jeremy Wohl (http://igmus.org)
 
 import errno
-import io
 import functools
 import stat
 import subprocess
@@ -84,9 +83,7 @@ def diff_mixed(func, file1, file2):
                     content = f"FIF: {file1}\n"
                 else:
                     content = f"DEV: {file1}\n"
-                with io.open(
-                    diff_files[i], mode="w", encoding=_encodings["stdio"]
-                ) as f:
+                with open(diff_files[i], mode="w", encoding=_encodings["stdio"]) as f:
                     f.write(content)
 
         return func(diff_files[0], diff_files[1])
@@ -187,7 +184,7 @@ def _archive_copy(src_st, src_path, dest_path):
             os.symlink(os.readlink(src_path), dest_path)
         else:
             shutil.copy2(src_path, dest_path)
-    except EnvironmentError as e:
+    except OSError as e:
         portage.util.writemsg(
             f"dispatch-conf: Error copying {src_path} to {dest_path}: {e}\n",
             noiselevel=-1,

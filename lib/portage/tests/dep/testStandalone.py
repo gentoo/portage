@@ -10,7 +10,6 @@ class TestStandalone(TestCase):
     """Test some small functions portage.dep"""
 
     def testCPVequal(self):
-
         test_cases = (
             ("sys-apps/portage-2.1", "sys-apps/portage-2.1", True),
             ("sys-apps/portage-2.1", "sys-apps/portage-2.0", False),
@@ -32,12 +31,12 @@ class TestStandalone(TestCase):
             self.assertEqual(
                 cpvequal(cpv1, cpv2),
                 expected_result,
-                "cpvequal('%s', '%s') != %s" % (cpv1, cpv2, expected_result),
+                f"cpvequal('{cpv1}', '{cpv2}') != {expected_result}",
             )
 
         for cpv1, cpv2 in test_cases_xfail:
             self.assertRaisesMsg(
-                "cpvequal(%s, %s)" % (cpv1, cpv2),
+                f"cpvequal({cpv1}, {cpv2})",
                 PortageException,
                 cpvequal,
                 cpv1,

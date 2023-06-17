@@ -216,7 +216,7 @@ def _get_global(k):
             return portage_gid
         if k == "portage_uid":
             return portage_uid
-        raise AssertionError("unknown name: %s" % k)
+        raise AssertionError(f"unknown name: {k}")
 
     elif k == "userpriv_groups":
         v = [_get_global("portage_gid")]
@@ -260,7 +260,7 @@ def _get_global(k):
         if env_key in os.environ:
             v = os.environ[env_key]
         elif hasattr(portage, "settings"):
-            v = portage.settings.get(env_key)
+            v = portage.settings.get(env_key, v)
         else:
             # The config class has equivalent code, but we also need to
             # do it here if _disable_legacy_globals() has been called.
@@ -288,7 +288,7 @@ def _get_global(k):
                         else:
                             v = pwd_struct.pw_name
     else:
-        raise AssertionError("unknown name: %s" % k)
+        raise AssertionError(f"unknown name: {k}")
 
     globals()[k] = v
     _initialized_globals.add(k)
@@ -328,7 +328,6 @@ def _init(settings):
         "_portage_grpname" not in _initialized_globals
         and "_portage_username" not in _initialized_globals
     ):
-
         # Prevents "TypeError: expected string" errors
         # from grp.getgrnam() with PyPy
         native_string = platform.python_implementation() == "PyPy"

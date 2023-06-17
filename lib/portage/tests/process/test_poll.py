@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2020, 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -6,6 +6,8 @@ import pty
 import shutil
 import socket
 import tempfile
+
+import pytest
 
 from portage import os
 from portage.tests import TestCase
@@ -15,7 +17,6 @@ from _emerge.PipeReader import PipeReader
 
 
 class PipeReaderTestCase(TestCase):
-
     _use_array = False
     _echo_cmd = "echo -n '%s'"
 
@@ -29,7 +30,7 @@ class PipeReaderTestCase(TestCase):
         def make_pipes():
             try:
                 return pty.openpty(), None
-            except EnvironmentError:
+            except OSError:
                 self.skipTest("pty not available")
 
         self._do_test(make_pipes)
@@ -101,21 +102,23 @@ class PipeReaderTestCase(TestCase):
             try:
                 output = self._testPipeReader(read_end, write_end, test_string)
                 self.assertEqual(
-                    test_string, output, "x = %s, len(output) = %s" % (x, len(output))
+                    test_string,
+                    output,
+                    f"x = {x}, len(output) = {len(output)}",
                 )
             finally:
                 if cleanup is not None:
                     cleanup()
 
 
+@pytest.mark.xfail()  # This fails sometimes, that's the reason of xfail here
 class PipeReaderArrayTestCase(PipeReaderTestCase):
-
     _use_array = True
     # sleep allows reliable triggering of the failure mode on fast computers
     _echo_cmd = "sleep 0.1 ; echo -n '%s'"
 
     def __init__(self, *args, **kwargs):
-        super(PipeReaderArrayTestCase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # https://bugs.python.org/issue5380
         # https://bugs.pypy.org/issue956
         self.todo = True

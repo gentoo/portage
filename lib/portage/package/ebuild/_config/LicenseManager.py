@@ -15,7 +15,6 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
 class LicenseManager:
     def __init__(self, license_group_locations, abs_user_config, user_config=True):
-
         self._accept_license_str = None
         self._accept_license = None
         self._license_groups = {}

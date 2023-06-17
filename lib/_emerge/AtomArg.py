@@ -6,7 +6,6 @@ from _emerge.DependencyArg import DependencyArg
 
 
 class AtomArg(DependencyArg):
-
     __slots__ = ("atom", "pset")
 
     def __init__(self, atom=None, **kwargs):

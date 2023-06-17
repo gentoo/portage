@@ -18,7 +18,6 @@ from ._flush_elog_mod_echo import _flush_elog_mod_echo
 
 
 def clean_logs(settings):
-
     if "clean-logs" not in settings.features:
         return
 
@@ -104,7 +103,7 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     if retval == os.EX_OK:
         exit_msg = " *** exiting successfully."
     else:
-        exit_msg = " *** exiting unsuccessfully with status '%s'." % retval
+        exit_msg = f" *** exiting unsuccessfully with status '{retval}'."
     emergelog("notitles" not in settings.features, exit_msg)
 
     _flush_elog_mod_echo()
@@ -161,11 +160,7 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
         hook_retval = portage.process.spawn([postemerge], env=settings.environ())
         if hook_retval != os.EX_OK:
             portage.util.writemsg_level(
-                " %s spawn failed of %s\n"
-                % (
-                    colorize("BAD", "*"),
-                    postemerge,
-                ),
+                f" {colorize('BAD', '*')} spawn failed of {postemerge}\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )

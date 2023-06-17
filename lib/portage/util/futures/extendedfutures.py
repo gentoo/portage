@@ -37,7 +37,7 @@ class ExtendedFuture(Future):
                                set.
         """
         self.default_result = default_result
-        super(ExtendedFuture, self).__init__()
+        super().__init__()
         self.set = self.set_result
 
     def set_result(self, data, ignore_InvalidState=False):
@@ -48,11 +48,11 @@ class ExtendedFuture(Future):
         """
         if ignore_InvalidState:
             try:
-                super(ExtendedFuture, self).set_result(data)
+                super().set_result(data)
             except InvalidStateError:
                 pass
         else:
-            super(ExtendedFuture, self).set_result(data)
+            super().set_result(data)
 
     def get(self, default=UNSET_CONST.result()):
         """Convienience function to wrap result() but adds an optional
@@ -77,12 +77,12 @@ class ExtendedFuture(Future):
 
     def exception(self):
         try:
-            return super(ExtendedFuture, self).exception(timeout=0)
+            return super().exception(timeout=0)
         except concurrent.futures.TimeoutError:
             raise InvalidStateError
 
     def result(self):
         try:
-            return super(ExtendedFuture, self).result(timeout=0)
+            return super().result(timeout=0)
         except concurrent.futures.TimeoutError:
             raise InvalidStateError

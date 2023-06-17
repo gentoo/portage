@@ -12,8 +12,8 @@ class InternalPackageSetTestCase(TestCase):
     """Simple Test Case for InternalPackageSet"""
 
     def testInternalPackageSet(self):
-        i1_atoms = set(("dev-libs/A", ">=dev-libs/A-1", "dev-libs/B"))
-        i2_atoms = set(("dev-libs/A", "dev-libs/*", "dev-libs/C"))
+        i1_atoms = {"dev-libs/A", ">=dev-libs/A-1", "dev-libs/B"}
+        i2_atoms = {"dev-libs/A", "dev-libs/*", "dev-libs/C"}
 
         i1 = InternalPackageSet(initial_atoms=i1_atoms)
         i2 = InternalPackageSet(initial_atoms=i2_atoms, allow_wildcard=True)

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if [[ -z ${PORTAGE_INTERNAL_DOLIB} ]] && ! ___eapi_has_dolib_libopts; then
-	die "'${0##*/}' has been banned for EAPI '$EAPI'"
+	die "'${0##*/}' has been banned for EAPI '${EAPI}'"
 	exit 1
 fi
 
@@ -15,22 +15,20 @@ fi
 
 if ! ___eapi_has_DESTTREE_INSDESTTREE; then
 	[[ -n ${DESTTREE} ]] &&
-		die "${0##*/}: \${DESTTREE} has been banned for EAPI '$EAPI'; use 'into' instead"
+		die "${0##*/}: \${DESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 else
 	# backwards compatibility
-	_E_DESTTREE_=${DESTTREE}
+	__E_DESTTREE=${DESTTREE}
 fi
 
 # Setup ABI cruft
-LIBDIR_VAR="LIBDIR_${ABI}"
-if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
-	CONF_LIBDIR=${!LIBDIR_VAR}
+libdir="lib"
+libdir_var="LIBDIR_${ABI}"
+if [[ -n ${ABI} && -n ${!libdir_var} ]] ; then
+	libdir=${!libdir_var}
 fi
-unset LIBDIR_VAR
-# we need this to default to lib so that things dont break
-CONF_LIBDIR=${CONF_LIBDIR:-lib}
-libdir="${ED%/}/${_E_DESTTREE_#/}/${CONF_LIBDIR}"
 
+libdir="${ED%/}/${__E_DESTTREE#/}/${libdir}"
 
 if [[ $# -lt 1 ]] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
@@ -56,5 +54,5 @@ for x in "$@" ; do
 	((ret|=$?))
 done
 
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

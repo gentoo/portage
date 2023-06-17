@@ -31,10 +31,7 @@ class BinpkgEnvExtractor(CompositeTask):
     def _start(self):
         saved_env_path = self._get_saved_env_path()
         dest_env_path = self._get_dest_env_path()
-        shell_cmd = (
-            "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- %s > %s"
-            % (_shell_quote(saved_env_path), _shell_quote(dest_env_path))
-        )
+        shell_cmd = f"${{PORTAGE_BUNZIP2_COMMAND:-${{PORTAGE_BZIP2_COMMAND}} -d}} -c -- {_shell_quote(saved_env_path)} > {_shell_quote(dest_env_path)}"
 
         logfile = None
         if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
@@ -58,7 +55,6 @@ class BinpkgEnvExtractor(CompositeTask):
                 raise
 
     def _extractor_exit(self, extractor_proc):
-
         if self._default_exit(extractor_proc) != os.EX_OK:
             self._remove_dest_env()
             self.wait()

@@ -312,7 +312,7 @@ def _pkgsplit(mypkg, eapi=None):
     return (m.group("pn"), m.group("ver"), rev)
 
 
-_cat_re = re.compile("^%s$" % _cat, re.UNICODE)
+_cat_re = re.compile(f"^{_cat}$", re.UNICODE)
 _missing_cat = "null"
 
 
@@ -491,22 +491,6 @@ class _pkg_str(str):
             self.__dict__["_stable"] = stable
             return stable
 
-    @property
-    def binpkg_format(self):
-        """
-        Returns the BINPKG_FORMAT metadata. A return value of None means
-        that the format is unset. If there is no metadata available or the
-        BINPKG_FORMAT key is missing from the metadata, then raise
-        AttributeError.
-
-        @rtype: str or None
-        @return: a non-empty BINPKG_FORMAT string, or None
-        """
-        try:
-            return self._metadata["BINPKG_FORMAT"] or None
-        except (AttributeError, KeyError):
-            raise AttributeError("binpkg_format")
-
 
 def pkgsplit(mypkg, silent=1, eapi=None):
     """
@@ -536,7 +520,7 @@ def cpv_getkey(mycpv, eapi=None):
         return mysplit[0] + "/" + mysplit[1]
 
     warnings.warn(
-        "portage.versions.cpv_getkey() " + "called with invalid cpv: '%s'" % (mycpv,),
+        "portage.versions.cpv_getkey() " + f"called with invalid cpv: '{mycpv}'",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -579,7 +563,6 @@ def cpv_sort_key(eapi=None):
     split_cache = {}
 
     def cmp_cpv(cpv1, cpv2):
-
         split1 = split_cache.get(cpv1, False)
         if split1 is False:
             split1 = None

@@ -8,7 +8,6 @@ from portage.dep._dnf import dnf_convert
 
 class DNFConvertTestCase(TestCase):
     def testDNFConvert(self):
-
         test_cases = (
             (
                 "|| ( A B ) || ( C D )",

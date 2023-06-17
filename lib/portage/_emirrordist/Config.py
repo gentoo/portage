@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
-import io
 import logging
 import shelve
 import time
@@ -11,6 +10,8 @@ from portage import os
 from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
 from .ContentDB import ContentDB
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -87,24 +88,20 @@ class Config:
         self.layouts = self.layout_conf.get_all_layouts()
 
     def _open_log(self, log_desc, log_path, mode):
-
         if log_path is None or getattr(self.options, "dry_run", False):
-            log_func = logging.info
+            log_func = logger.info
             line_format = "%s: %%s" % log_desc
             add_newline = False
             if log_path is not None:
-                logging.warning(
-                    "dry-run: %s log " "redirected to logging.info" % log_desc
-                )
+                logger.warning(f"dry-run: {log_desc} log redirected to logging.info")
         else:
-            self._open_files.append(io.open(log_path, mode=mode, encoding="utf_8"))
+            self._open_files.append(open(log_path, mode=mode, encoding="utf_8"))
             line_format = "%s\n"
             log_func = self._open_files[-1].write
 
         return self._LogFormatter(line_format, log_func)
 
     class _LogFormatter:
-
         __slots__ = ("_line_format", "_log_func")
 
         def __init__(self, line_format, log_func):
@@ -137,9 +134,9 @@ class Config:
                     db = dbshelve.open(db_file, flags=open_flag)
 
         if dry_run:
-            logging.warning("dry-run: %s db opened in readonly mode" % db_desc)
+            logger.warning(f"dry-run: {db_desc} db opened in readonly mode")
             if not isinstance(db, dict):
-                volatile_db = dict((k, db[k]) for k in db)
+                volatile_db = {k: db[k] for k in db}
                 db.close()
                 db = volatile_db
         else:

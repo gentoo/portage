@@ -3,7 +3,6 @@
 
 __all__ = ["deprecated_profile_check"]
 
-import io
 
 import portage
 from portage import os, _encodings, _unicode_encode
@@ -39,11 +38,10 @@ def deprecated_profile_check(settings=None):
             if not os.access(deprecated_profile_file, os.R_OK):
                 return
 
-    with io.open(
+    with open(
         _unicode_encode(
             deprecated_profile_file, encoding=_encodings["fs"], errors="strict"
         ),
-        mode="r",
         encoding=_encodings["content"],
         errors="replace",
     ) as f:

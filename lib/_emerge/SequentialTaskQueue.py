@@ -8,7 +8,6 @@ from portage.util.SlotObject import SlotObject
 
 
 class SequentialTaskQueue(SlotObject):
-
     __slots__ = ("max_jobs", "running_tasks") + ("_scheduling", "_task_queue")
 
     def __init__(self, **kwargs):
@@ -27,7 +26,6 @@ class SequentialTaskQueue(SlotObject):
         self.schedule()
 
     def schedule(self):
-
         if self._scheduling:
             # Ignore any recursive schedule() calls triggered via
             # self._task_exit().

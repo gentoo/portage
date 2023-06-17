@@ -94,7 +94,7 @@ class SyncLocalTestCase(TestCase):
                     break
             else:
                 raise AssertionError(
-                    "%s binary not found in %s or %s" % (cmd, self.bindir, self.sbindir)
+                    f"{cmd} binary not found in {self.bindir} or {self.sbindir}"
                 )
 
         git_binary = find_binary("git")
@@ -139,7 +139,7 @@ class SyncLocalTestCase(TestCase):
             ) as f:
                 f.write(
                     bump_timestamp.timestamp.strftime(
-                        "%s\n" % TIMESTAMP_FORMAT,
+                        f"{TIMESTAMP_FORMAT}\n",
                     )
                 )
 
@@ -320,10 +320,8 @@ class SyncLocalTestCase(TestCase):
         )
 
         def hg_init_global_config():
-            with open(os.path.join(homedir, ".hgrc"), "wt") as f:
-                f.write(
-                    "[ui]\nusername = {} <{}>\n".format(committer_name, committer_email)
-                )
+            with open(os.path.join(homedir, ".hgrc"), "w") as f:
+                f.write(f"[ui]\nusername = {committer_name} <{committer_email}>\n")
 
         hg_repo_create = (
             (repo.location, hg_init_global_config),
@@ -335,7 +333,7 @@ class SyncLocalTestCase(TestCase):
         sync_type_mercurial = ((homedir, lambda: repos_set_conf("mercurial")),)
 
         def append_newline(path):
-            with open(path, "at") as f:
+            with open(path, "a") as f:
                 f.write("\n")
 
         upstream_hg_commit = (
@@ -415,7 +413,7 @@ class SyncLocalTestCase(TestCase):
             with open(timestamp_path, "w") as f:
                 f.write(
                     bump_timestamp.timestamp.strftime(
-                        "%s\n" % TIMESTAMP_FORMAT,
+                        f"{TIMESTAMP_FORMAT}\n",
                     )
                 )
 
@@ -460,7 +458,6 @@ class SyncLocalTestCase(TestCase):
                 + sync_cmds
                 + mercurial_tests
             ):
-
                 if hasattr(cmd, "__call__"):
                     cmd()
                     continue
@@ -481,11 +478,7 @@ class SyncLocalTestCase(TestCase):
                 self.assertEqual(
                     os.EX_OK,
                     proc.returncode,
-                    "%s failed in %s"
-                    % (
-                        cmd,
-                        cwd,
-                    ),
+                    f"{cmd} failed in {cwd}",
                 )
 
         finally:

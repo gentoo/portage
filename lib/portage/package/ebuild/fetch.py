@@ -6,7 +6,6 @@ __all__ = ["fetch"]
 import errno
 import functools
 import glob
-import io
 import itertools
 import json
 import logging
@@ -137,7 +136,6 @@ def _spawn_fetch(settings, args, **kwargs):
     # wget pollute stderr (if portage detects a problem then it
     # can send it's own message to stderr).
     if "fd_pipes" not in kwargs:
-
         kwargs["fd_pipes"] = {
             0: portage._get_stdin().fileno(),
             1: sys.__stdout__.fileno(),
@@ -245,20 +243,15 @@ def _ensure_distdir(settings, distdir):
     userpriv = portage.data.secpass >= 2 and "userpriv" in settings.features
     write_test_file = os.path.join(distdir, ".__portage_test_write__")
 
-    try:
-        st = os.stat(distdir)
-    except OSError:
-        st = None
-
-    if st is not None and stat.S_ISDIR(st.st_mode):
-        if not (userfetch or userpriv):
-            return
-        if _userpriv_test_write_file(settings, write_test_file):
-            return
+    if _userpriv_test_write_file(settings, write_test_file):
+        return
 
     _userpriv_test_write_file_cache.pop(write_test_file, None)
+
+    already_exists = os.path.isdir(distdir)
+
     if ensure_dirs(distdir, gid=dir_gid, mode=dirmode, mask=modemask):
-        if st is None:
+        if not already_exists:
             # The directory has just been created
             # and therefore it must be empty.
             return
@@ -374,9 +367,7 @@ def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
         if hash_filter is not None:
             digests = _apply_hash_filter(digests, hash_filter)
         if _check_digests(filename, digests, show_errors=show_errors):
-            eout.ebegin(
-                "%s %s ;-)" % (os.path.basename(filename), " ".join(sorted(digests)))
-            )
+            eout.ebegin(f"{os.path.basename(filename)} {' '.join(sorted(digests))} ;-)")
             eout.eend(0)
         else:
             return (False, st)
@@ -582,7 +573,7 @@ class ContentHashLayout(FilenameHashLayout):
         to a digest value for self.algo, and which can be compared to
         other DistfileName instances with their digests_equal method.
         """
-        for filename in super(ContentHashLayout, self).get_filenames(distdir):
+        for filename in super().get_filenames(distdir):
             yield DistfileName(filename, digests=dict([(self.algo, filename)]))
 
     @staticmethod
@@ -677,7 +668,7 @@ class MirrorLayoutConfig:
         ret = []
         for val in self.structure:
             if not self.validate_structure(val):
-                raise ValueError("Unsupported structure: {}".format(val))
+                raise ValueError(f"Unsupported structure: {val}")
             if val[0] == "flat":
                 ret.append(FlatLayout(*val[1:]))
             elif val[0] == "filename-hash":
@@ -705,9 +696,9 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
     cache = {}
     if cache_path is not None:
         try:
-            with open(cache_path, "r") as f:
+            with open(cache_path) as f:
                 cache = json.load(f)
-        except (IOError, ValueError):
+        except (OSError, ValueError):
             pass
 
     ts, data = cache.get(mirror_url, (0, None))
@@ -715,7 +706,7 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
     if ts >= time.time() - 86400:
         mirror_conf.deserialize(data)
     else:
-        tmpfile = ".layout.conf.%s" % urlparse(mirror_url).hostname
+        tmpfile = f".layout.conf.{urlparse(mirror_url).hostname}"
         try:
             if mirror_url[:1] == "/":
                 tmpfile = os.path.join(mirror_url, "layout.conf")
@@ -729,8 +720,8 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
                 tmpfile = os.path.join(mysettings["DISTDIR"], tmpfile)
                 mirror_conf.read_from_file(tmpfile)
             else:
-                raise IOError()
-        except (ConfigParserError, IOError, UnicodeDecodeError):
+                raise OSError()
+        except (ConfigParserError, OSError, UnicodeDecodeError):
             pass
         else:
             cache[mirror_url] = (time.time(), mirror_conf.serialize())
@@ -1095,7 +1086,7 @@ def fetch(
                     writemsg(_("!!! No known mirror by the name: %s\n") % (mirrorname))
             else:
                 writemsg(_("Invalid mirror definition in SRC_URI:\n"), noiselevel=-1)
-                writemsg("  %s\n" % (myuri), noiselevel=-1)
+                writemsg(f"  {myuri}\n", noiselevel=-1)
         else:
             if (restrict_fetch and not override_fetch) or force_mirror:
                 # Only fetch from specific mirrors is allowed.
@@ -1134,7 +1125,7 @@ def fetch(
             _ensure_distdir(mysettings, mysettings["DISTDIR"])
         except PortageException as e:
             if not os.path.isdir(mysettings["DISTDIR"]):
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
                 writemsg(
                     _("!!! Directory Not Found: DISTDIR='%s'\n")
                     % mysettings["DISTDIR"],
@@ -1220,7 +1211,7 @@ def fetch(
                     vfs_stat = os.statvfs(mysettings["DISTDIR"])
                 except OSError as e:
                     writemsg_level(
-                        "!!! statvfs('%s'): %s\n" % (mysettings["DISTDIR"], e),
+                        f"!!! statvfs('{mysettings['DISTDIR']}'): {e}\n",
                         noiselevel=-1,
                         level=logging.ERROR,
                     )
@@ -1237,7 +1228,6 @@ def fetch(
                 if (size - mysize + vfs_stat.f_bsize) >= (
                     vfs_stat.f_bsize * vfs_stat.f_bavail
                 ):
-
                     if (size - mysize + vfs_stat.f_bsize) >= (
                         vfs_stat.f_bsize * vfs_stat.f_bfree
                     ):
@@ -1251,7 +1241,6 @@ def fetch(
                         has_space = False
 
             if distdir_writable and use_locks:
-
                 lock_kwargs = {}
                 if fetchonly:
                     lock_kwargs["flags"] = os.O_NONBLOCK
@@ -1270,7 +1259,6 @@ def fetch(
                     continue
         try:
             if not listonly:
-
                 eout = EOutput()
                 eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
                 match, mystat = _check_distfile(
@@ -1447,7 +1435,7 @@ def fetch(
                             shutil.copyfile(mirror_file, download_path)
                             writemsg(_("Local mirror has file: %s\n") % myfile)
                             break
-                        except (IOError, OSError) as e:
+                        except OSError as e:
                             if e.errno not in (errno.ENOENT, errno.ESTALE):
                                 raise
                             del e
@@ -1485,7 +1473,7 @@ def fetch(
                         if distdir_writable:
                             try:
                                 os.unlink(download_path)
-                            except EnvironmentError:
+                            except OSError:
                                 pass
                     elif not orig_digests:
                         # We don't have a digest, and the temporary file exists.
@@ -1506,7 +1494,7 @@ def fetch(
                         ):
                             eout = EOutput()
                             eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
-                            eout.ebegin("%s size ;-)" % (myfile,))
+                            eout.ebegin(f"{myfile} size ;-)")
                             eout.eend(0)
                             continue
                         else:
@@ -1557,9 +1545,7 @@ def fetch(
                                 if digests:
                                     digests = list(digests)
                                     digests.sort()
-                                    eout.ebegin(
-                                        "%s %s ;-)" % (myfile, " ".join(digests))
-                                    )
+                                    eout.ebegin(f"{myfile} {' '.join(digests)} ;-)")
                                     eout.eend(0)
                                 continue  # fetch any remaining files
 
@@ -1738,7 +1724,7 @@ def fetch(
                     try:
                         variables["DIGESTS"] = " ".join(
                             [
-                                "%s:%s" % (k.lower(), v)
+                                f"{k.lower()}:{v}"
                                 for k, v in mydigests[myfile].items()
                                 if k != "size"
                             ]
@@ -1756,7 +1742,6 @@ def fetch(
 
                     myret = -1
                     try:
-
                         myret = _spawn_fetch(mysettings, myfetch)
 
                     finally:
@@ -1787,7 +1772,7 @@ def fetch(
                             os.unlink(download_path)
                             fetched = 0
                             continue
-                    except EnvironmentError:
+                    except OSError:
                         pass
 
                     if mydigests is not None and myfile in mydigests:
@@ -1799,7 +1784,6 @@ def fetch(
                             del e
                             fetched = 0
                         else:
-
                             if stat.S_ISDIR(mystat.st_mode):
                                 # This can happen if FETCHCOMMAND erroneously
                                 # contains wget's -P option where it should
@@ -1853,13 +1837,12 @@ def fetch(
                                         "<title>.*(not found|404).*</title>",
                                         re.I | re.M,
                                     )
-                                    with io.open(
+                                    with open(
                                         _unicode_encode(
                                             download_path,
                                             encoding=_encodings["fs"],
                                             errors="strict",
                                         ),
-                                        mode="r",
                                         encoding=_encodings["content"],
                                         errors="replace",
                                     ) as f:
@@ -1873,7 +1856,7 @@ def fetch(
                                                 )
                                                 fetched = 0
                                                 continue
-                                            except (IOError, OSError):
+                                            except OSError:
                                                 pass
                                 fetched = 1
                                 continue
@@ -1950,8 +1933,7 @@ def fetch(
                                     )
                                     if digests:
                                         eout.ebegin(
-                                            "%s %s ;-)"
-                                            % (myfile, " ".join(sorted(digests)))
+                                            f"{myfile} {' '.join(sorted(digests))} ;-)"
                                         )
                                         eout.eend(0)
                                     fetched = 2

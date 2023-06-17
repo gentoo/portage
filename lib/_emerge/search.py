@@ -8,6 +8,7 @@ from portage import os
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
+from portage.exception import InvalidBinaryPackageFormat
 from portage.localization import localized_size
 from portage.output import bold, darkgreen, green, red
 from portage.util import writemsg_stdout
@@ -17,7 +18,6 @@ from _emerge.Package import Package
 
 
 class search:
-
     #
     # class constants
     #
@@ -106,7 +106,7 @@ class search:
 
     def _aux_get_error(self, cpv):
         portage.writemsg(
-            "emerge: search: " "aux_get('%s') failed, skipping\n" % cpv, noiselevel=-1
+            f"emerge: search: aux_get('{cpv}') failed, skipping\n", noiselevel=-1
         )
 
     def _findname(self, *args, **kwargs):
@@ -151,7 +151,6 @@ class search:
         ).visible
 
     def _first_cp(self, cp):
-
         for db in self._dbs:
             if hasattr(db, "cp_list"):
                 matches = db.cp_list(cp)
@@ -248,7 +247,6 @@ class search:
         self.searchkey = searchkey
 
     def _iter_search(self):
-
         match_category = 0
         self.packagematches = []
         if self.searchdesc:
@@ -474,15 +472,13 @@ class search:
                     try:
                         uri_map = _parse_uri_map(mycpv, metadata, use=pkg.use.enabled)
                     except portage.exception.InvalidDependString as e:
-                        file_size_str = "Unknown (%s)" % (e,)
+                        file_size_str = f"Unknown ({e})"
                         del e
                     else:
                         try:
                             mysum[0] = mf.getDistfilesSize(uri_map)
                         except KeyError as e:
-                            file_size_str = "Unknown (missing " + "digest for %s)" % (
-                                e,
-                            )
+                            file_size_str = "Unknown (missing " + f"digest for {e})"
                             del e
 
                 available = False
@@ -490,7 +486,10 @@ class search:
                     if db is not vardb and db.cpv_exists(mycpv):
                         available = True
                         if not myebuild and hasattr(db, "bintree"):
-                            myebuild = db.bintree.getname(mycpv)
+                            try:
+                                myebuild = db.bintree.getname(mycpv)
+                            except InvalidBinaryPackageFormat:
+                                break
                             try:
                                 mysum[0] = os.stat(myebuild).st_size
                             except OSError:
@@ -503,16 +502,14 @@ class search:
                 if self.verbose:
                     if available:
                         msg.append(
-                            "      %s %s\n"
-                            % (darkgreen("Latest version available:"), myversion)
+                            f"      {darkgreen('Latest version available:')} {myversion}\n"
                         )
                     msg.append(
-                        "      %s\n" % self.getInstallationStatus(mycat + "/" + mypkg)
+                        f"      {self.getInstallationStatus(mycat + '/' + mypkg)}\n"
                     )
                     if myebuild:
                         msg.append(
-                            "      %s %s\n"
-                            % (darkgreen("Size of files:"), file_size_str)
+                            f"      {darkgreen('Size of files:')} {file_size_str}\n"
                         )
                     msg.append(
                         "      " + darkgreen("Homepage:") + "      " + homepage + "\n"

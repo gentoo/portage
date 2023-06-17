@@ -6,3 +6,9 @@ __pycache__/
 /tags
 /.tox/
 setup.cfg
+.*.swp
+*.vim
+.mypy_cache
+dist
+*.egg-info/
+MANIFEST

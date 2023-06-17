@@ -29,9 +29,9 @@ class CommandOutputSet(PackageSet):
     _operations = ["merge", "unmerge"]
 
     def __init__(self, command):
-        super(CommandOutputSet, self).__init__()
+        super().__init__()
         self._command = command
-        self.description = "Package set generated from output of '%s'" % self._command
+        self.description = f"Package set generated from output of '{self._command}'"
 
     def load(self):
         pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)

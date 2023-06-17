@@ -115,7 +115,7 @@ def main(argv):
         # since we created a new session with os.setsid() above.
         try:
             Path("/proc/self/autogroup").write_text(str(nice_value))
-        except EnvironmentError as e:
+        except OSError as e:
             # The process is likely not allowed to set the autogroup
             # value (Linux employs a rate limiting for unprivileged
             # changes to the autogroup value) or autogroups are not
@@ -125,7 +125,7 @@ def main(argv):
         if sys.stdout.isatty():
             try:
                 fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno == errno.EPERM:
                     # This means that stdout refers to the controlling terminal
                     # of the parent process, and in this case we do not want to
@@ -155,7 +155,7 @@ def main(argv):
     while True:
         try:
             pid, status = os.wait()
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.EINTR:
                 continue
             raise

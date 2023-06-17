@@ -9,6 +9,7 @@ import re
 import typing
 
 import portage
+from pathlib import Path
 from portage import eclass_cache, os
 from portage.checksum import get_valid_checksum_keys
 from portage.const import PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH
@@ -160,6 +161,7 @@ class RepoConfig:
         "thin_manifest",
         "update_changelog",
         "user_location",
+        "volatile",
         "_eapis_banned",
         "_eapis_deprecated",
         "_masters_orig",
@@ -330,9 +332,44 @@ class RepoConfig:
                     self.name = name
                 if portage._sync_mode:
                     missing = False
-
         elif name == "DEFAULT":
             missing = False
+
+        volatile = repo_opts.get("volatile")
+        # If volatile is explicitly set, go with it.
+        if volatile is not None:
+            self.volatile = volatile in ("true", "yes")
+        else:
+            # If it's unset, we default to no (i.e. the repository is not volatile),
+            # but with a heuristic for when a repository is not likely to be suitable
+            # (likely to contain custom user changes).
+            try:
+                # If the repository doesn't exist, we can't check its ownership,
+                # so err on the safe side.
+                if missing or not self.location:
+                    self.volatile = True
+                # On Prefix, you can't rely on the ownership as a proxy for user
+                # owned because the user typically owns everything.
+                # But we can't access if we're on Prefix here, so use whether
+                # we're under /var/db/repos instead.
+                elif not self.location.startswith("/var/db/repos"):
+                    self.volatile = True
+                # If the owner of the repository isn't root or Portage, it's
+                # an indication the user may expect to be able to safely make
+                # changes in the directory, so default to volatile.
+                elif Path(self.location).owner() not in ("root", "portage"):
+                    self.volatile = True
+                else:
+                    self.volatile = False
+            except Exception:
+                # There's too many conditions here to refine the exception list:
+                # - We lack permissions to poke at the directory (PermissionError)
+                # - Its UID doesn't actually exist and the repository
+                #   won't be synced by the user (KeyError).
+                # - The directory doesn't exist (FileNotFoundError)
+                # - Probably many others.
+                # So, just fail safe.
+                self.volatile = True
 
         self.eapi = None
         self.missing_repo_name = missing
@@ -531,16 +568,15 @@ class RepoConfig:
         repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
         f = None
         try:
-            f = io.open(
+            f = open(
                 _unicode_encode(
                     repo_name_path, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             )
             return f.readline().strip(), False
-        except EnvironmentError:
+        except OSError:
             return "x-" + os.path.basename(repo_path), True
         finally:
             if f is not None:
@@ -582,6 +618,8 @@ class RepoConfig:
             repo_msg.append(
                 indent + "eclass-overrides: " + " ".join(self.eclass_overrides)
             )
+        if self.volatile is not None:
+            repo_msg.append(indent + "volatile: " + str(self.volatile))
         for o, v in self.module_specific_options.items():
             if v is not None:
                 repo_msg.append(indent + o + ": " + v)
@@ -589,16 +627,18 @@ class RepoConfig:
         return "\n".join(repo_msg)
 
     def __repr__(self):
-        return "<portage.repository.config.RepoConfig(name=%r, location=%r)>" % (
-            self.name,
-            _unicode_decode(self.location),
+        return (
+            "<portage.repository.config.RepoConfig(name={!r}, location={!r})>".format(
+                self.name,
+                _unicode_decode(self.location),
+            )
         )
 
     def __str__(self):
         d = {}
         for k in self.__slots__:
             d[k] = getattr(self, k, None)
-        return "%s" % (d,)
+        return f"{d}"
 
 
 class RepoConfigLoader:
@@ -689,8 +729,16 @@ class RepoConfigLoader:
                             "sync_umask",
                             "sync_uri",
                             "sync_user",
+                            "volatile",
                         ):
                             v = getattr(repos_conf_opts, k, None)
+
+                            # If PORTDIR_OVERLAY is set, we have to require volatile,
+                            # because it'll break changes e.g. with ebuild(1) or
+                            # development in a local repository with the same repo_name.
+                            if k == "volatile" and portdir_overlay:
+                                v = True
+
                             if v is not None:
                                 setattr(repo, k, v)
 
@@ -721,7 +769,6 @@ class RepoConfigLoader:
 
                     prepos[repo.name] = repo
                 else:
-
                     if not portage._sync_mode:
                         writemsg(
                             _("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov,
@@ -1143,7 +1190,7 @@ class RepoConfigLoader:
 
     def _check_locations(self):
         """Check if repositories location are correct and show a warning message if not"""
-        for (name, r) in self.prepos.items():
+        for name, r in self.prepos.items():
             if name != "DEFAULT":
                 if r.location is None:
                     writemsg(
@@ -1215,6 +1262,7 @@ class RepoConfigLoader:
             "sync_allow_hardlinks",
             "sync_openpgp_key_refresh",
             "sync_rcu",
+            "volatile",
         )
         str_or_int_keys = (
             "auto_sync",
@@ -1252,33 +1300,33 @@ class RepoConfigLoader:
         ):
             if repo_name != repo.name:
                 continue
-            config_string += "\n[%s]\n" % repo_name
+            config_string += f"\n[{repo_name}]\n"
             for key in sorted(keys):
                 if key == "main_repo" and repo_name != "DEFAULT":
                     continue
                 if getattr(repo, key) is not None:
                     if key in bool_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             "true" if getattr(repo, key) else "false",
                         )
                     elif key in str_or_int_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             getattr(repo, key),
                         )
                     elif key in str_tuple_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             " ".join(getattr(repo, key)),
                         )
                     elif key in repo_config_tuple_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             " ".join(x.name for x in getattr(repo, key)),
                         )
             for o, v in repo.module_specific_options.items():
-                config_string += "%s = %s\n" % (o, v)
+                config_string += f"{o} = {v}\n"
         return config_string.lstrip("\n")
 
 

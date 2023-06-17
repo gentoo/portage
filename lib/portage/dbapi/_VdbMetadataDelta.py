@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import io
 import json
 import os
 
@@ -12,7 +11,6 @@ from portage.versions import cpv_getkey
 
 
 class VdbMetadataDelta:
-
     _format_version = "1"
 
     def __init__(self, vardb):
@@ -32,21 +30,19 @@ class VdbMetadataDelta:
             )
 
     def load(self):
-
         if not os.path.exists(self._vardb._aux_cache_filename):
             # If the primary cache doesn't exist yet, then
             # we can't record a delta against it.
             return None
 
         try:
-            with io.open(
+            with open(
                 self._vardb._cache_delta_filename,
-                "r",
                 encoding=_encodings["repo.content"],
                 errors="strict",
             ) as f:
                 cache_obj = json.load(f)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
                 raise
         except (SystemExit, KeyboardInterrupt):
@@ -98,7 +94,6 @@ class VdbMetadataDelta:
         return None
 
     def recordEvent(self, event, cpv, slot, counter):
-
         self._vardb.lock()
         try:
             deltas_obj = self.load()
@@ -113,7 +108,7 @@ class VdbMetadataDelta:
                 "package": cpv.cp,
                 "version": cpv.version,
                 "slot": slot,
-                "counter": "%s" % counter,
+                "counter": f"{counter}",
             }
 
             deltas_obj["deltas"].append(delta_node)

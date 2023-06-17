@@ -41,11 +41,9 @@ class FetchIterator:
         # and in order to reduce latency in case of a signal interrupt.
         cp_all = self._config.portdb.cp_all
         for category in sorted(self._config.portdb.categories):
-            for cp in cp_all(categories=(category,)):
-                yield cp
+            yield from cp_all(categories=(category,))
 
     def __iter__(self):
-
         portdb = self._config.portdb
         get_repo_for_location = portdb.repositories.get_repo_for_location
 
@@ -54,19 +52,16 @@ class FetchIterator:
             hash_filter = None
 
         for cp in self._iter_every_cp():
-
             if self._terminated.is_set():
                 return
 
             for tree in portdb.porttrees:
-
                 # Reset state so the Manifest is pulled once
                 # for this cp / tree combination.
                 repo_config = get_repo_for_location(tree)
                 digests_future = portdb._event_loop.create_future()
 
                 for cpv in portdb.cp_list(cp, mytree=tree):
-
                     if self._terminated.is_set():
                         return
 
@@ -163,7 +158,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         try:
             (restrict,) = aux_get_result.result()
         except (PortageKeyError, PortageException) as e:
-            config.log_failure("%s\t\taux_get exception %s" % (cpv, e))
+            config.log_failure(f"{cpv}\t\taux_get exception {e}")
             result.set_result(fetch_tasks)
             return
 
@@ -173,14 +168,14 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         try:
             restrict = frozenset(use_reduce(restrict, flat=True, matchnone=True))
         except PortageException as e:
-            config.log_failure("%s\t\tuse_reduce exception %s" % (cpv, e))
+            config.log_failure(f"{cpv}\t\tuse_reduce exception {e}")
             result.set_result(fetch_tasks)
             return
 
         try:
             uri_map = fetch_map_result.result()
         except PortageException as e:
-            config.log_failure("%s\t\tgetFetchMap exception %s" % (cpv, e))
+            config.log_failure(f"{cpv}\t\tgetFetchMap exception {e}")
             result.set_result(fetch_tasks)
             return
 
@@ -235,10 +230,10 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
                 digests = repo_config.load_manifest(
                     os.path.join(repo_config.location, cpv.cp)
                 ).getTypeDigests("DIST")
-        except (EnvironmentError, PortageException) as e:
+        except (OSError, PortageException) as e:
             digests_future.done() or digests_future.set_exception(e)
             for filename in new_uri_map:
-                config.log_failure("%s\t%s\tManifest exception %s" % (cpv, filename, e))
+                config.log_failure(f"{cpv}\t{filename}\tManifest exception {e}")
                 config.file_failures[filename] = cpv
             result.set_result(fetch_tasks)
             return
@@ -247,7 +242,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
 
         if not digests:
             for filename in new_uri_map:
-                config.log_failure("%s\t%s\tdigest entry missing" % (cpv, filename))
+                config.log_failure(f"{cpv}\t{filename}\tdigest entry missing")
                 config.file_failures[filename] = cpv
             result.set_result(fetch_tasks)
             return
@@ -255,7 +250,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         for filename, uri_tuple in new_uri_map.items():
             file_digests = digests.get(filename)
             if file_digests is None:
-                config.log_failure("%s\t%s\tdigest entry missing" % (cpv, filename))
+                config.log_failure(f"{cpv}\t{filename}\tdigest entry missing")
                 config.file_failures[filename] = cpv
                 continue
             if filename in config.file_owners:

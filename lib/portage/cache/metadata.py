@@ -53,7 +53,7 @@ class database(flat_hash.database):
 
     def __init__(self, location, *args, **config):
         loc = location
-        super(database, self).__init__(location, *args, **config)
+        super().__init__(location, *args, **config)
         self.location = os.path.join(loc, "metadata", "cache")
         self.ec = None
         self.raise_stat_collision = False
@@ -83,9 +83,9 @@ class database(flat_hash.database):
                 getter = attrgetter(self.validation_chf)
                 try:
                     ec_data = self.ec.get_eclass_data(d["INHERITED"].split())
-                    d["_eclasses_"] = dict(
-                        (k, (v.eclass_dir, getter(v))) for k, v in ec_data.items()
-                    )
+                    d["_eclasses_"] = {
+                        k: (v.eclass_dir, getter(v)) for k, v in ec_data.items()
+                    }
                 except KeyError as e:
                     # INHERITED contains a non-existent eclass.
                     raise cache_errors.CacheCorruption(cpv, e)
@@ -120,7 +120,7 @@ class database(flat_hash.database):
                 _unicode_encode(new_fp, encoding=_encodings["fs"], errors="strict"),
                 "rb",
             )
-        except EnvironmentError:
+        except OSError:
             pass
         else:
             try:
@@ -129,7 +129,7 @@ class database(flat_hash.database):
                     existing_content = f.read()
                 finally:
                     f.close()
-            except EnvironmentError:
+            except OSError:
                 pass
             else:
                 existing_mtime = existing_st[stat.ST_MTIME]
@@ -156,7 +156,7 @@ class database(flat_hash.database):
             myf = open(
                 _unicode_encode(fp, encoding=_encodings["fs"], errors="strict"), "wb"
             )
-        except EnvironmentError as e:
+        except OSError as e:
             if errno.ENOENT == e.errno:
                 try:
                     self._ensure_dirs(cpv)
@@ -164,7 +164,7 @@ class database(flat_hash.database):
                         _unicode_encode(fp, encoding=_encodings["fs"], errors="strict"),
                         "wb",
                     )
-                except EnvironmentError as e:
+                except OSError as e:
                     raise cache_errors.CacheCorruption(cpv, e)
             else:
                 raise cache_errors.CacheCorruption(cpv, e)
@@ -177,9 +177,9 @@ class database(flat_hash.database):
 
         try:
             os.rename(fp, new_fp)
-        except EnvironmentError as e:
+        except OSError as e:
             try:
                 os.unlink(fp)
-            except EnvironmentError:
+            except OSError:
                 pass
             raise cache_errors.CacheCorruption(cpv, e)

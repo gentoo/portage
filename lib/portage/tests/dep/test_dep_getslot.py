@@ -10,7 +10,6 @@ class DepGetSlot(TestCase):
     """A simple testcase for isvalidatom"""
 
     def testDepGetSlot(self):
-
         slot_char = ":"
         slots = ("a", "1.2", "1", "IloveVapier", None)
         cpvs = ["sys-apps/portage"]

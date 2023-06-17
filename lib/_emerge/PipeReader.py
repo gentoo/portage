@@ -48,7 +48,6 @@ class PipeReader(AbstractPollTask):
         self._read_data = None
 
     def _output_handler(self, fd):
-
         while True:
             data = self._read_buf(fd)
             if data is None:
@@ -62,7 +61,6 @@ class PipeReader(AbstractPollTask):
                 break
 
     def _array_output_handler(self, f):
-
         while True:
             data = self._read_array(f)
             if data is None:

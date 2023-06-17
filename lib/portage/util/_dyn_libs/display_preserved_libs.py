@@ -8,7 +8,6 @@ from portage.output import colorize
 
 
 def display_preserved_libs(vardb, verbose=False):
-
     MAX_DISPLAY = 3
 
     plibdata = vardb._plib_registry.getPreservedLibs()
@@ -20,12 +19,12 @@ def display_preserved_libs(vardb, verbose=False):
         linkmap.rebuild()
     except portage.exception.CommandNotFound as e:
         portage.util.writemsg_level(
-            "!!! Command Not Found: %s\n" % (e,), level=logging.ERROR, noiselevel=-1
+            f"!!! Command Not Found: {e}\n", level=logging.ERROR, noiselevel=-1
         )
     else:
         search_for_owners = set()
         for cpv in plibdata:
-            internal_plib_keys = set(linkmap._obj_key(f) for f in plibdata[cpv])
+            internal_plib_keys = {linkmap._obj_key(f) for f in plibdata[cpv]}
             for f in plibdata[cpv]:
                 if f in consumer_map:
                     continue
@@ -54,7 +53,7 @@ def display_preserved_libs(vardb, verbose=False):
     all_preserved.update(*plibdata.values())
 
     for cpv in plibdata:
-        print(colorize("WARN", ">>>") + " package: %s" % cpv)
+        print(colorize("WARN", ">>>") + f" package: {cpv}")
         samefile_map = {}
         for f in plibdata[cpv]:
             obj_key = linkmap._obj_key(f)
@@ -67,7 +66,7 @@ def display_preserved_libs(vardb, verbose=False):
         for alt_paths in samefile_map.values():
             alt_paths = sorted(alt_paths)
             for p in alt_paths:
-                print(colorize("WARN", " * ") + " - %s" % (p,))
+                print(colorize("WARN", " * ") + f" - {p}")
             f = alt_paths[0]
             consumers = consumer_map.get(f, [])
             consumers_non_preserved = [c for c in consumers if c not in all_preserved]
@@ -92,9 +91,7 @@ def display_preserved_libs(vardb, verbose=False):
                     owners_desc = "preserved"
                 else:
                     owners_desc = ", ".join(x.mycpv for x in owners.get(c, []))
-                print(
-                    colorize("WARN", " * ") + "     used by %s (%s)" % (c, owners_desc)
-                )
+                print(colorize("WARN", " * ") + f"     used by {c} ({owners_desc})")
             if not verbose and len(consumers) > max_display:
                 print(
                     colorize("WARN", " * ")

@@ -27,7 +27,7 @@ _FS_ENCODING = sys.getfilesystemencoding()
 
 
 def octal_quote_byte(b):
-    return ("\\%03o" % ord(b)).encode("ascii")
+    return (f"\\{ord(b):03o}").encode("ascii")
 
 
 def unicode_encode(s):
@@ -120,17 +120,16 @@ def restore_xattrs(file_in):
             parts = line.split(b"=", 1)
             if len(parts) == 2:
                 if pathname is None:
-                    raise ValueError("line %d: missing pathname" % (i + 1,))
+                    raise ValueError(f"line {i + 1}: missing pathname")
                 attr = unquote(parts[0])
                 # strip trailing newline and quotes
                 value = unquote(parts[1].rstrip(b"\n")[1:-1])
                 xattr.set(pathname, attr, value)
             elif line.strip():
-                raise ValueError("line %d: malformed entry" % (i + 1,))
+                raise ValueError(f"line {i + 1}: malformed entry")
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser(description=doc)
     parser.add_argument("paths", nargs="*", default=[])
 

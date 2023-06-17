@@ -1,3 +1,6 @@
+# Copyright 2022 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
 # whirlpool.py - pure Python implementation of the Whirlpool algorithm.
 # Bjorn Edstrom <be@bjrn.se> 16 december 2007.
 ##
@@ -27,17 +30,34 @@
 
 # pylint: disable=mixed-indentation
 
+import warnings
+
+from portage.localization import _
+
+try:
+    from ._whirlpool import Whirlpool as WhirlpoolExt
+except ImportError:
+    WhirlpoolExt = None
+
+
 # block_size = 64
 digest_size = 64
 digestsize = 64
 
 
-class Whirlpool:
+class PyWhirlpool:
     """Return a new Whirlpool object. An optional string argument
     may be provided; if present, this string will be automatically
     hashed."""
 
     def __init__(self, arg=b""):
+        warnings.warn(
+            _(
+                "The last-resort unaccelerated Whirlpool implementation is "
+                "being used. It is known to be absurdly slow. Please report "
+                "that the Whirlpool hash is deprecated to the repository owner."
+            )
+        )
         self.ctx = WhirlpoolStruct()
         self.update(arg)
 
@@ -58,7 +78,7 @@ class Whirlpool:
         dig = self.digest()
         tempstr = ""
         for d in dig:
-            xxx = "%02x" % (ord(d))
+            xxx = f"{ord(d):02x}"
             tempstr = tempstr + xxx
         return tempstr
 
@@ -69,11 +89,36 @@ class Whirlpool:
         return copy.deepcopy(self)
 
 
-def new(init=b""):
+class CWhirlpool:
     """Return a new Whirlpool object. An optional string argument
     may be provided; if present, this string will be automatically
     hashed."""
-    return Whirlpool(init)
+
+    is_available = WhirlpoolExt is not None
+
+    def __init__(self, arg=b""):
+        self.obj = WhirlpoolExt()
+        self.dig = None
+        self.update(arg)
+
+    def update(self, arg):
+        if self.dig is not None:
+            raise RuntimeError("Whirlpool object already finalized")
+        self.obj.update(arg)
+
+    def digest(self):
+        if self.dig is None:
+            self.dig = self.obj.digest()
+        return self.dig
+
+    def hexdigest(self):
+        """hexdigest()"""
+        dig = self.digest()
+        tempstr = ""
+        for d in dig:
+            xxx = f"{d:02x}"
+            tempstr = tempstr + xxx
+        return tempstr
 
 
 #
@@ -2180,7 +2225,7 @@ def WhirlpoolInit(ctx):
 
 def WhirlpoolAdd(source, sourceBits, ctx):
     if not isinstance(source, bytes):
-        raise TypeError("Expected %s, got %s" % (bytes, type(source)))
+        raise TypeError(f"Expected {bytes}, got {type(source)}")
     if sourceBits == 0:
         return
 
@@ -2330,29 +2375,3 @@ def processBuffer(ctx):
     # apply the Miyaguchi-Preneel compression function
     for i in range(8):
         ctx.hash[i] ^= state[i] ^ block[i]
-
-
-#
-# Tests.
-#
-
-
-if __name__ == "__main__":
-    assert (
-        Whirlpool(b"The quick brown fox jumps over the lazy dog").hexdigest()
-        == "b97de512e91e3828b40d2b0fdce9ceb3c4a71f9bea8d88e75c4fa854df36725fd2b52eb6544edcacd6f8beddfea403cb55ae31f03ad62a5ef54e42ee82c3fb35"
-    )
-    assert (
-        Whirlpool(b"The quick brown fox jumps over the lazy eog").hexdigest()
-        == "c27ba124205f72e6847f3e19834f925cc666d0974167af915bb462420ed40cc50900d85a1f923219d832357750492d5c143011a76988344c2635e69d06f2d38c"
-    )
-    assert (
-        Whirlpool(b"").hexdigest()
-        == "19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3"
-    )
-    w = Whirlpool()
-    w.update(b"")
-    assert (
-        w.hexdigest()
-        == "19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3"
-    )

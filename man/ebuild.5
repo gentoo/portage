@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "July 2022" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Apr 2023" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -371,7 +371,7 @@ Contains the revision number or 'r0' if no revision number exists.
 .fi
 .TP
 .B PVR
-Contains the version number with the revision (if non-zero).
+Contains the version number with the revision (if any).
 
 \fBExample\fR:
 .nf
@@ -738,7 +738,7 @@ Must enable exactly one but not more (exclusive or)	^^ ( flag1 flag2 flag3 )
 May enable at most one (EAPI 5 or later)	?? ( flag1 flag2 flag3 )
 .TE
 .TP
-.B RESTRICT\fR = \fI[strip,mirror,fetch,userpriv]
+.B RESTRICT
 This should be a space delimited list of portage features to restrict.
 You may use conditional syntax to vary restrictions as seen above in DEPEND.
 .PD 0
@@ -792,7 +792,7 @@ Disables userpriv for specific packages.
 .RE
 .PD 1
 .TP
-.B PROPERTIES\fR = \fI[interactive,live]
+.B PROPERTIES
 A space delimited list of properties, with conditional syntax support.
 .PD 0
 .RS
@@ -803,6 +803,11 @@ One or more ebuild phases will produce a prompt that requires user interaction.
 .I live
 The package uses live source code that may vary each time that the package
 is installed.
+.TP
+.I test_network
+The package manager may run tests that require an internet connection, even if
+the ebuild has
+.IR RESTRICT=test .
 .RE
 .PD 1
 .TP
@@ -829,23 +834,30 @@ binary objects that cannot be altered.
 
 Note that objects that violate these rules may fail on some architectures.
 .TP
-.B QA_PREBUILT
-This should contain a list of file paths, relative to the image
-directory, of files that are pre\-built binaries. Paths
-listed here will be appended to each of the QA_* variables
-listed below. The paths may contain fnmatch\-like patterns
-which will be internally translated to regular expressions for
-the QA_* variables that support regular expressions instead
-of fnmatch patterns. The translation mechanism simply replaces
-"*" with ".*".
+.B QA_AM_MAINTAINER_MODE
+This should contain a list of lines containing automake missing \-\-run
+commands. The lines may contain regular expressions with escape\-quoted
+special characters.
 .TP
-.B QA_TEXTRELS
-This variable can be set to a list of file paths, relative to the image
-directory, of files that contain text relocations that cannot be eliminated.
-The paths may contain fnmatch patterns.
-
-This variable is intended to be used on closed\-source binary objects that
-cannot be altered.
+.B QA_CONFIG_IMPL_DECL_SKIP
+This should contain a list of function names to ignore when checking for
+\fI-Wimplicit-function-declaration\fR in configure logs. This should only be
+used for false positives.
+.TP
+.B QA_CONFIGURE_OPTIONS
+This should contain a list of configure options which trigger warnings about
+unrecognized options. The options may contain regular expressions with
+escape\-quoted special characters.
+.TP
+.B QA_DESKTOP_FILE
+This should contain a list of file paths, relative to the image directory, of
+desktop files which should not be validated. The paths may contain regular
+expressions with escape\-quoted special characters.
+.TP
+.B QA_DT_NEEDED
+This should contain a list of file paths, relative to the image directory, of
+shared libraries that lack NEEDED entries. The paths may contain regular
+expressions with escape\-quoted special characters.
 .TP
 .B QA_EXECSTACK
 This should contain a list of file paths, relative to the image directory, of
@@ -854,11 +866,6 @@ The paths may contain fnmatch patterns.
 
 This variable is intended to be used on objects that truly need executable
 stack (i.e. not those marked to need it which in fact do not).
-.TP
-.B QA_WX_LOAD
-This should contain a list of file paths, relative to the image directory, of
-files that contain writable and executable segments.  These are rare.
-The paths may contain fnmatch patterns.
 .TP
 .B QA_FLAGS_IGNORED
 This should contain a list of file paths, relative to the image directory, of
@@ -881,6 +888,22 @@ files that should be ignored for the multilib\-strict checks.
 The paths may contain regular expressions with escape\-quoted special
 characters.
 .TP
+.B QA_PKGCONFIG_VERSION
+If set, then portage verifies that all pkg-config .pc files have a Version field
+with the value of QA_PKGCONFIG_VERSION. For example, set
+\fIQA_PKGCONFIG_VERSION=${PV}\fR if your package is expected to install all
+pkg-config .pc files with a Version field containing PV.
+.TP
+.B QA_PREBUILT
+This should contain a list of file paths, relative to the image
+directory, of files that are pre\-built binaries. Paths
+listed here will be appended to each of the QA_* variables
+listed below. The paths may contain fnmatch\-like patterns
+which will be internally translated to regular expressions for
+the QA_* variables that support regular expressions instead
+of fnmatch patterns. The translation mechanism simply replaces
+"*" with ".*".
+.TP
 .B QA_PRESTRIPPED
 This should contain a list of file paths, relative to the image directory, of
 files that contain pre-stripped binaries. The paths may contain regular
@@ -897,25 +920,18 @@ shared libraries that have SONAMEs but should not have a corresponding SONAME
 symlink in the same directory. The paths may contain regular expressions
 with escape\-quoted special characters.
 .TP
-.B QA_AM_MAINTAINER_MODE
-This should contain a list of lines containing automake missing \-\-run
-commands. The lines may contain regular expressions with escape\-quoted
-special characters.
+.B QA_TEXTRELS
+This variable can be set to a list of file paths, relative to the image
+directory, of files that contain text relocations that cannot be eliminated.
+The paths may contain fnmatch patterns.
+
+This variable is intended to be used on closed\-source binary objects that
+cannot be altered.
 .TP
-.B QA_CONFIGURE_OPTIONS
-This should contain a list of configure options which trigger warnings about
-unrecognized options. The options may contain regular expressions with
-escape\-quoted special characters.
-.TP
-.B QA_DT_NEEDED
+.B QA_WX_LOAD
 This should contain a list of file paths, relative to the image directory, of
-shared libraries that lack NEEDED entries. The paths may contain regular
-expressions with escape\-quoted special characters.
-.TP
-.B QA_DESKTOP_FILE
-This should contain a list of file paths, relative to the image directory, of
-desktop files which should not be validated. The paths may contain regular
-expressions with escape\-quoted special characters.
+files that contain writable and executable segments.  These are rare.
+The paths may contain fnmatch patterns.
 
 .SH "PORTAGE DECLARATIONS"
 .TP

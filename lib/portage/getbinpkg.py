@@ -45,8 +45,6 @@ except ImportError as e:
 else:
     _all_errors.append(http_client_error)
 
-_all_errors = tuple(_all_errors)
-
 
 def make_metadata_dict(data):
     warnings.warn(
@@ -333,7 +331,6 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
 
 
 def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
-
     warnings.warn(
         "portage.getbinpkg.match_in_array() is deprecated",
         DeprecationWarning,
@@ -494,7 +491,6 @@ def file_get(
     URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
     if not fcmd:
-
         warnings.warn(
             "Use of portage.getbinpkg.file_get() without the fcmd "
             "parameter is deprecated",
@@ -531,7 +527,7 @@ def file_get(
     from portage.util import varexpand
     from portage.process import spawn
 
-    myfetch = (varexpand(x, mydict=variables) for x in portage.util.shlex_split(fcmd))
+    myfetch = [varexpand(x, mydict=variables) for x in portage.util.shlex_split(fcmd)]
     fd_pipes = {
         0: portage._get_stdin().fileno(),
         1: sys.__stdout__.fileno(),
@@ -619,10 +615,10 @@ def dir_get_metadata(
 
     try:
         conn = create_conn(baseurl, conn)[0]
-    except _all_errors as e:
+    except tuple(_all_errors) as e:
         # ftplib.FTP(host) can raise errors like this:
         #   socket.error: (111, 'Connection refused')
-        sys.stderr.write("!!! %s\n" % (e,))
+        sys.stderr.write(f"!!! {e}\n")
         return {}
 
     out = sys.stdout
@@ -694,7 +690,7 @@ def dir_get_metadata(
                         mytempfile.seek(0)
                         data = mytempfile.read()
                 except ValueError as e:
-                    sys.stderr.write("--- %s\n" % str(e))
+                    sys.stderr.write(f"--- {str(e)}\n")
                     if trynum < 3:
                         sys.stderr.write(_("Retrying...\n"))
                     sys.stderr.flush()
@@ -885,7 +881,6 @@ class PackageIndex:
         inherited_keys=None,
         translated_keys=None,
     ):
-
         self._pkg_slot_dict = None
         if allowed_pkg_keys:
             self._pkg_slot_dict = slot_dict_class(allowed_pkg_keys)
@@ -897,7 +892,7 @@ class PackageIndex:
         self._read_translation_map = {}
         if translated_keys:
             self._write_translation_map.update(translated_keys)
-            self._read_translation_map.update(((y, x) for (x, y) in translated_keys))
+            self._read_translation_map.update((y, x) for (x, y) in translated_keys)
         self.header = {}
         if self._default_header_data:
             self.header.update(self._default_header_data)

@@ -1,13 +1,9 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import sys
-
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 
 import portage.const
 from portage.util import writemsg
@@ -69,12 +65,12 @@ class trace_handler:
             my_repr = repr(arg)
             if len(my_repr) > self.max_repr_length:
                 my_repr = "'omitted'"
-            return "value=%s " % my_repr
+            return f"value={my_repr} "
         if "exception" == event:
             my_repr = repr(arg[1])
             if len(my_repr) > self.max_repr_length:
                 my_repr = "'omitted'"
-            return "type=%s value=%s " % (arg[0], my_repr)
+            return f"type={arg[0]} value={my_repr} "
 
         return ""
 

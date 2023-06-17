@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Gentoo Authors
+# Copyright 2012-2019, 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -16,7 +16,6 @@ from portage.util import ensure_dirs
 
 class SlotAbiEmergeTestCase(TestCase):
     def testSlotAbiEmerge(self):
-
         debug = False
 
         ebuilds = {
@@ -130,6 +129,8 @@ class SlotAbiEmergeTestCase(TestCase):
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
             "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
             "PYTHONPATH": pythonpath,
+            "PORTAGE_INST_GID": str(os.getgid()),
+            "PORTAGE_INST_UID": str(os.getuid()),
         }
 
         if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
@@ -162,9 +163,8 @@ class SlotAbiEmergeTestCase(TestCase):
                 stdout = subprocess.PIPE
 
             for i, args in enumerate(test_commands):
-
                 if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), "callable at index %s failed" % (i,))
+                    self.assertTrue(args[0](), f"callable at index {i} failed")
                     continue
 
                 proc = subprocess.Popen(args, env=env, stdout=stdout)
@@ -180,7 +180,7 @@ class SlotAbiEmergeTestCase(TestCase):
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
                 )
         finally:
             playground.cleanup()

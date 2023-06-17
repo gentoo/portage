@@ -47,6 +47,7 @@ from portage.exception import (
 from portage.localization import _
 from portage.output import colorize
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.util import ensure_dirs
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
@@ -84,7 +85,6 @@ class bindbapi(fakedbapi):
         list(fakedbapi._known_keys) + ["CHOST", "repository", "USE"]
     )
     _pkg_str_aux_keys = fakedbapi._pkg_str_aux_keys + (
-        "BINPKG_FORMAT",
         "BUILD_ID",
         "BUILD_TIME",
         "_mtime_",
@@ -104,36 +104,33 @@ class bindbapi(fakedbapi):
         self.bintree = mybintree
         self.move_ent = mybintree.move_ent
         # Selectively cache metadata in order to optimize dep matching.
-        self._aux_cache_keys = set(
-            [
-                "BDEPEND",
-                "BINPKG_FORMAT",
-                "BUILD_ID",
-                "BUILD_TIME",
-                "CHOST",
-                "DEFINED_PHASES",
-                "DEPEND",
-                "EAPI",
-                "IDEPEND",
-                "IUSE",
-                "KEYWORDS",
-                "LICENSE",
-                "MD5",
-                "PDEPEND",
-                "PROPERTIES",
-                "PROVIDES",
-                "RDEPEND",
-                "repository",
-                "REQUIRES",
-                "RESTRICT",
-                "SIZE",
-                "SLOT",
-                "USE",
-                "_mtime_",
-                # PREFIX LOCAL
-                "EPREFIX",
-            ]
-        )
+        self._aux_cache_keys = {
+            "BDEPEND",
+            "BUILD_ID",
+            "BUILD_TIME",
+            "CHOST",
+            "DEFINED_PHASES",
+            "DEPEND",
+            "EAPI",
+            "IDEPEND",
+            "IUSE",
+            "KEYWORDS",
+            "LICENSE",
+            "MD5",
+            "PDEPEND",
+            "PROPERTIES",
+            "PROVIDES",
+            "RDEPEND",
+            "repository",
+            "REQUIRES",
+            "RESTRICT",
+            "SIZE",
+            "SLOT",
+            "USE",
+            "_mtime_",
+            # PREFIX LOCAL
+            "EPREFIX",
+        }
         self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
         self._aux_cache = {}
 
@@ -194,7 +191,8 @@ class bindbapi(fakedbapi):
                 st = os.lstat(binpkg_path)
             except OSError:
                 raise KeyError(mycpv)
-            binpkg_format = self.cpvdict[instance_key]["BINPKG_FORMAT"]
+
+            binpkg_format = get_binpkg_format(binpkg_path)
             if binpkg_format == "xpak":
                 metadata_bytes = portage.xpak.tbz2(binpkg_path).get_data()
                 decode_metadata_name = False
@@ -203,10 +201,6 @@ class bindbapi(fakedbapi):
                     self.settings, mycpv, binpkg_path
                 ).get_metadata()
                 decode_metadata_name = True
-            else:
-                raise InvalidBinaryPackageFormat(
-                    "Unknown binary package format %s" % binpkg_path
-                )
 
             def getitem(k):
                 if k == "_mtime_":
@@ -250,7 +244,6 @@ class bindbapi(fakedbapi):
     def aux_update(self, cpv, values):
         if not self.bintree.populated:
             self.bintree.populate()
-        build_id = None
         try:
             build_id = cpv.build_id
         except AttributeError:
@@ -263,22 +256,26 @@ class bindbapi(fakedbapi):
                 cpv = self._instance_key(cpv, support_string=True)[0]
                 build_id = cpv.build_id
 
+        cpv_str = str(cpv)
+        if build_id is not None:
+            cpv_str += f"-{build_id}"
+
         binpkg_path = self.bintree.getname(cpv)
         if not os.path.exists(binpkg_path):
             raise KeyError(cpv)
 
-        binpkg_format = cpv.binpkg_format
+        binpkg_format = get_binpkg_format(binpkg_path)
         if binpkg_format == "xpak":
             mytbz2 = portage.xpak.tbz2(binpkg_path)
             mydata = mytbz2.get_data()
             encoding_key = True
         elif binpkg_format == "gpkg":
-            mybinpkg = portage.gpkg.gpkg(self.settings, cpv, binpkg_path)
+            mybinpkg = portage.gpkg.gpkg(self.settings, cpv_str, binpkg_path)
             mydata = mybinpkg.get_metadata()
             encoding_key = False
         else:
             raise InvalidBinaryPackageFormat(
-                "Unknown binary package format %s" % binpkg_path
+                f"Unknown binary package format {binpkg_path}"
             )
 
         for k, v in values.items():
@@ -300,7 +297,7 @@ class bindbapi(fakedbapi):
             mybinpkg.update_metadata(mydata)
         else:
             raise InvalidBinaryPackageFormat(
-                "Unknown binary package format %s" % binpkg_path
+                f"Unknown binary package format {binpkg_path}"
             )
 
         # inject will clear stale caches via cpv_inject.
@@ -326,7 +323,7 @@ class bindbapi(fakedbapi):
             await add_pkg._db.unpack_metadata(pkg, dest_dir, loop=loop)
         else:
             binpkg_file = self.bintree.getname(cpv)
-            binpkg_format = cpv.binpkg_format
+            binpkg_format = get_binpkg_format(binpkg_file)
             if binpkg_format == "xpak":
                 await loop.run_in_executor(
                     ForkExecutor(loop=loop),
@@ -341,7 +338,7 @@ class bindbapi(fakedbapi):
                 )
             else:
                 raise InvalidBinaryPackageFormat(
-                    "Unknown binary package format %s" % binpkg_file
+                    f"Unknown binary package format {binpkg_file}"
                 )
 
     async def unpack_contents(self, pkg, dest_dir, loop=None):
@@ -363,7 +360,7 @@ class bindbapi(fakedbapi):
 
         pkg_path = self.bintree.getname(cpv)
         if pkg_path is not None:
-            binpkg_format = cpv.binpkg_format
+            binpkg_format = get_binpkg_format(pkg_path)
             if binpkg_format == "xpak":
                 extractor = BinpkgExtractorAsync(
                     background=settings.get("PORTAGE_BACKGROUND") == "1",
@@ -379,7 +376,7 @@ class bindbapi(fakedbapi):
                 extractor.start()
                 await extractor.async_wait()
                 if extractor.returncode != os.EX_OK:
-                    raise PortageException("Error Extracting '{}'".format(pkg_path))
+                    raise PortageException(f"Error Extracting '{pkg_path}'")
             elif binpkg_format == "gpkg":
                 await loop.run_in_executor(
                     ForkExecutor(loop=loop),
@@ -431,7 +428,7 @@ class bindbapi(fakedbapi):
             except KeyError:
                 raise portage.exception.MissingSignature("SIZE")
             except ValueError:
-                raise portage.exception.InvalidSignature("SIZE: %s" % metadata["SIZE"])
+                raise portage.exception.InvalidSignature(f"SIZE: {metadata['SIZE']}")
             else:
                 filesdict[os.path.basename(self.bintree.getname(pkg))] = size
 
@@ -448,7 +445,6 @@ class binarytree:
         virtual=DeprecationWarning,
         settings=None,
     ):
-
         if pkgdir is None:
             raise TypeError("pkgdir parameter is required")
 
@@ -474,150 +470,140 @@ class binarytree:
                 stacklevel=2,
             )
 
-        if True:
-            self.pkgdir = normalize_path(pkgdir)
-            # NOTE: Event if binpkg-multi-instance is disabled, it's
-            # still possible to access a PKGDIR which uses the
-            # binpkg-multi-instance layout (or mixed layout).
-            self._multi_instance = "binpkg-multi-instance" in settings.features
-            if self._multi_instance:
-                self._allocate_filename = self._allocate_filename_multi
-            self.dbapi = bindbapi(self, settings=settings)
-            self.update_ents = self.dbapi.update_ents
-            self.move_slot_ent = self.dbapi.move_slot_ent
-            self.populated = 0
-            self.tree = {}
-            self._binrepos_conf = None
-            self._remote_has_index = False
-            self._remotepkgs = None  # remote metadata indexed by cpv
-            self._additional_pkgs = {}
-            self.invalids = []
-            self.settings = settings
-            self._pkg_paths = {}
-            self._populating = False
-            self._all_directory = os.path.isdir(os.path.join(self.pkgdir, "All"))
-            self._pkgindex_version = 0
-            self._pkgindex_hashes = ["MD5", "SHA1"]
-            self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
-            self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
-            self._pkgindex_keys.update(["CPV", "SIZE"])
-            self._pkgindex_aux_keys = [
-                "BASE_URI",
-                "BDEPEND",
-                "BINPKG_FORMAT",
-                "BUILD_ID",
-                "BUILD_TIME",
-                "CHOST",
-                "DEFINED_PHASES",
-                "DEPEND",
-                "DESCRIPTION",
-                "EAPI",
-                "FETCHCOMMAND",
-                "IDEPEND",
-                "IUSE",
-                "KEYWORDS",
-                "LICENSE",
-                "PDEPEND",
-                "PKGINDEX_URI",
-                "PROPERTIES",
-                "PROVIDES",
-                "RDEPEND",
-                "repository",
-                "REQUIRES",
-                "RESTRICT",
-                "RESUMECOMMAND",
-                "SIZE",
-                "SLOT",
-                "USE",
-                # PREFIX LOCAL
-                "EPREFIX",
-            ]
-            self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
-            self._pkgindex_use_evaluated_keys = (
-                "BDEPEND",
-                "DEPEND",
-                "IDEPEND",
-                "LICENSE",
-                "RDEPEND",
-                "PDEPEND",
-                "PROPERTIES",
-                "RESTRICT",
-            )
-            self._pkgindex_header = None
-            self._pkgindex_header_keys = set(
-                [
-                    "ACCEPT_KEYWORDS",
-                    "ACCEPT_LICENSE",
-                    "ACCEPT_PROPERTIES",
-                    "ACCEPT_RESTRICT",
-                    "BINPKG_FORMAT",
-                    "CBUILD",
-                    "CONFIG_PROTECT",
-                    "CONFIG_PROTECT_MASK",
-                    "FEATURES",
-                    "GENTOO_MIRRORS",
-                    "INSTALL_MASK",
-                    "IUSE_IMPLICIT",
-                    "USE",
-                    "USE_EXPAND",
-                    "USE_EXPAND_HIDDEN",
-                    "USE_EXPAND_IMPLICIT",
-                    "USE_EXPAND_UNPREFIXED",
-                    # PREFIX LOCAL
-                    "EPREFIX",
-                ]
-            )
-            self._pkgindex_default_pkg_data = {
-                "BDEPEND": "",
-                "BUILD_ID": "",
-                "BUILD_TIME": "",
-                "DEFINED_PHASES": "",
-                "DEPEND": "",
-                "EAPI": "0",
-                "IDEPEND": "",
-                "IUSE": "",
-                "KEYWORDS": "",
-                "LICENSE": "",
-                "PATH": "",
-                "PDEPEND": "",
-                "PROPERTIES": "",
-                "PROVIDES": "",
-                "RDEPEND": "",
-                "REQUIRES": "",
-                "RESTRICT": "",
-                "SLOT": "0",
-                "USE": "",
-            }
-            self._pkgindex_inherited_keys = ["BINPKG_FORMAT", "CHOST",
-                    # PREFIX LOCAL
-                    "EPREFIX",
-                    "repository"]
+        self.pkgdir = normalize_path(pkgdir)
+        # NOTE: Event if binpkg-multi-instance is disabled, it's
+        # still possible to access a PKGDIR which uses the
+        # binpkg-multi-instance layout (or mixed layout).
+        self._multi_instance = "binpkg-multi-instance" in settings.features
+        if self._multi_instance:
+            self._allocate_filename = self._allocate_filename_multi
+        self.dbapi = bindbapi(self, settings=settings)
+        self.update_ents = self.dbapi.update_ents
+        self.move_slot_ent = self.dbapi.move_slot_ent
+        self.populated = 0
+        self.tree = {}
+        self._binrepos_conf = None
+        self._remote_has_index = False
+        self._remotepkgs = None  # remote metadata indexed by cpv
+        self._additional_pkgs = {}
+        self.invalids = []
+        self.settings = settings
+        self._pkg_paths = {}
+        self._populating = False
+        self._all_directory = os.path.isdir(os.path.join(self.pkgdir, "All"))
+        self._pkgindex_version = 0
+        self._pkgindex_hashes = ["MD5", "SHA1"]
+        self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
+        self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
+        self._pkgindex_keys.update(["CPV", "SIZE"])
+        self._pkgindex_aux_keys = [
+            "BASE_URI",
+            "BDEPEND",
+            "BUILD_ID",
+            "BUILD_TIME",
+            "CHOST",
+            "DEFINED_PHASES",
+            "DEPEND",
+            "DESCRIPTION",
+            "EAPI",
+            "FETCHCOMMAND",
+            "IDEPEND",
+            "IUSE",
+            "KEYWORDS",
+            "LICENSE",
+            "PDEPEND",
+            "PKGINDEX_URI",
+            "PROPERTIES",
+            "PROVIDES",
+            "RDEPEND",
+            "repository",
+            "REQUIRES",
+            "RESTRICT",
+            "RESUMECOMMAND",
+            "SIZE",
+            "SLOT",
+            "USE",
+            # PREFIX LOCAL
+            "EPREFIX",
+        ]
+        self._pkgindex_use_evaluated_keys = (
+            "BDEPEND",
+            "DEPEND",
+            "IDEPEND",
+            "LICENSE",
+            "RDEPEND",
+            "PDEPEND",
+            "PROPERTIES",
+            "RESTRICT",
+        )
+        self._pkgindex_header = None
+        self._pkgindex_header_keys = {
+            "ACCEPT_KEYWORDS",
+            "ACCEPT_LICENSE",
+            "ACCEPT_PROPERTIES",
+            "ACCEPT_RESTRICT",
+            "CBUILD",
+            "CONFIG_PROTECT",
+            "CONFIG_PROTECT_MASK",
+            "FEATURES",
+            "GENTOO_MIRRORS",
+            "INSTALL_MASK",
+            "IUSE_IMPLICIT",
+            "USE",
+            "USE_EXPAND",
+            "USE_EXPAND_HIDDEN",
+            "USE_EXPAND_IMPLICIT",
+            "USE_EXPAND_UNPREFIXED",
+            # PREFIX LOCAL
+            "EPREFIX",
+        }
+        self._pkgindex_default_pkg_data = {
+            "BDEPEND": "",
+            "BUILD_ID": "",
+            "BUILD_TIME": "",
+            "DEFINED_PHASES": "",
+            "DEPEND": "",
+            "EAPI": "0",
+            "IDEPEND": "",
+            "IUSE": "",
+            "KEYWORDS": "",
+            "LICENSE": "",
+            "PATH": "",
+            "PDEPEND": "",
+            "PROPERTIES": "",
+            "PROVIDES": "",
+            "RDEPEND": "",
+            "REQUIRES": "",
+            "RESTRICT": "",
+            "SLOT": "0",
+            "USE": "",
+        }
+        self._pkgindex_inherited_keys = ["CHOST", "repository"]
+        # PREFIX LOCAL
+        self._pkgindex_inherited_keys += ["EPREFIX"]
 
-            # Populate the header with appropriate defaults.
-            self._pkgindex_default_header_data = {
-                "BINPKG_FORMAT": self.settings.get(
-                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-                ),
-                "CHOST": self.settings.get("CHOST", ""),
-                "repository": "",
-            }
+        # Populate the header with appropriate defaults.
+        self._pkgindex_default_header_data = {
+            "CHOST": self.settings.get("CHOST", ""),
+            "repository": "",
+        }
 
-            self._pkgindex_translated_keys = (
-                ("DESCRIPTION", "DESC"),
-                ("_mtime_", "MTIME"),
-                ("repository", "REPO"),
-            )
+        self._pkgindex_translated_keys = (
+            ("DESCRIPTION", "DESC"),
+            ("_mtime_", "MTIME"),
+            ("repository", "REPO"),
+        )
 
-            self._pkgindex_allowed_pkg_keys = set(
-                chain(
-                    self._pkgindex_keys,
-                    self._pkgindex_aux_keys,
-                    self._pkgindex_hashes,
-                    self._pkgindex_default_pkg_data,
-                    self._pkgindex_inherited_keys,
-                    chain(*self._pkgindex_translated_keys),
-                )
+        self._pkgindex_allowed_pkg_keys = set(
+            chain(
+                self._pkgindex_keys,
+                self._pkgindex_aux_keys,
+                self._pkgindex_hashes,
+                self._pkgindex_default_pkg_data,
+                self._pkgindex_inherited_keys,
+                chain(*self._pkgindex_translated_keys),
             )
+        )
 
     @property
     def root(self):
@@ -665,7 +651,7 @@ class binarytree:
             # If this update has already been applied to the same
             # package build then silently continue.
             applied = False
-            for maybe_applied in self.dbapi.match("={}".format(mynewcpv)):
+            for maybe_applied in self.dbapi.match(f"={mynewcpv}"):
                 if maybe_applied.build_time == mycpv.build_time:
                     applied = True
                     break
@@ -688,7 +674,7 @@ class binarytree:
                 continue
 
             moves += 1
-            binpkg_format = mycpv.binpkg_format
+            binpkg_format = get_binpkg_format(binpkg_path)
             if binpkg_format == "xpak":
                 mytbz2 = portage.xpak.tbz2(binpkg_path)
                 mydata = mytbz2.get_data()
@@ -696,6 +682,14 @@ class binarytree:
             elif binpkg_format == "gpkg":
                 mybinpkg = portage.gpkg.gpkg(self.settings, mycpv, binpkg_path)
                 mydata = mybinpkg.get_metadata()
+                if mybinpkg.signature_exist:
+                    writemsg(
+                        colorize(
+                            "WARN",
+                            f"Binpkg update ignored for signed package: {binpkg_path}",
+                        )
+                    )
+                    continue
                 decode_metadata_name = True
             else:
                 continue
@@ -742,7 +736,8 @@ class binarytree:
             # assuming that it will be deleted by eclean-pkg when its
             # time comes.
             mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
-            update_path = self.getname(mynewcpv, allocate_new=True) + ".partial"
+            allocated_pkg_path = self.getname(mynewcpv, allocate_new=True)
+            update_path = allocated_pkg_path + ".partial"
             self._ensure_dir(os.path.dirname(update_path))
             update_path_lock = None
             try:
@@ -753,10 +748,14 @@ class binarytree:
                     mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
                 elif binpkg_format == "gpkg":
                     mybinpkg = portage.gpkg.gpkg(self.settings, mycpv, update_path)
-                    mybinpkg.update_metadata(mydata, newcpv=mynewcpv)
+                    mybinpkg.update_metadata(mydata, new_basename=mynewcpv)
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
-                self.inject(mynewcpv, filename=update_path)
+                self.inject(
+                    mynewcpv,
+                    current_pkg_path=update_path,
+                    allocated_pkg_path=allocated_pkg_path,
+                )
             finally:
                 if update_path_lock is not None:
                     try:
@@ -811,7 +810,7 @@ class binarytree:
             except PortageException:
                 pass
 
-    def populate(self, getbinpkgs=False, getbinpkg_refresh=True, add_repos=()):
+    def populate(self, getbinpkgs=False, getbinpkg_refresh=False, add_repos=()):
         """
         Populates the binarytree with package metadata.
 
@@ -870,9 +869,9 @@ class binarytree:
                 if not self._binrepos_conf:
                     writemsg(
                         _(
-                            "!!! %s is missing (or PORTAGE_BINHOST is unset), but use is requested.\n"
-                        )
-                        % (config_path,),
+                            f"!!! {config_path} is missing (or PORTAGE_BINHOST is unset), "
+                            "but use is requested.\n"
+                        ),
                         noiselevel=-1,
                     )
                 else:
@@ -928,24 +927,19 @@ class binarytree:
                 metadata[_instance_key(cpv)] = d
                 path = d.get("PATH")
                 if not path:
-                    binpkg_format = d["BINPKG_FORMAT"]
-                    if binpkg_format == "xpak":
-                        if gpkg_only:
-                            if not gpkg_only_warned:
-                                writemsg(
-                                    colorize(
-                                        "WARN",
-                                        "Local XPAK packages are ignored due to 'binpkg-request-signature'.\n",
-                                    ),
-                                    noiselevel=-1,
-                                )
-                                gpkg_only_warned = True
-                            continue
-                        path = cpv + ".tbz2"
-                    elif binpkg_format == "gpkg":
-                        path = cpv + ".gpkg.tar"
-                    else:
+                    if gpkg_only:
+                        if not gpkg_only_warned:
+                            writemsg(
+                                colorize(
+                                    "WARN",
+                                    "Local XPAK packages are ignored due to 'binpkg-request-signature'.\n",
+                                ),
+                                noiselevel=-1,
+                            )
+                            gpkg_only_warned = True
                         continue
+                    else:
+                        path = cpv + ".tbz2"
 
                 if reindex:
                     basename = os.path.basename(path)
@@ -1019,20 +1013,9 @@ class binarytree:
                             pkg_paths[instance_key] = mypath
                             # update the path if the package has been moved
                             oldpath = d.get("PATH")
-                            if oldpath and oldpath != mypath:
-                                update_pkgindex = True
-                            # Omit PATH if it is the default path for
-                            # the current Packages format version.
-                            if (mypath != mycpv + ".tbz2") and (
-                                mypath != mycpv + ".gpkg.tar"
-                            ):
+                            if oldpath != mypath:
                                 d["PATH"] = mypath
-                                if not oldpath:
-                                    update_pkgindex = True
-                            else:
-                                d.pop("PATH", None)
-                                if oldpath:
-                                    update_pkgindex = True
+                                update_pkgindex = True
                             self.dbapi.cpv_inject(mycpv)
                             continue
                     if not os.access(full_path, os.R_OK):
@@ -1044,9 +1027,11 @@ class binarytree:
                         self.invalids.append(myfile[:-5])
                         continue
 
-                    binpkg_format = None
-                    if match:
-                        binpkg_format = match.get("BINPKG_FORMAT", None)
+                    try:
+                        binpkg_format = get_binpkg_format(myfile)
+                    except InvalidBinaryPackageFormat:
+                        self.invalids.append(myfile[:-5])
+                        continue
 
                     if gpkg_only:
                         if binpkg_format != "gpkg":
@@ -1110,7 +1095,7 @@ class binarytree:
                             )
                         )
                         for line in textwrap.wrap("".join(msg), 72):
-                            writemsg("!!! %s\n" % line, noiselevel=-1)
+                            writemsg(f"!!! {line}\n", noiselevel=-1)
                         self.invalids.append(mypkg)
                         continue
 
@@ -1122,7 +1107,7 @@ class binarytree:
                         build_id = self._parse_build_id(myfile)
                         if build_id < 1:
                             invalid_name = True
-                        elif myfile != "%s-%s.xpak" % (mypf, build_id):
+                        elif myfile != f"{mypf}-{build_id}.xpak":
                             invalid_name = True
                         else:
                             mypkg = mypkg[: -len(str(build_id)) - 1]
@@ -1130,12 +1115,12 @@ class binarytree:
                         build_id = self._parse_build_id(myfile)
                         if build_id > 0:
                             multi_instance = True
-                            if myfile != "%s-%s.gpkg.tar" % (mypf, build_id):
+                            if myfile != f"{mypf}-{build_id}.gpkg.tar":
                                 invalid_name = True
                             else:
                                 mypkg = mypkg[: -len(str(build_id)) - 1]
                         else:
-                            if myfile != "%s.gpkg.tar" % mypf:
+                            if myfile != f"{mypf}.gpkg.tar":
                                 invalid_name = True
                     elif myfile != mypf + ".tbz2":
                         invalid_name = True
@@ -1161,7 +1146,7 @@ class binarytree:
                         build_id = None
 
                     if multi_instance:
-                        name_split = catpkgsplit("%s/%s" % (mycat, mypf))
+                        name_split = catpkgsplit(f"{mycat}/{mypf}")
                         if (
                             name_split is None
                             or tuple(catsplit(mydir)) != name_split[:2]
@@ -1235,11 +1220,7 @@ class binarytree:
                         self.dbapi.cpv_remove(mycpv)
                         del pkg_paths[_instance_key(mycpv)]
 
-                    # record location if it's non-default
-                    if (mypath != mycpv + ".tbz2") and (mypath != mycpv + ".gpkg.tar"):
-                        d["PATH"] = mypath
-                    else:
-                        d.pop("PATH", None)
+                    d["PATH"] = mypath
                     metadata[_instance_key(mycpv)] = d
 
             if reindex:
@@ -1258,7 +1239,6 @@ class binarytree:
         return pkgindex if update_pkgindex else None
 
     def _populate_remote(self, getbinpkg_refresh=True):
-
         self._remote_has_index = False
         self._remotepkgs = {}
 
@@ -1285,7 +1265,7 @@ class binarytree:
                     user, passwd = user.split(":", 1)
 
             if port is not None:
-                port_str = ":%s" % (port,)
+                port_str = f":{port}"
                 if host.endswith(port_str):
                     host = host[: -len(port_str)]
             pkgindex_file = os.path.join(
@@ -1298,11 +1278,10 @@ class binarytree:
             )
             pkgindex = self._new_pkgindex()
             try:
-                f = io.open(
+                f = open(
                     _unicode_encode(
                         pkgindex_file, encoding=_encodings["fs"], errors="strict"
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 )
@@ -1310,7 +1289,7 @@ class binarytree:
                     pkgindex.read(f)
                 finally:
                     f.close()
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             local_timestamp = pkgindex.header.get("TIMESTAMP", None)
@@ -1362,7 +1341,7 @@ class binarytree:
                         )
                         if hasattr(f, "headers") and f.headers.get("timestamp", ""):
                             remote_timestamp = f.headers.get("timestamp")
-                    except IOError as err:
+                    except OSError as err:
                         if (
                             hasattr(err, "code") and err.code == 304
                         ):  # not modified (since local_timestamp)
@@ -1378,11 +1357,10 @@ class binarytree:
                             raise
                     except ValueError:
                         raise ParseError(
-                            "Invalid Portage BINHOST value '%s'" % url.lstrip()
+                            f"Invalid Portage BINHOST value '{url.lstrip()}'"
                         )
 
                 if f is None:
-
                     path = parsed_url.path.rstrip("/") + "/Packages"
 
                     if repo.fetchcommand is None and parsed_url.scheme == "ssh":
@@ -1391,7 +1369,7 @@ class binarytree:
                         # matches that of the cached Packages file.
                         ssh_args = ["ssh"]
                         if port is not None:
-                            ssh_args.append("-p%s" % (port,))
+                            ssh_args.append(f"-p{port}")
                         # NOTE: shlex evaluates embedded quotes
                         ssh_args.extend(
                             portage.util.shlex_split(
@@ -1412,7 +1390,7 @@ class binarytree:
                             if not fcmd:
                                 fcmd = self.settings.get("FETCHCOMMAND")
                                 if not fcmd:
-                                    raise EnvironmentError("FETCHCOMMAND is unset")
+                                    raise OSError("FETCHCOMMAND is unset")
                         else:
                             fcmd = repo.fetchcommand
 
@@ -1435,7 +1413,7 @@ class binarytree:
                             fcmd=fcmd, fcmd_vars=fcmd_vars
                         )
                         if not success:
-                            raise EnvironmentError("%s failed" % (setting,))
+                            raise OSError(f"{setting} failed")
                         f = open(tmp_filename, "rb")
 
                 f_dec = codecs.iterdecode(
@@ -1496,7 +1474,7 @@ class binarytree:
                     + "\n"
                 )
                 rmt_idx = pkgindex
-            except EnvironmentError as e:
+            except OSError as e:
                 # This includes URLError which is raised for SSL
                 # certificate errors when PEP 476 is supported.
                 writemsg(
@@ -1510,7 +1488,7 @@ class binarytree:
                     error_msg = str(e)
                 except UnicodeDecodeError as uerror:
                     error_msg = str(uerror.object, encoding="utf_8", errors="replace")
-                writemsg("!!! %s\n\n" % error_msg)
+                writemsg(f"!!! {error_msg}\n\n")
                 del e
                 pkgindex = None
             if proc is not None:
@@ -1531,7 +1509,7 @@ class binarytree:
                     f = atomic_ofstream(pkgindex_file)
                     pkgindex.write(f)
                     f.close()
-                except (IOError, PortageException):
+                except (OSError, PortageException):
                     if os.access(os.path.dirname(pkgindex_file), os.W_OK):
                         raise
                     # The current user doesn't have permission to cache the
@@ -1548,7 +1526,19 @@ class binarytree:
                         continue
 
                     if gpkg_only:
-                        binpkg_format = d.get("BINPKG_FORMAT", "xpak")
+                        try:
+                            binpkg_format = get_binpkg_format(
+                                d.get("PATH"), remote=True
+                            )
+                        except InvalidBinaryPackageFormat:
+                            writemsg(
+                                colorize(
+                                    "WARN",
+                                    f"{e}\n",
+                                ),
+                                noiselevel=-1,
+                            )
+                            continue
                         if binpkg_format != "gpkg":
                             if not gpkg_only_warned:
                                 writemsg(
@@ -1593,13 +1583,17 @@ class binarytree:
                 self._additional_pkgs[instance_key] = pkg
                 self.dbapi.cpv_inject(pkg)
 
-    def inject(self, cpv, filename=None):
+    def inject(self, cpv, current_pkg_path=None, allocated_pkg_path=None):
         """Add a freshly built package to the database.  This updates
         $PKGDIR/Packages with the new package metadata (including MD5).
         @param cpv: The cpv of the new package to inject
         @type cpv: string
-        @param filename: File path of the package to inject, or None if it's
-                already in the location returned by getname()
+        @param current_pkg_path: File path of the package to inject,
+               or None if it's already in the location returned by getname()
+        @type filename: string
+        @rtype: _pkg_str or None
+        @param allocated_pkg_path: File path of the package that was newly
+               allocated or None if it's not allocated.
         @type filename: string
         @rtype: _pkg_str or None
         @return: A _pkg_str instance on success, or None on failure.
@@ -1607,10 +1601,10 @@ class binarytree:
         mycat, mypkg = catsplit(cpv)
         if not self.populated:
             self.populate()
-        if filename is None:
+        if current_pkg_path is None:
             full_path = self.getname(cpv)
         else:
-            full_path = filename
+            full_path = current_pkg_path
         try:
             s = os.stat(full_path)
         except OSError as e:
@@ -1618,7 +1612,7 @@ class binarytree:
                 raise
             del e
             writemsg(
-                _("!!! Binary package does not exist: '%s'\n") % full_path,
+                f"!!! Binary package does not exist: '{full_path}'\n",
                 noiselevel=-1,
             )
             return
@@ -1631,7 +1625,15 @@ class binarytree:
                 noiselevel=-1,
             )
             return
-        binpkg_format = metadata["BINPKG_FORMAT"]
+
+        try:
+            binpkg_format = get_binpkg_format(full_path)
+        except InvalidBinaryPackageFormat as e:
+            writemsg(
+                f"!!! Invalid binary package: '{full_path}'\n",
+                noiselevel=-1,
+            )
+            return
 
         invalid_depend = False
         try:
@@ -1667,48 +1669,19 @@ class binarytree:
         try:
             os.makedirs(self.pkgdir, exist_ok=True)
             pkgindex_lock = lockfile(self._pkgindex_file, wantnewlockfile=1)
-            if filename is not None:
-                new_filename = self.getname(cpv, allocate_new=True)
+            if current_pkg_path is not None:
+                if allocated_pkg_path is not None:
+                    new_path = allocated_pkg_path
+                else:
+                    new_path = self.getname(cpv, allocate_new=True)
                 try:
-                    samefile = os.path.samefile(filename, new_filename)
+                    samefile = os.path.samefile(current_pkg_path, new_path)
                 except OSError:
                     samefile = False
                 if not samefile:
-                    self._ensure_dir(os.path.dirname(new_filename))
-                    _movefile(filename, new_filename, mysettings=self.settings)
-                full_path = new_filename
-
-            basename = os.path.basename(full_path)
-            pf = catsplit(cpv)[1]
-            if (build_id is None) and (not fetched) and binpkg_format:
-                # Apply the newly assigned BUILD_ID. This is intended
-                # to occur only for locally built packages. If the
-                # package was fetched, we want to preserve its
-                # attributes, so that we can later distinguish that it
-                # is identical to its remote counterpart.
-                build_id = self._parse_build_id(basename)
-                if build_id > 0:
-                    metadata["BUILD_ID"] = str(build_id)
-                    cpv = _pkg_str(
-                        cpv, metadata=metadata, settings=self.settings, db=self.dbapi
-                    )
-                    if binpkg_format == "xpak":
-                        if basename.endswith(".xpak"):
-                            binpkg = portage.xpak.tbz2(full_path)
-                            binary_data = binpkg.get_data()
-                            binary_data[b"BUILD_ID"] = _unicode_encode(
-                                metadata["BUILD_ID"]
-                            )
-                            binpkg.recompose_mem(portage.xpak.xpak_mem(binary_data))
-                    elif binpkg_format == "gpkg":
-                        binpkg = portage.gpkg.gpkg(self.settings, cpv, full_path)
-                        binpkg_metadata = binpkg.get_metadata()
-                        binpkg_metadata["BUILD_ID"] = _unicode_encode(
-                            metadata["BUILD_ID"]
-                        )
-                        binpkg.update_metadata(binpkg_metadata)
-                    else:
-                        raise InvalidBinaryPackageFormat(basename)
+                    self._ensure_dir(os.path.dirname(new_path))
+                    _movefile(current_pkg_path, new_path, mysettings=self.settings)
+                full_path = new_path
 
             self._file_permissions(full_path)
             pkgindex = self._load_pkgindex()
@@ -1787,8 +1760,6 @@ class binarytree:
                 else:
                     v = _unicode_decode(v)
                     metadata[k] = " ".join(v.split())
-
-        metadata["BINPKG_FORMAT"] = binpkg_format
 
         return metadata
 
@@ -1871,10 +1842,6 @@ class binarytree:
         """
 
         pkg_path = self.getname(cpv)
-        try:
-            binpkg_format = cpv.binpkg_format
-        except AttributeError:
-            raise KeyError("{} metadata not found!".format(cpv))
 
         d = dict(cpv._metadata.items())
         d.update(perform_multiple_checksums(pkg_path, hashes=self._pkgindex_hashes))
@@ -1883,18 +1850,10 @@ class binarytree:
         st = os.lstat(pkg_path)
         d["_mtime_"] = str(st[stat.ST_MTIME])
         d["SIZE"] = str(st.st_size)
-        d["BINPKG_FORMAT"] = binpkg_format
 
         rel_path = pkg_path[len(self.pkgdir) + 1 :]
-        # record location if it's non-default
-        if binpkg_format == "xpak":
-            if rel_path != cpv + ".tbz2":
-                d["PATH"] = rel_path
-        elif binpkg_format == "gpkg":
-            if rel_path != cpv + ".gpkg.tar":
-                d["PATH"] = rel_path
-        else:
-            raise InvalidBinaryPackageFormat(binpkg_format)
+        # Always record location
+        d["PATH"] = rel_path
 
         return d
 
@@ -2031,7 +1990,7 @@ class binarytree:
                 deps = use_reduce(deps, uselist=use, token_class=token_class)
                 deps = paren_enclose(deps)
             except portage.exception.InvalidDependString as e:
-                writemsg("%s: %s\n" % (k, e), noiselevel=-1)
+                writemsg(f"{k}: {e}\n", noiselevel=-1)
                 raise
             metadata[k] = deps
 
@@ -2047,18 +2006,23 @@ class binarytree:
         if not self.populated:
             self.populate()
         writemsg("\n\n", 1)
-        writemsg("mydep: %s\n" % mydep, 1)
+        writemsg(f"mydep: {mydep}\n", 1)
         mydep = dep_expand(mydep, mydb=self.dbapi, settings=self.settings)
-        writemsg("mydep: %s\n" % mydep, 1)
+        writemsg(f"mydep: {mydep}\n", 1)
         mykey = dep_getkey(mydep)
-        writemsg("mykey: %s\n" % mykey, 1)
+        writemsg(f"mykey: {mykey}\n", 1)
         mymatch = best(match_from_list(mydep, self.dbapi.cp_list(mykey)))
-        writemsg("mymatch: %s\n" % mymatch, 1)
+        writemsg(f"mymatch: {mymatch}\n", 1)
         if mymatch is None:
             return ""
         return mymatch
 
-    def getname(self, cpv, allocate_new=None):
+    def getname(self, cpv, allocate_new=None, remote_binpkg_format=None):
+        return self.getname_build_id(
+            cpv, allocate_new=allocate_new, remote_binpkg_format=remote_binpkg_format
+        )[0]
+
+    def getname_build_id(self, cpv, allocate_new=None, remote_binpkg_format=None):
         """Returns a file location for this package.
         If cpv has both build_time and build_id attributes, then the
         path to the specific corresponding instance is returned.
@@ -2075,8 +2039,9 @@ class binarytree:
             cpv = _pkg_str(cpv)
 
         filename = None
+        build_id = None
         if allocate_new:
-            filename = self._allocate_filename(cpv)
+            filename, build_id = self._allocate_filename(cpv, remote_binpkg_format)
         elif self._is_specific_instance(cpv):
             instance_key = self.dbapi._instance_key(cpv)
             path = self._pkg_paths.get(instance_key)
@@ -2093,50 +2058,33 @@ class binarytree:
                 if filename is not None:
                     filename = os.path.join(self.pkgdir, filename)
                 elif instance_key in self._additional_pkgs:
-                    return None
+                    return (None, None)
 
         if filename is None:
-            try:
-                binpkg_format = cpv.binpkg_format
-            except AttributeError:
-                # In order to force the caller to clarify its intent, do not
-                # use default BINPKG_FORMAT unless allocate_new is True.
-                # The caller can set cpv.binpkg_format in advance if something
-                # other than the default is desired here.
-                if allocate_new:
-                    binpkg_format = self.settings.get(
-                        "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-                    )
-                else:
-                    binpkg_format = None
+            binpkg_format = self.settings.get(
+                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+            )
 
             if not binpkg_format:
-                # Raise an error if the desired binpkg_format is not clear.
-                # The caller should either set allocate_new to True or else
-                # ensure that cpv.binpkg_format is set to a particular format.
-                raise InvalidBinaryPackageFormat(binpkg_format)
+                raise InvalidBinaryPackageFormat(
+                    "Unable to determine the binpkg format."
+                )
             elif binpkg_format == "xpak":
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
-                    filename = "%s-%s.xpak" % (
-                        os.path.join(self.pkgdir, cpv.cp, pf),
-                        "1",
-                    )
+                    filename = f"{os.path.join(self.pkgdir, cpv.cp, pf)}-1.xpak"
                 else:
                     filename = os.path.join(self.pkgdir, cpv + ".tbz2")
             elif binpkg_format == "gpkg":
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
-                    filename = "%s-%s.gpkg.tar" % (
-                        os.path.join(self.pkgdir, cpv.cp, pf),
-                        "1",
-                    )
+                    filename = f"{os.path.join(self.pkgdir, cpv.cp, pf)}-1.gpkg.tar"
                 else:
                     filename = os.path.join(self.pkgdir, cpv + ".gpkg.tar")
             else:
-                raise InvalidBinaryPackageFormat(binpkg_format)
+                raise InvalidBinaryPackageFormat(f"{binpkg_format}")
 
-        return filename
+        return (filename, build_id)
 
     def _is_specific_instance(self, cpv):
         specific = True
@@ -2157,23 +2105,26 @@ class binarytree:
                 max_build_id = x.build_id
         return max_build_id
 
-    def _allocate_filename(self, cpv):
-        try:
-            binpkg_format = cpv.binpkg_format
-        except AttributeError:
-            binpkg_format = self.settings.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
+    def _allocate_filename(self, cpv, remote_binpkg_format=None):
+        if remote_binpkg_format is None:
+            try:
+                binpkg_format = get_binpkg_format(cpv._metadata["PATH"])
+            except (AttributeError, KeyError):
+                binpkg_format = self.settings.get(
+                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+                )
+        else:
+            binpkg_format = remote_binpkg_format
 
+        # Do not create a new placeholder to avoid overwriting existing binpkgs.
         if binpkg_format == "xpak":
-            return os.path.join(self.pkgdir, cpv + ".tbz2")
+            return (os.path.join(self.pkgdir, cpv + ".tbz2"), None)
         elif binpkg_format == "gpkg":
-            return os.path.join(self.pkgdir, cpv + ".gpkg.tar")
+            return (os.path.join(self.pkgdir, cpv + ".gpkg.tar"), None)
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
-    def _allocate_filename_multi(self, cpv):
-
+    def _allocate_filename_multi(self, cpv, remote_binpkg_format=None):
         # First, get the max build_id found when _populate was
         # called.
         max_build_id = self._max_build_id(cpv)
@@ -2184,29 +2135,39 @@ class binarytree:
         pf = catsplit(cpv)[1]
         build_id = max_build_id + 1
 
-        try:
-            binpkg_format = cpv.binpkg_format
-        except AttributeError:
-            binpkg_format = self.settings.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
+        if remote_binpkg_format is None:
+            try:
+                binpkg_format = get_binpkg_format(cpv._metadata["PATH"])
+            except (AttributeError, KeyError):
+                binpkg_format = self.settings.get(
+                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+                )
+        else:
+            binpkg_format = remote_binpkg_format
 
         if binpkg_format == "xpak":
-            filename_format = "%s-%s.xpak"
+            binpkg_suffix = "xpak"
         elif binpkg_format == "gpkg":
-            filename_format = "%s-%s.gpkg.tar"
+            binpkg_suffix = "gpkg.tar"
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
         while True:
-            filename = filename_format % (
-                os.path.join(self.pkgdir, cpv.cp, pf),
-                build_id,
+            filename = (
+                f"{os.path.join(self.pkgdir, cpv.cp, pf)}-{build_id}.{binpkg_suffix}"
             )
             if os.path.exists(filename):
                 build_id += 1
             else:
-                return filename
+                try:
+                    # Avoid races
+                    ensure_dirs(os.path.dirname(filename))
+                    with open(filename, "x") as f:
+                        pass
+                except FileExistsError:
+                    build_id += 1
+                    continue
+                return (filename, build_id)
 
     @staticmethod
     def _parse_build_id(filename):
@@ -2296,15 +2257,14 @@ class binarytree:
     def _load_pkgindex(self):
         pkgindex = self._new_pkgindex()
         try:
-            f = io.open(
+            f = open(
                 _unicode_encode(
                     self._pkgindex_file, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             )
-        except EnvironmentError:
+        except OSError:
             pass
         else:
             try:
@@ -2314,7 +2274,6 @@ class binarytree:
         return pkgindex
 
     def _get_digests(self, pkg):
-
         try:
             cpv = pkg.cpv
         except AttributeError:

@@ -124,7 +124,7 @@ class _socket_file_wrapper(portage.proxy.objectproxy.ObjectProxy):
     def __getattribute__(self, attr):
         if attr == "close":
             return object.__getattribute__(self, "close")
-        return super(_socket_file_wrapper, self).__getattribute__(attr)
+        return super().__getattribute__(attr)
 
     def __enter__(self):
         return self
@@ -177,7 +177,6 @@ class Socks5ServerTestCase(TestCase):
             return f.read()
 
     def test_socks5_proxy(self):
-
         loop = global_event_loop()
 
         host = "127.0.0.1"
@@ -188,7 +187,6 @@ class Socks5ServerTestCase(TestCase):
 
         try:
             with AsyncHTTPServer(host, {path: content}, loop) as server:
-
                 settings = {
                     "PORTAGE_TMPDIR": tempdir,
                     "PORTAGE_BIN_PATH": PORTAGE_BIN_PATH,

@@ -1,4 +1,4 @@
-# check for missing calls to xdg-utils regen functions
+# Check for missing calls to xdg-utils regen functions
 
 xdg_desktop_database_check() {
 	type -P update-desktop-database &>/dev/null || return
@@ -8,19 +8,19 @@ xdg_desktop_database_check() {
 		[[ -d ${d} ]] || continue
 
 		local files=() find_args=()
-		# if the cache does not exist at all, we complain for any file
+		# If the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mimeinfo.cache ]] &&
 			find_args+=( -newercm "${d}"/mimeinfo.cache ) || missing=1
 
-		# look for any .desktop files that are newer than the cache
+		# Look for any .desktop files that are newer than the cache
 		# and that have any mime types defined
 		while read -r -d $'\0' f; do
 			files+=( "${f}" )
 		done < <(find "${d}" -name '*.desktop' "${find_args[@]}" \
 			-exec grep -lZi '^MimeType=' {} +)
 
-		# if any files were found, update the db to avoid repeating
+		# If any files were found, update the db to avoid repeating
 		# the warning for subsequent packages
 		if [[ ${files[@]} ]]; then
 			all_files+=("${files[@]}")
@@ -29,10 +29,10 @@ xdg_desktop_database_check() {
 		fi
 	done
 
-	# preinst initializes the baseline state for the posinst check
+	# Preinst initializes the baseline state for the posinst check
 	[[ ${PORTAGE_QA_PHASE} == preinst ]] && return
 
-	# parallel-install makes it impossible to blame a specific package
+	# Parallel-install makes it impossible to blame a specific package
 	has parallel-install ${FEATURES} && return
 
 	# The eqatag call is prohibitively expensive if the cache is
@@ -60,7 +60,8 @@ xdg_icon_cache_check() {
 			'(' -name '*.png' -o -name '*.svg'
 				-o -name '*.xpm' -o -name '*.icon' ')'
 		)
-		# if the cache does not exist at all, we complain for any file
+
+		# If the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/icon-theme.cache ]] &&
 			find_args+=( -newercm "${d}"/icon-theme.cache ) || missing=1
@@ -70,7 +71,7 @@ xdg_icon_cache_check() {
 			files+=( "${f}" )
 		done < <(find "${d}" -mindepth 2 -type f "${find_args[@]}" -print0)
 
-		# if any files were found, update the db to avoid repeating
+		# If any files were found, update the db to avoid repeating
 		# the warning for subsequent packages
 		if [[ ${files[@]} ]]; then
 			all_files+=("${files[@]}")
@@ -85,7 +86,7 @@ xdg_icon_cache_check() {
 	# parallel-install makes it impossible to blame a specific package
 	has parallel-install ${FEATURES} && return
 
-	# avoid false-positives on first install (bug 649464)
+	# Avoid false-positives on first install (bug #649464)
 	[[ ${PN} == gtk-update-icon-cache ]] && return
 
 	# The eqatag call is prohibitively expensive if the cache is
@@ -107,7 +108,7 @@ xdg_mimeinfo_database_check() {
 		[[ -d ${d} ]] || continue
 
 		local files=() find_args=()
-		# if the cache does not exist at all, we complain for any file
+		# If the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mime.cache ]] &&
 			find_args+=( -newercm "${d}"/mime.cache ) || missing=1

@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import io
 import itertools
 import logging
 import re
@@ -221,9 +220,8 @@ class Manifest:
         """Parse a manifest.  If myhashdict is given then data will be added too it.
         Otherwise, a new dict will be created and returned."""
         try:
-            with io.open(
+            with open(
                 _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
@@ -231,7 +229,7 @@ class Manifest:
                     myhashdict = {}
                 self._parseDigests(f, myhashdict=myhashdict, **kwargs)
             return myhashdict
-        except (OSError, IOError) as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise FileNotFound(file_path)
             else:
@@ -322,13 +320,12 @@ class Manifest:
             preserved_stats = {self.pkgdir.rstrip(os.sep): os.stat(self.pkgdir)}
             if myentries and not force:
                 try:
-                    with io.open(
+                    with open(
                         _unicode_encode(
                             self.getFullname(),
                             encoding=_encodings["fs"],
                             errors="strict",
                         ),
-                        mode="r",
                         encoding=_encodings["repo.content"],
                         errors="replace",
                     ) as f:
@@ -340,7 +337,7 @@ class Manifest:
                                 if oldentry != myentry:
                                     update_manifest = True
                                     break
-                except (IOError, OSError) as e:
+                except OSError as e:
                     if e.errno == errno.ENOENT:
                         pass
                     else:
@@ -370,7 +367,7 @@ class Manifest:
 
             if sign:
                 self.sign()
-        except (IOError, OSError) as e:
+        except OSError as e:
             if e.errno == errno.EACCES:
                 raise PermissionDenied(str(e))
             raise
@@ -464,21 +461,21 @@ class Manifest:
 
     def addFile(self, ftype, fname, hashdict=None, ignoreMissing=False):
         """Add entry to Manifest optionally using hashdict to avoid recalculation of hashes"""
-        if ftype == "AUX":
-            if not fname.startswith("files/"):
-                fname = os.path.join("files", fname)
-            if fname.startswith("files"):
-                fname = fname[6:]
+        if ftype == "AUX" and not fname.startswith("files/"):
+            fname = os.path.join("files", fname)
         if not os.path.exists(f"{self.pkgdir}{fname}") and not ignoreMissing:
             raise FileNotFound(fname)
         if ftype not in MANIFEST2_IDENTIFIERS:
             raise InvalidDataType(ftype)
+
+        if fname.startswith("files"):
+            fname = fname[6:]
         self.fhashdict[ftype][fname] = {}
         if hashdict is not None:
             self.fhashdict[ftype][fname].update(hashdict)
         if self.required_hashes.difference(set(self.fhashdict[ftype][fname])):
-            self.updateFileHashes(
-                ftype, fname, checkExisting=False, ignoreMissing=ignoreMissing
+            self.updateAllFileHashes(
+                ftype, [fname], checkExisting=False, ignoreMissing=ignoreMissing
             )
 
     def removeFile(self, ftype, fname):
@@ -539,9 +536,9 @@ class Manifest:
             os.path.basename(self.pkgdir.rstrip(os.path.sep)),
             self.pkgdir,
         )
-        distlist = set(
+        distlist = {
             distfile for cpv in cpvlist for distfile in self._getCpvDistfiles(cpv)
-        )
+        }
 
         if requiredDistfiles is None:
             # This allows us to force removal of stale digests for the
@@ -775,7 +772,7 @@ class Manifest:
 
     def updateHashesGuessType(self, fname, *args, **kwargs):
         """Regenerate hashes for the given file (guesses the type and then
-        calls updateFileHashes)."""
+        calls updateAllFileHashes)."""
         mytype = self.guessType(fname)
         if mytype is None:
             return
@@ -796,9 +793,8 @@ class Manifest:
         mfname = self.getFullname()
         if not os.path.exists(mfname):
             return []
-        with io.open(
+        with open(
             _unicode_encode(mfname, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as myfile:

@@ -146,7 +146,6 @@ class UserDict(MutableMapping):
     __slots__ = ("data",)
 
     def __init__(self, *args, **kwargs):
-
         self.data = {}
 
         if len(args) > 1:
@@ -298,13 +297,11 @@ def slot_dict_class(keys, prefix="_val_"):
     if v is None:
 
         class SlotDict:
-
             allowed_keys = keys_set
             _prefix = prefix
             __slots__ = ("__weakref__",) + tuple(prefix + k for k in allowed_keys)
 
             def __init__(self, *args, **kwargs):
-
                 if len(args) > 1:
                     raise TypeError(
                         "expected at most 1 positional argument, got " + repr(len(args))

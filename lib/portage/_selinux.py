@@ -81,7 +81,7 @@ def settype(newtype):
         ret[2] = newtype
         return ":".join(ret)
     except IndexError:
-        warnings.warn("Invalid SELinux context: %s" % getcontext())
+        warnings.warn(f"Invalid SELinux context: {getcontext()}")
         return None
 
 
@@ -98,7 +98,7 @@ def setexec(ctx="\n"):
         if selinux.security_getenforce() == 1:
             raise OSError(msg)
         else:
-            portage.writemsg("!!! %s\n" % msg, noiselevel=-1)
+            portage.writemsg(f"!!! {msg}\n", noiselevel=-1)
 
     if rc < 0:
         if selinux.security_getenforce() == 1:

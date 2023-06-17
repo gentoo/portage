@@ -33,7 +33,7 @@ class EverythingSet(PackageSet):
     _filter = None
 
     def __init__(self, vdbapi, **kwargs):
-        super(EverythingSet, self).__init__()
+        super().__init__()
         self._db = vdbapi
 
     def load(self):
@@ -47,7 +47,7 @@ class EverythingSet(PackageSet):
                 # SLOT installed, in order to avoid the possibility
                 # of unwanted upgrades as reported in bug #338959.
                 pkg = pkg_str(cpv, None)
-                atom = Atom("%s:%s" % (pkg.cp, pkg.slot))
+                atom = Atom(f"{pkg.cp}:{pkg.slot}")
                 if self._filter:
                     if self._filter(atom):
                         myatoms.append(atom)
@@ -63,7 +63,6 @@ class EverythingSet(PackageSet):
 
 
 class OwnerSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -71,7 +70,7 @@ class OwnerSet(PackageSet):
     )
 
     def __init__(self, vardb=None, exclude_files=None, files=None):
-        super(OwnerSet, self).__init__()
+        super().__init__()
         self._db = vardb
         self._exclude_files = exclude_files
         self._files = files
@@ -105,7 +104,7 @@ class OwnerSet(PackageSet):
         if not exclude_paths:
             for link, p in vardb._owners.iter_owners(paths):
                 pkg = pkg_str(link.mycpv, None)
-                rValue.add("%s:%s" % (pkg.cp, pkg.slot))
+                rValue.add(f"{pkg.cp}:{pkg.slot}")
         else:
             all_paths = set()
             all_paths.update(paths)
@@ -113,7 +112,7 @@ class OwnerSet(PackageSet):
             exclude_atoms = set()
             for link, p in vardb._owners.iter_owners(all_paths):
                 pkg = pkg_str(link.mycpv, None)
-                atom = "%s:%s" % (pkg.cp, pkg.slot)
+                atom = f"{pkg.cp}:{pkg.slot}"
                 rValue.add(atom)
                 # Returned paths are relative to ROOT and do not have
                 # a leading slash.
@@ -145,7 +144,6 @@ class OwnerSet(PackageSet):
 
 
 class VariableSet(EverythingSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -156,7 +154,7 @@ class VariableSet(EverythingSet):
     def __init__(
         self, vardb, metadatadb=None, variable=None, includes=None, excludes=None
     ):
-        super(VariableSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._metadatadb = metadatadb
         self._variable = variable
         self._includes = includes
@@ -167,15 +165,32 @@ class VariableSet(EverythingSet):
         if not ebuild:
             return False
         (values,) = self._metadatadb.aux_get(ebuild, [self._variable])
-        values = values.split()
-        if self._includes and not self._includes.intersection(values):
+        values_list = values.split()
+
+        if "DEPEND" in self._variable:
+            include_atoms = []
+            for include in self._includes:
+                include_atoms.append(Atom(include))
+
+            for x in use_reduce(values, token_class=Atom):
+                if not isinstance(x, Atom):
+                    continue
+
+                for include_atom in include_atoms:
+                    if include_atom.match(x):
+                        return True
+
             return False
-        if self._excludes and self._excludes.intersection(values):
+
+        if self._includes and not self._includes.intersection(values_list):
             return False
+
+        if self._excludes and self._excludes.intersection(values_list):
+            return False
+
         return True
 
     def singleBuilder(cls, options, settings, trees):
-
         variable = options.get("variable")
         if variable is None:
             raise SetConfigError(_("missing required attribute: 'variable'"))
@@ -204,7 +219,6 @@ class VariableSet(EverythingSet):
 
 
 class SubslotChangedSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -214,7 +228,7 @@ class SubslotChangedSet(PackageSet):
     )
 
     def __init__(self, portdb=None, vardb=None):
-        super(SubslotChangedSet, self).__init__()
+        super().__init__()
         self._portdb = portdb
         self._vardb = vardb
 
@@ -225,7 +239,7 @@ class SubslotChangedSet(PackageSet):
         cp_list = self._vardb.cp_list
         for cp in self._vardb.cp_all():
             for pkg in cp_list(cp):
-                slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
+                slot_atom = f"{pkg.cp}:{pkg.slot}"
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -241,7 +255,6 @@ class SubslotChangedSet(PackageSet):
 
 
 class DowngradeSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -251,7 +264,7 @@ class DowngradeSet(PackageSet):
     )
 
     def __init__(self, portdb=None, vardb=None):
-        super(DowngradeSet, self).__init__()
+        super().__init__()
         self._portdb = portdb
         self._vardb = vardb
 
@@ -264,7 +277,7 @@ class DowngradeSet(PackageSet):
         for cp in self._vardb.cp_all():
             for cpv in cp_list(cp):
                 pkg = pkg_str(cpv, None)
-                slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
+                slot_atom = f"{pkg.cp}:{pkg.slot}"
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -280,7 +293,6 @@ class DowngradeSet(PackageSet):
 
 
 class UnavailableSet(EverythingSet):
-
     _operations = ["unmerge"]
 
     description = (
@@ -290,14 +302,13 @@ class UnavailableSet(EverythingSet):
     )
 
     def __init__(self, vardb, metadatadb=None):
-        super(UnavailableSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._metadatadb = metadatadb
 
     def _filter(self, atom):
         return not self._metadatadb.match(atom)
 
     def singleBuilder(cls, options, settings, trees):
-
         metadatadb = options.get("metadata-source", "porttree")
         if not metadatadb in trees:
             raise SetConfigError(
@@ -310,7 +321,6 @@ class UnavailableSet(EverythingSet):
 
 
 class UnavailableBinaries(EverythingSet):
-
     _operations = (
         "merge",
         "unmerge",
@@ -323,7 +333,7 @@ class UnavailableBinaries(EverythingSet):
     )
 
     def __init__(self, vardb, metadatadb=None):
-        super(UnavailableBinaries, self).__init__(vardb)
+        super().__init__(vardb)
         self._metadatadb = metadatadb
 
     def _filter(self, atom):
@@ -334,7 +344,6 @@ class UnavailableBinaries(EverythingSet):
         return not self._metadatadb.cpv_exists(inst_cpv)
 
     def singleBuilder(cls, options, settings, trees):
-
         metadatadb = options.get("metadata-source", "bintree")
         if not metadatadb in trees:
             raise SetConfigError(
@@ -350,7 +359,7 @@ class CategorySet(PackageSet):
     _operations = ["merge", "unmerge"]
 
     def __init__(self, category, dbapi, only_visible=True):
-        super(CategorySet, self).__init__()
+        super().__init__()
         self._db = dbapi
         self._category = category
         self._check = only_visible
@@ -358,7 +367,7 @@ class CategorySet(PackageSet):
             s = "visible"
         else:
             s = "all"
-        self.description = "Package set containing %s packages of category %s" % (
+        self.description = "Package set containing {} packages of category {}".format(
             s,
             self._category,
         )
@@ -438,12 +447,11 @@ class AgeSet(EverythingSet):
     _aux_keys = ("BUILD_TIME",)
 
     def __init__(self, vardb, mode="older", age=7):
-        super(AgeSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._mode = mode
         self._age = age
 
     def _filter(self, atom):
-
         cpv = self._db.match(atom)[0]
         try:
             (date,) = self._db.aux_get(cpv, self._aux_keys)
@@ -477,12 +485,11 @@ class DateSet(EverythingSet):
     _aux_keys = ("BUILD_TIME",)
 
     def __init__(self, vardb, date, mode="older"):
-        super(DateSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._mode = mode
         self._date = date
 
     def _filter(self, atom):
-
         cpv = self._db.match(atom)[0]
         try:
             (date,) = self._db.aux_get(cpv, self._aux_keys)
@@ -572,7 +579,7 @@ class RebuiltBinaries(EverythingSet):
     _aux_keys = ("BUILD_TIME",)
 
     def __init__(self, vardb, bindb=None):
-        super(RebuiltBinaries, self).__init__(vardb, bindb=bindb)
+        super().__init__(vardb, bindb=bindb)
         self._bindb = bindb
 
     def _filter(self, atom):
@@ -591,7 +598,6 @@ class RebuiltBinaries(EverythingSet):
 
 
 class ChangedDepsSet(PackageSet):
-
     _operations = ["merge", "unmerge"]
 
     description = (
@@ -601,7 +607,7 @@ class ChangedDepsSet(PackageSet):
     )
 
     def __init__(self, portdb=None, vardb=None):
-        super(ChangedDepsSet, self).__init__()
+        super().__init__()
         self._portdb = portdb
         self._vardb = vardb
 
@@ -655,7 +661,7 @@ class ChangedDepsSet(PackageSet):
 
             # if dependencies don't match, trigger the rebuild.
             if vdbvars != pdbvars:
-                atoms.append("=%s" % cpv)
+                atoms.append(f"={cpv}")
 
         self._setAtoms(atoms)
 

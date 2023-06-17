@@ -64,7 +64,6 @@ FAILURE = 1
 
 
 class Scheduler(PollScheduler):
-
     # max time between loadavg checks (seconds)
     _loadavg_latency = 30
 
@@ -326,7 +325,7 @@ class Scheduler(PollScheduler):
             # clear out existing fetch log if it exists
             try:
                 open(self._fetch_log, "w").close()
-            except EnvironmentError:
+            except OSError:
                 pass
 
         self._running_portage = None
@@ -340,7 +339,6 @@ class Scheduler(PollScheduler):
             )
 
     def _handle_self_update(self):
-
         if self._opts_no_self_update.intersection(self.myopts):
             return os.EX_OK
 
@@ -455,7 +453,7 @@ class Scheduler(PollScheduler):
                     msg.append(pkg_str)
                 msg.append("")
                 writemsg_level(
-                    "".join("%s\n" % (l,) for l in msg),
+                    "".join(f"{l}\n" for l in msg),
                     level=logging.INFO,
                     noiselevel=-1,
                 )
@@ -494,7 +492,6 @@ class Scheduler(PollScheduler):
         return interactive_tasks
 
     def _set_graph_config(self, graph_config):
-
         if graph_config is None:
             self._graph_config = None
             self._pkg_cache = {}
@@ -728,11 +725,11 @@ class Scheduler(PollScheduler):
             portdb = x.root_config.trees["porttree"].dbapi
             ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
             if ebuild_path is None:
-                raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                raise AssertionError(f"ebuild not found for '{x.cpv}'")
             pkgsettings["O"] = os.path.dirname(ebuild_path)
             if not digestgen(mysettings=pkgsettings, myportdb=portdb):
                 writemsg_level(
-                    "!!! Unable to generate manifest for '%s'.\n" % x.cpv,
+                    f"!!! Unable to generate manifest for '{x.cpv}'.\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -777,7 +774,7 @@ class Scheduler(PollScheduler):
             quiet_config = quiet_settings[root_config.root]
             ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
             if ebuild_path is None:
-                raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                raise AssertionError(f"ebuild not found for '{x.cpv}'")
             quiet_config["O"] = os.path.dirname(ebuild_path)
             if not digestcheck([], quiet_config, strict=True):
                 failures |= 1
@@ -787,12 +784,10 @@ class Scheduler(PollScheduler):
         return os.EX_OK
 
     def _add_prefetchers(self):
-
         if not self._parallel_fetch:
             return
 
         if self._parallel_fetch:
-
             prefetchers = self._prefetchers
 
             for pkg in self._mergelist:
@@ -819,7 +814,6 @@ class Scheduler(PollScheduler):
             pass
 
         elif pkg.type_name == "ebuild":
-
             prefetcher = EbuildFetcher(
                 background=True,
                 config_pool=self._ConfigPool(
@@ -838,7 +832,6 @@ class Scheduler(PollScheduler):
             and "--getbinpkg" in self.myopts
             and pkg.root_config.trees["bintree"].isremote(pkg.cpv)
         ):
-
             prefetcher = BinpkgPrefetcher(
                 background=True, pkg=pkg, scheduler=self._sched_iface
             )
@@ -908,7 +901,6 @@ class Scheduler(PollScheduler):
             current_task = None
 
             try:
-
                 # Clean up the existing build dir, in case pkg_pretend
                 # checks for available space (bug #390711).
                 if existing_builddir:
@@ -921,7 +913,7 @@ class Scheduler(PollScheduler):
                         portdb = root_config.trees["porttree"].dbapi
                         ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
                         if ebuild_path is None:
-                            raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                            raise AssertionError(f"ebuild not found for '{x.cpv}'")
                     portage.package.ebuild.doebuild.doebuild_environment(
                         ebuild_path,
                         "clean",
@@ -975,7 +967,11 @@ class Scheduler(PollScheduler):
                         continue
 
                     if fetched:
-                        bintree.inject(x.cpv, filename=fetched)
+                        bintree.inject(
+                            x.cpv,
+                            current_pkg_path=fetched,
+                            allocated_pkg_path=fetcher.pkg_allocated_path,
+                        )
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
@@ -989,7 +985,7 @@ class Scheduler(PollScheduler):
                     portdb = root_config.trees["porttree"].dbapi
                     ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
                     if ebuild_path is None:
-                        raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                        raise AssertionError(f"ebuild not found for '{x.cpv}'")
                     settings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
                     if self._build_opts.buildpkgonly:
                         settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
@@ -1007,10 +1003,10 @@ class Scheduler(PollScheduler):
 
                 vardb = root_config.trees["vartree"].dbapi
                 settings["REPLACING_VERSIONS"] = " ".join(
-                    set(
+                    {
                         portage.versions.cpv_getversion(match)
                         for match in vardb.match(x.slot_atom) + vardb.match("=" + x.cpv)
-                    )
+                    }
                 )
                 pretend_phase = EbuildPhase(
                     phase="pretend", scheduler=sched_iface, settings=settings
@@ -1024,7 +1020,6 @@ class Scheduler(PollScheduler):
                     self._record_pkg_failure(x, settings, ret)
                 portage.elog.elog_process(x.cpv, settings)
             finally:
-
                 if current_task is not None:
                     if current_task.isAlive():
                         current_task.cancel()
@@ -1122,15 +1117,12 @@ class Scheduler(PollScheduler):
             return rval
 
         while True:
-
             received_signal = []
 
             def sighandler(signum, frame):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 signal.signal(signal.SIGTERM, signal.SIG_IGN)
-                portage.util.writemsg(
-                    "\n\nExiting on signal %(signal)s\n" % {"signal": signum}
-                )
+                portage.util.writemsg(f"\n\nExiting on signal {signum}\n")
                 self.terminate()
                 received_signal.append(128 + signum)
 
@@ -1233,7 +1225,7 @@ class Scheduler(PollScheduler):
                         ),
                         mode="rb",
                     )
-                except IOError:
+                except OSError:
                     pass
                 else:
                     if log_path.endswith(".gz"):
@@ -1247,7 +1239,7 @@ class Scheduler(PollScheduler):
                     for line in log_file:
                         writemsg_level(line, noiselevel=-1)
                 except zlib.error as e:
-                    writemsg_level("%s\n" % (e,), level=logging.ERROR, noiselevel=-1)
+                    writemsg_level(f"{e}\n", level=logging.ERROR, noiselevel=-1)
                 finally:
                     log_file.close()
                     if log_file_real is not None:
@@ -1266,15 +1258,13 @@ class Scheduler(PollScheduler):
             and self._failed_pkgs_die_msgs
             and not mod_echo_output
         ):
-
             for mysettings, key, logentries in self._failed_pkgs_die_msgs:
                 root_msg = ""
                 if mysettings["ROOT"] != "/":
-                    root_msg = " merged to %s" % mysettings["ROOT"]
+                    root_msg = f" merged to {mysettings['ROOT']}"
                 print()
                 printer.einfo(
-                    "Error messages for package %s%s:"
-                    % (colorize("INFORM", key), root_msg)
+                    f"Error messages for package {colorize('INFORM', key)}{root_msg}:"
                 )
                 print()
                 for phase in portage.const.EBUILD_PHASES:
@@ -1293,7 +1283,7 @@ class Scheduler(PollScheduler):
         if len(self._failed_pkgs_all) > 1 or (self._failed_pkgs_all and keep_going):
             if len(self._failed_pkgs_all) > 1:
                 msg = (
-                    "The following %d packages have " % len(self._failed_pkgs_all)
+                    f"The following {len(self._failed_pkgs_all)} packages have "
                     + "failed to build, install, or execute postinst:"
                 )
             else:
@@ -1307,7 +1297,7 @@ class Scheduler(PollScheduler):
                 printer.eerror(line)
             printer.eerror("")
             for failed_pkg in self._failed_pkgs_all:
-                msg = " %s" % (failed_pkg.pkg,)
+                msg = f" {failed_pkg.pkg}"
                 if failed_pkg.postinst_failure:
                     msg += " (postinst failed)"
                 log_path = self._locate_failure_log(failed_pkg)
@@ -1315,7 +1305,7 @@ class Scheduler(PollScheduler):
                     msg += ", Log file:"
                 printer.eerror(msg)
                 if log_path is not None:
-                    printer.eerror("  '%s'" % colorize("INFORM", log_path))
+                    printer.eerror(f"  '{colorize('INFORM', log_path)}'")
             printer.eerror("")
 
         if self._failed_pkgs_all:
@@ -1328,7 +1318,6 @@ class Scheduler(PollScheduler):
             self._failed_pkgs_die_msgs.append((mysettings, key, errors))
 
     def _locate_failure_log(self, failed_pkg):
-
         log_paths = [failed_pkg.build_log]
 
         for log_path in log_paths:
@@ -1547,7 +1536,6 @@ class Scheduler(PollScheduler):
         self._event_loop.run_until_complete(self._main_exit)
 
     def _merge(self):
-
         if self._opts_no_background.intersection(self.myopts):
             self._set_max_jobs(1)
 
@@ -1696,7 +1684,7 @@ class Scheduler(PollScheduler):
         completed_tasks = self._completed_tasks
 
         dependent = False
-        traversed_nodes = set([pkg])
+        traversed_nodes = {pkg}
         direct_deps = graph.child_nodes(pkg)
         node_stack = direct_deps
         direct_deps = frozenset(direct_deps)
@@ -1754,9 +1742,7 @@ class Scheduler(PollScheduler):
         return self._jobs
 
     def _schedule_tasks(self):
-
         while True:
-
             state_change = 0
 
             # When the number of jobs and merges drops to zero,
@@ -1851,15 +1837,12 @@ class Scheduler(PollScheduler):
         """
 
         if self._jobs and self._max_load is not None:
-
             current_time = time.time()
 
             if self._sigcont_time is not None:
-
                 elapsed_seconds = current_time - self._sigcont_time
                 # elapsed_seconds < 0 means the system clock has been adjusted
                 if elapsed_seconds > 0 and elapsed_seconds < self._sigcont_delay:
-
                     if self._job_delay_timeout_id is not None:
                         self._job_delay_timeout_id.cancel()
 
@@ -1884,7 +1867,6 @@ class Scheduler(PollScheduler):
             elapsed_seconds = current_time - self._previous_job_start_time
             # elapsed_seconds < 0 means the system clock has been adjusted
             if elapsed_seconds > 0 and elapsed_seconds < delay:
-
                 if self._job_delay_timeout_id is not None:
                     self._job_delay_timeout_id.cancel()
 
@@ -1904,7 +1886,6 @@ class Scheduler(PollScheduler):
         state_change = 0
 
         while True:
-
             if not self._keep_scheduling():
                 return bool(state_change)
 
@@ -1972,7 +1953,6 @@ class Scheduler(PollScheduler):
         return prefetcher
 
     def _task(self, pkg):
-
         pkg_to_replace = None
         if pkg.operation != "uninstall":
             vardb = pkg.root_config.trees["vartree"].dbapi
@@ -2020,9 +2000,9 @@ class Scheduler(PollScheduler):
 
     def _failed_pkg_msg(self, failed_pkg, action, preposition):
         pkg = failed_pkg.pkg
-        msg = "%s to %s %s" % (bad("Failed"), action, colorize("INFORM", pkg.cpv))
+        msg = f"{bad('Failed')} to {action} {colorize('INFORM', pkg.cpv)}"
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " %s %s" % (preposition, pkg.root)
+            msg += f" {preposition} {pkg.root}"
 
         log_path = self._locate_failure_log(failed_pkg)
         if log_path is not None:
@@ -2030,7 +2010,7 @@ class Scheduler(PollScheduler):
         self._status_msg(msg)
 
         if log_path is not None:
-            self._status_msg(" '%s'" % (colorize("INFORM", log_path),))
+            self._status_msg(f" '{colorize('INFORM', log_path)}'")
 
     def _status_msg(self, msg):
         """
@@ -2158,13 +2138,13 @@ class Scheduler(PollScheduler):
             if not (isinstance(task, Package) and task.operation == "merge"):
                 continue
             pkg = task
-            msg = "emerge --keep-going:" + " %s" % (pkg.cpv,)
+            msg = "emerge --keep-going:" + f" {pkg.cpv}"
             if pkg.root_config.settings["ROOT"] != "/":
-                msg += " for %s" % (pkg.root,)
+                msg += f" for {pkg.root}"
             if not atoms:
                 msg += " dropped because it is masked or unavailable"
             else:
-                msg += " dropped because it requires %s" % ", ".join(set(atoms))
+                msg += f" dropped because it requires {', '.join(set(atoms))}"
             for line in textwrap.wrap(msg, msg_width):
                 eerror(line, phase="other", key=pkg.cpv)
             settings = self.pkgsettings[pkg.root]
@@ -2191,16 +2171,14 @@ class Scheduler(PollScheduler):
         it's supposed to be added or removed. Otherwise, do nothing.
         """
 
-        if set(
-            (
-                "--buildpkgonly",
-                "--fetchonly",
-                "--fetch-all-uri",
-                "--oneshot",
-                "--onlydeps",
-                "--pretend",
-            )
-        ).intersection(self.myopts):
+        if {
+            "--buildpkgonly",
+            "--fetchonly",
+            "--fetch-all-uri",
+            "--oneshot",
+            "--onlydeps",
+            "--pretend",
+        }.intersection(self.myopts):
             return
 
         if pkg.root != self.target_root:
@@ -2221,7 +2199,6 @@ class Scheduler(PollScheduler):
             atom = self._world_atoms.get(pkg)
 
         try:
-
             if hasattr(world_set, "lock"):
                 world_set.lock()
                 world_locked = True
@@ -2241,16 +2218,16 @@ class Scheduler(PollScheduler):
                 if atom is not None:
                     if hasattr(world_set, "add"):
                         self._status_msg(
-                            ('Recording %s in "world" ' + "favorites file...") % atom
+                            f'Recording {atom} in "world" favorites file...'
                         )
                         logger.log(
-                            " === (%s of %s) Updating world file (%s)"
-                            % (pkg_count.curval, pkg_count.maxval, pkg.cpv)
+                            f" === ({pkg_count.curval} of {pkg_count.maxval}) "
+                            f"Updating world file ({pkg.cpv})"
                         )
                         world_set.add(atom)
                     else:
                         writemsg_level(
-                            '\n!!! Unable to record %s in "world"\n' % (atom,),
+                            f'\n!!! Unable to record {atom} in "world"\n',
                             level=logging.WARN,
                             noiselevel=-1,
                         )

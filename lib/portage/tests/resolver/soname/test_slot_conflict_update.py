@@ -1,7 +1,6 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -15,7 +14,6 @@ from portage.output import colorize
 
 class SonameSlotConflictUpdateTestCase(TestCase):
     def testSonameSlotConflictUpdate(self):
-
         binpkgs = {
             "app-text/podofo-0.9.2": {
                 "RDEPEND": "dev-util/boost-build",
@@ -103,7 +101,7 @@ class SonameSlotConflictUpdateTestCase(TestCase):
                     world=world,
                     debug=False,
                     user_config={
-                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                        "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
                     },
                 )
 

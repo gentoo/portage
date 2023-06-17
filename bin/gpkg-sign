@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+# Copyright 1999-2022 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+import argparse
+import sys
+
+import portage
+import portage.exception
+
+portage._internal_caller = True
+from portage import gpkg
+
+
+def main(
+    gpkg_file, keep_current_signature=False, allow_unsigned=False, skip_signed=False
+):
+    eout = portage.output.EOutput()
+
+    if not portage.settings.get("BINPKG_GPG_SIGNING_GPG_HOME"):
+        eout.eerror("BINPKG_GPG_SIGNING_GPG_HOME is not set")
+        exit(1)
+
+    if not portage.settings.get("BINPKG_GPG_SIGNING_KEY"):
+        eout.eerror("BINPKG_GPG_SIGNING_KEY is not set")
+        exit(1)
+
+    try:
+        package = gpkg.gpkg(settings=portage.settings, gpkg_file=gpkg_file)
+        if allow_unsigned:
+            package.request_signature = False
+        package._verify_binpkg()
+        if skip_signed and package.signature_exist:
+            eout.einfo(f"{gpkg_file} already signed, skipping.")
+            return
+        package.update_signature(keep_current_signature=keep_current_signature)
+        eout.einfo(f"{gpkg_file} signed.")
+    except portage.exception.FileNotFound:
+        eout.eerror(f"File not found: {gpkg_file}")
+        exit(1)
+    except portage.exception.InvalidBinaryPackageFormat:
+        eout.eerror(f"Invalid binary package format: {gpkg_file}")
+        exit(1)
+    except portage.exception.SignatureException:
+        eout.eerror(f"Signature exception: {gpkg_file}")
+        exit(1)
+
+
+if __name__ == "__main__":
+    usage = "gpkg-sign [options] <gpkg package file>"
+    parser = argparse.ArgumentParser(usage=usage)
+    parser.add_argument(
+        "--keep-current-signature",
+        action="store_true",
+        help="Keep existing signature when updating signature (default: false)",
+    )
+    parser.add_argument(
+        "--allow-unsigned",
+        action="store_true",
+        help="Allow signing from unsigned packages when binpkg-request-signature is enabled (default: false)",
+    )
+    parser.add_argument(
+        "--skip-signed",
+        action="store_true",
+        help="Skip signing if a package is already signed (default: false)",
+    )
+    options, args = parser.parse_known_args(sys.argv[1:])
+
+    if not args:
+        parser.error("no GPKG oackage file specified")
+
+    main(
+        args[0],
+        keep_current_signature=options.keep_current_signature,
+        allow_unsigned=options.allow_unsigned,
+        skip_signed=options.skip_signed,
+    )

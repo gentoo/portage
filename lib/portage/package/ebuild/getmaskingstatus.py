@@ -12,7 +12,6 @@ from portage.versions import _pkg_str
 
 
 class _UnmaskHint:
-
     __slots__ = ("key", "value")
 
     def __init__(self, key, value):
@@ -21,7 +20,6 @@ class _UnmaskHint:
 
 
 class _MaskReason:
-
     __slots__ = ("category", "message", "unmask_hint")
 
     def __init__(self, category, message, unmask_hint=None):
@@ -43,7 +41,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None, myrepo=None):
 
 
 def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
-
     metadata = None
     installed = False
     if not isinstance(mycpv, str):
@@ -90,9 +87,9 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
     properties = metadata["PROPERTIES"]
     restrict = metadata["RESTRICT"]
     if not eapi_is_supported(eapi):
-        return [_MaskReason("EAPI", "EAPI %s" % eapi)]
+        return [_MaskReason("EAPI", f"EAPI {eapi}")]
     if _eapi_is_deprecated(eapi) and not installed:
-        return [_MaskReason("EAPI", "EAPI %s" % eapi)]
+        return [_MaskReason("EAPI", f"EAPI {eapi}")]
     egroups = settings.configdict["backupenv"].get("ACCEPT_KEYWORDS", "").split()
     global_accept_keywords = settings.get("ACCEPT_KEYWORDS", "")
     pgroups = global_accept_keywords.split()
@@ -149,7 +146,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
     try:
         missing_licenses = settings._getMissingLicenses(mycpv, metadata)
         if missing_licenses:
-            allowed_tokens = set(["||", "(", ")"])
+            allowed_tokens = {"||", "(", ")"}
             allowed_tokens.update(missing_licenses)
             license_split = licenses.split()
             license_split = [x for x in license_split if x in allowed_tokens]
@@ -168,7 +165,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
     try:
         missing_properties = settings._getMissingProperties(mycpv, metadata)
         if missing_properties:
-            allowed_tokens = set(["||", "(", ")"])
+            allowed_tokens = {"||", "(", ")"}
             allowed_tokens.update(missing_properties)
             properties_split = properties.split()
             properties_split = [x for x in properties_split if x in allowed_tokens]
@@ -185,7 +182,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
             msg.append("in RESTRICT")
             rValue.append(_MaskReason("RESTRICT", " ".join(msg)))
     except InvalidDependString as e:
-        rValue.append(_MaskReason("invalid", "RESTRICT: %s" % (e,)))
+        rValue.append(_MaskReason("invalid", f"RESTRICT: {e}"))
 
     # Only show KEYWORDS masks for installed packages
     # if they're not masked for any other reason.

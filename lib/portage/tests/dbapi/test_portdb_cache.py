@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -23,9 +23,21 @@ class PortdbCacheTestCase(TestCase):
             "dev-libs/A-2": {},
             "sys-apps/B-1": {},
             "sys-apps/B-2": {},
+            "sys-apps/C-1": {
+                "EAPI": 8,
+                "MISC_CONTENT": "inherit bar foo baz",
+            },
         }
 
-        playground = ResolverPlayground(ebuilds=ebuilds, debug=debug)
+        # The convoluted structure here is to test accumulation
+        # of IDEPEND across eclasses (bug #870295).
+        eclasses = {
+            "foo": ("inherit bar",),
+            "bar": ("IDEPEND=dev-libs/A",),
+            "baz": ("IDEPEND=",),
+        }
+
+        playground = ResolverPlayground(ebuilds=ebuilds, eclasses=eclasses, debug=debug)
         settings = playground.settings
         eprefix = settings["EPREFIX"]
         test_repo_location = settings.repositories["test_repo"].location
@@ -161,9 +173,20 @@ class PortdbCacheTestCase(TestCase):
 			"""
                 ),
             ),
+            (portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c")
+            + (
+                textwrap.dedent(
+                    """
+				import os, sys, portage
+				location = portage.portdb.repositories['test_repo'].location
+				if not portage.portdb._pregen_auxdb[location]["sys-apps/C-1"]['IDEPEND']:
+					sys.exit(1)
+			"""
+                ),
+            ),
             # Test auto-detection and preference for md5-cache when both
             # cache formats are available but layout.conf is absent.
-            (BASH_BINARY, "-c", "rm %s" % portage._shell_quote(layout_conf_path)),
+            (BASH_BINARY, "-c", f"rm {portage._shell_quote(layout_conf_path)}"),
             python_cmd
             + (
                 textwrap.dedent(
@@ -229,9 +252,8 @@ class PortdbCacheTestCase(TestCase):
                 stdout = subprocess.PIPE
 
             for i, args in enumerate(test_commands):
-
                 if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), "callable at index %s failed" % (i,))
+                    self.assertTrue(args[0](), f"callable at index {i} failed")
                     continue
 
                 proc = subprocess.Popen(args, env=env, stdout=stdout)

@@ -1,5 +1,10 @@
 # Check for pkg-config file issues
 
+# Ensure that ver_test is available.
+if ! ___eapi_has_version_functions; then
+	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+fi
+
 pkgconfig_check() {
 	local files=()
 	# Make a list of .pc files and bail out if there aren't any
@@ -27,7 +32,7 @@ pkgconfig_check() {
 	# seems like f.d.o, OpenBSD, and of course pkgconf do though.
 	# Need --maximum-traverse-depth=1 to avoid checking deps and giving
 	# unrelated warnings/errors.
-	if ! pkg-config --maximum-traverse-depth=1 --validate "${files[@]}" ; then
+	if ! pkg-config --maximum-traverse-depth=1 --with-path="${ED}"/usr/{lib*,share}/pkgconfig --validate "${files[@]}" ; then
 		eqawarn "QA Notice: pkg-config files which fail validation found!"
 		eqawarn "Run 'pkg-config --validate ...' for more information"
 	fi
@@ -38,6 +43,9 @@ pkgconfig_check() {
 		for f in "${files[@]}" ; do
 			local key
 			for key in prefix exec_prefix libdir includedir ; do
+				# Check if the variable is even in there (bug #860825)
+				grep -E -q "^${key}" "${f}" || continue
+
 				local value=$(pkg-config --variable="${key}" "${f}")
 
 				if [[ ${value} != "${EPREFIX}"* ]] ; then
@@ -74,7 +82,7 @@ pkgconfig_check() {
 			fi
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
 			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/, or libfoo
-			if grep -qP '=(/usr)?/lib\b' ${f} ; then
+			if grep -E -q '=(/usr)?/lib\b' ${f} ; then
 				bad_libdir+=( "${f//${D}}" )
 			fi
 		fi
@@ -86,39 +94,56 @@ pkgconfig_check() {
 		eqatag -v pkgconfig.bad-libdir "${bad_libdir[@]}"
 	fi
 
-	# Check for mismatched Version field vs ${PV}
+	# Check for mismatched .pc Version field vs ${PV}. As this check
+	# initially caused false-positives, i.e., reports of a mismatch
+	# where the mismatch was intentional, it is now an opt-in check.
 	# To be safe, let's make sure _all_ installed .pcs have a bad Version
 	# before warning, as this should catch the general cases we're worried
 	# about, while avoiding any pathological cases e.g. multiple libraries
 	# with different versioning within one package.
 	# Example bugs: bug #833895, bug #833887.
 
-	# Default to PV if QA_PKGCONFIG_VERSION is unset.
-	if [[ -z ${QA_PKGCONFIG_VERSION+set} ]]; then
-		local QA_PKGCONFIG_VERSION=${PV}
-	fi
-
-	# Skip the check if QA_PKGCONFIG_VERSION is set to empty string.
+	# Skip the check if QA_PKGCONFIG_VERSION is not set.
 	if [[ -n ${QA_PKGCONFIG_VERSION} ]]; then
-		local all_bad=yes
-		# Record the last bad file matched
-		local bad_file
+		local pms_ver_re="^([0-9]+(\.[0-9]+)*)([a-z]?)((_(alpha|beta|pre|rc|p)[0-9]*)*)(-r[0-9]+)?$"
+		local -A bad_files
+
+		local is_pms_ver=false
+		if [[ ${QA_PKGCONFIG_VERSION} =~ ${pms_ver_re} ]] ; then
+			is_pms_ver=true
+		fi
+
 		for f in "${files[@]}" ; do
-			if [[ ${QA_PKGCONFIG_VERSION} == $(pkg-config --modversion "${f}") ]] ; then
-				all_bad=no
-				break
+			local file_version=$(pkg-config --modversion "${f}")
+			if [[ -n ${file_version} ]] ; then
+				if ${is_pms_ver} && [[ ${file_version} =~ ${pms_ver_re} ]]; then
+					# If both versions comply to PMS, then we can use ver_test to compare them.
+					ver_test ${QA_PKGCONFIG_VERSION} -eq ${file_version} && continue
+				else
+					# Otherwise, we resort to string comparision.
+					[[ ${QA_PKGCONFIG_VERSION} == ${file_version} ]] && continue
+				fi
+			else
+				# Record a special value if the .pc file has no version set at all.
+				file_version="<no-set>"
 			fi
 
-			bad_file="${f//${D}}"
+			bad_files["${f//${D}}"]="${file_version}"
 		done
 
 		# Skip result reporting if *_p* because for both _pN and _preN, we
 		# don't generally expect the versions to be exactly accurate, and
 		# we want to avoid false positives.
-		if [[ ${all_bad} == "yes" && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
+		if [[ ${#bad_files[@]} -gt 0 && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
 			eqawarn "QA Notice: pkg-config files with mismatched Version found!"
-			eqawarn "At least ${bad_file}'s Version field does not match ${PV}"
+			eqawarn "The Version field of the following files does not match ${QA_PKGCONFIG_VERSION}"
+			local bad_file
+			for bad_file in "${!bad_files[@]}"; do
+				local bad_file_version="${bad_files[${bad_file}]}"
+				eqawarn "- ${bad_file}: ${bad_file_version}"
+			done
 			eqawarn "Please check all .pc files installed by this package."
+			eqatag pkgconfig.unexpected-version ${!bad_files[@]}
 		fi
 	fi
 }

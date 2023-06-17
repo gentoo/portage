@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -9,9 +9,9 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-export _E_INSDESTTREE_='/etc/env.d/'
+export __E_INSDESTTREE='/etc/env.d/'
 if ___eapi_has_DESTTREE_INSDESTTREE; then
-	export INSDESTTREE=${_E_INSDESTTREE_}
+	export INSDESTTREE=${__E_INSDESTTREE}
 fi
 
 if ! ___eapi_doenvd_respects_insopts; then

@@ -161,7 +161,7 @@ class _better_cache:
                 continue
             for p in pkg_list:
                 try:
-                    atom = Atom("%s/%s" % (cat, p))
+                    atom = Atom(f"{cat}/{p}")
                 except InvalidAtom:
                     continue
                 if atom != atom.cp:
@@ -312,7 +312,7 @@ class portdbapi(dbapi):
                         x,
                         self._known_keys,
                         readonly=True,
-                        **cache_kwargs
+                        **cache_kwargs,
                     )
                 except CacheError:
                     pass
@@ -332,26 +332,24 @@ class portdbapi(dbapi):
                 if cache is not None:
                     self._pregen_auxdb[x] = cache
         # Selectively cache metadata in order to optimize dep matching.
-        self._aux_cache_keys = set(
-            [
-                "BDEPEND",
-                "DEPEND",
-                "EAPI",
-                "IDEPEND",
-                "INHERITED",
-                "IUSE",
-                "KEYWORDS",
-                "LICENSE",
-                "PDEPEND",
-                "PROPERTIES",
-                "RDEPEND",
-                "repository",
-                "RESTRICT",
-                "SLOT",
-                "DEFINED_PHASES",
-                "REQUIRED_USE",
-            ]
-        )
+        self._aux_cache_keys = {
+            "BDEPEND",
+            "DEPEND",
+            "EAPI",
+            "IDEPEND",
+            "INHERITED",
+            "IUSE",
+            "KEYWORDS",
+            "LICENSE",
+            "PDEPEND",
+            "PROPERTIES",
+            "RDEPEND",
+            "repository",
+            "RESTRICT",
+            "SLOT",
+            "DEFINED_PHASES",
+            "REQUIRED_USE",
+        }
 
         self._aux_cache = {}
         self._better_cache = None
@@ -367,14 +365,14 @@ class portdbapi(dbapi):
                 repo priority
         @type porttrees: list
         """
+        self._porttrees = tuple(porttrees)
         self._porttrees_repos = portage.OrderedDict(
             (repo.name, repo)
             for repo in (
                 self.repositories.get_repo_for_location(location)
-                for location in porttrees
+                for location in self._porttrees
             )
         )
-        self._porttrees = tuple(porttrees)
 
     def _get_porttrees(self):
         return self._porttrees
@@ -572,11 +570,10 @@ class portdbapi(dbapi):
         return (None, 0)
 
     def _write_cache(self, cpv, repo_path, metadata, ebuild_hash):
-
         try:
             cache = self.auxdb[repo_path]
             chf = cache.validation_chf
-            metadata["_%s_" % chf] = getattr(ebuild_hash, chf)
+            metadata[f"_{chf}_"] = getattr(ebuild_hash, chf)
         except CacheError:
             # Normally this shouldn't happen, so we'll show
             # a traceback for debugging purposes.
@@ -602,7 +599,7 @@ class portdbapi(dbapi):
                 _("!!! aux_get(): ebuild for " "'%s' does not exist at:\n") % (cpv,),
                 noiselevel=-1,
             )
-            writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
+            writemsg(f"!!!            {ebuild_path}\n", noiselevel=-1)
             raise PortageKeyError(cpv)
 
         # Pull pre-generated metadata from the metadata/cache/
@@ -888,7 +885,7 @@ class portdbapi(dbapi):
                 # since callers already handle it.
                 result.set_exception(
                     portage.exception.InvalidDependString(
-                        "getFetchMap(): '%s' has unsupported EAPI: '%s'" % (mypkg, eapi)
+                        f"getFetchMap(): '{mypkg}' has unsupported EAPI: '{eapi}'"
                     )
                 )
                 return
@@ -1065,7 +1062,7 @@ class portdbapi(dbapi):
                     oroot + "/" + x, EmptyOnError=1, ignorecvs=1, dirsonly=1
                 ):
                     try:
-                        atom = Atom("%s/%s" % (x, y))
+                        atom = Atom(f"{x}/{y}")
                     except InvalidAtom:
                         continue
                     if atom != atom.cp:
@@ -1373,7 +1370,7 @@ class portdbapi(dbapi):
                     myval = ""
 
         else:
-            raise AssertionError("Invalid level argument: '%s'" % level)
+            raise AssertionError(f"Invalid level argument: '{level}'")
 
         if self.frozen:
             xcache_this_level = self.xcache.get(level)
@@ -1436,10 +1433,10 @@ class portdbapi(dbapi):
                     continue
                 except PortageException as e:
                     writemsg(
-                        "!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
+                        f"!!! Error: aux_get('{mycpv}', {aux_keys})\n",
                         noiselevel=-1,
                     )
-                    writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                    writemsg(f"!!! {e}\n", noiselevel=-1)
                     del e
                     continue
 
@@ -1705,10 +1702,7 @@ def _async_manifest_fetchlist(
             return
         if e is None:
             result.set_result(
-                dict(
-                    (k, list(v.result()))
-                    for k, v in zip(cpv_list, gather_result.result())
-                )
+                {k: list(v.result()) for k, v in zip(cpv_list, gather_result.result())}
             )
         else:
             result.set_exception(e)
@@ -1734,7 +1728,6 @@ def _async_manifest_fetchlist(
 
 
 def _parse_uri_map(cpv, metadata, use=None):
-
     myuris = use_reduce(
         metadata.get("SRC_URI", ""),
         uselist=use,

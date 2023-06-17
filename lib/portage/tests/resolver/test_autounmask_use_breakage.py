@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class AutounmaskUseBreakageTestCase(TestCase):
     def testAutounmaskUseBreakage(self):
-
         ebuilds = {
             "app-misc/A-0": {
                 "EAPI": "5",

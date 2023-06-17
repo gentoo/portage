@@ -9,7 +9,6 @@ from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapi
 
 
 class PackageTrackerTestCase(TestCase):
-
     FakePackage = collections.namedtuple(
         "FakePackage", ["root", "cp", "cpv", "slot", "slot_atom", "version", "repo"]
     )
@@ -20,7 +19,7 @@ class PackageTrackerTestCase(TestCase):
 
     def make_pkg(self, root, atom, repo="test_repo"):
         atom = Atom(atom)
-        slot_atom = Atom("%s:%s" % (atom.cp, atom.slot))
+        slot_atom = Atom(f"{atom.cp}:{atom.slot}")
         slot = atom.slot
 
         return self.FakePackage(

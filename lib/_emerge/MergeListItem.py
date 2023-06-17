@@ -38,7 +38,6 @@ class MergeListItem(CompositeTask):
     ) + ("_install_task",)
 
     def _start(self):
-
         pkg = self.pkg
         build_opts = self.build_opts
 
@@ -68,7 +67,7 @@ class MergeListItem(CompositeTask):
         if build_opts.fetchonly:
             action_desc = "Fetching"
 
-        msg = "%s (%s of %s) %s" % (
+        msg = "{} ({} of {}) {}".format(
             action_desc,
             colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
             colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
@@ -76,17 +75,16 @@ class MergeListItem(CompositeTask):
         )
 
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " %s %s" % (preposition, pkg.root)
+            msg += f" {preposition} {pkg.root}"
 
         if not build_opts.pretend:
             self.statusMessage(msg)
             logger.log(
-                " >>> emerge (%s of %s) %s to %s"
-                % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root)
+                f" >>> emerge ({pkg_count.curval} of {pkg_count.maxval}) "
+                f"{pkg.cpv} to {pkg.root}"
             )
 
         if pkg.type_name == "ebuild":
-
             build = EbuildBuild(
                 args_set=args_set,
                 background=self.background,
@@ -108,7 +106,6 @@ class MergeListItem(CompositeTask):
             return
 
         if pkg.type_name == "binary":
-
             binpkg = Binpkg(
                 background=self.background,
                 find_blockers=find_blockers,
@@ -128,7 +125,6 @@ class MergeListItem(CompositeTask):
             return
 
     def create_install_task(self):
-
         pkg = self.pkg
         build_opts = self.build_opts
         mtimedb = self.mtimedb
@@ -141,7 +137,6 @@ class MergeListItem(CompositeTask):
             if not (
                 build_opts.buildpkgonly or build_opts.fetchonly or build_opts.pretend
             ):
-
                 task = PackageUninstall(
                     background=self.background,
                     ldpath_mtimes=ldpath_mtimes,

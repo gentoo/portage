@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class SlotOperatorCompleteGraphTestCase(TestCase):
     def testSlotOperatorCompleteGraph(self):
-
         ebuilds = {
             "app-misc/meta-pkg-2": {
                 "EAPI": "6",

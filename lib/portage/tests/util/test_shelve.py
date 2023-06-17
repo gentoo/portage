@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Gentoo Authors
+# Copyright 2020-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -12,7 +12,6 @@ from portage.util.shelve import dump, open_shelve, restore
 
 
 class ShelveUtilsTestCase(TestCase):
-
     TEST_DATA = (
         # distfiles_db
         {
@@ -45,7 +44,6 @@ class ShelveUtilsTestCase(TestCase):
                 db.close()
                 dump(dump_args)
 
-                os.unlink(dump_args.src)
                 restore_args = argparse.Namespace(
                     dest=dump_args.src,
                     src=dump_args.dest,

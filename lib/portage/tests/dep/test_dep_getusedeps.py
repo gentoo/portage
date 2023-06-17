@@ -12,7 +12,6 @@ class DepGetUseDeps(TestCase):
     """A simple testcase for dep_getusedeps"""
 
     def testDepGetUseDeps(self):
-
         for mycpv in test_cps:
             for version in test_versions:
                 for slot in test_slots:
@@ -23,7 +22,7 @@ class DepGetUseDeps(TestCase):
                         if slot:
                             cpv += ":" + slot
                         if isinstance(use, tuple):
-                            cpv += "[%s]" % (",".join(use),)
+                            cpv += f"[{','.join(use)}]"
                             self.assertEqual(dep_getusedeps(cpv), use)
                         else:
                             if len(use):

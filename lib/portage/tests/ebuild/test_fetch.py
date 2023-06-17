@@ -36,7 +36,6 @@ from _emerge.Package import Package
 
 class EbuildFetchTestCase(TestCase):
     def testEbuildFetch(self):
-
         user_config = {
             "make.conf": ('GENTOO_MIRRORS="{scheme}://{host}:{port}"',),
         }
@@ -71,7 +70,6 @@ class EbuildFetchTestCase(TestCase):
 
             user_config_subst = user_config.copy()
             for configname, configdata in user_config.items():
-
                 configdata_sub = []
                 for line in configdata:
                     configdata_sub.append(
@@ -135,7 +133,7 @@ class EbuildFetchTestCase(TestCase):
         fetch_bin = portage.process.find_binary(fetchcommand[0])
         if fetch_bin is None:
             self.skipTest(
-                "FETCHCOMMAND not found: {}".format(playground.settings["FETCHCOMMAND"])
+                f"FETCHCOMMAND not found: {playground.settings['FETCHCOMMAND']}"
             )
         eubin = os.path.join(playground.eprefix, "usr", "bin")
         os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
@@ -143,9 +141,7 @@ class EbuildFetchTestCase(TestCase):
         resume_bin = portage.process.find_binary(resumecommand[0])
         if resume_bin is None:
             self.skipTest(
-                "RESUMECOMMAND not found: {}".format(
-                    playground.settings["RESUMECOMMAND"]
-                )
+                f"RESUMECOMMAND not found: {playground.settings['RESUMECOMMAND']}"
             )
         if resume_bin != fetch_bin:
             os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
@@ -162,7 +158,7 @@ class EbuildFetchTestCase(TestCase):
 
         for layout_lines in mirror_layouts:
             settings = config(clone=playground.settings)
-            layout_data = "".join("{}\n".format(line) for line in layout_lines)
+            layout_data = "".join(f"{line}\n" for line in layout_lines)
             mirror_conf = MirrorLayoutConfig()
             mirror_conf.read_from_file(io.StringIO(layout_data))
             layouts = mirror_conf.get_all_layouts()
@@ -171,10 +167,10 @@ class EbuildFetchTestCase(TestCase):
             for k, v in orig_distfiles.items():
                 filename = DistfileName(
                     k,
-                    digests=dict(
-                        (algo, checksum_str(v, hashname=algo))
+                    digests={
+                        algo: checksum_str(v, hashname=algo)
                         for algo in MANIFEST2_HASH_DEFAULTS
-                    ),
+                    },
                 )
                 distfiles[filename] = v
 
@@ -182,11 +178,11 @@ class EbuildFetchTestCase(TestCase):
                 for layout in layouts:
                     content["/distfiles/" + layout.get_path(filename)] = v
                 # upstream path
-                content["/distfiles/{}.txt".format(k)] = v
+                content[f"/distfiles/{k}.txt"] = v
 
             shutil.rmtree(settings["DISTDIR"])
             os.makedirs(settings["DISTDIR"])
-            with open(os.path.join(settings["DISTDIR"], "layout.conf"), "wt") as f:
+            with open(os.path.join(settings["DISTDIR"], "layout.conf"), "w") as f:
                 f.write(layout_data)
 
             if any(isinstance(layout, ContentHashLayout) for layout in layouts):
@@ -203,11 +199,7 @@ class EbuildFetchTestCase(TestCase):
 
             # Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
             foo_uri = {
-                "foo": (
-                    "{scheme}://{host}:{port}/distfiles/foo".format(
-                        scheme=scheme, host=host, port=server.server_port
-                    ),
-                )
+                "foo": (f"{scheme}://{host}:{server.server_port}/distfiles/foo",)
             }
             foo_path = os.path.join(settings["DISTDIR"], "foo")
             foo_stale_content = b"stale content\n"
@@ -254,7 +246,9 @@ class EbuildFetchTestCase(TestCase):
 				"""
                     % orig_fetchcommand.replace("${FILE}", "${FILE}.__download__")
                 )
-            settings["FETCHCOMMAND"] = '"%s" "%s" "${URI}" "${DISTDIR}" "${FILE}"' % (
+            settings[
+                "FETCHCOMMAND"
+            ] = '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
                 BASH_BINARY,
                 temp_fetchcommand,
             )
@@ -455,7 +449,7 @@ class EbuildFetchTestCase(TestCase):
                         self.assertEqual(f.read(), distfiles[k])
 
                 # Test PORTAGE_RO_DISTDIRS
-                settings["PORTAGE_RO_DISTDIRS"] = '"{}"'.format(ro_distdir)
+                settings["PORTAGE_RO_DISTDIRS"] = f'"{ro_distdir}"'
                 orig_fetchcommand = settings["FETCHCOMMAND"]
                 orig_resumecommand = settings["RESUMECOMMAND"]
                 try:
@@ -578,13 +572,13 @@ class EbuildFetchTestCase(TestCase):
             emdisopts, portdb, asyncio.get_event_loop()
         ) as emdisconf:
             # Copy revisions from bar to foo.
-            for revision_key in emdisconf.content_db["filename:{}".format("bar")]:
+            for revision_key in emdisconf.content_db["filename:bar"]:
                 emdisconf.content_db.add(
                     DistfileName("foo", digests=dict(revision_key))
                 )
 
             # Copy revisions from foo to bar.
-            for revision_key in emdisconf.content_db["filename:{}".format("foo")]:
+            for revision_key in emdisconf.content_db["filename:foo"]:
                 emdisconf.content_db.add(
                     DistfileName("bar", digests=dict(revision_key))
                 )
@@ -744,10 +738,10 @@ class EbuildFetchTestCase(TestCase):
 
         filename = DistfileName(
             "foo-1.tar.gz",
-            digests=dict(
-                (algo, checksum_str(b"", hashname=algo))
+            digests={
+                algo: checksum_str(b"", hashname=algo)
                 for algo in MANIFEST2_HASH_DEFAULTS
-            ),
+            },
         )
 
         # Raise KeyError for a hash algorithm SHA1 which is not in MANIFEST2_HASH_DEFAULTS.
@@ -851,10 +845,10 @@ class EbuildFetchTestCase(TestCase):
     def test_filename_hash_layout_get_filenames(self):
         filename = DistfileName(
             "foo-1.tar.gz",
-            digests=dict(
-                (algo, checksum_str(b"", hashname=algo))
+            digests={
+                algo: checksum_str(b"", hashname=algo)
                 for algo in MANIFEST2_HASH_DEFAULTS
-            ),
+            },
         )
         layouts = (
             FlatLayout(),

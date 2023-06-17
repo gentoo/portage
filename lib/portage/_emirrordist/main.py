@@ -232,19 +232,18 @@ def parse_args(args):
 
 
 def emirrordist_main(args):
-
     # The calling environment is ignored, so the program is
     # completely controlled by commandline arguments.
     env = {}
 
     if not sys.stdout.isatty():
         portage.output.nocolor()
-        env["NOCOLOR"] = "true"
+        env["NO_COLOR"] = "true"
 
     parser, options, args = parse_args(args)
 
     if options.version:
-        sys.stdout.write("Portage %s\n" % portage.VERSION)
+        sys.stdout.write(f"Portage {portage.VERSION}\n")
         return os.EX_OK
 
     config_root = options.config_root
@@ -275,7 +274,7 @@ def emirrordist_main(args):
 
     repo_path = settings.repositories.treemap.get(options.repo)
     if repo_path is None:
-        parser.error("Unable to locate repository named '%s'" % (options.repo,))
+        parser.error(f"Unable to locate repository named '{options.repo}'")
 
     if options.jobs is not None:
         options.jobs = int(options.jobs)
@@ -422,7 +421,7 @@ def emirrordist_main(args):
         for x in options.whitelist_from:
             path = normalize_path(os.path.abspath(x))
             if not os.access(path, os.R_OK):
-                parser.error("--whitelist-from '%s' is not readable" % x)
+                parser.error(f"--whitelist-from '{x}' is not readable")
             if os.path.isfile(path):
                 normalized_paths.append(path)
             elif os.path.isdir(path):
@@ -435,7 +434,7 @@ def emirrordist_main(args):
                     normalized_paths.append(file)
             else:
                 parser.error(
-                    "--whitelist-from '%s' is not a regular file or a directory" % x
+                    f"--whitelist-from '{x}' is not a regular file or a directory"
                 )
         options.whitelist_from = normalized_paths
 
@@ -459,7 +458,6 @@ def emirrordist_main(args):
         l.setLevel(l.getEffectiveLevel() - 10 * options.verbose)
 
     with Config(options, portdb, SchedulerInterface(global_event_loop())) as config:
-
         if not options.mirror:
             parser.error("No action specified")
 

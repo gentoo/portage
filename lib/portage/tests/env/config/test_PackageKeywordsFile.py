@@ -9,7 +9,6 @@ from tempfile import mkstemp
 
 
 class PackageKeywordsFileTestCase(TestCase):
-
     cpv = ["sys-apps/portage"]
     keywords = ["~x86", "amd64", "-mips"]
 
@@ -34,7 +33,7 @@ class PackageKeywordsFileTestCase(TestCase):
         fd, self.fname = mkstemp()
         f = os.fdopen(fd, "w")
         for c in self.cpv:
-            f.write("%s %s\n" % (c, " ".join(self.keywords)))
+            f.write(f"{c} {' '.join(self.keywords)}\n")
         f.close()
 
     def NukeFile(self):

@@ -48,7 +48,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
         p.start()
         if await p.async_wait() != os.EX_OK:
             raise RepoStorageException(
-                "command exited with status {}: {}".format(p.returncode, " ".join(cmd))
+                f"command exited with status {p.returncode}: {' '.join(cmd)}"
             )
 
     async def init_update(self):
@@ -70,7 +70,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
                 "--exclude=/lost+found",
                 "--exclude=/packages",
                 "--exclude",
-                "/{}".format(os.path.basename(update_location)),
+                f"/{os.path.basename(update_location)}",
                 self._user_location + "/",
                 update_location + "/",
             ]
@@ -99,7 +99,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
                 "--exclude=/lost+found",
                 "--exclude=/packages",
                 "--exclude",
-                "/{}".format(os.path.basename(update_location)),
+                f"/{os.path.basename(update_location)}",
                 update_location + "/",
                 self._user_location + "/",
             ]

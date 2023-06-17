@@ -10,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class AutounmaskTestCase(TestCase):
     def testAutounmask(self):
-
         ebuilds = {
             # ebuilds to test use changes
             "dev-libs/A-1": {"SLOT": 1, "DEPEND": "dev-libs/B[foo]", "EAPI": 2},
@@ -451,7 +450,6 @@ class AutounmaskTestCase(TestCase):
             playground.cleanup()
 
     def testAutounmaskForLicenses(self):
-
         ebuilds = {
             "dev-libs/A-1": {"LICENSE": "TEST"},
             "dev-libs/B-1": {"LICENSE": "TEST", "IUSE": "foo", "KEYWORDS": "~x86"},
@@ -474,7 +472,7 @@ class AutounmaskTestCase(TestCase):
                 options={"--autounmask-license": "y"},
                 success=False,
                 mergelist=["dev-libs/A-1"],
-                license_changes={"dev-libs/A-1": set(["TEST"])},
+                license_changes={"dev-libs/A-1": {"TEST"}},
             ),
             # Test that --autounmask enables --autounmask-license
             ResolverPlaygroundTestCase(
@@ -482,7 +480,7 @@ class AutounmaskTestCase(TestCase):
                 options={"--autounmask": True},
                 success=False,
                 mergelist=["dev-libs/A-1"],
-                license_changes={"dev-libs/A-1": set(["TEST"])},
+                license_changes={"dev-libs/A-1": {"TEST"}},
             ),
             # Test that --autounmask-license is not enabled by default
             ResolverPlaygroundTestCase(
@@ -510,7 +508,7 @@ class AutounmaskTestCase(TestCase):
                 options={"--autounmask": True},
                 success=False,
                 mergelist=["dev-libs/B-1", "dev-libs/C-1"],
-                license_changes={"dev-libs/B-1": set(["TEST"])},
+                license_changes={"dev-libs/B-1": {"TEST"}},
                 unstable_keywords=["dev-libs/B-1"],
                 use_changes={"dev-libs/B-1": {"foo": True}},
             ),
@@ -521,10 +519,10 @@ class AutounmaskTestCase(TestCase):
                 success=False,
                 mergelist=["dev-libs/E-1", "dev-libs/F-1", "dev-libs/D-1"],
                 license_changes={
-                    "dev-libs/D-1": set(["TEST"]),
-                    "dev-libs/E-1": set(["TEST"]),
-                    "dev-libs/E-2": set(["TEST"]),
-                    "dev-libs/F-1": set(["TEST"]),
+                    "dev-libs/D-1": {"TEST"},
+                    "dev-libs/E-1": {"TEST"},
+                    "dev-libs/E-2": {"TEST"},
+                    "dev-libs/F-1": {"TEST"},
                 },
             ),
             # Test license only for bug #420847
@@ -533,7 +531,7 @@ class AutounmaskTestCase(TestCase):
                 options={"--autounmask": True},
                 success=False,
                 mergelist=["dev-java/sun-jdk-1.6.0.31"],
-                license_changes={"dev-java/sun-jdk-1.6.0.31": set(["TEST"])},
+                license_changes={"dev-java/sun-jdk-1.6.0.31": {"TEST"}},
             ),
         )
 
@@ -546,7 +544,6 @@ class AutounmaskTestCase(TestCase):
             playground.cleanup()
 
     def testAutounmaskAndSets(self):
-
         ebuilds = {
             # ebuilds to test use changes
             "dev-libs/A-1": {},
@@ -663,7 +660,6 @@ class AutounmaskTestCase(TestCase):
             playground.cleanup()
 
     def testAutounmask9999(self):
-
         ebuilds = {
             "dev-libs/A-1": {},
             "dev-libs/A-2": {},
@@ -682,15 +678,15 @@ class AutounmaskTestCase(TestCase):
                 success=False,
                 options={"--autounmask": True},
                 mergelist=["dev-libs/A-2", "dev-libs/B-1"],
-                needed_p_mask_changes=set(["dev-libs/A-2"]),
+                needed_p_mask_changes={"dev-libs/A-2"},
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/C"],
                 success=False,
                 options={"--autounmask": True},
                 mergelist=["dev-libs/A-9999", "dev-libs/C-1"],
-                unstable_keywords=set(["dev-libs/A-9999"]),
-                needed_p_mask_changes=set(["dev-libs/A-9999"]),
+                unstable_keywords={"dev-libs/A-9999"},
+                needed_p_mask_changes={"dev-libs/A-9999"},
             ),
         )
 

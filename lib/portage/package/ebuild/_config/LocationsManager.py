@@ -3,7 +3,6 @@
 
 __all__ = ("LocationsManager",)
 
-import io
 import warnings
 
 import portage
@@ -93,16 +92,12 @@ class LocationsManager:
                 + os.sep
             )
 
-        self.esysroot = self.sysroot.rstrip(os.sep) + self.eprefix + os.sep
-
         # TODO: Set this via the constructor using
         # PORTAGE_OVERRIDE_EPREFIX.
         self.broot = portage.const.EPREFIX
 
     def load_profiles(self, repositories, known_repository_paths):
-        known_repository_paths = set(
-            os.path.realpath(x) for x in known_repository_paths
-        )
+        known_repository_paths = {os.path.realpath(x) for x in known_repository_paths}
 
         known_repos = []
         for x in known_repository_paths:
@@ -165,7 +160,7 @@ class LocationsManager:
                         _("!!! Unable to parse profile: '%s'\n") % self.profile_path,
                         noiselevel=-1,
                     )
-                    writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
+                    writemsg(f"!!! ParseError: {str(e)}\n", noiselevel=-1)
                 self.profiles = []
                 self.profiles_complex = []
 
@@ -226,14 +221,13 @@ class LocationsManager:
         eapi = eapi or "0"
         f = None
         try:
-            f = io.open(
+            f = open(
                 _unicode_encode(eapi_file, encoding=_encodings["fs"], errors="strict"),
-                mode="r",
                 encoding=_encodings["content"],
                 errors="replace",
             )
             eapi = f.readline().strip()
-        except IOError:
+        except OSError:
             pass
         else:
             if not eapi_is_supported(eapi):
@@ -389,13 +383,13 @@ class LocationsManager:
             + os.path.sep
         )
 
-        if self.sysroot != "/" and self.sysroot != self.target_root:
+        if self.sysroot != "/" and self.target_root == "/":
             writemsg(
                 _(
                     "!!! Error: SYSROOT (currently %s) must "
-                    "equal / or ROOT (currently %s).\n"
+                    "be set to / when ROOT is /.\n"
                 )
-                % (self.sysroot, self.target_root),
+                % self.sysroot,
                 noiselevel=-1,
             )
             raise InvalidLocation(self.sysroot)
@@ -404,6 +398,15 @@ class LocationsManager:
         self._check_var_directory("ROOT", self.target_root)
 
         self.eroot = self.target_root.rstrip(os.sep) + self.eprefix + os.sep
+
+        # In a cross-prefix scenario where SYSROOT=/ and ROOT=/, assume we want
+        # ESYSROOT to point to the target prefix.
+        if self.sysroot == self.target_root:
+            self.esysroot = self.sysroot.rstrip(os.sep) + self.eprefix + os.sep
+        elif self.sysroot == "/":
+            self.esysroot = self.broot + os.sep
+        else:
+            self.esysroot = self.sysroot
 
         self.global_config_path = GLOBAL_CONFIG_PATH
         if portage.const.EPREFIX:

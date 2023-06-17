@@ -34,7 +34,7 @@ def main():
         )
         with open(config_path) as f:
             content = f.read()
-            compat_setting = 'BINPKG_COMPRESS="{}"'.format(COMPAT_BINPKG_COMPRESS)
+            compat_setting = f'BINPKG_COMPRESS="{COMPAT_BINPKG_COMPRESS}"'
             portage.output.EOutput().einfo(
                 "Setting make.globals default {} for backward compatibility".format(
                     compat_setting
@@ -43,7 +43,7 @@ def main():
             content = re.sub(
                 "^BINPKG_COMPRESS=.*$", compat_setting, content, flags=re.MULTILINE
             )
-        with open(config_path, "wt") as f:
+        with open(config_path, "w") as f:
             f.write(content)
 
 

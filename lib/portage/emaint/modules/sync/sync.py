@@ -30,7 +30,6 @@ warn = create_color_func("WARN")
 
 
 class SyncRepos:
-
     short_desc = "Check repos.conf settings and/or sync repositories"
 
     @staticmethod
@@ -359,8 +358,7 @@ class SyncRepos:
         messages = []
         for rval in rvals:
             messages.append(
-                "Action: %s for repo: %s, returned code = %s"
-                % (action, rval[0], rval[1])
+                f"Action: {action} for repo: {rval[0]}, returned code = {rval[1]}"
             )
         return messages
 
@@ -427,7 +425,7 @@ class SyncScheduler(AsyncScheduler):
         self._update_leaf_nodes()
         if hooks_enabled:
             self._hooks_repos.add(repo)
-        super(SyncScheduler, self)._task_exit(self)
+        super()._task_exit(self)
 
     def _master_hooks(self, repo_name):
         """

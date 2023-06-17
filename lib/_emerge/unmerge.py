@@ -8,7 +8,6 @@ import textwrap
 import portage
 from portage import os
 from portage.dbapi._expand_new_virt import expand_new_virt
-from portage.localization import _
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
 from portage._sets.base import EditablePackageSet
@@ -104,7 +103,7 @@ def _unmerge_display(
             if unmerge_action in ["rage-clean", "unmerge"]:
                 print()
                 print(
-                    bold("emerge %s" % unmerge_action)
+                    bold(f"emerge {unmerge_action}")
                     + " can only be used with specific package names"
                 )
                 print()
@@ -120,7 +119,7 @@ def _unmerge_display(
         else:
             # we've got command-line arguments
             if not unmerge_files:
-                print("\nNo packages to %s have been provided.\n" % unmerge_action)
+                print(f"\nNo packages to {unmerge_action} have been provided.\n")
                 return 1, {}
             for x in unmerge_files:
                 arg_parts = x.split("/")
@@ -187,7 +186,7 @@ def _unmerge_display(
             writemsg_level(
                 darkgreen(
                     newline
-                    + ">>> Using system located in ROOT tree %s\n" % settings["ROOT"]
+                    + f">>> Using system located in ROOT tree {settings['ROOT']}\n"
                 )
             )
 
@@ -228,8 +227,7 @@ def _unmerge_display(
                 mymatch = vartree.dep_match(x)
             if not mymatch:
                 portage.writemsg(
-                    "\n--- Couldn't find '%s' to %s.\n"
-                    % (x.replace("null/", ""), unmerge_action),
+                    f"\n--- Couldn't find '{x.replace('null/', '')}' to {unmerge_action}.\n",
                     noiselevel=-1,
                 )
                 continue
@@ -369,17 +367,17 @@ def _unmerge_display(
                 skip_pkg = False
                 if portage.match_from_list(portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
                     msg = (
-                        "Not unmerging package %s "
+                        f"Not unmerging package {pkg.cpv} "
                         "since there is no valid reason for Portage to "
-                        "%s itself."
-                    ) % (pkg.cpv, unmerge_action)
+                        f"{unmerge_action} itself."
+                    )
                     skip_pkg = True
                 elif vartree.dbapi._dblink(cpv).isowner(portage._python_interpreter):
                     msg = (
-                        "Not unmerging package %s since there is no valid "
-                        "reason for Portage to %s currently used Python "
+                        f"Not unmerging package {pkg.cpv} since there is no valid "
+                        f"reason for Portage to {unmerge_action} currently used Python "
                         "interpreter."
-                    ) % (pkg.cpv, unmerge_action)
+                    )
                     skip_pkg = True
                 if skip_pkg:
                     for line in textwrap.wrap(msg, 75):
@@ -404,12 +402,8 @@ def _unmerge_display(
                     unknown_sets.add(s)
                     out = portage.output.EOutput()
                     out.eerror(
-                        ("Unknown set '@%s' in %s%s")
-                        % (
-                            s,
-                            root_config.settings["EROOT"],
-                            portage.const.WORLD_SETS_FILE,
-                        )
+                        f"Unknown set '@{s}' in "
+                        f"{root_config.settings['EROOT']}{portage.const.WORLD_SETS_FILE}"
                     )
                     continue
 
@@ -417,7 +411,6 @@ def _unmerge_display(
                 # special purposes and can be ignored here (and are usually generated dynamically, so the
                 # user can't do much about them anyway)
                 if isinstance(sets[s], EditablePackageSet):
-
                     # This is derived from a snippet of code in the
                     # depgraph._iter_atoms_for_pkg() method.
                     for atom in sets[s].iterAtomsForPackage(pkg):
@@ -445,11 +438,11 @@ def _unmerge_display(
                             parents.append(s)
                             break
             if parents:
-                print(colorize("WARN", "Package %s is going to be unmerged," % cpv))
+                print(colorize("WARN", f"Package {cpv} is going to be unmerged,"))
                 print(
                     colorize("WARN", "but still listed in the following package sets:")
                 )
-                print("    %s\n" % ", ".join(parents))
+                print(f"    {', '.join(parents)}\n")
 
     del installed_sets
 
@@ -506,13 +499,13 @@ def _unmerge_display(
         if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
             virt_cp = sys_virt_map.get(cp)
             if virt_cp is None:
-                cp_info = "'%s'" % (cp,)
+                cp_info = f"'{cp}'"
             else:
-                cp_info = "'%s' (%s)" % (cp, virt_cp)
+                cp_info = f"'{cp}' ({virt_cp})"
             writemsg_level(
                 colorize(
                     "BAD",
-                    "\n\n!!! " + "%s is part of your system profile.\n" % (cp_info,),
+                    "\n\n!!! " + f"{cp_info} is part of your system profile.\n",
                 ),
                 level=logging.WARNING,
                 noiselevel=-1,
@@ -525,7 +518,7 @@ def _unmerge_display(
                 noiselevel=-1,
             )
         if not quiet:
-            writemsg_level("\n %s\n" % (bold(cp),), noiselevel=-1)
+            writemsg_level(f"\n {bold(cp)}\n", noiselevel=-1)
         else:
             writemsg_level(bold(cp) + ": ", noiselevel=-1)
         for mytype in ["selected", "protected", "omitted"]:
@@ -556,7 +549,7 @@ def _unmerge_display(
             writemsg_level("\n", noiselevel=-1)
 
     writemsg_level(
-        "\nAll selected packages: %s\n" % " ".join("=%s" % x for x in all_selected),
+        f"\nAll selected packages: {' '.join(f'={x}' for x in all_selected)}\n",
         noiselevel=-1,
     )
 
@@ -633,7 +626,7 @@ def unmerge(
 
     if not vartree.dbapi.writable:
         writemsg_level(
-            "!!! %s\n" % _("Read-only file system: %s") % vartree.dbapi._dbroot,
+            f"!!! Read-only file system: {vartree.dbapi._dbroot}\n",
             level=logging.ERROR,
             noiselevel=-1,
         )
@@ -653,7 +646,7 @@ def unmerge(
     for x in range(len(pkgmap)):
         for y in pkgmap[x]["selected"]:
             emergelog(xterm_titles, "=== Unmerging... (" + y + ")")
-            message = ">>> Unmerging ({0} of {1}) {2}...\n".format(
+            message = ">>> Unmerging ({} of {}) {}...\n".format(
                 colorize("MERGE_LIST_PROGRESS", str(curval)),
                 colorize("MERGE_LIST_PROGRESS", str(maxval)),
                 y,

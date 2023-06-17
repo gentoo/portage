@@ -34,7 +34,6 @@ class SleepProcess(ForkProcess):
 
 
 class IpcDaemonTestCase(TestCase):
-
     _SCHEDULE_TIMEOUT = 40  # seconds
 
     def testIpcDaemon(self):
