@@ -9,38 +9,46 @@ if [ -z "$1" ]; then
 fi
 
 export PKG="prefix-portage"
-export TMP="/var/tmp"
+export TMP="/var/tmp/${PKG}-build.$$"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
+export TARFILE="/var/tmp/${PKG}-${V}.tar.bz2"
 
-if [[ -e ${DEST} ]]; then
-	echo ${DEST} already exists, please remove first
-	exit 1
-fi
+# hypothetically it can exist
+rm -Rf "${TMP}"
 
-install -d -m0755 ${DEST}
-rsync -a --exclude='.git' --exclude='.hg' --exclude="repoman/" . ${DEST}
+# create copy of source
+install -d -m0755 "${DEST}"
+rsync -a --exclude='.git' --exclude='.hg' --exclude="repoman/" . "${DEST}"
+
+cd "${DEST}"
+
+# expand version
 sed -i -e '/^VERSION\s*=/s/^.*$/VERSION = "'${V}_prefix'"/' \
-	${DEST}/lib/portage/__init__.py
-sed -i -e "/version = /s/'[^']\+'/'${V}-prefix'/" ${DEST}/setup.py
-sed -i -e "1s/VERSION/${V}-prefix/" ${DEST}/man/{,ru/}*.[15]
-sed -i -e "s/@version@/${V}/" ${DEST}/configure.ac
+	lib/portage/__init__.py
+sed -i -e "/version = /s/'[^']\+'/'${V}-prefix'/" setup.py
+sed -i -e "1s/VERSION/${V}-prefix/" man/{,ru/}*.[15]
+sed -i -e "s/@version@/${V}/" configure.ac
 
-cd ${DEST}
+# cleanup cruft
 find -name '*~' | xargs --no-run-if-empty rm -f
+find -name '*.#*' | xargs --no-run-if-empty rm -f
 find -name '*.pyc' | xargs --no-run-if-empty rm -f
 find -name '*.pyo' | xargs --no-run-if-empty rm -f
-cd $TMP
-rm -f \
-	${PKG}-${V}/bin/emerge.py \
-	${PKG}-${V}/bin/{pmake,sandbox} \
-	${PKG}-${V}/{bin,lib}/'.#'* \
-	${PKG}-${V}/{bin,lib}/*.{orig,diff} \
-	${PKG}-${V}/{bin,lib}/*.py[oc]
-cd $TMP/${PKG}-${V}
+find -name '*.orig' | xargs --no-run-if-empty rm -f
+rm -Rf autom4te.cache
+
+# we don't need these (why?)
+rm -f  bin/emerge.py  bin/{pmake,sandbox}
+
+# generate a configure file
 chmod a+x autogen.sh && ./autogen.sh || { echo "autogen failed!"; exit -1; };
 rm -f autogen.sh tabcheck.py tarball.sh commit
-cd $TMP
-tar --numeric-owner -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
-rm -R ${TMP}/${PKG}-${V}
-ls -la ${TMP}/${PKG}-${V}.tar.bz2
+
+# produce final tarball
+cd "${TMP}"
+tar --numeric-owner -jcf "${TARFILE}" ${PKG}-${V}
+
+cd /
+rm -Rf "${TMP}"
+ls -la "${TARFILE}"
