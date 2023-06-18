@@ -2789,16 +2789,23 @@ def relative_profile_path(portdir, abs_profile):
         profilever = None
     return profilever
 
+def get_libc_version(vardb):
+    libcver = []
+    libclist = set()
+    for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
+        if not atom.blocker:
+            libclist.update(vardb.match(atom))
+    if libclist:
+        for cpv in sorted(libclist):
+            libc_split = portage.catpkgsplit(cpv)[1:]
+            if libc_split[-1] == "r0":
+                libc_split = libc_split[:-1]
+            libcver.append("-".join(libc_split))
+    else:
+        libcver = ["unavailable"]
+    return libcver
 
-def getportageversion(portdir, _unused, profile, chost, vardb):
-    pythonver = (
-        "python"
-        f" {sys.version_info[0]}"
-        f".{sys.version_info[1]}"
-        f".{sys.version_info[2]}"
-        f"-{sys.version_info[3]}"
-        f"-{sys.version_info[4]}"
-    )
+def get_profile_version(portdir, profile, vardb):
     profilever = None
     repositories = vardb.settings.repositories
     if profile:
@@ -2838,21 +2845,21 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 
     if profilever is None:
         profilever = "unavailable"
+    
+    return profilever
 
-    libcver = []
-    libclist = set()
-    for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
-        if not atom.blocker:
-            libclist.update(vardb.match(atom))
-    if libclist:
-        for cpv in sorted(libclist):
-            libc_split = portage.catpkgsplit(cpv)[1:]
-            if libc_split[-1] == "r0":
-                libc_split = libc_split[:-1]
-            libcver.append("-".join(libc_split))
-    else:
-        libcver = ["unavailable"]
+def getportageversion(portdir, _unused, profile, chost, vardb):
+    pythonver = (
+        "python"
+        f" {sys.version_info[0]}"
+        f".{sys.version_info[1]}"
+        f".{sys.version_info[2]}"
+        f"-{sys.version_info[3]}"
+        f"-{sys.version_info[4]}"
+    )
 
+    profilever = get_profile_version(portdir, profile, vardb)
+    libcver = get_libc_version(vardb)
     gccver = getgccversion(chost)
     unameout = platform.release() + " " + platform.machine()
 
