@@ -31,14 +31,10 @@ def ExtractKernelVersion(base_dir):
         )
     except OSError as details:
         return (None, str(details))
-    except OSError as details:
-        return (None, str(details))
 
     try:
         for i in range(4):
             lines.append(f.readline())
-    except OSError as details:
-        return (None, str(details))
     except OSError as details:
         return (None, str(details))
     finally:
