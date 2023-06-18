@@ -100,7 +100,7 @@ def _get_slot_dep_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
 def _match_slot(atom, pkg) -> bool:
     """
     @type atom: portage.dep.Atom
-    @type pkg: _emerge.Package.Package 
+    @type pkg: _emerge.Package.Package
     """
     if pkg.slot == atom.slot:
         if not atom.sub_slot:

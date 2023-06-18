@@ -2789,6 +2789,7 @@ def relative_profile_path(portdir, abs_profile):
         profilever = None
     return profilever
 
+
 def get_libc_version(vardb):
     libcver = []
     libclist = set()
@@ -2804,6 +2805,7 @@ def get_libc_version(vardb):
     else:
         libcver = ["unavailable"]
     return libcver
+
 
 def get_profile_version(portdir, profile, vardb):
     profilever = None
@@ -2845,8 +2847,9 @@ def get_profile_version(portdir, profile, vardb):
 
     if profilever is None:
         profilever = "unavailable"
-    
+
     return profilever
+
 
 def getportageversion(portdir, _unused, profile, chost, vardb):
     pythonver = (
@@ -2863,14 +2866,7 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
     gccver = getgccversion(chost)
     unameout = platform.release() + " " + platform.machine()
 
-    return "Portage {} ({}, {}, {}, {}, {})".format(
-        portage.VERSION,
-        pythonver,
-        profilever,
-        gccver,
-        ",".join(libcver),
-        unameout,
-    )
+    return f"Portage {portage.VERSION} ({pythonver}, {profilever}, {gccver}, {','.join(libcver)}, {unameout})"
 
 
 class _emerge_config(SlotObject):
