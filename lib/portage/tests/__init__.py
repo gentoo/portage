@@ -75,6 +75,15 @@ def main():
     parser.add_argument(
         "-l", "--list", help="list all tests", action="store_true", dest="list_tests"
     )
+    parser.add_argument(
+        "-st", "--start", help="start at", action="append", dest="start"
+    )
+    parser.add_argument(
+        "-sp", "--stop", help="stop at", action="append", dest="stop"
+    )
+    parser.add_argument(
+        "-c", "--count", help="count the number of tests", action="store_true", dest="to_count"
+    )
     parser.add_argument("tests", nargs="*", type=Path)
     options = parser.parse_args(args=sys.argv)
 
@@ -91,6 +100,16 @@ def main():
             testsubdir = mydir.name
             for name in getTestNames(mydir):
                 print(f"{testdir}/{testsubdir}/{name}.py")
+        return os.EX_OK
+
+    if options.to_count:
+        count = 0
+        testdir = argv0.parent
+        for mydir in getTestDirs(basedir):
+            testsubdir = mydir.name
+            for name in getTestNames(mydir):
+                count +=1
+        print(f"The number of unit tests available: {count}")
         return os.EX_OK
 
     if len(options.tests) > 1:
