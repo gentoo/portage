@@ -72,17 +72,42 @@ def main():
 
     usage = f"usage: {argv0.name} [options] [tests to run]"
     parser = argparse.ArgumentParser(usage=usage)
+
+    # Count the number of tests available for setting limits
+    count = 0
+    testdir = argv0.parent
+    for mydir in getTestDirs(basedir):
+        testsubdir = mydir.name
+        for name in getTestNames(mydir):
+            count += 1
+
     parser.add_argument(
         "-l", "--list", help="list all tests", action="store_true", dest="list_tests"
     )
     parser.add_argument(
-        "-st", "--start", help="start at", action="append", dest="start"
+        "-st",
+        "--start",
+        help="start at",
+        action="store",
+        dest="start",
+        type=int,
+        default=1,
     )
     parser.add_argument(
-        "-sp", "--stop", help="stop at", action="append", dest="stop"
+        "-sp",
+        "--stop",
+        help="stop at",
+        action="store",
+        dest="stop",
+        type=int,
+        default=count,
     )
     parser.add_argument(
-        "-c", "--count", help="count the number of tests", action="store_true", dest="to_count"
+        "-c",
+        "--count",
+        help="count the number of tests",
+        action="store_true",
+        dest="to_count",
     )
     parser.add_argument("tests", nargs="*", type=Path)
     options = parser.parse_args(args=sys.argv)
@@ -103,19 +128,20 @@ def main():
         return os.EX_OK
 
     if options.to_count:
-        count = 0
-        testdir = argv0.parent
-        for mydir in getTestDirs(basedir):
-            testsubdir = mydir.name
-            for name in getTestNames(mydir):
-                count +=1
         print(f"The number of unit tests available: {count}")
         return os.EX_OK
 
     if len(options.tests) > 1:
         suite.addTests(getTestFromCommandLine(options.tests[1:], basedir))
     else:
-        for mydir in getTestDirs(basedir):
+        # enumerate indexing starts at 0
+        options.start = options.start - 1
+        options.stop = options.stop - 1
+        for i, mydir in enumerate(getTestDirs(basedir)):
+            if i < options.start:
+                continue
+            elif i > options.stop:
+                continue
             suite.addTests(getTests(mydir, basedir))
 
     result = TextTestRunner(verbosity=2).run(suite)
