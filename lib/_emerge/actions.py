@@ -1908,7 +1908,6 @@ def action_info(settings, trees, myopts, myfiles):
     append(
         getportageversion(
             settings["PORTDIR"],
-            None,
             settings.profile_path,
             chost,
             trees[settings["EROOT"]]["vartree"].dbapi,
@@ -2858,7 +2857,6 @@ def get_profile_version(
 
 def getportageversion(
     portdir: str,
-    _unused: None,
     profile: str,
     chost: str,
     vardb: portage.dbapi.vartree.vardbapi,
@@ -3527,7 +3525,6 @@ def run_action(emerge_config):
         writemsg_stdout(
             getportageversion(
                 emerge_config.target_config.settings["PORTDIR"],
-                None,
                 emerge_config.target_config.settings.profile_path,
                 emerge_config.target_config.settings.get("CHOST"),
                 emerge_config.target_config.trees["vartree"].dbapi,
