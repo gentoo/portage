@@ -5,8 +5,6 @@ Bug fixes:
 * Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
   directories (bug #485100, bug #890812).
 
-* depgraph: Don't ignore downgrades as missed_updates (bug #622270).
-
 * depgraph: Do not allow slotted deps to be satisfied by wrong slots
   (bug #463976, bug #592880, bug #596664, bug #631490, bug #764365, bug #793992).
 
