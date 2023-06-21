@@ -3,6 +3,10 @@
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.cache.mappings import Mapping
+from portage.tests.util.test_socks5 import AsyncHTTPServer
+from portage import os
+from portage.util.futures import asyncio
 
 import pytest
 
@@ -163,6 +167,30 @@ _INSTALLED_EBUILDS = {
 }
 
 
+class BinhostContentMap(Mapping):
+    def __init__(self, remote_path, local_path):
+        self._remote_path = remote_path
+        self._local_path = local_path
+
+    def __getitem__(self, request_path):
+        safe_path = os.path.normpath(request_path)
+        if not safe_path.startswith(self._remote_path + "/"):
+            raise KeyError(request_path)
+        local_path = os.path.join(
+            self._local_path, safe_path[len(self._remote_path) + 1 :]
+        )
+        try:
+            with open(local_path, "rb") as f:
+                return f.read()
+        except OSError:
+            raise KeyError(request_path)
+
+
+@pytest.fixture()
+def async_loop():
+    yield asyncio._wrap_loop()
+
+
 @pytest.fixture(params=SUPPORTED_GENTOO_BINPKG_FORMATS)
 def playground(request):
     """Fixture that provides instances of ``ResolverPlayground``
@@ -178,3 +206,22 @@ def playground(request):
     )
     yield playground
     playground.cleanup()
+
+
+@pytest.fixture()
+def binhost(playground, async_loop):
+    settings = playground.settings
+    eprefix = settings["EPREFIX"]
+    binhost_dir = os.path.join(eprefix, "binhost")
+    binhost_address = "127.0.0.1"
+    binhost_remote_path = "/binhost"
+    binhost_server = AsyncHTTPServer(
+        binhost_address, BinhostContentMap(binhost_remote_path, binhost_dir), async_loop
+    ).__enter__()
+    binhost_uri = "http://{address}:{port}{path}".format(
+        address=binhost_address,
+        port=binhost_server.server_port,
+        path=binhost_remote_path,
+    )
+    yield {"server": binhost_server, "uri": binhost_uri}
+    binhost_server.__exit__(None, None, None)
