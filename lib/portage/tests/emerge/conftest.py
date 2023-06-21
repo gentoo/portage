@@ -168,7 +168,7 @@ def playground(request):
     """Fixture that provides instances of ``ResolverPlayground``
     each one with one supported value for ``BINPKG_FORMAT``."""
     binpkg_format = request.param
-    yield ResolverPlayground(
+    playground = ResolverPlayground(
         ebuilds=_AVAILABLE_EBUILDS,
         installed=_INSTALLED_EBUILDS,
         debug=False,
@@ -176,3 +176,5 @@ def playground(request):
             "make.conf": (f'BINPKG_FORMAT="{binpkg_format}"',),
         },
     )
+    yield playground
+    playground.cleanup()

@@ -553,4 +553,3 @@ move dev-util/git dev-vcs/git
             assert os.EX_OK == proc.returncode, f"emerge failed with args {args}"
     finally:
         binhost_server.__exit__(None, None, None)
-        playground.cleanup()
