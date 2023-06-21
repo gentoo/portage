@@ -15,10 +15,8 @@ from portage.const import (
     USER_CONFIG_PATH,
     SUPPORTED_GENTOO_BINPKG_FORMATS,
 )
-from portage.cache.mappings import Mapping
 from portage.process import find_binary
 from portage.tests import cnf_bindir, cnf_sbindir, cnf_etc_path
-from portage.tests.util.test_socks5 import AsyncHTTPServer
 from portage.util import ensure_dirs, find_updated_config_files, shlex_split
 from portage.util.futures import asyncio
 
@@ -46,25 +44,6 @@ def _have_python_xml():
     except (AttributeError, ImportError):
         return False
     return True
-
-
-class BinhostContentMap(Mapping):
-    def __init__(self, remote_path, local_path):
-        self._remote_path = remote_path
-        self._local_path = local_path
-
-    def __getitem__(self, request_path):
-        safe_path = os.path.normpath(request_path)
-        if not safe_path.startswith(self._remote_path + "/"):
-            raise KeyError(request_path)
-        local_path = os.path.join(
-            self._local_path, safe_path[len(self._remote_path) + 1 :]
-        )
-        try:
-            with open(local_path, "rb") as f:
-                return f.read()
-        except OSError:
-            raise KeyError(request_path)
 
 
 def make_test_commands(settings, trees, binhost_uri):
@@ -383,34 +362,24 @@ def make_test_commands(settings, trees, binhost_uri):
     return test_commands
 
 
-def test_simple_emerge(playground):
-    loop = asyncio._wrap_loop()
-    loop.run_until_complete(
+def test_simple_emerge(async_loop, playground, binhost):
+    async_loop.run_until_complete(
         asyncio.ensure_future(
-            _async_test_simple(playground, _METADATA_XML_FILES, loop=loop),
-            loop=loop,
+            _async_test_simple(
+                playground, binhost, _METADATA_XML_FILES, loop=async_loop
+            ),
+            loop=async_loop,
         )
     )
 
 
-async def _async_test_simple(playground, metadata_xml_files, loop):
+async def _async_test_simple(playground, binhost, metadata_xml_files, loop):
     debug = playground.debug
     settings = playground.settings
     trees = playground.trees
     eprefix = settings["EPREFIX"]
-    binhost_dir = os.path.join(eprefix, "binhost")
-    binhost_address = "127.0.0.1"
-    binhost_remote_path = "/binhost"
-    binhost_server = AsyncHTTPServer(
-        binhost_address, BinhostContentMap(binhost_remote_path, binhost_dir), loop
-    ).__enter__()
-    binhost_uri = "http://{address}:{port}{path}".format(
-        address=binhost_address,
-        port=binhost_server.server_port,
-        path=binhost_remote_path,
-    )
 
-    test_commands = make_test_commands(settings, trees, binhost_uri)
+    test_commands = make_test_commands(settings, trees, binhost["uri"])
 
     test_repo_location = settings.repositories["test_repo"].location
     var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
@@ -494,62 +463,60 @@ async def _async_test_simple(playground, metadata_xml_files, loop):
     true_symlinks = ["find", "prepstrip", "sed", "scanelf"]
     true_binary = find_binary("true")
     assert true_binary is not None, "true command not found"
-    try:
-        for d in dirs:
-            ensure_dirs(d)
-        for x in true_symlinks:
-            os.symlink(true_binary, os.path.join(fake_bin, x))
-        for x in etc_symlinks:
-            os.symlink(os.path.join(cnf_etc_path, x), os.path.join(eprefix, "etc", x))
-        with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
-            f.write(b"100")
-        # non-empty system set keeps --depclean quiet
-        with open(os.path.join(profile_path, "packages"), "w") as f:
-            f.write("*dev-libs/token-system-pkg")
-        for cp, xml_data in metadata_xml_files:
-            with open(os.path.join(test_repo_location, cp, "metadata.xml"), "w") as f:
-                f.write(playground.metadata_xml_template % xml_data)
-            with open(os.path.join(updates_dir, "1Q-2010"), "w") as f:
-                f.write(
-                    """
+
+    for d in dirs:
+        ensure_dirs(d)
+    for x in true_symlinks:
+        os.symlink(true_binary, os.path.join(fake_bin, x))
+    for x in etc_symlinks:
+        os.symlink(os.path.join(cnf_etc_path, x), os.path.join(eprefix, "etc", x))
+    with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
+        f.write(b"100")
+    # non-empty system set keeps --depclean quiet
+    with open(os.path.join(profile_path, "packages"), "w") as f:
+        f.write("*dev-libs/token-system-pkg")
+    for cp, xml_data in metadata_xml_files:
+        with open(os.path.join(test_repo_location, cp, "metadata.xml"), "w") as f:
+            f.write(playground.metadata_xml_template % xml_data)
+        with open(os.path.join(updates_dir, "1Q-2010"), "w") as f:
+            f.write(
+                """
 slotmove =app-doc/pms-3 2 3
 move dev-util/git dev-vcs/git
 """
-                )
-        if debug:
-            # The subprocess inherits both stdout and stderr, for
-            # debugging purposes.
-            stdout = None
-        else:
-            # The subprocess inherits stderr so that any warnings
-            # triggered by python -Wd will be visible.
-            stdout = subprocess.PIPE
-
-        for idx, args in enumerate(test_commands):
-            if hasattr(args, "__call__"):
-                args()
-                continue
-
-            if isinstance(args[0], dict):
-                local_env = env.copy()
-                local_env.update(args[0])
-                args = args[1:]
-            else:
-                local_env = env
-
-            # with self.subTest(cmd=args, i=idx):
-            proc = await asyncio.create_subprocess_exec(
-                *args, env=local_env, stderr=None, stdout=stdout
             )
+    if debug:
+        # The subprocess inherits both stdout and stderr, for
+        # debugging purposes.
+        stdout = None
+    else:
+        # The subprocess inherits stderr so that any warnings
+        # triggered by python -Wd will be visible.
+        stdout = subprocess.PIPE
 
-            if debug:
-                await proc.wait()
-            else:
-                output, _err = await proc.communicate()
-                await proc.wait()
-                if proc.returncode != os.EX_OK:
-                    portage.writemsg(output)
+    for idx, args in enumerate(test_commands):
+        if hasattr(args, "__call__"):
+            args()
+            continue
 
-            assert os.EX_OK == proc.returncode, f"emerge failed with args {args}"
-    finally:
-        binhost_server.__exit__(None, None, None)
+        if isinstance(args[0], dict):
+            local_env = env.copy()
+            local_env.update(args[0])
+            args = args[1:]
+        else:
+            local_env = env
+
+        # with self.subTest(cmd=args, i=idx):
+        proc = await asyncio.create_subprocess_exec(
+            *args, env=local_env, stderr=None, stdout=stdout
+        )
+
+        if debug:
+            await proc.wait()
+        else:
+            output, _err = await proc.communicate()
+            await proc.wait()
+            if proc.returncode != os.EX_OK:
+                portage.writemsg(output)
+
+        assert os.EX_OK == proc.returncode, f"emerge failed with args {args}"
