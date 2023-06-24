@@ -1012,7 +1012,7 @@ class gpkg:
         gpkg_version_file = tarfile.TarInfo(
             os.path.join(self.basename, self.gpkg_version)
         )
-        gpkg_version_file.mtime = datetime.utcnow().timestamp()
+        gpkg_version_file.mtime = datetime.now().timestamp()
         container.addfile(gpkg_version_file)
         checksum_info = checksum_helper(self.settings)
         checksum_info.finish()
@@ -1032,7 +1032,7 @@ class gpkg:
             checksum_info = checksum_helper(self.settings)
 
         image_tarinfo = self._create_tarinfo("image")
-        image_tarinfo.mtime = datetime.utcnow().timestamp()
+        image_tarinfo.mtime = datetime.now().timestamp()
         with tar_stream_writer(
             image_tarinfo, container, image_tar_format, compression_cmd, checksum_info
         ) as image_writer:
@@ -1114,7 +1114,7 @@ class gpkg:
             gpkg_version_file = tarfile.TarInfo(
                 os.path.join(new_basename, self.gpkg_version)
             )
-            gpkg_version_file.mtime = datetime.utcnow().timestamp()
+            gpkg_version_file.mtime = datetime.now().timestamp()
             container.addfile(gpkg_version_file)
             checksum_info = checksum_helper(self.settings)
             checksum_info.finish()
@@ -1182,7 +1182,7 @@ class gpkg:
             gpkg_version_file = tarfile.TarInfo(
                 os.path.join(self.prefix, self.gpkg_version)
             )
-            gpkg_version_file.mtime = datetime.utcnow().timestamp()
+            gpkg_version_file.mtime = datetime.now().timestamp()
             container.addfile(gpkg_version_file)
             checksum_info = checksum_helper(self.settings)
             checksum_info.finish()
@@ -1253,7 +1253,7 @@ class gpkg:
         if metadata is None:
             metadata = {}
         metadata_tarinfo = self._create_tarinfo("metadata")
-        metadata_tarinfo.mtime = datetime.utcnow().timestamp()
+        metadata_tarinfo.mtime = datetime.now().timestamp()
 
         if self.create_signature:
             checksum_info = checksum_helper(
@@ -1274,7 +1274,7 @@ class gpkg:
             ) as metadata_tar:
                 for m in metadata:
                     m_info = tarfile.TarInfo(os.path.join("metadata", m))
-                    m_info.mtime = datetime.utcnow().timestamp()
+                    m_info.mtime = datetime.now().timestamp()
 
                     if isinstance(metadata[m], bytes):
                         m_data = io.BytesIO(metadata[m])
@@ -1329,7 +1329,7 @@ class gpkg:
         gpkg_version_file = tarfile.TarInfo(
             os.path.join(self.basename, self.gpkg_version)
         )
-        gpkg_version_file.mtime = datetime.utcnow().timestamp()
+        gpkg_version_file.mtime = datetime.now().timestamp()
         container.addfile(gpkg_version_file)
         checksum_info = checksum_helper(self.settings)
         checksum_info.finish()
@@ -1350,7 +1350,7 @@ class gpkg:
         paths = list(contents)
         paths.sort()
         image_tarinfo = self._create_tarinfo("image")
-        image_tarinfo.mtime = datetime.utcnow().timestamp()
+        image_tarinfo.mtime = datetime.now().timestamp()
         with tar_stream_writer(
             image_tarinfo, container, image_tar_format, compression_cmd, checksum_info
         ) as image_writer:
@@ -1518,7 +1518,7 @@ class gpkg:
 
         manifest_tarinfo = tarfile.TarInfo(os.path.join(basename, "Manifest"))
         manifest_tarinfo.size = manifest.tell()
-        manifest_tarinfo.mtime = datetime.utcnow().timestamp()
+        manifest_tarinfo.mtime = datetime.now().timestamp()
         manifest.seek(0)
         container.addfile(manifest_tarinfo, manifest)
         manifest.close()
@@ -1562,7 +1562,7 @@ class gpkg:
         signature = io.BytesIO(checksum_info.gpg_output)
         signature_tarinfo = tarfile.TarInfo(f"{tarinfo.name}.sig")
         signature_tarinfo.size = len(signature.getvalue())
-        signature_tarinfo.mtime = datetime.utcnow().timestamp()
+        signature_tarinfo.mtime = datetime.now().timestamp()
         container.addfile(signature_tarinfo, signature)
 
         if manifest:
