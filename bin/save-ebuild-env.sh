@@ -83,8 +83,12 @@ __save_ebuild_env() {
 	___eapi_has_usex && unset -f usex
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
-	unset -f $(compgen -A function ___)
-	unset ${!___*}
+	while IFS=' ' read -r _ _ REPLY; do
+		if [[ ${REPLY} == ___* ]]; then
+			unset -f "${REPLY}"
+		fi
+	done < <(declare -F)
+	unset -v REPLY "${!___@}"
 
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BUILD_PREFIX COLS \
