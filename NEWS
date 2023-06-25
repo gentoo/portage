@@ -1,3 +1,12 @@
+portage-3.0.50 (UNRELEASED)
+--------------
+
+Bug fixes:
+* install-qa-check.d/05prefix: Fix prefixifying shebang for >= EAPI 7 ebuilds
+  (bug #909147).
+
+* gpkg: Fix timestamp for binary packages (bug #909067).
+
 portage-3.0.49 (2023-06-21)
 --------------
 
