@@ -82,13 +82,13 @@ __save_ebuild_env() {
 
 	___eapi_has_usex && unset -f usex
 
-	# BEGIN PREFIX LOCAL: compgen is not compiled in during bootstrap
-	if type compgen >& /dev/null ; then
-		# Clear out the triple underscore namespace as it is reserved by the PM.
-		unset -f $(compgen -A function ___)
-		unset ${!___*}
-	fi
-	# END PREFIX LOCAL
+	# Clear out the triple underscore namespace as it is reserved by the PM.
+	while IFS=' ' read -r _ _ REPLY; do
+		if [[ ${REPLY} == ___* ]]; then
+			unset -f "${REPLY}"
+		fi
+	done < <(declare -F)
+	unset -v REPLY "${!___@}"
 
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BUILD_PREFIX COLS \
