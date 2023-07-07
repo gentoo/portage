@@ -209,7 +209,7 @@ _TEST_COMMAND_NAMES_FETCHCOMMAND = [
 ]
 
 _TEST_COMMAND_NAMES = [
-    "emerge_w_parse_intermixed_args",
+    "emerge -1 dev-libs/A -v dev-libs/B",
     "emerge --root --quickpkg-direct-root",
     "emerge --quickpkg-direct-root",
     "env-update",
@@ -475,12 +475,15 @@ def simple_command(playground, binhost, request):
     test_commands = {}
 
     if hasattr(argparse.ArgumentParser, "parse_intermixed_args"):
-        test_commands["emerge_w_parse_intermixed_args"] = emerge_cmd + (
+        parse_intermixed_command = emerge_cmd + (
             "--oneshot",
             "dev-libs/A",
             "-v",
             "dev-libs/A",
         )
+    else:
+        parse_intermixed_command = lambda: ...
+    test_commands["emerge -1 dev-libs/A -v dev-libs/B"] = parse_intermixed_command
 
     test_commands["emerge --root --quickpkg-direct-root"] = emerge_cmd + (
         "--usepkgonly",
