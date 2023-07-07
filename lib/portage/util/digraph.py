@@ -1,5 +1,12 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+# Type annotation imports
+from typing import TYPE_CHECKING, Optional, FrozenSet, Callable
+
+if TYPE_CHECKING:
+    from _emerge.SetArg import SetArg
+    from _emerge.Package import Package
 
 __all__ = ["digraph"]
 
@@ -21,7 +28,7 @@ class digraph:
         self.nodes = {}
         self.order = []
 
-    def add(self, node, parent, priority=0):
+    def add(self, node: "SetArg", parent: Optional["SetArg"], priority: int = 0):
         """Adds the specified node with the specified parent.
 
         If the dep is a soft-dep and the node already has a hard
@@ -47,7 +54,7 @@ class digraph:
         if not priorities or priorities[-1] is not priority:
             bisect.insort(priorities, priority)
 
-    def discard(self, node):
+    def discard(self, node: "SetArg"):
         """
         Like remove(), except it doesn't raises KeyError if the
         node doesn't exist.
@@ -57,7 +64,7 @@ class digraph:
         except KeyError:
             pass
 
-    def remove(self, node):
+    def remove(self, node: "SetArg"):
         """Removes the specified node from the digraph, also removing
         and ties to other nodes in the digraph. Raises KeyError if the
         node doesn't exist."""
@@ -73,7 +80,7 @@ class digraph:
         del self.nodes[node]
         self.order.remove(node)
 
-    def update(self, other):
+    def update(self, other: "digraph"):
         """
         Add all nodes and edges from another digraph instance.
         """
@@ -93,7 +100,7 @@ class digraph:
         self.nodes.clear()
         del self.order[:]
 
-    def difference_update(self, t):
+    def difference_update(self, t: FrozenSet["SetArg"]):
         """
         Remove all given nodes from node_set. This is more efficient
         than multiple calls to the remove() method.
@@ -112,7 +119,7 @@ class digraph:
             del self.nodes[node]
         self.order = order
 
-    def has_edge(self, child, parent):
+    def has_edge(self, child: "Package", parent: "Package") -> bool:
         """
         Return True if the given edge exists.
         """
@@ -121,7 +128,7 @@ class digraph:
         except KeyError:
             return False
 
-    def remove_edge(self, child, parent):
+    def remove_edge(self, child: "Package", parent: "Package"):
         """
         Remove edge in the direction from child to parent. Note that it is
         possible for a remaining edge to exist in the opposite direction.
@@ -146,11 +153,13 @@ class digraph:
     def __iter__(self):
         return iter(self.order)
 
-    def contains(self, node):
+    def contains(self, node: "SetArg"):
         """Checks if the digraph contains mynode"""
         return node in self.nodes
 
-    def get(self, key, default=None):
+    def get(
+        self, key: "SetArg", default: Optional["SetArg"] = None
+    ) -> Optional["SetArg"]:
         node_data = self.nodes.get(key, self)
         if node_data is self:
             return default
@@ -160,7 +169,7 @@ class digraph:
         """Return a list of all nodes in the graph"""
         return self.order[:]
 
-    def child_nodes(self, node, ignore_priority=None):
+    def child_nodes(self, node: "SetArg", ignore_priority: Optional[Callable] = None):
         """Return all children of the specified node"""
         if ignore_priority is None:
             return list(self.nodes[node][0])
@@ -177,7 +186,7 @@ class digraph:
                     children.append(child)
         return children
 
-    def parent_nodes(self, node, ignore_priority=None):
+    def parent_nodes(self, node: "SetArg", ignore_priority: Optional[Callable] = None):
         """Return all parents of the specified node"""
         if ignore_priority is None:
             return list(self.nodes[node][1])
@@ -194,7 +203,7 @@ class digraph:
                     parents.append(parent)
         return parents
 
-    def leaf_nodes(self, ignore_priority=None):
+    def leaf_nodes(self, ignore_priority: Optional[Callable] = None):
         """Return all nodes that have no children
 
         If ignore_soft_deps is True, soft deps are not counted as
@@ -228,7 +237,7 @@ class digraph:
                     leaf_nodes.append(node)
         return leaf_nodes
 
-    def root_nodes(self, ignore_priority=None):
+    def root_nodes(self, ignore_priority: Optional[Callable] = None):
         """Return all nodes that have no parents.
 
         If ignore_soft_deps is True, soft deps are not counted as
@@ -292,7 +301,7 @@ class digraph:
         clone.order = self.order[:]
         return clone
 
-    def delnode(self, node):
+    def delnode(self, node: "SetArg"):
         try:
             self.remove(node)
         except KeyError:
@@ -304,7 +313,7 @@ class digraph:
             return leaf_nodes[0]
         return None
 
-    def hasallzeros(self, ignore_priority=None):
+    def hasallzeros(self, ignore_priority: Optional[Callable] = None):
         return len(self.leaf_nodes(ignore_priority=ignore_priority)) == len(self.order)
 
     def debug_print(self):
@@ -320,7 +329,7 @@ class digraph:
             for child, priorities in self.nodes[node][0].items():
                 output(f"  {child} ({priorities[-1]})\n")
 
-    def bfs(self, start, ignore_priority=None):
+    def bfs(self, start, ignore_priority: Optional[Callable] = None):
         if start not in self:
             raise KeyError(start)
 
@@ -345,7 +354,7 @@ class digraph:
                 return paths[child]
         return None
 
-    def get_cycles(self, ignore_priority=None, max_length=None):
+    def get_cycles(self, ignore_priority: Optional[Callable] = None, max_length=None):
         """
         Returns all cycles that have at most length 'max_length'.
         If 'max_length' is 'None', all cycles are returned.
