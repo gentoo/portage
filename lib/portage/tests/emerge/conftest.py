@@ -199,13 +199,13 @@ _INSTALLED_EBUILDS = {
 _TEST_COMMAND_NAMES_FETCHCOMMAND = [
     "mv {pkgdir} {binhost_dir}",
     "emerge -eG dev-libs/A",
-    "rm -R {pkgdir} (1)",
+    "rm -R {pkgdir}",
     "mv {binhost_dir} {pkgdir}",
     "rm {binrepos_conf_file}",
-    "mv {pkgdir} {binhost_dir} (2)",
+    "mv {pkgdir} {binhost_dir}",
     "PORTAGE_BINHOST={binhost_uri} emerge -feG dev-libs/A",
-    "rm -R {pkgdir} (2)",
-    "mv {binhost_dir} {pkgdir} (2)",
+    "rm -R {pkgdir}",
+    "mv {binhost_dir} {pkgdir}",
 ]
 
 _TEST_COMMAND_NAMES = [
@@ -224,17 +224,17 @@ _TEST_COMMAND_NAMES = [
     "rm -rf {cachedir}",
     "rm -rf {cachedir_pregen}",
     "emerge --regen",
-    "rm -rf {cachedir} (2)",
+    "rm -rf {cachedir}",
     "FEATURES=metadata-transfer emerge --regen",
-    "rm -rf {cachedir} (3)",
-    "FEATURES=metadata-transfer emerge --regen (2)",
-    "rm -rf {cachedir} (4)",
+    "rm -rf {cachedir}",
+    "FEATURES=metadata-transfer emerge --regen",
+    "rm -rf {cachedir}",
     "egencache --update",
     "FEATURES=metadata-transfer emerge --metadata",
-    "rm -rf {cachedir} (5)",
-    "FEATURES=metadata-transfer emerge --metadata (2)",
+    "rm -rf {cachedir}",
+    "FEATURES=metadata-transfer emerge --metadata",
     "emerge --metadata",
-    "rm -rf {cachedir} (6)",
+    "rm -rf {cachedir}",
     "emerge --oneshot virtual/foo",
     "foo pkg missing",
     "FEATURES=unmerge-backup emerge --unmerge virtual/foo",
@@ -291,8 +291,8 @@ _TEST_COMMAND_NAMES = [
     "EPREFIX={cross_prefix} emerge -Cq dev-libs/B",
     "EPREFIX={cross_prefix} emerge -Cq dev-libs/A",
     "EPREFIX={cross_prefix} emerge dev-libs/A",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A (2)",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B (2)",
+    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A",
+    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B",
     "ROOT={cross_root} emerge dev-libs/B",
     "portageq has_version {cross_eroot} dev-libs/B",
 ] + _TEST_COMMAND_NAMES_FETCHCOMMAND
@@ -518,27 +518,16 @@ def simple_command(playground, binhost, request):
     test_commands["rm -rf {cachedir}"] = rm_cmd + ("-rf", cachedir)
     test_commands["rm -rf {cachedir_pregen}"] = rm_cmd + ("-rf", cachedir_pregen)
     test_commands["emerge --regen"] = emerge_cmd + ("--regen",)
-    test_commands["rm -rf {cachedir} (2)"] = rm_cmd + ("-rf", cachedir)
     test_commands["FEATURES=metadata-transfer emerge --regen"] = (
         ({"FEATURES": "metadata-transfer"},) + emerge_cmd + ("--regen",)
     )
-    test_commands["rm -rf {cachedir} (3)"] = rm_cmd + ("-rf", cachedir)
-    test_commands["FEATURES=metadata-transfer emerge --regen (2)"] = (
-        ({"FEATURES": "metadata-transfer"},) + emerge_cmd + ("--regen",)
-    )
-    test_commands["rm -rf {cachedir} (4)"] = rm_cmd + ("-rf", cachedir)
     test_commands["egencache --update"] = (
         egencache_cmd + ("--update",) + tuple(egencache_extra_args)
     )
     test_commands["FEATURES=metadata-transfer emerge --metadata"] = (
         ({"FEATURES": "metadata-transfer"},) + emerge_cmd + ("--metadata",)
     )
-    test_commands["rm -rf {cachedir} (5)"] = rm_cmd + ("-rf", cachedir)
-    test_commands["FEATURES=metadata-transfer emerge --metadata (2)"] = (
-        ({"FEATURES": "metadata-transfer"},) + emerge_cmd + ("--metadata",)
-    )
     test_commands["emerge --metadata"] = emerge_cmd + ("--metadata",)
-    test_commands["rm -rf {cachedir} (6)"] = rm_cmd + ("-rf", cachedir)
 
     test_commands["emerge --oneshot virtual/foo"] = emerge_cmd + (
         "--oneshot",
@@ -779,20 +768,7 @@ def simple_command(playground, binhost, request):
     test_commands["EPREFIX={cross_prefix} emerge dev-libs/A"] = (
         ({"EPREFIX": cross_prefix},) + emerge_cmd + ("dev-libs/A",)
     )
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A (2)"
-    ] = (
-        ({"EPREFIX": cross_prefix},)
-        + portageq_cmd
-        + ("has_version", cross_prefix, "dev-libs/A")
-    )
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B (2)"
-    ] = (
-        ({"EPREFIX": cross_prefix},)
-        + portageq_cmd
-        + ("has_version", cross_prefix, "dev-libs/B")
-    )
+
     # Test ROOT support
     test_commands["ROOT={cross_root} emerge dev-libs/B"] = (
         ({"ROOT": cross_root},) + emerge_cmd + ("dev-libs/B",)
@@ -824,23 +800,16 @@ def simple_command(playground, binhost, request):
             "--getbinpkgonly",
             "dev-libs/A",
         )
-        test_commands["rm -R {pkgdir} (1)"] = lambda: shutil.rmtree(pkgdir)
+        test_commands["rm -R {pkgdir}"] = lambda: shutil.rmtree(pkgdir)
         test_commands["mv {binhost_dir} {pkgdir}"] = lambda: os.rename(
             binhost_dir, pkgdir
         )
         # Remove binrepos.conf and test PORTAGE_BINHOST.
         test_commands["rm {binrepos_conf_file}"] = lambda: os.unlink(binrepos_conf_file)
-        test_commands["mv {pkgdir} {binhost_dir} (2)"] = lambda: os.rename(
-            pkgdir, binhost_dir
-        )
         test_commands["PORTAGE_BINHOST={binhost_uri} emerge -feG dev-libs/A"] = (
             ({"PORTAGE_BINHOST": binhost_uri},)
             + emerge_cmd
             + ("-fe", "--getbinpkgonly", "dev-libs/A")
-        )
-        test_commands["rm -R {pkgdir} (2)"] = lambda: shutil.rmtree(pkgdir)
-        test_commands["mv {binhost_dir} {pkgdir} (2)"] = lambda: os.rename(
-            binhost_dir, pkgdir
         )
 
     return test_commands[request.param]
