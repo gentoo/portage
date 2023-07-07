@@ -5,6 +5,8 @@ import argparse
 import subprocess
 import sys
 
+import pytest
+
 import portage
 from portage import shutil, os
 from portage.const import (
@@ -29,12 +31,19 @@ class BinhostContentMap(Mapping):
         self._remote_path = remote_path
         self._local_path = local_path
 
-    def __getitem__(self, request_path):
-        safe_path = os.path.normpath(request_path)
-        if not safe_path.startswith(self._remote_path + "/"):
-            raise KeyError(request_path)
-        local_path = os.path.join(
-            self._local_path, safe_path[len(self._remote_path) + 1 :]
+
+@pytest.mark.ft
+def test_simple_emerge(async_loop, playground, binhost, simple_command):
+    async_loop.run_until_complete(
+        asyncio.ensure_future(
+            _async_test_simple(
+                playground,
+                binhost,
+                simple_command,
+                _METADATA_XML_FILES,
+                loop=async_loop,
+            ),
+            loop=async_loop,
         )
         try:
             with open(local_path, "rb") as f:
