@@ -177,26 +177,7 @@ _INSTALLED_EBUILDS = {
     },
 }
 
-
-# class SimpleTestCommand:
-#     """A class that represents a simple test case command,
-#     including post checks, preparation and cleanup.
-#     """
-#     def __init__(self, command, *options, environment=None):
-#         self._command = command
-#         self._options = options
-#         if environment is None:
-#             environment = {}
-#         self.environment = environment
-
-#     def prepare(self):
-#         ...
-
-#     def cleanup(self):
-#         ...
-
-
-_TEST_COMMAND_NAMES_FETCHCOMMAND = [
+_SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE = [
     "mv {pkgdir} {binhost_dir}",
     "emerge -eG dev-libs/A",
     "rm -R {pkgdir}",
@@ -208,7 +189,7 @@ _TEST_COMMAND_NAMES_FETCHCOMMAND = [
     "mv {binhost_dir} {pkgdir}",
 ]
 
-_TEST_COMMAND_NAMES = [
+_SIMPLE_COMMAND_SEQUENCE = [
     "emerge -1 dev-libs/A -v dev-libs/B",
     "emerge --root --quickpkg-direct-root",
     "emerge --quickpkg-direct-root",
@@ -295,12 +276,32 @@ _TEST_COMMAND_NAMES = [
     "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B",
     "ROOT={cross_root} emerge dev-libs/B",
     "portageq has_version {cross_eroot} dev-libs/B",
-] + _TEST_COMMAND_NAMES_FETCHCOMMAND
+] + _SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE
+
+NOOP = lambda: ...
+
+
+# class SimpleTestCommand:
+#     """A class that represents a simple test case command,
+#     including post checks, preparation and cleanup.
+#     """
+#     def __init__(self, command, *options, environment=None):
+#         self._command = command
+#         self._options = options
+#         if environment is None:
+#             environment = {}
+#         self.environment = environment
+
+#     def prepare(self):
+#         ...
+
+#     def cleanup(self):
+#         ...
 
 
 def pytest_generate_tests(metafunc):
     if "simple_command" in metafunc.fixturenames:
-        metafunc.parametrize("simple_command", _TEST_COMMAND_NAMES, indirect=True)
+        metafunc.parametrize("simple_command", _SIMPLE_COMMAND_SEQUENCE, indirect=True)
 
 
 def _have_python_xml():
@@ -482,7 +483,7 @@ def simple_command(playground, binhost, request):
             "dev-libs/A",
         )
     else:
-        parse_intermixed_command = lambda: ...
+        parse_intermixed_command = NOOP
     test_commands["emerge -1 dev-libs/A -v dev-libs/B"] = parse_intermixed_command
 
     test_commands["emerge --root --quickpkg-direct-root"] = emerge_cmd + (
@@ -792,8 +793,8 @@ def simple_command(playground, binhost, request):
     fetchcommand = portage.util.shlex_split(settings["FETCHCOMMAND"])
     fetch_bin = portage.process.find_binary(fetchcommand[0])
     if fetch_bin is None:
-        for command_name in _TEST_COMMAND_NAMES_FETCHCOMMAND:
-            test_commands[command_name] = lambda: ...
+        for command_name in _SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE:
+            test_commands[command_name] = NOOP
     else:
         test_commands["mv {pkgdir} {binhost_dir}"] = lambda: os.rename(
             pkgdir, binhost_dir
