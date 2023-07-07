@@ -1,6 +1,24 @@
 # Copyright 2011-2021, 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+"""This module defines a baseline for portage's functionality.
+
+Multiple portage commands are executed in a sequence in a playground
+(see the ``simple_command`` fixture in ``conftest.py``).
+
+All the commands are triggered from the ``test_portage_baseline`` test.
+That test is marked with::
+
+  @pytest.mark.ft
+
+so that it can selected with that marker, i.e.::
+
+  pytest -m ft
+
+``ft`` stands for *functional test*, since that's what it is, a
+functional or end-to-end test.
+"""
+
 import subprocess
 
 import pytest
@@ -39,7 +57,7 @@ move dev-util/git dev-vcs/git
 
 
 @pytest.mark.ft
-def test_simple_emerge(async_loop, playground, binhost, simple_command):
+def test_portage_baseline(async_loop, playground, binhost, simple_command):
     async_loop.run_until_complete(
         asyncio.ensure_future(
             _async_test_simple(
