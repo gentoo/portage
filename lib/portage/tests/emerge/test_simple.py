@@ -32,6 +32,11 @@ _METADATA_XML_FILES = (
     ),
 )
 
+_1Q_2010_UPDATE = """
+slotmove =app-doc/pms-3 2 3
+move dev-util/git dev-vcs/git
+"""
+
 
 @pytest.mark.ft
 def test_simple_emerge(async_loop, playground, binhost, simple_command):
@@ -161,12 +166,7 @@ async def _async_test_simple(playground, binhost, command, metadata_xml_files, l
         with open(os.path.join(test_repo_location, cp, "metadata.xml"), "w") as f:
             f.write(playground.metadata_xml_template % xml_data)
         with open(os.path.join(updates_dir, "1Q-2010"), "w") as f:
-            f.write(
-                """
-slotmove =app-doc/pms-3 2 3
-move dev-util/git dev-vcs/git
-"""
-            )
+            f.write(_1Q_2010_UPDATE)
     if debug:
         # The subprocess inherits both stdout and stderr, for
         # debugging purposes.
