@@ -387,12 +387,19 @@ def binhost(playground, async_loop):
 
 
 @pytest.fixture()
-def simple_command(playground, binhost, request):
-    """A fixture that provides the commands to perform a baseline
-    functional test of portage.
+def _generate_all_simple_commands(playground, binhost):
+    """This fixture generates all the commands that
+    ``test_portage_baseline`` will use.
 
-    To add a new command, define it in the local ``test_commands`` and
-    add its key to the ``_SIMPLE_COMMAND_SEQUENCE``.
+    But, don't use this fixture directly, instead, use the
+    ``simple_command`` fixture. That improves performance a bit due to
+    pytest caching.
+
+    .. note::
+
+       To add a new command, define it in the local ``test_commands``
+       dict, if not yet defined, and add its key at the correct position
+       in the ``_SIMPLE_COMMAND_SEQUENCE`` list.
     """
     settings = playground.settings
     eprefix = settings["EPREFIX"]
@@ -822,4 +829,15 @@ def simple_command(playground, binhost, request):
             + ("-fe", "--getbinpkgonly", "dev-libs/A")
         )
 
-    return test_commands[request.param]
+    yield test_commands
+
+
+@pytest.fixture()
+def simple_command(request, _generate_all_simple_commands):
+    """A fixture that provides the commands to perform a baseline
+    functional test of portage. It uses another fixture, namely
+    ``_generate_all_simple_commands``.
+    Pytest caches the fixtures and there is a little performance
+    improvement if the commands are generated only once..
+    """
+    return _generate_all_simple_commands[request.param]
