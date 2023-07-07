@@ -4,15 +4,14 @@
 import subprocess
 
 import portage
-from portage import shutil, os
+from portage import os
 from portage.const import (
     PORTAGE_PYM_PATH,
     USER_CONFIG_PATH,
-    SUPPORTED_GENTOO_BINPKG_FORMATS,
 )
 from portage.process import find_binary
 from portage.tests import cnf_etc_path
-from portage.util import ensure_dirs, find_updated_config_files, shlex_split
+from portage.util import ensure_dirs
 from portage.util.futures import asyncio
 
 
@@ -30,10 +29,6 @@ _METADATA_XML_FILES = (
         },
     ),
 )
-
-
-class SimpleTestCommand:
-    ...
 
 
 def test_simple_emerge(async_loop, playground, binhost, simple_command):
@@ -145,9 +140,15 @@ async def _async_test_simple(playground, binhost, command, metadata_xml_files, l
     for d in dirs:
         ensure_dirs(d)
     for x in true_symlinks:
-        os.symlink(true_binary, os.path.join(fake_bin, x))
+        try:
+            os.symlink(true_binary, os.path.join(fake_bin, x))
+        except FileExistsError:
+            pass
     for x in etc_symlinks:
-        os.symlink(os.path.join(cnf_etc_path, x), os.path.join(eprefix, "etc", x))
+        try:
+            os.symlink(os.path.join(cnf_etc_path, x), os.path.join(eprefix, "etc", x))
+        except FileExistsError:
+            pass
     with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
         f.write(b"100")
     # non-empty system set keeps --depclean quiet
