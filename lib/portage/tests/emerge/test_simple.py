@@ -3,6 +3,8 @@
 
 import subprocess
 
+import pytest
+
 import portage
 from portage import os
 from portage.const import (
@@ -31,6 +33,7 @@ _METADATA_XML_FILES = (
 )
 
 
+@pytest.mark.ft
 def test_simple_emerge(async_loop, playground, binhost, simple_command):
     async_loop.run_until_complete(
         asyncio.ensure_future(
