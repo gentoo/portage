@@ -388,6 +388,12 @@ def binhost(playground, async_loop):
 
 @pytest.fixture()
 def simple_command(playground, binhost, request):
+    """A fixture that provides the commands to perform a baseline
+    functional test of portage.
+
+    To add a new command, define it in the local ``test_commands`` and
+    add its key to the ``_SIMPLE_COMMAND_SEQUENCE``.
+    """
     settings = playground.settings
     eprefix = settings["EPREFIX"]
     eroot = settings["EROOT"]
