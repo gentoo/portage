@@ -20,6 +20,13 @@ tasks:
   - setup-python: |
       portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
 
+  - setup-tests: |
+      for py in "${PYTHON_VERSIONS[@]}"; do
+        source ".venv-$py/bin/activate"
+        pip install pytest
+        deactivate
+      done
+
   - test-install: |
       for py in "${PYTHON_VERSIONS[@]}"; do
         source ".venv-$py/bin/activate"
