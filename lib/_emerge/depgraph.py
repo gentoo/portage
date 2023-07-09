@@ -6456,7 +6456,7 @@ class depgraph:
                     cp_exists = True
                     break
 
-            if self._frozen_config.myopts.get("--usepkgonly", "y"):
+            if self._frozen_config.myopts.get("--usepkgonly", False):
                 writemsg(
                     f"\nemerge: there are no binary packages to satisfy {green(xinfo)}.\n",
                     noiselevel=-1,
