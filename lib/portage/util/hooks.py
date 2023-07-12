@@ -12,11 +12,15 @@ from portage.output import create_color_func
 from portage.util import writemsg_level, _recursive_file_list
 from warnings import warn
 
+# PREFIX LOCAL
+from portage.const import EPREFIX
+
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 
 
-def get_hooks_from_dir(rel_directory, prefix="/"):
+# PREFIX LOCAL: prefix=EPREFIX
+def get_hooks_from_dir(rel_directory, prefix=EPREFIX):
     directory = os.path.join(prefix, portage.USER_CONFIG_PATH, rel_directory)
 
     hooks = OrderedDict()
@@ -39,7 +43,8 @@ def get_hooks_from_dir(rel_directory, prefix="/"):
     return hooks
 
 
-def perform_hooks(rel_directory, *argv, prefix="/"):
+# PREFIX LOCAL: prefix=EPREFIX
+def perform_hooks(rel_directory, *argv, prefix=EPREFIX):
     for filepath, name in get_hooks_from_dir(rel_directory, prefix).items():
         hook_command = filepath + " " + " ".join(map(str, argv))
         retval = portage.process.spawn(hook_command)
