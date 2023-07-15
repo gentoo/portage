@@ -1,0 +1,59 @@
+option('system-wide', type : 'boolean', value : true,
+    description : 'Install system-wide rather than isolated inside a Python environment'
+)
+
+option('code-only', type : 'boolean', value : false,
+    description : 'Do not install additional files such as configuration or documentation'
+)
+
+option('eprefix', type : 'string',
+    description : 'Prefix directory for Portage to operate under'
+)
+
+option('portage-base', type : 'string',
+    description : 'Portage installation base directory'
+)
+
+option('portage-bindir', type : 'string',
+    description : 'Internal Portage executables directory'
+)
+
+option('portage-datadir', type : 'string',
+    description : 'Data files directory'
+)
+
+option('docdir', type : 'string',
+    description : 'Documentation directory'
+)
+
+option('doc', type : 'boolean', value : false,
+    description : 'Build and install documentation'
+)
+
+option('doc-formats', type : 'array', choices : ['xhtml', 'xhtml-nochunks'],
+    description : 'Documentation formats to build'
+)
+
+option('apidoc', type : 'boolean', value : false,
+    description : 'Build and install API documentation'
+)
+
+option('native-extensions', type : 'boolean', value : true,
+    description : 'Build and install the native extensions for better performance'
+)
+
+option('gentoo-dev', type : 'boolean', value : false,
+    description : 'Enable features required for Gentoo ebuild development'
+)
+
+option('ipc', type : 'boolean', value : true,
+    description : 'Use inter-process communication between Portage and running ebuilds'
+)
+
+option('rsync-verify', type : 'boolean', value : true,
+    description : 'Enable full-tree cryptographic verification of Gentoo repository rsync checkouts'
+)
+
+option('xattr', type : 'boolean', value : false,
+    description : 'Preserve extended attributes when installing files'
+)

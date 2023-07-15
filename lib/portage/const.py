@@ -4,6 +4,8 @@
 
 import os
 
+from portage import installation
+
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
@@ -54,25 +56,53 @@ NEWS_LIB_PATH = "var/lib/gentoo"
 # these variables get EPREFIX prepended automagically when they are
 # translated into their lowercase variants
 DEPCACHE_PATH = f"/{CACHE_PATH}/dep"
-GLOBAL_CONFIG_PATH = "/usr/share/portage/config"
+
+if installation.TYPE == installation.TYPES.MODULE:
+    GLOBAL_CONFIG_PATH = "/share/portage/config"
+else:
+    GLOBAL_CONFIG_PATH = "/usr/share/portage/config"
 
 # these variables are not used with target_root or config_root
 # NOTE: Use realpath(__file__) so that python module symlinks in site-packages
 # are followed back to the real location of the whole portage installation.
-# NOTE: Please keep PORTAGE_BASE_PATH in one line to help substitutions.
-# fmt:off
-PORTAGE_BASE_PATH = os.path.join(os.sep, os.sep.join(os.path.realpath(__file__.rstrip("co")).split(os.sep)[:-3]))
-# fmt:on
-PORTAGE_BIN_PATH = f"{PORTAGE_BASE_PATH}/bin"
+if installation.TYPE == installation.TYPES.SYSTEM:
+    PORTAGE_BASE_PATH = """@PORTAGE_BASE_PATH@"""
+elif installation.TYPE == installation.TYPES.MODULE:
+    PORTAGE_BASE_PATH = os.path.join(
+        os.path.realpath(__import__("sys").prefix), "lib/portage"
+    )
+else:
+    PORTAGE_BASE_PATH = os.path.join(
+        os.sep, *os.path.realpath(__file__).split(os.sep)[:-3]
+    )
+
+if installation.TYPE == installation.TYPES.SYSTEM:
+    PORTAGE_BIN_PATH = """@PORTAGE_BIN_PATH@"""
+else:
+    PORTAGE_BIN_PATH = f"{PORTAGE_BASE_PATH}/bin"
+
+# The EPREFIX for the current install is hardcoded here, but access to this
+# constant should be minimal, in favor of access via the EPREFIX setting of
+# a config instance (since it's possible to contruct a config instance with
+# a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
+# in the definition of any other constants within this file.
+if installation.TYPE == installation.TYPES.SYSTEM:
+    EPREFIX = BINARY_PREFIX = "@EPREFIX@"
+elif installation.TYPE == installation.TYPES.MODULE:
+    EPREFIX = __import__("sys").prefix
+    BINARY_PREFIX = ""
+else:
+    EPREFIX = BINARY_PREFIX = ""
+
 PORTAGE_PYM_PATH = os.path.realpath(os.path.join(__file__, "../.."))
 LOCALE_DATA_PATH = f"{PORTAGE_BASE_PATH}/locale"  # FIXME: not used
 EBUILD_SH_BINARY = f"{PORTAGE_BIN_PATH}/ebuild.sh"
 MISC_SH_BINARY = f"{PORTAGE_BIN_PATH}/misc-functions.sh"
-SANDBOX_BINARY = "/usr/bin/sandbox"
-FAKEROOT_BINARY = "/usr/bin/fakeroot"
-BASH_BINARY = "/bin/bash"
-MOVE_BINARY = "/bin/mv"
-PRELINK_BINARY = "/usr/sbin/prelink"
+SANDBOX_BINARY = f"{BINARY_PREFIX}/usr/bin/sandbox"
+FAKEROOT_BINARY = f"{BINARY_PREFIX}/usr/bin/fakeroot"
+BASH_BINARY = f"{BINARY_PREFIX}/bin/bash"
+MOVE_BINARY = f"{BINARY_PREFIX}/bin/mv"
+PRELINK_BINARY = f"{BINARY_PREFIX}/usr/sbin/prelink"
 
 INVALID_ENV_FILE = "/etc/spork/is/not/valid/profile.env"
 MERGING_IDENTIFIER = "-MERGING-"
@@ -227,14 +257,7 @@ MANIFEST2_HASH_DEFAULT = "BLAKE2B"
 
 MANIFEST2_IDENTIFIERS = ("AUX", "MISC", "DIST", "EBUILD")
 
-# The EPREFIX for the current install is hardcoded here, but access to this
-# constant should be minimal, in favor of access via the EPREFIX setting of
-# a config instance (since it's possible to contruct a config instance with
-# a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
-# in the definition of any other constants within this file.
-EPREFIX = ""
-
-# pick up EPREFIX from the environment if set
+# Redefine EPREFIX from the environment if set
 if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
     EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
     if EPREFIX:

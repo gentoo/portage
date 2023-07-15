@@ -2,7 +2,6 @@
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.4//EN"
 	"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd" [
 
-	<!ENTITY date SYSTEM "fragment/date">
 	<!ENTITY version SYSTEM "fragment/version">
 
 	<!ENTITY project "portage">
@@ -52,7 +51,6 @@
  </authorgroup>
 
  &version;
- &date;
 </bookinfo>
 
 &config;

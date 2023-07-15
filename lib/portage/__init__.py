@@ -1,12 +1,12 @@
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
-
-VERSION = "HEAD"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
 # ===========================================================================
+
+from portage import installation
 
 try:
     import asyncio
@@ -716,7 +716,7 @@ def create_trees(
     return trees
 
 
-if VERSION == "HEAD":
+if installation.TYPE == installation.TYPES.SOURCE:
 
     class _LazyVersion(proxy.objectproxy.ObjectProxy):
         def _get_target(self):
@@ -774,6 +774,9 @@ if VERSION == "HEAD":
             return VERSION
 
     VERSION = _LazyVersion()
+
+else:
+    VERSION = "@VERSION@"
 
 _legacy_global_var_names = (
     "archlist",

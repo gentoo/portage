@@ -24,20 +24,21 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install python dependencies
+      - name: Install dependencies
         run: |
           set -xe
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libxml2-utils zstd
+          sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson zstd
           python -VV
           python -m site
           python -m pip install --upgrade pip
-          python -m pip install tox tox-gh-actions setuptools
-      - name: Test ./setup.py install --root=/tmp/install-root
+          # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
+          python -m pip install pytest setuptools
+      - name: Test meson install --destdir /tmp/install-root
         run: |
-          printf "[build_ext]\nportage_ext_modules=true" >> setup.cfg
-          ./setup.py install --root=/tmp/install-root
-      - name: Run tox test env for ${{ matrix.python-version }}
-        run: tox -vv
-        env:
-          TARGET: test
+          echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
+          meson setup --native-file /tmp/native.ini /tmp/build .
+          meson install -C /tmp/build --destdir /tmp/install-root
+      - name: Run tests for ${{ matrix.python-version }}
+        run: |
+          meson test -C /tmp/build --verbose

@@ -3,6 +3,8 @@ portage-3.0.50 (UNRELEASED)
 
 Breaking changes:
 * The minimum supported Python version is now >= Python 3.9.
+* Portage now installed with Meson and Python sdist + wheel now prepared with
+  meson-python for PEP 517 compliance.
 
 Bug fixes:
 * install-qa-check.d/05prefix: Fix prefixifying shebang for >= EAPI 7 ebuilds

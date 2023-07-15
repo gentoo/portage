@@ -11,7 +11,6 @@ import signal
 import tempfile
 import shutil
 import sys
-from distutils.dir_util import copy_tree
 
 import pytest
 
@@ -68,8 +67,10 @@ def prepare_environment():
     # Copy GPG test keys to temporary directory
     gpg_path = tempfile.mkdtemp(prefix="gpg_")
 
-    copy_tree(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), ".gnupg"), gpg_path
+    shutil.copytree(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), ".gnupg"),
+        gpg_path,
+        dirs_exist_ok=True,
     )
 
     os.chmod(gpg_path, 0o700)

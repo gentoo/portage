@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -10,6 +10,7 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 import portage
 from portage.elog import messages as elog_messages
+from portage import installation
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
@@ -51,7 +52,9 @@ class AbstractEbuildProcess(SpawnProcess):
 
     # The EbuildIpcDaemon support is well tested, but this variable
     # is left so we can temporarily disable it if any issues arise.
-    _enable_ipc_daemon = True
+    _enable_ipc_daemon = (
+        installation.TYPE == installation.TYPES.SOURCE or "@IPC@" == "True"
+    )
 
     def __init__(self, **kwargs):
         SpawnProcess.__init__(self, **kwargs)
