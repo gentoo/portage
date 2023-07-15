@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["env_update"]
@@ -6,6 +6,7 @@ __all__ = ["env_update"]
 import errno
 import glob
 import stat
+import sys
 import time
 
 import portage
@@ -363,18 +364,24 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
             writemsg_level(
                 _(">>> Regenerating %setc/ld.so.cache...\n") % (target_root,)
             )
-            os.system(f"cd / ; {ldconfig} -X -r '{target_root}'")
+            ret = os.system(f"cd / ; {ldconfig} -X -r '{target_root}'")
         elif ostype in ("FreeBSD", "DragonFly"):
             writemsg_level(
                 _(">>> Regenerating %svar/run/ld-elf.so.hints...\n") % target_root
             )
-            os.system(
+            ret = os.system(
                 (
                     "cd / ; %s -elf -i "
                     + "-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'"
                 )
                 % (ldconfig, target_root, target_root)
             )
+
+        ret = os.waitstatus_to_exitcode(ret)
+        if ret > 0:
+            writemsg(f"!!! ldconfig failed with exit status {ret}\n", noiselevel=-1)
+        if ret < 0:
+            writemsg(f"!!! ldconfig was killed with signal {-ret}\n", noiselevel=-1)
 
     del specials["LDPATH"]
 
