@@ -18,6 +18,7 @@ class LazyImportPortageBaselineTestCase(TestCase):
     _baseline_imports = frozenset(
         [
             "portage.const",
+            "portage.installation",
             "portage.localization",
             "portage.proxy",
             "portage.proxy.lazyimport",

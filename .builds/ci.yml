@@ -9,8 +9,6 @@ repositories:
   # pypy: https://ppa.launchpadcontent.net/pypy/ppa/ubuntu jammy main "251104D968854915"
 environment:
   PYTHON_VERSIONS:
-    - '3.7'
-    - '3.8'
     - '3.9'
     - '3.10'
     - '3.11'
@@ -21,26 +19,20 @@ tasks:
       portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
 
   - setup-tests: |
+      sudo apt-get install -y --no-install-recommends meson
       for py in "${PYTHON_VERSIONS[@]}"; do
-        source ".venv-$py/bin/activate"
-        pip install pytest
-        deactivate
+        # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
+        ".venv-$py/bin/pip" install pytest setuptools
       done
 
   - test-install: |
       for py in "${PYTHON_VERSIONS[@]}"; do
-        source ".venv-$py/bin/activate"
-        pushd portage
-          time ./setup.py clean install
-        popd
-        deactivate
+        echo -e "[binaries]\npython = '${PWD}/.venv-${py}/bin/python'" > /tmp/native.ini
+        meson setup --native-file /tmp/native.ini "/tmp/build-$py" portage
+        meson install -C "/tmp/build-$py"
       done
 
   - test-portage: |
       for py in "${PYTHON_VERSIONS[@]}"; do
-        source ".venv-$py/bin/activate"
-        pushd portage
-          ./setup.py clean test
-        popd
-        deactivate
+        meson test -C "/tmp/build-$py" --verbose
       done

@@ -7,8 +7,6 @@ repositories:
   deadsnakes: https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy main "BA6932366A755776"
 environment:
   PYTHON_VERSIONS:
-    - '3.7'
-    - '3.8'
     - '3.9'
     - '3.10'
     - '3.11'
@@ -17,15 +15,11 @@ tasks:
       portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
 
   - setup-black: |
-      source .venv/bin/activate
-      pip install black
-      deactivate
+      .venv/bin/pip install black
 
   - setup-pylint: |
       for py in "${PYTHON_VERSIONS[@]}"; do
-        source ".venv-$py/bin/activate"
-        pip install pylint pytest
-        deactivate
+        ".venv-$py/bin/pip" install pylint pytest
       done
 
   - black: |

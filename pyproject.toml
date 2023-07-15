@@ -1,6 +1,33 @@
-[build-system]
-requires = [
-	"setuptools",
-	"wheel",
+[project]
+name = 'portage'
+dynamic = ['version']
+description = 'Portage is the package management and distribution system for Gentoo'
+readme = 'README.md'
+requires-python = '>=3.9'
+license = {file = "LICENSE"}
+authors = [
+  {name = 'Gentoo Portage Development Team', email = 'dev-portage@gentoo.org'},
 ]
-build-backend = "setuptools.build_meta"
+
+[build-system]
+build-backend = 'mesonpy'
+requires = ['meson-python']
+
+[tool.meson-python.args]
+setup = ['-Dsystem-wide=false']
+
+[project.scripts]
+archive-conf = 'portage.util.bin_entry_point:bin_entry_point'
+dispatch-conf = 'portage.util.bin_entry_point:bin_entry_point'
+ebuild = 'portage.util.bin_entry_point:bin_entry_point'
+egencache = 'portage.util.bin_entry_point:bin_entry_point'
+emaint = 'portage.util.bin_entry_point:bin_entry_point'
+emerge = 'portage.util.bin_entry_point:bin_entry_point'
+emirrordist = 'portage.util.bin_entry_point:bin_entry_point'
+env-update = 'portage.util.bin_entry_point:bin_entry_point'
+fixpackages = 'portage.util.bin_entry_point:bin_entry_point'
+glsa-check = 'portage.util.bin_entry_point:bin_entry_point'
+gpkg-sign = 'portage.util.bin_entry_point:bin_entry_point'
+portageq = 'portage.util.bin_entry_point:bin_entry_point'
+quickpkg = 'portage.util.bin_entry_point:bin_entry_point'
+regenworld = 'portage.util.bin_entry_point:bin_entry_point'
