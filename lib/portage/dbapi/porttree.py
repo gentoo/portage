@@ -49,6 +49,7 @@ import functools
 
 import collections
 from collections import OrderedDict
+from typing import List, Optional, Sequence, Type, Tuple, Union
 from urllib.parse import urlparse
 
 
@@ -435,7 +436,9 @@ class portdbapi(dbapi):
                 return license_path
         return None
 
-    def findname(self, mycpv, mytree=None, myrepo=None):
+    def findname(
+        self, mycpv: str, mytree: Optional[str] = None, myrepo: Optional[str] = None
+    ) -> str:
         return self.findname2(mycpv, mytree, myrepo)[0]
 
     def getRepositoryPath(self, repository_id):
@@ -494,7 +497,12 @@ class portdbapi(dbapi):
         """
         return self.settings.repositories.ignored_repos
 
-    def findname2(self, mycpv, mytree=None, myrepo=None):
+    def findname2(
+        self,
+        mycpv: str,
+        mytree: Optional[str] = None,
+        myrepo: Optional[str] = None,
+    ) -> Union[Tuple[None, int], Tuple[str, str], Tuple[str, None]]:
         """
         Returns the location of the CPV, and what overlay it was in.
         Searches overlays first, then PORTDIR; this allows us to return the first
@@ -643,7 +651,13 @@ class portdbapi(dbapi):
 
         return (metadata, ebuild_hash)
 
-    def aux_get(self, mycpv, mylist, mytree=None, myrepo=None):
+    def aux_get(
+        self,
+        mycpv: str,
+        mylist: Sequence[str],
+        mytree: Optional[str] = None,
+        myrepo: Optional[str] = None,
+    ) -> List[str]:
         "stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
         'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
         'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise PortageKeyError if error'
@@ -1200,12 +1214,12 @@ class portdbapi(dbapi):
 
     def xmatch(
         self,
-        level,
-        origdep,
-        mydep=DeprecationWarning,
-        mykey=DeprecationWarning,
-        mylist=DeprecationWarning,
-    ):
+        level: str,
+        origdep: str,
+        mydep: Type[DeprecationWarning] = DeprecationWarning,
+        mykey: Type[DeprecationWarning] = DeprecationWarning,
+        mylist: Type[DeprecationWarning] = DeprecationWarning,
+    ) -> Union[Sequence[str], str]:
         """
         Caching match function.
 
@@ -1381,7 +1395,7 @@ class portdbapi(dbapi):
 
         return myval
 
-    def match(self, mydep, use_cache=1):
+    def match(self, mydep: str, use_cache: int = 1) -> Union[Sequence[str], str]:
         return self.xmatch("match-visible", mydep)
 
     def gvisible(self, mylist):
