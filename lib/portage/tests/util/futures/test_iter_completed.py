@@ -1,7 +1,10 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import time
+
+import pytest
+
 from portage.tests import TestCase
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -28,11 +31,10 @@ class SleepProcess(ForkProcess):
 
 
 class IterCompletedTestCase(TestCase):
+    # Mark this as todo, since we don't want to fail if heavy system load causes
+    # the tasks to finish in an unexpected order.
+    @pytest.mark.xfail(strict=False)
     def testIterCompleted(self):
-        # Mark this as todo, since we don't want to fail if heavy system
-        # load causes the tasks to finish in an unexpected order.
-        self.todo = True
-
         loop = global_event_loop()
         tasks = [
             SleepProcess(seconds=0.200),

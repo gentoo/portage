@@ -56,15 +56,8 @@ class CopyFileSparseTestCase(TestCase):
             self.assertEqual(perform_md5(src_path), perform_md5(dest_path))
 
             # This last part of the test is expected to fail when sparse
-            # copy is not implemented, so set the todo flag in order
-            # to tolerate failures. Or mark it xfail:
-
-            AM_I_UNDER_PYTEST = "PYTEST_CURRENT_TEST" in os.environ
-
-            if AM_I_UNDER_PYTEST:
-                pytest.xfail(reason="sparse copy is not implemented")
-            else:
-                self.todo = True
+            # copy is not implemented, so mark it xfail:
+            pytest.xfail(reason="sparse copy is not implemented")
 
             # If sparse blocks were preserved, then both files should
             # consume the same number of blocks.

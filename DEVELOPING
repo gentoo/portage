@@ -223,7 +223,7 @@ and commit.
      - meson setup -Dmodules-only=true build
      - meson test -C build --verbose
    Use meson setup's --native-file to override the Python version. See
-   PYTHON_SUPPORTED_VERSIONS in runtests.
+   Python versions listed in tox.ini.
 
 4. Version bump the ebuild locally (don't push) and verify it can re-install itself:
 	emerge --oneshot sys-apps/portage

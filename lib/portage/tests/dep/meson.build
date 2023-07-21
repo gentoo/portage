@@ -1,10 +1,10 @@
 py.install_sources(
     [
-        'testAtom.py',
-        'testCheckRequiredUse.py',
-        'testExtendedAtomDict.py',
-        'testExtractAffectingUSE.py',
-        'testStandalone.py',
+        'test_atom.py',
+        'test_check_required_use.py',
+        'test_extended_atom_dict.py',
+        'test_extract_affecting_use.py',
+        'test_standalone.py',
         'test_best_match_to_list.py',
         'test_dep_getcpv.py',
         'test_dep_getrepo.py',

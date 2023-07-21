@@ -1,7 +1,7 @@
 py.install_sources(
     [
-        'testConfigFileSet.py',
-        'testStaticFileSet.py',
+        'test_config_file_set.py',
+        'test_static_file_set.py',
         '__init__.py',
         '__test__.py',
     ],

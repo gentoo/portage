@@ -1,7 +1,6 @@
 py.install_sources(
     [
         'conftest.py',
-        'runTests.py',
         '__init__.py',
     ],
     subdir : 'portage/tests',
