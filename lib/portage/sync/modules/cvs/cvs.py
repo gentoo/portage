@@ -41,7 +41,7 @@ class CVSSync(NewBase):
                         self.repo.module_specific_options["sync-cvs-repo"]
                     ),
                 ),
-                **self.spawn_kwargs
+                **self.spawn_kwargs,
             )
             != os.EX_OK
         ):
@@ -64,7 +64,7 @@ class CVSSync(NewBase):
         exitcode = portage.process.spawn_bash(
             "cd %s; exec cvs -z0 -q update -dP"
             % (portage._shell_quote(self.repo.location),),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
             msg = "!!! cvs update error; exiting."

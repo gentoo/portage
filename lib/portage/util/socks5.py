@@ -54,7 +54,7 @@ class ProxyManager:
         self._pids = spawn(
             [_python_interpreter, server_bin, self.socket_path],
             returnpid=True,
-            **spawn_kwargs
+            **spawn_kwargs,
         )
 
     def stop(self):

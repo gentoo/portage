@@ -49,7 +49,8 @@ import functools
 
 import collections
 from collections import OrderedDict
-from typing import List, Optional, Sequence, Type, Tuple, Union
+from collections.abc import Sequence
+from typing import Optional, Union
 from urllib.parse import urlparse
 
 
@@ -502,7 +503,7 @@ class portdbapi(dbapi):
         mycpv: str,
         mytree: Optional[str] = None,
         myrepo: Optional[str] = None,
-    ) -> Union[Tuple[None, int], Tuple[str, str], Tuple[str, None]]:
+    ) -> Union[tuple[None, int], tuple[str, str], tuple[str, None]]:
         """
         Returns the location of the CPV, and what overlay it was in.
         Searches overlays first, then PORTDIR; this allows us to return the first
@@ -657,7 +658,7 @@ class portdbapi(dbapi):
         mylist: Sequence[str],
         mytree: Optional[str] = None,
         myrepo: Optional[str] = None,
-    ) -> List[str]:
+    ) -> list[str]:
         "stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
         'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
         'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise PortageKeyError if error'
@@ -1216,9 +1217,9 @@ class portdbapi(dbapi):
         self,
         level: str,
         origdep: str,
-        mydep: Type[DeprecationWarning] = DeprecationWarning,
-        mykey: Type[DeprecationWarning] = DeprecationWarning,
-        mylist: Type[DeprecationWarning] = DeprecationWarning,
+        mydep: type[DeprecationWarning] = DeprecationWarning,
+        mykey: type[DeprecationWarning] = DeprecationWarning,
+        mylist: type[DeprecationWarning] = DeprecationWarning,
     ) -> Union[Sequence[str], str]:
         """
         Caching match function.

@@ -19,7 +19,8 @@ import re
 import typing
 import warnings
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Union
+from collections.abc import Sequence
 
 
 import portage
@@ -264,7 +265,7 @@ def vercmp(ver1: str, ver2: str, silent: int = 1) -> Optional[int]:
     return rval
 
 
-def pkgcmp(pkg1: Tuple[str, str, str], pkg2: Tuple[str, str, str]) -> Optional[int]:
+def pkgcmp(pkg1: tuple[str, str, str], pkg2: tuple[str, str, str]) -> Optional[int]:
     """
     Compare 2 package versions created in pkgsplit format.
 
@@ -291,7 +292,7 @@ def pkgcmp(pkg1: Tuple[str, str, str], pkg2: Tuple[str, str, str]) -> Optional[i
     return vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
 
 
-def _pkgsplit(mypkg: str, eapi: Any = None) -> Optional[Tuple[str, str, str]]:
+def _pkgsplit(mypkg: str, eapi: Any = None) -> Optional[tuple[str, str, str]]:
     """
     @param mypkg: pv
     @return:
@@ -323,7 +324,7 @@ def catpkgsplit(
     mydata: Union[str, "_pkg_str"],
     silent: int = 1,
     eapi: Any = None,
-) -> Optional[Tuple[str, ...]]:
+) -> Optional[tuple[str, ...]]:
     """
     Takes a Category/Package-Version-Rev and returns a list of each.
 
@@ -375,7 +376,7 @@ class _pkg_str(str):
     def __new__(
         cls,
         cpv: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         settings: Any = None,
         eapi: Any = None,
         repo: Optional[str] = None,
@@ -391,7 +392,7 @@ class _pkg_str(str):
     def __init__(
         self,
         cpv: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         settings: Any = None,
         eapi: Any = None,
         repo: Optional[str] = None,
@@ -500,7 +501,7 @@ class _pkg_str(str):
 
 def pkgsplit(
     mypkg: str, silent: int = 1, eapi: Any = None
-) -> Optional[Tuple[str, str, str]]:
+) -> Optional[tuple[str, str, str]]:
     """
     @param mypkg: either a pv or cpv
     @return:
@@ -603,7 +604,7 @@ def cpv_sort_key(eapi: Any = None) -> Any:
     return cmp_sort_key(cmp_cpv)
 
 
-def catsplit(mydep: str) -> List[str]:
+def catsplit(mydep: str) -> list[str]:
     return mydep.split("/", 1)
 
 

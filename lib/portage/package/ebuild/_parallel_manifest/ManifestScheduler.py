@@ -18,7 +18,7 @@ class ManifestScheduler(AsyncScheduler):
         gpg_cmd=None,
         gpg_vars=None,
         force_sign_key=None,
-        **kwargs
+        **kwargs,
     ):
         AsyncScheduler.__init__(self, **kwargs)
 
