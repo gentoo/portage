@@ -1,6 +1,6 @@
 py.install_sources(
     [
-        'testShell.py',
+        'test_shell.py',
         '__init__.py',
         '__test__.py',
     ],

@@ -1,7 +1,7 @@
 py.install_sources(
     [
-        'testInternalPackageSet.py',
-        'testVariableSet.py',
+        'test_internal_package_set.py',
+        'test_variable_set.py',
         '__init__.py',
         '__test__.py',
     ],

@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Gentoo Authors
+# Copyright 2013-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -64,7 +64,7 @@ class SecuritySetTestCase(TestCase):
             __import__("xml.etree.ElementTree")
             __import__("xml.parsers.expat").parsers.expat.ExpatError
         except (AttributeError, ImportError):
-            return "python is missing xml support"
+            self.skipTest("python is missing xml support")
 
     def write_glsa_test_case(self, glsa_dir, glsa):
         with open(
@@ -75,11 +75,7 @@ class SecuritySetTestCase(TestCase):
             f.write(self.glsa_template % glsa)
 
     def testSecuritySet(self):
-        skip_reason = self._must_skip()
-        if skip_reason:
-            self.portage_skip = skip_reason
-            self.assertFalse(True, skip_reason)
-            return
+        self._must_skip()
 
         ebuilds = {
             "cat/A-vulnerable-2.2": {"KEYWORDS": "x86"},
@@ -159,11 +155,7 @@ class SecuritySetTestCase(TestCase):
         # testing the format parsing with a bit more flexibility (no
         # need to keep inventing packages).
 
-        skip_reason = self._must_skip()
-        if skip_reason:
-            self.portage_skip = skip_reason
-            self.assertFalse(True, skip_reason)
-            return
+        self._must_skip()
 
         ebuilds = {
             "cat/A-vulnerable-2.2": {"KEYWORDS": "x86"},

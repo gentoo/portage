@@ -13,8 +13,6 @@ from portage.tests.resolver.ResolverPlayground import (
 class AutounmaskMultilibUseTestCase(TestCase):
     @pytest.mark.xfail()
     def testAutounmaskMultilibUse(self):
-        self.todo = True
-
         ebuilds = {
             "x11-proto/xextproto-7.2.1-r1": {
                 "EAPI": "5",

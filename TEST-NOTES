@@ -42,4 +42,4 @@ functionality.  You should raise portage.tests.SkipException in that case.
 emerge
 ------
 
-The emerge namespace currently has 0 tests (and no runner)
+The emerge namespace currently has 0 tests

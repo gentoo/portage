@@ -95,9 +95,9 @@ if get_option('native-extensions')
 endif
 
 test(
-    'python',
+    'pytest',
     py,
-    args : ['-bWd', meson.current_source_dir() / 'lib' / 'portage' / 'tests' / 'runTests.py'],
+    args : ['-m', 'pytest', '--rootdir', meson.current_source_dir(), meson.current_source_dir()],
     timeout : 0
 )
 

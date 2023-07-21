@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Gentoo Authors
+# Copyright 2014-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
@@ -23,18 +23,13 @@ class SyncLocalTestCase(TestCase):
 
     def _must_skip(self):
         if find_binary("rsync") is None:
-            return "rsync: command not found"
+            self.skipTest("rsync: command not found")
         if find_binary("git") is None:
-            return "git: command not found"
+            self.skipTest("git: command not found")
 
     def testSyncLocal(self):
         debug = False
-
-        skip_reason = self._must_skip()
-        if skip_reason:
-            self.portage_skip = skip_reason
-            self.assertFalse(True, skip_reason)
-            return
+        self._must_skip()
 
         repos_conf = textwrap.dedent(
             """
