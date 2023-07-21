@@ -5,7 +5,8 @@ __all__ = ["dbapi"]
 
 import re
 import warnings
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+from collections.abc import Sequence
 
 import portage
 
@@ -30,7 +31,7 @@ from _emerge.Package import Package
 
 class dbapi:
     _category_re = re.compile(r"^\w[-.+\w]*$", re.UNICODE)
-    _categories: Optional[Tuple[str, ...]] = None
+    _categories: Optional[tuple[str, ...]] = None
     _use_mutable = False
     _known_keys = frozenset(auxdbkeys)
     _pkg_str_aux_keys = ("EAPI", "KEYWORDS", "SLOT", "repository")
@@ -39,7 +40,7 @@ class dbapi:
         pass
 
     @property
-    def categories(self) -> Tuple[str, ...]:
+    def categories(self) -> tuple[str, ...]:
         """
         Use self.cp_all() to generate a category list. Mutable instances
         can delete the self._categories attribute in cases when the cached
@@ -77,7 +78,7 @@ class dbapi:
             # dict to map strings back to their original values.
             cpv_list.sort(key=cmp_sort_key(dbapi._cmp_cpv))
 
-    def cpv_all(self) -> List[str]:
+    def cpv_all(self) -> list[str]:
         """Return all CPVs in the db
         Args:
                 None
@@ -94,7 +95,7 @@ class dbapi:
             cpv_list.extend(self.cp_list(cp))
         return cpv_list
 
-    def cp_all(self, sort: bool = False) -> List[str]:
+    def cp_all(self, sort: bool = False) -> list[str]:
         """Implement this in a child class
         Args
                 sort - return sorted results
@@ -105,7 +106,7 @@ class dbapi:
 
     def aux_get(
         self, mycpv: str, mylist: str, myrepo: Optional[str] = None
-    ) -> List[str]:
+    ) -> list[str]:
         """Return the metadata keys in mylist for mycpv
         Args:
                 mycpv - "sys-apps/foo-1.0"
@@ -117,7 +118,7 @@ class dbapi:
         """
         raise NotImplementedError
 
-    def aux_update(self, cpv: str, metadata_updates: Dict[str, Any]) -> None:
+    def aux_update(self, cpv: str, metadata_updates: dict[str, Any]) -> None:
         """
         Args:
           cpv - "sys-apps/foo-1.0"

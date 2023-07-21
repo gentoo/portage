@@ -39,7 +39,7 @@ class SubprocessExecTestCase(TestCase):
                     echo_binary,
                     *args_tuple,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT
+                    stderr=subprocess.STDOUT,
                 )
 
                 out, err = await proc.communicate()
@@ -155,7 +155,7 @@ class SubprocessExecTestCase(TestCase):
                         stdin=devnull,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
-                        loop=loop
+                        loop=loop,
                     )
                 )
 
