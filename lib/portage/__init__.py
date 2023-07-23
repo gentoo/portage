@@ -829,3 +829,4 @@ def _disable_legacy_globals():
     global _legacy_global_var_names
     for k in _legacy_global_var_names:
         globals().pop(k, None)
+    portage.data._initialized_globals.clear()
