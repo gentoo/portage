@@ -1,3 +1,7 @@
+Features:
+* GNUMAKEFLAGS: also specifiy "-l $(nproc)", that is, limit by load average,
+  per default.
+
 portage-3.0.52 (2023-10-03)
 --------------
 

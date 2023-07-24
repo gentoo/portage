@@ -590,7 +590,9 @@ def doebuild_environment(
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
             if "GNUMAKEFLAGS" not in mysettings and "MAKEFLAGS" not in mysettings:
-                mysettings["GNUMAKEFLAGS"] = "--output-sync=line"
+                mysettings[
+                    "GNUMAKEFLAGS"
+                ] = f"--load-average {nproc} --output-sync=line"
 
         if not eapi_exports_KV(eapi):
             # Discard KV for EAPIs that don't support it. Cached KV is restored
