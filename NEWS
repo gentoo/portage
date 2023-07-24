@@ -1,6 +1,10 @@
 portage-3.0.53 (UNRELEASED)
 --------------
 
+Features:
+* GNUMAKEFLAGS: also specifiy "-l $(nproc)", that is, limit by load average,
+  per default.
+
 Bug fixes:
 * bintree: Add another API member (invalid_errors) to allow eclean-pkg to suppress
   errors when cleaning invalid binpkgs (bug #900224).
