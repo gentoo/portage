@@ -361,19 +361,17 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
             # an older package installed ON TOP of a newer version will cause ldconfig
             # to overwrite the symlinks we just made. -X means no links. After 'clean'
             # we can safely create links.
-            writemsg_level(
-                _(">>> Regenerating %setc/ld.so.cache...\n") % (target_root,)
-            )
+            writemsg_level(_(f">>> Regenerating {target_root}etc/ld.so.cache...\n"))
             ret = subprocess.run(
-                [f"{ldconfig}", "-X", "-r", f"{target_root}"], cwd="/"
+                [ldconfig, "-X", "-r", target_root], cwd="/"
             ).returncode
         elif ostype in ("FreeBSD", "DragonFly"):
             writemsg_level(
-                _(">>> Regenerating %svar/run/ld-elf.so.hints...\n") % target_root
+                _(f">>> Regenerating {target_root}var/run/ld-elf.so.hints...\n")
             )
             ret = subprocess.run(
                 [
-                    f"{ldconfig}",
+                    ldconfig,
                     "-elf",
                     "-i",
                     "-f",
