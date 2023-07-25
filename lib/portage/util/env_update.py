@@ -6,7 +6,7 @@ __all__ = ["env_update"]
 import errno
 import glob
 import stat
-import sys
+import subprocess
 import time
 
 import portage
@@ -364,18 +364,24 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
             writemsg_level(
                 _(">>> Regenerating %setc/ld.so.cache...\n") % (target_root,)
             )
-            ret = os.system(f"cd / ; {ldconfig} -X -r '{target_root}'")
+            ret = subprocess.run(
+                [f"{ldconfig}", "-X", "-r", f"{target_root}"], cwd="/"
+            ).returncode
         elif ostype in ("FreeBSD", "DragonFly"):
             writemsg_level(
                 _(">>> Regenerating %svar/run/ld-elf.so.hints...\n") % target_root
             )
-            ret = os.system(
-                (
-                    "cd / ; %s -elf -i "
-                    + "-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'"
-                )
-                % (ldconfig, target_root, target_root)
-            )
+            ret = subprocess.run(
+                [
+                    f"{ldconfig}",
+                    "-elf",
+                    "-i",
+                    "-f",
+                    f"{target_root}var/run/ld-elf.so.hints",
+                    f"{target_root}etc/ld.so.conf",
+                ],
+                cwd="/",
+            ).returncode
 
         ret = os.waitstatus_to_exitcode(ret)
         if ret > 0:
