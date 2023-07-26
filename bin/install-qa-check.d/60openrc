@@ -32,7 +32,7 @@ openrc_check() {
 				[[ -L ${i} ]] && continue
 				f=$("${checkbashisms}" -n -f "${i}" 2>&1)
 				[[ $? != 0 && -n ${f} ]] || continue
-				eqawarn "QA Notice: shell script appears to use non-POSIX feature(s):"
+				eqawarn "QA Notice: OpenRC shell script appears to use non-POSIX feature(s):"
 				while read -r ;
 					do eqawarn "   ${REPLY}"
 				done <<< "${f//${ED}}"
