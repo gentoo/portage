@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Note: We don't want to import portage modules directly because we do things
@@ -20,9 +20,9 @@ import tempfile
 
 
 # These are the versions we fully support and require to pass tests.
-PYTHON_SUPPORTED_VERSIONS = ["3.7", "3.8", "3.9", "3.10"]
+PYTHON_SUPPORTED_VERSIONS = ["3.9", "3.10", "3.11"]
 # The rest are just "nice to have".
-PYTHON_NICE_VERSIONS = ["pypy3", "3.11"]
+PYTHON_NICE_VERSIONS = ["pypy3", "3.12"]
 
 EPREFIX = os.environ.get("PORTAGE_OVERRIDE_EPREFIX", "/")
 
