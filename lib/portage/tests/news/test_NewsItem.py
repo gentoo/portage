@@ -8,7 +8,7 @@ from portage.dbapi.virtual import fakedbapi
 
 from dataclasses import dataclass
 from string import Template
-from typing import Optional, List
+from typing import Optional
 from unittest.mock import MagicMock, mock_open, patch
 
 import textwrap
@@ -26,9 +26,9 @@ class FakeNewsItem(NewsItem):
     revision: int
     news_item_format: str
     content: str
-    display_if_installed: Optional[List[str]] = None
-    display_if_profile: Optional[List[str]] = None
-    display_if_keyword: Optional[List[str]] = None
+    display_if_installed: Optional[list[str]] = None
+    display_if_profile: Optional[list[str]] = None
+    display_if_keyword: Optional[list[str]] = None
 
     item_template_header = Template(
         textwrap.dedent(

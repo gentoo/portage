@@ -5,8 +5,6 @@ import logging
 import re
 import subprocess
 
-from typing import Tuple
-
 import portage
 from portage import os
 from portage.util import writemsg_level, shlex_split
@@ -41,7 +39,7 @@ class GitSync(NewBase):
         """Tests whether the repo actually exists"""
         return os.path.exists(os.path.join(self.repo.location, ".git"))
 
-    def new(self, **kwargs) -> Tuple[int, bool]:
+    def new(self, **kwargs) -> tuple[int, bool]:
         """Do the initial clone of the repository"""
         if kwargs:
             self._kwargs(kwargs)
@@ -133,7 +131,7 @@ class GitSync(NewBase):
 
         return ":".join(directories)
 
-    def update(self) -> Tuple[int, bool]:
+    def update(self) -> tuple[int, bool]:
         """Update existing git repository, and ignore the syncuri. We are
         going to trust the user and assume that the user is in the branch
         that he/she wants updated. We'll let the user manage branches with
@@ -478,7 +476,7 @@ class GitSync(NewBase):
             if openpgp_env is not None:
                 openpgp_env.close()
 
-    def retrieve_head(self, **kwargs) -> Tuple[int, bool]:
+    def retrieve_head(self, **kwargs) -> tuple[int, bool]:
         """Get information about the head commit"""
         if kwargs:
             self._kwargs(kwargs)

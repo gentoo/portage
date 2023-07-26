@@ -14,8 +14,8 @@ __all__ = [
 ]
 
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
-from typing import Pattern, Match
+from typing import TYPE_CHECKING, Any, Optional
+from re import Pattern, Match
 import fnmatch
 import logging
 import os as _os
@@ -452,9 +452,9 @@ class DisplayInstalledRestriction(DisplayRestriction):
 def count_unread_news(
     portdb: "portage.dbapi.porttree.portdbapi",
     vardb: "portage.dbapi.vartree.vardbapi",
-    repos: Optional[List[Any]] = None,
+    repos: Optional[list[Any]] = None,
     update: bool = True,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """
     Returns a dictionary mapping repos to integer counts of unread news items.
     By default, this will scan all repos and check for new items that have
@@ -500,7 +500,7 @@ def count_unread_news(
     return news_counts
 
 
-def display_news_notifications(news_counts: Dict[Any, int]) -> None:
+def display_news_notifications(news_counts: dict[Any, int]) -> None:
     """
     Display a notification for unread news items, using a dictionary mapping
     repos to integer counts, like that returned from count_unread_news().

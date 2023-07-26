@@ -21,7 +21,7 @@ portage.proxy.lazyimport.lazyimport(
 from portage import os
 from portage.sync import _SUBMODULE_PATH_MAP
 
-from typing import Optional, List
+from typing import Optional
 
 options = [
     "--alphabetical",
@@ -1162,7 +1162,7 @@ def profile_check(trees, myaction):
     return os.EX_OK
 
 
-def emerge_main(args: Optional[List[str]] = None):
+def emerge_main(args: Optional[list[str]] = None):
     """
     Entry point of emerge
 
