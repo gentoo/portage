@@ -105,9 +105,6 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
-# Type annotation imports
-from typing import List
-
 
 def action_build(
     emerge_config,
@@ -2792,7 +2789,7 @@ def relative_profile_path(portdir, abs_profile):
     return profilever
 
 
-def get_libc_version(vardb: portage.dbapi.vartree.vardbapi) -> List[str]:
+def get_libc_version(vardb: portage.dbapi.vartree.vardbapi) -> list[str]:
     libcver = []
     libclist = set()
     for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
