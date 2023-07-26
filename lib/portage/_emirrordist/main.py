@@ -334,9 +334,7 @@ def emirrordist_main(args):
             os.path.isdir(options.temp_dir)
             and os.access(options.temp_dir, os.W_OK | os.X_OK)
         ):
-            parser.error(
-                ("--temp-dir '%s' is not a " "writable directory") % options.temp_dir
-            )
+            parser.error(f"--temp-dir '{options.temp_dir}' is not a writable directory")
 
     if options.distfiles is not None:
         options.distfiles = normalize_path(os.path.abspath(options.distfiles))
@@ -346,7 +344,7 @@ def emirrordist_main(args):
             and os.access(options.distfiles, os.W_OK | os.X_OK)
         ):
             parser.error(
-                ("--distfiles '%s' is not a " "writable directory") % options.distfiles
+                f"--distfiles '{options.distfiles}' is not a writable directory"
             )
     else:
         parser.error("missing required --distfiles parameter")
@@ -392,8 +390,7 @@ def emirrordist_main(args):
             and os.access(options.recycle_dir, os.W_OK | os.X_OK)
         ):
             parser.error(
-                ("--recycle-dir '%s' is not a " "writable directory")
-                % options.recycle_dir
+                f"--recycle-dir '{options.recycle_dir}' is not a writable directory"
             )
 
     if options.recycle_db is not None:
@@ -412,8 +409,7 @@ def emirrordist_main(args):
             and os.access(options.fetch_log_dir, os.W_OK | os.X_OK)
         ):
             parser.error(
-                ("--fetch-log-dir '%s' is not a " "writable directory")
-                % options.fetch_log_dir
+                f"--fetch-log-dir '{options.fetch_log_dir}' is not a writable directory"
             )
 
     if options.whitelist_from:
