@@ -52,7 +52,7 @@ git config blame.ignoreRevsFile .git-blame-ignore-revs
 Dependencies
 ============
 
-Python and Bash should be the only hard dependencies. Python 3.7 is the
+Python and Bash should be the only hard dependencies. Python 3.9 is the
 minimum supported version.
 
 Native Extensions
