@@ -921,5 +921,5 @@ setup(
         "Programming Language :: Python :: 3",
         "Topic :: System :: Installation/Setup",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.9",
 )
