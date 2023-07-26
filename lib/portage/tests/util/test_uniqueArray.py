@@ -24,6 +24,5 @@ class UniqueArrayTestCase(TestCase):
                 number = result.count(item)
                 self.assertFalse(
                     number != 1,
-                    msg=("%s contains %s of %s, " "should be only 1")
-                    % (result, number, item),
+                    msg=f"{result} contains {number} of {item}, should be only 1",
                 )

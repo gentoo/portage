@@ -91,14 +91,12 @@ class MirrorDistTask(CompositeTask):
                 st = os.stat(recycle_file)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logger.error(
-                        ("stat failed for '%s' in " "recycle: %s") % (filename, e)
-                    )
+                    logger.error(f"stat failed for '{filename}' in recycle: {e}")
                 continue
 
             value = recycle_db_cache.pop(filename, None)
             if value is None:
-                logger.debug(("add '%s' to " "recycle db") % filename)
+                logger.debug(f"add '{filename}' to recycle db")
                 recycle_db[filename] = (st.st_size, start_time)
             else:
                 r_size, r_time = value
@@ -106,27 +104,24 @@ class MirrorDistTask(CompositeTask):
                     recycle_db[filename] = (st.st_size, start_time)
                 elif r_time + r_deletion_delay < start_time:
                     if self._config.options.dry_run:
-                        logger.info(("dry-run: delete '%s' from " "recycle") % filename)
-                        logger.info(("drop '%s' from " "recycle db") % filename)
+                        logger.info(f"dry-run: delete '{filename}' from recycle")
+                        logger.info(f"drop '{filename}' from recycle db")
                     else:
                         try:
                             os.unlink(recycle_file)
                         except OSError as e:
                             if e.errno not in (errno.ENOENT, errno.ESTALE):
                                 logger.error(
-                                    ("delete '%s' from " "recycle failed: %s")
-                                    % (filename, e)
+                                    f"delete '{filename}' from recycle failed: {e}"
                                 )
                         else:
-                            logger.debug(("delete '%s' from " "recycle") % filename)
+                            logger.debug(f"delete '{filename}' from recycle")
                             try:
                                 del recycle_db[filename]
                             except KeyError:
                                 pass
                             else:
-                                logger.debug(
-                                    ("drop '%s' from " "recycle db") % filename
-                                )
+                                logger.debug(f"drop '{filename}' from recycle db")
 
         # Existing files were popped from recycle_db_cache,
         # so any remaining entries are for files that no
@@ -137,7 +132,7 @@ class MirrorDistTask(CompositeTask):
             except KeyError:
                 pass
             else:
-                logger.debug(("drop non-existent '%s' from " "recycle db") % filename)
+                logger.debug(f"drop non-existent '{filename}' from recycle db")
 
     def _scheduled_deletion_log(self):
         start_time = self._config.start_time
@@ -168,8 +163,7 @@ class MirrorDistTask(CompositeTask):
             date_files = date_map[date]
             if dry_run:
                 logger.info(
-                    ("dry-run: scheduled deletions for %s: %s files")
-                    % (date, len(date_files))
+                    f"dry-run: scheduled deletions for {date}: {len(date_files)} files"
                 )
             lines.append(f"{date}\n")
             for filename in date_files:

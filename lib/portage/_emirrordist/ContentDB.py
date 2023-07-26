@@ -112,10 +112,10 @@ class ContentDB:
                             pass
 
             if remaining:
-                logger.debug(("drop '%s' revision(s) from content db") % filename)
+                logger.debug(f"drop '{filename}' revision(s) from content db")
                 self._shelve[distfile_key] = remaining
             else:
-                logger.debug(("drop '%s' from content db") % filename)
+                logger.debug(f"drop '{filename}' from content db")
                 try:
                     del self._shelve[distfile_key]
                 except KeyError:

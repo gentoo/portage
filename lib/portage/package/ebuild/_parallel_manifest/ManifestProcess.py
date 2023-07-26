@@ -30,7 +30,7 @@ class ManifestProcess(ForkProcess):
             return 1
 
         except PortagePackageException as e:
-            portage.writemsg(("!!! %s\n") % (e,), noiselevel=-1)
+            portage.writemsg(f"!!! {e}\n", noiselevel=-1)
             return 1
 
         try:

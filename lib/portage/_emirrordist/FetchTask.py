@@ -121,8 +121,7 @@ class FetchTask(CompositeTask):
                             )
                     else:
                         self.config.log_failure(
-                            "%s\t%s\t%s"
-                            % (self.cpv, self.distfile, "unlink failed in distfiles")
+                            f"{self.cpv}\t{self.distfile}\tunlink failed in distfiles"
                         )
                         unlink_success = False
                 if not unlink_success:
