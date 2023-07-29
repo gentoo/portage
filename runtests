@@ -75,6 +75,15 @@ def get_parser():
 List all the available unittests.
 $ %(prog)s --list
 
+Count the number of unittests available.
+$ %(prog)s --count
+
+Start at nth test
+$ %(prog)s --start n
+
+Stop at nth test
+$ %(prog)s --stop n
+
 Run against specific versions of python.
 $ %(prog)s --python-versions '2.7 3.3'
 
