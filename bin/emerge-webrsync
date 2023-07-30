@@ -71,16 +71,12 @@ die() {
 
 argv0=$0
 
-# Use portageq from the same directory/prefix as the current script, so
-# that we don't have to rely on PATH including the current EPREFIX.
-scriptpath=${BASH_SOURCE[0]}
-if [[ -x "${scriptpath%/*}/portageq" ]]; then
-	portageq=${scriptpath%/*}/portageq
-elif type -P portageq > /dev/null ; then
-	portageq=portageq
-else
-	die "could not find 'portageq'; aborting"
-fi
+# Use emerge and portageq from the same directory/prefix as the current script,
+# so that we don't have to rely on PATH including the current EPREFIX.
+emerge=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P emerge)
+[[ -n ${emerge} ]] || die "could not find 'emerge'; aborting"
+portageq=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P portageq)
+[[ -n ${portageq} ]] || die "could not find 'portageq'; aborting"
 
 eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
@@ -461,14 +457,14 @@ sync_local() {
 
 	if has metadata-transfer ${FEATURES} ; then
 		einfo "Updating cache ..."
-		emerge --metadata
+		"${emerge}" --metadata
 	fi
 
 	local post_sync=${PORTAGE_CONFIGROOT%/}/etc/portage/bin/post_sync
 	[[ -x "${post_sync}" ]] && "${post_sync}"
 
 	# --quiet suppresses output if there are no relevant news items
-	has news ${FEATURES} && emerge --check-news --quiet
+	has news ${FEATURES} && "${emerge}" --check-news --quiet
 	return 0
 }
 
