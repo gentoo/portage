@@ -17,6 +17,9 @@ Bug fixes:
 
 * gpkg: Fix timestamp for binary packages (bug #909067).
 
+* Ensure non-Python (s)bin scripts launch other Python-based Portage scripts
+  using the same environment.
+
 portage-3.0.49 (2023-06-21)
 --------------
 
