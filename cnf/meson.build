@@ -59,7 +59,7 @@ if eprefix != ''
     )
 endif
 
-arch = host_machine.cpu()
+arch = host_machine.cpu_family()
 
 arch = {
     'aarch64' : 'arm64',
