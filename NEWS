@@ -3,6 +3,7 @@ portage-3.0.50 (UNRELEASED)
 
 Breaking changes:
 * The minimum supported Python version is now >= Python 3.9.
+
 * Portage now installed with Meson and Python sdist + wheel now prepared with
   meson-python for PEP 517 compliance.
 
@@ -22,6 +23,8 @@ Bug fixes:
 
 * Use the correct Python library path when launching scripts directly from a
   virtual environment.
+
+* Define BROOT in pkg_* phases following PMS change.
 
 portage-3.0.49 (2023-06-21)
 --------------
