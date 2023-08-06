@@ -945,8 +945,8 @@ ___best_version_and_has_version_common() {
 					-r) root=${ROOT%/}/${EPREFIX#/} ;;
 					-d) root=${ESYSROOT:-/} ;;
 					-b)
-						# Use /${PORTAGE_OVERRIDE_EPREFIX#/} which is equivalent
-						# to BROOT, except BROOT is only defined in src_* phases.
+						# Use /${PORTAGE_OVERRIDE_EPREFIX#/} to support older
+						# EAPIs, as it is equivalent to BROOT.
 						root=/${PORTAGE_OVERRIDE_EPREFIX#/}
 						cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 						;;
