@@ -26,6 +26,8 @@ Bug fixes:
 
 * Define BROOT in pkg_* phases following PMS change.
 
+* portage(5): Fix description of 'volatile' repos.conf setting (bug #911594).
+
 portage-3.0.49 (2023-06-21)
 --------------
 
