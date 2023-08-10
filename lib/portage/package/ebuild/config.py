@@ -3338,7 +3338,7 @@ class config:
         if not (src_like_phase and eapi_attrs.sysroot):
             mydict.pop("ESYSROOT", None)
 
-        if not eapi_attrs.broot:
+        if not ((src_like_phase or eapi_attrs.idepend) and eapi_attrs.broot):
             mydict.pop("BROOT", None)
 
         if phase == "depend" or (
