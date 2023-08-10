@@ -7,6 +7,10 @@ Breaking changes:
 * Portage now installed with Meson and Python sdist + wheel now prepared with
   meson-python for PEP 517 compliance.
 
+* FEATURES=cgroup was removed since it was based on version 1 cgroups, which
+  caused some issues and version 1 cgroups are obsolete. Use
+  FEATURES=pid-sandbox instead.
+
 Bug fixes:
 * install-qa-check.d/05prefix: Fix prefixifying shebang for >= EAPI 7 ebuilds
   (bug #909147).
@@ -30,11 +34,6 @@ Bug fixes:
 
 portage-3.0.49 (2023-06-21)
 --------------
-
-Breaking changes:
-* FEATURES=cgroup was removed since it was based on version 1 cgroups, which
-  caused some issues and version 1 cgroups are obsolete. Use
-  FEATURES=pid-sandbox instead.
 
 Bug fixes:
 * Adjust write tests for DISTDIR and PORTAGE_TMPDIR to work with automount
