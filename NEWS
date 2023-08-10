@@ -15,6 +15,9 @@ Bug fixes:
 * install-qa-check.d/05prefix: Fix prefixifying shebang for >= EAPI 7 ebuilds
   (bug #909147).
 
+* bin/save-ebuild-env.sh: Stop using compgen and hence stop needing readline
+  (bug #909148).
+
 * env-update: Check exit code from ldconfig (bug #910376).
 
 * emerge: Fix 'no ebuilds available' message always mentioning binpkgs
