@@ -480,6 +480,14 @@ class GitSync(NewBase):
             else:
                 expl = "unknown issue"
             out.eerror(f"No valid signature found: {expl}")
+
+            if debug:
+                writemsg_level(
+                    f"!!! Got following output from gpg: {status}\n",
+                    level=logging.DEBUG,
+                    noiselevel=-1,
+                )
+
             return False
         finally:
             if openpgp_env is not None:
