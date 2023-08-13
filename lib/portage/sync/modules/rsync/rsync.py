@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
@@ -147,11 +147,16 @@ class RsyncSync(NewBase):
         else:
             self.max_age = 0
 
+        debug = "--debug" in opts
+        if debug:
+            old_level = logging.getLogger().getEffectiveLevel()
+            logging.getLogger().setLevel(logging.DEBUG)
+
         openpgp_env = None
         if self.verify_metamanifest and gemato is not None:
             # Use isolated environment if key is specified,
             # system environment otherwise
-            openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
+            openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path, debug)
 
         try:
             # Load and update the keyring early. If it fails, then verification
@@ -484,6 +489,8 @@ class RsyncSync(NewBase):
                 self.repo_storage.abort_update()
             if openpgp_env is not None:
                 openpgp_env.close()
+            if debug:
+                logging.getLogger().setLevel(old_level)
 
     def _process_exitcode(self, exitcode, syncuri, out, maxretries):
         if exitcode == 0:

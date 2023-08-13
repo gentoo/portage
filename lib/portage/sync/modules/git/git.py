@@ -1,4 +1,4 @@
-# Copyright 2005-2022 Gentoo Authors
+# Copyright 2005-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -416,7 +416,16 @@ class GitSync(NewBase):
             )
             return False
 
-        openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
+        opts = self.options.get("emerge_config").opts
+        debug = "--debug" in opts
+
+        openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path, debug)
+        logging.getLogger("gemato").setLevel(logging.DEBUG)
+
+        if debug:
+            old_level = logging.getLogger().getEffectiveLevel()
+            logging.getLogger().setLevel(logging.DEBUG)
+            logging.getLogger("gemato").setLevel(logging.DEBUG)
 
         try:
             out = EOutput()
@@ -475,6 +484,8 @@ class GitSync(NewBase):
         finally:
             if openpgp_env is not None:
                 openpgp_env.close()
+            if debug:
+                logging.getLogger().setLevel(old_level)
 
     def retrieve_head(self, **kwargs) -> tuple[int, bool]:
         """Get information about the head commit"""
