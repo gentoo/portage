@@ -1191,6 +1191,10 @@ def emerge_main(args: Optional[list[str]] = None):
     myaction, myopts, myfiles = parse_opts(args, silent=True)
     if "--debug" in myopts:
         os.environ["PORTAGE_DEBUG"] = "1"
+        portage.util.initialize_logger(logging.DEBUG)
+    else:
+        portage.util.initialize_logger()
+
     if "--config-root" in myopts:
         os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
     if "--sysroot" in myopts:
