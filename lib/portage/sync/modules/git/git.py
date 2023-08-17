@@ -420,7 +420,6 @@ class GitSync(NewBase):
         debug = "--debug" in opts
 
         openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path, debug)
-        logging.getLogger("gemato").setLevel(logging.DEBUG)
 
         if debug:
             old_level = logging.getLogger().getEffectiveLevel()
