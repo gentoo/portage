@@ -83,8 +83,8 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
-	USERLAND http_proxy ftp_proxy)"
-export http_proxy ftp_proxy
+	USERLAND http_proxy https_proxy ftp_proxy)"
+export http_proxy https_proxy ftp_proxy
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
