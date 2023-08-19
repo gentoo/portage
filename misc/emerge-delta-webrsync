@@ -152,7 +152,7 @@ for x in $*; do
 		echo "$x isn't a valid arg.  bailing."
 	fi
 	if [[ -n $PUKE_HELP ]]; then
-		echo "--no-pgp-verify; disable PGP verification of snapshot (note that patches are not verified either way)"
+		echo "--no-pgp-verify; disable PGP verification of snapshot and patches"
 		echo "-u for upgrade; sync only if new snapshots are found"
 		echo "-k for keep; keep old tree snapshots around"
 		exit -1
