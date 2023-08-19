@@ -333,6 +333,8 @@ class SyncBase:
             # Override global proxy setting with one provided in emerge configuration
             if "http_proxy" in self.spawn_kwargs["env"]:
                 proxy = self.spawn_kwargs["env"]["http_proxy"]
+            elif "https_proxy" in self.spawn_kwargs["env"]:
+                proxy = self.spawn_kwargs["env"]["https_proxy"]
             else:
                 proxy = None
 
