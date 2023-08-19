@@ -11,6 +11,8 @@ Bug fixes:
 * sync (inc. emerge-webrsync): Handle https_proxy to help users who only have it set
   - the expectation is to have http_proxy set (bug #691434, bug #835927, bug #911629)
 
+* sync: git: respect --quiet more for PGP verification (bug #673624).
+
 * emerge-webrsync: Explicitly pass http_proxy or https_proxy into gemato
   via --proxy (bug #911629).
 

@@ -418,6 +418,7 @@ class GitSync(NewBase):
 
         opts = self.options.get("emerge_config").opts
         debug = "--debug" in opts
+        quiet = self.settings.get("PORTAGE_QUIET") == "1"
 
         openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path, debug)
 
@@ -459,7 +460,8 @@ class GitSync(NewBase):
                 return False
 
             if status == "G":  # good signature is good
-                out.einfo("Trusted signature found on top commit")
+                if not quiet:
+                    out.einfo("Trusted signature found on top commit")
                 return True
             if status == "U":  # untrusted
                 out.ewarn("Top commit signature is valid but not trusted")
