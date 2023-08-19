@@ -17,6 +17,8 @@ Bug fixes:
 * misc/emerge-delta-webrsync: Fix PGP logic which prevented syncing for this
   rarely-used tool (bug #911335).
 
+* make.conf(5): Mention https_proxy.
+
 portage-3.0.50 (2023-08-09)
 --------------
 
