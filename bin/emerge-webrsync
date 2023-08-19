@@ -290,6 +290,13 @@ check_file_signature_gemato() {
 			-K "${key}"
 		)
 
+
+		if [[ -n ${http_proxy} || -n ${https_proxy} ]] ; then
+			gemato_args+=(
+				--proxy "${http_proxy:-${https_proxy}}"
+			)
+		fi
+
 		[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
 		[[ ${PORTAGE_QUIET} == 1 ]] && gemato_args+=( --quiet )
 		[[ ${do_debug} == 1 ]] && gemato_args+=( --debug )
