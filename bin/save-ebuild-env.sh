@@ -28,7 +28,7 @@ __save_ebuild_env() {
 
 	# misc variables inherited from the calling environment
 	unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
-		TERM TERMCAP USER ftp_proxy http_proxy no_proxy
+		TERM TERMCAP USER ftp_proxy http_proxy https_proxy no_proxy
 
 	# other variables inherited from the calling environment
 	unset CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO \

@@ -215,6 +215,7 @@ environ_whitelist = frozenset(
         "USER",
         "ftp_proxy",
         "http_proxy",
+        "https_proxy",
         "no_proxy",
         # tempdir settings
         "TMPDIR",
