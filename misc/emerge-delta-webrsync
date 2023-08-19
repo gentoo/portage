@@ -391,11 +391,6 @@ check_file_signature_gemato() {
 			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
 		fi
 
-		local keyserver
-		if [[ -n ${PORTAGE_GPG_KEY_SERVER} ]] ; then
-			keyserver="--keyserver ${PORTAGE_GPG_KEY_SERVER}"
-		fi
-
 		local gemato_args=(
 			openpgp-verify-detached
 			-K "${key}"
