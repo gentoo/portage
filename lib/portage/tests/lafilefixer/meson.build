@@ -5,5 +5,5 @@ py.install_sources(
         '__test__.py',
     ],
     subdir : 'portage/tests/lafilefixer',
-    pure : false
+    pure : not native_extensions
 )

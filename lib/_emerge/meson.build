@@ -95,7 +95,7 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : '_emerge',
-    pure : false
+    pure : true
 )
 
 subdir('resolver')

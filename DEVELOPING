@@ -238,7 +238,8 @@ and commit.
 	- python -m venv .venv
 	- . .venv/bin/activate
 	- pip install build twine
-	- python -m build
+	- python -m build # build the sdist and arch/Python-specific wheel
+	- python -m build --wheel -Csetup-args="-Dnative-extensions=false" # build the pure wheel
 	- twine upload dist/<filenames>
 
 7. Bugzilla wrangling:

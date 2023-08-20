@@ -6,5 +6,5 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/package/ebuild/_parallel_manifest',
-    pure : false
+    pure : not native_extensions
 )

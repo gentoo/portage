@@ -3,7 +3,7 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/emaint/modules',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('binhost')

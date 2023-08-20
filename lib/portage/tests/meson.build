@@ -4,7 +4,7 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/tests',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('bin')

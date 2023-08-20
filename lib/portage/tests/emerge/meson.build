@@ -10,5 +10,5 @@ py.install_sources(
         '__test__.py',
     ],
     subdir : 'portage/tests/emerge',
-    pure : false
+    pure : not native_extensions
 )

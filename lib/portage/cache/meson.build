@@ -14,7 +14,7 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/cache',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('index')

@@ -36,7 +36,7 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/util',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('elf')

@@ -11,5 +11,5 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/_emirrordist',
-    pure : false
+    pure : not native_extensions
 )

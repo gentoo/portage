@@ -52,7 +52,7 @@ py.install_sources(
         __init__py,
     ],
     subdir : 'portage',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('binrepo')

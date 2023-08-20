@@ -6,5 +6,5 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/dep/soname',
-    pure : false
+    pure : not native_extensions
 )

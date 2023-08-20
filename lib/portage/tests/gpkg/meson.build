@@ -11,5 +11,5 @@ py.install_sources(
         '__test__.py',
     ],
     subdir : 'portage/tests/gpkg',
-    pure : false
+    pure : not native_extensions
 )
