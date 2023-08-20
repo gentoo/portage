@@ -4,5 +4,5 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/sync/modules/git',
-    pure : false
+    pure : not native_extensions
 )

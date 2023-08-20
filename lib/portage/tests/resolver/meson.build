@@ -89,7 +89,7 @@ py.install_sources(
         '__test__.py',
     ],
     subdir : 'portage/tests/resolver',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('binpkg_multi_instance')

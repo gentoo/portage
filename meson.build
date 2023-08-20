@@ -7,12 +7,15 @@ project(
 )
 
 py_mod = import('python')
-# TODO: Add "pure : false" here instead of py.install_sources() when requiring Meson >=0.64.0.
+# TODO: Add "pure : not native_extensions" here instead of py.install_sources()
+# when requiring Meson >=0.64.0.
 py = py_mod.find_installation()
 
 sed = find_program('sed', required : true)
 
 system_wide = get_option('system-wide')
+native_extensions = get_option('native-extensions')
+
 eprefix = get_option('eprefix')
 prefixdir = get_option('prefix')
 datadir = get_option('datadir')
@@ -90,7 +93,7 @@ endif
 subdir('bin')
 subdir('lib')
 
-if get_option('native-extensions')
+if native_extensions
     subdir('src')
 endif
 

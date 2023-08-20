@@ -10,5 +10,5 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : '_emerge/resolver',
-    pure : false
+    pure : true
 )

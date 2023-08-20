@@ -7,5 +7,5 @@ py.install_sources(
         '__test__.py',
     ],
     subdir : 'portage/tests/update',
-    pure : false
+    pure : not native_extensions
 )

@@ -15,7 +15,7 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/package/ebuild',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('_config')

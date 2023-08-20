@@ -14,6 +14,8 @@ build-backend = 'mesonpy'
 requires = ['meson-python']
 
 [tool.meson-python.args]
+# To get a pure wheel:
+# python -m build --wheel -Csetup-args="-Dnative-extensions=false"
 setup = ['-Dsystem-wide=false']
 
 [project.scripts]

@@ -10,7 +10,7 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/util/futures',
-    pure : false
+    pure : not native_extensions
 )
 
 subdir('executor')

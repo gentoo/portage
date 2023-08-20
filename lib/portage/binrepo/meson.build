@@ -4,5 +4,5 @@ py.install_sources(
         '__init__.py',
     ],
     subdir : 'portage/binrepo',
-    pure : false
+    pure : not native_extensions
 )
