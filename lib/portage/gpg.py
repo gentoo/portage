@@ -35,7 +35,7 @@ class GPG:
             f"--homedir {self.signing_gpg_home} "
             f"--digest-algo {self.digest_algo} "
             f"--local-user {self.signing_gpg_key} "
-            "--output /dev/null /dev/null",
+            "--output - /dev/null",
         )
 
         if "gpg-keepalive" in self.settings.features:
@@ -61,7 +61,7 @@ class GPG:
                 writemsg(f"{colorize('WARN', str(e))}\n")
 
             cmd = shlex_split(varexpand(self.GPG_unlock_command, mydict=self.settings))
-            return_code = subprocess.Popen(cmd).wait()
+            return_code = subprocess.Popen(cmd, stdout=subprocess.DEVNULL).wait()
 
             if return_code == os.EX_OK:
                 writemsg_stdout(f"{colorize('GOOD', 'unlocked')}\n")
