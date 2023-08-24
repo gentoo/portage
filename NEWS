@@ -5,6 +5,9 @@ Features:
 * bintree: Add new API member (invalid_paths) to allow gentoolkit to later
   clean up invalid binpkgs (bug #900224).
 
+Bug fixes:
+* Prevent gpg from removing /dev/null when unlocking signing key (bug #912808).
+
 portage-3.0.51 (2023-08-20)
 --------------
 
