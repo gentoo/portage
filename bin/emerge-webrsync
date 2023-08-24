@@ -25,7 +25,7 @@
 #
 
 # Opportunistically use gentoo-functions for nicer output
-functions_script="${EPREFIX:-/}/lib/gentoo/functions.sh"
+functions_script="${EPREFIX}/lib/gentoo/functions.sh"
 source "${functions_script}" || {
 	echo "${argv0}: Could not source ${functions_script}!" 1>&2
 
@@ -272,7 +272,7 @@ check_file_signature_gemato() {
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
 			local key="${PORTAGE_GPG_KEY}"
 		else
-			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+			local key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
 		fi
 
 		if [[ ! -f "${key}" ]] ; then
@@ -319,7 +319,7 @@ check_file_signature_gpg_unwrapped() {
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
 			local key="${PORTAGE_GPG_KEY}"
 		else
-			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+			local key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
 		fi
 
 		if [[ ! -f "${key}" ]] ; then
