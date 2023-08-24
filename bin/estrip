@@ -172,7 +172,7 @@ case $(${STRIP} --version 2>/dev/null) in
 	# elfutils default behavior is always safe, so don't need to specify
 	# any flags at all
 	SAFE_STRIP_FLAGS=""
-	DEF_STRIP_FLAGS="--remove-comment"
+	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
 	SPLIT_STRIP_FLAGS="-f"
 	;;
 *GNU*) # sys-devel/binutils
