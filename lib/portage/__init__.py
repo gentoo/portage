@@ -720,10 +720,7 @@ if installation.TYPE == installation.TYPES.SOURCE:
                     BASH_BINARY,
                     "-c",
                     (
-                        f"cd {_shell_quote(PORTAGE_BASE_PATH)} ; git describe --match 'portage-*' || exit $? ; "
-                        'if [ -n "`git diff-index --name-only --diff-filter=M HEAD`" ] ; '
-                        "then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; "
-                        "exit 0"
+                        f"cd {_shell_quote(PORTAGE_BASE_PATH)} ; git describe --dirty --match 'portage-*' || exit $? ; "
                     ),
                 ]
                 cmd = [
@@ -735,33 +732,9 @@ if installation.TYPE == installation.TYPES.SOURCE:
                 output = _unicode_decode(proc.communicate()[0], encoding=encoding)
                 status = proc.wait()
                 if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-                    output_lines = output.splitlines()
-                    if output_lines:
-                        version_split = output_lines[0].split("-")
-                        if len(version_split) > 1:
-                            VERSION = version_split[1]
-                            patchlevel = False
-                            if len(version_split) > 2:
-                                patchlevel = True
-                                VERSION = f"{VERSION}_p{version_split[2]}"
-                            if len(output_lines) > 1 and output_lines[1] == "modified":
-                                head_timestamp = None
-                                if len(output_lines) > 3:
-                                    try:
-                                        head_timestamp = int(output_lines[3])
-                                    except ValueError:
-                                        pass
-                                timestamp = int(time.time())
-                                if (
-                                    head_timestamp is not None
-                                    and timestamp > head_timestamp
-                                ):
-                                    timestamp = timestamp - head_timestamp
-                                if not patchlevel:
-                                    VERSION = f"{VERSION}_p0"
-                                VERSION = f"{VERSION}_p{timestamp}"
-                            return VERSION
-            VERSION = "HEAD"
+                    VERSION = output.lstrip('portage-').strip()
+            else:
+                VERSION = "HEAD"
             return VERSION
 
     VERSION = _LazyVersion()
