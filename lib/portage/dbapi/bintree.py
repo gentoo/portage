@@ -1234,11 +1234,32 @@ class binarytree:
 
         return pkgindex if update_pkgindex else None
 
+    def _run_trust_helper(self):
+        portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "true")
+        # getuto is a shell script...
+        ret = os.waitstatus_to_exitcode(os.system(portage_trust_helper))
+        if ret == 127:
+            raise OSError(
+                _(
+                    "Did not find trust helper. Install app-portage/getuto or set PORTAGE_TRUST_HELPER=true"
+                )
+            )
+        elif ret != 0:
+            raise OSError(
+                _("Failed to run trust helper for binary package verification: Error ")
+                + str(ret)
+            )
+
     def _populate_remote(self, getbinpkg_refresh=True):
         self._remote_has_index = False
         self._remotepkgs = {}
 
         if "binpkg-request-signature" in self.settings.features:
+            # This is somewhat broken, we *should* run the trust helper always
+            # when binpackages are involved, not only when we refuse unsigned
+            # ones. (If the keys have expired we end up refusing signed but
+            # technically invalid packages...)
+            self._run_trust_helper()
             gpkg_only = True
         else:
             gpkg_only = False
