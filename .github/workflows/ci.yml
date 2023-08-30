@@ -38,6 +38,9 @@ jobs:
           python -m pip install --upgrade pip
           # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
           python -m pip install pytest setuptools
+
+          # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
+          sudo ln -s /bin/true /usr/bin/getuto
       - name: Test meson install --destdir /tmp/install-root
         run: |
           echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
