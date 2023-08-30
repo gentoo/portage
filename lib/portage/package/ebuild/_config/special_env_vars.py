@@ -315,6 +315,7 @@ environ_filter = frozenset(
         "PORTAGE_RSYNC_RETRIES",
         "PORTAGE_SSH_OPTS",
         "PORTAGE_SYNC_STALE",
+        "PORTAGE_TRUST_HELPER",
         "PORTAGE_USE",
         "PORTAGE_LOG_FILTER_FILE_CMD",
         "PORTAGE_LOGDIR",

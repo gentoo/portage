@@ -150,6 +150,9 @@ PORTAGE_ELOG_MAILFROM="portage@localhost"
 # Signing command used by egencache
 PORTAGE_GPG_SIGNING_COMMAND="gpg --sign --digest-algo SHA256 --clearsign --yes --default-key \"\${PORTAGE_GPG_KEY}\" --homedir \"\${PORTAGE_GPG_DIR}\" \"\${FILE}\""
 
+# Trust helper executable for installing and updating package verification keys
+PORTAGE_TRUST_HELPER="/usr/bin/getuto"
+
 # btrfs.* attributes are irrelevant, see bug #527636.
 # security.* attributes may be special (see bug 461868), but
 # security.capability is specifically not excluded (bug 548516).

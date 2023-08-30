@@ -5,6 +5,8 @@ Features:
 * bintree: Add new API member (invalid_paths) to allow gentoolkit to later
   clean up invalid binpkgs (bug #900224).
 
+* Run PORTAGE_TRUST_HELPER before remote binary package operations.
+
 Bug fixes:
 * Prevent gpg from removing /dev/null when unlocking signing key (bug #912808).
 
