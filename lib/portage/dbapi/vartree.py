@@ -6273,12 +6273,15 @@ class dblink:
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
+        src_bytes = _unicode_encode(mysrc, encoding=_encodings["fs"], errors="strict")
+        dest_bytes = _unicode_encode(mydest, encoding=_encodings["fs"], errors="strict")
+
         if "xattr" in self.settings.features:
             excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
-            if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
+            if not _cmpxattr(src_bytes, dest_bytes, exclude=excluded_xattrs):
                 return True
 
-        return not filecmp.cmp(mysrc, mydest, shallow=False)
+        return not filecmp.cmp(src_bytes, dest_bytes, shallow=False)
 
 
 def merge(
