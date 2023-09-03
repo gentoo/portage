@@ -1236,6 +1236,9 @@ class binarytree:
 
     def _run_trust_helper(self):
         portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "true")
+        if portage_trust_helper == "true":
+            return 0
+
         # getuto is a shell script...
         ret = os.waitstatus_to_exitcode(os.system(portage_trust_helper))
         if ret == 127:
