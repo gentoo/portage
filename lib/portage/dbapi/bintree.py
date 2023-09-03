@@ -1239,8 +1239,7 @@ class binarytree:
         if portage_trust_helper == "true":
             return 0
 
-        # getuto is a shell script...
-        ret = subprocess.run(portage_trust_helper, shell=True)
+        ret = subprocess.run(portage_trust_helper)
         if ret.returncode == 127:
             raise OSError(
                 _(
@@ -1249,7 +1248,7 @@ class binarytree:
             )
         elif ret.returncode != 0:
             raise OSError(
-                _("Failed to run trust helper for binary package verification: Error ")
+                _("Failed to run trust helper executable for binary package verification: Error ")
                 + str(ret.returncode)
             )
 

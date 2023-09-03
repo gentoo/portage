@@ -1209,13 +1209,13 @@ Defaults to /var/tmp.
 This should not be set to point anywhere under location of any repository.
 .TP
 \fBPORTAGE_TRUST_HELPER\fR = \fI[path]\fR
-Defines a shell command line which initializes and maintains
+Defines an executable file which initializes and maintains
 /etc/portage/gnupg, installing keys that are trusted for binary package
 signing, and refreshing these keys from a key server. This helper is called
 before all operations involving remote binary packages if and only if
 binpkg-request-signature is in \fBFEATURES\fR.
 .br
-Defaults to "/usr/bin/getuto -q" (provided by app-portage/getuto).
+Defaults to "/usr/bin/getuto" (provided by app-portage/getuto).
 .TP
 \fBPORTAGE_USERNAME\fR = \fI[user]\fR
 Defines the username to use when executing in userpriv/etc... modes (i.e.
