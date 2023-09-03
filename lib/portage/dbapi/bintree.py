@@ -1235,15 +1235,15 @@ class binarytree:
         return pkgindex if update_pkgindex else None
 
     def _run_trust_helper(self):
-        portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "true")
-        if portage_trust_helper == "true":
-            return 0
+        portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "")
+        if portage_trust_helper == "":
+            return
 
         ret = subprocess.run(portage_trust_helper)
         if ret.returncode == 127:
             raise OSError(
                 _(
-                    "Did not find trust helper. Install app-portage/getuto or set PORTAGE_TRUST_HELPER=true"
+                    "Did not find trust helper. Install app-portage/getuto or set PORTAGE_TRUST_HELPER=\"\""
                 )
             )
         elif ret.returncode != 0:
