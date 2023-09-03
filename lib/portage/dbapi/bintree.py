@@ -1243,12 +1243,14 @@ class binarytree:
         if ret.returncode == 127:
             raise OSError(
                 _(
-                    "Did not find trust helper. Install app-portage/getuto or set PORTAGE_TRUST_HELPER=\"\""
+                    'Did not find trust helper. Install app-portage/getuto or set PORTAGE_TRUST_HELPER=""'
                 )
             )
         elif ret.returncode != 0:
             raise OSError(
-                _("Failed to run trust helper executable for binary package verification: Error ")
+                _(
+                    "Failed to run trust helper executable for binary package verification: Error "
+                )
                 + str(ret.returncode)
             )
 
