@@ -1240,17 +1240,17 @@ class binarytree:
             return 0
 
         # getuto is a shell script...
-        ret = os.waitstatus_to_exitcode(os.system(portage_trust_helper))
-        if ret == 127:
+        ret = subprocess.run(portage_trust_helper, shell=True)
+        if ret.returncode == 127:
             raise OSError(
                 _(
                     "Did not find trust helper. Install app-portage/getuto or set PORTAGE_TRUST_HELPER=true"
                 )
             )
-        elif ret != 0:
+        elif ret.returncode != 0:
             raise OSError(
                 _("Failed to run trust helper for binary package verification: Error ")
-                + str(ret)
+                + str(ret.returncode)
             )
 
     def _populate_remote(self, getbinpkg_refresh=True):
