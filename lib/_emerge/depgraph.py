@@ -36,6 +36,7 @@ from portage.dep import (
     match_from_list,
     _repo_separator,
 )
+from portage.dep.libc import find_libc_deps, strip_libc_deps
 from portage.dep._slot_operator import ignore_built_slot_operator_deps, strip_slots
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, _get_eapi_attrs
 from portage.exception import (
@@ -2984,6 +2985,19 @@ class depgraph:
             else:
                 depvars = Package._runtime_keys
 
+            eroot = pkg.root_config.settings["EROOT"]
+            try:
+                libc_deps = self._frozen_config._libc_deps_cache[eroot]
+            except (AttributeError, KeyError) as e:
+                if isinstance(e, AttributeError):
+                    self._frozen_config._libc_deps_cache = {}
+
+                self._frozen_config._libc_deps_cache[eroot] = find_libc_deps(
+                    self._frozen_config._trees_orig[eroot]["vartree"].dbapi,
+                    False,
+                )
+            libc_deps = self._frozen_config._libc_deps_cache[eroot]
+
             # Use _raw_metadata, in order to avoid interaction
             # with --dynamic-deps.
             try:
@@ -2996,6 +3010,10 @@ class depgraph:
                         token_class=Atom,
                     )
                     strip_slots(dep_struct)
+                    # This strip_libc_deps call is done with non-realized deps;
+                    # we can change that later if we're having trouble with
+                    # matching/intersecting them.
+                    strip_libc_deps(dep_struct, libc_deps)
                     built_deps.append(dep_struct)
             except InvalidDependString:
                 changed = True
@@ -3009,6 +3027,10 @@ class depgraph:
                         token_class=Atom,
                     )
                     strip_slots(dep_struct)
+                    # This strip_libc_deps call is done with non-realized deps;
+                    # we can change that later if we're having trouble with
+                    # matching/intersecting them.
+                    strip_libc_deps(dep_struct, libc_deps)
                     unbuilt_deps.append(dep_struct)
 
                 changed = built_deps != unbuilt_deps

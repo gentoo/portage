@@ -6,6 +6,7 @@ py.install_sources(
         'test_emerge_slot_abi.py',
         'test_global_updates.py',
         'test_baseline.py',
+        'test_libc_dep_inject.py',
         '__init__.py',
         '__test__.py',
     ],

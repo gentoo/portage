@@ -41,6 +41,7 @@ from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
+from portage.dep.libc import find_libc_deps
 from portage.exception import (
     InvalidAtom,
     InvalidData,
@@ -2786,10 +2787,8 @@ def relative_profile_path(portdir, abs_profile):
 
 def get_libc_version(vardb: portage.dbapi.vartree.vardbapi) -> list[str]:
     libcver = []
-    libclist = set()
-    for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
-        if not atom.blocker:
-            libclist.update(vardb.match(atom))
+    libclist = find_libc_deps(vardb, True)
+
     if libclist:
         for cpv in sorted(libclist):
             libc_split = portage.catpkgsplit(cpv)[1:]

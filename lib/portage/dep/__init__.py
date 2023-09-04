@@ -57,7 +57,10 @@ from portage.versions import (
     ververify,
 )
 import portage.cache.mappings
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import _emerge.Package
 
 # \w is [a-zA-Z0-9_]
 
@@ -1724,7 +1727,7 @@ class Atom(str):
                 )
 
     @property
-    def slot_operator_built(self):
+    def slot_operator_built(self) -> bool:
         """
         Returns True if slot_operator == "=" and sub_slot is not None.
         NOTE: foo/bar:2= is unbuilt and returns False, whereas foo/bar:2/2=
@@ -1733,7 +1736,7 @@ class Atom(str):
         return self.slot_operator == "=" and self.sub_slot is not None
 
     @property
-    def without_repo(self):
+    def without_repo(self) -> "Atom":
         if self.repo is None:
             return self
         return Atom(
@@ -1741,7 +1744,7 @@ class Atom(str):
         )
 
     @property
-    def without_slot(self):
+    def without_slot(self) -> "Atom":
         if self.slot is None and self.slot_operator is None:
             return self
         atom = remove_slot(self)
@@ -1751,7 +1754,7 @@ class Atom(str):
             atom += str(self.use)
         return Atom(atom, allow_repo=True, allow_wildcard=True)
 
-    def with_repo(self, repo):
+    def with_repo(self, repo) -> "Atom":
         atom = remove_slot(self)
         if self.slot is not None or self.slot_operator is not None:
             atom += _slot_separator
@@ -1766,7 +1769,7 @@ class Atom(str):
             atom += str(self.use)
         return Atom(atom, allow_repo=True, allow_wildcard=True)
 
-    def with_slot(self, slot):
+    def with_slot(self, slot) -> "Atom":
         atom = remove_slot(self) + _slot_separator + slot
         if self.repo is not None:
             atom += _repo_separator + self.repo
@@ -1779,7 +1782,7 @@ class Atom(str):
             "Atom instances are immutable", self.__class__, name, value
         )
 
-    def intersects(self, other):
+    def intersects(self, other: "Atom") -> bool:
         """
         Atoms with different cpv, operator or use attributes cause this method
         to return False even though there may actually be some intersection.
@@ -1809,7 +1812,7 @@ class Atom(str):
 
         return False
 
-    def evaluate_conditionals(self, use):
+    def evaluate_conditionals(self, use: set) -> "Atom":
         """
         Create an atom instance with any USE conditionals evaluated.
         @param use: The set of enabled USE flags
@@ -1837,7 +1840,9 @@ class Atom(str):
             _use=use_dep,
         )
 
-    def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
+    def violated_conditionals(
+        self, other_use: set, is_valid_flag: callable, parent_use=None
+    ) -> "Atom":
         """
         Create an atom instance with any USE conditional removed, that is
         satisfied by other_use.
@@ -1900,7 +1905,7 @@ class Atom(str):
         memo[id(self)] = self
         return self
 
-    def match(self, pkg):
+    def match(self, pkg: "_emerge.Package"):
         """
         Check if the given package instance matches this atom.
 
