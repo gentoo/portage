@@ -91,6 +91,7 @@ def _eval_deps(dep_struct, vardbs):
     # and B installed should record subslot on A only since the package is
     # supposed to link against that anyway, and we have no guarantee that B
     # has matching ABI.
+    # See bug #455904, bug #489458, bug #586238.
 
     for i, x in enumerate(dep_struct):
         if isinstance(x, list):
