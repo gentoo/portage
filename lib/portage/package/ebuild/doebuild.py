@@ -2487,8 +2487,8 @@ def _post_src_install_write_metadata(settings):
     """
 
     eapi_attrs = _get_eapi_attrs(settings.configdict["pkg"]["EAPI"])
-
     build_info_dir = os.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
+    metadata_buffer = {}
 
     metadata_keys = ["IUSE"]
     if eapi_attrs.iuse_effective:
@@ -2497,12 +2497,12 @@ def _post_src_install_write_metadata(settings):
     for k in metadata_keys:
         v = settings.configdict["pkg"].get(k)
         if v is not None:
-            write_atomic(os.path.join(build_info_dir, k), v + "\n")
+            metadata_buffer[k] = v
 
     for k in ("CHOST",):
         v = settings.get(k)
         if v is not None:
-            write_atomic(os.path.join(build_info_dir, k), v + "\n")
+            metadata_buffer[k] = v
 
     with open(
         _unicode_encode(
@@ -2542,17 +2542,7 @@ def _post_src_install_write_metadata(settings):
             except OSError:
                 pass
             continue
-        with open(
-            _unicode_encode(
-                os.path.join(build_info_dir, k),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            mode="w",
-            encoding=_encodings["repo.content"],
-            errors="strict",
-        ) as f:
-            f.write(f"{v}\n")
+        metadata_buffer[k] = v
 
     if eapi_attrs.slot_operator:
         deps = evaluate_slot_operator_equal_deps(settings, use, QueryCommand.get_db())
@@ -2564,18 +2554,20 @@ def _post_src_install_write_metadata(settings):
                 except OSError:
                     pass
                 continue
-            with open(
-                _unicode_encode(
-                    os.path.join(build_info_dir, k),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
-                mode="w",
-                encoding=_encodings["repo.content"],
-                errors="strict",
-            ) as f:
-                f.write(f"{v}\n")
 
+            metadata_buffer[k] = v
+
+    for k, v in metadata_buffer.items():
+        with open(
+            _unicode_encode(
+                os.path.join(build_info_dir, k),
+                encoding=_encodings["fs"],
+                errors="strict",
+            ),
+            mode="w",
+            encoding=_encodings["repo.content"],
+        ) as f:
+            f.write(f"{v}\n")
 
 def _preinst_bsdflags(mysettings):
     if bsd_chflags:
