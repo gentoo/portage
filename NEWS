@@ -12,6 +12,9 @@ Bug fixes:
 
 * emerge: ensure paths are UTF-8 encoded in _needs_move() (bug #913103).
 
+Cleanups:
+* vartree: Remove unused variables and parameters
+
 portage-3.0.51 (2023-08-20)
 --------------
 
