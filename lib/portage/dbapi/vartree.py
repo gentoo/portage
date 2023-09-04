@@ -395,7 +395,7 @@ class vardbapi(dbapi):
     def cpv_inject(self, mycpv):
         "injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
         ensure_dirs(self.getpath(mycpv))
-        counter = self.counter_tick(mycpv=mycpv)
+        counter = self.counter_tick()
         # write local package counter so that emerge clean does the right thing
         write_atomic(self.getpath(mycpv, filename="COUNTER"), str(counter))
 
@@ -794,7 +794,6 @@ class vardbapi(dbapi):
         pull_me = cache_these.union(wants)
         mydata = {"_mtime_": mydir_mtime}
         cache_valid = False
-        cache_incomplete = False
         cache_mtime = None
         metadata = None
         if pkg_data is not None:
@@ -1141,13 +1140,10 @@ class vardbapi(dbapi):
                 log_path=settings.get("PORTAGE_LOG_FILE"),
             )
 
-    def counter_tick(self, myroot=None, mycpv=None):
-        """
-        @param myroot: ignored, self._eroot is used instead
-        """
-        return self.counter_tick_core(incrementing=1, mycpv=mycpv)
+    def counter_tick(self) -> int:
+        return self.counter_tick_core(incrementing=1)
 
-    def get_counter_tick_core(self, myroot=None, mycpv=None):
+    def get_counter_tick_core(self) -> int:
         """
         Use this method to retrieve the counter instead
         of having to trust the value of a global counter
@@ -1165,10 +1161,7 @@ class vardbapi(dbapi):
         it also corresponds to the total number of
         installation actions that have occurred in
         the history of this package database.
-
-        @param myroot: ignored, self._eroot is used instead
         """
-        del myroot
         counter = -1
         try:
             with open(
@@ -1219,7 +1212,7 @@ class vardbapi(dbapi):
 
         return max_counter + 1
 
-    def counter_tick_core(self, myroot=None, incrementing=1, mycpv=None):
+    def counter_tick_core(self, incrementing: int = 1) -> int:
         """
         This method will grab the next COUNTER value and record it back
         to the global file. Note that every package install must have
@@ -1227,13 +1220,8 @@ class vardbapi(dbapi):
         into the same SLOT and in that case it's important that both
         packages have different COUNTER metadata.
 
-        @param myroot: ignored, self._eroot is used instead
-        @param mycpv: ignored
-        @rtype: int
         @return: new counter value
         """
-        myroot = None
-        mycpv = None
         self.lock()
         try:
             counter = self.get_counter_tick_core() - 1
@@ -4974,7 +4962,7 @@ class dblink:
 
         # write local package counter for recording
         if counter is None:
-            counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
+            counter = self.vartree.dbapi.counter_tick()
         with open(
             _unicode_encode(
                 os.path.join(self.dbtmpdir, "COUNTER"),

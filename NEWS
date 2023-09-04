@@ -26,6 +26,9 @@ Bug fixes:
 
 * fetch: fix fetching of layout.conf when FEATURES=force-mirror (bug #877793).
 
+Cleanups:
+* vartree: Remove unused variables and parameters
+
 portage-3.0.51 (2023-08-20)
 --------------
 
