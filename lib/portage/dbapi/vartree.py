@@ -6070,8 +6070,11 @@ class dblink:
                 ebuild_phase.wait()
                 self._elog_process()
 
-                if "noclean" not in self.settings.features and (
-                    retval == os.EX_OK or "fail-clean" in self.settings.features
+                # Keep the build dir around if postinst fails (bug #704866)
+                if (
+                    not self._postinst_failure
+                    and "noclean" not in self.settings.features
+                    and (retval == os.EX_OK or "fail-clean" in self.settings.features)
                 ):
                     if myebuild is None:
                         myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
