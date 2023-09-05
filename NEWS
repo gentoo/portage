@@ -12,6 +12,8 @@ Bug fixes:
 
 * emerge: ensure paths are UTF-8 encoded in _needs_move() (bug #913103).
 
+* vartree: keep build dir if postinst fails (bug #704866).
+
 portage-3.0.51 (2023-08-20)
 --------------
 
