@@ -120,21 +120,13 @@ class tar_stream_writer:
         if cmd is None:
             self.proc = None
         else:
-            if sys.hexversion >= 0x03090000:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    user=self.uid,
-                    group=self.gid,
-                )
-            else:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    preexec_fn=self._drop_privileges,
-                )
+            self.proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                user=self.uid,
+                group=self.gid,
+            )
 
             self.read_thread = threading.Thread(
                 target=self._cmd_read_thread, name="tar_stream_cmd_read", daemon=True
@@ -318,21 +310,13 @@ class tar_stream_reader:
             self.proc = None
         else:
             # Start external decompressor
-            if sys.hexversion >= 0x03090000:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    user=self.uid,
-                    group=self.gid,
-                )
-            else:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    preexec_fn=self._drop_privileges,
-                )
+            self.proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                user=self.uid,
+                group=self.gid,
+            )
             self.read_io = self.proc.stdout
             # Start stdin block writing thread
             self.thread = threading.Thread(
@@ -575,26 +559,15 @@ class checksum_helper:
             )
             gpg_verify_command = [x for x in gpg_verify_command if x != ""]
 
-            if sys.hexversion >= 0x03090000:
-                self.gpg_proc = subprocess.Popen(
-                    gpg_verify_command,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=env,
-                    user=self.uid,
-                    group=self.gid,
-                )
-
-            else:
-                self.gpg_proc = subprocess.Popen(
-                    gpg_verify_command,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=env,
-                    preexec_fn=self._drop_privileges,
-                )
+            self.gpg_proc = subprocess.Popen(
+                gpg_verify_command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                user=self.uid,
+                group=self.gid,
+            )
 
     def __del__(self):
         self.finish()
