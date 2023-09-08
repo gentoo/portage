@@ -142,29 +142,6 @@ class tar_stream_writer:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _drop_privileges(self):
-        if self.uid:
-            try:
-                os.setuid(self.uid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
-                    )
-                )
-                raise
-
-        if self.gid:
-            try:
-                os.setgid(self.gid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
-                    )
-                )
-                raise
-
     def kill(self):
         """
         kill external program if any error happened in python
@@ -362,29 +339,6 @@ class tar_stream_reader:
             if self.killed is False:
                 writemsg(colorize("BAD", f"GPKG subprocess failed: {self.cmd} \n"))
                 raise CompressorOperationFailed("PIPE broken")
-
-    def _drop_privileges(self):
-        if self.uid:
-            try:
-                os.setuid(self.uid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
-                    )
-                )
-                raise
-
-        if self.gid:
-            try:
-                os.setgid(self.gid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
-                    )
-                )
-                raise
 
     def kill(self):
         """
@@ -592,29 +546,6 @@ class checksum_helper:
         if (not good_signature) or (not trust_signature):
             writemsg(colorize("BAD", f"!!!\n{self.gpg_result.decode()}"))
             raise InvalidSignature("GPG verify failed")
-
-    def _drop_privileges(self):
-        if self.uid:
-            try:
-                os.setuid(self.uid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
-                    )
-                )
-                raise
-
-        if self.gid:
-            try:
-                os.setgid(self.gid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
-                    )
-                )
-                raise
 
     def update(self, data):
         """
