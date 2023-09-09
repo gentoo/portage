@@ -1043,6 +1043,10 @@ class binarytree:
                         else:
                             binpkg_format = "gpkg"
 
+                    for ext in SUPPORTED_XPAK_EXTENSIONS + SUPPORTED_GPKG_EXTENSIONS:
+                        if myfile.endswith(ext):
+                            mypkg = myfile[: -len(ext)]
+                            break
                     try:
                         pkg_metadata = self._read_metadata(
                             full_path,
@@ -1055,14 +1059,11 @@ class binarytree:
                             f"!!! Invalid binary package: '{full_path}', {e}\n",
                             noiselevel=-1,
                         )
+                        self.invalid_paths[mypkg] = [full_path]
                         continue
                     mycat = pkg_metadata.get("CATEGORY", "")
                     mypf = pkg_metadata.get("PF", "")
                     slot = pkg_metadata.get("SLOT", "")
-                    for ext in SUPPORTED_XPAK_EXTENSIONS + SUPPORTED_GPKG_EXTENSIONS:
-                        if myfile.endswith(ext):
-                            mypkg = myfile[: -len(ext)]
-                            break
                     if not mycat or not mypf or not slot:
                         # old-style or corrupt package
                         writemsg(
