@@ -679,6 +679,12 @@ class depgraph:
 
         self.query = UserQuery(myopts).query
 
+        # Set up a per-instance memoization cache for the
+        # _slot_operator_check_reverse_dependencies() method:
+        self._slot_operator_check_reverse_dependencies = functools.lru_cache(
+            maxsize=100
+        )(self._slot_operator_check_reverse_dependencies)
+
     def _index_binpkgs(self):
         for root in self._frozen_config.trees:
             bindb = self._frozen_config.trees[root]["bintree"].dbapi
@@ -2214,7 +2220,8 @@ class depgraph:
 
         return None
 
-    @functools.lru_cache(maxsize=100)
+    # This method is memoized on a per-instance basis via a decorator applied
+    # in __init__().
     def _slot_operator_check_reverse_dependencies(
         self, existing_pkg, candidate_pkg, replacement_parent=None
     ):
