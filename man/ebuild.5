@@ -62,20 +62,20 @@ operators:
 	\fI<\fRmedia\-libs/libgd\-1.6
 .fi
 .TP
-.B Extended Atom Prefixes [!~] and Postfixes [*]
+.B Extended Atom Prefixes [!\(ti] and Postfixes [*]
 Now to get even fancier, we provide the ability to define blocking packages and
 version range matching.  Also note that these extended prefixes/postfixes may
 be combined in any way with the atom classes defined above.
 .RS
 .TP
-.I ~
+.I \(ti
 means match any revision of the base version specified.  So in the
 example below, we would match versions '1.0.2a', '1.0.2a\-r1', '1.0.2a\-r2',
 etc...
 
 \fBExample\fR:
 .nf
-	\fI~\fRnet\-libs/libnet\-1.0.2a
+	\fI\(ti\fRnet\-libs/libnet\-1.0.2a
 .fi
 .TP
 .I !
@@ -120,7 +120,7 @@ Beginning with \fBEAPI 1\fR, any atom can be constrained to match a specific
 \fBExamples\fR:
 .nf
 	x11\-libs/qt:3
-	\fI~\fRx11\-libs/qt-3.3.8:3
+	\fI\(ti\fRx11\-libs/qt-3.3.8:3
 	\fI>=\fRx11\-libs/qt-3.3.8:3
 	\fI=\fRx11\-libs/qt-3.3*:3
 .fi
@@ -572,7 +572,7 @@ file name, should be separated by whitespace.
 Should contain a list of URIs for the sources main sites and other further
 package dependent information.
 .TP
-.B KEYWORDS\fR = \fI[\-~][x86,ppc,sparc,mips,alpha,arm,hppa,...]
+.B KEYWORDS\fR = \fI[\-\(ti][x86,ppc,sparc,mips,alpha,arm,hppa,...]
 .P
 
 KEYWORDS works in conjunction with ACCEPT_KEYWORDS (see \fBmake.conf\fR(5))
@@ -590,9 +590,9 @@ Any ebuild that then has
 "amd64" in KEYWORDS will be unmasked by default.
 
 On an "unstable"
-amd64 system, ACCEPT_KEYWORDS will be set to "amd64 ~amd64", with the
+amd64 system, ACCEPT_KEYWORDS will be set to "amd64 \(tiamd64", with the
 tilde denoting "unstable." Then, if an ebuild has \fIeither\fR
-"amd64" or "~amd64" in KEYWORDS, it will be keyword unmasked by default on
+"amd64" or "\(tiamd64" in KEYWORDS, it will be keyword unmasked by default on
 that system. Similarly, if an ebuild is known to not be compatible
 with a particular architecture, the "\-" prefix ( i.e. "\-amd64") setting
 can be specified to mask it only on that arch.
@@ -612,7 +612,7 @@ This would be done by specifying "\-ppc", for example. This will ensure that
 it is explicitly keyword\-masked for that architecture.
 .IP \(bu
 When submitting an ebuild to Gentoo Linux, it is the project policy to only
-have "~arch" set in KEYWORDS
+have "\(tiarch" set in KEYWORDS
 for the architecture for which it has been successfully tested, and no more.
 As the ebuild receives more testing, Gentoo arch teams will gradually expand
 the KEYWORDS settings to "bump" the package to unstable, and possibly stable.
@@ -1605,7 +1605,7 @@ SRC_URI="ftp://alpha.gnu.org/pub/gnu/${PN}/${P}.tar.gz"
 
 LICENSE="GPL\-2"
 SLOT="0"
-KEYWORDS="~amd64"
+KEYWORDS="\(tiamd64"
 
 BDEPEND="nls? ( sys-devel/gettext )"
 

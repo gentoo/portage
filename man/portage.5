@@ -607,7 +607,7 @@ Files in this directory, including make.conf, repos.conf, sets.conf,
 and any file with a name that begins with "package." can also be directories.
 
 If it is a directory, then all the files in that directory, excluding files
-that begin with '.' or end with '~', will be sorted in lexical order by file
+that begin with '.' or end with '\(ti', will be sorted in lexical order by file
 name and summed together as if they were a single file.
 
 .I Example:
@@ -761,9 +761,9 @@ modifies effective KEYWORDS (rather than ACCEPT_KEYWORDS).
 
 .I Example:
 # always use unstable libgd
-media\-libs/libgd ~x86
+media\-libs/libgd \(tix86
 # only use stable mplayer
-media\-video/mplayer \-~x86
+media\-video/mplayer \-\(tix86
 # always use unstable netcat
 net-analyzer/netcat
 .fi
@@ -775,7 +775,7 @@ three special tokens:
 
 .nf
 \fB*\fR  package is visible if it is stable on any architecture
-\fB~*\fR package is visible if it is in testing on any architecture
+\fB\(ti*\fR package is visible if it is in testing on any architecture
 \fB**\fR package is always visible (KEYWORDS are ignored completely)
 .fi
 
@@ -1683,7 +1683,7 @@ given package should vary depending on which profile the user has selected.
 # add stable keyword to libgd
 media\-libs/libgd x86
 # remove stable keyword from mplayer and add unstable keyword
-media\-video/mplayer \-x86 ~x86
+media\-video/mplayer \-x86 \(tix86
 # remove all keywords from netcat
 net-analyzer/netcat -*
 .fi
