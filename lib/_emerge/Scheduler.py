@@ -1260,12 +1260,14 @@ class Scheduler(PollScheduler):
             and not mod_echo_output
         ):
             for mysettings, key, logentries in self._failed_pkgs_die_msgs:
+                color = "PKG_BINARY_MERGE" if pkg.built else "INFORM"
+
                 root_msg = ""
                 if mysettings["ROOT"] != "/":
                     root_msg = f" merged to {mysettings['ROOT']}"
                 print()
                 printer.einfo(
-                    f"Error messages for package {colorize('INFORM', key)}{root_msg}:"
+                    f"Error messages for package {colorize(color, key)}{root_msg}:"
                 )
                 print()
                 for phase in portage.const.EBUILD_PHASES:
@@ -2001,7 +2003,10 @@ class Scheduler(PollScheduler):
 
     def _failed_pkg_msg(self, failed_pkg, action, preposition):
         pkg = failed_pkg.pkg
-        msg = f"{bad('Failed')} to {action} {colorize('INFORM', pkg.cpv)}"
+
+        color = "PKG_BINARY_MERGE" if failed_pkg.pkg.built else "INFORM"
+
+        msg = f"{bad('Failed')} to {action} {colorize(color, pkg.cpv)}"
         if pkg.root_config.settings["ROOT"] != "/":
             msg += f" {preposition} {pkg.root}"
 
