@@ -865,12 +865,13 @@ class Scheduler(PollScheduler):
             if self._terminated_tasks:
                 raise asyncio.CancelledError
 
-            out_str = "Running pre-merge checks for " + colorize("INFORM", x.cpv)
-            self._status_msg(out_str)
-
             root_config = x.root_config
             settings = self._allocate_config(root_config.root)
             settings.setcpv(x)
+
+            color = "PKG_BINARY_MERGE" if x.built else "INFORM"
+            self._status_msg(f"Running pre-merge checks for {colorize(color, x.cpv)}")
+
             if not x.built:
                 # Get required SRC_URI metadata (it's not cached in x.metadata
                 # because some packages have an extremely large SRC_URI value).
