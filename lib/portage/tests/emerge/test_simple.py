@@ -64,7 +64,6 @@ def test_portage_baseline(async_loop, playground, binhost, simple_command):
                 playground,
                 binhost,
                 simple_command,
-                _METADATA_XML_FILES,
                 loop=async_loop,
             ),
             loop=async_loop,
@@ -72,7 +71,7 @@ def test_portage_baseline(async_loop, playground, binhost, simple_command):
     )
 
 
-async def _async_test_simple(playground, binhost, command, metadata_xml_files, loop):
+async def _async_test_simple(playground, binhost, command, loop):
     debug = playground.debug
     settings = playground.settings
     trees = playground.trees
@@ -180,7 +179,7 @@ async def _async_test_simple(playground, binhost, command, metadata_xml_files, l
     # non-empty system set keeps --depclean quiet
     with open(os.path.join(profile_path, "packages"), "w") as f:
         f.write("*dev-libs/token-system-pkg")
-    for cp, xml_data in metadata_xml_files:
+    for cp, xml_data in _METADATA_XML_FILES:
         with open(os.path.join(test_repo_location, cp, "metadata.xml"), "w") as f:
             f.write(playground.metadata_xml_template % xml_data)
         with open(os.path.join(updates_dir, "1Q-2010"), "w") as f:
