@@ -1177,10 +1177,10 @@ has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 Like \fBhas\fR, but also echoes \fIitem\fR when \fBhas\fR returns true.  Banned
 in \fBEAPI 8\fR.
 .TP
-.B has_version\fR \fI[\-b]\fR \fI[\-d]\fR \fI[\-r]\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
-Check to see if \fIcategory/package\-version\fR is installed.  The
+.B has_version\fR \fI[\-b]\fR \fI[\-d]\fR \fI[\-r]\fR \fI[\-\-host\-root]\fR \fI<dependency specification>
+Check to see if \fI<dependency specification>\fR is installed.  The
 parameter accepts all values that are acceptable in the \fBDEPEND\fR
-variable.  The function returns 0 if \fIcategory/package\-version\fR
+variable.  The function returns 0 if \fI<dependency specification>\fR
 is installed, 1 otherwise. The package is searched for in \fBROOT\fR
 by default.
 
