@@ -23,7 +23,10 @@ def process(mysettings, key, logentries, fulltext):
     ):
         logfile = mysettings["PORTAGE_LOG_FILE"]
 
-    binary = mysettings.configdict["pkg"]["MERGE_TYPE"] == "binary"
+    try:
+        binary = mysettings.configdict["pkg"]["MERGE_TYPE"] == "binary"
+    except KeyError:
+        binary = False
     _items.append((mysettings["ROOT"], key, logentries, logfile, binary))
 
 
