@@ -980,7 +980,7 @@ def fetch(
     ]
 
     restrict_fetch = "fetch" in restrict
-    force_mirror = "force-mirror" in features and not restrict_mirror
+    force_mirror = "force-mirror" in features and not restrict_mirror and try_mirrors
 
     file_uri_tuples = []
     # Check for 'items' attribute since OrderedDict is not a dict.
