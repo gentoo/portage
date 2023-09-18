@@ -5,7 +5,10 @@ Features:
 * bintree: Add new API member (invalid_paths) to allow gentoolkit to later
   clean up invalid binpkgs (bug #900224).
 
-* Run PORTAGE_TRUST_HELPER before remote binary package operations.
+* gpkg: Run PORTAGE_TRUST_HELPER before remote binary package operations (bug #913070).
+
+* emerge: Use appropriate colors if binpkgs are used in e.g. pkg_pretend
+  messages as well as elog's mod_echo module (bug #914159).
 
 Bug fixes:
 * Prevent gpg from removing /dev/null when unlocking signing key (bug #912808).
