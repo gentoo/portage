@@ -1245,7 +1245,17 @@ class binarytree:
         portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "")
         if portage_trust_helper == "":
             return
-        ret = subprocess.run(portage_trust_helper)
+        try:
+            ret = subprocess.run(portage_trust_helper)
+        except FileNotFoundError:
+            writemsg(
+                _(
+                    "\n!!! Portage trust helper %s for binary packages not found\n!!! Continuing, but did you install app-portage/getuto?\n"
+                )
+                % portage_trust_helper,
+                noiselevel=-1,
+            )
+            return
         ret.check_returncode()
 
     def _populate_remote(self, getbinpkg_refresh=True):
