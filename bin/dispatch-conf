@@ -12,6 +12,7 @@
 #
 
 import atexit
+import errno
 import re
 import subprocess
 import sys
@@ -398,6 +399,8 @@ class dispatch:
                     mystat = os.lstat(conf["new"])
                     os.chmod(mrgconf, mystat[ST_MODE])
                     os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
+                    if "selinux" in portage.settings.features:
+                        self.copy_selinux_label(conf["current"], mrgconf)
                     newconf = mrgconf
                     continue
                 elif c == "l":
@@ -433,6 +436,30 @@ class dispatch:
             print()
 
         perform_conf_update_session_hooks("post-session")
+
+    def copy_selinux_label(self, curconf, newconf):
+        """Copy the SELinux security label from the current config file to
+        the new/merged config file."""
+        try:
+            label = os.getxattr(curconf, "security.selinux")
+        except OSError as e:
+            if e.errno == errno.ENOTSUP:
+                # Filesystem does not support xattrs
+                return
+            writemsg(
+                f"dispatch-conf: Failed getting SELinux label on {curconf}; ignoring...\n",
+                noiselevel=-1,
+            )
+            return
+
+        if label:
+            try:
+                os.setxattr(newconf, "security.selinux", label)
+            except OSError:
+                writemsg(
+                    f"dispatch-conf: Failed setting SELinux label on {newconf}; ignoring...\n",
+                    noiselevel=-1,
+                )
 
     def replace(self, newconf, curconf):
         """Replace current config with the new/merged version.  Also logs
