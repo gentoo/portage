@@ -7,6 +7,8 @@ Breaking changes:
   manually add or remove binpkgs from their PKGDIR (bug #889300).
 
 Features:
+* Refine _slot_operator_check_reverse_dependencies caching (bug #883071).
+
 * bintree: Add new API member (invalid_paths) to allow gentoolkit to later
   clean up invalid binpkgs (bug #900224).
 
