@@ -631,6 +631,7 @@ do_merge() {
 					else
 						chown --reference="${ofile}" "${mfile}"
 						chmod --reference="${ofile}" "${mfile}"
+						${selinux} && chcon --reference="${ofile}" "${mfile}"
 					fi
 					do_mv_ln ${mv_opts} "${mfile}" "${ofile}"
 					rm ${rm_opts} "${file}"
@@ -815,6 +816,8 @@ export PORTAGE_TMPDIR
 SCAN_PATHS=${*:-${CONFIG_PROTECT}}
 [[ " ${FEATURES} " == *" case-insensitive-fs "* ]] && \
 	case_insensitive=true || case_insensitive=false
+[[ " ${FEATURES} " == *" selinux "* ]] && \
+	selinux=true || selinux=false
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap "die terminated" SIGTERM
