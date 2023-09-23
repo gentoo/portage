@@ -262,7 +262,7 @@ class ResolverPlayground:
 
             try:
                 os.makedirs(profile_path)
-            except os.error:
+            except OSError:
                 pass
 
             repo_name_file = os.path.join(profile_path, "repo_name")
@@ -305,7 +305,7 @@ class ResolverPlayground:
             ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
             try:
                 os.makedirs(ebuild_dir)
-            except os.error:
+            except OSError:
                 pass
 
             with open(ebuild_path, "w") as f:
@@ -411,7 +411,7 @@ class ResolverPlayground:
             vdb_pkg_dir = os.path.join(self.vdbdir, a.cpv)
             try:
                 os.makedirs(vdb_pkg_dir)
-            except os.error:
+            except OSError:
                 pass
 
             metadata = installed[cpv].copy()
@@ -457,7 +457,7 @@ class ResolverPlayground:
 
         try:
             os.makedirs(user_config_dir)
-        except os.error:
+        except OSError:
             pass
 
         for repo in self._repositories:
@@ -639,7 +639,7 @@ class ResolverPlayground:
 
         try:
             os.makedirs(default_sets_conf_dir)
-        except os.error:
+        except OSError:
             pass
 
         provided_sets_portage_conf = os.path.join(str(cnf_path), "sets", "portage.conf")
@@ -652,7 +652,7 @@ class ResolverPlayground:
 
         try:
             os.makedirs(set_config_dir)
-        except os.error:
+        except OSError:
             pass
 
         for sets_file, lines in sets.items():
