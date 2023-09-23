@@ -2660,10 +2660,6 @@ class dblink:
         ignored_unlink_errnos = self._ignored_unlink_errnos
         ignored_rmdir_errnos = self._ignored_rmdir_errnos
 
-        if not pkgfiles:
-            showMessage(_("No package files given... Grabbing a set.\n"))
-            pkgfiles = self.getcontents()
-
         if others_in_slot is None:
             others_in_slot = []
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
@@ -2691,6 +2687,7 @@ class dblink:
         unmerge_orphans = "unmerge-orphans" in self.settings.features
         calc_prelink = "prelink-checksums" in self.settings.features
 
+        pkgfiles = self.getcontents()
         if pkgfiles:
             self.updateprotect()
             mykeys = list(pkgfiles)
