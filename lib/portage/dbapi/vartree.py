@@ -2687,7 +2687,7 @@ class dblink:
         unmerge_orphans = "unmerge-orphans" in self.settings.features
         calc_prelink = "prelink-checksums" in self.settings.features
 
-        pkgfiles = self.getcontents()
+        pkgfiles = self.getcontents() if not pkgfiles
         if pkgfiles:
             self.updateprotect()
             mykeys = list(pkgfiles)
