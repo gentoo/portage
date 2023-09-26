@@ -38,9 +38,9 @@ PORTAGE_TMPDIR="/var/tmp"
 # existing installs where bzip2 is used for backward compatibility.
 BINPKG_COMPRESS="zstd"
 
-# The format used for binary packages. The default is use old "xpak" format.
-# Set to "gpkg" to use new gentoo binary package format.
-BINPKG_FORMAT="xpak"
+# The format used for binary packages. The default is to use the new "gpkg" format.
+# Set to "xpak" to use the old gentoo binary package format.
+BINPKG_FORMAT="gpkg"
 
 # The binary package default GPG signing command.
 # flock is used to avoid a racing condition of gnupg
