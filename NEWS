@@ -26,6 +26,8 @@ Bug fixes:
 
 * fetch: fix fetching of layout.conf when FEATURES=force-mirror (bug #877793).
 
+* dispatch-conf, etc-update: fix SELinux security labels on merged files.
+
 Cleanups:
 * vartree: Remove unused variables and parameters
 
