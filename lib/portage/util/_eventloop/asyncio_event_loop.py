@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -6,7 +6,6 @@ import signal
 
 import asyncio as _real_asyncio
 from asyncio.events import AbstractEventLoop as _AbstractEventLoop
-from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
 
 import portage
 
@@ -135,7 +134,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
                 pass
 
 
-class _ChildWatcherThreadSafetyWrapper(_AbstractChildWatcher):
+class _ChildWatcherThreadSafetyWrapper:
     def __init__(self, loop, real_watcher):
         self._loop = loop
         self._real_watcher = real_watcher
