@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2016 Gentoo Foundation
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -79,7 +79,7 @@ endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 _slot_re_cache = {}
 
 
-def _get_slot_re(eapi_attrs: _eapi_attrs) -> typing.re.Pattern:
+def _get_slot_re(eapi_attrs: _eapi_attrs) -> typing.Pattern:
     cache_key = eapi_attrs.slot_operator
     slot_re = _slot_re_cache.get(cache_key)
     if slot_re is not None:
@@ -99,7 +99,7 @@ def _get_slot_re(eapi_attrs: _eapi_attrs) -> typing.re.Pattern:
 _pv_re = None
 
 
-def _get_pv_re(eapi_attrs: _eapi_attrs) -> typing.re.Pattern:
+def _get_pv_re(eapi_attrs: _eapi_attrs) -> typing.Pattern:
     global _pv_re
     if _pv_re is not None:
         return _pv_re
