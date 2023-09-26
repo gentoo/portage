@@ -5357,6 +5357,22 @@ class depgraph:
                         if not package_is_installed:
                             continue
 
+                    # If we're emerging @selected or @world, we want to loudly warn about
+                    # no ebuilds being available for packages (bug #911180).
+                    if (
+                        pkg
+                        and pkg.installed
+                        and pkg.operation == "nomerge"
+                        and isinstance(arg, SetArg)
+                        and arg.name in ("selected, world")
+                        and not self._replace_installed_atom(pkg)
+                    ):
+                        self._dynamic_config._missing_args.append((arg, atom))
+
+                    # But here, we don't warn unlike for @selected or @world because the
+                    # user might be emerging something else and a package instead gets
+                    # dragged in. We may want to warn about this at some point, but one
+                    # step at a time.
                     if not pkg:
                         pprovided_match = False
                         for virt_choice in virtuals.get(atom.cp, []):
