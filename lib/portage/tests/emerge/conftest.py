@@ -203,24 +203,27 @@ _BASELINE_COMMAND_SEQUENCE = [
     "emerge --info --verbose",
     "emerge --list-sets",
     "emerge --check-news",
-    # "rm -rf {cachedir}",
-    # "rm -rf {cachedir_pregen}",
-    "emerge --regen",
-    # "rm -rf {cachedir}",
-    "FEATURES=metadata-transfer emerge --regen",
-    # "rm -rf {cachedir}",
-    "FEATURES=metadata-transfer emerge --regen",  # is this second test case needed?
-    # "rm -rf {cachedir}",
-    "egencache --update",
-    "FEATURES=metadata-transfer emerge --metadata",
-    # "rm -rf {cachedir}",
-    "FEATURES=metadata-transfer emerge --metadata (2)",
-    "emerge --metadata",
-    # "rm -rf {cachedir}",
-    "emerge --oneshot virtual/foo",
-    # "foo pkg missing",
-    "FEATURES=unmerge-backup emerge --unmerge virtual/foo",
-    # "foo pkg exists",
+    #
+    # # "rm -rf {cachedir}",
+    # # "rm -rf {cachedir_pregen}",
+    # "emerge --regen",
+    # # "rm -rf {cachedir}",
+    # "FEATURES=metadata-transfer emerge --regen",
+    # # "rm -rf {cachedir}",
+    # "FEATURES=metadata-transfer emerge --regen",  # is this second test case needed?
+    # # "rm -rf {cachedir}",
+    # "egencache --update",
+    # "FEATURES=metadata-transfer emerge --metadata",
+    # # "rm -rf {cachedir}",
+    # "FEATURES=metadata-transfer emerge --metadata (2)",
+    # "emerge --metadata",
+    # # "rm -rf {cachedir}",
+    # "emerge --oneshot virtual/foo",
+    # # "foo pkg missing",
+    # "FEATURES=unmerge-backup emerge --unmerge virtual/foo",
+    # # "foo pkg exists",
+    "emerge --regen/--metadata",
+    #
     "emerge --pretend dev-libs/A",
     "ebuild dev-libs/A-1 manifest clean package merge",
     "emerge --pretend --tree --complete-graph dev-libs/A",
@@ -338,6 +341,14 @@ class PortageCommand:
     def check_command_result(self) -> None:
         if self.post_command:
             self.post_command()
+
+
+class PortageCommandSequence:
+    def __init__(self, *commands):
+        self.commands = commands
+
+    def __iter__(self):
+        yield from self.commands
 
 
 class Emerge(PortageCommand):
@@ -621,50 +632,39 @@ def _generate_all_baseline_commands(playground, binhost):
         _rm_cachedir()
         shutil.rmtree(cachedir_pregen)
 
-    test_commands["emerge --regen"] = Emerge(
-        "--regen", preparation=_rm_cachedir_and_pregen
-    )
-
-    test_commands["FEATURES=metadata-transfer emerge --regen"] = Emerge(
-        "--regen", env_mod={"FEATURES": "metadata-transfer"}, preparation=_rm_cachedir
-    )
-
-    test_commands["egencache --update"] = Egencache(
-        "--repo",
-        "test_repo",
-        "--repositories-configuration",
-        playground.settings.repositories.config_string(),
-        "--update",
-        *egencache_extra_args,
-        preparation=_rm_cachedir,
-    )
-
-    test_commands["FEATURES=metadata-transfer emerge --metadata"] = Emerge(
-        "--metadata", env_mod={"FEATURES": "metadata-transfer"}
-    )
-
-    test_commands["FEATURES=metadata-transfer emerge --metadata (2)"] = Emerge(
-        "--metadata",
-        env_mod={"FEATURES": "metadata-transfer"},
-        preparation=_rm_cachedir,
-    )
-
-    test_commands["emerge --metadata"] = Emerge("--metadata")
-
-    test_commands["emerge --oneshot virtual/foo"] = Emerge(
-        "--oneshot", "virtual/foo", preparation=_rm_cachedir
-    )
-
-    # test_commands["foo pkg missing"] = lambda: _check_foo_file(
-    #     pkgdir, foo_filename, must_exist=False
-    # )
-
-    test_commands["FEATURES=unmerge-backup emerge --unmerge virtual/foo"] = Emerge(
-        "--unmerge",
-        "virtual/foo",
-        env_mod={"FEATURES": "unmerge-backup"},
-        preparation=lambda: _check_foo_file(pkgdir, foo_filename, must_exist=False),
-    )
+    regen_seq = [
+        Emerge("--regen", preparation=_rm_cachedir_and_pregen),
+        Emerge(
+            "--regen",
+            env_mod={"FEATURES": "metadata-transfer"},
+            preparation=_rm_cachedir,
+        ),
+        Egencache(
+            "--repo",
+            "test_repo",
+            "--repositories-configuration",
+            playground.settings.repositories.config_string(),
+            "--update",
+            *egencache_extra_args,
+            preparation=_rm_cachedir,
+        ),
+        Emerge("--metadata", env_mod={"FEATURES": "metadata-transfer"}),
+        Emerge(
+            "--metadata",
+            env_mod={"FEATURES": "metadata-transfer"},
+            preparation=_rm_cachedir,
+        ),
+        Emerge("--metadata"),
+        Emerge("--oneshot", "virtual/foo", preparation=_rm_cachedir),
+        Emerge(
+            "--unmerge",
+            "virtual/foo",
+            env_mod={"FEATURES": "unmerge-backup"},
+            preparation=lambda: _check_foo_file(pkgdir, foo_filename, must_exist=False),
+        ),
+    ]
+    test_commands["emerge --regen/--metadata"] = PortageCommandSequence(*regen_seq)
+    # Assuming that the sequence ends here!
 
     # test_commands["foo pkg exists"] = lambda: _check_foo_file(
     #     pkgdir, foo_filename, must_exist=True
