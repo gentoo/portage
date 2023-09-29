@@ -178,7 +178,7 @@ _INSTALLED_EBUILDS = {
     },
 }
 
-_SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE = [
+_BASELINE_COMMAND_FETCHCOMMAND_SEQUENCE = [
     # "mv {pkgdir} {binhost_dir}",
     "emerge -eG dev-libs/A",
     # "rm -R {pkgdir}",
@@ -190,7 +190,7 @@ _SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE = [
     # "mv {binhost_dir} {pkgdir}",
 ]
 
-_SIMPLE_COMMAND_SEQUENCE = [
+_BASELINE_COMMAND_SEQUENCE = [
     "emerge -1 dev-libs/A -v dev-libs/B",
     "emerge --root --quickpkg-direct-root",
     "emerge --quickpkg-direct-root",
@@ -277,14 +277,14 @@ _SIMPLE_COMMAND_SEQUENCE = [
     "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B",
     "ROOT={cross_root} emerge dev-libs/B",
     "portageq has_version {cross_eroot} dev-libs/B",
-] + _SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE
+] + _BASELINE_COMMAND_FETCHCOMMAND_SEQUENCE
 
 PORTAGE_PYTHON = portage._python_interpreter
 NOOP = lambda: ...
 
 
 class PortageCommand:
-    """A class that represents a simple test case command,
+    """A class that represents a baseline test case command,
     including handling of environment and one-use arguments.
     """
 
@@ -429,15 +429,10 @@ class Regenworld(PortageCommand):
     )
 
 
-class Rm(PortageCommand):
-    name = "rm"
-    command = (find_binary(name),)
-
-
 def pytest_generate_tests(metafunc):
     if "baseline_command" in metafunc.fixturenames:
         metafunc.parametrize(
-            "baseline_command", _SIMPLE_COMMAND_SEQUENCE, indirect=True
+            "baseline_command", _BASELINE_COMMAND_SEQUENCE, indirect=True
         )
 
 
@@ -524,414 +519,6 @@ def binhost(playground, async_loop):
 
 
 @pytest.fixture()
-def _generate_all_simple_commands(
-    playground,
-    binhost,
-    emerge,
-    env_update,
-    portageq,
-    etc_update,
-    dispatch_conf,
-    ebuild,
-    egencache,
-    emaint,
-    fixpackages,
-    quickpkg,
-    regenworld,
-):
-    """This fixture generates all the commands that
-    ``test_portage_baseline`` will use.
-
-    But, don't use this fixture directly, instead, use the
-    ``simple_command`` fixture. That improves performance a bit due to
-    pytest caching.
-
-    .. note::
-
-       To add a new command, define it in the local ``test_commands``
-       dict, if not yet defined, and add its key at the correct position
-       in the ``_SIMPLE_COMMAND_SEQUENCE`` list.
-    """
-    settings = playground.settings
-    eprefix = settings["EPREFIX"]
-    eroot = settings["EROOT"]
-    trees = playground.trees
-    pkgdir = playground.pkgdir
-    portdb = trees[eroot]["porttree"].dbapi
-    test_repo_location = settings.repositories["test_repo"].location
-    var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
-    cachedir = os.path.join(var_cache_edb, "dep")
-    cachedir_pregen = os.path.join(test_repo_location, "metadata", "md5-cache")
-
-    rm_binary = find_binary("rm")
-    assert rm_binary is not None, "rm command not found"
-    rm_cmd = (rm_binary,)
-
-    egencache_extra_args = []
-    if _have_python_xml():
-        egencache_extra_args.append("--update-use-local-desc")
-
-    test_ebuild = portdb.findname("dev-libs/A-1")
-    assert test_ebuild is not None
-
-    cross_prefix = os.path.join(eprefix, "cross_prefix")
-    cross_root = os.path.join(eprefix, "cross_root")
-    cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
-
-    binpkg_format = settings.get("BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0])
-    assert binpkg_format in ("xpak", "gpkg")
-    if binpkg_format == "xpak":
-        foo_filename = "foo-0-1.xpak"
-    elif binpkg_format == "gpkg":
-        foo_filename = "foo-0-1.gpkg.tar"
-
-    test_commands = {}
-
-    if hasattr(argparse.ArgumentParser, "parse_intermixed_args"):
-        parse_intermixed_command = emerge + (
-            "--oneshot",
-            "dev-libs/A",
-            "-v",
-            "dev-libs/A",
-        )
-    else:
-        parse_intermixed_command = NOOP
-    test_commands["emerge -1 dev-libs/A -v dev-libs/B"] = parse_intermixed_command
-
-    test_commands["emerge --root --quickpkg-direct-root"] = emerge + (
-        "--usepkgonly",
-        "--root",
-        cross_root,
-        "--quickpkg-direct=y",
-        "--quickpkg-direct-root",
-        "/",
-        "dev-libs/A",
-    )
-    test_commands["emerge --quickpkg-direct-root"] = emerge + (
-        "--usepkgonly",
-        "--quickpkg-direct=y",
-        "--quickpkg-direct-root",
-        cross_root,
-        "dev-libs/A",
-    )
-    test_commands["env-update"] = env_update
-    test_commands["portageq envvar"] = portageq + (
-        "envvar",
-        "-v",
-        "CONFIG_PROTECT",
-        "EROOT",
-        "PORTAGE_CONFIGROOT",
-        "PORTAGE_TMPDIR",
-        "USERLAND",
-    )
-    test_commands["etc-update"] = etc_update
-    test_commands["dispatch-conf"] = dispatch_conf
-    test_commands["emerge --version"] = emerge + ("--version",)
-    test_commands["emerge --info"] = emerge + ("--info",)
-    test_commands["emerge --info --verbose"] = emerge + ("--info", "--verbose")
-    test_commands["emerge --list-sets"] = emerge + ("--list-sets",)
-    test_commands["emerge --check-news"] = emerge + ("--check-news",)
-    test_commands["rm -rf {cachedir}"] = rm_cmd + ("-rf", cachedir)
-    test_commands["rm -rf {cachedir_pregen}"] = rm_cmd + ("-rf", cachedir_pregen)
-    test_commands["emerge --regen"] = emerge + ("--regen",)
-    test_commands["FEATURES=metadata-transfer emerge --regen"] = (
-        ({"FEATURES": "metadata-transfer"},) + emerge + ("--regen",)
-    )
-    test_commands["egencache --update"] = (
-        egencache + ("--update",) + tuple(egencache_extra_args)
-    )
-    test_commands["FEATURES=metadata-transfer emerge --metadata"] = (
-        ({"FEATURES": "metadata-transfer"},) + emerge + ("--metadata",)
-    )
-    test_commands["emerge --metadata"] = emerge + ("--metadata",)
-
-    test_commands["emerge --oneshot virtual/foo"] = emerge + (
-        "--oneshot",
-        "virtual/foo",
-    )
-    test_commands["foo pkg missing"] = lambda: _check_foo_file(
-        pkgdir, foo_filename, must_exist=False
-    )
-
-    test_commands["FEATURES=unmerge-backup emerge --unmerge virtual/foo"] = (
-        ({"FEATURES": "unmerge-backup"},) + emerge + ("--unmerge", "virtual/foo")
-    )
-    test_commands["foo pkg exists"] = lambda: _check_foo_file(
-        pkgdir, foo_filename, must_exist=True
-    )
-
-    test_commands["emerge --pretend dev-libs/A"] = emerge + (
-        "--pretend",
-        "dev-libs/A",
-    )
-
-    test_commands["ebuild dev-libs/A-1 manifest clean package merge"] = ebuild + (
-        test_ebuild,
-        "manifest",
-        "clean",
-        "package",
-        "merge",
-    )
-    test_commands["emerge --pretend --tree --complete-graph dev-libs/A"] = emerge + (
-        "--pretend",
-        "--tree",
-        "--complete-graph",
-        "dev-libs/A",
-    )
-    test_commands["emerge -p dev-libs/B"] = emerge + ("-p", "dev-libs/B")
-    test_commands["emerge -p --newrepo dev-libs/B"] = emerge + (
-        "-p",
-        "--newrepo",
-        "dev-libs/B",
-    )
-    test_commands["emerge -B dev-libs/B"] = emerge + ("-B", "dev-libs/B")
-    test_commands["emerge -1k dev-libs/B"] = emerge + (
-        "--oneshot",
-        "--usepkg",
-        "dev-libs/B",
-    )
-    # trigger clean prior to pkg_pretend as in bug #390711
-    test_commands["ebuild dev-libs/A-1 unpack"] = ebuild + (test_ebuild, "unpack")
-    test_commands["emerge -1 dev-libs/A"] = emerge + ("--oneshot", "dev-libs/A")
-    test_commands["emerge -n dev-libs/A"] = emerge + ("--noreplace", "dev-libs/A")
-    test_commands["emerge --config dev-libs/A"] = emerge + (
-        "--config",
-        "dev-libs/A",
-    )
-    test_commands["emerge --info dev-libs/A dev-libs/B"] = emerge + (
-        "--info",
-        "dev-libs/A",
-        "dev-libs/B",
-    )
-    test_commands["emerge -pcv dev-libs/B"] = emerge + (
-        "--pretend",
-        "--depclean",
-        "--verbose",
-        "dev-libs/B",
-    )
-    test_commands["emerge -pc"] = emerge + ("--pretend", "--depclean")
-    test_commands["emerge -c"] = emerge + ("--depclean",)
-    test_commands["quickpkg --include-config y dev-libs/A"] = quickpkg + (
-        "--include-config",
-        "y",
-        "dev-libs/A",
-    )
-    # Test bug #523684, where a file renamed or removed by the
-    # admin forces replacement files to be merged with config
-    # protection.
-    test_commands["no protected files"] = lambda: _check_number_of_protected_files(
-        0, eroot, settings["CONFIG_PROTECT"]
-    )
-    # Another "it is not a test command" case; actually setup:
-    test_commands["rm /etc/A-0"] = lambda: os.unlink(
-        os.path.join(eprefix, "etc", "A-0")
-    )
-    test_commands["emerge -K dev-libs/A"] = emerge + ("--usepkgonly", "dev-libs/A")
-    test_commands["one protected file"] = lambda: _check_number_of_protected_files(
-        1, eroot, settings["CONFIG_PROTECT"]
-    )
-
-    test_commands["emaint --check all"] = emaint + ("--check", "all")
-    test_commands["emaint --fix all"] = emaint + ("--fix", "all")
-    test_commands["fixpackages"] = fixpackages
-    test_commands["regenworld"] = regenworld
-    test_commands["portageq match {eroot} dev-libs/A"] = portageq + (
-        "match",
-        eroot,
-        "dev-libs/A",
-    )
-    test_commands["portageq best_visible {eroot} dev-libs/A"] = portageq + (
-        "best_visible",
-        eroot,
-        "dev-libs/A",
-    )
-    test_commands["portageq best_visible {eroot} binary dev-libs/A"] = portageq + (
-        "best_visible",
-        eroot,
-        "binary",
-        "dev-libs/A",
-    )
-    test_commands["portageq contents {eroot} dev-libs/A-1"] = portageq + (
-        "contents",
-        eroot,
-        "dev-libs/A-1",
-    )
-    test_commands[
-        "portageq metadata {eroot} ebuild dev-libs/A-1 EAPI IUSE RDEPEND"
-    ] = portageq + (
-        "metadata",
-        eroot,
-        "ebuild",
-        "dev-libs/A-1",
-        "EAPI",
-        "IUSE",
-        "RDEPEND",
-    )
-    test_commands[
-        "portageq metadata {eroot} binary dev-libs/A-1 EAPI USE RDEPEND"
-    ] = portageq + (
-        "metadata",
-        eroot,
-        "binary",
-        "dev-libs/A-1",
-        "EAPI",
-        "USE",
-        "RDEPEND",
-    )
-    test_commands[
-        "portageq metadata {eroot} installed dev-libs/A-1 EAPI USE RDEPEND"
-    ] = portageq + (
-        "metadata",
-        eroot,
-        "installed",
-        "dev-libs/A-1",
-        "EAPI",
-        "USE",
-        "RDEPEND",
-    )
-    test_commands["portageq owners {eroot} {eroot}usr"] = portageq + (
-        "owners",
-        eroot,
-        eroot + "usr",
-    )
-    test_commands["emerge -p {eroot}usr"] = emerge + ("-p", eroot + "usr")
-    test_commands["emerge -pCq {eroot}usr"] = emerge + (
-        "-p",
-        "--unmerge",
-        "-q",
-        eroot + "usr",
-    )
-    test_commands["emerge -Cq dev-libs/A"] = emerge + (
-        "--unmerge",
-        "--quiet",
-        "dev-libs/A",
-    )
-    test_commands["emerge -Cq dev-libs/B"] = emerge + (
-        "-C",
-        "--quiet",
-        "dev-libs/B",
-    )
-
-    # autounmask:
-    # If EMERGE_DEFAULT_OPTS contains --autounmask=n, then --autounmask
-    # must be specified with --autounmask-continue.
-    test_commands[
-        "EMERGE_DEFAULT_OPTS=--autounmask=n "
-        "emerge --autounmask --autounmask-continue dev-libs/C"
-    ] = (
-        ({"EMERGE_DEFAULT_OPTS": "--autounmask=n"},)
-        + emerge
-        + ("--autounmask", "--autounmask-continue", "dev-libs/C")
-    )
-    # Verify that the above --autounmask-continue command caused
-    # USE=flag to be applied correctly to dev-libs/D.
-    test_commands["portageq match {eroot} dev-libs/D[flag]"] = portageq + (
-        "match",
-        eroot,
-        "dev-libs/D[flag]",
-    )
-    # Test cross-prefix usage, including chpathtool for binpkgs.
-    # EAPI 7
-    test_commands["EPREFIX={cross_prefix} emerge dev-libs/C"] = (
-        ({"EPREFIX": cross_prefix},) + emerge + ("dev-libs/C",)
-    )
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/C"
-    ] = (
-        ({"EPREFIX": cross_prefix},)
-        + portageq
-        + ("has_version", cross_prefix, "dev-libs/C")
-    )
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/D"
-    ] = (
-        ({"EPREFIX": cross_prefix},)
-        + portageq
-        + ("has_version", cross_prefix, "dev-libs/D")
-    )
-    test_commands["ROOT={cross_root} emerge dev-libs/D"] = (
-        ({"ROOT": cross_root},) + emerge + ("dev-libs/D",)
-    )
-    test_commands["portageq has_version {cross_eroot} dev-libs/D"] = portageq + (
-        "has_version",
-        cross_eroot,
-        "dev-libs/D",
-    )
-    # EAPI 5
-    test_commands["EPREFIX={cross_prefix} emerge -K dev-libs/A"] = (
-        ({"EPREFIX": cross_prefix},) + emerge + ("--usepkgonly", "dev-libs/A")
-    )
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A"
-    ] = (
-        ({"EPREFIX": cross_prefix},)
-        + portageq
-        + ("has_version", cross_prefix, "dev-libs/A")
-    )
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B"
-    ] = (
-        ({"EPREFIX": cross_prefix},)
-        + portageq
-        + ("has_version", cross_prefix, "dev-libs/B")
-    )
-    test_commands["EPREFIX={cross_prefix} emerge -Cq dev-libs/B"] = (
-        ({"EPREFIX": cross_prefix},) + emerge + ("-C", "--quiet", "dev-libs/B")
-    )
-    test_commands["EPREFIX={cross_prefix} emerge -Cq dev-libs/A"] = (
-        ({"EPREFIX": cross_prefix},) + emerge + ("-C", "--quiet", "dev-libs/A")
-    )
-    test_commands["EPREFIX={cross_prefix} emerge dev-libs/A"] = (
-        ({"EPREFIX": cross_prefix},) + emerge + ("dev-libs/A",)
-    )
-
-    # Test ROOT support
-    test_commands["ROOT={cross_root} emerge dev-libs/B"] = (
-        ({"ROOT": cross_root},) + emerge + ("dev-libs/B",)
-    )
-    test_commands["portageq has_version {cross_eroot} dev-libs/B"] = portageq + (
-        "has_version",
-        cross_eroot,
-        "dev-libs/B",
-    )
-
-    # Test binhost support if FETCHCOMMAND is available.
-    binrepos_conf_file = os.path.join(os.sep, eprefix, BINREPOS_CONF_FILE)
-    binhost_uri = binhost["uri"]
-    binhost_dir = binhost["dir"]
-    with open(binrepos_conf_file, "w") as f:
-        f.write("[test-binhost]\n")
-        f.write(f"sync-uri = {binhost_uri}\n")
-    fetchcommand = portage.util.shlex_split(settings["FETCHCOMMAND"])
-    fetch_bin = portage.process.find_binary(fetchcommand[0])
-    if fetch_bin is None:
-        for command_name in _SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE:
-            test_commands[command_name] = NOOP
-    else:
-        test_commands["mv {pkgdir} {binhost_dir}"] = lambda: os.rename(
-            pkgdir, binhost_dir
-        )
-        test_commands["emerge -eG dev-libs/A"] = emerge + (
-            "-e",
-            "--getbinpkgonly",
-            "dev-libs/A",
-        )
-        test_commands["rm -R {pkgdir}"] = lambda: shutil.rmtree(pkgdir)
-        test_commands["mv {binhost_dir} {pkgdir}"] = lambda: os.rename(
-            binhost_dir, pkgdir
-        )
-        # Remove binrepos.conf and test PORTAGE_BINHOST.
-        test_commands["rm {binrepos_conf_file}"] = lambda: os.unlink(binrepos_conf_file)
-        test_commands["PORTAGE_BINHOST={binhost_uri} emerge -feG dev-libs/A"] = (
-            ({"PORTAGE_BINHOST": binhost_uri},)
-            + emerge
-            + ("-fe", "--getbinpkgonly", "dev-libs/A")
-        )
-
-    yield test_commands
-
-
-@pytest.fixture()
 def _generate_all_baseline_commands(playground, binhost):
     """This fixture generates all the commands that
     ``test_portage_baseline`` will use.
@@ -944,7 +531,7 @@ def _generate_all_baseline_commands(playground, binhost):
 
        To add a new command, define it in the local ``test_commands``
        dict, if not yet defined, and add its key at the correct position
-       in the ``_SIMPLE_COMMAND_SEQUENCE`` list.
+       in the ``_BASELINE_COMMAND_SEQUENCE`` list.
     """
     settings = playground.settings
     eprefix = settings["EPREFIX"]
@@ -1026,9 +613,6 @@ def _generate_all_baseline_commands(playground, binhost):
     test_commands["emerge --info --verbose"] = Emerge("--info", "--verbose")
     test_commands["emerge --list-sets"] = Emerge("--list-sets")
     test_commands["emerge --check-news"] = Emerge("--check-news")
-
-    # test_commands["rm -rf {cachedir}"] = Rm("-rf", cachedir)
-    # test_commands["rm -rf {cachedir_pregen}"] = Rm("-rf", cachedir_pregen)
 
     def _rm_cachedir():
         shutil.rmtree(cachedir)
@@ -1140,6 +724,10 @@ def _generate_all_baseline_commands(playground, binhost):
     test_commands["emerge -c"] = Emerge(
         "--depclean",
     )
+
+    # Test bug #523684, where a file renamed or removed by the
+    # admin forces replacement files to be merged with config
+    # protection.
     test_commands["quickpkg --include-config y dev-libs/A"] = Quickpkg(
         "--include-config",
         "y",
@@ -1148,13 +736,6 @@ def _generate_all_baseline_commands(playground, binhost):
             0, eroot, settings["CONFIG_PROTECT"]
         ),
     )
-    # Test bug #523684, where a file renamed or removed by the
-    # admin forces replacement files to be merged with config
-    # protection.
-
-    # test_commands["no protected files"] = lambda: _check_number_of_protected_files(
-    #     0, eroot, settings["CONFIG_PROTECT"]
-    # )
 
     # Another "it is not a test command" case; actually setup:
     # test_commands["rm /etc/A-0"] = lambda: os.unlink(
@@ -1168,10 +749,6 @@ def _generate_all_baseline_commands(playground, binhost):
             1, eroot, settings["CONFIG_PROTECT"]
         ),
     )
-
-    # test_commands["one protected file"] = lambda: _check_number_of_protected_files(
-    #     1, eroot, settings["CONFIG_PROTECT"]
-    # )
 
     test_commands["emaint --check all"] = Emaint("--check", "all")
     test_commands["emaint --fix all"] = Emaint("--fix", "all")
@@ -1351,7 +928,7 @@ def _generate_all_baseline_commands(playground, binhost):
     fetchcommand = portage.util.shlex_split(settings["FETCHCOMMAND"])
     fetch_bin = portage.process.find_binary(fetchcommand[0])
     if fetch_bin is None:
-        for command_name in _SIMPLE_COMMAND_FETCHCOMMAND_SEQUENCE:
+        for command_name in _BASELINE_COMMAND_FETCHCOMMAND_SEQUENCE:
             test_commands[command_name] = Noop()
     else:
         # test_commands["mv {pkgdir} {binhost_dir}"] = lambda: os.rename(
@@ -1387,21 +964,10 @@ def _generate_all_baseline_commands(playground, binhost):
 
 
 @pytest.fixture()
-def simple_command(request, _generate_all_simple_commands):
-    """A fixture that provides the commands to perform a baseline
-    functional test of portage. It uses another fixture, namely
-    ``_generate_all_simple_commands``.
-    Pytest caches the fixtures and there is a little performance
-    improvement if the commands are generated only once..
-    """
-    return _generate_all_simple_commands[request.param]
-
-
-@pytest.fixture()
 def baseline_command(request, _generate_all_baseline_commands):
     """A fixture that provides the commands to perform a baseline
     functional test of portage. It uses another fixture, namely
-    ``_generate_all_simple_commands``.
+    ``_generate_all_baseline_commands``.
     Pytest caches the fixtures and there is a little performance
     improvement if the commands are generated only once..
     """
