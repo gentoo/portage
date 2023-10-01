@@ -28,6 +28,9 @@ Bug fixes:
 
 * dispatch-conf, etc-update: fix SELinux security labels on merged files.
 
+* env-update: Write ${EPREFIX}/usr/etc/ld.so.conf with unprefixed paths on
+  prefixed systems to fix the bfd linker in some obscure cases (bug #892549).
+
 Cleanups:
 * vartree: Remove unused variables and parameters
 
