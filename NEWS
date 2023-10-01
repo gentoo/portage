@@ -28,6 +28,9 @@ Bug fixes:
 
 * dispatch-conf, etc-update: fix SELinux security labels on merged files.
 
+* emerge: fix application count when listing search results for ambiguous
+  packages (bug #915054).
+
 Cleanups:
 * vartree: Remove unused variables and parameters
 
