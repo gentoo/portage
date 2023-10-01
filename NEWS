@@ -33,6 +33,9 @@ Bug fixes:
 * emerge: fix application count when listing search results for ambiguous
   packages (bug #915054).
 
+* env-update: Write ${EPREFIX}/usr/etc/ld.so.conf with unprefixed paths on
+  prefixed systems to fix the bfd linker in some obscure cases (bug #892549).
+
 Cleanups:
 * vartree: Remove unused variables and parameters
 
