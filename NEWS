@@ -17,6 +17,8 @@ Features:
 * emerge: Use appropriate colors if binpkgs are used in e.g. pkg_pretend
   messages as well as elog's mod_echo module (bug #914159).
 
+* Show backtrack information after dependency resolution.
+
 Bug fixes:
 * Prevent gpg from removing /dev/null when unlocking signing key (bug #912808).
 

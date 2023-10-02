@@ -11401,7 +11401,7 @@ def _spinner_start(spinner, myopts):
     spinner.start_time = time.time()
 
 
-def _spinner_stop(spinner):
+def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
     if spinner is None or spinner.update == spinner.update_quiet:
         return
 
@@ -11414,7 +11414,14 @@ def _spinner_stop(spinner):
 
     stop_time = time.time()
     time_fmt = f"{stop_time - spinner.start_time:.2f}"
-    portage.writemsg_stdout(f"Dependency resolution took {darkgreen(time_fmt)} s.\n\n")
+
+    backtrack_info = ""
+    if backtracked >= 0:
+        backtrack_info = f" (backtrack: {backtracked}/{max_retries})"
+
+    portage.writemsg_stdout(
+        f"Dependency resolution took {darkgreen(time_fmt)} s{backtrack_info}.\n\n"
+    )
 
 
 def backtrack_depgraph(
@@ -11430,13 +11437,15 @@ def backtrack_depgraph(
 
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
+    backtracked, max_retries = -1, -1
     _spinner_start(spinner, myopts)
     try:
-        return _backtrack_depgraph(
+        success, mydepgraph, favorites, backtracked, max_retries = _backtrack_depgraph(
             settings, trees, myopts, myparams, myaction, myfiles, spinner
         )
+        return (success, mydepgraph, favorites)
     finally:
-        _spinner_stop(spinner)
+        _spinner_stop(spinner, backtracked, max_retries)
 
 
 def _backtrack_depgraph(
@@ -11447,7 +11456,7 @@ def _backtrack_depgraph(
     myaction: Optional[str],
     myfiles: list[str],
     spinner: "_emerge.stdout_spinner.stdout_spinner",
-) -> tuple[Any, depgraph, list[str]]:
+) -> tuple[Any, depgraph, list[str], int, int]:
     debug = "--debug" in myopts
     mydepgraph = None
     max_retries = myopts.get("--backtrack", 10)
@@ -11540,7 +11549,7 @@ def _backtrack_depgraph(
         )
         success, favorites = mydepgraph.select_files(myfiles)
 
-    return (success, mydepgraph, favorites)
+    return (success, mydepgraph, favorites, backtracked, max_retries)
 
 
 def resume_depgraph(
