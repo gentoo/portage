@@ -1,4 +1,4 @@
-portage-3.0.52 (UNRELEASED)
+portage-3.0.52 (2023-10-03)
 --------------
 
 Breaking changes:
@@ -36,8 +36,12 @@ Bug fixes:
 * env-update: Write ${EPREFIX}/usr/etc/ld.so.conf with unprefixed paths on
   prefixed systems to fix the bfd linker in some obscure cases (bug #892549).
 
+* locks: Handle multiprocessing 'spawn' method (bug #915119).
+
 Cleanups:
 * vartree: Remove unused variables and parameters
+
+* locks: Drop obsolete EINTR wrapper
 
 portage-3.0.51 (2023-08-20)
 --------------
