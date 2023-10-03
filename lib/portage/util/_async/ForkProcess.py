@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Gentoo Authors
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -14,7 +14,15 @@ from _emerge.SpawnProcess import SpawnProcess
 
 
 class ForkProcess(SpawnProcess):
-    __slots__ = ("_proc", "_proc_join_task")
+    # NOTE: This class overrides the meaning of the SpawnProcess 'args'
+    # attribute, and uses it to hold the positional arguments for the
+    # 'target' function.
+    __slots__ = (
+        "kwargs",
+        "target",
+        "_proc",
+        "_proc_join_task",
+    )
 
     # Number of seconds between poll attempts for process exit status
     # (after the sentinel has become ready).
@@ -27,6 +35,18 @@ class ForkProcess(SpawnProcess):
         any pre-fork and post-fork interpreter housekeeping that it provides,
         promoting a healthy state for the forked interpreter.
         """
+
+        if self.__class__._run is ForkProcess._run:
+            # target replaces the deprecated self._run method
+            target = self.target
+            args = self.args
+            kwargs = self.kwargs
+        else:
+            # _run implementation triggers backward-compatibility mode
+            target = self._run
+            args = None
+            kwargs = None
+
         # Since multiprocessing.Process closes sys.__stdin__, create a
         # temporary duplicate of fd_pipes[0] so that sys.__stdin__ can
         # be restored in the subprocess, in case this is needed for
@@ -41,7 +61,8 @@ class ForkProcess(SpawnProcess):
                 )
                 fd_pipes[0] = stdin_dup
             self._proc = multiprocessing.Process(
-                target=self._bootstrap, args=(fd_pipes,)
+                target=self._bootstrap,
+                args=(fd_pipes, target, args, kwargs),
             )
             self._proc.start()
         finally:
@@ -122,7 +143,8 @@ class ForkProcess(SpawnProcess):
             self._proc_join_task.cancel()
             self._proc_join_task = None
 
-    def _bootstrap(self, fd_pipes):
+    @staticmethod
+    def _bootstrap(fd_pipes, target, args, kwargs):
         # Use default signal handlers in order to avoid problems
         # killing subprocesses as reported in bug #353239.
         signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -159,7 +181,10 @@ class ForkProcess(SpawnProcess):
                 )
             sys.__stdin__ = sys.stdin
 
-        sys.exit(self._run())
+        sys.exit(target(*(args or []), **(kwargs or {})))
 
     def _run(self):
+        """
+        Deprecated and replaced with the "target" constructor parameter.
+        """
         raise NotImplementedError(self)

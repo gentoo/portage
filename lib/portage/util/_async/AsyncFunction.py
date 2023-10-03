@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Gentoo Authors
+# Copyright 2015-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import pickle
@@ -16,13 +16,8 @@ class AsyncFunction(ForkProcess):
     "result" attribute after the forked process has exited.
     """
 
-    # NOTE: This class overrides the meaning of the SpawnProcess 'args'
-    # attribute, and uses it to hold the positional arguments for the
-    # 'target' function.
     __slots__ = (
-        "kwargs",
         "result",
-        "target",
         "_async_func_reader",
         "_async_func_reader_pw",
     )
