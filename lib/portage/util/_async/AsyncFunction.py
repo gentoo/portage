@@ -1,6 +1,7 @@
 # Copyright 2015-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import pickle
 import traceback
 
@@ -19,26 +20,27 @@ class AsyncFunction(ForkProcess):
     __slots__ = (
         "result",
         "_async_func_reader",
-        "_async_func_reader_pw",
     )
 
     def _start(self):
         pr, pw = os.pipe()
         self.fd_pipes = {} if self.fd_pipes is None else self.fd_pipes
         self.fd_pipes[pw] = pw
-        self._async_func_reader_pw = pw
         self._async_func_reader = PipeReader(
             input_files={"input": pr}, scheduler=self.scheduler
         )
         self._async_func_reader.addExitListener(self._async_func_reader_exit)
         self._async_func_reader.start()
+        # args and kwargs are passed as additional args by ForkProcess._bootstrap.
+        self.target = functools.partial(self._target_wrapper, pw, self.target)
         ForkProcess._start(self)
         os.close(pw)
 
-    def _run(self):
+    @staticmethod
+    def _target_wrapper(pw, target, *args, **kwargs):
         try:
-            result = self.target(*(self.args or []), **(self.kwargs or {}))
-            os.write(self._async_func_reader_pw, pickle.dumps(result))
+            result = target(*args, **kwargs)
+            os.write(pw, pickle.dumps(result))
         except Exception:
             traceback.print_exc()
             return 1
