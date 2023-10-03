@@ -1,6 +1,7 @@
-# Copyright 2020-2021 Gentoo Authors
+# Copyright 2020-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import multiprocessing
 import sys
 
 import portage
@@ -14,22 +15,29 @@ from portage.util.futures.unix_events import _set_nonblocking
 
 class AsyncFunctionTestCase(TestCase):
     @staticmethod
-    def _read_from_stdin(pw):
-        os.close(pw)
+    def _read_from_stdin(pr, pw):
+        if pw is not None:
+            os.close(pw)
+        os.dup2(pr.fileno(), sys.stdin.fileno())
         return "".join(sys.stdin)
 
     async def _testAsyncFunctionStdin(self, loop):
         test_string = "1\n2\n3\n"
-        pr, pw = os.pipe()
-        fd_pipes = {0: pr}
+        pr, pw = multiprocessing.Pipe(duplex=False)
         reader = AsyncFunction(
-            scheduler=loop, fd_pipes=fd_pipes, target=self._read_from_stdin, args=(pw,)
+            scheduler=loop,
+            target=self._read_from_stdin,
+            args=(
+                pr,
+                pw.fileno() if multiprocessing.get_start_method() == "fork" else None,
+            ),
         )
         reader.start()
-        os.close(pr)
-        _set_nonblocking(pw)
-        with open(pw, mode="wb", buffering=0) as pipe_write:
+        pr.close()
+        _set_nonblocking(pw.fileno())
+        with open(pw.fileno(), mode="wb", buffering=0, closefd=False) as pipe_write:
             await _writer(pipe_write, test_string.encode("utf_8"))
+        pw.close()
         self.assertEqual((await reader.async_wait()), os.EX_OK)
         self.assertEqual(reader.result, test_string)
 
@@ -37,7 +45,8 @@ class AsyncFunctionTestCase(TestCase):
         loop = asyncio._wrap_loop()
         loop.run_until_complete(self._testAsyncFunctionStdin(loop=loop))
 
-    def _test_getpid_fork(self):
+    @staticmethod
+    def _test_getpid_fork():
         """
         Verify that portage.getpid() cache is updated in a forked child process.
         """
@@ -45,10 +54,10 @@ class AsyncFunctionTestCase(TestCase):
         proc = AsyncFunction(scheduler=loop, target=portage.getpid)
         proc.start()
         proc.wait()
-        self.assertEqual(proc.pid, proc.result)
+        return proc.pid == proc.result
 
     def test_getpid_fork(self):
-        self._test_getpid_fork()
+        self.assertTrue(self._test_getpid_fork())
 
     def test_getpid_double_fork(self):
         """
@@ -59,3 +68,4 @@ class AsyncFunctionTestCase(TestCase):
         proc = AsyncFunction(scheduler=loop, target=self._test_getpid_fork)
         proc.start()
         self.assertEqual(proc.wait(), 0)
+        self.assertTrue(proc.result)

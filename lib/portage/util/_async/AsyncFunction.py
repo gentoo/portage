@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
+import multiprocessing
 import pickle
 import traceback
 
@@ -23,9 +24,7 @@ class AsyncFunction(ForkProcess):
     )
 
     def _start(self):
-        pr, pw = os.pipe()
-        self.fd_pipes = {} if self.fd_pipes is None else self.fd_pipes
-        self.fd_pipes[pw] = pw
+        pr, pw = multiprocessing.Pipe(duplex=False)
         self._async_func_reader = PipeReader(
             input_files={"input": pr}, scheduler=self.scheduler
         )
@@ -34,13 +33,15 @@ class AsyncFunction(ForkProcess):
         # args and kwargs are passed as additional args by ForkProcess._bootstrap.
         self.target = functools.partial(self._target_wrapper, pw, self.target)
         ForkProcess._start(self)
-        os.close(pw)
+        pw.close()
 
     @staticmethod
     def _target_wrapper(pw, target, *args, **kwargs):
         try:
             result = target(*args, **kwargs)
-            os.write(pw, pickle.dumps(result))
+            result_bytes = pickle.dumps(result)
+            while result_bytes:
+                result_bytes = result_bytes[os.write(pw.fileno(), result_bytes) :]
         except Exception:
             traceback.print_exc()
             return 1
@@ -52,6 +53,10 @@ class AsyncFunction(ForkProcess):
         # only after _async_func_reader_exit has reached EOF.
         if self._async_func_reader is None:
             ForkProcess._async_waitpid(self)
+
+    def _async_wait(self):
+        if self._async_func_reader is None:
+            ForkProcess._async_wait(self)
 
     def _async_func_reader_exit(self, pipe_reader):
         try:
