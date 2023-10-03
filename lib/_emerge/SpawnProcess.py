@@ -1,4 +1,4 @@
-# Copyright 2008-2021 Gentoo Authors
+# Copyright 2008-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -62,55 +62,60 @@ class SpawnProcess(SubProcess):
             self.fd_pipes = self.fd_pipes.copy()
         fd_pipes = self.fd_pipes
 
-        master_fd, slave_fd = self._pipe(fd_pipes)
+        if fd_pipes or self.logfile:
+            master_fd, slave_fd = self._pipe(fd_pipes)
 
-        can_log = self._can_log(slave_fd)
-        if can_log:
-            log_file_path = self.logfile
+            can_log = self._can_log(slave_fd)
+            if can_log:
+                log_file_path = self.logfile
+            else:
+                log_file_path = None
+
+            null_input = None
+            if not self.background or 0 in fd_pipes:
+                # Subclasses such as AbstractEbuildProcess may have already passed
+                # in a null file descriptor in fd_pipes, so use that when given.
+                pass
+            else:
+                # TODO: Use job control functions like tcsetpgrp() to control
+                # access to stdin. Until then, use /dev/null so that any
+                # attempts to read from stdin will immediately return EOF
+                # instead of blocking indefinitely.
+                null_input = os.open("/dev/null", os.O_RDWR)
+                fd_pipes[0] = null_input
+
+            fd_pipes.setdefault(0, portage._get_stdin().fileno())
+            fd_pipes.setdefault(1, sys.__stdout__.fileno())
+            fd_pipes.setdefault(2, sys.__stderr__.fileno())
+
+            # flush any pending output
+            stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
+            for fd in fd_pipes.values():
+                if fd in stdout_filenos:
+                    sys.__stdout__.flush()
+                    sys.__stderr__.flush()
+                    break
+
+            fd_pipes_orig = fd_pipes.copy()
+
+            if log_file_path is not None or self.background:
+                fd_pipes[1] = slave_fd
+                fd_pipes[2] = slave_fd
+
+            else:
+                # Create a dummy pipe that PipeLogger uses to efficiently
+                # monitor for process exit by listening for the EOF event.
+                # Re-use of the allocated fd number for the key in fd_pipes
+                # guarantees that the keys will not collide for similarly
+                # allocated pipes which are used by callers such as
+                # FileDigester and MergeProcess. See the _setup_pipes
+                # docstring for more benefits of this allocation approach.
+                self._dummy_pipe_fd = slave_fd
+                fd_pipes[slave_fd] = slave_fd
         else:
-            log_file_path = None
-
-        null_input = None
-        if not self.background or 0 in fd_pipes:
-            # Subclasses such as AbstractEbuildProcess may have already passed
-            # in a null file descriptor in fd_pipes, so use that when given.
-            pass
-        else:
-            # TODO: Use job control functions like tcsetpgrp() to control
-            # access to stdin. Until then, use /dev/null so that any
-            # attempts to read from stdin will immediately return EOF
-            # instead of blocking indefinitely.
-            null_input = os.open("/dev/null", os.O_RDWR)
-            fd_pipes[0] = null_input
-
-        fd_pipes.setdefault(0, portage._get_stdin().fileno())
-        fd_pipes.setdefault(1, sys.__stdout__.fileno())
-        fd_pipes.setdefault(2, sys.__stderr__.fileno())
-
-        # flush any pending output
-        stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
-        for fd in fd_pipes.values():
-            if fd in stdout_filenos:
-                sys.__stdout__.flush()
-                sys.__stderr__.flush()
-                break
-
-        fd_pipes_orig = fd_pipes.copy()
-
-        if log_file_path is not None or self.background:
-            fd_pipes[1] = slave_fd
-            fd_pipes[2] = slave_fd
-
-        else:
-            # Create a dummy pipe that PipeLogger uses to efficiently
-            # monitor for process exit by listening for the EOF event.
-            # Re-use of the allocated fd number for the key in fd_pipes
-            # guarantees that the keys will not collide for similarly
-            # allocated pipes which are used by callers such as
-            # FileDigester and MergeProcess. See the _setup_pipes
-            # docstring for more benefits of this allocation approach.
-            self._dummy_pipe_fd = slave_fd
-            fd_pipes[slave_fd] = slave_fd
+            can_log = False
+            slave_fd = None
+            null_input = None
 
         kwargs = {}
         for k in self._spawn_kwarg_names:
@@ -124,7 +129,8 @@ class SpawnProcess(SubProcess):
 
         retval = self._spawn(self.args, **kwargs)
 
-        os.close(slave_fd)
+        if slave_fd is not None:
+            os.close(slave_fd)
         if null_input is not None:
             os.close(null_input)
 
@@ -135,6 +141,11 @@ class SpawnProcess(SubProcess):
             return
 
         self.pid = retval[0]
+
+        if not fd_pipes:
+            self._registered = True
+            self._async_waitpid()
+            return
 
         stdout_fd = None
         if can_log and not self.background:

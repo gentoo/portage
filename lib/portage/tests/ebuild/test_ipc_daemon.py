@@ -1,4 +1,4 @@
-# Copyright 2010-2016 Gentoo Foundation
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -170,8 +170,13 @@ class IpcDaemonTestCase(TestCase):
         )
         task_scheduler.addExitListener(self._exit_callback)
 
-        try:
+        async def start_task_scheduler():
+            # This fails unless the event loop is running, since it needs
+            # the loop to setup a ChildWatcher.
             task_scheduler.start()
+
+        try:
+            event_loop.run_until_complete(start_task_scheduler())
             event_loop.run_until_complete(self._run_done)
             event_loop.run_until_complete(task_scheduler.async_wait())
         finally:
