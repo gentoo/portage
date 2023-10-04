@@ -2187,20 +2187,6 @@ class config:
                 "BASH_FUNC____in_portage_iuse%%"
             ] = "() { [[ $1 =~ ${PORTAGE_IUSE} ]]; }"
 
-        ebuild_force_test = not restrict_test and self.get("EBUILD_FORCE_TEST") == "1"
-
-        if "test" in explicit_iuse or iuse_implicit_match("test"):
-            if "test" in self.features:
-                if ebuild_force_test and "test" in self.usemask:
-                    self.usemask = frozenset(x for x in self.usemask if x != "test")
-            if restrict_test or ("test" in self.usemask and not ebuild_force_test):
-                # "test" is in IUSE and USE=test is masked, so execution
-                # of src_test() probably is not reliable. Therefore,
-                # temporarily disable FEATURES=test just for this package.
-                self["FEATURES"] = " ".join(
-                    x for x in sorted(self.features) if x != "test"
-                )
-
         # Allow _* flags from USE_EXPAND wildcards to pass through here.
         use.difference_update(
             [
