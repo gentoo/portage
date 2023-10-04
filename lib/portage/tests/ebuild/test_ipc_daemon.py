@@ -21,18 +21,6 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 
 
-class SleepProcess(ForkProcess):
-    """
-    Emulate the sleep command, in order to ensure a consistent
-    return code when it is killed by SIGTERM (see bug #437180).
-    """
-
-    __slots__ = ("seconds",)
-
-    def _run(self):
-        time.sleep(self.seconds)
-
-
 class IpcDaemonTestCase(TestCase):
     _SCHEDULE_TIMEOUT = 40  # seconds
 
@@ -124,7 +112,9 @@ class IpcDaemonTestCase(TestCase):
                 daemon = EbuildIpcDaemon(
                     commands=commands, input_fifo=input_fifo, output_fifo=output_fifo
                 )
-                proc = SleepProcess(seconds=sleep_time_s)
+                # Emulate the sleep command, in order to ensure a consistent
+                # return code when it is killed by SIGTERM (see bug #437180).
+                proc = ForkProcess(target=time.sleep, args=(sleep_time_s,))
                 task_scheduler = TaskScheduler(
                     iter([daemon, proc]), max_jobs=2, event_loop=event_loop
                 )

@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Gentoo Foundation
+# Copyright 2013-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -10,13 +10,6 @@ from portage.util._async.ForkProcess import ForkProcess
 from portage.util._async.TaskScheduler import TaskScheduler
 from _emerge.Package import Package
 from _emerge.PipeReader import PipeReader
-
-
-class DoebuildProcess(ForkProcess):
-    __slots__ = ("doebuild_kwargs", "doebuild_pargs")
-
-    def _run(self):
-        return portage.doebuild(*self.doebuild_pargs, **self.doebuild_kwargs)
 
 
 class DoebuildFdPipesTestCase(TestCase):
@@ -126,9 +119,10 @@ class DoebuildFdPipesTestCase(TestCase):
             ):
                 pr, pw = os.pipe()
 
-                producer = DoebuildProcess(
-                    doebuild_pargs=(ebuildpath, phase),
-                    doebuild_kwargs={
+                producer = ForkProcess(
+                    target=portage.doebuild,
+                    args=(ebuildpath, phase),
+                    kwargs={
                         "settings": settings,
                         "mydbapi": portdb,
                         "tree": "porttree",

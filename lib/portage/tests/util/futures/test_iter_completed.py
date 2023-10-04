@@ -1,8 +1,9 @@
-# Copyright 2023 Gentoo Foundation
+# Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import time
 
+import functools
 import pytest
 
 from portage.tests import TestCase
@@ -19,15 +20,13 @@ class SleepProcess(ForkProcess):
     __slots__ = ("future", "seconds")
 
     def _start(self):
+        self.target = functools.partial(time.sleep, self.seconds)
         self.addExitListener(self._future_done)
         ForkProcess._start(self)
 
     def _future_done(self, task):
         if not self.future.cancelled():
             self.future.set_result(self.seconds)
-
-    def _run(self):
-        time.sleep(self.seconds)
 
 
 class IterCompletedTestCase(TestCase):
