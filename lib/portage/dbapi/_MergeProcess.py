@@ -1,6 +1,7 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import io
 import multiprocessing
 import platform
@@ -73,6 +74,20 @@ class MergeProcess(ForkProcess):
         self.fd_pipes.setdefault(0, portage._get_stdin().fileno())
 
         self.log_filter_file = self.settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
+        self.target = functools.partial(
+            self._target,
+            lambda: self._counter,
+            lambda: self._elog_reader_fd,
+            lambda: self._dblink,
+            self.infloc,
+            self.mydbapi,
+            self.myebuild,
+            self.pkgloc,
+            self.prev_mtimes,
+            self.settings,
+            self.unmerge,
+            self.vartree.dbapi,
+        )
         super()._start()
 
     def _lock_vdb(self):
@@ -197,13 +212,29 @@ class MergeProcess(ForkProcess):
 
         return pids
 
-    def _run(self):
-        os.close(self._elog_reader_fd)
-        counter = self._counter
-        mylink = self._dblink
-        portage.output.havecolor = not no_color(self.settings)
+    @staticmethod
+    def _target(
+        get_counter,
+        get_elog_reader_fd,
+        get_mylink,
+        infloc,
+        mydbapi,
+        myebuild,
+        pkgloc,
+        prev_mtimes,
+        settings,
+        unmerge,
+        vardb,
+    ):
+        """
+        TODO: Make all arguments picklable for the multiprocessing spawn start method.
+        """
+        os.close(get_elog_reader_fd())
+        counter = get_counter()
+        mylink = get_mylink()
+        portage.output.havecolor = not no_color(settings)
         # Avoid wastful updates of the vdb cache.
-        self.vartree.dbapi._flush_cache_enabled = False
+        vardb._flush_cache_enabled = False
 
         # In this subprocess we don't want PORTAGE_BACKGROUND to
         # suppress stdout/stderr output since they are pipes. We
@@ -211,21 +242,21 @@ class MergeProcess(ForkProcess):
         # already be opened by the parent process, so we set the
         # "subprocess" value for use in conditional logging code
         # involving PORTAGE_LOG_FILE.
-        if not self.unmerge:
+        if not unmerge:
             # unmerge phases have separate logs
-            if self.settings.get("PORTAGE_BACKGROUND") == "1":
-                self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
+            if settings.get("PORTAGE_BACKGROUND") == "1":
+                settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
             else:
-                self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "0"
-            self.settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
-        self.settings["PORTAGE_BACKGROUND"] = "subprocess"
-        self.settings.backup_changes("PORTAGE_BACKGROUND")
+                settings["PORTAGE_BACKGROUND_UNMERGE"] = "0"
+            settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
+        settings["PORTAGE_BACKGROUND"] = "subprocess"
+        settings.backup_changes("PORTAGE_BACKGROUND")
 
         rval = 1
-        if self.unmerge:
+        if unmerge:
             if not mylink.exists():
                 rval = os.EX_OK
-            elif mylink.unmerge(ldpath_mtimes=self.prev_mtimes) == os.EX_OK:
+            elif mylink.unmerge(ldpath_mtimes=prev_mtimes) == os.EX_OK:
                 mylink.lockdb()
                 try:
                     mylink.delete()
@@ -234,11 +265,11 @@ class MergeProcess(ForkProcess):
                 rval = os.EX_OK
         else:
             rval = mylink.merge(
-                self.pkgloc,
-                self.infloc,
-                myebuild=self.myebuild,
-                mydbapi=self.mydbapi,
-                prev_mtimes=self.prev_mtimes,
+                pkgloc,
+                infloc,
+                myebuild=myebuild,
+                mydbapi=mydbapi,
+                prev_mtimes=prev_mtimes,
                 counter=counter,
             )
         return rval
