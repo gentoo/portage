@@ -1,7 +1,8 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
+import functools
 import io
 import sys
 
@@ -246,6 +247,14 @@ class _EbuildFetcherProcess(ForkProcess):
 
         self._settings = settings
         self.log_filter_file = settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
+        self.target = functools.partial(
+            self._target,
+            self._settings,
+            self._get_digests,
+            self._get_manifest,
+            self._uri_map,
+            self.fetchonly,
+        )
         ForkProcess._start(self)
 
         # Free settings now since it's no longer needed in
@@ -254,25 +263,27 @@ class _EbuildFetcherProcess(ForkProcess):
         settings = None
         self._settings = None
 
-    def _run(self):
+    @staticmethod
+    def _target(settings, get_digests, get_manifest, uri_map, fetchonly):
+        """
+        TODO: Make all arguments picklable for the multiprocessing spawn start method.
+        """
         # Force consistent color output, in case we are capturing fetch
         # output through a normal pipe due to unavailability of ptys.
-        portage.output.havecolor = self._settings.get("NOCOLOR") not in ("yes", "true")
+        portage.output.havecolor = settings.get("NOCOLOR") not in ("yes", "true")
 
         # For userfetch, drop privileges for the entire fetch call, in
         # order to handle DISTDIR on NFS with root_squash for bug 601252.
-        if _want_userfetch(self._settings):
-            _drop_privs_userfetch(self._settings)
+        if _want_userfetch(settings):
+            _drop_privs_userfetch(settings)
 
         rval = 1
-        allow_missing = (
-            self._get_manifest().allow_missing or "digest" in self._settings.features
-        )
+        allow_missing = get_manifest().allow_missing or "digest" in settings.features
         if fetch(
-            self._uri_map,
-            self._settings,
-            fetchonly=self.fetchonly,
-            digests=copy.deepcopy(self._get_digests()),
+            uri_map,
+            settings,
+            fetchonly=fetchonly,
+            digests=copy.deepcopy(get_digests()),
             allow_missing_digests=allow_missing,
         ):
             rval = os.EX_OK
