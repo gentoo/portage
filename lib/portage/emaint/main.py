@@ -136,7 +136,7 @@ class TaskHandler:
                 "module_output": self.module_output,
                 # pass in a copy of the options so a module can not pollute or change
                 # them for other tasks if there is more to do.
-                "options": options.copy(),
+                "options": options.copy() if options else None,
             }
             returncode, msgs = getattr(inst, func)(**kwargs)
             returncodes.append(returncode)
