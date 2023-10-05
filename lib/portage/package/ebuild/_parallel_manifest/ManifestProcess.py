@@ -1,5 +1,7 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import functools
 
 import portage
 from portage import os
@@ -13,11 +15,25 @@ class ManifestProcess(ForkProcess):
 
     MODIFIED = 16
 
-    def _run(self):
-        mf = self.repo_config.load_manifest(
-            os.path.join(self.repo_config.location, self.cp),
+    def _start(self):
+        self.target = functools.partial(
+            self._target,
+            self.cp,
             self.distdir,
-            fetchlist_dict=self.fetchlist_dict,
+            self.fetchlist_dict,
+            self.repo_config,
+        )
+        super()._start()
+
+    @staticmethod
+    def _target(cp, distdir, fetchlist_dict, repo_config):
+        """
+        TODO: Make all arguments picklable for the multiprocessing spawn start method.
+        """
+        mf = repo_config.load_manifest(
+            os.path.join(repo_config.location, cp),
+            distdir,
+            fetchlist_dict=fetchlist_dict,
         )
 
         try:
@@ -43,5 +59,5 @@ class ManifestProcess(ForkProcess):
             return 1
         else:
             if modified:
-                return self.MODIFIED
+                return ManifestProcess.MODIFIED
             return os.EX_OK
