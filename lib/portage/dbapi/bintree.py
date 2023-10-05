@@ -809,6 +809,7 @@ class binarytree:
         getbinpkg_refresh=False,
         add_repos=(),
         force_reindex=False,
+        invalid_errors=True,
     ):
         """
         Populates the binarytree with package metadata.
@@ -839,7 +840,8 @@ class binarytree:
         try:
             update_pkgindex = self._populate_local(
                 reindex="pkgdir-index-trusted" not in self.settings.features
-                or force_reindex
+                or force_reindex,
+                invalid_errors=invalid_errors,
             )
 
             if update_pkgindex and self.dbapi.writable:
@@ -882,7 +884,7 @@ class binarytree:
 
         self.populated = True
 
-    def _populate_local(self, reindex=True):
+    def _populate_local(self, reindex=True, invalid_errors=True):
         """
         Populates the binarytree with local package metadata.
 
@@ -1019,11 +1021,15 @@ class binarytree:
                             self.dbapi.cpv_inject(mycpv)
                             continue
                     if not os.access(full_path, os.R_OK):
-                        writemsg(
-                            _("!!! Permission denied to read " "binary package: '%s'\n")
-                            % full_path,
-                            noiselevel=-1,
-                        )
+                        if invalid_errors:
+                            writemsg(
+                                _(
+                                    "!!! Permission denied to read "
+                                    "binary package: '%s'\n"
+                                )
+                                % full_path,
+                                noiselevel=-1,
+                            )
                         self.invalids.append(myfile[:-5])
                         self.invalid_paths[myfile] = [full_path]
                         continue
@@ -1062,10 +1068,11 @@ class binarytree:
                             binpkg_format=binpkg_format,
                         )
                     except (PortagePackageException, SignatureException) as e:
-                        writemsg(
-                            f"!!! Invalid binary package: '{full_path}', {e}\n",
-                            noiselevel=-1,
-                        )
+                        if invalid_errors:
+                            writemsg(
+                                f"!!! Invalid binary package: '{full_path}', {e}\n",
+                                noiselevel=-1,
+                            )
                         self.invalid_paths[mypkg] = [full_path]
                         continue
                     mycat = pkg_metadata.get("CATEGORY", "")
@@ -1073,10 +1080,11 @@ class binarytree:
                     slot = pkg_metadata.get("SLOT", "")
                     if not mycat or not mypf or not slot:
                         # old-style or corrupt package
-                        writemsg(
-                            _("\n!!! Invalid binary package: '%s'\n") % full_path,
-                            noiselevel=-1,
-                        )
+                        if invalid_errors:
+                            writemsg(
+                                _("\n!!! Invalid binary package: '%s'\n") % full_path,
+                                noiselevel=-1,
+                            )
                         missing_keys = []
                         if not mycat:
                             missing_keys.append("CATEGORY")
@@ -1087,18 +1095,20 @@ class binarytree:
                         msg = []
                         if missing_keys:
                             missing_keys.sort()
+                            if invalid_errors:
+                                msg.append(
+                                    _("Missing metadata key(s): %s.")
+                                    % ", ".join(missing_keys)
+                                )
+                        if invalid_errors:
                             msg.append(
-                                _("Missing metadata key(s): %s.")
-                                % ", ".join(missing_keys)
+                                _(
+                                    " This binary package is not "
+                                    "recoverable and should be deleted."
+                                )
                             )
-                        msg.append(
-                            _(
-                                " This binary package is not "
-                                "recoverable and should be deleted."
-                            )
-                        )
-                        for line in textwrap.wrap("".join(msg), 72):
-                            writemsg(f"!!! {line}\n", noiselevel=-1)
+                            for line in textwrap.wrap("".join(msg), 72):
+                                writemsg(f"!!! {line}\n", noiselevel=-1)
                         self.invalids.append(mypkg)
                         self.invalid_paths[mypkg] = [full_path]
                         continue
