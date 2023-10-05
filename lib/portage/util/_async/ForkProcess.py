@@ -4,6 +4,7 @@
 import fcntl
 import functools
 import multiprocessing
+import warnings
 import signal
 import sys
 
@@ -46,6 +47,11 @@ class ForkProcess(SpawnProcess):
             target = self._run
             args = None
             kwargs = None
+            warnings.warn(
+                'portage.util._async.ForkProcess.ForkProcess._run is deprecated in favor of the "target" parameter',
+                UserWarning,
+                stacklevel=2,
+            )
 
         # Since multiprocessing.Process closes sys.__stdin__, create a
         # temporary duplicate of fd_pipes[0] so that sys.__stdin__ can
