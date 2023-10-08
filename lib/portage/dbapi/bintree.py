@@ -1092,10 +1092,10 @@ class binarytree:
                             missing_keys.append("PF")
                         if not slot:
                             missing_keys.append("SLOT")
-                        msg = []
-                        if missing_keys:
-                            missing_keys.sort()
-                            if invalid_errors:
+                        if invalid_errors:
+                            msg = []
+                            if missing_keys:
+                                missing_keys.sort()
                                 msg.append(
                                     _("Missing metadata key(s): %s.")
                                     % ", ".join(missing_keys)
