@@ -2,6 +2,9 @@ portage-3.0.53 (UNRELEASED)
 --------------
 
 Bug fixes:
+* bintree: Add another API member (invalid_errors) to allow eclean-pkg to suppress
+  errors when cleaning invalid binpkgs (bug #900224).
+
 * make.conf(5): Update MAKEOPTS guidance to reflect modern practice (bug #821529).
 
 portage-3.0.52 (2023-10-03)
