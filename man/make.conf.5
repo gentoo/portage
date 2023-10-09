@@ -214,7 +214,9 @@ unless you know what you are doing.
 \fBCCACHE_DIR\fR = \fI[path]\fR
 Defines the location of the ccache working directory.  See the \fBccache\fR(1)
 man page for more information.
-.br
+
+Only trusted users should be granted write access to this location.
+
 Defaults to /var/tmp/ccache
 .TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
@@ -281,6 +283,8 @@ are built, it is safe to remove any and all files from this directory since
 they will be automatically fetched on demand for a given build. If you would
 like to selectively prune obsolete files from this directory, see
 \fBeclean\fR(1) from the gentoolkit package.
+
+Only trusted users should be granted write access to this location.
 
 Use the \fBPORTAGE_RO_DISTDIRS\fR variable to specify one or
 more read-only directories containing distfiles.
@@ -956,7 +960,9 @@ to its category. However, for backward compatibility with the layout
 used by older versions of portage, if the \fI${PKGDIR}/All\fR directory
 exists then all packages will be stored inside of it and symlinks to
 the packages will be created in the category subdirectories.
-.br
+
+Only trusted users should be granted write access to this location.
+
 Defaults to /var/cache/binpkgs.
 .TP
 .B PORT_LOGDIR
@@ -1205,7 +1211,9 @@ Defaults to 30.
 .TP
 \fBPORTAGE_TMPDIR\fR = \fI[path]\fR
 Defines the location of the temporary build directories.
-.br
+
+Only trusted users should be granted write access to ${PORTAGE_TMPDIR}/portage.
+
 Defaults to /var/tmp.
 
 This should not be set to point anywhere under location of any repository.
