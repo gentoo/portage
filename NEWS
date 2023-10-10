@@ -5,6 +5,8 @@ Features:
 * GNUMAKEFLAGS: also specify "-l $(nproc)", that is, limit by load average,
   per default.
 
+* Increase default number of maximum backtrack attempts from 10 to 20.
+
 Bug fixes:
 * bintree: Add another API member (invalid_errors) to allow eclean-pkg to suppress
   errors when cleaning invalid binpkgs (bug #900224).
