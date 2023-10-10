@@ -4493,6 +4493,10 @@ class dblink:
                     eagain_error = True
                     break
 
+                if portage.utf8_mode:
+                    parent = os.fsencode(parent)
+                    dirs = [os.fsencode(value) for value in dirs]
+                    files = [os.fsencode(value) for value in files]
                 try:
                     parent = _unicode_decode(
                         parent, encoding=_encodings["merge"], errors="strict"
@@ -5280,9 +5284,12 @@ class dblink:
         # Use atomic_ofstream for automatic coercion of raw bytes to
         # unicode, in order to prevent TypeError when writing raw bytes
         # to TextIOWrapper with python2.
+        contents_tmp_path = os.path.join(self.dbtmpdir, "CONTENTS")
         outfile = atomic_ofstream(
-            _unicode_encode(
-                os.path.join(self.dbtmpdir, "CONTENTS"),
+            contents_tmp_path
+            if portage.utf8_mode
+            else _unicode_encode(
+                contents_tmp_path,
                 encoding=_encodings["fs"],
                 errors="strict",
             ),

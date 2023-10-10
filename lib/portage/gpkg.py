@@ -14,6 +14,7 @@ import tempfile
 from copy import copy
 from datetime import datetime
 
+import portage
 from portage import checksum
 from portage import os
 from portage import shutil
@@ -1861,6 +1862,11 @@ class gpkg:
         image_total_size = 0
 
         for parent, dirs, files in os.walk(root_dir):
+            if portage.utf8_mode:
+                parent = os.fsencode(parent)
+                dirs = [os.fsencode(value) for value in dirs]
+                files = [os.fsencode(value) for value in files]
+
             parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
             for d in dirs:
                 try:
@@ -1911,7 +1917,9 @@ class gpkg:
                 if os.path.islink(f):
                     path_link = os.readlink(f)
                     path_link_length = len(
-                        _unicode_encode(
+                        os.fsencode(path_link)
+                        if portage.utf8_mode
+                        else _unicode_encode(
                             path_link, encoding=_encodings["fs"], errors="strict"
                         )
                     )

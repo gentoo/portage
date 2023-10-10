@@ -186,6 +186,7 @@ except ImportError as e:
     sys.stderr.write(f"    {e}\n\n")
     raise
 
+utf8_mode = sys.getfilesystemencoding() == "utf-8"
 
 # We use utf_8 encoding everywhere. Previously, we used
 # sys.getfilesystemencoding() for the 'merge' encoding, but that had
@@ -319,6 +320,9 @@ class _unicode_module_wrapper:
         object.__setattr__(self, "_cache", cache)
 
     def __getattribute__(self, attr):
+        if utf8_mode:
+            return getattr(object.__getattribute__(self, "_mod"), attr)
+
         cache = object.__getattribute__(self, "_cache")
         if cache is not None:
             result = cache.get(attr)

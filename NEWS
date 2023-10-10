@@ -11,6 +11,10 @@ Bug fixes:
 
 * make.conf(5): Update MAKEOPTS guidance to reflect modern practice (bug #821529).
 
+* For locales that have UTF-8 filesystem encoding, use unicode strings rather
+  than raw bytes for file paths in calls to python modules like os and shutil
+  (bug #914722).
+
 portage-3.0.52 (2023-10-03)
 --------------
 

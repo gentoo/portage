@@ -633,7 +633,7 @@ class ResolverPlayground:
             self.eroot, GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals"
         )
         ensure_dirs(os.path.dirname(make_globals_path))
-        os.symlink(os.path.join(cnf_path, "make.globals"), make_globals_path)
+        os.symlink(os.path.join(str(cnf_path), "make.globals"), make_globals_path)
 
         # Create /usr/share/portage/config/sets/portage.conf
         default_sets_conf_dir = os.path.join(
@@ -645,7 +645,7 @@ class ResolverPlayground:
         except os.error:
             pass
 
-        provided_sets_portage_conf = os.path.join(cnf_path, "sets", "portage.conf")
+        provided_sets_portage_conf = os.path.join(str(cnf_path), "sets", "portage.conf")
         os.symlink(
             provided_sets_portage_conf,
             os.path.join(default_sets_conf_dir, "portage.conf"),

@@ -2669,6 +2669,10 @@ def _post_src_install_uid_fix(mysettings, out):
         desktopfile_errors = []
 
         for parent, dirs, files in os.walk(destdir):
+            if portage.utf8_mode:
+                parent = os.fsencode(parent)
+                dirs = [os.fsencode(value) for value in dirs]
+                files = [os.fsencode(value) for value in files]
             try:
                 parent = _unicode_decode(
                     parent, encoding=_encodings["merge"], errors="strict"

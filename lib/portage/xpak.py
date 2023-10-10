@@ -104,6 +104,11 @@ def xpak(rootdir, outfile=None):
     and under the name 'outfile' if it is specified. Otherwise it returns the
     xpak segment."""
 
+    if portage.utf8_mode and not isinstance(rootdir, bytes):
+        # Since paths are encoded below, rootdir must also be encoded
+        # when _unicode_func_wrapper is not used.
+        rootdir = os.fsencode(rootdir)
+
     mylist = []
 
     addtolist(mylist, rootdir)

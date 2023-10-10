@@ -265,51 +265,66 @@ call_has_and_best_version() {
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "dispatch-conf"),
+            os.path.join(str(self.sbindir), "dispatch-conf"),
         )
-        ebuild_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "ebuild"))
+        ebuild_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os.path.join(str(self.bindir), "ebuild"),
+        )
         egencache_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "egencache"),
+            os.path.join(str(self.bindir), "egencache"),
             "--repo",
             "test_repo",
             "--repositories-configuration",
             settings.repositories.config_string(),
         )
-        emerge_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "emerge"))
-        emaint_cmd = (portage_python, "-b", "-Wd", os.path.join(self.sbindir, "emaint"))
+        emerge_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os.path.join(str(self.bindir), "emerge"),
+        )
+        emaint_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os.path.join(str(self.sbindir), "emaint"),
+        )
         env_update_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "env-update"),
+            os.path.join(str(self.sbindir), "env-update"),
         )
-        etc_update_cmd = (BASH_BINARY, os.path.join(self.sbindir, "etc-update"))
+        etc_update_cmd = (BASH_BINARY, os.path.join(str(self.sbindir), "etc-update"))
         fixpackages_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "fixpackages"),
+            os.path.join(str(self.sbindir), "fixpackages"),
         )
         portageq_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "portageq"),
+            os.path.join(str(self.bindir), "portageq"),
         )
         quickpkg_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "quickpkg"),
+            os.path.join(str(self.bindir), "quickpkg"),
         )
         regenworld_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "regenworld"),
+            os.path.join(str(self.sbindir), "regenworld"),
         )
 
         rm_binary = find_binary("rm")
@@ -663,7 +678,8 @@ call_has_and_best_version() {
                 os.symlink(true_binary, os.path.join(fake_bin, x))
             for x in etc_symlinks:
                 os.symlink(
-                    os.path.join(self.cnf_etc_path, x), os.path.join(eprefix, "etc", x)
+                    os.path.join(str(self.cnf_etc_path), x),
+                    os.path.join(eprefix, "etc", x),
                 )
             with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
                 f.write(b"100")

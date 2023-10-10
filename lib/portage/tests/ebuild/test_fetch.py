@@ -278,7 +278,7 @@ class EbuildFetchTestCase(TestCase):
                 portage._python_interpreter,
                 "-b",
                 "-Wd",
-                os.path.join(self.bindir, "emirrordist"),
+                os.path.join(str(self.bindir), "emirrordist"),
                 "--distfiles",
                 settings["DISTDIR"],
                 "--config-root",
