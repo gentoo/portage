@@ -173,7 +173,9 @@ async def _async_test_baseline(playground, binhost, commands):
             pass
     for x in etc_symlinks:
         try:
-            os.symlink(os.path.join(cnf_etc_path, x), os.path.join(eprefix, "etc", x))
+            os.symlink(
+                os.path.join(str(cnf_etc_path), x), os.path.join(eprefix, "etc", x)
+            )
         except FileExistsError:
             pass
     with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
