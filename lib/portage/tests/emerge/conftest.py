@@ -267,7 +267,7 @@ class PortageCommandSequence:
 
 class Emerge(PortageCommand):
     name = "emerge"
-    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(cnf_bindir, name))
+    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(str(cnf_bindir), name))
 
 
 class Noop(PortageCommand):
@@ -276,7 +276,7 @@ class Noop(PortageCommand):
 
 class EnvUpdate(PortageCommand):
     name = "env-update"
-    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(cnf_sbindir, name))
+    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(str(cnf_sbindir), name))
 
 
 class DispatchConf(PortageCommand):
@@ -285,13 +285,13 @@ class DispatchConf(PortageCommand):
         PORTAGE_PYTHON,
         "-b",
         "-Wd",
-        os.path.join(cnf_sbindir, name),
+        os.path.join(str(cnf_sbindir), name),
     )
 
 
 class Ebuild(PortageCommand):
     name = "ebuild"
-    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(cnf_bindir, name))
+    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(str(cnf_bindir), name))
 
 
 class Egencache(PortageCommand):
@@ -300,18 +300,18 @@ class Egencache(PortageCommand):
         PORTAGE_PYTHON,
         "-b",
         "-Wd",
-        os.path.join(cnf_bindir, name),
+        os.path.join(str(cnf_bindir), name),
     )
 
 
 class Emaint(PortageCommand):
     name = "emaint"
-    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(cnf_sbindir, name))
+    command = (PORTAGE_PYTHON, "-b", "-Wd", os.path.join(str(cnf_sbindir), name))
 
 
 class EtcUpdate(PortageCommand):
     name = "etc-update"
-    command = (BASH_BINARY, os.path.join(cnf_sbindir, name))
+    command = (BASH_BINARY, os.path.join(str(cnf_sbindir), name))
 
 
 class Fixpackages(PortageCommand):
@@ -320,7 +320,7 @@ class Fixpackages(PortageCommand):
         PORTAGE_PYTHON,
         "-b",
         "-Wd",
-        os.path.join(cnf_sbindir, name),
+        os.path.join(str(cnf_sbindir), name),
     )
 
 
@@ -330,7 +330,7 @@ class Portageq(PortageCommand):
         PORTAGE_PYTHON,
         "-b",
         "-Wd",
-        os.path.join(cnf_bindir, name),
+        os.path.join(str(cnf_bindir), name),
     )
 
 
@@ -340,7 +340,7 @@ class Quickpkg(PortageCommand):
         PORTAGE_PYTHON,
         "-b",
         "-Wd",
-        os.path.join(cnf_bindir, name),
+        os.path.join(str(cnf_bindir), name),
     )
 
 
@@ -350,7 +350,7 @@ class Regenworld(PortageCommand):
         PORTAGE_PYTHON,
         "-b",
         "-Wd",
-        os.path.join(cnf_sbindir, name),
+        os.path.join(str(cnf_sbindir), name),
     )
 
 
