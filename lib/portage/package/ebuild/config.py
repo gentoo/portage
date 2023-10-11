@@ -1746,7 +1746,7 @@ class config:
             # Preserve the order of var_split because it can matter for things
             # like LINGUAS.
             var_split = [x for x in var_split if x in expand_flags]
-            var_split.extend(expand_flags.difference(var_split))
+            var_split.extend(sorted(expand_flags.difference(var_split)))
             has_wildcard = "*" in expand_flags
             if has_wildcard:
                 var_split = [x for x in var_split if x != "*"]
