@@ -1,7 +1,8 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
+from unittest.mock import patch
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.tests import TestCase
@@ -13,7 +14,19 @@ from portage.output import colorize
 
 
 class SonameSkipUpdateTestCase(TestCase):
-    def testSonameSkipUpdate(self):
+    def testSonameSkipUpdateNoPruneRebuilds(self):
+        """
+        Make sure that there are fewer backtracking runs required if we
+        disable prune_rebuilds backtracking, which shows that
+        _eliminate_rebuilds works for the purposes of bug 915494.
+        """
+        with patch(
+            "_emerge.depgraph._dynamic_depgraph_config._ENABLE_PRUNE_REBUILDS",
+            new=False,
+        ):
+            self.testSonameSkipUpdate(backtrack=2)
+
+    def testSonameSkipUpdate(self, backtrack=3):
         binpkgs = {
             "app-misc/A-1": {
                 "RDEPEND": "dev-libs/B",
@@ -52,6 +65,7 @@ class SonameSkipUpdateTestCase(TestCase):
                     "--ignore-soname-deps": "y",
                     "--update": True,
                     "--usepkgonly": True,
+                    "--backtrack": backtrack,
                 },
                 success=True,
                 mergelist=[
@@ -68,6 +82,7 @@ class SonameSkipUpdateTestCase(TestCase):
                     "--ignore-soname-deps": "n",
                     "--update": True,
                     "--usepkgonly": True,
+                    "--backtrack": backtrack,
                 },
                 success=True,
                 mergelist=[],
