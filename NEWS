@@ -17,6 +17,8 @@ Bug fixes:
   than raw bytes for file paths in calls to python modules like os and shutil
   (bug #914722).
 
+* Eliminate unnecessary package reinstalls (bug #915494).
+
 portage-3.0.52 (2023-10-03)
 --------------
 
