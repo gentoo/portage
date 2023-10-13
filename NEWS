@@ -11,11 +11,19 @@ Bug fixes:
 * bintree: Add another API member (invalid_errors) to allow eclean-pkg to suppress
   errors when cleaning invalid binpkgs (bug #900224).
 
+* repos.conf: Fix default value of sync-rsync-verify-max-age for ::gentoo. It
+  was previously '24' which allowed far too much time with a stale mirror and
+  could lead to users missing important updates.
+
+* Miscellaneous determinism/reproducibility fixes for binpkgs / environment (bug #914441).
+
 * make.conf(5): Update MAKEOPTS guidance to reflect modern practice (bug #821529).
 
 * For locales that have UTF-8 filesystem encoding, use unicode strings rather
   than raw bytes for file paths in calls to python modules like os and shutil
   (bug #914722).
+
+  We recommend using a UTF-8 locale for both performance and correctness reasons.
 
 * Eliminate unnecessary package reinstalls (bug #915494).
 
