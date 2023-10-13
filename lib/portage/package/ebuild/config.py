@@ -2204,7 +2204,7 @@ class config:
                 # "test" is in IUSE and USE=test is masked, so execution
                 # of src_test() probably is not reliable. Therefore,
                 # temporarily disable FEATURES=test just for this package.
-                self.features.remove("test")
+                self["FEATURES"] = " ".join(x for x in self.features if x != "test")
 
         # Allow _* flags from USE_EXPAND wildcards to pass through here.
         use.difference_update(
