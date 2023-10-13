@@ -4,7 +4,7 @@
 """This module defines a baseline for portage's functionality.
 
 Multiple portage commands are executed in a sequence in a playground
-(see the ``simple_command`` fixture in ``conftest.py``).
+(see the ``baseline_command`` fixture in ``conftest.py``).
 
 All the commands are triggered from the ``test_portage_baseline`` test.
 That test is marked with::
@@ -16,7 +16,12 @@ so that it can selected with that marker, i.e.::
   pytest -m ft
 
 ``ft`` stands for *functional test*, since that's what it is, a
-functional or end-to-end test.
+functional or end-to-end test, ensuring some functionality of portage.
+
+The test also works with pytest-xdist, e.g.::
+
+  pytest -m ft -n 8
+
 """
 
 import subprocess
@@ -60,7 +65,7 @@ move dev-util/git dev-vcs/git
 def test_portage_baseline(async_loop, playground, binhost, baseline_command):
     async_loop.run_until_complete(
         asyncio.ensure_future(
-            _async_test_simple(
+            _async_test_baseline(
                 playground,
                 binhost,
                 baseline_command,
@@ -70,13 +75,11 @@ def test_portage_baseline(async_loop, playground, binhost, baseline_command):
     )
 
 
-async def _async_test_simple(playground, binhost, commands):
+async def _async_test_baseline(playground, binhost, commands):
     debug = playground.debug
     settings = playground.settings
     trees = playground.trees
     eprefix = settings["EPREFIX"]
-
-    # test_commands = make_test_commands(settings, trees, binhost["uri"])
 
     test_repo_location = settings.repositories["test_repo"].location
     var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
