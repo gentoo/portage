@@ -178,22 +178,12 @@ _INSTALLED_EBUILDS = {
     },
 }
 
-_BASELINE_COMMAND_FETCHCOMMAND_SEQUENCE = [
-    # "mv {pkgdir} {binhost_dir}",
-    "emerge -eG dev-libs/A",
-    # "rm -R {pkgdir}",
-    # "mv {binhost_dir} {pkgdir}",
-    # "rm {binrepos_conf_file}",
-    # "mv {pkgdir} {binhost_dir}",
-    "PORTAGE_BINHOST={binhost_uri} emerge -feG dev-libs/A",
-    # "rm -R {pkgdir}",
-    # "mv {binhost_dir} {pkgdir}",
-]
 
 _BASELINE_COMMAND_SEQUENCE = [
     "emerge -1 dev-libs/A -v dev-libs/B",
-    "emerge --root --quickpkg-direct-root",
-    "emerge --quickpkg-direct-root",
+    "emerge with quickpkg direct",
+    # "emerge --root --quickpkg-direct-root",
+    # "emerge --quickpkg-direct-root",
     "env-update",
     "portageq envvar",
     "etc-update",
@@ -222,65 +212,68 @@ _BASELINE_COMMAND_SEQUENCE = [
     # # "foo pkg missing",
     # "FEATURES=unmerge-backup emerge --unmerge virtual/foo",
     # # "foo pkg exists",
+    # "emerge --pretend dev-libs/A",
+    # Sequence:
     "emerge --regen/--metadata",
     #
-    "emerge --pretend dev-libs/A",
-    "ebuild dev-libs/A-1 manifest clean package merge",
-    "emerge --pretend --tree --complete-graph dev-libs/A",
-    "emerge -p dev-libs/B",
-    "emerge -p --newrepo dev-libs/B",
-    "emerge -B dev-libs/B",
-    "emerge -1k dev-libs/B",
-    "ebuild dev-libs/A-1 unpack",
-    "emerge -1 dev-libs/A",
-    "emerge -n dev-libs/A",
-    "emerge --config dev-libs/A",
-    "emerge --info dev-libs/A dev-libs/B",
-    "emerge -pcv dev-libs/B",
-    "emerge -pc",
-    "emerge -c",
-    "quickpkg --include-config y dev-libs/A",
-    # "no protected files",
-    # "rm /etc/A-0",
-    "emerge -K dev-libs/A",
-    # "one protected file",
-    "emaint --check all",
-    "emaint --fix all",
-    "fixpackages",
-    "regenworld",
-    "portageq match {eroot} dev-libs/A",
-    "portageq best_visible {eroot} dev-libs/A",
-    "portageq best_visible {eroot} binary dev-libs/A",
-    "portageq contents {eroot} dev-libs/A-1",
-    "portageq metadata {eroot} ebuild dev-libs/A-1 EAPI IUSE RDEPEND",
-    "portageq metadata {eroot} binary dev-libs/A-1 EAPI USE RDEPEND",
-    "portageq metadata {eroot} installed dev-libs/A-1 EAPI USE RDEPEND",
-    "portageq owners {eroot} {eroot}usr",
-    "emerge -p {eroot}usr",
-    "emerge -pCq {eroot}usr",
-    "emerge -Cq dev-libs/A",
-    "emerge -Cq dev-libs/B",
-    (
-        "EMERGE_DEFAULT_OPTS=--autounmask=n "
-        "emerge --autounmask --autounmask-continue dev-libs/C"
-    ),
-    "portageq match {eroot} dev-libs/D[flag]",
-    "EPREFIX={cross_prefix} emerge dev-libs/C",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/C",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/D",
-    "ROOT={cross_root} emerge dev-libs/D",
-    "portageq has_version {cross_eroot} dev-libs/D",
-    "EPREFIX={cross_prefix} emerge -K dev-libs/A",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B",
-    "EPREFIX={cross_prefix} emerge -Cq dev-libs/B",
-    "EPREFIX={cross_prefix} emerge -Cq dev-libs/A",
-    "EPREFIX={cross_prefix} emerge dev-libs/A",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A",
-    "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B",
-    "ROOT={cross_root} emerge dev-libs/B",
-    "portageq has_version {cross_eroot} dev-libs/B",
-] + _BASELINE_COMMAND_FETCHCOMMAND_SEQUENCE
+    # "ebuild dev-libs/A-1 manifest clean package merge",
+    # "emerge --pretend --tree --complete-graph dev-libs/A",
+    # "emerge -p dev-libs/B",
+    # "emerge -p --newrepo dev-libs/B",
+    # "emerge -B dev-libs/B",
+    # "emerge -1k dev-libs/B",
+    # "ebuild dev-libs/A-1 unpack",
+    # "emerge -1 dev-libs/A",
+    # "emerge -n dev-libs/A",
+    # "emerge --config dev-libs/A",
+    # "emerge --info dev-libs/A dev-libs/B",
+    # "emerge -pcv dev-libs/B",
+    # "emerge -pc",
+    # "emerge -c",
+    # "quickpkg --include-config y dev-libs/A",
+    # # "no protected files",
+    # # "rm /etc/A-0",
+    # "emerge -K dev-libs/A",
+    # # "one protected file",
+    # "emaint --check all",
+    # "emaint --fix all",
+    # "fixpackages",
+    # "regenworld",
+    # "portageq match {eroot} dev-libs/A",
+    # "portageq best_visible {eroot} dev-libs/A",
+    # "portageq best_visible {eroot} binary dev-libs/A",
+    # "portageq contents {eroot} dev-libs/A-1",
+    # "portageq metadata {eroot} ebuild dev-libs/A-1 EAPI IUSE RDEPEND",
+    # "portageq metadata {eroot} binary dev-libs/A-1 EAPI USE RDEPEND",
+    # "portageq metadata {eroot} installed dev-libs/A-1 EAPI USE RDEPEND",
+    # "portageq owners {eroot} {eroot}usr",
+    # "emerge -p {eroot}usr",
+    # "emerge -pCq {eroot}usr",
+    # "emerge -Cq dev-libs/A",
+    # "emerge -Cq dev-libs/B",
+    "misc package operations",
+    # (
+    #     "EMERGE_DEFAULT_OPTS=--autounmask=n "
+    #     "emerge --autounmask --autounmask-continue dev-libs/C"
+    # ),
+    # "portageq match {eroot} dev-libs/D[flag]",
+    # "EPREFIX={cross_prefix} emerge dev-libs/C",
+    # "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/C",
+    # "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/D",
+    # "ROOT={cross_root} emerge dev-libs/D",
+    # "portageq has_version {cross_eroot} dev-libs/D",
+    # "EPREFIX={cross_prefix} emerge -K dev-libs/A",
+    # "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A",
+    # "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B",
+    # "EPREFIX={cross_prefix} emerge -Cq dev-libs/B",
+    # "EPREFIX={cross_prefix} emerge -Cq dev-libs/A",
+    # "EPREFIX={cross_prefix} emerge dev-libs/A",
+    # "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A",
+    # "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B",
+    # "ROOT={cross_root} emerge dev-libs/B",
+    # "portageq has_version {cross_eroot} dev-libs/B",
+    "binhost emerge",
+]
 
 PORTAGE_PYTHON = portage._python_interpreter
 NOOP = lambda: ...
@@ -536,7 +529,7 @@ def _generate_all_baseline_commands(playground, binhost):
 
     But, don't use this fixture directly, instead, use the
     ``baseline_command`` fixture. That improves performance a bit due to
-    pytest caching.
+    pytest caching (?).
 
     .. note::
 
@@ -579,6 +572,7 @@ def _generate_all_baseline_commands(playground, binhost):
 
     test_commands = {}
 
+    ###
     if hasattr(argparse.ArgumentParser, "parse_intermixed_args"):
         parse_intermixed_command = Emerge(
             "--oneshot",
@@ -589,25 +583,36 @@ def _generate_all_baseline_commands(playground, binhost):
     else:
         parse_intermixed_command = Noop()
     test_commands["emerge -1 dev-libs/A -v dev-libs/B"] = parse_intermixed_command
+    ###
 
-    test_commands["emerge --root --quickpkg-direct-root"] = Emerge(
-        "--usepkgonly",
-        "--root",
-        cross_root,
-        "--quickpkg-direct=y",
-        "--quickpkg-direct-root",
-        "/",
-        "dev-libs/A",
+    quickpkg_direct_seq = [
+        # test_commands["emerge --root --quickpkg-direct-root"] =
+        Emerge(
+            "--usepkgonly",
+            "--root",
+            cross_root,
+            "--quickpkg-direct=y",
+            "--quickpkg-direct-root",
+            "/",
+            "dev-libs/A",
+        ),
+        # v needs ^
+        # test_commands["emerge --quickpkg-direct-root"] =
+        Emerge(
+            "--usepkgonly",
+            "--quickpkg-direct=y",
+            "--quickpkg-direct-root",
+            cross_root,
+            "dev-libs/A",
+        ),
+    ]
+    test_commands["emerge with quickpkg direct"] = PortageCommandSequence(
+        *quickpkg_direct_seq
     )
 
-    test_commands["emerge --quickpkg-direct-root"] = Emerge(
-        "--usepkgonly",
-        "--quickpkg-direct=y",
-        "--quickpkg-direct-root",
-        cross_root,
-        "dev-libs/A",
-    )
+    ###
     test_commands["env-update"] = EnvUpdate()
+    ###
     test_commands["portageq envvar"] = Portageq(
         "envvar",
         "-v",
@@ -617,14 +622,22 @@ def _generate_all_baseline_commands(playground, binhost):
         "PORTAGE_TMPDIR",
         "USERLAND",
     )
+    ###
     test_commands["etc-update"] = EtcUpdate()
+    ###
     test_commands["dispatch-conf"] = DispatchConf()
+    ###
     test_commands["emerge --version"] = Emerge("--version")
+    ###
     test_commands["emerge --info"] = Emerge("--info")
+    ###
     test_commands["emerge --info --verbose"] = Emerge("--info", "--verbose")
+    ###
     test_commands["emerge --list-sets"] = Emerge("--list-sets")
+    ###
     test_commands["emerge --check-news"] = Emerge("--check-news")
 
+    ###
     def _rm_cachedir():
         shutil.rmtree(cachedir)
 
@@ -662,260 +675,283 @@ def _generate_all_baseline_commands(playground, binhost):
             env_mod={"FEATURES": "unmerge-backup"},
             preparation=lambda: _check_foo_file(pkgdir, foo_filename, must_exist=False),
         ),
+        Emerge(
+            "--pretend",
+            "dev-libs/A",
+            preparation=lambda: _check_foo_file(pkgdir, foo_filename, must_exist=True),
+        ),
     ]
     test_commands["emerge --regen/--metadata"] = PortageCommandSequence(*regen_seq)
-    # Assuming that the sequence ends here!
 
-    # test_commands["foo pkg exists"] = lambda: _check_foo_file(
-    #     pkgdir, foo_filename, must_exist=True
-    # )
-
-    test_commands["emerge --pretend dev-libs/A"] = Emerge(
-        "--pretend",
-        "dev-libs/A",
-        preparation=lambda: _check_foo_file(pkgdir, foo_filename, must_exist=True),
-    )
-
-    test_commands["ebuild dev-libs/A-1 manifest clean package merge"] = Ebuild(
-        test_ebuild,
-        "manifest",
-        "clean",
-        "package",
-        "merge",
-    )
-    test_commands["emerge --pretend --tree --complete-graph dev-libs/A"] = Emerge(
-        "--pretend",
-        "--tree",
-        "--complete-graph",
-        "dev-libs/A",
-    )
-    test_commands["emerge -p dev-libs/B"] = Emerge("-p", "dev-libs/B")
-    test_commands["emerge -p --newrepo dev-libs/B"] = Emerge(
-        "-p",
-        "--newrepo",
-        "dev-libs/B",
-    )
-    test_commands["emerge -B dev-libs/B"] = Emerge("-B", "dev-libs/B")
-    test_commands["emerge -1k dev-libs/B"] = Emerge(
-        "--oneshot",
-        "--usepkg",
-        "dev-libs/B",
-    )
-    # trigger clean prior to pkg_pretend as in bug #390711
-    test_commands["ebuild dev-libs/A-1 unpack"] = Ebuild(test_ebuild, "unpack")
-    test_commands["emerge -1 dev-libs/A"] = Emerge("--oneshot", "dev-libs/A")
-    test_commands["emerge -n dev-libs/A"] = Emerge("--noreplace", "dev-libs/A")
-    test_commands["emerge --config dev-libs/A"] = Emerge(
-        "--config",
-        "dev-libs/A",
-    )
-    test_commands["emerge --info dev-libs/A dev-libs/B"] = Emerge(
-        "--info",
-        "dev-libs/A",
-        "dev-libs/B",
-    )
-    test_commands["emerge -pcv dev-libs/B"] = Emerge(
-        "--pretend",
-        "--depclean",
-        "--verbose",
-        "dev-libs/B",
-    )
-    test_commands["emerge -pc"] = Emerge("--pretend", "--depclean")
-    test_commands["emerge -c"] = Emerge(
-        "--depclean",
-    )
-
-    # Test bug #523684, where a file renamed or removed by the
-    # admin forces replacement files to be merged with config
-    # protection.
-    test_commands["quickpkg --include-config y dev-libs/A"] = Quickpkg(
-        "--include-config",
-        "y",
-        "dev-libs/A",
-        post_command=lambda: _check_number_of_protected_files(
-            0, eroot, settings["CONFIG_PROTECT"]
+    # test_commands["ebuild dev-libs/A-1 manifest clean package merge"] =
+    abcd_seq = [
+        Ebuild(
+            test_ebuild,
+            "manifest",
+            "clean",
+            "package",
+            "merge",
         ),
-    )
-
-    # Another "it is not a test command" case; actually setup:
-    # test_commands["rm /etc/A-0"] = lambda: os.unlink(
-    #     os.path.join(eprefix, "etc", "A-0")
-    # )
-    test_commands["emerge -K dev-libs/A"] = Emerge(
-        "--usepkgonly",
-        "dev-libs/A",
-        preparation=lambda: os.unlink(os.path.join(eprefix, "etc", "A-0")),
-        post_command=lambda: _check_number_of_protected_files(
-            1, eroot, settings["CONFIG_PROTECT"]
+        # test_commands["emerge --pretend --tree --complete-graph dev-libs/A"] =
+        Emerge(
+            "--pretend",
+            "--tree",
+            "--complete-graph",
+            "dev-libs/A",
         ),
-    )
+        # test_commands["emerge -p dev-libs/B"] =
+        Emerge("-p", "dev-libs/B"),
+        # test_commands["emerge -p --newrepo dev-libs/B"] =
+        Emerge(
+            "-p",
+            "--newrepo",
+            "dev-libs/B",
+        ),
+        # test_commands["emerge -B dev-libs/B"] =
+        Emerge("-B", "dev-libs/B"),
+        # test_commands["emerge -1k dev-libs/B"] =
+        Emerge(
+            "--oneshot",
+            "--usepkg",
+            "dev-libs/B",
+        ),
+        # trigger clean prior to pkg_pretend as in bug #390711
+        # test_commands["ebuild dev-libs/A-1 unpack"] =
+        Ebuild(test_ebuild, "unpack"),
+        # test_commands["emerge -1 dev-libs/A"] =
+        Emerge("--oneshot", "dev-libs/A"),
+        # test_commands["emerge -n dev-libs/A"] =
+        Emerge("--noreplace", "dev-libs/A"),
+        # test_commands["emerge --config dev-libs/A"] =
+        Emerge(
+            "--config",
+            "dev-libs/A",
+        ),
+        # test_commands["emerge --info dev-libs/A dev-libs/B"] =
+        Emerge(
+            "--info",
+            "dev-libs/A",
+            "dev-libs/B",
+        ),
+        # test_commands["emerge -pcv dev-libs/B"] =
+        Emerge(
+            "--pretend",
+            "--depclean",
+            "--verbose",
+            "dev-libs/B",
+        ),
+        # test_commands["emerge -pc"] =
+        Emerge("--pretend", "--depclean"),
+        # test_commands["emerge -c"] =
+        Emerge(
+            "--depclean",
+        ),
+        # Test bug #523684, where a file renamed or removed by the
+        # admin forces replacement files to be merged with config
+        # protection.
+        # test_commands["quickpkg --include-config y dev-libs/A"] =
+        Quickpkg(
+            "--include-config",
+            "y",
+            "dev-libs/A",
+            post_command=lambda: _check_number_of_protected_files(
+                0, eroot, settings["CONFIG_PROTECT"]
+            ),
+        ),
+        # Another "it is not a test command" case; actually setup:
+        # test_commands["rm /etc/A-0"] = lambda: os.unlink(
+        #     os.path.join(eprefix, "etc", "A-0")
+        # )
+        # emerge_noreplace_A =
+        Emerge("--noreplace", "dev-libs/A"),
+        # test_commands["emerge -K dev-libs/A"] = PortageCommandSequence(
+        #    emerge_noreplace_A,
+        Emerge(
+            "--usepkgonly",
+            "dev-libs/A",
+            preparation=lambda: os.unlink(os.path.join(eprefix, "etc", "A-0")),
+            post_command=lambda: _check_number_of_protected_files(
+                1, eroot, settings["CONFIG_PROTECT"]
+            ),
+        ),
+        # test_commands["emaint --check all"] =
+        Emaint("--check", "all"),
+        # test_commands["emaint --fix all"] =
+        Emaint("--fix", "all"),
+        # test_commands["fixpackages"] =
+        Fixpackages(),
+        # test_commands["regenworld"] =
+        Regenworld(),
+        # test_commands["portageq match {eroot} dev-libs/A"] =
+        Portageq(
+            "match",
+            eroot,
+            "dev-libs/A",
+        ),
+        # test_commands["portageq best_visible {eroot} dev-libs/A"] =
+        Portageq(
+            "best_visible",
+            eroot,
+            "dev-libs/A",
+        ),
+        # test_commands["portageq best_visible {eroot} binary dev-libs/A"] =
+        Portageq(
+            "best_visible",
+            eroot,
+            "binary",
+            "dev-libs/A",
+        ),
+        # test_commands["portageq contents {eroot} dev-libs/A-1"] =
+        Portageq(
+            "contents",
+            eroot,
+            "dev-libs/A-1",
+        ),
+        # test_commands[
+        #     "portageq metadata {eroot} ebuild dev-libs/A-1 EAPI IUSE RDEPEND"
+        # ] =
+        Portageq(
+            "metadata",
+            eroot,
+            "ebuild",
+            "dev-libs/A-1",
+            "EAPI",
+            "IUSE",
+            "RDEPEND",
+        ),
+        # test_commands[
+        #     "portageq metadata {eroot} binary dev-libs/A-1 EAPI USE RDEPEND"
+        # ] =
+        Portageq(
+            "metadata",
+            eroot,
+            "binary",
+            "dev-libs/A-1",
+            "EAPI",
+            "USE",
+            "RDEPEND",
+        ),
+        # test_commands[
+        #     "portageq metadata {eroot} installed dev-libs/A-1 EAPI USE RDEPEND"
+        # ] =
+        Portageq(
+            "metadata",
+            eroot,
+            "installed",
+            "dev-libs/A-1",
+            "EAPI",
+            "USE",
+            "RDEPEND",
+        ),
+        # test_commands["portageq owners {eroot} {eroot}usr"] =
+        Portageq(
+            "owners",
+            eroot,
+            eroot + "usr",
+        ),
+        # test_commands["emerge -p {eroot}usr"] =
+        Emerge("-p", eroot + "usr"),
+        # test_commands["emerge -pCq {eroot}usr"] =
+        Emerge(
+            "-p",
+            "--unmerge",
+            "-q",
+            eroot + "usr",
+        ),
+        # test_commands["emerge -Cq dev-libs/A"] =
+        Emerge(
+            "--unmerge",
+            "--quiet",
+            "dev-libs/A",
+        ),
+        # test_commands["emerge -Cq dev-libs/B"] =
+        Emerge(
+            "-C",
+            "--quiet",
+            "dev-libs/B",
+        ),
+        # autounmask:
+        # If EMERGE_DEFAULT_OPTS contains --autounmask=n, then --autounmask
+        # must be specified with --autounmask-continue.
+        # test_commands[
+        #     "EMERGE_DEFAULT_OPTS=--autounmask=n "
+        #     "emerge --autounmask --autounmask-continue dev-libs/C"
+        # ] =
+        Emerge(
+            "--autounmask",
+            "--autounmask-continue",
+            "dev-libs/C",
+            env_mod={"EMERGE_DEFAULT_OPTS": "--autounmask=n"},
+        ),
+        # Verify that the above --autounmask-continue command caused
+        # USE=flag to be applied correctly to dev-libs/D.
+        # test_commands["portageq match {eroot} dev-libs/D[flag]"] =
+        Portageq(
+            "match",
+            eroot,
+            "dev-libs/D[flag]",
+        ),
+    ]
+    test_commands["misc package operations"] = PortageCommandSequence(*abcd_seq)
 
-    test_commands["emaint --check all"] = Emaint("--check", "all")
-    test_commands["emaint --fix all"] = Emaint("--fix", "all")
-    test_commands["fixpackages"] = Fixpackages()
-    test_commands["regenworld"] = Regenworld()
-    test_commands["portageq match {eroot} dev-libs/A"] = Portageq(
-        "match",
-        eroot,
-        "dev-libs/A",
-    )
-    test_commands["portageq best_visible {eroot} dev-libs/A"] = Portageq(
-        "best_visible",
-        eroot,
-        "dev-libs/A",
-    )
-    test_commands["portageq best_visible {eroot} binary dev-libs/A"] = Portageq(
-        "best_visible",
-        eroot,
-        "binary",
-        "dev-libs/A",
-    )
-    test_commands["portageq contents {eroot} dev-libs/A-1"] = Portageq(
-        "contents",
-        eroot,
-        "dev-libs/A-1",
-    )
-    test_commands[
-        "portageq metadata {eroot} ebuild dev-libs/A-1 EAPI IUSE RDEPEND"
-    ] = Portageq(
-        "metadata",
-        eroot,
-        "ebuild",
-        "dev-libs/A-1",
-        "EAPI",
-        "IUSE",
-        "RDEPEND",
-    )
-    test_commands[
-        "portageq metadata {eroot} binary dev-libs/A-1 EAPI USE RDEPEND"
-    ] = Portageq(
-        "metadata",
-        eroot,
-        "binary",
-        "dev-libs/A-1",
-        "EAPI",
-        "USE",
-        "RDEPEND",
-    )
-    test_commands[
-        "portageq metadata {eroot} installed dev-libs/A-1 EAPI USE RDEPEND"
-    ] = Portageq(
-        "metadata",
-        eroot,
-        "installed",
-        "dev-libs/A-1",
-        "EAPI",
-        "USE",
-        "RDEPEND",
-    )
-    test_commands["portageq owners {eroot} {eroot}usr"] = Portageq(
-        "owners",
-        eroot,
-        eroot + "usr",
-    )
-    test_commands["emerge -p {eroot}usr"] = Emerge("-p", eroot + "usr")
-    test_commands["emerge -pCq {eroot}usr"] = Emerge(
-        "-p",
-        "--unmerge",
-        "-q",
-        eroot + "usr",
-    )
-    test_commands["emerge -Cq dev-libs/A"] = Emerge(
-        "--unmerge",
-        "--quiet",
-        "dev-libs/A",
-    )
-    test_commands["emerge -Cq dev-libs/B"] = Emerge(
-        "-C",
-        "--quiet",
-        "dev-libs/B",
-    )
-
-    # autounmask:
-    # If EMERGE_DEFAULT_OPTS contains --autounmask=n, then --autounmask
-    # must be specified with --autounmask-continue.
-    test_commands[
-        "EMERGE_DEFAULT_OPTS=--autounmask=n "
-        "emerge --autounmask --autounmask-continue dev-libs/C"
-    ] = Emerge(
-        "--autounmask",
-        "--autounmask-continue",
-        "dev-libs/C",
-        env_mod={"EMERGE_DEFAULT_OPTS": "--autounmask=n"},
-    )
-
-    # Verify that the above --autounmask-continue command caused
-    # USE=flag to be applied correctly to dev-libs/D.
-    test_commands["portageq match {eroot} dev-libs/D[flag]"] = Portageq(
-        "match",
-        eroot,
-        "dev-libs/D[flag]",
-    )
-    # Test cross-prefix usage, including chpathtool for binpkgs.
-    # EAPI 7
-    test_commands["EPREFIX={cross_prefix} emerge dev-libs/C"] = Emerge(
-        "dev-libs/C", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/C"
-    ] = Portageq(
-        "has_version", cross_prefix, "dev-libs/C", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/D"
-    ] = Portageq(
-        "has_version", cross_prefix, "dev-libs/D", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands["ROOT={cross_root} emerge dev-libs/D"] = Emerge(
-        "dev-libs/D", env_mod={"ROOT": cross_root}
-    )
-
-    test_commands["portageq has_version {cross_eroot} dev-libs/D"] = Portageq(
-        "has_version",
-        cross_eroot,
-        "dev-libs/D",
-    )
-    # EAPI 5
-    test_commands["EPREFIX={cross_prefix} emerge -K dev-libs/A"] = Emerge(
-        "--usepkgonly", "dev-libs/A", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A"
-    ] = Portageq(
-        "has_version", cross_prefix, "dev-libs/A", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands[
-        "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B"
-    ] = Portageq(
-        "has_version", cross_prefix, "dev-libs/B", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands["EPREFIX={cross_prefix} emerge -Cq dev-libs/B"] = Emerge(
-        "-C", "--quiet", "dev-libs/B", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands["EPREFIX={cross_prefix} emerge -Cq dev-libs/A"] = Emerge(
-        "-C", "--quiet", "dev-libs/A", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    test_commands["EPREFIX={cross_prefix} emerge dev-libs/A"] = Emerge(
-        "dev-libs/A", env_mod={"EPREFIX": cross_prefix}
-    )
-
-    # Test ROOT support
-    test_commands["ROOT={cross_root} emerge dev-libs/B"] = Emerge(
-        "dev-libs/B", env_mod={"ROOT": cross_root}
-    )
-
-    test_commands["portageq has_version {cross_eroot} dev-libs/B"] = Portageq(
-        "has_version",
-        cross_eroot,
-        "dev-libs/B",
+    cross_prefix_seq = [
+        # Test cross-prefix usage, including chpathtool for binpkgs.
+        # EAPI 7
+        # test_commands["EPREFIX={cross_prefix} emerge dev-libs/C"] =
+        Emerge("dev-libs/C", env_mod={"EPREFIX": cross_prefix}),
+        # test_commands[
+        #     "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/C"
+        # ] =
+        Portageq(
+            "has_version", cross_prefix, "dev-libs/C", env_mod={"EPREFIX": cross_prefix}
+        ),
+        # test_commands[
+        #     "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/D"
+        # ] =
+        Portageq(
+            "has_version", cross_prefix, "dev-libs/D", env_mod={"EPREFIX": cross_prefix}
+        ),
+        # test_commands["ROOT={cross_root} emerge dev-libs/D"] =
+        Emerge("dev-libs/D", env_mod={"ROOT": cross_root}),
+        # test_commands["portageq has_version {cross_eroot} dev-libs/D"] =
+        Portageq(
+            "has_version",
+            cross_eroot,
+            "dev-libs/D",
+        ),
+        # EAPI 5
+        # test_commands["EPREFIX={cross_prefix} emerge -K dev-libs/A"] =
+        Emerge("--usepkgonly", "dev-libs/A", env_mod={"EPREFIX": cross_prefix}),
+        # test_commands[
+        #     "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/A"
+        # ] =
+        Portageq(
+            "has_version", cross_prefix, "dev-libs/A", env_mod={"EPREFIX": cross_prefix}
+        ),
+        # test_commands[
+        #     "EPREFIX={cross_prefix} portageq has_version {cross_prefix} dev-libs/B"
+        # ] =
+        Portageq(
+            "has_version", cross_prefix, "dev-libs/B", env_mod={"EPREFIX": cross_prefix}
+        ),
+        # test_commands["EPREFIX={cross_prefix} emerge -Cq dev-libs/B"] =
+        Emerge("-C", "--quiet", "dev-libs/B", env_mod={"EPREFIX": cross_prefix}),
+        # test_commands["EPREFIX={cross_prefix} emerge -Cq dev-libs/A"] =
+        Emerge("-C", "--quiet", "dev-libs/A", env_mod={"EPREFIX": cross_prefix}),
+        # test_commands["EPREFIX={cross_prefix} emerge dev-libs/A"] =
+        Emerge("dev-libs/A", env_mod={"EPREFIX": cross_prefix}),
+        # Test ROOT support
+        # test_commands["ROOT={cross_root} emerge dev-libs/B"] =
+        Emerge("dev-libs/B", env_mod={"ROOT": cross_root}),
+        # test_commands["portageq has_version {cross_eroot} dev-libs/B"] =
+        Portageq(
+            "has_version",
+            cross_eroot,
+            "dev-libs/B",
+        ),
+    ]
+    test_commands["misc operations with eprefix"] = PortageCommandSequence(
+        *cross_prefix_seq
     )
 
     # Test binhost support if FETCHCOMMAND is available.
@@ -927,14 +963,18 @@ def _generate_all_baseline_commands(playground, binhost):
         f.write(f"sync-uri = {binhost_uri}\n")
     fetchcommand = portage.util.shlex_split(settings["FETCHCOMMAND"])
     fetch_bin = portage.process.find_binary(fetchcommand[0])
+
     if fetch_bin is None:
-        for command_name in _BASELINE_COMMAND_FETCHCOMMAND_SEQUENCE:
-            test_commands[command_name] = Noop()
+        test_commands["binhost emerge"] = Noop()
+        # for command_name in _BASELINE_COMMAND_FETCHCOMMAND_SEQUENCE:
+        #     test_commands[command_name] = Noop()
     else:
         # test_commands["mv {pkgdir} {binhost_dir}"] = lambda: os.rename(
         #     pkgdir, binhost_dir
         # )
-        test_commands["emerge -eG dev-libs/A"] = Emerge(
+        # test_commands["emerge -eG dev-libs/A"] =
+        make_package = Emerge("--buildpkg", "dev-libs/A")
+        getbinpkgonly = Emerge(
             "-e",
             "--getbinpkgonly",
             "dev-libs/A",
@@ -952,7 +992,8 @@ def _generate_all_baseline_commands(playground, binhost):
             os.rename(binhost_dir, pkgdir)
             os.unlink(binrepos_conf_file)
 
-        test_commands["PORTAGE_BINHOST={binhost_uri} emerge -feG dev-libs/A"] = Emerge(
+        # test_commands["PORTAGE_BINHOST={binhost_uri} emerge -feG dev-libs/A"] =
+        getbinpkgonly_fetchonly = Emerge(
             "-fe",
             "--getbinpkgonly",
             "dev-libs/A",
@@ -960,6 +1001,10 @@ def _generate_all_baseline_commands(playground, binhost):
             preparation=_replace_pkgdir_and_rm_binrepos_conf_file,
         )
 
+        fetch_sequence = PortageCommandSequence(
+            make_package, getbinpkgonly, getbinpkgonly_fetchonly
+        )
+        test_commands["binhost emerge"] = fetch_sequence
     yield test_commands
 
 
