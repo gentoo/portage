@@ -50,7 +50,6 @@ from portage.exception import (
 from portage.output import colorize, create_color_func, darkgreen, green
 
 bad = create_color_func("BAD")
-from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
@@ -2959,21 +2958,18 @@ class depgraph:
         ) in ("y", "auto")
         newuse = "--newuse" in self._frozen_config.myopts
         changed_use = "changed-use" == self._frozen_config.myopts.get("--reinstall")
-        feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.eapi))
 
         if newuse or (binpkg_respect_use and not changed_use):
             flags = set(orig_iuse)
             flags ^= cur_iuse
             flags -= forced_flags
             flags |= orig_iuse.intersection(orig_use) ^ cur_iuse.intersection(cur_use)
-            flags -= feature_flags
             if flags:
                 return flags
         elif changed_use or binpkg_respect_use:
             flags = set(orig_iuse)
             flags.intersection_update(orig_use)
             flags ^= cur_iuse.intersection(cur_use)
-            flags -= feature_flags
             if flags:
                 return flags
         return None
