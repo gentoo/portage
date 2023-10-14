@@ -3605,6 +3605,9 @@ class depgraph:
         careful to obey the user's wishes if they have explicitly requested
         for a package to be rebuilt or reinstalled for some reason.
         """
+        if "empty" in self._dynamic_config.myparams:
+            return False
+
         modified = False
         selective = "selective" in self._dynamic_config.myparams
         for root, atom in self._dynamic_config._slot_operator_replace_installed:
