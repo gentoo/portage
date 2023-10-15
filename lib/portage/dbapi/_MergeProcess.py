@@ -74,20 +74,6 @@ class MergeProcess(ForkProcess):
         self.fd_pipes.setdefault(0, portage._get_stdin().fileno())
 
         self.log_filter_file = self.settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
-        self.target = functools.partial(
-            self._target,
-            lambda: self._counter,
-            lambda: self._elog_reader_fd,
-            lambda: self._dblink,
-            self.infloc,
-            self.mydbapi,
-            self.myebuild,
-            self.pkgloc,
-            self.prev_mtimes,
-            self.settings,
-            self.unmerge,
-            self.vartree.dbapi,
-        )
         super()._start()
 
     def _lock_vdb(self):
@@ -195,6 +181,22 @@ class MergeProcess(ForkProcess):
 
         self._dblink = mylink
         self._elog_reader_fd = elog_reader_fd
+
+        self.target = functools.partial(
+            self._target,
+            self._counter,
+            self._elog_reader_fd,
+            self._dblink,
+            self.infloc,
+            self.mydbapi,
+            self.myebuild,
+            self.pkgloc,
+            self.prev_mtimes,
+            self.settings,
+            self.unmerge,
+            self.vartree.dbapi,
+        )
+
         pids = super()._spawn(args, fd_pipes, **kwargs)
         os.close(elog_writer_fd)
         mtime_writer.close()
@@ -214,9 +216,9 @@ class MergeProcess(ForkProcess):
 
     @staticmethod
     def _target(
-        get_counter,
-        get_elog_reader_fd,
-        get_mylink,
+        counter,
+        elog_reader_fd,
+        mylink,
         infloc,
         mydbapi,
         myebuild,
@@ -229,9 +231,7 @@ class MergeProcess(ForkProcess):
         """
         TODO: Make all arguments picklable for the multiprocessing spawn start method.
         """
-        os.close(get_elog_reader_fd())
-        counter = get_counter()
-        mylink = get_mylink()
+        os.close(elog_reader_fd)
         portage.output.havecolor = not no_color(settings)
         # Avoid wastful updates of the vdb cache.
         vardb._flush_cache_enabled = False
