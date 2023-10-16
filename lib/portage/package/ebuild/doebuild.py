@@ -2777,7 +2777,9 @@ def _post_src_install_uid_fix(mysettings, out):
                         # a normal write might fail due to file permission
                         # settings on some operating systems such as HP-UX
                         write_atomic(
-                            _unicode_encode(
+                            fpath
+                            if portage.utf8_mode
+                            else _unicode_encode(
                                 fpath, encoding=_encodings["merge"], errors="strict"
                             ),
                             new_contents,
