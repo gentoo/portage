@@ -439,7 +439,8 @@ def slot_dict_class(keys, prefix="_val_"):
         keys_set = keys
     else:
         keys_set = frozenset(keys)
-    v = _slot_dict_classes.get((keys_set, prefix))
+    cache_key = (keys_set, prefix)
+    v = _slot_dict_classes.get(cache_key)
     if v is None:
 
         class LocalSlotDict(_SlotDict):
@@ -448,5 +449,5 @@ def slot_dict_class(keys, prefix="_val_"):
             __slots__ = tuple(prefix + k for k in allowed_keys)
 
         v = LocalSlotDict
-        _slot_dict_classes[v.allowed_keys] = v
+        _slot_dict_classes[cache_key] = v
     return v
