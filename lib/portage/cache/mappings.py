@@ -292,6 +292,16 @@ class _SlotDict:
         if kwargs:
             self.update(kwargs)
 
+    def __reduce__(self):
+        return _PickledSlotDict, (
+            self._prefix,
+            self.allowed_keys,
+            dict(self),
+        )
+
+    def __eq__(self, other):
+        return dict(self) == dict(other)
+
     def __iter__(self):
         for k, v in self.iteritems():
             yield k
@@ -415,6 +425,19 @@ class _SlotDict:
     items = iteritems
     keys = __iter__
     values = itervalues
+
+
+class _PickledSlotDict(_SlotDict):
+    """
+    Since LocalSlotDict instances are not directly picklable, this
+    class exists as a way to express pickled LocalSlotDict instances,
+    using a plain __dict__ instead of custom __slots__.
+    """
+
+    def __init__(self, prefix, allowed_keys, *args, **kwargs):
+        self._prefix = prefix
+        self.allowed_keys = allowed_keys
+        super().__init__(*args, **kwargs)
 
 
 _slot_dict_classes = weakref.WeakValueDictionary()
