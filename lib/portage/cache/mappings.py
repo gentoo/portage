@@ -1,4 +1,4 @@
-# Copyright: 2005-2020 Gentoo Authors
+# Copyright: 2005-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -271,6 +271,152 @@ class LazyLoad(Mapping):
     keys = __iter__
 
 
+class _SlotDict:
+    """
+    Base class for classes returned from slot_dict_class.
+    """
+
+    _prefix = ""
+    allowed_keys = frozenset()
+    __slots__ = ("__weakref__",)
+
+    def __init__(self, *args, **kwargs):
+        if len(args) > 1:
+            raise TypeError(
+                "expected at most 1 positional argument, got " + repr(len(args))
+            )
+
+        if args:
+            self.update(args[0])
+
+        if kwargs:
+            self.update(kwargs)
+
+    def __iter__(self):
+        for k, v in self.iteritems():
+            yield k
+
+    def __len__(self):
+        l = 0
+        for i in self.iteritems():
+            l += 1
+        return l
+
+    def iteritems(self):
+        prefix = self._prefix
+        for k in self.allowed_keys:
+            try:
+                yield (k, getattr(self, prefix + k))
+            except AttributeError:
+                pass
+
+    def itervalues(self):
+        for k, v in self.iteritems():
+            yield v
+
+    def __delitem__(self, k):
+        try:
+            delattr(self, self._prefix + k)
+        except AttributeError:
+            raise KeyError(k)
+
+    def __setitem__(self, k, v):
+        setattr(self, self._prefix + k, v)
+
+    def setdefault(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            self[key] = default
+        return default
+
+    def update(self, *args, **kwargs):
+        if len(args) > 1:
+            raise TypeError(
+                "expected at most 1 positional argument, got " + repr(len(args))
+            )
+        other = None
+        if args:
+            other = args[0]
+        if other is None:
+            pass
+        elif hasattr(other, "iteritems"):
+            # Use getattr to avoid interference from 2to3.
+            for k, v in getattr(other, "iteritems")():
+                self[k] = v
+        elif hasattr(other, "items"):
+            # Use getattr to avoid interference from 2to3.
+            for k, v in getattr(other, "items")():
+                self[k] = v
+        elif hasattr(other, "keys"):
+            for k in other.keys():
+                self[k] = other[k]
+        else:
+            for k, v in other:
+                self[k] = v
+        if kwargs:
+            self.update(kwargs)
+
+    def __getitem__(self, k):
+        try:
+            return getattr(self, self._prefix + k)
+        except AttributeError:
+            raise KeyError(k)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __contains__(self, k):
+        return hasattr(self, self._prefix + k)
+
+    def pop(self, key, *args):
+        if len(args) > 1:
+            raise TypeError(
+                "pop expected at most 2 arguments, got " + repr(1 + len(args))
+            )
+        try:
+            value = self[key]
+        except KeyError:
+            if args:
+                return args[0]
+            raise
+        del self[key]
+        return value
+
+    def popitem(self):
+        try:
+            k, v = self.iteritems().next()
+        except StopIteration:
+            raise KeyError("container is empty")
+        del self[k]
+        return (k, v)
+
+    def copy(self):
+        c = self.__class__()
+        c.update(self)
+        return c
+
+    def clear(self):
+        for k in self.allowed_keys:
+            try:
+                delattr(self, self._prefix + k)
+            except AttributeError:
+                pass
+
+    def __str__(self):
+        return str(dict(self.iteritems()))
+
+    def __repr__(self):
+        return repr(dict(self.iteritems()))
+
+    items = iteritems
+    keys = __iter__
+    values = itervalues
+
+
 _slot_dict_classes = weakref.WeakValueDictionary()
 
 
@@ -296,147 +442,11 @@ def slot_dict_class(keys, prefix="_val_"):
     v = _slot_dict_classes.get((keys_set, prefix))
     if v is None:
 
-        class SlotDict:
+        class LocalSlotDict(_SlotDict):
             allowed_keys = keys_set
             _prefix = prefix
-            __slots__ = ("__weakref__",) + tuple(prefix + k for k in allowed_keys)
+            __slots__ = tuple(prefix + k for k in allowed_keys)
 
-            def __init__(self, *args, **kwargs):
-                if len(args) > 1:
-                    raise TypeError(
-                        "expected at most 1 positional argument, got " + repr(len(args))
-                    )
-
-                if args:
-                    self.update(args[0])
-
-                if kwargs:
-                    self.update(kwargs)
-
-            def __iter__(self):
-                for k, v in self.iteritems():
-                    yield k
-
-            def __len__(self):
-                l = 0
-                for i in self.iteritems():
-                    l += 1
-                return l
-
-            def iteritems(self):
-                prefix = self._prefix
-                for k in self.allowed_keys:
-                    try:
-                        yield (k, getattr(self, prefix + k))
-                    except AttributeError:
-                        pass
-
-            def itervalues(self):
-                for k, v in self.iteritems():
-                    yield v
-
-            def __delitem__(self, k):
-                try:
-                    delattr(self, self._prefix + k)
-                except AttributeError:
-                    raise KeyError(k)
-
-            def __setitem__(self, k, v):
-                setattr(self, self._prefix + k, v)
-
-            def setdefault(self, key, default=None):
-                try:
-                    return self[key]
-                except KeyError:
-                    self[key] = default
-                return default
-
-            def update(self, *args, **kwargs):
-                if len(args) > 1:
-                    raise TypeError(
-                        "expected at most 1 positional argument, got " + repr(len(args))
-                    )
-                other = None
-                if args:
-                    other = args[0]
-                if other is None:
-                    pass
-                elif hasattr(other, "iteritems"):
-                    # Use getattr to avoid interference from 2to3.
-                    for k, v in getattr(other, "iteritems")():
-                        self[k] = v
-                elif hasattr(other, "items"):
-                    # Use getattr to avoid interference from 2to3.
-                    for k, v in getattr(other, "items")():
-                        self[k] = v
-                elif hasattr(other, "keys"):
-                    for k in other.keys():
-                        self[k] = other[k]
-                else:
-                    for k, v in other:
-                        self[k] = v
-                if kwargs:
-                    self.update(kwargs)
-
-            def __getitem__(self, k):
-                try:
-                    return getattr(self, self._prefix + k)
-                except AttributeError:
-                    raise KeyError(k)
-
-            def get(self, key, default=None):
-                try:
-                    return self[key]
-                except KeyError:
-                    return default
-
-            def __contains__(self, k):
-                return hasattr(self, self._prefix + k)
-
-            def pop(self, key, *args):
-                if len(args) > 1:
-                    raise TypeError(
-                        "pop expected at most 2 arguments, got " + repr(1 + len(args))
-                    )
-                try:
-                    value = self[key]
-                except KeyError:
-                    if args:
-                        return args[0]
-                    raise
-                del self[key]
-                return value
-
-            def popitem(self):
-                try:
-                    k, v = self.iteritems().next()
-                except StopIteration:
-                    raise KeyError("container is empty")
-                del self[k]
-                return (k, v)
-
-            def copy(self):
-                c = self.__class__()
-                c.update(self)
-                return c
-
-            def clear(self):
-                for k in self.allowed_keys:
-                    try:
-                        delattr(self, self._prefix + k)
-                    except AttributeError:
-                        pass
-
-            def __str__(self):
-                return str(dict(self.iteritems()))
-
-            def __repr__(self):
-                return repr(dict(self.iteritems()))
-
-            items = iteritems
-            keys = __iter__
-            values = itervalues
-
-        v = SlotDict
+        v = LocalSlotDict
         _slot_dict_classes[v.allowed_keys] = v
     return v
