@@ -4198,7 +4198,7 @@ class dblink:
             if str_buffer:
                 str_buffer = _unicode_encode("".join(str_buffer))
                 while str_buffer:
-                    str_buffer = str_buffer[os.write(self._pipe, str_buffer) :]
+                    str_buffer = str_buffer[os.write(self._pipe.fileno(), str_buffer) :]
 
     def _emerge_log(self, msg):
         emergelog(False, msg)
