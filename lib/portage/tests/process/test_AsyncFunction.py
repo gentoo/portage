@@ -1,6 +1,7 @@
 # Copyright 2020-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import multiprocessing
 import sys
 
@@ -46,10 +47,12 @@ class AsyncFunctionTestCase(TestCase):
         loop.run_until_complete(self._testAsyncFunctionStdin(loop=loop))
 
     @staticmethod
-    def _test_getpid_fork():
+    def _test_getpid_fork(preexec_fn=None):
         """
         Verify that portage.getpid() cache is updated in a forked child process.
         """
+        if preexec_fn is not None:
+            preexec_fn()
         loop = asyncio._wrap_loop()
         proc = AsyncFunction(scheduler=loop, target=portage.getpid)
         proc.start()
@@ -58,6 +61,24 @@ class AsyncFunctionTestCase(TestCase):
 
     def test_getpid_fork(self):
         self.assertTrue(self._test_getpid_fork())
+
+    def test_spawn_getpid(self):
+        """
+        Test portage.getpid() with multiprocessing spawn start method.
+        """
+        loop = asyncio._wrap_loop()
+        proc = AsyncFunction(
+            scheduler=loop,
+            target=self._test_getpid_fork,
+            kwargs=dict(
+                preexec_fn=functools.partial(
+                    multiprocessing.set_start_method, "spawn", force=True
+                )
+            ),
+        )
+        proc.start()
+        self.assertEqual(proc.wait(), 0)
+        self.assertTrue(proc.result)
 
     def test_getpid_double_fork(self):
         """

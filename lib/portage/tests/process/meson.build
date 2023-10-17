@@ -1,6 +1,7 @@
 py.install_sources(
     [
         'test_AsyncFunction.py',
+        'test_ForkProcess.py',
         'test_PipeLogger.py',
         'test_PopenProcessBlockingIO.py',
         'test_PopenProcess.py',

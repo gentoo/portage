@@ -21,6 +21,7 @@ class ForkProcess(SpawnProcess):
     __slots__ = (
         "kwargs",
         "target",
+        "_child_connection",
         "_proc",
         "_proc_join_task",
     )
@@ -28,6 +29,41 @@ class ForkProcess(SpawnProcess):
     # Number of seconds between poll attempts for process exit status
     # (after the sentinel has become ready).
     _proc_join_interval = 0.1
+
+    def _start(self):
+        if self.fd_pipes or self.logfile:
+            if self.fd_pipes:
+                if multiprocessing.get_start_method() != "fork":
+                    raise NotImplementedError(
+                        'fd_pipes only supported with multiprocessing start method "fork"'
+                    )
+                super()._start()
+                return
+
+            if self.logfile:
+                if multiprocessing.get_start_method() == "fork":
+                    # Use superclass pty support.
+                    super()._start()
+                    return
+
+                # Log via multiprocessing.Pipe if necessary.
+                pr, pw = multiprocessing.Pipe(duplex=False)
+                self._child_connection = pw
+
+        retval = self._spawn(self.args, fd_pipes=self.fd_pipes)
+
+        self.pid = retval[0]
+        self._registered = True
+
+        if self._child_connection is None:
+            self._async_waitpid()
+        else:
+            self._child_connection.close()
+            stdout_fd = None
+            if not self.background:
+                stdout_fd = os.dup(sys.__stdout__.fileno())
+
+            self._start_main_task(pr, log_file_path=self.logfile, stdout_fd=stdout_fd)
 
     def _spawn(self, args, fd_pipes=None, **kwargs):
         """
@@ -59,7 +95,7 @@ class ForkProcess(SpawnProcess):
         # things like PROPERTIES=interactive support.
         stdin_dup = None
         try:
-            stdin_fd = fd_pipes.get(0)
+            stdin_fd = fd_pipes.get(0) if fd_pipes else None
             if stdin_fd is not None and stdin_fd == portage._get_stdin().fileno():
                 stdin_dup = os.dup(stdin_fd)
                 fcntl.fcntl(
@@ -68,7 +104,7 @@ class ForkProcess(SpawnProcess):
                 fd_pipes[0] = stdin_dup
             self._proc = multiprocessing.Process(
                 target=self._bootstrap,
-                args=(fd_pipes, target, args, kwargs),
+                args=(self._child_connection, fd_pipes, target, args, kwargs),
             )
             self._proc.start()
         finally:
@@ -150,7 +186,7 @@ class ForkProcess(SpawnProcess):
             self._proc_join_task = None
 
     @staticmethod
-    def _bootstrap(fd_pipes, target, args, kwargs):
+    def _bootstrap(child_connection, fd_pipes, target, args, kwargs):
         # Use default signal handlers in order to avoid problems
         # killing subprocesses as reported in bug #353239.
         signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -167,14 +203,22 @@ class ForkProcess(SpawnProcess):
             pass
 
         portage.locks._close_fds()
-        # We don't exec, so use close_fds=False
-        # (see _setup_pipes docstring).
-        portage.process._setup_pipes(fd_pipes, close_fds=False)
+
+        if child_connection is not None:
+            fd_pipes = fd_pipes or {}
+            fd_pipes[sys.stdout.fileno()] = child_connection.fileno()
+            fd_pipes[sys.stderr.fileno()] = child_connection.fileno()
+            fd_pipes[child_connection.fileno()] = child_connection.fileno()
+
+        if fd_pipes:
+            # We don't exec, so use close_fds=False
+            # (see _setup_pipes docstring).
+            portage.process._setup_pipes(fd_pipes, close_fds=False)
 
         # Since multiprocessing.Process closes sys.__stdin__ and
         # makes sys.stdin refer to os.devnull, restore it when
         # appropriate.
-        if 0 in fd_pipes:
+        if fd_pipes and 0 in fd_pipes:
             # It's possible that sys.stdin.fileno() is already 0,
             # and in that case the above _setup_pipes call will
             # have already updated its identity via dup2. Otherwise,

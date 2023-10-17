@@ -151,6 +151,12 @@ class SpawnProcess(SubProcess):
         if can_log and not self.background:
             stdout_fd = os.dup(fd_pipes_orig[1])
 
+        self._start_main_task(
+            master_fd, log_file_path=log_file_path, stdout_fd=stdout_fd
+        )
+        self._registered = True
+
+    def _start_main_task(self, pr, log_file_path=None, stdout_fd=None):
         build_logger = BuildLogger(
             env=self.env,
             log_path=log_file_path,
@@ -162,14 +168,13 @@ class SpawnProcess(SubProcess):
         pipe_logger = PipeLogger(
             background=self.background,
             scheduler=self.scheduler,
-            input_fd=master_fd,
+            input_fd=pr,
             log_file_path=build_logger.stdin,
             stdout_fd=stdout_fd,
         )
 
         pipe_logger.start()
 
-        self._registered = True
         self._main_task_cancel = functools.partial(
             self._main_cancel, build_logger, pipe_logger
         )
