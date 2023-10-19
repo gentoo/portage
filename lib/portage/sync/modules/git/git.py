@@ -325,11 +325,7 @@ class GitSync(NewBase):
                 elif not quiet:
                     writemsg_level(" ".join(git_set_remote_url_cmd) + "\n")
 
-        git_cmd = "{} fetch {}{}".format(
-            self.bin_command,
-            git_remote,
-            git_cmd_opts,
-        )
+        git_cmd = f"{self.bin_command} fetch {git_remote}{git_cmd_opts}"
 
         if not quiet:
             writemsg_level(git_cmd + "\n")
