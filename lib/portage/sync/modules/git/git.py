@@ -294,9 +294,40 @@ class GitSync(NewBase):
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
 
+        git_remote = remote_branch.partition("/")[0]
+
+        if not self.repo.volatile:
+            git_get_remote_url_cmd = ["git", "ls-remote", "--get-url", git_remote]
+            git_remote_url = portage._unicode_decode(
+                subprocess.check_output(
+                    git_get_remote_url_cmd,
+                    cwd=portage._unicode_encode(self.repo.location),
+                )
+            ).strip()
+            if git_remote_url != self.repo.sync_uri:
+                git_set_remote_url_cmd = [
+                    "git",
+                    "remote",
+                    "set-url",
+                    git_remote,
+                    self.repo.sync_uri,
+                ]
+                exitcode = portage.process.spawn(
+                    git_set_remote_url_cmd,
+                    cwd=portage._unicode_encode(self.repo.location),
+                    **self.spawn_kwargs,
+                )
+                if exitcode != os.EX_OK:
+                    msg = f"!!! could not update git remote {git_remote}'s url to {self.repo.sync_uri}"
+                    self.logger(self.xterm_titles, msg)
+                    writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+                    return (exitcode, False)
+                elif not quiet:
+                    writemsg_level(" ".join(git_set_remote_url_cmd) + "\n")
+
         git_cmd = "{} fetch {}{}".format(
             self.bin_command,
-            remote_branch.partition("/")[0],
+            git_remote,
             git_cmd_opts,
         )
 

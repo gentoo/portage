@@ -36,6 +36,9 @@ Bug fixes:
 
 * Eliminate unnecessary package reinstalls (bug #915494).
 
+* Update the git remote URL of an overlay with its configured sync-uri
+  when necessary (bug #905869).
+
 portage-3.0.52 (2023-10-03)
 --------------
 
