@@ -4,6 +4,7 @@
 import functools
 import multiprocessing
 import tempfile
+from unittest.mock import patch
 
 from portage import os
 from portage.tests import TestCase
@@ -37,3 +38,9 @@ class ForkProcessTestCase(TestCase):
 
             with open(logfile.name, "rb") as output:
                 self.assertEqual(output.read(), test_string.encode("utf-8"))
+
+    def test_spawn_logfile_no_send_handle(self):
+        with patch(
+            "portage.util._async.ForkProcess.ForkProcess._HAVE_SEND_HANDLE", new=False
+        ):
+            self.test_spawn_logfile()
