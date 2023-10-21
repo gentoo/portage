@@ -447,7 +447,15 @@ class GitSync(NewBase):
                 env = os.environ.copy()
                 env["GNUPGHOME"] = openpgp_env.home
 
-            rev_cmd = [self.bin_command, "log", "-n1", "--pretty=format:%G?", revision]
+            rev_cmd = [
+                self.bin_command,
+                "-c",
+                "log.showsignature=0",
+                "log",
+                "-n1",
+                "--pretty=format:%G?",
+                revision,
+            ]
             try:
                 status = portage._unicode_decode(
                     subprocess.check_output(
