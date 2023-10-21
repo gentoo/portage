@@ -1259,8 +1259,13 @@ class Scheduler(PollScheduler):
             and self._failed_pkgs_die_msgs
             and not mod_echo_output
         ):
+            failed_pkg_map = {}
+            for pkg in self._failed_pkgs_all:
+                failed_pkg_map[(pkg.cpv, pkg.root)] = pkg
+
             for mysettings, key, logentries in self._failed_pkgs_die_msgs:
-                color = "PKG_BINARY_MERGE" if pkg.built else "INFORM"
+                pkg = failed_pkg_map.get((key, mysettings["EROOT"]))
+                color = "PKG_BINARY_MERGE" if pkg and pkg.built else "INFORM"
 
                 root_msg = ""
                 if mysettings["ROOT"] != "/":
