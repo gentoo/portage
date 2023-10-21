@@ -130,6 +130,13 @@ scan() {
 	for path in ${SCAN_PATHS} ; do
 		path="${EROOT%/}${path}"
 
+		# test for BSD find
+		find --version 2>&1 | grep "invalid" >/dev/null
+		if [[ $? = 0 ]] ; then
+			find_opts=( -- )
+		else
+			find_opts=()
+		fi
 		if [[ ! -d ${path} ]] ; then
 			# Protect files that don't exist (bug #523684). If the
 			# parent directory doesn't exist, we can safely skip it.
