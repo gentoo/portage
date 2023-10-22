@@ -1,3 +1,11 @@
+Release notes take the form of the following optional categories:
+[Optional short blurb/summary]
+* Breaking changes
+* Security
+* Features
+* Bug fixes
+* Cleanups
+
 portage-3.0.54 (UNRELEASED)
 --------------
 
