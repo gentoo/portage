@@ -25,6 +25,8 @@ class AsyncFunction(ForkProcess):
 
     def _start(self):
         pr, pw = multiprocessing.Pipe(duplex=False)
+        self.fd_pipes = {} if self.fd_pipes is None else self.fd_pipes
+        self.fd_pipes[pw] = pw
         self._async_func_reader = PipeReader(
             input_files={"input": pr}, scheduler=self.scheduler
         )
