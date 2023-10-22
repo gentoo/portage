@@ -9,6 +9,7 @@ import platform
 import fcntl
 import portage
 from portage import os, _unicode_decode
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util._ctypes import find_library
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
@@ -180,6 +181,15 @@ class MergeProcess(ForkProcess):
         self._dblink = mylink
         self._elog_reader_fd = elog_reader_fd
 
+        # Since the entire QueryCommand._db is not required, only pass
+        # in tree types that QueryCommand specifically requires.
+        child_db = {}
+        parent_db = portage.db if QueryCommand._db is None else QueryCommand._db
+        for root in parent_db:
+            child_db[root] = {}
+            for tree_type in ("vartree", "porttree"):
+                child_db[root][tree_type] = parent_db[root][tree_type]
+
         self.target = functools.partial(
             self._target,
             self._counter,
@@ -192,6 +202,7 @@ class MergeProcess(ForkProcess):
             self.settings,
             self.unmerge,
             self.vartree.dbapi,
+            child_db,
         )
 
         pids = super()._spawn(args, fd_pipes, **kwargs)
@@ -223,10 +234,12 @@ class MergeProcess(ForkProcess):
         settings,
         unmerge,
         vardb,
+        db,
     ):
-        """
-        TODO: Make all arguments picklable for the multiprocessing spawn start method.
-        """
+        if QueryCommand._db is None:
+            # Initialize QueryCommand._db for AbstractEbuildProcess/EbuildIpcDaemon
+            # when not using the multiprocessing fork start method.
+            QueryCommand._db = db
         portage.output.havecolor = not no_color(settings)
         # Avoid wastful updates of the vdb cache.
         vardb._flush_cache_enabled = False
