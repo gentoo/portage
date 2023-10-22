@@ -19,6 +19,9 @@ Bug fixes:
 portage-3.0.53 (2023-10-20)
 --------------
 
+Standard mix of bug fixes and new features, along with Zac's continued work
+on preparing us for the spawn multiprocessing method.
+
 Features:
 * GNUMAKEFLAGS: also specify "-l $(nproc)", that is, limit by load average,
   per default.
@@ -50,6 +53,9 @@ Bug fixes:
 
 portage-3.0.52 (2023-10-03)
 --------------
+
+This release has a nice speedup for backtracking caching and supports eclean-pkg
+removing invalid binpkgs.
 
 Breaking changes:
 * FEATURES=pkgdir-index-trusted is now on by default. This improves performance
@@ -96,6 +102,8 @@ Cleanups:
 portage-3.0.51 (2023-08-20)
 --------------
 
+This release features better debug logging in particular.
+
 Features:
 * emerge: Set up logging immediately and respect --debug for log level.
 
@@ -120,6 +128,9 @@ Bug fixes:
 
 portage-3.0.50 (2023-08-09)
 --------------
+
+This release has a major build system rework to support PEP517 by migrating
+to meson-python, thanks to Chewi!
 
 Breaking changes:
 * The minimum supported Python version is now >= Python 3.9.
