@@ -1003,6 +1003,13 @@ class vardbapi(dbapi):
                     pass
         self._bump_mtime(cpv)
 
+    @staticmethod
+    def _async_copy(dbdir, dest_dir):
+        for parent, dirs, files in os.walk(dbdir, onerror=_raise_exc):
+            for key in files:
+                shutil.copy(os.path.join(parent, key), os.path.join(dest_dir, key))
+            break
+
     async def unpack_metadata(self, pkg, dest_dir, loop=None):
         """
         Unpack package metadata to a directory. This method is a coroutine.
@@ -1018,14 +1025,9 @@ class vardbapi(dbapi):
         else:
             cpv = pkg.mycpv
         dbdir = self.getpath(cpv)
-
-        def async_copy():
-            for parent, dirs, files in os.walk(dbdir, onerror=_raise_exc):
-                for key in files:
-                    shutil.copy(os.path.join(parent, key), os.path.join(dest_dir, key))
-                break
-
-        await loop.run_in_executor(ForkExecutor(loop=loop), async_copy)
+        await loop.run_in_executor(
+            ForkExecutor(loop=loop), self._async_copy, dbdir, dest_dir
+        )
 
     async def unpack_contents(
         self,
