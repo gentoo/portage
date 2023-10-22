@@ -1232,25 +1232,38 @@ class depgraph:
             self._show_ignored_binaries_changed_deps(ignored_binaries["changed_deps"])
 
     def _show_ignored_binaries_respect_use(self, respect_use):
-        writemsg(
-            "\n!!! The following binary packages have been ignored "
-            + "due to non matching USE:\n\n",
-            noiselevel=-1,
-        )
-
+        seen = {}
+        messages = []
+        merging = {pkg.cpv for pkg in self._dynamic_config._displayed_list}
         for pkg, flags in respect_use.items():
+            # Don't include recursive deps which aren't in the merge list anyway.
+            if pkg.cpv not in merging:
+                continue
             flag_display = []
             for flag in sorted(flags):
                 if flag not in pkg.use.enabled:
                     flag = "-" + flag
                 flag_display.append(flag)
             flag_display = " ".join(flag_display)
-            # The user can paste this line into package.use
-            writemsg(f"    ={pkg.cpv} {flag_display}", noiselevel=-1)
-            if pkg.root_config.settings["ROOT"] != "/":
-                writemsg(f" # for {pkg.root}", noiselevel=-1)
-            writemsg("\n", noiselevel=-1)
+            # We don't want to list the same USE flags for multiple build IDs
+            if pkg.cpv not in seen or flag_display not in seen[pkg.cpv]:
+                seen.setdefault(pkg.cpv, set()).add(flag_display)
+                # The user can paste this line into package.use
+                messages.append(f"    ={pkg.cpv} {flag_display}")
+                if pkg.root_config.settings["ROOT"] != "/":
+                    messages.append(f" # for {pkg.root}")
+                messages.append("\n")
 
+        if not messages:
+            return
+
+        writemsg(
+            "\n!!! The following binary packages have been ignored "
+            + "due to non matching USE:\n\n",
+            noiselevel=-1,
+        )
+        for line in messages:
+            writemsg(line, noiselevel=-1)
         msg = [
             "",
             "NOTE: The --binpkg-respect-use=n option will prevent emerge",
