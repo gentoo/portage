@@ -16,6 +16,10 @@ Breaking changes:
 Features:
 * sync: git: Pass --verbose to git when emerge --sync --verbose.
 
+* emerge: Make --binpkg-respect-use output far more concise (don't show
+  packages missing from the merge list and don't show packages w/ multiple
+  BUILD_IDs).
+
 Bug fixes:
 * SpawnProcess, ForkProcess: Pass stdin via fd_pipes for non-background. This
   fixes e.g. emerge --sync --ask (bug #916116).
@@ -23,6 +27,16 @@ Bug fixes:
 * _emerge: Fix looking up package name for error colorization (bug #915551).
 
 * sync: git: Handle when git is configured with 'log.showSignature'.
+
+Cleanups:
+* MergeProcess: Support QueryCommand with spawn start method (bug #916106)
+
+* vardbapi.unpack_contents: Support spawn start method (bug #916112)
+
+* vardbapi.unpack_metadata: Support spawn start method (bug #916108)
+
+* ForkProcess: Implement fd_pipes via send_handle for spawn start method (non-fork)
+  (bug #915896).
 
 portage-3.0.53 (2023-10-20)
 --------------
