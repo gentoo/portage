@@ -139,8 +139,12 @@ class GitSync(NewBase):
         """
         if not self.has_bin:
             return (1, False)
+
+        opts = self.options.get("emerge_config").opts
+
         git_cmd_opts = ""
         quiet = self.settings.get("PORTAGE_QUIET") == "1"
+        verbose = "--verbose" in opts
 
         # We don't want to operate with a .git outside of the given
         # repo in any circumstances.
@@ -170,6 +174,8 @@ class GitSync(NewBase):
 
         if quiet:
             git_cmd_opts += " --quiet"
+        elif verbose:
+            git_cmd_opts += " --verbose"
 
         # The logic here is a bit delicate. We need to balance two things:
         # 1. Having a robust sync mechanism which works unattended.
