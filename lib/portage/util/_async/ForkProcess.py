@@ -52,7 +52,7 @@ class ForkProcess(SpawnProcess):
                 'fd_pipes only supported with HAVE_SEND_HANDLE or multiprocessing start method "fork"'
             )
 
-        if self.fd_pipes or self.logfile:
+        if self.fd_pipes or self.logfile or not self.background:
             # Log via multiprocessing.Pipe if necessary.
             connection, self._child_connection = multiprocessing.Pipe(
                 duplex=self._HAVE_SEND_HANDLE

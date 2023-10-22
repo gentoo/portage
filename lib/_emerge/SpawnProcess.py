@@ -62,7 +62,7 @@ class SpawnProcess(SubProcess):
             self.fd_pipes = self.fd_pipes.copy()
         fd_pipes = self.fd_pipes
 
-        if fd_pipes or self.logfile:
+        if fd_pipes or self.logfile or not self.background:
             master_fd, slave_fd = self._pipe(fd_pipes)
 
             can_log = self._can_log(slave_fd)

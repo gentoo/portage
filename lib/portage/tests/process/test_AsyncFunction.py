@@ -16,25 +16,36 @@ from portage.util.futures.unix_events import _set_nonblocking
 
 class AsyncFunctionTestCase(TestCase):
     @staticmethod
-    def _read_from_stdin(pr, pw):
+    def _read_from_stdin(pw):
         if pw is not None:
             os.close(pw)
-        os.dup2(pr.fileno(), sys.stdin.fileno())
         return "".join(sys.stdin)
 
     async def _testAsyncFunctionStdin(self, loop):
         test_string = "1\n2\n3\n"
         pr, pw = multiprocessing.Pipe(duplex=False)
-        reader = AsyncFunction(
-            scheduler=loop,
-            target=self._read_from_stdin,
-            args=(
-                pr,
-                pw.fileno() if multiprocessing.get_start_method() == "fork" else None,
-            ),
-        )
-        reader.start()
+        stdin_backup = os.dup(portage._get_stdin().fileno())
+        os.dup2(pr.fileno(), portage._get_stdin().fileno())
         pr.close()
+        try:
+            reader = AsyncFunction(
+                # Should automatically inherit stdin as fd_pipes[0]
+                # when background is False, for things like
+                # emerge --sync --ask (bug 916116).
+                background=False,
+                scheduler=loop,
+                target=self._read_from_stdin,
+                args=(
+                    pw.fileno()
+                    if multiprocessing.get_start_method() == "fork"
+                    else None,
+                ),
+            )
+            reader.start()
+        finally:
+            os.dup2(stdin_backup, portage._get_stdin().fileno())
+            os.close(stdin_backup)
+
         _set_nonblocking(pw.fileno())
         with open(pw.fileno(), mode="wb", buffering=0, closefd=False) as pipe_write:
             await _writer(pipe_write, test_string.encode("utf_8"))
