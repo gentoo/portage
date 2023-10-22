@@ -101,6 +101,7 @@ import grp
 import io
 from itertools import chain
 import logging
+import multiprocessing
 import os as _os
 import operator
 import pickle
@@ -1094,19 +1095,18 @@ class vardbapi(dbapi):
         )
         if binpkg_format == "xpak":
             tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
-            pr, pw = os.pipe()
+            pr, pw = multiprocessing.Pipe(duplex=False)
             proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
-            os.close(pr)
-            with os.fdopen(pw, "wb", 0) as pw_file:
-                excluded_config_files = await loop.run_in_executor(
-                    ForkExecutor(loop=loop),
-                    functools.partial(
-                        self._dblink(cpv).quickpkg,
-                        pw_file,
-                        include_config=opts.include_config == "y",
-                        include_unmodified_config=opts.include_unmodified_config == "y",
-                    ),
-                )
+            pr.close()
+            excluded_config_files = await loop.run_in_executor(
+                ForkExecutor(loop=loop),
+                functools.partial(
+                    self._dblink(cpv).quickpkg,
+                    pw,
+                    include_config=opts.include_config == "y",
+                    include_unmodified_config=opts.include_unmodified_config == "y",
+                ),
+            )
             await proc.wait()
             if proc.returncode != os.EX_OK:
                 raise PortageException(f"command failed: {tar_cmd}")
@@ -2161,7 +2161,9 @@ class dblink:
             # The tarfile module will write pax headers holding the
             # xattrs only if PAX_FORMAT is specified here.
             with tarfile.open(
-                fileobj=output_file,
+                fileobj=output_file
+                if hasattr(output_file, "write")
+                else open(output_file.fileno(), mode="wb", closefd=False),
                 mode="w|",
                 format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT,
             ) as tar:
