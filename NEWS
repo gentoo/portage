@@ -1,11 +1,20 @@
 portage-3.0.54 (UNRELEASED)
 --------------
 
-TODO
-
 Breaking changes:
 * Finally ban non-PMS helpers portageq, prepinfo, prepman, prepstrip and
   prepallstrip (bug #899898, bug #906129, bug #906156).
+
+Features:
+* sync: git: Pass --verbose to git when emerge --sync --verbose.
+
+Bug fixes:
+* SpawnProcess, ForkProcess: Pass stdin via fd_pipes for non-background. This
+  fixes e.g. emerge --sync --ask (bug #916116).
+
+* _emerge: Fix looking up package name for error colorization (bug #915551).
+
+* sync: git: Handle when git is configured with 'log.showSignature'.
 
 portage-3.0.53 (2023-10-20)
 --------------
