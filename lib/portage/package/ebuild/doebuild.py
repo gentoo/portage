@@ -1305,21 +1305,6 @@ def doebuild(
             if mf is not None:
                 dist_digests = mf.getTypeDigests("DIST")
 
-            def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests):
-                # For userfetch, drop privileges for the entire fetch call, in
-                # order to handle DISTDIR on NFS with root_squash for bug 601252.
-                if _want_userfetch(mysettings):
-                    _drop_privs_userfetch(mysettings)
-
-                return fetch(
-                    fetchme,
-                    mysettings,
-                    listonly=listonly,
-                    fetchonly=fetchonly,
-                    allow_missing_digests=False,
-                    digests=dist_digests,
-                )
-
             loop = asyncio._safe_loop()
             if loop.is_running():
                 # Called by EbuildFetchonly for emerge --pretend --fetchonly.
@@ -1340,6 +1325,7 @@ def doebuild(
                         mysettings,
                         listonly,
                         dist_digests,
+                        fetchonly,
                     )
                 )
             if not success:
@@ -1587,6 +1573,22 @@ def doebuild(
             # If necessary, depend phase has been triggered by aux_get calls
             # and the exemption is no longer needed.
             portage._doebuild_manifest_exempt_depend -= 1
+
+
+def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests, fetchonly):
+    # For userfetch, drop privileges for the entire fetch call, in
+    # order to handle DISTDIR on NFS with root_squash for bug 601252.
+    if _want_userfetch(mysettings):
+        _drop_privs_userfetch(mysettings)
+
+    return fetch(
+        fetchme,
+        mysettings,
+        listonly=listonly,
+        fetchonly=fetchonly,
+        allow_missing_digests=False,
+        digests=dist_digests,
+    )
 
 
 def _check_temp_dir(settings):
