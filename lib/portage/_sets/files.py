@@ -1,10 +1,11 @@
-# Copyright 2007-2020 Gentoo Authors
+# Copyright 2007-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import re
 from itertools import chain
 
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -176,6 +177,14 @@ class StaticFileSet(EditablePackageSet):
             directory = normalize_path(directory)
 
             for parent, dirs, files in os.walk(directory):
+                if portage.utf8_mode:
+                    dirs_orig = dirs
+                    omit_dir = lambda d: dirs_orig.remove(os.fsdecode(d))
+                    parent = os.fsencode(parent)
+                    dirs = [os.fsencode(value) for value in dirs]
+                    files = [os.fsencode(value) for value in files]
+                else:
+                    omit_dir = lambda d: dirs.remove(d)
                 try:
                     parent = _unicode_decode(
                         parent, encoding=_encodings["fs"], errors="strict"
@@ -184,7 +193,7 @@ class StaticFileSet(EditablePackageSet):
                     continue
                 for d in dirs[:]:
                     if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
-                        dirs.remove(d)
+                        omit_dir(d)
                 for filename in files:
                     try:
                         filename = _unicode_decode(
