@@ -139,14 +139,19 @@ class bindbapi(fakedbapi):
         return self._aux_cache_slot_dict_cache
 
     def __getstate__(self):
-        # This attribute is not picklable, but it automatically
-        # regenerates after unpickling when set to None.
-        _aux_cache_slot_dict = self._aux_cache_slot_dict_cache
-        self._aux_cache_slot_dict_cache = None
-        try:
-            return super().__getstate__()
-        finally:
-            self._aux_cache_slot_dict_cache = _aux_cache_slot_dict
+        state = self.__dict__.copy()
+        # These attributes are not picklable, so they are automatically
+        # regenerated after unpickling.
+        state["_aux_cache_slot_dict_cache"] = None
+        state["_instance_key"] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if self._multi_instance:
+            self._instance_key = self._instance_key_multi_instance
+        else:
+            self._instance_key = self._instance_key_cpv
 
     @property
     def writable(self):
