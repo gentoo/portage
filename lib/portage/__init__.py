@@ -618,6 +618,16 @@ class _trees_dict(dict):
 def create_trees(
     config_root=None, target_root=None, trees=None, env=None, sysroot=None, eprefix=None
 ):
+    if utf8_mode:
+        config_root = (
+            os.fsdecode(config_root) if isinstance(config_root, bytes) else config_root
+        )
+        target_root = (
+            os.fsdecode(target_root) if isinstance(target_root, bytes) else target_root
+        )
+        sysroot = os.fsdecode(sysroot) if isinstance(sysroot, bytes) else sysroot
+        eprefix = os.fsdecode(eprefix) if isinstance(eprefix, bytes) else eprefix
+
     if trees is None:
         trees = _trees_dict()
     elif not isinstance(trees, _trees_dict):
