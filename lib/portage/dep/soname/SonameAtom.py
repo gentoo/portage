@@ -20,11 +20,15 @@ class SonameAtom:
         )
 
     def __getstate__(self):
-        return {k: getattr(self, k) for k in self.__slots__}
+        state = {k: getattr(self, k) for k in self.__slots__}
+        # hash() results are not meaningfully picklable.
+        state["_hash_value"] = None
+        return state
 
     def __setstate__(self, state):
         for k, v in state.items():
             object.__setattr__(self, k, v)
+        object.__setattr__(self, "_hash_value", hash(self._hash_key))
 
     def __hash__(self):
         return self._hash_value
