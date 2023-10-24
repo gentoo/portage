@@ -250,8 +250,7 @@ class _EbuildFetcherProcess(ForkProcess):
         self.target = functools.partial(
             self._target,
             self._settings,
-            self._get_digests,
-            self._get_manifest,
+            self._get_manifest(),
             self._uri_map,
             self.fetchonly,
         )
@@ -264,10 +263,7 @@ class _EbuildFetcherProcess(ForkProcess):
         self._settings = None
 
     @staticmethod
-    def _target(settings, get_digests, get_manifest, uri_map, fetchonly):
-        """
-        TODO: Make all arguments picklable for the multiprocessing spawn start method.
-        """
+    def _target(settings, manifest, uri_map, fetchonly):
         # Force consistent color output, in case we are capturing fetch
         # output through a normal pipe due to unavailability of ptys.
         portage.output.havecolor = settings.get("NOCOLOR") not in ("yes", "true")
@@ -278,12 +274,12 @@ class _EbuildFetcherProcess(ForkProcess):
             _drop_privs_userfetch(settings)
 
         rval = 1
-        allow_missing = get_manifest().allow_missing or "digest" in settings.features
+        allow_missing = manifest.allow_missing or "digest" in settings.features
         if fetch(
             uri_map,
             settings,
             fetchonly=fetchonly,
-            digests=copy.deepcopy(get_digests()),
+            digests=copy.deepcopy(manifest.getTypeDigests("DIST")),
             allow_missing_digests=allow_missing,
         ):
             rval = os.EX_OK
