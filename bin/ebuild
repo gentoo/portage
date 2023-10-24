@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1999-2022 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -17,8 +17,7 @@ class SignalInterrupt(KeyboardInterrupt):
         self.signum = signum
 
 
-try:
-
+def main():
     def signal_interrupt(signum, _frame):
         raise SignalInterrupt(signum)
 
@@ -433,10 +432,18 @@ try:
             global_event_loop().close()
             sys.exit(a)
 
+    # Only close the event loop for __main__,
+    # since outside of __main__ it would close the
+    # event loop for child processes when using
+    # the multiprocessing spawn start method.
     global_event_loop().close()
 
-except KeyboardInterrupt as e:
-    # Prevent traceback on ^C
-    signum = getattr(e, "signum", signal.SIGINT)
-    signal.signal(signum, signal.SIG_DFL)
-    raise_signal(signum)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt as e:
+        # Prevent traceback on ^C
+        signum = getattr(e, "signum", signal.SIGINT)
+        signal.signal(signum, signal.SIG_DFL)
+        raise_signal(signum)
