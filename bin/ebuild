@@ -17,54 +17,55 @@ class SignalInterrupt(KeyboardInterrupt):
         self.signum = signum
 
 
-def main():
-    def signal_interrupt(signum, _frame):
-        raise SignalInterrupt(signum)
+def signal_interrupt(signum, _frame):
+    raise SignalInterrupt(signum)
 
-    def debug_signal(_signum, _frame):
-        import pdb
 
-        pdb.set_trace()
+def debug_signal(_signum, _frame):
+    import pdb
 
-    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-    signal.signal(signal.SIGTERM, signal_interrupt)
-    signal.signal(signal.SIGUSR1, debug_signal)
+    pdb.set_trace()
 
-    import argparse
-    from os import path as osp
-    import sys
-    import textwrap
 
-    if osp.isfile(
-        osp.join(
-            osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed"
-        )
-    ):
-        sys.path.insert(
-            0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
-        )
-    import portage
+# Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+signal.signal(signal.SIGTERM, signal_interrupt)
+signal.signal(signal.SIGUSR1, debug_signal)
 
-    portage._internal_caller = True
-    from portage import os
-    from portage import _encodings
-    from portage import _shell_quote
-    from portage import _unicode_encode
-    from portage.const import VDB_PATH
-    from portage.exception import (
-        PermissionDenied,
-        PortageKeyError,
-        PortagePackageException,
-        UnsupportedAPIException,
+import argparse
+from os import path as osp
+import sys
+import textwrap
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
     )
-    from portage.localization import _
-    import portage.util
-    from portage.util._eventloop.global_event_loop import global_event_loop
-    from _emerge.actions import apply_priorities
-    from _emerge.Package import Package
-    from _emerge.RootConfig import RootConfig
+import portage
 
+portage._internal_caller = True
+from portage import os
+from portage import _encodings
+from portage import _shell_quote
+from portage import _unicode_encode
+from portage.const import VDB_PATH
+from portage.exception import (
+    PermissionDenied,
+    PortageKeyError,
+    PortagePackageException,
+    UnsupportedAPIException,
+)
+from portage.localization import _
+import portage.util
+from portage.util._eventloop.global_event_loop import global_event_loop
+from _emerge.actions import apply_priorities
+from _emerge.Package import Package
+from _emerge.RootConfig import RootConfig
+
+
+def main():
     portage.process.sanitize_fds()
     description = "See the ebuild(1) man page for more info"
     usage = "Usage: ebuild <ebuild file> <command> [command] ..."
