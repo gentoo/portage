@@ -77,6 +77,7 @@ module_spec = {
                 "sync-git-pull-env",
                 "sync-git-pull-extra-opts",
                 "sync-git-verify-commit-signature",
+                "sync-git-verify-max-age-days",
             ),
         }
     },

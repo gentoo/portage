@@ -1071,6 +1071,10 @@ Extra options to give to git when updating repository (git pull).
 Require the top commit in the repository to contain a good OpenPGP
 signature. Defaults to no, false.
 .TP
+.B sync\-git\-verify\-max\-age\-days
+Warn if repository is older than the specified number of days. Disabled
+when 0. Defaults to disabled.
+.TP
 .B sync\-hooks\-only\-on\-change = yes|no|true|false
 If set to true, then sync of a given repository will not trigger postsync
 hooks unless hooks would have executed for a master repository or the
