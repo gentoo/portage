@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2006-2022 Gentoo Authors
+# Copyright 2006-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -18,9 +18,7 @@ class SignalInterrupt(KeyboardInterrupt):
         self.signum = signum
 
 
-global_event_loop = None
-try:
-
+def main():
     def signal_interrupt(signum, _frame):
         raise SignalInterrupt(signum)
 
@@ -84,17 +82,26 @@ try:
             sys.exit(1)
         sys.exit(retval)
 
-except KeyboardInterrupt as e:
-    # This block ensures that ^C interrupts are handled quietly. We handle
-    # KeyboardInterrupt instead of installing a SIGINT handler, since
-    # exiting from signal handlers intermittently causes python to ignore
-    # the SystemExit exception with a message like this:
-    # Exception SystemExit: 130 in <function remove at 0x7fd2146c1320> ignored
-    signum = getattr(e, "signum", signal.SIGINT)
-    signal.signal(signum, signal.SIG_DFL)
-    sys.stderr.write(f"\n\nExiting on signal {signum}\n")
-    sys.stderr.flush()
-    raise_signal(signum)
-finally:
-    if global_event_loop is not None:
-        global_event_loop().close()
+
+if __name__ == "__main__":
+    global_event_loop = None
+    try:
+        main()
+    except KeyboardInterrupt as e:
+        # This block ensures that ^C interrupts are handled quietly. We handle
+        # KeyboardInterrupt instead of installing a SIGINT handler, since
+        # exiting from signal handlers intermittently causes python to ignore
+        # the SystemExit exception with a message like this:
+        # Exception SystemExit: 130 in <function remove at 0x7fd2146c1320> ignored
+        signum = getattr(e, "signum", signal.SIGINT)
+        signal.signal(signum, signal.SIG_DFL)
+        sys.stderr.write(f"\n\nExiting on signal {signum}\n")
+        sys.stderr.flush()
+        raise_signal(signum)
+    finally:
+        # Only close the event loop for __main__,
+        # since outside of __main__ it would close the
+        # event loop for child processes when using
+        # the multiprocessing spawn start method.
+        if global_event_loop is not None:
+            global_event_loop().close()
