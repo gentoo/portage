@@ -18,73 +18,72 @@ class SignalInterrupt(KeyboardInterrupt):
         self.signum = signum
 
 
+def signal_interrupt(signum, _frame):
+    raise SignalInterrupt(signum)
+
+
+def debug_signal(_signum, _frame):
+    import pdb
+
+    pdb.set_trace()
+
+
+# Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+signal.signal(signal.SIGTERM, signal_interrupt)
+signal.signal(signal.SIGUSR1, debug_signal)
+
+from os import path as osp
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
+import portage
+
+portage._internal_caller = True
+portage._disable_legacy_globals()
+from portage.elog import mod_echo
+from portage.exception import IsADirectory, ParseError, PermissionDenied
+from portage.util._eventloop.global_event_loop import global_event_loop
+from _emerge.main import emerge_main
+
+
 def main():
-    def signal_interrupt(signum, _frame):
-        raise SignalInterrupt(signum)
-
-    def debug_signal(_signum, _frame):
-        import pdb
-
-        pdb.set_trace()
-
-    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-    signal.signal(signal.SIGTERM, signal_interrupt)
-    signal.signal(signal.SIGUSR1, debug_signal)
-
-    from os import path as osp
-
-    if osp.isfile(
-        osp.join(
-            osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed"
+    portage.process.sanitize_fds()
+    try:
+        retval = emerge_main()
+    except PermissionDenied as e:
+        sys.stderr.write(f"Permission denied: '{str(e)}'\n")
+        sys.exit(e.errno)
+    except IsADirectory as e:
+        sys.stderr.write(
+            f"'{str(e)}' is a directory, but should be a file!\n"
+            "See portage man page for information on "
+            "which files may be directories.\n"
         )
-    ):
-        sys.path.insert(
-            0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
-        )
-    import portage
+        sys.exit(e.errno)
+    except ParseError as e:
+        sys.stderr.write(f"{str(e)}\n")
+        sys.exit(1)
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception:
+        # If an unexpected exception occurs then we don't want the
+        # mod_echo output to obscure the traceback, so dump the
+        # mod_echo output before showing the traceback.
+        import traceback
 
-    portage._internal_caller = True
-    portage._disable_legacy_globals()
-    from portage.elog import mod_echo
-    from portage.exception import IsADirectory, ParseError, PermissionDenied
-    from portage.util._eventloop.global_event_loop import global_event_loop
-    from _emerge.main import emerge_main
-
-    if __name__ == "__main__":
-        portage.process.sanitize_fds()
-        try:
-            retval = emerge_main()
-        except PermissionDenied as e:
-            sys.stderr.write(f"Permission denied: '{str(e)}'\n")
-            sys.exit(e.errno)
-        except IsADirectory as e:
-            sys.stderr.write(
-                f"'{str(e)}' is a directory, but should be a file!\n"
-                "See portage man page for information on "
-                "which files may be directories.\n"
-            )
-            sys.exit(e.errno)
-        except ParseError as e:
-            sys.stderr.write(f"{str(e)}\n")
-            sys.exit(1)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception:
-            # If an unexpected exception occurs then we don't want the
-            # mod_echo output to obscure the traceback, so dump the
-            # mod_echo output before showing the traceback.
-            import traceback
-
-            tb_str = traceback.format_exc()
-            mod_echo.finalize()
-            sys.stderr.write(tb_str)
-            sys.exit(1)
-        sys.exit(retval)
+        tb_str = traceback.format_exc()
+        mod_echo.finalize()
+        sys.stderr.write(tb_str)
+        sys.exit(1)
+    sys.exit(retval)
 
 
 if __name__ == "__main__":
-    global_event_loop = None
     try:
         main()
     except KeyboardInterrupt as e:
@@ -103,5 +102,4 @@ if __name__ == "__main__":
         # since outside of __main__ it would close the
         # event loop for child processes when using
         # the multiprocessing spawn start method.
-        if global_event_loop is not None:
-            global_event_loop().close()
+        global_event_loop().close()
