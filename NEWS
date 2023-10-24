@@ -33,6 +33,8 @@ Features:
   packages missing from the merge list and don't show packages w/ multiple
   BUILD_IDs).
 
+* sync: git: Add sync-git-verify-max-age-days option.
+
 Bug fixes:
 * SpawnProcess, ForkProcess: Pass stdin via fd_pipes for non-background. This
   fixes e.g. emerge --sync --ask (bug #916116).
