@@ -89,12 +89,19 @@ class SyncManager:
         # files have sane permissions.
         os.umask(0o22)
 
-        self.module_controller = portage.sync.module_controller
-        self.module_names = self.module_controller.module_names
         self.hooks = {}
         for _dir in ["repo.postsync.d", "postsync.d"]:
             hooks = get_hooks_from_dir(_dir, prefix=self.settings["PORTAGE_CONFIGROOT"])
             self.hooks[_dir] = hooks
+
+    @property
+    def module_controller(self):
+        # Not stored as local attribute because it's not picklable.
+        return portage.sync.module_controller
+
+    @property
+    def module_names(self):
+        return self.module_controller.module_names
 
     def __getattr__(self, name):
         if name == "async":
