@@ -1,8 +1,9 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["dbapi"]
 
+import functools
 import re
 import warnings
 from typing import Any, Dict, List, Optional, Tuple
@@ -223,6 +224,10 @@ class dbapi:
 
             yield cpv
 
+    @staticmethod
+    def _iuse_implicit_built(iuse_implicit_match, use, flag):
+        return iuse_implicit_match(flag) or flag in use
+
     def _iuse_implicit_cnstr(self, pkg, metadata):
         """
         Construct a callable that checks if a given USE flag should
@@ -257,9 +262,11 @@ class dbapi:
             # This behavior is only used for EAPIs that support IUSE_EFFECTIVE,
             # since built USE settings for earlier EAPIs may contain a large
             # number of irrelevant flags.
-            prof_iuse = iuse_implicit_match
-            enabled = frozenset(metadata["USE"].split()).__contains__
-            iuse_implicit_match = lambda flag: prof_iuse(flag) or enabled(flag)
+            iuse_implicit_match = functools.partial(
+                self._iuse_implicit_built,
+                iuse_implicit_match,
+                frozenset(metadata["USE"].split()),
+            )
 
         return iuse_implicit_match
 
