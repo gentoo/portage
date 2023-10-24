@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -943,6 +943,8 @@ class _unshare_validator:
         @rtype: int
         @returns: errno value, or 0 if no error occurred.
         """
+        # This ctypes library lookup caches the result for use in the
+        # subprocess when the multiprocessing start method is fork.
         filename = find_library("c")
         if filename is None:
             return errno.ENOTSUP
@@ -955,7 +957,7 @@ class _unshare_validator:
 
         proc = multiprocessing.Process(
             target=cls._run_subproc,
-            args=(subproc_pipe, cls._validate_subproc, (libc.unshare, flags)),
+            args=(subproc_pipe, cls._validate_subproc, (filename, flags)),
         )
         proc.start()
         subproc_pipe.close()
@@ -984,7 +986,7 @@ class _unshare_validator:
         subproc_pipe.close()
 
     @staticmethod
-    def _validate_subproc(unshare, flags):
+    def _validate_subproc(filename, flags):
         """
         Perform validation. Calls to this method must be isolated in a
         subprocess, since the unshare function is called for purposes of
@@ -997,7 +999,10 @@ class _unshare_validator:
         @rtype: int
         @returns: errno value, or 0 if no error occurred.
         """
-        return 0 if unshare(flags) == 0 else ctypes.get_errno()
+        # Since ctypes objects are not picklable for the multiprocessing
+        # spawn start method, acquire them here.
+        libc = LoadLibrary(filename)
+        return 0 if libc.unshare(flags) == 0 else ctypes.get_errno()
 
 
 _unshare_validate = _unshare_validator()
