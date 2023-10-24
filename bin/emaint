@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """System health checks and maintenance utilities.
@@ -53,16 +53,21 @@ try:
     from portage.emaint.main import emaint_main
     from portage.util._eventloop.global_event_loop import global_event_loop
 
-    try:
-        emaint_main(sys.argv[1:])
-    except OSError as e:
-        if e.errno == errno.EACCES:
-            print("\nemaint: Need superuser access")
-            sys.exit(1)
-        else:
-            raise
-    finally:
-        global_event_loop().close()
+    if __name__ == "__main__":
+        try:
+            emaint_main(sys.argv[1:])
+        except OSError as e:
+            if e.errno == errno.EACCES:
+                print("\nemaint: Need superuser access")
+                sys.exit(1)
+            else:
+                raise
+        finally:
+            # Only close the event loop for __main__,
+            # since outside of __main__ it would close the
+            # event loop for child processes when using
+            # the multiprocessing spawn start method.
+            global_event_loop().close()
 
 except KeyboardInterrupt as e:
     # Prevent traceback on ^C
