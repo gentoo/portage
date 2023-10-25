@@ -34,7 +34,9 @@ Bug fixes:
 
 * sync: git: Handle when git is configured with 'log.showSignature'.
 
-* StaticFileSet: Fix os.walk for utf8_mode (bug #916182). This broke app-portage/unsymlink-lib.
+* StaticFileSet: Fix os.walk for utf8_mode (bug #916182).
+
+* create_trees: Handle bytes arguments for utf8_mode (bug #916149). This broke app-portage/unsymlink-lib.
 
 Cleanups:
 * MergeProcess: Support QueryCommand with spawn start method (bug #916106)
