@@ -9,12 +9,18 @@ Release notes take the form of the following optional categories:
 portage-3.0.54 (UNRELEASED)
 --------------
 
+Zac has continued working on preparing us for the 'spawn' multiprocessing
+method.
+
 Breaking changes:
 * Finally ban non-PMS helpers portageq, prepinfo, prepman, prepstrip and
   prepallstrip (bug #899898, bug #906129, bug #906156).
 
 Features:
 * sync: git: Pass --verbose to git when emerge --sync --verbose.
+
+* sync: git: Forcefully update git remote to match sync-uri for non-volatile
+  repositories (bug #905869).
 
 * emerge: Make --binpkg-respect-use output far more concise (don't show
   packages missing from the merge list and don't show packages w/ multiple
@@ -27,6 +33,8 @@ Bug fixes:
 * _emerge: Fix looking up package name for error colorization (bug #915551).
 
 * sync: git: Handle when git is configured with 'log.showSignature'.
+
+* StaticFileSet: Fix os.walk for utf8_mode (bug #916182). This broke app-portage/unsymlink-lib.
 
 Cleanups:
 * MergeProcess: Support QueryCommand with spawn start method (bug #916106)
