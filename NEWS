@@ -9,7 +9,9 @@ Release notes take the form of the following optional categories:
 portage-3.0.55 (UNRELEASED)
 --------------
 
-TODO
+Bug fixes:
+* Convert portageq helper to a function to avoid breaking external callers
+  (bug ##916287, bug #916296).
 
 portage-3.0.54 (2023-10-25)
 --------------

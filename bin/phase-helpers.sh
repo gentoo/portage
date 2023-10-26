@@ -1006,6 +1006,10 @@ best_version() {
 	___best_version_and_has_version_common "$@"
 }
 
+portageq() {
+    die "portageq is not allowed in ebuild scope"
+}
+
 if ___eapi_has_get_libdir; then
 	get_libdir() {
 		local libdir_var="LIBDIR_${ABI}"
