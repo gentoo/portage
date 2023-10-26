@@ -5,7 +5,7 @@ py.install_sources(
         'test_emerge_blocker_file_collision.py',
         'test_emerge_slot_abi.py',
         'test_global_updates.py',
-        'test_simple.py',
+        'test_baseline.py',
         '__init__.py',
         '__test__.py',
     ],
