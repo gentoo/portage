@@ -1007,7 +1007,7 @@ best_version() {
 }
 
 portageq() {
-    die "portageq is not allowed in ebuild scope"
+	die "portageq is not allowed in ebuild scope"
 }
 
 if ___eapi_has_get_libdir; then
