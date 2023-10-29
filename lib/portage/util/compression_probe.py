@@ -38,7 +38,7 @@ _compressors = {
     },
     "xz": {
         "compress": "xz -T{JOBS} --memlimit-compress=50% -q ${BINPKG_COMPRESS_FLAGS}",
-        "decompress": "xz -T{JOBS} -d",
+        "decompress": "xz -T{JOBS} --memlimit-mt-decompress=50% -d",
         "package": "app-arch/xz-utils",
     },
     "zstd": {
