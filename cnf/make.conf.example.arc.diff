@@ -1,0 +1,46 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,15 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# 32-bit ARC systems should use this host setting:
++CHOST="arc-snps-linux-gnu"
++
++# 64-bit ARCv3 and above systems may use this host setting:
++#CHOST="arc64-snps-linux-gnu"
++
+ # Host and optimization settings
+ # ==============================
+ #
+@@ -39,7 +48,17 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mcpu=<cpu-type> compiles code that runs exclusively on a particular CPU.
++#
++# -mtune=<cpu-series> compiles code that is optimized for a particular CPU, but
++# will run on the CPU specified in -mcpu, or all ARC CPUs if -mcpu= is not
++# specified.
++#
++# -mfpu=<fpu> specifies the capabilities of the FPU to generate floating-point
++# instructions for.
++#
++# Please refer to the "ARC Options" section of the GCC manual for a list of
++# possible CPU and FPU values.
+ #
+ #CFLAGS="-O2 -pipe"
+ #
+@@ -76,7 +95,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~arc"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

@@ -9,6 +9,9 @@ Release notes take the form of the following optional categories:
 portage-3.0.55 (UNRELEASED)
 --------------
 
+Features:
+* cnf: make.conf.example.arc: add for the arc arch.
+
 Bug fixes:
 * Convert portageq helper to a function to avoid breaking external callers
   (bug #916287, bug #916296).
