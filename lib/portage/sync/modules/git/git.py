@@ -152,6 +152,8 @@ class GitSync(NewBase):
             {"GIT_CEILING_DIRECTORIES": self._gen_ceiling_string(self.repo.location)}
         )
 
+        self.add_safe_directory()
+
         if self.repo.module_specific_options.get("sync-git-env"):
             shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
             env = {
@@ -260,8 +262,6 @@ class GitSync(NewBase):
             git_cmd_opts += (
                 f" {self.repo.module_specific_options['sync-git-pull-extra-opts']}"
             )
-
-        self.add_safe_directory()
 
         try:
             remote_branch = portage._unicode_decode(
