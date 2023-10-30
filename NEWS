@@ -13,6 +13,9 @@ Bug fixes:
 * Convert portageq helper to a function to avoid breaking external callers
   (bug #916287, bug #916296).
 
+Cleanups:
+* Add pytest markers: ft, unit and stress.
+
 portage-3.0.54 (2023-10-25)
 --------------
 
