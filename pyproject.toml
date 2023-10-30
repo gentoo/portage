@@ -33,3 +33,10 @@ gpkg-sign = 'portage.util.bin_entry_point:bin_entry_point'
 portageq = 'portage.util.bin_entry_point:bin_entry_point'
 quickpkg = 'portage.util.bin_entry_point:bin_entry_point'
 regenworld = 'portage.util.bin_entry_point:bin_entry_point'
+
+[tool.pytest.ini_options]
+markers = [
+    "ft: functional tests (select: '-m ft'; deselect with '-m \"not ft\"')",
+    "stress: stress tests (select: '-m stress'; deselect with '-m \"not stress\"')",
+    "unit: unit tests (select: '-m unit'; deselect with '-m \"not unit\"')",
+]

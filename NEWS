@@ -15,6 +15,9 @@ Features:
 Bug fixes:
 * ebuild: Add missing newlines in error messages.
 
+Cleanups:
+* Add pytest markers: ft, unit and stress.
+
 portage-3.0.55 (2023-11-06)
 --------------
 
