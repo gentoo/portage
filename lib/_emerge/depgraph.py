@@ -1234,7 +1234,11 @@ class depgraph:
     def _show_ignored_binaries_respect_use(self, respect_use):
         seen = {}
         messages = []
-        merging = {pkg.cpv for pkg in self._dynamic_config._displayed_list}
+        merging = {
+            pkg.cpv
+            for pkg in self._dynamic_config._displayed_list
+            if isinstance(pkg, Package)
+        }
         for pkg, flags in respect_use.items():
             # Don't include recursive deps which aren't in the merge list anyway.
             if pkg.cpv not in merging:
