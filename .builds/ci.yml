@@ -12,6 +12,8 @@ environment:
     - '3.9'
     - '3.10'
     - '3.11'
+    # Python 3.12 seems to (at least sometimes) timeout
+    # - '3.12'
     # Testing PyPy is currently broken, see bug #903709
     # - 'pypy3'
 tasks:
@@ -21,18 +23,24 @@ tasks:
   - setup-tests: |
       sudo apt-get install -y --no-install-recommends meson
       for py in "${PYTHON_VERSIONS[@]}"; do
+        source ".venv-$py/bin/activate"
         # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
-        ".venv-$py/bin/pip" install pytest setuptools
+        pip install pytest setuptools
+        printf "[binaries]\npython = '%s'\n" "$(command -v python)" \
+            | tee "/tmp/native-$py.ini"
+        meson setup --native-file "/tmp/native-$py.ini" "/tmp/build-$py" portage
+        deactivate
       done
 
   - test-install: |
       for py in "${PYTHON_VERSIONS[@]}"; do
-        echo -e "[binaries]\npython = '${PWD}/.venv-${py}/bin/python'" > /tmp/native.ini
-        meson setup --native-file /tmp/native.ini "/tmp/build-$py" portage
-        meson install -C "/tmp/build-$py"
+        time meson install -C "/tmp/build-$py"
       done
 
   - test-portage: |
+      start_time=$EPOCHSECONDS
       for py in "${PYTHON_VERSIONS[@]}"; do
         meson test -C "/tmp/build-$py" --verbose
       done
+      end_time=$EPOCHSECONDS
+      printf "Total elapsed time: %d seconds\n" $((end_time - start_time))
