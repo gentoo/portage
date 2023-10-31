@@ -21,11 +21,11 @@ tasks:
       portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
 
   - setup-tests: |
-      sudo apt-get install -y --no-install-recommends meson
+      sudo apt-get install -y --no-install-recommends meson pkg-config
       for py in "${PYTHON_VERSIONS[@]}"; do
         source ".venv-$py/bin/activate"
         # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
-        pip install pytest setuptools
+        pip install pytest pytest-xdist[psutil] setuptools
         printf "[binaries]\npython = '%s'\n" "$(command -v python)" \
             | tee "/tmp/native-$py.ini"
         meson setup --native-file "/tmp/native-$py.ini" "/tmp/build-$py" portage
