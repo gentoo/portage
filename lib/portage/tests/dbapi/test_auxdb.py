@@ -31,7 +31,7 @@ class AuxdbTestCase(TestCase):
             import sqlite3
         except ImportError:
             self.skipTest("sqlite3 import failed")
-        self._test_mod("portage.cache.sqlite.database", picklable=False)
+        self._test_mod("portage.cache.sqlite.database", picklable=True)
 
     def _test_mod(self, auxdbmodule, multiproc=True, picklable=True):
         ebuilds = {
