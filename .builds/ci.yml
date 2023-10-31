@@ -16,6 +16,15 @@ environment:
     # - '3.12'
     # Testing PyPy is currently broken, see bug #903709
     # - 'pypy3'
+  PYTEST_ADDOPTS: >
+    -vv
+    -ra
+    -l
+    -o console_output_style=count
+    -o log_cli=true
+    --log-cli-level=info
+    -n logical
+    --dist=worksteal
 tasks:
   - setup-python: |
       portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
