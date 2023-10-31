@@ -34,7 +34,7 @@ tasks:
 
   - test-install: |
       for py in "${PYTHON_VERSIONS[@]}"; do
-        time meson install -C "/tmp/build-$py"
+        time meson install -C "/tmp/build-$py" --destdir "/tmp/install-root-$py"
       done
 
   - test-portage: |
