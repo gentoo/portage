@@ -11,6 +11,7 @@ portage-3.0.62 (UNRELEASED)
 
 Features:
 * cnf: make.conf.example.arc: add for the arc arch.
+* ELF: add entries for ARC machines
 
 portage-3.0.61 (2024-01-05)
 --------------
