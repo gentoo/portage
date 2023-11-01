@@ -16,7 +16,7 @@ try:
     if not hasattr(errno, "ESTALE"):
         # ESTALE may not be defined on some systems, such as interix.
         errno.ESTALE = -1
-    import multiprocessing.util
+    import functools
     import re
     import types
     import platform
@@ -421,7 +421,7 @@ class _ForkWatcher:
 
 _ForkWatcher.hook(_ForkWatcher)
 
-multiprocessing.util.register_after_fork(_ForkWatcher, _ForkWatcher.hook)
+os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
 
 
 def getpid():
