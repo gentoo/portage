@@ -42,20 +42,36 @@ class AsyncFunctionTestCase(TestCase):
                 ),
             )
             reader.start()
+            # For compatibility with the multiprocessing spawn start
+            # method, we delay restoration of the stdin file descriptor,
+            # since this file descriptor is sent to the subprocess
+            # asynchronously.
+            _set_nonblocking(pw.fileno())
+            with open(pw.fileno(), mode="wb", buffering=0, closefd=False) as pipe_write:
+                await _writer(pipe_write, test_string.encode("utf_8"))
+            pw.close()
+            self.assertEqual((await reader.async_wait()), os.EX_OK)
+            self.assertEqual(reader.result, test_string)
         finally:
             os.dup2(stdin_backup, portage._get_stdin().fileno())
             os.close(stdin_backup)
 
-        _set_nonblocking(pw.fileno())
-        with open(pw.fileno(), mode="wb", buffering=0, closefd=False) as pipe_write:
-            await _writer(pipe_write, test_string.encode("utf_8"))
-        pw.close()
-        self.assertEqual((await reader.async_wait()), os.EX_OK)
-        self.assertEqual(reader.result, test_string)
-
     def testAsyncFunctionStdin(self):
         loop = asyncio._wrap_loop()
         loop.run_until_complete(self._testAsyncFunctionStdin(loop=loop))
+
+    def testAsyncFunctionStdinSpawn(self):
+        orig_start_method = multiprocessing.get_start_method()
+        if orig_start_method == "spawn":
+            self.skipTest("multiprocessing start method is already spawn")
+        # NOTE: An attempt was made to use multiprocessing.get_context("spawn")
+        # here, but it caused the python process to terminate unexpectedly
+        # during a send_handle call.
+        multiprocessing.set_start_method("spawn", force=True)
+        try:
+            self.testAsyncFunctionStdin()
+        finally:
+            multiprocessing.set_start_method(orig_start_method, force=True)
 
     @staticmethod
     def _test_getpid_fork(preexec_fn=None):
