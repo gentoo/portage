@@ -1235,23 +1235,28 @@ class depgraph:
         seen = {}
         messages = []
         merging = {
-            pkg.cpv
+            (pkg.root, pkg.cpv)
             for pkg in self._dynamic_config._displayed_list
             if isinstance(pkg, Package)
         }
         for pkg, flags in respect_use.items():
             # Don't include recursive deps which aren't in the merge list anyway.
-            if pkg.cpv not in merging:
+            if (pkg.root, pkg.cpv) not in merging:
                 continue
+
             flag_display = []
             for flag in sorted(flags):
                 if flag not in pkg.use.enabled:
                     flag = "-" + flag
                 flag_display.append(flag)
             flag_display = " ".join(flag_display)
+
             # We don't want to list the same USE flags for multiple build IDs
-            if pkg.cpv not in seen or flag_display not in seen[pkg.cpv]:
-                seen.setdefault(pkg.cpv, set()).add(flag_display)
+            seen.setdefault(pkg.root, dict())
+            if (pkg.root, pkg.cpv) not in seen or flag_display not in seen[pkg.root][
+                pkg.cpv
+            ]:
+                seen[pkg.root].setdefault(pkg.cpv, set()).add(flag_display)
                 # The user can paste this line into package.use
                 messages.append(f"    ={pkg.cpv} {flag_display}")
                 if pkg.root_config.settings["ROOT"] != "/":
