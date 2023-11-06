@@ -17,6 +17,9 @@ Bug fixes:
 
 * Avoid crash with blockers in depgraph for binpkg-respect-use notice (bug #916336).
 
+* Don't call trust helper (e.g. getuto) with --getbinpkg --pretend as we may
+  lack privileges to do anything (bug #915842).
+
 portage-3.0.54 (2023-10-25)
 --------------
 

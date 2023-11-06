@@ -120,7 +120,9 @@ class BinarytreeTestCase(TestCase):
         settings.__getitem__.return_value = "/some/path"
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
-        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=refresh)
+        ppopulate_remote.assert_called_once_with(
+            getbinpkg_refresh=refresh, pretend=False
+        )
 
     @patch("portage.dbapi.bintree.writemsg")
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
@@ -161,4 +163,4 @@ class BinarytreeTestCase(TestCase):
         settings.__getitem__.return_value = "/some/path"
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True)
-        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=False)
+        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=False, pretend=False)

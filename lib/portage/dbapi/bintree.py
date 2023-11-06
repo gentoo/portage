@@ -831,6 +831,7 @@ class binarytree:
         add_repos=(),
         force_reindex=False,
         invalid_errors=True,
+        pretend=False,
     ):
         """
         Populates the binarytree with package metadata.
@@ -844,6 +845,10 @@ class binarytree:
         @type add_repos: sequence
         """
 
+        # TODO: Should we return here if we're --pretend? On the one hand,
+        # people might not want --pretend to affect state. On the other hand,
+        # it makes --pretend pretty useless with --getbinpkg as your index will
+        # be stale.
         if self._populating:
             return
 
@@ -898,7 +903,9 @@ class binarytree:
                         noiselevel=-1,
                     )
                 else:
-                    self._populate_remote(getbinpkg_refresh=getbinpkg_refresh)
+                    self._populate_remote(
+                        getbinpkg_refresh=getbinpkg_refresh, pretend=pretend
+                    )
 
         finally:
             self._populating = False
@@ -1290,7 +1297,7 @@ class binarytree:
             return
         ret.check_returncode()
 
-    def _populate_remote(self, getbinpkg_refresh=True):
+    def _populate_remote(self, getbinpkg_refresh=True, pretend=False):
         self._remote_has_index = False
         self._remotepkgs = {}
 
@@ -1299,7 +1306,8 @@ class binarytree:
             # when binpackages are involved, not only when we refuse unsigned
             # ones. (If the keys have expired we end up refusing signed but
             # technically invalid packages...)
-            self._run_trust_helper()
+            if not pretend:
+                self._run_trust_helper()
             gpkg_only = True
         else:
             gpkg_only = False

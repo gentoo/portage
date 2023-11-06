@@ -174,6 +174,7 @@ def action_build(
             kwargs["add_repos"] = (quickpkg_vardb,)
 
         try:
+            kwargs["pretend"] = "--pretend" in emerge_config.opts
             emerge_config.target_config.trees["bintree"].populate(
                 getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
             )
@@ -3471,6 +3472,8 @@ def run_action(emerge_config):
                 kwargs["add_repos"] = (
                     emerge_config.running_config.trees["vartree"].dbapi,
                 )
+
+            kwargs["pretend"] = "--pretend" in emerge_config.opts
 
             try:
                 mytrees["bintree"].populate(

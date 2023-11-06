@@ -42,4 +42,6 @@ class RunActionTestCase(TestCase):
 
         run_action(config)
 
-        bt.populate.assert_called_once_with(getbinpkgs=False, getbinpkg_refresh=True)
+        bt.populate.assert_called_once_with(
+            getbinpkgs=False, getbinpkg_refresh=True, pretend=False
+        )
