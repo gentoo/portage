@@ -12,6 +12,9 @@ portage-3.0.56 (UNRELEASED)
 Features:
 * sync: git: Add sync-git-verify-max-age-days option.
 
+Bug fixes:
+* ebuild: Add missing newlines in error messages.
+
 portage-3.0.55 (2023-11-06)
 --------------
 
