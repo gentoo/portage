@@ -1565,7 +1565,7 @@ class config:
             except KeyError as e:
                 writemsg(
                     "!!! BINPKG_COMPRESS contains invalid or "
-                    "unsupported compression method: %s" % e.args[0],
+                    "unsupported compression method: %s\n" % e.args[0],
                     noiselevel=-1,
                 )
             else:
@@ -1587,7 +1587,7 @@ class config:
                 except IndexError as e:
                     writemsg(
                         "!!! BINPKG_COMPRESS contains invalid or "
-                        "unsupported compression method: %s" % e.args[0],
+                        "unsupported compression method: %s\n" % e.args[0],
                         noiselevel=-1,
                     )
                 else:
@@ -1595,7 +1595,7 @@ class config:
                         missing_package = compression["package"]
                         writemsg(
                             "!!! BINPKG_COMPRESS unsupported %s. "
-                            "Missing package: %s"
+                            "Missing package: %s\n"
                             % (binpkg_compression, missing_package),
                             noiselevel=-1,
                         )
