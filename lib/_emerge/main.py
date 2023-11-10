@@ -12,9 +12,11 @@ portage.proxy.lazyimport.lazyimport(
     globals(),
     "logging",
     "portage.dep:Atom",
+    "portage.output:xtermTitleReset",
     "portage.util:writemsg_level",
     "textwrap",
     "_emerge.actions:load_emerge_config,run_action," + "validate_ebuild_environment",
+    "_emerge.emergelog:emergelog",
     "_emerge.help:emerge_help",
     "_emerge.is_valid_package_atom:insert_category_into_atom",
 )
@@ -1310,3 +1312,11 @@ def emerge_main(args: Optional[list[str]] = None):
             if "porttree" in x.lazy_items:
                 continue
             x["porttree"].dbapi.close_caches()
+
+        # This gets out final log message in before we quit.
+        xterm_titles = "notitles" not in emerge_config.target_config.settings.features
+        if "--pretend" not in emerge_config.opts:
+            emergelog(xterm_titles, " *** terminating.")
+
+        if xterm_titles:
+            xtermTitleReset()

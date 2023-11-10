@@ -54,7 +54,6 @@ from portage.output import (
     darkgreen,
     red,
     xtermTitle,
-    xtermTitleReset,
 )
 
 good = create_color_func("GOOD")
@@ -3827,15 +3826,6 @@ def run_action(emerge_config):
         sys.exit(128 + signum)
 
     signal.signal(signal.SIGTERM, emergeexitsig)
-
-    def emergeexit():
-        """This gets out final log message in before we quit."""
-        if "--pretend" not in emerge_config.opts:
-            emergelog(xterm_titles, " *** terminating.")
-        if xterm_titles:
-            xtermTitleReset()
-
-    portage.atexit_register(emergeexit)
 
     if emerge_config.action in ("config", "metadata", "regen", "sync"):
         if "--pretend" in emerge_config.opts:
