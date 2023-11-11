@@ -408,7 +408,7 @@ Contains the path to the directory in which package-specific auxiliary
 files are located.  Do not modify this variable.
 .TP
 .B EBUILD_PHASE
-Contains the abreviated name of the phase function that is
+Contains the abbreviated name of the phase function that is
 currently executing, such as "setup", "unpack", "compile", or
 "preinst".
 .TP
@@ -476,7 +476,7 @@ source	source\-build which is scheduled for merge
 .TP
 .B PROVIDES_EXCLUDE\fR = \fI[space delimited list of fnmatch patterns]\fR
 Sonames and file paths matched by these fnmatch patterns will be
-excluded during genertion of \fBPROVIDES\fR metadata (see
+excluded during generation of \fBPROVIDES\fR metadata (see
 \fBportage\fR(5)). Patterns are delimited by whitespace, and it is
 possible to create patterns containing quoted whitespace.
 .TP
@@ -553,7 +553,7 @@ Defines the ebuild API version to which this package conforms. If not
 defined then it defaults to "0". If portage does not recognize the
 EAPI value then it will mask the package and refuse to perform any
 operations with it since this means that a newer version of portage
-needs to be installed first. For maximum backward compatiblity, a
+needs to be installed first. For maximum backward compatibility, a
 package should conform to the lowest possible EAPI. Note that anyone
 who uses the \fBebuild\fR(1) command with this package will be
 required to have a version of portage that recognizes the EAPI to
@@ -961,7 +961,7 @@ end the function with a call to \fBdie\fR.
 .TP
 .B pkg_setup
 This function can be used if the package needs specific setup actions or
-checks to be preformed before anything else.
+checks to be performed before anything else.
 .br
 Initial working directory: $PORTAGE_TMPDIR
 .TP

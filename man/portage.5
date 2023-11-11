@@ -919,7 +919,7 @@ only.
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information.
 .br
-Configuration specified in \fBrepos.conf\fR can be overriden by
+Configuration specified in \fBrepos.conf\fR can be overridden by
 \fBPORTAGE_REPOSITORIES\fR environmental variable, which has the same
 format as \fBrepos.conf\fR.
 
@@ -1106,12 +1106,12 @@ Extra options to give to mercurial when updating repository (hg pull).
 Enable read\-copy\-update (RCU) behavior for sync operations. The current
 latest immutable version of a repository will be referenced by a symlink
 found where the repository would normally be located (see the \fBlocation\fR
-setting). Repository consumers should resolve the cannonical path of this
+setting). Repository consumers should resolve the canonical path of this
 symlink before attempt to access the repository, and all operations should
 be read\-only, since the repository is considered immutable. Updates occur
 by atomic replacement of the symlink, which causes new consumers to use the
 new immutable version, while any earlier consumers continue to use the
-cannonical path that was resolved earlier. This option requires
+canonical path that was resolved earlier. This option requires
 sync\-allow\-hardlinks and sync\-rcu\-store\-dir options to be enabled, and
 currently also requires that sync\-type is set to rsync. This option is
 disabled by default, since the symlink usage would require special handling
@@ -1321,7 +1321,7 @@ sync\-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
 sync\-cvs\-repo = gentoo\-x86
 auto\-sync = yes
 
-# Overlay 'voip' syncronized with layman's plug-in sync module
+# Overlay 'voip' synchronized with layman's plug-in sync module
 [voip]
 location = /var/lib/layman/voip
 sync\-type = laymanator
@@ -1646,7 +1646,7 @@ A list of all the packages which will be displayed when you run `emerge info`.
 A list of all the variables which will be displayed when you run `emerge info`.
 .TP
 .BR license_groups
-This contains groups of licenses that may be specifed in the
+This contains groups of licenses that may be specified in the
 \fBACCEPT_LICENSE\fR variable (see \fBmake.conf\fR(5)). Refer
 to GLEP 23 for further information:
 \fIhttps://www.gentoo.org/glep/glep-0023.html\fR.
@@ -1856,7 +1856,7 @@ all objects that the package installed onto your system.
 Contains information about the sonames that a package provides, which is
 automatically generated from the files that it installs. The sonames
 may have been filtered by the \fBPROVIDES_EXCLUDE\fR \fBebuild\fR(5)
-variable. A multilib category, followed by a colon, always preceeds a
+variable. A multilib category, followed by a colon, always precedes a
 list of one or more sonames.
 
 .I Example:
@@ -1870,7 +1870,7 @@ automatically generated from the files that it installs. The sonames
 may have been filtered by the \fBREQUIRES_EXCLUDE\fR \fBebuild\fR(5)
 variable. Any sonames that a package provides are automatically excluded
 from \fBREQUIRES\fR. A multilib category, followed by a colon, always
-preceeds a list of one or more sonames.
+precedes a list of one or more sonames.
 
 .I Example:
 .nf
