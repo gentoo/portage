@@ -24,7 +24,7 @@ def eapi_invalid(self, cpv, repo_name, settings, eapi_var, eapi_parsed, eapi_lin
 
     if not eapi_parsed:
         # None means the assignment was not found, while an
-        # empty string indicates an (invalid) empty assingment.
+        # empty string indicates an (invalid) empty assignment.
         msg.append(
             f"\tvalid EAPI assignment must occur on or before line: {eapi_lineno}"
         )

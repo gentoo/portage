@@ -188,7 +188,7 @@ class GitSync(NewBase):
         #
         # For sync-type=git repositories, we've seen a problem in the wild
         # where shallow clones end up "breaking themselves" especially when
-        # the origin is behing a CDN. 'git pull' might return state X,
+        # the origin is behind a CDN. 'git pull' might return state X,
         # but on a subsequent pull, return state X-1. git will then (sometimes)
         # leave orphaned untracked files in the repository. On a subsequent pull,
         # when state >= X is returned where those files exist in the origin,
@@ -204,7 +204,7 @@ class GitSync(NewBase):
         # 2.
         #   - volatile=no (explicitly set to no), OR
         #   - volatile is unset AND the repository owner is either root or portage
-        # 3. Portage is syncing the respository (rather than e.g. auto-sync=no
+        # 3. Portage is syncing the repository (rather than e.g. auto-sync=no
         # and never running 'emaint sync -r foo')
         #
         # Portage will not clobber if:

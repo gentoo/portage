@@ -585,7 +585,7 @@ class RsyncSync(NewBase):
             "--force",  # Force deletion on non-empty dirs
             "--whole-file",  # Don't do block transfers, only entire files
             "--delete",  # Delete files that aren't in the master tree
-            "--stats",  # Show final statistics about what was transfered
+            "--stats",  # Show final statistics about what was transferred
             "--human-readable",
             "--timeout=" + str(self.timeout),  # IO timeout if not done in X seconds
             "--exclude=/distfiles",  # Exclude distfiles from consideration

@@ -13,7 +13,7 @@ class SQLDatabase(template.database):
     _BaseError must be an exception class that all Exceptions thrown from the derived RDBMS are derived
     from.
 
-    SCHEMA_INSERT_CPV_INTO_PACKAGE should be modified dependant on the RDBMS, as should SCHEMA_PACKAGE_CREATE-
+    SCHEMA_INSERT_CPV_INTO_PACKAGE should be modified dependent on the RDBMS, as should SCHEMA_PACKAGE_CREATE-
     basically you need to deal with creation of a unique pkgid.  If the dbapi2 rdbms class has a method of
     recovering that id, then modify _insert_cpv to remove the extra select.
 
@@ -69,7 +69,7 @@ class SQLDatabase(template.database):
 
     def _initdb_con(self, config):
         """ensure needed tables are in place.
-        If the derived class needs a different set of table creation commands, overload the approriate
+        If the derived class needs a different set of table creation commands, overload the appropriate
         SCHEMA_ attributes.  If it needs additional execution beyond, override"""
 
         self._dbconnect(config)

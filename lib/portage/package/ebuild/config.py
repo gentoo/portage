@@ -2839,7 +2839,7 @@ class config:
 
         use_expand_unprefixed = self.get("USE_EXPAND_UNPREFIXED", "").split()
 
-        # In order to best accomodate the long-standing practice of
+        # In order to best accommodate the long-standing practice of
         # setting default USE_EXPAND variables in the profile's
         # make.defaults, we translate these variables into their
         # equivalent USE flags so that useful incremental behavior

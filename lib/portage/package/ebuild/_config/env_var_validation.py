@@ -8,7 +8,7 @@ from portage.util import shlex_split
 
 def validate_cmd_var(v):
     """
-    Validate an evironment variable value to see if it
+    Validate an environment variable value to see if it
     contains an executable command as the first token.
     returns (valid, token_list) where 'valid' is boolean and 'token_list'
     is the (possibly empty) list of tokens split by shlex.

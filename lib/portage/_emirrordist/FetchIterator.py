@@ -194,7 +194,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
                 if override_fetch:
                     uri = uri.partition("+")[2]
 
-                # skip fetch-restricted files unless overriden via fetch+
+                # skip fetch-restricted files unless overridden via fetch+
                 # or mirror+
                 if restrict_fetch and not override_fetch:
                     continue

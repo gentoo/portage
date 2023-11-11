@@ -232,7 +232,7 @@ def _ensure_distdir(settings, distdir):
     if "FAKED_MODE" in settings:
         # When inside fakeroot, directories with portage's gid appear
         # to have root's gid. Therefore, use root's gid instead of
-        # portage's gid to avoid spurrious permissions adjustments
+        # portage's gid to avoid spurious permissions adjustments
         # when inside fakeroot.
         dir_gid = 0
 

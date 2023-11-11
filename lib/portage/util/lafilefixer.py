@@ -20,7 +20,7 @@ from portage.exception import InvalidData
 # 	are ignored by libtool (last one wins), but we treat it as error (like
 # 	lafilefixer does).
 # 	What it does:
-# 		* Replaces all .la files with absolut paths in dependency_libs with
+# 		* Replaces all .la files with absolute paths in dependency_libs with
 # 		  corresponding -l* and -L* entries
 # 		  (/usr/lib64/libfoo.la -> -L/usr/lib64 -lfoo)
 # 		* Moves various flags (see flag_re below) to inherited_linker_flags,

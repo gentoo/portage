@@ -64,7 +64,7 @@ import portage.cache.mappings
 # PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
 _slot_separator = ":"
-# loosly match SLOT, which may have an optional ABI part
+# loosely match SLOT, which may have an optional ABI part
 _slot_loose = r"([\w+./*=-]+)"
 
 _use = r"\[.*\]"

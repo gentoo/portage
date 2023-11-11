@@ -55,7 +55,7 @@ class SyncBase:
 
     @property
     def has_bin(self):
-        """Checks for existance of the external binary, and also
+        """Checks for existence of the external binary, and also
         checks for storage driver configuration problems.
 
         MUST only be called after _kwargs() has set the logger

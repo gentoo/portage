@@ -11,7 +11,7 @@ import operator
 
 class database:
     # this is for metadata/cache transfer.
-    # basically flags the cache needs be updated when transfered cache to cache.
+    # basically flags the cache needs be updated when transferred cache to cache.
     # leave this.
 
     complete_eclass_entries = True
@@ -32,7 +32,7 @@ class database:
 
     def __getitem__(self, cpv):
         """set a cpv to values
-        This shouldn't be overriden in derived classes since it handles the __eclasses__ conversion.
+        This shouldn't be overridden in derived classes since it handles the __eclasses__ conversion.
         that said, if the class handles it, they can override it."""
         if self.updates > self.sync_rate:
             self.commit()
@@ -96,7 +96,7 @@ class database:
 
     def _getitem(self, cpv):
         """get cpv's values.
-        override this in derived classess"""
+        override this in derived classes"""
         raise NotImplementedError
 
     @staticmethod
@@ -120,7 +120,7 @@ class database:
 
     def __setitem__(self, cpv, values):
         """set a cpv to values
-        This shouldn't be overriden in derived classes since it handles the readonly checks
+        This shouldn't be overridden in derived classes since it handles the readonly checks
         """
         if self.readonly:
             raise cache_errors.ReadOnlyRestriction()
@@ -157,7 +157,7 @@ class database:
 
     def __delitem__(self, cpv):
         """delete a key from the cache.
-        This shouldn't be overriden in derived classes since it handles the readonly checks
+        This shouldn't be overridden in derived classes since it handles the readonly checks
         """
         if self.readonly:
             raise cache_errors.ReadOnlyRestriction()

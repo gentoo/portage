@@ -155,7 +155,7 @@ class dbapi:
 
     def _pkg_str(self, cpv, repo):
         """
-        This is used to contruct _pkg_str instances on-demand during
+        This is used to construct _pkg_str instances on-demand during
         matching. If cpv is a _pkg_str instance with slot attribute,
         then simply return it. Otherwise, fetch metadata and construct
         a _pkg_str instance. This may raise KeyError or InvalidData.

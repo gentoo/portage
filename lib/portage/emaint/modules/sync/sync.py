@@ -126,7 +126,7 @@ class SyncRepos:
         """Internal search, matches up the repo name or alias in repos.
 
         @param repos: list of repo names or aliases to match
-        @param avalable: list of repo objects to search
+        @param available: list of repo objects to search
         @return: list of repo objects that match
         """
         selected = []

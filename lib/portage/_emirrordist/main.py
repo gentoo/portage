@@ -29,7 +29,7 @@ common_options = (
         "longopt": "--verbose",
         "shortopt": "-v",
         "help": "display extra information on stderr "
-        "(multiple occurences increase verbosity)",
+        "(multiple occurrences increase verbosity)",
         "action": "count",
         "default": 0,
     },

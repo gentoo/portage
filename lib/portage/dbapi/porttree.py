@@ -550,7 +550,7 @@ class portdbapi(dbapi):
                     continue
                 mytrees.append(repo.location)
 
-        # For optimal performace in this hot spot, we do manual unicode
+        # For optimal performance in this hot spot, we do manual unicode
         # handling here instead of using the wrapped os module.
         encoding = _encodings["fs"]
         errors = "strict"
@@ -659,7 +659,7 @@ class portdbapi(dbapi):
         mytree: Optional[str] = None,
         myrepo: Optional[str] = None,
     ) -> list[str]:
-        "stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
+        "stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
         'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
         'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise PortageKeyError if error'
         # For external API consumers, self._event_loop returns a new event
@@ -924,7 +924,7 @@ class portdbapi(dbapi):
         return result
 
     def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
-        # returns a filename:size dictionnary of remaining downloads
+        # returns a filename:size dictionary of remaining downloads
         myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
         if myebuild is None:
             raise AssertionError(_("ebuild not found for '%s'") % mypkg)

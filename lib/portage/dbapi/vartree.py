@@ -1581,7 +1581,7 @@ class vardbapi(dbapi):
 
         def _iter_owners_low_mem(self, path_list):
             """
-            This implemention will make a short-lived dblink instance (and
+            This implementation will make a short-lived dblink instance (and
             parse CONTENTS) for every single installed package. This is
             slower and but uses less memory than the method which uses the
             basename cache.
@@ -4665,7 +4665,7 @@ class dblink:
         for blocker in self._blockers or []:
             blocker = self.vartree.dbapi._dblink(blocker.cpv)
             # It may have been unmerged before lock(s)
-            # were aquired.
+            # were acquired.
             if blocker.exists():
                 blockers.append(blocker)
 
@@ -5395,7 +5395,7 @@ class dblink:
         @param secondhand: A set of items to merge in pass two (usually
         or symlinks that point to non-existing files that may get merged later)
         @type secondhand: List
-        @param stufftomerge: Either a diretory to merge, or a list of items.
+        @param stufftomerge: Either a directory to merge, or a list of items.
         @type stufftomerge: String or List
         @param cfgfiledict: { File:mtime } mapping for config_protected files
         @type cfgfiledict: Dictionary

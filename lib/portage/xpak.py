@@ -177,7 +177,7 @@ def xpak_mem(mydata):
 def xsplit(infile):
     """(infile) -- Splits the infile into two files.
     'infile.index' contains the index segment.
-    'infile.dat' contails the data segment."""
+    'infile.dat' contains the data segment."""
     infile = _unicode_decode(infile, encoding=_encodings["fs"], errors="strict")
     myfile = open(
         _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"

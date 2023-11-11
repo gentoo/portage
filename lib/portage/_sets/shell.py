@@ -23,7 +23,7 @@ class CommandOutputSet(PackageSet):
     Args:
       name: A string that identifies the set.
       command: A string or sequence identifying the command to run
-      (see the subprocess.Popen documentaion for the format)
+      (see the subprocess.Popen documentation for the format)
     """
 
     _operations = ["merge", "unmerge"]

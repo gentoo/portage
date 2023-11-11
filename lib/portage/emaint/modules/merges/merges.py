@@ -68,7 +68,7 @@ class TrackingFile:
 
     def __iter__(self):
         """
-        Provide an interator over failed merges.
+        Provide an iterator over failed merges.
 
         @return: iterator of packages that failed to merge
         """

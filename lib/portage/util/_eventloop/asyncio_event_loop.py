@@ -121,7 +121,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
         """
         Portage internals use this as a layer of indirection in cases
         where a wrapper around an asyncio.AbstractEventLoop implementation
-        is needed for purposes of compatiblity.
+        is needed for purposes of compatibility.
 
         @rtype: asyncio.AbstractEventLoop
         @return: the internal event loop's AbstractEventLoop interface
@@ -130,7 +130,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
 
     def _run_until_complete(self, future):
         """
-        An implementation of AbstractEventLoop.run_until_complete that supresses
+        An implementation of AbstractEventLoop.run_until_complete that suppresses
         spurious error messages like the following reported in bug 655656:
 
             Exception ignored when trying to write to the signal wakeup fd:

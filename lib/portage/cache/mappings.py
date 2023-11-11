@@ -69,7 +69,7 @@ class Mapping:
 
 class MutableMapping(Mapping):
     """
-    A mutable vesion of the Mapping class.
+    A mutable version of the Mapping class.
     """
 
     __slots__ = ()

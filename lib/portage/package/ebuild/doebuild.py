@@ -472,7 +472,7 @@ def doebuild_environment(
     mysettings["SANDBOX_LOG"] = os.path.join(mysettings["T"], "sandbox.log")
     mysettings["FILESDIR"] = os.path.join(settings["PORTAGE_BUILDDIR"], "files")
 
-    # Prefix forward compatability
+    # Prefix forward compatibility
     eprefix_lstrip = mysettings["EPREFIX"].lstrip(os.sep)
     mysettings["ED"] = (
         os.path.join(mysettings["D"], eprefix_lstrip).rstrip(os.sep) + os.sep
@@ -1903,7 +1903,7 @@ def spawn(
     Sandbox: Sandbox means the spawned process will be limited in its ability t
     read and write files (normally this means it is restricted to ${D}/)
     SElinux Sandbox: Enables sandboxing on SElinux
-    Reduced Privileges: Drops privilages such that the process runs as portage:portage
+    Reduced Privileges: Drops privileges such that the process runs as portage:portage
     instead of as root.
 
     Notes: os.system cannot be used because it messes with signal handling.  Instead we
