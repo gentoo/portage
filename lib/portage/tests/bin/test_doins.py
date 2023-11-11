@@ -16,7 +16,7 @@ exists_in_D = setup_env.exists_in_D
 
 class DoIns(setup_env.BinTestCase):
     def testDoIns(self):
-        """Tests the most basic senario."""
+        """Tests the most basic scenario."""
         self.init()
         try:
             env = setup_env.env
@@ -98,7 +98,7 @@ class DoIns(setup_env.BinTestCase):
                 pass
             uid = os.lstat(os.path.join(env["S"], "test")).st_uid
             pw = pwd.getpwuid(uid)
-            # Similary to testDoInsOptionUid, use user name.
+            # Similarly to testDoInsOptionUid, use user name.
             env["INSOPTIONS"] = f"-o {pw.pw_name}"
             doins("test")
             st = os.lstat(env["D"] + "/test")
@@ -115,7 +115,7 @@ class DoIns(setup_env.BinTestCase):
             with open(os.path.join(env["S"], "test"), "w"):
                 pass
             gid = os.lstat(os.path.join(env["S"], "test")).st_gid
-            # Similary to testDoInsOptionUid, use gid.
+            # Similarly to testDoInsOptionUid, use gid.
             env["INSOPTIONS"] = "-g %d" % gid
             doins("test")
             st = os.lstat(env["D"] + "/test")
@@ -133,7 +133,7 @@ class DoIns(setup_env.BinTestCase):
                 pass
             gid = os.lstat(os.path.join(env["S"], "test")).st_gid
             gr = grp.getgrgid(gid)
-            # Similary to testDoInsOptionUid, use group name.
+            # Similarly to testDoInsOptionUid, use group name.
             env["INSOPTIONS"] = f"-g {gr.gr_name}"
             doins("test")
             st = os.lstat(env["D"] + "/test")

@@ -336,7 +336,7 @@ class ResolverPlayground:
                 raise AssertionError(f"digest creation failed for {ebuild_path}")
 
     def _create_binpkgs(self, binpkgs):
-        # When using BUILD_ID, there can be mutiple instances for the
+        # When using BUILD_ID, there can be multiple instances for the
         # same cpv. Therefore, binpkgs may be an iterable instead of
         # a dict.
         items = getattr(binpkgs, "items", None)

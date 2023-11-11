@@ -42,7 +42,7 @@ class CircularRustTestCase(TestCase):
             # when a package would replace its own builtime dependency.
             # This needs to be tested with and without --update, since
             # that affects package selection logic significantly,
-            # expecially for packages given as arguments.
+            # especially for packages given as arguments.
             ResolverPlaygroundTestCase(
                 ["=dev-lang/rust-1.46*"],
                 mergelist=["dev-lang/rust-1.46.0"],

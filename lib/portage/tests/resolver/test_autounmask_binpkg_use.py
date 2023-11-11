@@ -42,7 +42,7 @@ class AutounmaskBinpkgUseTestCase(TestCase):
         test_cases = (
             # Bug 619626: Test for unnecessary rebuild due
             # to rejection of binary packages that would
-            # be acceptable after appplication of autounmask
+            # be acceptable after application of autounmask
             # USE changes.
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
