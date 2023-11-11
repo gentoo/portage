@@ -3,6 +3,7 @@
 
 from unittest.mock import MagicMock, patch, call
 import os
+import tempfile
 
 from portage.tests import TestCase
 
@@ -164,3 +165,47 @@ class BinarytreeTestCase(TestCase):
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True)
         ppopulate_remote.assert_called_once_with(getbinpkg_refresh=False, pretend=False)
+
+    @patch("portage.dbapi.bintree.BinRepoConfigLoader")
+    @patch("portage.dbapi.bintree.binarytree._run_trust_helper")
+    def test_default_getbinpkg_refresh_in_populate_trusthelper(
+        self, run_trust_helper, pBinRepoConfigLoader
+    ):
+        """
+        Test for bug #915842.
+
+        Verify that we call the trust helper in non-pretend mode.
+        """
+        settings = MagicMock()
+        settings.features = ["binpkg-request-signature"]
+        settings.__getitem__.return_value = "/some/path"
+
+        d = tempfile.TemporaryDirectory()
+        try:
+            bt = binarytree(pkgdir=d.name, settings=settings)
+            bt.populate(getbinpkgs=True, pretend=False)
+            run_trust_helper.assert_called_once()
+        finally:
+            d.cleanup()
+
+    @patch("portage.dbapi.bintree.BinRepoConfigLoader")
+    @patch("portage.dbapi.bintree.binarytree._run_trust_helper")
+    def test_default_getbinpkg_refresh_in_populate_trusthelper_pretend(
+        self, run_trust_helper, pBinRepoConfigLoader
+    ):
+        """
+        Test for bug #915842.
+
+        Verify we do not call the trust helper in pretend mode.
+        """
+        settings = MagicMock()
+        settings.features = ["binpkg-request-signature"]
+        settings.__getitem__.return_value = "/some/path"
+
+        d = tempfile.TemporaryDirectory()
+        try:
+            bt = binarytree(pkgdir=d.name, settings=settings)
+            bt.populate(getbinpkgs=True, pretend=True)
+            run_trust_helper.assert_not_called()
+        finally:
+            d.cleanup()
