@@ -501,7 +501,7 @@ check_file_signature() {
 
 		if [[ ${r} != 0 ]] ; then
 			eerror "Error occurred in check_file_signature: ${r}. Aborting."
-			die "Verification error occured."
+			die "Verification error occurred."
 		fi
 	else
 		r=0
@@ -990,7 +990,7 @@ if ! verify_md5_file "${TMPDIR}/portage-${final_date}.tar.bz2" "${DISTDIR}/porta
 		exit 5
 	fi
 	# hokay.  md5 doesn't agree with umd5. bzip2 issue in effect.
-	echo "compressed md5 differs, but uncompressed md5 says it right.  bzip2 version incompatability in other words"
+	echo "compressed md5 differs, but uncompressed md5 says it right.  bzip2 version incompatibility in other words"
 	echo "saving the md5"
 	if type -p md5sum &> /dev/null; then
 		md5sum "${TMPDIR}/portage-${final_date}.tar.bz2" | sed -e "s:${TMPDIR}/\?::" > \
