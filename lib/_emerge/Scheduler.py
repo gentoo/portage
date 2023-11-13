@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
@@ -1260,7 +1260,8 @@ class Scheduler(PollScheduler):
             and not mod_echo_output
         ):
             failed_pkg_map = {}
-            for pkg in self._failed_pkgs_all:
+            for failed_pkg in self._failed_pkgs_all:
+                pkg = failed_pkg.pkg
                 failed_pkg_map[(pkg.cpv, pkg.root)] = pkg
 
             for mysettings, key, logentries in self._failed_pkgs_die_msgs:
