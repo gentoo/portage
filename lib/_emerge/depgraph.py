@@ -9308,8 +9308,10 @@ class depgraph:
                 def find_smallest_cycle(mergeable_nodes, local_priority_range):
                     if prefer_asap and asap_nodes:
                         nodes = asap_nodes
+                        asap_mode = True
                     else:
                         nodes = mergeable_nodes
+                        asap_mode = False
                     # When gathering the nodes belonging to a runtime cycle,
                     # we want to minimize the number of nodes gathered, since
                     # this tends to produce a more optimal merge order.
@@ -9339,6 +9341,15 @@ class depgraph:
                             if gather_deps(
                                 priority, mergeable_nodes, selected_nodes, node
                             ):
+                                if len(selected_nodes) == 1 and asap_mode:
+                                    # For asap mode, it is possible for gather_deps to
+                                    # prematurely select a single node instead of a
+                                    # cycle, as observed in bug 917259. Continue search
+                                    # for a true cycle in this case. When not in asap
+                                    # mode, we sometimes need to select a single node
+                                    # here, as demonstrated by PerlRebuildBugTestCase
+                                    # which selects automake this way.
+                                    continue
                                 if smallest_cycle is None or len(selected_nodes) < len(
                                     smallest_cycle
                                 ):
