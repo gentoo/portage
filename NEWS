@@ -6,6 +6,12 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.59 (UNRELEASED)
+
+Features:
+* emerge: depclean now returns with failure if no packages are matched
+  (bug #917120)
+
 portage-3.0.58 (2023-12-14)
 --------------
 

@@ -843,7 +843,7 @@ def action_depclean(
                 )
         if not matched_packages:
             writemsg_level(f">>> No packages selected for removal by {action}\n")
-            return 0
+            return 1
 
     # The calculation is done in a separate function so that depgraph
     # references go out of scope and the corresponding memory
