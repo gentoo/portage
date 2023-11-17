@@ -1,6 +1,7 @@
 py.install_sources(
     [
         'ResolverPlayground.py',
+        'test_alternatives_gzip.py',
         'test_aggressive_backtrack_downgrade.py',
         'test_autounmask.py',
         'test_autounmask_binpkg_use.py',
