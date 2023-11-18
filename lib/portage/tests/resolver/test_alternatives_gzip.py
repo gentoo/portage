@@ -1,8 +1,6 @@
 # Copyright 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import pytest
-
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -10,7 +8,6 @@ from portage.tests.resolver.ResolverPlayground import (
 )
 
 
-@pytest.mark.xfail()
 class AlternativesGzipTestCase(TestCase):
     def testAlternativesGzip(self):
         """
@@ -19,8 +16,8 @@ class AlternativesGzipTestCase(TestCase):
         find_smallest_cycle selects a large cycle and the topological
         sort produces poor results when leaf_nodes returns
         app-alternatives/gzip as part of a large group of nodes.
-        This problem might be solved by implementing a finer-grained
-        ignore_priority for leaf_nodes calls.
+        This problem was solved by increasing ignore_priority in order
+        to find a smaller cycle.
         """
         ebuilds = {
             "app-alternatives/gzip-1": {

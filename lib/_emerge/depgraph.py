@@ -9345,9 +9345,10 @@ class depgraph:
                                     smallest_cycle = selected_nodes
                                     ignore_priority = priority
 
-                        # Exit this loop with the lowest possible priority, which
-                        # minimizes the use of installed packages to break cycles.
-                        if smallest_cycle is not None:
+                        if smallest_cycle is not None and len(smallest_cycle) == 1:
+                            # The cycle can't get any smaller than this,
+                            # so there is no need to search further since
+                            # we try to minimize ignore_priority.
                             break
 
                     return smallest_cycle, ignore_priority
