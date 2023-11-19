@@ -948,6 +948,16 @@ class Scheduler(PollScheduler):
                             # handles fetch, verification, and the
                             # bintree.inject call which moves the file.
                             fetched = fetcher.pkg_path
+                        else:
+                            msg = (
+                                "Fetching in the background:",
+                                fetcher.pkg_path,
+                                "To view fetch progress, run in another terminal:",
+                                f"tail -f {self._fetch_log}",
+                            )
+                            out = portage.output.EOutput()
+                            for l in msg:
+                                out.einfo(l)
                         if await fetcher.async_wait() != os.EX_OK:
                             failures += 1
                             self._record_pkg_failure(x, settings, fetcher.returncode)
