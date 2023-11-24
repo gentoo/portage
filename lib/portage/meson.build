@@ -21,6 +21,7 @@ py.install_sources(
         'binpkg.py',
         'checksum.py',
         const_py,
+        'const_autotool.py',  # PREFIX_LOCAL
         'cvstree.py',
         'data.py',
         'debug.py',
