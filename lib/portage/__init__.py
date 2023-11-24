@@ -53,16 +53,6 @@ except ImportError as e:
     sys.stderr.write(f"    {e}\n\n")
     raise
 
-# BEGIN PREFIX LOCAL
-# for bug #758230, on macOS the default was switched from fork to spawn,
-# the latter causing issues because all kinds of things can't be
-# pickled, so force fork mode for now
-try:
-    multiprocessing.set_start_method('fork')
-except RuntimeError:
-    pass
-# END PREFIX LOCAL
-
 try:
     import portage.proxy.lazyimport
     import portage.proxy as proxy
