@@ -26,7 +26,7 @@ cd "${DEST}"
 # expand version
 sed -i -e '/^VERSION\s*=/s/^.*$/VERSION = "'${V}_prefix'"/' \
 	lib/portage/__init__.py
-sed -i -e "/version = /s/'[^']\+'/'${V}-prefix'/" setup.py
+sed -i -e "/\<version : /s/'[^']\+'/'${V}-prefix'/" meson.build
 sed -i -e "1s/VERSION/${V}-prefix/" man/{,ru/}*.[15]
 sed -i -e "s/@version@/${V}/" configure.ac
 
