@@ -11,7 +11,7 @@ jobs:
         id: stragglers
         run: |
           echo "::set-output name=missed::$(
-          find bin runtests -type f -not -name '*.py' -not -name '*.sh' | \
+          find bin -type f -not -name '*.py' -not -name '*.sh' | \
           xargs grep -l '#!/usr/bin/env python' | tr $'\n' ' ')"
       - uses: psf/black@stable
         with:
@@ -22,12 +22,10 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - '3.7'
-          - '3.8'
           - '3.9'
           - '3.10'
           - '3.11'
-          # Complains about importing distutils.dir_utils
+          # pylint currently broken under 3.12
           # - '3.12-dev'
       fail-fast: false
     steps:
@@ -42,8 +40,7 @@ jobs:
           python -VV
           python -m site
           python -m pip install --upgrade pip
-          python -m pip install tox tox-gh-actions
-      - name: Run tox pylint env for ${{ matrix.python-version }}
-        run: tox -vv
-        env:
-          TARGET: pylint
+          python -m pip install pylint pytest
+      - name: Run pylint for ${{ matrix.python-version }}
+        run: |
+          ./run-pylint

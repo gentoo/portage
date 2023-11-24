@@ -1,4 +1,4 @@
-# Copyright 2010-2016 Gentoo Foundation
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -19,18 +19,6 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
-
-
-class SleepProcess(ForkProcess):
-    """
-    Emulate the sleep command, in order to ensure a consistent
-    return code when it is killed by SIGTERM (see bug #437180).
-    """
-
-    __slots__ = ("seconds",)
-
-    def _run(self):
-        time.sleep(self.seconds)
 
 
 class IpcDaemonTestCase(TestCase):
@@ -124,7 +112,9 @@ class IpcDaemonTestCase(TestCase):
                 daemon = EbuildIpcDaemon(
                     commands=commands, input_fifo=input_fifo, output_fifo=output_fifo
                 )
-                proc = SleepProcess(seconds=sleep_time_s)
+                # Emulate the sleep command, in order to ensure a consistent
+                # return code when it is killed by SIGTERM (see bug #437180).
+                proc = ForkProcess(target=time.sleep, args=(sleep_time_s,))
                 task_scheduler = TaskScheduler(
                     iter([daemon, proc]), max_jobs=2, event_loop=event_loop
                 )
@@ -170,8 +160,13 @@ class IpcDaemonTestCase(TestCase):
         )
         task_scheduler.addExitListener(self._exit_callback)
 
-        try:
+        async def start_task_scheduler():
+            # This fails unless the event loop is running, since it needs
+            # the loop to setup a ChildWatcher.
             task_scheduler.start()
+
+        try:
+            event_loop.run_until_complete(start_task_scheduler())
             event_loop.run_until_complete(self._run_done)
             event_loop.run_until_complete(task_scheduler.async_wait())
         finally:

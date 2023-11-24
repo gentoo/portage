@@ -1574,7 +1574,7 @@ class config:
             except KeyError as e:
                 writemsg(
                     "!!! BINPKG_COMPRESS contains invalid or "
-                    "unsupported compression method: %s" % e.args[0],
+                    "unsupported compression method: %s\n" % e.args[0],
                     noiselevel=-1,
                 )
             else:
@@ -1596,7 +1596,7 @@ class config:
                 except IndexError as e:
                     writemsg(
                         "!!! BINPKG_COMPRESS contains invalid or "
-                        "unsupported compression method: %s" % e.args[0],
+                        "unsupported compression method: %s\n" % e.args[0],
                         noiselevel=-1,
                     )
                 else:
@@ -1604,7 +1604,7 @@ class config:
                         missing_package = compression["package"]
                         writemsg(
                             "!!! BINPKG_COMPRESS unsupported %s. "
-                            "Missing package: %s"
+                            "Missing package: %s\n"
                             % (binpkg_compression, missing_package),
                             noiselevel=-1,
                         )
@@ -1755,7 +1755,7 @@ class config:
             # Preserve the order of var_split because it can matter for things
             # like LINGUAS.
             var_split = [x for x in var_split if x in expand_flags]
-            var_split.extend(expand_flags.difference(var_split))
+            var_split.extend(sorted(expand_flags.difference(var_split)))
             has_wildcard = "*" in expand_flags
             if has_wildcard:
                 var_split = [x for x in var_split if x != "*"]
@@ -2848,7 +2848,7 @@ class config:
 
         use_expand_unprefixed = self.get("USE_EXPAND_UNPREFIXED", "").split()
 
-        # In order to best accomodate the long-standing practice of
+        # In order to best accommodate the long-standing practice of
         # setting default USE_EXPAND variables in the profile's
         # make.defaults, we translate these variables into their
         # equivalent USE flags so that useful incremental behavior
@@ -3347,7 +3347,7 @@ class config:
         if not (src_like_phase and eapi_attrs.sysroot):
             mydict.pop("ESYSROOT", None)
 
-        if not (src_like_phase and eapi_attrs.broot):
+        if not eapi_attrs.broot:
             mydict.pop("BROOT", None)
 
         if phase == "depend" or (

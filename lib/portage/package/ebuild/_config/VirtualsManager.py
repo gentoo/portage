@@ -107,11 +107,11 @@ class VirtualsManager:
         memo[id(self)] = result
 
         # immutable attributes (internal policy ensures lack of mutation)
-        # _treeVirtuals is initilised by _populate_treeVirtuals().
+        # _treeVirtuals is initialised by _populate_treeVirtuals().
         # Before that it's 'None'.
         result._treeVirtuals = self._treeVirtuals
         memo[id(self._treeVirtuals)] = self._treeVirtuals
-        # _dirVirtuals is initilised by __init__.
+        # _dirVirtuals is initialised by __init__.
         result._dirVirtuals = self._dirVirtuals
         memo[id(self._dirVirtuals)] = self._dirVirtuals
 

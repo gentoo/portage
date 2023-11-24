@@ -17,6 +17,7 @@ from portage.const import (
 )
 from portage.process import find_binary
 from portage.dep import Atom, _repo_separator
+from portage.dbapi.bintree import binarytree
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
@@ -335,7 +336,7 @@ class ResolverPlayground:
                 raise AssertionError(f"digest creation failed for {ebuild_path}")
 
     def _create_binpkgs(self, binpkgs):
-        # When using BUILD_ID, there can be mutiple instances for the
+        # When using BUILD_ID, there can be multiple instances for the
         # same cpv. Therefore, binpkgs may be an iterable instead of
         # a dict.
         items = getattr(binpkgs, "items", None)
@@ -398,6 +399,9 @@ class ResolverPlayground:
                 t.compress(os.path.dirname(binpkg_path), metadata)
             else:
                 raise InvalidBinaryPackageFormat(binpkg_format)
+
+            bintree = binarytree(pkgdir=self.pkgdir, settings=self.settings)
+            bintree.populate(force_reindex=True)
 
     def _create_installed(self, installed):
         for cpv in installed:
@@ -631,7 +635,7 @@ class ResolverPlayground:
             self.eroot, GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals"
         )
         ensure_dirs(os.path.dirname(make_globals_path))
-        os.symlink(os.path.join(cnf_path, "make.globals"), make_globals_path)
+        os.symlink(os.path.join(str(cnf_path), "make.globals"), make_globals_path)
 
         # Create /usr/share/portage/config/sets/portage.conf
         default_sets_conf_dir = os.path.join(
@@ -643,7 +647,7 @@ class ResolverPlayground:
         except os.error:
             pass
 
-        provided_sets_portage_conf = os.path.join(cnf_path, "sets", "portage.conf")
+        provided_sets_portage_conf = os.path.join(str(cnf_path), "sets", "portage.conf")
         os.symlink(
             provided_sets_portage_conf,
             os.path.join(default_sets_conf_dir, "portage.conf"),

@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -6,7 +6,12 @@ import signal
 
 import asyncio as _real_asyncio
 from asyncio.events import AbstractEventLoop as _AbstractEventLoop
-from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
+from asyncio.unix_events import ThreadedChildWatcher
+
+try:
+    from asyncio.unix_events import PidfdChildWatcher
+except ImportError:
+    PidfdChildWatcher = None
 
 import portage
 
@@ -91,9 +96,24 @@ class AsyncioEventLoop(_AbstractEventLoop):
         @return: the internal event loop's AbstractChildWatcher interface
         """
         if self._child_watcher is None:
-            self._child_watcher = _ChildWatcherThreadSafetyWrapper(
-                self, _real_asyncio.get_child_watcher()
-            )
+            pidfd_works = False
+            if PidfdChildWatcher is not None and hasattr(os, "pidfd_open"):
+                try:
+                    fd = os.pidfd_open(portage.getpid())
+                except Exception:
+                    pass
+                else:
+                    os.close(fd)
+                    pidfd_works = True
+
+            if pidfd_works:
+                watcher = PidfdChildWatcher()
+            else:
+                watcher = ThreadedChildWatcher()
+
+            watcher.attach_loop(self._loop)
+            self._child_watcher = _ChildWatcherThreadSafetyWrapper(self, watcher)
+
         return self._child_watcher
 
     @property
@@ -101,7 +121,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
         """
         Portage internals use this as a layer of indirection in cases
         where a wrapper around an asyncio.AbstractEventLoop implementation
-        is needed for purposes of compatiblity.
+        is needed for purposes of compatibility.
 
         @rtype: asyncio.AbstractEventLoop
         @return: the internal event loop's AbstractEventLoop interface
@@ -110,7 +130,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
 
     def _run_until_complete(self, future):
         """
-        An implementation of AbstractEventLoop.run_until_complete that supresses
+        An implementation of AbstractEventLoop.run_until_complete that suppresses
         spurious error messages like the following reported in bug 655656:
 
             Exception ignored when trying to write to the signal wakeup fd:
@@ -135,7 +155,11 @@ class AsyncioEventLoop(_AbstractEventLoop):
                 pass
 
 
-class _ChildWatcherThreadSafetyWrapper(_AbstractChildWatcher):
+class _ChildWatcherThreadSafetyWrapper:
+    """
+    This class provides safety if multiple loops are running in different threads.
+    """
+
     def __init__(self, loop, real_watcher):
         self._loop = loop
         self._real_watcher = real_watcher

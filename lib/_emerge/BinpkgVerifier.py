@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -59,7 +59,7 @@ class BinpkgVerifier(CompositeTask):
         self._start_task(
             FileDigester(
                 file_path=self._pkg_path,
-                hash_names=(k for k in digests if k != "size"),
+                hash_names=[k for k in digests if k != "size"],
                 background=self.background,
                 logfile=self.logfile,
                 scheduler=self.scheduler,

@@ -40,7 +40,7 @@ class SpawnTestCase(TestCase):
             f.close()
             # When logging passes through a pty, this comparison will fail
             # unless the oflag terminal attributes have the termios.OPOST
-            # bit disabled. Otherwise, tranformations such as \n -> \r\n
+            # bit disabled. Otherwise, transformations such as \n -> \r\n
             # may occur.
             self.assertEqual(test_string, log_content)
         finally:

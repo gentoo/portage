@@ -109,6 +109,6 @@ def pkg_use_display(pkg, opts, modified_use=None):
             flags.sort(key=UseFlagDisplay.sort_combined)
         else:
             flags.sort(key=UseFlagDisplay.sort_separated)
-        flag_displays.append(f"{varname}=\"{' '.join('{}'.format(f) for f in flags)}\"")
+        flag_displays.append(f"{varname}=\"{' '.join(f'{f}' for f in flags)}\"")
 
     return " ".join(flag_displays)

@@ -50,7 +50,12 @@ src_install() {
         user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
 
         portage_python = portage._python_interpreter
-        emerge_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "emerge"))
+        emerge_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os.path.join(str(self.bindir), "emerge"),
+        )
 
         file_collision = os.path.join(eroot, "usr/lib/file-collision")
 

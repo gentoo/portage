@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author: Brian Harring <ferringb@gentoo.org>, karltk@gentoo.org originally.
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -18,6 +18,51 @@
 # gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
 # gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
 #
+
+# Opportunistically use gentoo-functions for nicer output
+functions_script="${EPREFIX}/lib/gentoo/functions.sh"
+source "${functions_script}" || {
+	echo "${argv0}: Could not source ${functions_script}!" 1>&2
+
+	ebegin() {
+		printf '%s*%s %s ... ' "${GOOD}" "${NORMAL}" "$*"
+	}
+
+	eend() {
+		local r=${1:-0}
+		shift
+		if [[ $r -eq 0 ]] ; then
+			printf '[ %sok%s ]\n' "${GOOD}" "${NORMAL}"
+		else
+			printf '%s [ %s!!%s ]\n' "$*" "${BAD}" "${NORMAL}"
+		fi
+		return "${r}"
+	}
+
+	einfo() {
+		echo "${argv0##*/}: $*"
+	}
+
+	ewarn() {
+		echo "${argv0##*/}: warning: $*" 1>&2
+	}
+
+	eerror() {
+		echo "${argv0##*/}: error: $*" 1>&2
+	}
+
+}
+
+# Only echo if in normal mode
+vvecho() { [[ ${PORTAGE_QUIET} != 1 ]] && echo "$@" ; }
+# Only echo if in quiet mode
+nvecho() { [[ ${PORTAGE_QUIET} == 1 ]] && echo "$@" ; }
+
+# Unfortunately, gentoo-functions doesn't yet have a die() (bug #878505)
+die() {
+	eerror "$@"
+	exit 1
+}
 
 argv0=$0
 
@@ -49,16 +94,15 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
-	USERLAND http_proxy ftp_proxy)"
-export http_proxy ftp_proxy
+	USERLAND http_proxy https_proxy ftp_proxy)"
+export http_proxy https_proxy ftp_proxy
 
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit
 
 repo_name=gentoo
 repo_location=$(__repo_attr "${repo_name}" location)
 if [[ -z ${repo_location} ]]; then
-	eecho "Repository '${repo_name}' not found"
-	exit 1
+	die "Repository '${repo_name}' not found"
 fi
 
 if [ -z "$NICENESS_PULLED" ]; then
@@ -89,7 +133,12 @@ for x in $*; do
 			PORTAGE_QUIET=1
 			continue
 			;;
+		--no-pgp-verify)
+			no_pgp_verify=1
+			continue
+			;;
 	esac
+
 	if [[ $x == "-u" ]]; then
 		MUST_SYNC=''
 	elif [[ $x == "-k" ]]; then
@@ -103,6 +152,7 @@ for x in $*; do
 		echo "$x isn't a valid arg.  bailing."
 	fi
 	if [[ -n $PUKE_HELP ]]; then
+		echo "--no-pgp-verify; disable PGP verification of snapshot and patches"
 		echo "-u for upgrade; sync only if new snapshots are found"
 		echo "-k for keep; keep old tree snapshots around"
 		exit -1
@@ -114,35 +164,68 @@ if [[ ! -d $STATE_DIR ]]; then
 	exit -2
 fi
 
-has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
+handle_pgp_setup() {
+	# WEBRSYNC_VERIFY_SIGNATURE=0: disable PGP verification
+	# WEBRSYNC_VERIFY_SIGNATURE=1: use gemato for verification, fallback to regular gpg
+	# WEBRSYNC_VERIFY_SIGNATURE=2: use legacy FEATURES="webrsync-gpg"
+	WEBRSYNC_VERIFY_SIGNATURE=1
 
-if [[ ${webrsync_gpg} -eq 1 ]]; then
-	wecho "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
-fi
+	has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
 
-if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] ||
-	has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature |
-	LC_ALL=C tr '[:upper:]' '[:lower:]') true yes; then
-	# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
-	# calls for backward compatibility (this triggers a deprecation warning
-	# above). Since direct emerge-webrsync calls do not use gemato for secure
-	# key refresh, this behavior will not be supported in a future release.
-	if [[ ! ( -d ${PORTAGE_GPG_DIR} && ${webrsync_gpg} -eq 1 ) &&
-		-z ${PORTAGE_TEMP_GPG_DIR} ]]; then
-		eecho "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
-		exit 1
+	repo_has_webrsync_verify=$(
+		has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature	| LC_ALL=C tr '[:upper:]' '[:lower:]') true yes
+	)
+
+	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] || [[ ${repo_has_webrsync_verify} -eq 1 ]]; then
+		# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
+		# calls for backward compatibility (this triggers a deprecation warning
+		# above). Since direct emerge-webrsync calls do not use gemato for secure
+		# key refresh, this behavior will not be supported in a future release.
+		if [[ ! ( -d ${PORTAGE_GPG_DIR} && ${webrsync_gpg} -eq 1 ) && -z ${PORTAGE_TEMP_GPG_DIR} ]]; then
+			die "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
+		fi
+
+		# Use gemato for the standard Portage-calling-us case w/ sync-type='webrsync'.
+		WEBRSYNC_VERIFY_SIGNATURE=1
+	elif [[ ${webrsync_gpg} -eq 1 ]]; then
+		# We only warn if FEATURES="webrsync-gpg" is in make.conf, not if
+		# Portage is calling us for 'sync-type=webrsync' with verification, because
+		# that path uses gemato now (plus the user can't help it, obviously).
+		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
+		WEBRSYNC_VERIFY_SIGNATURE=2
+	elif [[ -n ${no_pgp_verify} ]]; then
+		WEBRSYNC_VERIFY_SIGNATURE=0
+	else
+		# The default at the beginning of handle_pgp_setup is WEBRSYNC_VERIFY_SIGNATURE=1
+		# i.e. gemato.
+		:;
 	fi
-	WEBSYNC_VERIFY_SIGNATURE=1
-elif has webrsync-gpg ${FEATURES}; then
-	WEBSYNC_VERIFY_SIGNATURE=1
-else
-	WEBSYNC_VERIFY_SIGNATURE=0
-fi
-[[ -n ${PORTAGE_TEMP_GPG_DIR} ]] && PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
-if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
-	eecho "please set PORTAGE_GPG_DIR in make.conf"
-	exit 1
-fi
+
+	case "${WEBRSYNC_VERIFY_SIGNATURE}" in
+		0)
+			[[ ${PORTAGE_QUIET} -eq 1 ]] || ewarn "PGP verification method: disabled"
+			;;
+		1)
+			[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "PGP verification method: gemato"
+			;;
+		2)
+			ewarn "PGP verification method: legacy gpg path"
+			;;
+		*)
+			die "Unknown WEBRSYNC_VERIFY_SIGNATURE state: \${WEBRSYNC_VERIFY_SIGNATURE}=${WEBRSYNC_VERIFY_SIGNATURE}"
+			;;
+	esac
+
+	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]]; then
+		PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
+	fi
+
+	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 2 && -z "${PORTAGE_GPG_DIR}" ]]; then
+		die "Please set PORTAGE_GPG_DIR in make.conf!"
+	fi
+}
+
+handle_pgp_setup
 
 [[ -d ${repo_location} ]] || mkdir -p "${repo_location}"
 if [[ ! -w ${repo_location} ]] ; then
@@ -156,7 +239,7 @@ if [[ ! -w ${DISTDIR} ]] ; then
 	exit 1
 fi
 
-[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage" 
+[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
 TMPDIR=$(mktemp -d "${PORTAGE_TMPDIR}/portage/delta-webrsync-XXXXXX")
 if [[ ! -w ${TMPDIR} ]] ; then
 	eecho "TMPDIR is not writable: ${TMPDIR}"
@@ -291,36 +374,134 @@ check_file_digest() {
 	return "${r}"
 }
 
+check_file_signature_gemato() {
+	local signature="$1"
+	local file="$2"
+	local r=1
+
+	if type -P gemato > /dev/null; then
+		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
+			local key="${PORTAGE_GPG_KEY}"
+		else
+			local key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
+		fi
+
+		if [[ ! -f "${key}" ]] ; then
+			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+		fi
+
+		local gemato_args=(
+			openpgp-verify-detached
+			-K "${key}"
+		)
+
+		if [[ -n ${http_proxy} || -n ${https_proxy} ]] ; then
+			gemato_args+=(
+				--proxy "${http_proxy:-${https_proxy}}"
+			)
+		fi
+
+		[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
+		[[ ${PORTAGE_QUIET} == 1 ]] && gemato_args+=( --quiet )
+		[[ ${do_debug} == 1 ]] && gemato_args+=( --debug )
+
+		gemato "${gemato_args[@]}" -- "${signature}" "${file}"
+		r=$?
+
+		if [[ ${r} -ne 0 ]]; then
+			# Exit early since it's typically inappropriate to
+			# try other mirrors in this case (it may indicate
+			# a keyring problem).
+			die "signature verification failed"
+		fi
+	else
+		return 127
+	fi
+
+	return "${r}"
+}
+
+check_file_signature_gpg_unwrapped() {
+	local signature="$1"
+	local file="$2"
+
+	if type -P gpg > /dev/null; then
+		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
+			local key="${PORTAGE_GPG_KEY}"
+		else
+			local key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
+		fi
+
+		if [[ ! -f "${key}" ]] ; then
+			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+		fi
+
+		local gpgdir="${PORTAGE_GPG_DIR}"
+		if [[ -z ${gpgdir} ]] ; then
+			gpgdir=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
+			if [[ ! -w ${gpgdir} ]] ; then
+				die "gpgdir is not writable: ${gpgdir}"
+			fi
+
+			# If we're created our own temporary directory, it's okay for us
+			# to import the keyring by ourselves. But we'll avoid doing it
+			# if the user has set PORTAGE_GPG_DIR by themselves.
+			gpg --no-default-keyring --homedir "${gpgdir}" --batch --import "${key}"
+		fi
+
+		if gnupg_status=$(gpg --no-default-keyring --homedir "${gpgdir}" --batch \
+			--status-fd 1 --verify "${signature}" "${file}"); then
+			while read -r line; do
+				if [[ ${line} == "[GNUPG:] GOODSIG"* ]]; then
+					r=0
+					break
+				fi
+			done <<< "${gnupg_status}"
+		fi
+
+		if [[ ${r} -ne 0 ]]; then
+			# Exit early since it's typically inappropriate to
+			# try other mirrors in this case (it may indicate
+			# a keyring problem).
+			die "signature verification failed"
+		fi
+	else
+		die "cannot check signature: gpg binary not found"
+	fi
+}
+
 check_file_signature() {
 	local signature="$1"
 	local file="$2"
 	local r=1
 	local gnupg_status line
 
-	if [[ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]] ; then
+	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} != 0 ]]; then
+		[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Checking signature ..."
 
-		__vecho "Checking signature ..."
+		case ${WEBRSYNC_VERIFY_SIGNATURE} in
+			1)
+				check_file_signature_gemato "${signature}" "${file}"
+				r=$?
 
-		if type -P gpg > /dev/null; then
-			if gnupg_status=$(gpg --homedir "${PORTAGE_GPG_DIR}" --batch \
-				--status-fd 1 --verify "${signature}" "${file}"); then
-				while read -r line; do
-					if [[ ${line} == "[GNUPG:] GOODSIG"* ]]; then
-						r=0
-						break
-					fi
-				done <<< "${gnupg_status}"
-			fi
-			if [[ ${r} -ne 0 ]]; then
-				# Exit early since it's typically inappropriate to
-				# try other mirrors in this case (it may indicate
-				# a keyring problem).
-				eecho "signature verification failed"
-				exit 1
-			fi
-		else
-			eecho "cannot check signature: gpg binary not found"
-			exit 1
+				if [[ ${r} -eq 127 ]] ; then
+					ewarn "Falling back to gpg as gemato is not installed"
+					check_file_signature_gpg_unwrapped "${signature}" "${file}"
+					r=$?
+				fi
+
+				;;
+			2)
+				check_file_signature_gpg_unwrapped "${signature}" "${file}"
+				r=$?
+				;;
+		esac
+
+		if [[ ${r} != 0 ]] ; then
+			eerror "Error occurred in check_file_signature: ${r}. Aborting."
+			die "Verification error occurred."
 		fi
 	else
 		r=0
@@ -710,13 +891,13 @@ if [[ -z $patches ]]; then
 	echo "no patches found? up to date?"
 	if [[ -n $MUST_SYNC ]]; then
 		echo "syncing with existing file"
-		if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 &&
+		if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 1 &&
 			! -e ${DISTDIR}/portage-${base_date}.tar.bz2.gpgsig ]] && \
 			! fetch_from_mirrors "/snapshots/portage-${base_date}.tar.bz2.gpgsig" "portage-${base_date}.tar.bz2.gpgsig" ; then
 			eecho "Couldn't fetch portage-${base_date}.tar.bz2.gpgsig"
 			exit 5
 		fi
-		if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
+		if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
 			check_file_signature "${DISTDIR}/portage-${base_date}.tar.bz2.gpgsig" "${dfile}" || exit 1
 		fi
 		sync_local "${dfile}" && rm -fr "${TMPDIR}"
@@ -745,7 +926,7 @@ else
 	fi
 fi
 
-if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 && ! -e portage-${final_date}.tar.bz2.gpgsig ]] && \
+if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 1 && ! -e portage-${final_date}.tar.bz2.gpgsig ]] && \
 	! fetch_from_mirrors "/snapshots/portage-${final_date}.tar.bz2.gpgsig" "portage-${final_date}.tar.bz2.gpgsig" ; then
 	echo "warning... couldn't grab the gpgsig for ${final_date}.  which is odd"
 	echo "thus, bailing (sorry)"
@@ -778,7 +959,7 @@ fi
 unset need_last_sync
 if [ "$verified" == "1" ]; then
 	need_last_sync="dar"
-	if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
+	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
 		# BUG: Signature verification will fail if the local bzip2
 		# program does not produce output that is perfectly identical
 		# to the bzip2 program used to compress the signed tar file.
@@ -809,7 +990,7 @@ if ! verify_md5_file "${TMPDIR}/portage-${final_date}.tar.bz2" "${DISTDIR}/porta
 		exit 5
 	fi
 	# hokay.  md5 doesn't agree with umd5. bzip2 issue in effect.
-	echo "compressed md5 differs, but uncompressed md5 says it right.  bzip2 version incompatability in other words"
+	echo "compressed md5 differs, but uncompressed md5 says it right.  bzip2 version incompatibility in other words"
 	echo "saving the md5"
 	if type -p md5sum &> /dev/null; then
 		md5sum "${TMPDIR}/portage-${final_date}.tar.bz2" | sed -e "s:${TMPDIR}/\?::" > \
@@ -829,7 +1010,7 @@ else
 fi
 
 if [ -z "${need_last_sync}" ]; then
-	if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
+	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
 		check_file_signature "${DISTDIR}/portage-${final_date}.tar.bz2.gpgsig" "${dfile}" || exit 1
 	fi
 	echo "beginning update to the tree"

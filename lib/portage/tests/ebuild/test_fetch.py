@@ -278,7 +278,7 @@ class EbuildFetchTestCase(TestCase):
                 portage._python_interpreter,
                 "-b",
                 "-Wd",
-                os.path.join(self.bindir, "emirrordist"),
+                os.path.join(str(self.bindir), "emirrordist"),
                 "--distfiles",
                 settings["DISTDIR"],
                 "--config-root",
@@ -335,16 +335,7 @@ class EbuildFetchTestCase(TestCase):
                     )
                 )
 
-            # Tests only work with one ebuild at a time, so the config
-            # pool only needs a single config instance.
-            class config_pool:
-                @staticmethod
-                def allocate():
-                    return settings
-
-                @staticmethod
-                def deallocate(settings):
-                    pass
+            config_pool = config_pool_cls(settings)
 
             def async_fetch(pkg, ebuild_path):
                 fetcher = EbuildFetcher(
@@ -880,3 +871,16 @@ class EbuildFetchTestCase(TestCase):
                         self.assertEqual(filename_result, str(filename))
             finally:
                 shutil.rmtree(distdir)
+
+
+# Tests only work with one ebuild at a time, so the config
+# pool only needs a single config instance.
+class config_pool_cls:
+    def __init__(self, settings):
+        self._settings = settings
+
+    def allocate(self):
+        return self._settings
+
+    def deallocate(self, settings):
+        pass

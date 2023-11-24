@@ -57,7 +57,6 @@ class search:
         self.fuzzy = fuzzy
         self.search_similarity = 80 if search_similarity is None else search_similarity
         self.matches = {"pkg": []}
-        self.mlen = 0
 
         self._dbs = []
 
@@ -377,7 +376,6 @@ class search:
         if not self._xmatch("match-all", cp):
             return
         self.matches["pkg"].append(cp)
-        self.mlen += 1
 
     def output(self):
         """Outputs the results of the search."""
@@ -407,8 +405,9 @@ class search:
             # Do a normal search
             iterator = self._iter_search()
 
+        mlen = 0
         for mtype, match in iterator:
-            self.mlen += 1
+            mlen += 1
             masked = False
             full_package = None
             if mtype in ("pkg", "desc"):
@@ -521,14 +520,7 @@ class search:
                         "      " + darkgreen("License:") + "       " + license + "\n\n"
                     )
 
-        msg.append("[ Applications found : " + bold(str(self.mlen)) + " ]\n\n")
-
-        # This method can be called multiple times, so
-        # reset the match count for the next call. Don't
-        # reset it at the beginning of this method, since
-        # that would lose modfications from the addCP
-        # method.
-        self.mlen = 0
+        msg.append("[ Applications found : " + bold(str(mlen)) + " ]\n\n")
 
     #
     # private interface

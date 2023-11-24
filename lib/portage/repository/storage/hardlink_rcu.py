@@ -19,13 +19,13 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
     Enable read-copy-update (RCU) behavior for sync operations. The
     current latest immutable version of a repository will be
     reference by a symlink found where the repository would normally
-    be located.  Repository consumers should resolve the cannonical
+    be located.  Repository consumers should resolve the canonical
     path of this symlink before attempt to access the repository,
     and all operations should be read-only, since the repository
     is considered immutable. Updates occur by atomic replacement
     of the symlink, which causes new consumers to use the new
     immutable version, while any earlier consumers continue to use
-    the cannonical path that was resolved earlier.
+    the canonical path that was resolved earlier.
 
     Performance is better than HardlinkQuarantineRepoStorage,
     since commit involves atomic replacement of a symlink. Since
@@ -112,7 +112,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         """
         Run cmd and raise RepoStorageException on failure.
 
-        @param cmd: command to executre
+        @param cmd: command to execute
         @type cmd: list
         @param privileged: run with maximum privileges
         @type privileged: bool

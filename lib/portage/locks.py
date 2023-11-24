@@ -79,6 +79,11 @@ class _lock_manager:
         del _open_inodes[self.inode_key]
 
 
+def _lockf_test_lock_fn(path, fd, flags):
+    fcntl.lockf(fd, flags)
+    return functools.partial(unlockfile, (path, fd, flags, fcntl.lockf))
+
+
 def _get_lock_fn():
     """
     Returns fcntl.lockf if proven to work, and otherwise returns fcntl.flock.
@@ -88,10 +93,7 @@ def _get_lock_fn():
     if _lock_fn is not None:
         return _lock_fn
 
-    if _test_lock_fn(
-        lambda path, fd, flags: fcntl.lockf(fd, flags)
-        and functools.partial(unlockfile, (path, fd, flags, fcntl.lockf))
-    ):
+    if _test_lock_fn(_lockf_test_lock_fn):
         _lock_fn = fcntl.lockf
         return _lock_fn
 
@@ -103,19 +105,6 @@ def _get_lock_fn():
 def _test_lock_fn(
     lock_fn: typing.Callable[[str, int, int], typing.Callable[[], None]]
 ) -> bool:
-    def _test_lock(fd, lock_path):
-        os.close(fd)
-        try:
-            with open(lock_path, "a") as f:
-                lock_fn(lock_path, f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except (TryAgain, OSError) as e:
-            if isinstance(e, TryAgain) or e.errno == errno.EAGAIN:
-                # Parent process holds lock, as expected.
-                sys.exit(0)
-
-        # Something went wrong.
-        sys.exit(1)
-
     fd, lock_path = tempfile.mkstemp()
     unlock_fn = None
     try:
@@ -125,7 +114,17 @@ def _test_lock_fn(
             pass
         else:
             _lock_manager(fd, os.fstat(fd), lock_path)
-            proc = multiprocessing.Process(target=_test_lock, args=(fd, lock_path))
+            proc = multiprocessing.Process(
+                target=_subprocess_test_lock,
+                args=(
+                    # Since file descriptors are not inherited unless the fork start
+                    # method is used, the subprocess should only try to close an
+                    # inherited file descriptor for the fork start method.
+                    fd if multiprocessing.get_start_method() == "fork" else None,
+                    lock_fn,
+                    lock_path,
+                ),
+            )
             proc.start()
             proc.join()
             if proc.exitcode == os.EX_OK:
@@ -139,6 +138,21 @@ def _test_lock_fn(
         if unlock_fn is not None:
             unlock_fn()
     return False
+
+
+def _subprocess_test_lock(fd, lock_fn, lock_path):
+    if fd is not None:
+        os.close(fd)
+    try:
+        with open(lock_path, "a") as f:
+            lock_fn(lock_path, f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (TryAgain, OSError) as e:
+        if isinstance(e, TryAgain) or e.errno == errno.EAGAIN:
+            # Parent process holds lock, as expected.
+            sys.exit(0)
+
+    # Something went wrong.
+    sys.exit(1)
 
 
 def _close_fds():
@@ -297,7 +311,7 @@ def _lockfile_iteration(
 
     # try for a non-blocking lock, if it's held, throw a message
     # we're waiting on lockfile and use a blocking attempt.
-    locking_method = portage._eintr_func_wrapper(_get_lock_fn())
+    locking_method = _get_lock_fn()
     try:
         if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
             raise OSError(errno.ENOSYS, "Function not implemented")

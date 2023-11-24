@@ -112,10 +112,15 @@ src_install() {
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "dispatch-conf"),
+            os.path.join(str(self.sbindir), "dispatch-conf"),
         )
-        emerge_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "emerge"))
-        etc_update_cmd = (BASH_BINARY, os.path.join(self.sbindir, "etc-update"))
+        emerge_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os.path.join(str(self.bindir), "emerge"),
+        )
+        etc_update_cmd = (BASH_BINARY, os.path.join(str(self.sbindir), "etc-update"))
         etc_update_auto = etc_update_cmd + (
             "--automode",
             "-5",
@@ -247,7 +252,8 @@ src_install() {
                 os.symlink(true_binary, os.path.join(fake_bin, x))
             for x in etc_symlinks:
                 os.symlink(
-                    os.path.join(self.cnf_etc_path, x), os.path.join(eprefix, "etc", x)
+                    os.path.join(str(self.cnf_etc_path), x),
+                    os.path.join(eprefix, "etc", x),
                 )
             with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
                 f.write(b"100")

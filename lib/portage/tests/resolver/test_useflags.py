@@ -142,3 +142,179 @@ class UseFlagsTestCase(TestCase):
                         )
                 finally:
                     playground.cleanup()
+
+    def testBlockerBinpkgRespectUse(self):
+        """
+        Test for bug #916336 where we tried to check properties of a blocker
+        object which isn't a Package to be merged.
+        """
+
+        ebuilds = {
+            "dev-libs/A-1": {
+                "EAPI": "7",
+                "IUSE": "abi_x86_32",
+                "RDEPEND": "dev-libs/B",
+            },
+            "dev-libs/B-1": {
+                "EAPI": "7",
+                "IUSE": "abi_x86_32",
+            },
+            "dev-libs/A-2": {
+                "EAPI": "7",
+                "IUSE": "abi_x86_32",
+                "RDEPEND": "!<dev-libs/B-2",
+            },
+            "dev-libs/B-2": {
+                "EAPI": "7",
+                "IUSE": "abi_x86_32",
+            },
+        }
+        installed = {
+            "dev-libs/A-1": {
+                "IUSE": "abi_x86_32",
+                "USE": "abi_x86_32",
+            },
+            "dev-libs/B-1": {
+                "IUSE": "abi_x86_32",
+                "USE": "abi_x86_32",
+            },
+        }
+        binpkgs = ebuilds.copy()
+
+        user_config = {
+            "make.conf": (
+                'FEATURES="binpkg-multi-instance"',
+                'USE="abi_x86_32 abi_x86_32"',
+            ),
+        }
+
+        world = ("dev-libs/A",)
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A"],
+                options={
+                    "--verbose": "y",
+                    "--update": True,
+                    "--deep": True,
+                    "--complete-graph": True,
+                    "--usepkg": True,
+                    "--autounmask": "n",
+                    "--autounmask-backtrack": "n",
+                    "--autounmask-use": "n",
+                },
+                success=True,
+                mergelist=["dev-libs/A-2", "[uninstall]dev-libs/B-1", "!<dev-libs/B-2"],
+            ),
+        )
+
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                user_config["make.conf"] += (f'BINPKG_FORMAT="{binpkg_format}"',)
+                playground = ResolverPlayground(
+                    ebuilds=ebuilds,
+                    binpkgs=binpkgs,
+                    installed=installed,
+                    user_config=user_config,
+                    world=world,
+                )
+
+                try:
+                    for test_case in test_cases:
+                        playground.run_TestCase(test_case)
+                        self.assertEqual(
+                            test_case.test_success, True, test_case.fail_msg
+                        )
+                finally:
+                    playground.cleanup()
+
+    def testNoMergeBinpkgRespectUse(self):
+        """
+        Testcase for bug #916614 where an incomplete depgraph may be fed into
+        _show_ignored_binaries_respect_use.
+
+        We use a mix of +/-abi_x86_32 to trigger the binpkg-respect-use notice
+        and depend on a non-existent package in one of the available ebuilds we
+        queue to reinstall to trigger an aborted calculation.
+        """
+        ebuilds = {
+            "dev-libs/A-2": {
+                "EAPI": "7",
+                "IUSE": "abi_x86_32",
+            },
+            "dev-libs/B-1": {
+                "IUSE": "abi_x86_32",
+                "RDEPEND": "=dev-libs/A-1",
+            },
+        }
+
+        installed = {
+            "dev-libs/B-1": {
+                "IUSE": "abi_x86_32",
+                "USE": "abi_x86_32",
+            },
+            "dev-libs/A-1": {
+                "IUSE": "abi_x86_32",
+                "USE": "abi_x86_32",
+            },
+        }
+
+        binpkgs = {
+            "dev-libs/A-2": {
+                "IUSE": "abi_x86_32",
+                "USE": "abi_x86_32",
+            },
+            "dev-libs/B-1": {
+                "IUSE": "abi_x86_32",
+                "USE": "",
+                "BUILD_ID": "2",
+                "BUILD_TIME": "2",
+            },
+        }
+
+        user_config = {
+            "make.conf": (
+                'FEATURES="binpkg-multi-instance"',
+                'USE="abi_x86_32 abi_x86_32"',
+            ),
+        }
+
+        world = ("dev-libs/A",)
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["@installed"],
+                options={
+                    "--verbose": "y",
+                    "--emptytree": True,
+                    "--usepkg": True,
+                },
+                success=False,
+                mergelist=["[binary]dev-libs/A-2", "dev-libs/B-1"],
+                slot_collision_solutions=[],
+            ),
+        )
+
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                user_config["make.conf"] += (f'BINPKG_FORMAT="{binpkg_format}"',)
+                playground = ResolverPlayground(
+                    ebuilds=ebuilds,
+                    binpkgs=binpkgs,
+                    installed=installed,
+                    user_config=user_config,
+                    world=world,
+                )
+
+                try:
+                    for test_case in test_cases:
+                        playground.run_TestCase(test_case)
+                        self.assertEqual(
+                            test_case.test_success, True, test_case.fail_msg
+                        )
+                finally:
+                    playground.cleanup()

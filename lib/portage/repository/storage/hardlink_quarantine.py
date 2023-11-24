@@ -39,7 +39,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
         """
         Run cmd and raise RepoStorageException on failure.
 
-        @param cmd: command to executre
+        @param cmd: command to execute
         @type cmd: list
         """
         p = SpawnProcess(

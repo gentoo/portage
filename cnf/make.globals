@@ -78,7 +78,7 @@ FEATURES="assume-digests binpkg-docompress binpkg-dostrip binpkg-logs
           binpkg-multi-instance buildpkg-live
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles ipc-sandbox merge-sync multilib-strict
-          network-sandbox news parallel-fetch pid-sandbox
+          network-sandbox news parallel-fetch pkgdir-index-trusted pid-sandbox
           preserve-libs protect-owned qa-unresolved-soname-deps
           sandbox sfperms strict
           unknown-features-warn unmerge-logs unmerge-orphans userfetch
@@ -169,6 +169,9 @@ PORTAGE_ELOG_MAILFROM="@portageuser@@localhost"
 
 # Signing command used by egencache
 PORTAGE_GPG_SIGNING_COMMAND="gpg --sign --digest-algo SHA256 --clearsign --yes --default-key \"\${PORTAGE_GPG_KEY}\" --homedir \"\${PORTAGE_GPG_DIR}\" \"\${FILE}\""
+
+# Trust helper executable for installing and updating package verification keys
+PORTAGE_TRUST_HELPER="/usr/bin/getuto"
 
 # btrfs.* attributes are irrelevant, see bug #527636.
 # security.* attributes may be special (see bug 461868), but

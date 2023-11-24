@@ -483,7 +483,7 @@ def doebuild_environment(
     mysettings["SANDBOX_LOG"] = os.path.join(mysettings["T"], "sandbox.log")
     mysettings["FILESDIR"] = os.path.join(settings["PORTAGE_BUILDDIR"], "files")
 
-    # Prefix forward compatability
+    # Prefix forward compatibility
     eprefix_lstrip = mysettings["EPREFIX"].lstrip(os.sep)
     mysettings["ED"] = (
         os.path.join(mysettings["D"], eprefix_lstrip).rstrip(os.sep) + os.sep
@@ -600,8 +600,10 @@ def doebuild_environment(
             nproc = get_cpu_count()
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
-            if "GNUMAKEFLAGS" not in mysettings:
-                mysettings["GNUMAKEFLAGS"] = "--output-sync=line"
+            if "GNUMAKEFLAGS" not in mysettings and "MAKEFLAGS" not in mysettings:
+                mysettings[
+                    "GNUMAKEFLAGS"
+                ] = f"--load-average {nproc} --output-sync=line"
 
         if not eapi_exports_KV(eapi):
             # Discard KV for EAPIs that don't support it. Cached KV is restored
@@ -1314,21 +1316,6 @@ def doebuild(
             if mf is not None:
                 dist_digests = mf.getTypeDigests("DIST")
 
-            def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests):
-                # For userfetch, drop privileges for the entire fetch call, in
-                # order to handle DISTDIR on NFS with root_squash for bug 601252.
-                if _want_userfetch(mysettings):
-                    _drop_privs_userfetch(mysettings)
-
-                return fetch(
-                    fetchme,
-                    mysettings,
-                    listonly=listonly,
-                    fetchonly=fetchonly,
-                    allow_missing_digests=False,
-                    digests=dist_digests,
-                )
-
             loop = asyncio._safe_loop()
             if loop.is_running():
                 # Called by EbuildFetchonly for emerge --pretend --fetchonly.
@@ -1349,6 +1336,7 @@ def doebuild(
                         mysettings,
                         listonly,
                         dist_digests,
+                        fetchonly,
                     )
                 )
             if not success:
@@ -1596,6 +1584,22 @@ def doebuild(
             # If necessary, depend phase has been triggered by aux_get calls
             # and the exemption is no longer needed.
             portage._doebuild_manifest_exempt_depend -= 1
+
+
+def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests, fetchonly):
+    # For userfetch, drop privileges for the entire fetch call, in
+    # order to handle DISTDIR on NFS with root_squash for bug 601252.
+    if _want_userfetch(mysettings):
+        _drop_privs_userfetch(mysettings)
+
+    return fetch(
+        fetchme,
+        mysettings,
+        listonly=listonly,
+        fetchonly=fetchonly,
+        allow_missing_digests=False,
+        digests=dist_digests,
+    )
 
 
 def _check_temp_dir(settings):
@@ -1912,7 +1916,7 @@ def spawn(
     Sandbox: Sandbox means the spawned process will be limited in its ability t
     read and write files (normally this means it is restricted to ${D}/)
     SElinux Sandbox: Enables sandboxing on SElinux
-    Reduced Privileges: Drops privilages such that the process runs as portage:portage
+    Reduced Privileges: Drops privileges such that the process runs as portage:portage
     instead of as root.
 
     Notes: os.system cannot be used because it messes with signal handling.  Instead we
@@ -2767,6 +2771,10 @@ def _post_src_install_uid_fix(mysettings, out):
         desktopfile_errors = []
 
         for parent, dirs, files in os.walk(destdir):
+            if portage.utf8_mode:
+                parent = os.fsencode(parent)
+                dirs = [os.fsencode(value) for value in dirs]
+                files = [os.fsencode(value) for value in files]
             try:
                 parent = _unicode_decode(
                     parent, encoding=_encodings["merge"], errors="strict"
@@ -2871,7 +2879,9 @@ def _post_src_install_uid_fix(mysettings, out):
                         # a normal write might fail due to file permission
                         # settings on some operating systems such as HP-UX
                         write_atomic(
-                            _unicode_encode(
+                            fpath
+                            if portage.utf8_mode
+                            else _unicode_encode(
                                 fpath, encoding=_encodings["merge"], errors="strict"
                             ),
                             new_contents,

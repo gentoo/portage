@@ -12,15 +12,11 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - '3.7'
-          - '3.8'
           - '3.9'
           - '3.10'
           - '3.11'
           - '3.12-dev'
-          - 'pypy-3.7'
-          - 'pypy-3.8'
-          - 'pypy-3.9'
+          - 'pypy-3.10'
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -28,20 +24,30 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install python dependencies
+      - name: Install dependencies
         run: |
           set -xe
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libxml2-utils zstd
+          echo "force-unsafe-io" | sudo tee /etc/dpkg/dpkg.cfg.d/force-unsafe-io
+          sudo apt-get update -q
+          sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson zstd
+
+          # Patch Ubuntu's old Meson to fix pypy-3.9 detection.
+          curl -s -f https://github.com/mesonbuild/meson/commit/2540ad6e9e08370ddd0b6753fdc9314945a672f0.patch | sudo patch -d /usr/lib/python3/dist-packages -p1 --no-backup-if-mismatch
+
           python -VV
           python -m site
           python -m pip install --upgrade pip
-          python -m pip install tox tox-gh-actions setuptools
-      - name: Test ./setup.py install --root=/tmp/install-root
+          # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
+          python -m pip install pytest pytest-xdist setuptools
+
+          # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
+          sudo ln -s /bin/true /usr/bin/getuto
+      - name: Test meson install --destdir /tmp/install-root
         run: |
-          printf "[build_ext]\nportage_ext_modules=true" >> setup.cfg
-          ./setup.py install --root=/tmp/install-root
-      - name: Run tox test env for ${{ matrix.python-version }}
-        run: tox -vv
-        env:
-          TARGET: test
+          echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
+          meson setup --native-file /tmp/native.ini /tmp/build .
+          meson install -C /tmp/build --destdir /tmp/install-root
+      - name: Run tests for ${{ matrix.python-version }}
+        run: |
+          export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
+          meson test -C /tmp/build --verbose

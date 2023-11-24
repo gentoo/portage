@@ -104,6 +104,11 @@ def xpak(rootdir, outfile=None):
     and under the name 'outfile' if it is specified. Otherwise it returns the
     xpak segment."""
 
+    if portage.utf8_mode and not isinstance(rootdir, bytes):
+        # Since paths are encoded below, rootdir must also be encoded
+        # when _unicode_func_wrapper is not used.
+        rootdir = os.fsencode(rootdir)
+
     mylist = []
 
     addtolist(mylist, rootdir)
@@ -172,7 +177,7 @@ def xpak_mem(mydata):
 def xsplit(infile):
     """(infile) -- Splits the infile into two files.
     'infile.index' contains the index segment.
-    'infile.dat' contails the data segment."""
+    'infile.dat' contains the data segment."""
     infile = _unicode_decode(infile, encoding=_encodings["fs"], errors="strict")
     myfile = open(
         _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"

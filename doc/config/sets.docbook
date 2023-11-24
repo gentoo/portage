@@ -256,7 +256,7 @@
 		</para>
 		
 			<sect3>
-			<title>Single Set Configuraton</title>
+			<title>Single Set Configuration</title>
 			<para>
 			This class doesn't support any extra options.
 			</para>
@@ -272,7 +272,7 @@
 		</para>
 		
 			<sect3>
-			<title>Single Set Configuraton</title>
+			<title>Single Set Configuration</title>
 			<para>
 			This class doesn't support any extra options.
 			</para>
@@ -303,7 +303,7 @@
 		This class implements the <parameter>profile</parameter> set, based on the
 		<filename>packages</filename> files in the profile.
 		There is no reason to use this in a user configuration as it is already
-		confgured by default and doesn't support any options.
+		configured by default and doesn't support any options.
 		</para>
 			<sect3>
 			<title>Single Set Configuration</title>

@@ -80,9 +80,7 @@ install_qa_check_prefix() {
 			fi
 			continue
 		fi
-		# BEGIN PREFIX LOCAL: also check init scripts
-		# unprefixed shebang, is the script directly in ${PATH} or an init
-		# script?
+		# unprefixed shebang, is the script directly in ${PATH} or an init script?
 		if [[ ":${PATH}:${EPREFIX}/etc/init.d:" == *":${fp}:"* ]] ; then
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because an

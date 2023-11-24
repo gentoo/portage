@@ -1,10 +1,7 @@
-# Copyright 2008-2021 Gentoo Authors
+# Copyright 2008-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import errno
 import functools
-import logging
-import signal
 import sys
 
 from _emerge.SubProcess import SubProcess
@@ -12,7 +9,6 @@ import portage
 from portage import os
 from portage.const import BASH_BINARY
 from portage.output import EOutput
-from portage.util import writemsg_level
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._pty import _create_pty_or_pipe
@@ -39,7 +35,6 @@ class SpawnProcess(SubProcess):
         "path_lookup",
         "pre_exec",
         "close_fds",
-        "cgroup",
         "unshare_ipc",
         "unshare_mount",
         "unshare_pid",
@@ -67,55 +62,60 @@ class SpawnProcess(SubProcess):
             self.fd_pipes = self.fd_pipes.copy()
         fd_pipes = self.fd_pipes
 
-        master_fd, slave_fd = self._pipe(fd_pipes)
+        if fd_pipes or self.logfile or not self.background:
+            master_fd, slave_fd = self._pipe(fd_pipes)
 
-        can_log = self._can_log(slave_fd)
-        if can_log:
-            log_file_path = self.logfile
+            can_log = self._can_log(slave_fd)
+            if can_log:
+                log_file_path = self.logfile
+            else:
+                log_file_path = None
+
+            null_input = None
+            if not self.background or 0 in fd_pipes:
+                # Subclasses such as AbstractEbuildProcess may have already passed
+                # in a null file descriptor in fd_pipes, so use that when given.
+                pass
+            else:
+                # TODO: Use job control functions like tcsetpgrp() to control
+                # access to stdin. Until then, use /dev/null so that any
+                # attempts to read from stdin will immediately return EOF
+                # instead of blocking indefinitely.
+                null_input = os.open("/dev/null", os.O_RDWR)
+                fd_pipes[0] = null_input
+
+            fd_pipes.setdefault(0, portage._get_stdin().fileno())
+            fd_pipes.setdefault(1, sys.__stdout__.fileno())
+            fd_pipes.setdefault(2, sys.__stderr__.fileno())
+
+            # flush any pending output
+            stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
+            for fd in fd_pipes.values():
+                if fd in stdout_filenos:
+                    sys.__stdout__.flush()
+                    sys.__stderr__.flush()
+                    break
+
+            fd_pipes_orig = fd_pipes.copy()
+
+            if log_file_path is not None or self.background:
+                fd_pipes[1] = slave_fd
+                fd_pipes[2] = slave_fd
+
+            else:
+                # Create a dummy pipe that PipeLogger uses to efficiently
+                # monitor for process exit by listening for the EOF event.
+                # Re-use of the allocated fd number for the key in fd_pipes
+                # guarantees that the keys will not collide for similarly
+                # allocated pipes which are used by callers such as
+                # FileDigester and MergeProcess. See the _setup_pipes
+                # docstring for more benefits of this allocation approach.
+                self._dummy_pipe_fd = slave_fd
+                fd_pipes[slave_fd] = slave_fd
         else:
-            log_file_path = None
-
-        null_input = None
-        if not self.background or 0 in fd_pipes:
-            # Subclasses such as AbstractEbuildProcess may have already passed
-            # in a null file descriptor in fd_pipes, so use that when given.
-            pass
-        else:
-            # TODO: Use job control functions like tcsetpgrp() to control
-            # access to stdin. Until then, use /dev/null so that any
-            # attempts to read from stdin will immediately return EOF
-            # instead of blocking indefinitely.
-            null_input = os.open("/dev/null", os.O_RDWR)
-            fd_pipes[0] = null_input
-
-        fd_pipes.setdefault(0, portage._get_stdin().fileno())
-        fd_pipes.setdefault(1, sys.__stdout__.fileno())
-        fd_pipes.setdefault(2, sys.__stderr__.fileno())
-
-        # flush any pending output
-        stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
-        for fd in fd_pipes.values():
-            if fd in stdout_filenos:
-                sys.__stdout__.flush()
-                sys.__stderr__.flush()
-                break
-
-        fd_pipes_orig = fd_pipes.copy()
-
-        if log_file_path is not None or self.background:
-            fd_pipes[1] = slave_fd
-            fd_pipes[2] = slave_fd
-
-        else:
-            # Create a dummy pipe that PipeLogger uses to efficiently
-            # monitor for process exit by listening for the EOF event.
-            # Re-use of the allocated fd number for the key in fd_pipes
-            # guarantees that the keys will not collide for similarly
-            # allocated pipes which are used by callers such as
-            # FileDigester and MergeProcess. See the _setup_pipes
-            # docstring for more benefits of this allocation approach.
-            self._dummy_pipe_fd = slave_fd
-            fd_pipes[slave_fd] = slave_fd
+            can_log = False
+            slave_fd = None
+            null_input = None
 
         kwargs = {}
         for k in self._spawn_kwarg_names:
@@ -129,7 +129,8 @@ class SpawnProcess(SubProcess):
 
         retval = self._spawn(self.args, **kwargs)
 
-        os.close(slave_fd)
+        if slave_fd is not None:
+            os.close(slave_fd)
         if null_input is not None:
             os.close(null_input)
 
@@ -141,10 +142,21 @@ class SpawnProcess(SubProcess):
 
         self.pid = retval[0]
 
+        if not fd_pipes:
+            self._registered = True
+            self._async_waitpid()
+            return
+
         stdout_fd = None
         if can_log and not self.background:
             stdout_fd = os.dup(fd_pipes_orig[1])
 
+        self._start_main_task(
+            master_fd, log_file_path=log_file_path, stdout_fd=stdout_fd
+        )
+        self._registered = True
+
+    def _start_main_task(self, pr, log_file_path=None, stdout_fd=None):
         build_logger = BuildLogger(
             env=self.env,
             log_path=log_file_path,
@@ -156,14 +168,13 @@ class SpawnProcess(SubProcess):
         pipe_logger = PipeLogger(
             background=self.background,
             scheduler=self.scheduler,
-            input_fd=master_fd,
+            input_fd=pr,
             log_file_path=build_logger.stdin,
             stdout_fd=stdout_fd,
         )
 
         pipe_logger.start()
 
-        self._registered = True
         self._main_task_cancel = functools.partial(
             self._main_cancel, build_logger, pipe_logger
         )
@@ -235,9 +246,6 @@ class SpawnProcess(SubProcess):
 
     def _unregister(self):
         SubProcess._unregister(self)
-        if self.cgroup is not None:
-            self._cgroup_cleanup()
-            self.cgroup = None
         if self._main_task is not None:
             self._main_task.done() or self._main_task.cancel()
 
@@ -249,61 +257,6 @@ class SpawnProcess(SubProcess):
                     self._main_task_cancel = None
                 self._main_task.cancel()
         SubProcess._cancel(self)
-        self._cgroup_cleanup()
-
-    def _cgroup_cleanup(self):
-        if self.cgroup:
-
-            def get_pids(cgroup):
-                try:
-                    with open(os.path.join(cgroup, "cgroup.procs")) as f:
-                        return [int(p) for p in f.read().split()]
-                except OSError:
-                    # removed by cgroup-release-agent
-                    return []
-
-            def kill_all(pids, sig):
-                for p in pids:
-                    try:
-                        os.kill(p, sig)
-                    except OSError as e:
-                        if e.errno == errno.EPERM:
-                            # Reported with hardened kernel (bug #358211).
-                            writemsg_level(
-                                f"!!! kill: ({p}) - Operation not permitted\n",
-                                level=logging.ERROR,
-                                noiselevel=-1,
-                            )
-                        elif e.errno != errno.ESRCH:
-                            raise
-
-            # step 1: kill all orphans (loop in case of new forks)
-            remaining = self._CGROUP_CLEANUP_RETRY_MAX
-            while remaining:
-                remaining -= 1
-                pids = get_pids(self.cgroup)
-                if pids:
-                    kill_all(pids, signal.SIGKILL)
-                else:
-                    break
-
-            if pids:
-                msg = []
-                msg.append(
-                    "Failed to kill pid(s) in "
-                    f"'{os.path.join(self.cgroup, 'cgroup.procs')}': "
-                    f"{' '.join(str(pid) for pid in pids)}"
-                )
-
-                self._elog("eerror", msg)
-
-            # step 2: remove the cgroup
-            try:
-                os.rmdir(self.cgroup)
-            except OSError:
-                # it may be removed already, or busy
-                # we can't do anything good about it
-                pass
 
     def _elog(self, elog_funcname, lines):
         elog_func = getattr(EOutput(), elog_funcname)

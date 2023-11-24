@@ -25,7 +25,7 @@
 #
 
 # Opportunistically use gentoo-functions for nicer output
-functions_script="${EPREFIX:-/}/lib/gentoo/functions.sh"
+functions_script="${EPREFIX}/lib/gentoo/functions.sh"
 source "${functions_script}" || {
 	echo "${argv0}: Could not source ${functions_script}!" 1>&2
 
@@ -71,16 +71,12 @@ die() {
 
 argv0=$0
 
-# Use portageq from the same directory/prefix as the current script, so
-# that we don't have to rely on PATH including the current EPREFIX.
-scriptpath=${BASH_SOURCE[0]}
-if [[ -x "${scriptpath%/*}/portageq" ]]; then
-	portageq=${scriptpath%/*}/portageq
-elif type -P portageq > /dev/null ; then
-	portageq=portageq
-else
-	die "could not find 'portageq'; aborting"
-fi
+# Use emerge and portageq from the same directory/prefix as the current script,
+# so that we don't have to rely on PATH including the current EPREFIX.
+emerge=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P emerge)
+[[ -n ${emerge} ]] || die "could not find 'emerge'; aborting"
+portageq=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P portageq)
+[[ -n ${portageq} ]] || die "could not find 'portageq'; aborting"
 
 # PREFIX LOCAL: retrieve PORTAGE_USER/PORTAGE_GROUP
 eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
@@ -89,8 +85,9 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
 	USERLAND http_proxy ftp_proxy \
+	USERLAND http_proxy https_proxy ftp_proxy
 	PORTAGE_USER PORTAGE_GROUP)"
-export http_proxy ftp_proxy
+export http_proxy https_proxy ftp_proxy
 
 # PREFIX LOCAL: use Prefix servers, just because we want this and infra
 # can't support us yet
@@ -283,7 +280,7 @@ check_file_signature_gemato() {
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
 			local key="${PORTAGE_GPG_KEY}"
 		else
-			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+			local key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
 		fi
 
 		if [[ ! -f "${key}" ]] ; then
@@ -291,15 +288,16 @@ check_file_signature_gemato() {
 			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
 		fi
 
-		local keyserver
-		if [[ -n ${PORTAGE_GPG_KEY_SERVER} ]] ; then
-			keyserver="--keyserver ${PORTAGE_GPG_KEY_SERVER}"
-		fi
-
 		local gemato_args=(
 			openpgp-verify-detached
 			-K "${key}"
 		)
+
+		if [[ -n ${http_proxy} || -n ${https_proxy} ]] ; then
+			gemato_args+=(
+				--proxy "${http_proxy:-${https_proxy}}"
+			)
+		fi
 
 		[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
 		[[ ${PORTAGE_QUIET} == 1 ]] && gemato_args+=( --quiet )
@@ -329,7 +327,7 @@ check_file_signature_gpg_unwrapped() {
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
 			local key="${PORTAGE_GPG_KEY}"
 		else
-			local key="${EPREFIX:-/}"/usr/share/openpgp-keys/gentoo-release.asc
+			local key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
 		fi
 
 		if [[ ! -f "${key}" ]] ; then
@@ -470,14 +468,14 @@ sync_local() {
 
 	if has metadata-transfer ${FEATURES} ; then
 		einfo "Updating cache ..."
-		emerge --metadata
+		"${emerge}" --metadata
 	fi
 
 	local post_sync=${PORTAGE_CONFIGROOT%/}/etc/portage/bin/post_sync
 	[[ -x "${post_sync}" ]] && "${post_sync}"
 
 	# --quiet suppresses output if there are no relevant news items
-	has news ${FEATURES} && emerge --check-news --quiet
+	has news ${FEATURES} && "${emerge}" --check-news --quiet
 	return 0
 }
 

@@ -1,8 +1,1 @@
-#!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
-# Distributed under the terms of the GNU General Public License v2
-
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
-
-die "'${0##*/}' is not allowed in ebuild scope"
-exit 1
+prepall

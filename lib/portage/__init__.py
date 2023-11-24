@@ -1,12 +1,12 @@
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
-
-VERSION = "HEAD"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
 # ===========================================================================
+
+from portage import installation
 
 try:
     import asyncio
@@ -18,7 +18,7 @@ try:
     if not hasattr(errno, "ESTALE"):
         # ESTALE may not be defined on some systems, such as interix.
         errno.ESTALE = -1
-    import multiprocessing.util
+    import functools
     import re
     import types
     import platform
@@ -202,6 +202,7 @@ except ImportError as e:
     sys.stderr.write(f"    {e}\n\n")
     raise
 
+utf8_mode = sys.getfilesystemencoding() == "utf-8"
 
 # We use utf_8 encoding everywhere. Previously, we used
 # sys.getfilesystemencoding() for the 'merge' encoding, but that had
@@ -335,6 +336,9 @@ class _unicode_module_wrapper:
         object.__setattr__(self, "_cache", cache)
 
     def __getattribute__(self, attr):
+        if utf8_mode:
+            return getattr(object.__getattribute__(self, "_mod"), attr)
+
         cache = object.__getattribute__(self, "_cache")
         if cache is not None:
             result = cache.get(attr)
@@ -361,29 +365,6 @@ class _unicode_module_wrapper:
         return result
 
 
-class _eintr_func_wrapper:
-    """
-    Wraps a function and handles EINTR by calling the function as
-    many times as necessary (until it returns without raising EINTR).
-    """
-
-    __slots__ = ("_func",)
-
-    def __init__(self, func):
-        self._func = func
-
-    def __call__(self, *args, **kwargs):
-        while True:
-            try:
-                rval = self._func(*args, **kwargs)
-                break
-            except OSError as e:
-                if e.errno != errno.EINTR:
-                    raise
-
-        return rval
-
-
 import os as _os
 
 _os_overrides = {
@@ -391,7 +372,7 @@ _os_overrides = {
     id(_os.popen): _os.popen,
     id(_os.read): _os.read,
     id(_os.system): _os.system,
-    id(_os.waitpid): _eintr_func_wrapper(_os.waitpid),
+    id(_os.waitpid): _os.waitpid,
 }
 
 
@@ -456,7 +437,7 @@ class _ForkWatcher:
 
 _ForkWatcher.hook(_ForkWatcher)
 
-multiprocessing.util.register_after_fork(_ForkWatcher, _ForkWatcher.hook)
+os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
 
 
 def getpid():
@@ -653,6 +634,16 @@ class _trees_dict(dict):
 def create_trees(
     config_root=None, target_root=None, trees=None, env=None, sysroot=None, eprefix=None
 ):
+    if utf8_mode:
+        config_root = (
+            os.fsdecode(config_root) if isinstance(config_root, bytes) else config_root
+        )
+        target_root = (
+            os.fsdecode(target_root) if isinstance(target_root, bytes) else target_root
+        )
+        sysroot = os.fsdecode(sysroot) if isinstance(sysroot, bytes) else sysroot
+        eprefix = os.fsdecode(eprefix) if isinstance(eprefix, bytes) else eprefix
+
     if trees is None:
         trees = _trees_dict()
     elif not isinstance(trees, _trees_dict):
@@ -732,7 +723,7 @@ def create_trees(
     return trees
 
 
-if VERSION == "HEAD":
+if installation.TYPE == installation.TYPES.SOURCE:
 
     class _LazyVersion(proxy.objectproxy.ObjectProxy):
         def _get_target(self):
@@ -791,6 +782,9 @@ if VERSION == "HEAD":
 
     VERSION = _LazyVersion()
 
+else:
+    VERSION = "@VERSION@"
+
 _legacy_global_var_names = (
     "archlist",
     "db",
@@ -842,3 +836,4 @@ def _disable_legacy_globals():
     global _legacy_global_var_names
     for k in _legacy_global_var_names:
         globals().pop(k, None)
+    portage.data._initialized_globals.clear()

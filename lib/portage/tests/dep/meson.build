@@ -1,0 +1,28 @@
+py.install_sources(
+    [
+        'test_atom.py',
+        'test_check_required_use.py',
+        'test_extended_atom_dict.py',
+        'test_extract_affecting_use.py',
+        'test_standalone.py',
+        'test_best_match_to_list.py',
+        'test_dep_getcpv.py',
+        'test_dep_getrepo.py',
+        'test_dep_getslot.py',
+        'test_dep_getusedeps.py',
+        'test_dnf_convert.py',
+        'test_get_operator.py',
+        'test_get_required_use_flags.py',
+        'test_isjustname.py',
+        'test_isvalidatom.py',
+        'test_match_from_list.py',
+        'test_overlap_dnf.py',
+        'test_paren_reduce.py',
+        'test_soname_atom_pickle.py',
+        'test_use_reduce.py',
+        '__init__.py',
+        '__test__.py',
+    ],
+    subdir : 'portage/tests/dep',
+    pure : not native_extensions
+)

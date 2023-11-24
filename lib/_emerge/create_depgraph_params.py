@@ -1,7 +1,8 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+from portage import installation
 from portage.util import writemsg_level
 
 
@@ -106,7 +107,12 @@ def create_depgraph_params(myopts, myaction):
 
     myparams["ignore_soname_deps"] = myopts.get("--ignore-soname-deps", "y")
 
-    dynamic_deps = myopts.get("--dynamic-deps", "y") != "n" and "--nodeps" not in myopts
+    dyn_deps_def = (
+        "y" if installation.TYPE == installation.TYPES.SOURCE else "@DYN_DEPS_DEFAULT@"
+    )
+    dynamic_deps = (
+        myopts.get("--dynamic-deps", dyn_deps_def) != "n" and "--nodeps" not in myopts
+    )
     if dynamic_deps:
         myparams["dynamic_deps"] = True
 

@@ -199,7 +199,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
             )
             return 0
         except PortagePackageException as e:
-            writemsg(("!!! %s\n") % (e,), noiselevel=-1)
+            writemsg(f"!!! {e}\n", noiselevel=-1)
             return 0
         try:
             mf.write(sign=False)

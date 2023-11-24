@@ -74,7 +74,7 @@ class ReaderPipeClosedTestCase(_PipeClosedTestCase, TestCase):
             loop.run_until_complete(asyncio.sleep(0, loop=loop))
             self.assertFalse(reader_callback.called.done())
 
-            # Demonstrate that the callback is called afer the
+            # Demonstrate that the callback is called after the
             # other end of the pipe has been closed.
             write_end.close()
             loop.run_until_complete(reader_callback.called)
@@ -138,7 +138,7 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 
             self.assertFalse(writer_callback.called.done())
 
-            # Demonstrate that the callback is called afer the
+            # Demonstrate that the callback is called after the
             # other end of the pipe has been closed.
             read_end.close()
             loop.run_until_complete(writer_callback.called)

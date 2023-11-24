@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1999-2022 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -17,55 +17,55 @@ class SignalInterrupt(KeyboardInterrupt):
         self.signum = signum
 
 
-try:
+def signal_interrupt(signum, _frame):
+    raise SignalInterrupt(signum)
 
-    def signal_interrupt(signum, _frame):
-        raise SignalInterrupt(signum)
 
-    def debug_signal(_signum, _frame):
-        import pdb
+def debug_signal(_signum, _frame):
+    import pdb
 
-        pdb.set_trace()
+    pdb.set_trace()
 
-    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-    signal.signal(signal.SIGTERM, signal_interrupt)
-    signal.signal(signal.SIGUSR1, debug_signal)
 
-    import argparse
-    from os import path as osp
-    import sys
-    import textwrap
+# Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+signal.signal(signal.SIGTERM, signal_interrupt)
+signal.signal(signal.SIGUSR1, debug_signal)
 
-    if osp.isfile(
-        osp.join(
-            osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed"
-        )
-    ):
-        sys.path.insert(
-            0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
-        )
-    import portage
+import argparse
+from os import path as osp
+import sys
+import textwrap
 
-    portage._internal_caller = True
-    from portage import os
-    from portage import _encodings
-    from portage import _shell_quote
-    from portage import _unicode_encode
-    from portage.const import VDB_PATH
-    from portage.exception import (
-        PermissionDenied,
-        PortageKeyError,
-        PortagePackageException,
-        UnsupportedAPIException,
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
     )
-    from portage.localization import _
-    import portage.util
-    from portage.util._eventloop.global_event_loop import global_event_loop
-    from _emerge.actions import apply_priorities
-    from _emerge.Package import Package
-    from _emerge.RootConfig import RootConfig
+import portage
 
+portage._internal_caller = True
+from portage import os
+from portage import _encodings
+from portage import _shell_quote
+from portage import _unicode_encode
+from portage.const import VDB_PATH
+from portage.exception import (
+    PermissionDenied,
+    PortageKeyError,
+    PortagePackageException,
+    UnsupportedAPIException,
+)
+from portage.localization import _
+import portage.util
+from portage.util._eventloop.global_event_loop import global_event_loop
+from _emerge.actions import apply_priorities
+from _emerge.Package import Package
+from _emerge.RootConfig import RootConfig
+
+
+def main():
     portage.process.sanitize_fds()
     description = "See the ebuild(1) man page for more info"
     usage = "Usage: ebuild <ebuild file> <command> [command] ..."
@@ -433,10 +433,18 @@ try:
             global_event_loop().close()
             sys.exit(a)
 
+    # Only close the event loop for __main__,
+    # since outside of __main__ it would close the
+    # event loop for child processes when using
+    # the multiprocessing spawn start method.
     global_event_loop().close()
 
-except KeyboardInterrupt as e:
-    # Prevent traceback on ^C
-    signum = getattr(e, "signum", signal.SIGINT)
-    signal.signal(signum, signal.SIG_DFL)
-    raise_signal(signum)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt as e:
+        # Prevent traceback on ^C
+        signum = getattr(e, "signum", signal.SIGINT)
+        signal.signal(signum, signal.SIG_DFL)
+        raise_signal(signum)

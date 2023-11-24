@@ -224,7 +224,7 @@ class Package(Task):
     @property
     def visible(self):
         if self._visible is None:
-            self._visible = self._eval_visiblity(self.masks)
+            self._visible = self._eval_visibility(self.masks)
         return self._visible
 
     @property
@@ -475,7 +475,7 @@ class Package(Task):
 
         return masks
 
-    def _eval_visiblity(self, masks):
+    def _eval_visibility(self, masks):
         if masks is not False:
             if "EAPI.unsupported" in masks:
                 return False

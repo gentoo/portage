@@ -1,7 +1,11 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import time
+
+import functools
+import pytest
+
 from portage.tests import TestCase
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -16,6 +20,7 @@ class SleepProcess(ForkProcess):
     __slots__ = ("future", "seconds")
 
     def _start(self):
+        self.target = functools.partial(time.sleep, self.seconds)
         self.addExitListener(self._future_done)
         ForkProcess._start(self)
 
@@ -23,16 +28,12 @@ class SleepProcess(ForkProcess):
         if not self.future.cancelled():
             self.future.set_result(self.seconds)
 
-    def _run(self):
-        time.sleep(self.seconds)
-
 
 class IterCompletedTestCase(TestCase):
+    # Mark this as todo, since we don't want to fail if heavy system load causes
+    # the tasks to finish in an unexpected order.
+    @pytest.mark.xfail(strict=False)
     def testIterCompleted(self):
-        # Mark this as todo, since we don't want to fail if heavy system
-        # load causes the tasks to finish in an unexpected order.
-        self.todo = True
-
         loop = global_event_loop()
         tasks = [
             SleepProcess(seconds=0.200),

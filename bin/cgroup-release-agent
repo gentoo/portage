@@ -1,2 +1,0 @@
-#!/bin/sh
-exec rmdir "/sys/fs/cgroup/portage/${1}"

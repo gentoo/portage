@@ -1,9 +1,8 @@
-# Copyright 2021 Gentoo Authors
+# Copyright 2021-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bin_entry_point"]
 
-import re
 import sys
 
 from portage.const import PORTAGE_BIN_PATH
@@ -18,17 +17,10 @@ def bin_entry_point():
     """
     script_path = os.path.join(PORTAGE_BIN_PATH, os.path.basename(sys.argv[0]))
     if os.access(script_path, os.X_OK):
-        with open(script_path) as f:
-            shebang = f.readline()
-        python_match = re.search(r"/python[\d\.]*\s+([^/]*)\s+$", shebang)
-        if python_match:
-            sys.argv = [
-                os.path.join(os.path.dirname(sys.argv[0]), "python"),
-                python_match.group(1),
-                script_path,
-            ] + sys.argv[1:]
-            os.execvp(sys.argv[0], sys.argv)
-        sys.argv[0] = script_path
+        sys.argv = [
+            sys.executable,
+            script_path,
+        ] + sys.argv[1:]
         os.execvp(sys.argv[0], sys.argv)
     else:
         print("File not found:", script_path, file=sys.stderr)

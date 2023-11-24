@@ -1,21 +1,21 @@
 ---
 repos:
   - repo: https://github.com/psf/black
-    rev: 22.12.0
+    rev: 23.7.0
     hooks:
       - id: black
   - repo: https://github.com/PyCQA/pylint
-    rev: v2.15.10
+    rev: v3.0.0a6
     hooks:
       - id: pylint
         additional_dependencies:
           - 'pytest'
   - repo: https://github.com/ikamensh/flynt/
-    rev: '0.77'
+    rev: '1.0.0'
     hooks:
       - id: flynt
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
+    rev: v3.9.0
     hooks:
       - id: pyupgrade
-        args: [--py37-plus]
+        args: [--py39-plus]

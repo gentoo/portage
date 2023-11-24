@@ -214,6 +214,7 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
         return NULL;
 
     eintr_retry = 1;
+    error = 0;
     offset_out = 0;
     stat_in_acquired = 0;
     stat_out_acquired = 0;

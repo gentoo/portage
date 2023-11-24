@@ -22,7 +22,12 @@ def process(mysettings, key, logentries, fulltext):
         and "PORTAGE_LOG_FILE" in mysettings
     ):
         logfile = mysettings["PORTAGE_LOG_FILE"]
-    _items.append((mysettings["ROOT"], key, logentries, logfile))
+
+    try:
+        binary = mysettings.configdict["pkg"]["MERGE_TYPE"] == "binary"
+    except KeyError:
+        binary = False
+    _items.append((mysettings["ROOT"], key, logentries, logfile, binary))
 
 
 def finalize():
@@ -42,14 +47,17 @@ def finalize():
 def _finalize():
     global _items
     printer = EOutput()
-    for root, key, logentries, logfile in _items:
+    for root, key, logentries, logfile, binary in _items:
+        color = "PKG_BINARY_MERGE" if binary else "INFORM"
+
         print()
+
         if root == "/":
-            printer.einfo(_("Messages for package %s:") % colorize("INFORM", key))
+            printer.einfo(_("Messages for package %s:") % colorize(color, key))
         else:
             printer.einfo(
                 _("Messages for package %(pkg)s merged to %(root)s:")
-                % {"pkg": colorize("INFORM", key), "root": root}
+                % {"pkg": colorize(color, key), "root": root}
             )
         if logfile is not None:
             printer.einfo(_("Log file: %s") % colorize("INFORM", logfile))

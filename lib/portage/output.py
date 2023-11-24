@@ -807,8 +807,8 @@ class ProgressBar:
 
     def _set_desc(self):
         self._desc = "{}{}".format(
-            "%s: " % self._title if self._title else "",
-            "%s" % self._label if self._label else "",
+            f"{self._title}: " if self._title else "",
+            f"{self._label}" if self._label else "",
         )
         if len(self._desc) > self._desc_max_length:  # truncate if too long
             self._desc = f"{self._desc[:self._desc_max_length - 3]}..."

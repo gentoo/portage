@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.dep import Atom, paren_enclose, use_reduce
@@ -101,7 +101,11 @@ def _eval_deps(dep_struct, vardbs):
                 if best_version:
                     best_version = best_version[-1]
                     try:
-                        best_version = vardb._pkg_str(best_version, None)
+                        best_version = (
+                            best_version
+                            if hasattr(best_version, "slot")
+                            else vardb._pkg_str(best_version, None)
+                        )
                     except (KeyError, InvalidData):
                         pass
                     else:

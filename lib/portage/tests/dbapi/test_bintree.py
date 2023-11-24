@@ -3,6 +3,7 @@
 
 from unittest.mock import MagicMock, patch, call
 import os
+import tempfile
 
 from portage.tests import TestCase
 
@@ -17,14 +18,18 @@ class BinarytreeTestCase(TestCase):
             binarytree()
         self.assertEqual(str(cm.exception), "pkgdir parameter is required")
         with self.assertRaises(TypeError) as cm:
-            binarytree(pkgdir="/tmp")
+            binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"))
         self.assertEqual(str(cm.exception), "settings parameter is required")
 
     def test_init_with_legacy_params_warns(self):
         with self.assertWarns(DeprecationWarning):
-            binarytree(_unused=None, pkgdir="/tmp", settings=MagicMock())
+            binarytree(
+                _unused=None, pkgdir=os.getenv("TMPDIR", "/tmp"), settings=MagicMock()
+            )
         with self.assertWarns(DeprecationWarning):
-            binarytree(virtual=None, pkgdir="/tmp", settings=MagicMock())
+            binarytree(
+                virtual=None, pkgdir=os.getenv("TMPDIR", "/tmp"), settings=MagicMock()
+            )
 
     def test_instance_has_required_attrs(self):
         # Quite smoky test. What would it be a better testing strategy?
@@ -42,6 +47,7 @@ class BinarytreeTestCase(TestCase):
             "_remotepkgs",
             "_additional_pkgs",
             "invalids",
+            "invalid_paths",
             "settings",
             "_pkg_paths",
             "_populating",
@@ -63,11 +69,13 @@ class BinarytreeTestCase(TestCase):
         no_multi_instance_settings = MagicMock()
         no_multi_instance_settings.features = ""
         no_multi_instance_bt = binarytree(
-            pkgdir="/tmp", settings=no_multi_instance_settings
+            pkgdir=os.getenv("TMPDIR", "/tmp"), settings=no_multi_instance_settings
         )
         multi_instance_settings = MagicMock()
         multi_instance_settings.features = "binpkg-multi-instance"
-        multi_instance_bt = binarytree(pkgdir="/tmp", settings=multi_instance_settings)
+        multi_instance_bt = binarytree(
+            pkgdir=os.getenv("TMPDIR", "/tmp"), settings=multi_instance_settings
+        )
         for attr in required_attrs_no_multi_instance:
             getattr(no_multi_instance_bt, attr)
             getattr(multi_instance_bt, attr)
@@ -77,18 +85,20 @@ class BinarytreeTestCase(TestCase):
 
     @patch("portage.dbapi.bintree.binarytree._populate_local")
     def test_populate_without_updates_repos_nor_getbinspkgs(self, ppopulate_local):
-        bt = binarytree(pkgdir="/tmp", settings=MagicMock())
+        bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=MagicMock())
         ppopulate_local.return_value = {}
         bt.populate()
-        ppopulate_local.assert_called_once_with(reindex=True)
+        ppopulate_local.assert_called_once_with(reindex=True, invalid_errors=True)
         self.assertFalse(bt._populating)
         self.assertTrue(bt.populated)
 
     @patch("portage.dbapi.bintree.binarytree._populate_local")
     def test_populate_calls_twice_populate_local_if_updates(self, ppopulate_local):
-        bt = binarytree(pkgdir="/tmp", settings=MagicMock())
+        bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=MagicMock())
         bt.populate()
-        self.assertIn(call(reindex=True), ppopulate_local.mock_calls)
+        self.assertIn(
+            call(reindex=True, invalid_errors=True), ppopulate_local.mock_calls
+        )
         self.assertIn(call(), ppopulate_local.mock_calls)
         self.assertEqual(ppopulate_local.call_count, 2)
 
@@ -96,7 +106,7 @@ class BinarytreeTestCase(TestCase):
     @patch("portage.dbapi.bintree.binarytree._populate_local")
     def test_populate_with_repos(self, ppopulate_local, ppopulate_additional):
         repos = ("one", "two")
-        bt = binarytree(pkgdir="/tmp", settings=MagicMock())
+        bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=MagicMock())
         bt.populate(add_repos=repos)
         ppopulate_additional.assert_called_once_with(repos)
 
@@ -109,9 +119,11 @@ class BinarytreeTestCase(TestCase):
         refresh = "something"
         settings = MagicMock()
         settings.__getitem__.return_value = "/some/path"
-        bt = binarytree(pkgdir="/tmp", settings=settings)
+        bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
-        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=refresh)
+        ppopulate_remote.assert_called_once_with(
+            getbinpkg_refresh=refresh, pretend=False
+        )
 
     @patch("portage.dbapi.bintree.writemsg")
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
@@ -126,7 +138,7 @@ class BinarytreeTestCase(TestCase):
         settings.__getitem__.return_value = portage_root
         pBinRepoConfigLoader.return_value = None
         conf_file = os.path.join(portage_root, BINREPOS_CONF_FILE)
-        bt = binarytree(pkgdir="/tmp", settings=settings)
+        bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
         ppopulate_remote.assert_not_called()
         pwritemsg.assert_called_once_with(
@@ -150,6 +162,50 @@ class BinarytreeTestCase(TestCase):
         """
         settings = MagicMock()
         settings.__getitem__.return_value = "/some/path"
-        bt = binarytree(pkgdir="/tmp", settings=settings)
+        bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True)
-        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=False)
+        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=False, pretend=False)
+
+    @patch("portage.dbapi.bintree.BinRepoConfigLoader")
+    @patch("portage.dbapi.bintree.binarytree._run_trust_helper")
+    def test_default_getbinpkg_refresh_in_populate_trusthelper(
+        self, run_trust_helper, pBinRepoConfigLoader
+    ):
+        """
+        Test for bug #915842.
+
+        Verify that we call the trust helper in non-pretend mode.
+        """
+        settings = MagicMock()
+        settings.features = ["binpkg-request-signature"]
+        settings.__getitem__.return_value = "/some/path"
+
+        d = tempfile.TemporaryDirectory()
+        try:
+            bt = binarytree(pkgdir=d.name, settings=settings)
+            bt.populate(getbinpkgs=True, pretend=False)
+            run_trust_helper.assert_called_once()
+        finally:
+            d.cleanup()
+
+    @patch("portage.dbapi.bintree.BinRepoConfigLoader")
+    @patch("portage.dbapi.bintree.binarytree._run_trust_helper")
+    def test_default_getbinpkg_refresh_in_populate_trusthelper_pretend(
+        self, run_trust_helper, pBinRepoConfigLoader
+    ):
+        """
+        Test for bug #915842.
+
+        Verify we do not call the trust helper in pretend mode.
+        """
+        settings = MagicMock()
+        settings.features = ["binpkg-request-signature"]
+        settings.__getitem__.return_value = "/some/path"
+
+        d = tempfile.TemporaryDirectory()
+        try:
+            bt = binarytree(pkgdir=d.name, settings=settings)
+            bt.populate(getbinpkgs=True, pretend=True)
+            run_trust_helper.assert_not_called()
+        finally:
+            d.cleanup()

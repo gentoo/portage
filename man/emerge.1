@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Mar 2023" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Mar 2023" "Portage @VERSION@" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -440,7 +440,7 @@ precedence over existing changes. This option is automatically enabled with
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
 dependency calculation fails due to a conflict or an
-unsatisfied dependency (default: \'10\').
+unsatisfied dependency (default: \'20\').
 .TP
 .BR "\-\-binpkg\-changed\-deps [ y | n ]"
 Tells emerge to ignore binary packages for which the corresponding
@@ -457,7 +457,7 @@ with resolving inconsistent USE flag settings, this option is
 automatically enabled unless the \fB\-\-usepkgonly\fR option
 is enabled. If \fB\-\-binpkg\-respect\-use\fR is given explicitly,
 then it implies \fB\-\-autounmask\-use=n\fR, because these options
-naturally oppose eachother.
+naturally oppose each other.
 .TP
 .BR "\-\-buildpkg [ y | n ]" ", " \-b
 Tells emerge to build binary packages for all ebuilds processed in
@@ -654,7 +654,7 @@ that can pull unbuilt ebuilds into the dependency graph, since unbuilt
 ebuilds do not have any soname dependency metadata, making it impossible
 to determine whether an unresolved soname dependency can be satisfied.
 Therefore, \fB\-\-usepkgonly\fR (or \fB\-\-getbinpkgonly\fR) must be
-used in order to enable soname depedency resolution when installing
+used in order to enable soname dependency resolution when installing
 packages.
 .TP
 .BR "\-\-ignore\-world [ y | n ]"
@@ -678,7 +678,7 @@ this option.
 Assume that packages may have implicit dependencies on packages which
 belong to the @system set. This option is enabled by default. One of the
 effects of disabling this option is to allow the \-\-jobs option to
-spawn jobs without accounting for the possiblity of implicit dependencies
+spawn jobs without accounting for the possibility of implicit dependencies
 on packages that belong to the @system set.
 .TP
 .BR \-j\ [JOBS] ", "  \-\-jobs[=JOBS]
@@ -931,7 +931,7 @@ mode whenever a new slot is installed. This option is enabled by
 default.
 
 NOTE: If you want to skip all rebuilds involving slot\-operator
-dependecies (including those that involve sub\-slot changes alone),
+dependencies (including those that involve sub\-slot changes alone),
 then \fI\-\-ignore\-built\-slot\-operator\-deps=y\fR is the option
 that you are looking for, since \fI\-\-rebuild\-if\-new\-slot\fR
 does not affect rebuilds triggered by sub\-slot changes alone.
@@ -1290,10 +1290,10 @@ Symbol	Mask Type
 
 #	package.mask
 *	missing keyword
-~	unstable keyword
+\(ti	unstable keyword
 .TE
 
-\fBNOTE:\fR The unstable keyword symbol (~) will not be shown in cases
+\fBNOTE:\fR The unstable keyword symbol (\(ti) will not be shown in cases
 in which the corresponding unstable keywords have been accepted
 globally via \fBACCEPT_KEYWORDS\fR.
 .TP
@@ -1328,7 +1328,7 @@ permanent, you can put them in /etc/portage/package.use instead.
 If \fBemerge \-\-update @system\fR or \fBemerge \-\-update @world\fR
 fails with an error message, it may be that an ebuild uses some
 newer feature not present in this version of \fBemerge\fR.  You
-can use \fBemerge \-\-update sys-apps/portage\fR to upgrade to the lastest
+can use \fBemerge \-\-update sys-apps/portage\fR to upgrade to the latest
 version, which should support any necessary new features.
 .SH "MASKED PACKAGES"
 \fINOTE: Please use caution when using development packages.  Problems
@@ -1370,7 +1370,7 @@ The \fBKEYWORDS\fR variable in an \fBebuild\fR file is also used for masking
 a package still in testing.  There are architecture\-specific keywords for
 each package that let \fBportage\fR know which systems are compatible with
 the package.  Packages which compile on an architecture, but have not been
-proven to be "stable", are masked with a tilde (\fB~\fR) in front of the
+proven to be "stable", are masked with a tilde (\fB\(ti\fR) in front of the
 architecture name.  \fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment
 variable to allow or disallow the emerging of a package masked by
 \fBKEYWORDS\fR.  To inform \fBemerge\fR that it should build these 'testing'

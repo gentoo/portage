@@ -55,7 +55,7 @@ class ExtendedFuture(Future):
             super().set_result(data)
 
     def get(self, default=UNSET_CONST.result()):
-        """Convienience function to wrap result() but adds an optional
+        """Convenience function to wrap result() but adds an optional
         default value to return rather than raise an InvalidStateError
 
         @param default: Optional override for the classwide default_result

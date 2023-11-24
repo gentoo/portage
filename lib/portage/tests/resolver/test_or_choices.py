@@ -649,8 +649,6 @@ class OrChoicesLibpostprocTestCase(TestCase):
         # compatible with any available media-video/ffmpeg slot. In order to
         # solve this test case, some fancy backtracking (like for bug 382421)
         # will be required.
-        self.todo = True
-
         ebuilds = {
             "media-video/ffmpeg-0.10": {"EAPI": "5", "SLOT": "0.10"},
             "media-video/ffmpeg-1.2.2": {"EAPI": "5", "SLOT": "0"},

@@ -9,8 +9,10 @@ install_versions=( "${install_versions[@]/#pythonpypy/pypy}" )
 
 sudo apt-get install -y --no-install-recommends \
         python-is-python3 \
+        python3-dev \
         python3-venv \
         "${install_versions[@]}" \
+        "${install_versions[@]/%/-dev}" \
         "${install_versions[@]/%/-venv}"
 
 for py in "$@"; do

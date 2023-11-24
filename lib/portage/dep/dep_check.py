@@ -45,7 +45,7 @@ def _expand_new_virtuals(
     expanded to || ( highest match ... lowest match ).
 
     The result is normalized in the same way as use_reduce, having a top-level
-    conjuction, and no redundant nested lists.
+    conjunction, and no redundant nested lists.
     """
     newsplit = []
     mytrees = trees[myroot]
@@ -427,7 +427,7 @@ def dep_zapdeps(
 
     # Sort the deps into installed, not installed but already
     # in the graph and other, not installed and not in the graph
-    # and other, with values of [[required_atom], availablility]
+    # and other, with values of [[required_atom], availability]
     for x, satisfied in zip(deps, satisfieds):
         if isinstance(x, list):
             atoms = dep_zapdeps(
@@ -743,7 +743,7 @@ def dep_zapdeps(
 
         if minimize_slots:
             # Prefer choices having fewer new slots. When used with DNF form,
-            # this can eliminate unecessary packages that depclean would
+            # this can eliminate unnecessary packages that depclean would
             # ultimately eliminate (see bug 632026). Only use this behavior
             # when deemed necessary by the caller, since this will discard the
             # order specified in the ebuild, and the preferences specified

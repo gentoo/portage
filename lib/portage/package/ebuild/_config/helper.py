@@ -50,7 +50,7 @@ def ordered_by_atom_specificity(cpdict, pkg, repo=None):
 def prune_incremental(split):
     """
     Prune off any parts of an incremental variable that are
-    made irrelevant by the latest occuring * or -*. This
+    made irrelevant by the latest occurring * or -*. This
     could be more aggressive but that might be confusing
     and the point is just to reduce noise a bit.
     """

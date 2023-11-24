@@ -10,6 +10,8 @@
 # Leo Lipelis <aeoo@gentoo.org>
 # Karl Trygve Kalleberg <karltk@gentoo.org>
 
+cd "${BASH_SOURCE[0]%/*}"
+BINDIR=${PWD}
 cd /
 
 type -P gsed >/dev/null && sed() { gsed "$@"; }
@@ -630,6 +632,7 @@ do_merge() {
 					else
 						chown --reference="${ofile}" "${mfile}"
 						chmod --reference="${ofile}" "${mfile}"
+						${selinux} && chcon --reference="${ofile}" "${mfile}"
 					fi
 					do_mv_ln ${mv_opts} "${mfile}" "${ofile}"
 					rm ${rm_opts} "${file}"
@@ -768,7 +771,7 @@ while [[ -n $1 ]] ; do
 		-p|--preen)   PREEN=true;;
 		-q|--quiet)   QUIET=true;;
 		-v|--verbose) VERBOSE=true;;
-		-V|--version) emerge --version; exit 0;;
+		-V|--version) "$(PATH="${BINDIR}:${PATH}" type -P emerge)" --version; exit 0;;
 		--automode)   parse_automode_flag $2 && shift || usage 1 "Invalid mode '$2'";;
 		-*)           usage 1 "Invalid option '$1'";;
 		*)            break;;
@@ -802,8 +805,10 @@ portage_vars=(
 	NO_COLOR
 )
 
-if type -P portageq > /dev/null; then
-	eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v "${portage_vars[@]}")
+portageq=$(PATH="${BINDIR}:${PATH}" type -P portageq)
+
+if [[ -n ${portageq} ]]; then
+	eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "${portageq}" envvar -v "${portage_vars[@]}")
 else
 	[[ ${OS_FAMILY} == 'gentoo' ]] && die "missing portageq"
 fi
@@ -812,6 +817,8 @@ export PORTAGE_TMPDIR
 SCAN_PATHS=${*:-${CONFIG_PROTECT}}
 [[ " ${FEATURES} " == *" case-insensitive-fs "* ]] && \
 	case_insensitive=true || case_insensitive=false
+[[ " ${FEATURES} " == *" selinux "* ]] && \
+	selinux=true || selinux=false
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap "die terminated" SIGTERM

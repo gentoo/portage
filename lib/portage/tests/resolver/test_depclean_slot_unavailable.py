@@ -46,7 +46,7 @@ class DepcleanUnavailableSlotTestCase(TestCase):
         finally:
             playground.cleanup()
 
-        # Now make the newer version availale and verify that
+        # Now make the newer version available and verify that
         # the lower version is depcleaned.
         ebuilds.update(
             {

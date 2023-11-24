@@ -359,16 +359,22 @@ def load_default_config(settings, trees):
             os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf"),
         ]
 
+        dot = "."
+        tilde = "~"
+        if not portage.utf8_mode:
+            dot = _unicode_encode(dot)
+            tilde = _unicode_encode(tilde)
+
         for sets_config_path in sets_config_paths:
             if os.path.isdir(sets_config_path):
                 for path, dirs, files in os.walk(sets_config_path):
                     dirs.sort()
                     files.sort()
                     for d in dirs:
-                        if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
+                        if d in vcs_dirs or d.startswith(dot) or d.endswith(tilde):
                             dirs.remove(d)
                     for f in files:
-                        if not f.startswith(b".") and not f.endswith(b"~"):
+                        if not f.startswith(dot) and not f.endswith(tilde):
                             yield os.path.join(path, f)
             elif os.path.isfile(sets_config_path):
                 yield sets_config_path

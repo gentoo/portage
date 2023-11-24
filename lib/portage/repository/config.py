@@ -584,7 +584,7 @@ class RepoConfig:
 
     def info_string(self):
         """
-        Returns a formatted string containing informations about the repository.
+        Returns a formatted string containing information about the repository.
         Used by emerge --info.
         """
         indent = " " * 4
@@ -1379,7 +1379,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 
     data = {}
 
-    # None indicates abscence of a masters setting, which later code uses
+    # None indicates absence of a masters setting, which later code uses
     # to trigger a backward compatibility fallback that sets an implicit
     # master. In order to avoid this fallback behavior, layout.conf can
     # explicitly set masters to an empty value, which will result in an

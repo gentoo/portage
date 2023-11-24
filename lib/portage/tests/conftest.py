@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# runTests.py -- Portage Unit Test Functionality
 # Copyright 2006-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -11,7 +10,6 @@ import signal
 import tempfile
 import shutil
 import sys
-from distutils.dir_util import copy_tree
 
 import pytest
 
@@ -65,20 +63,24 @@ def prepare_environment():
         path.insert(0, PORTAGE_BIN_PATH)
         os.environ["PATH"] = ":".join(path)
 
-    # Copy GPG test keys to temporary directory
-    gpg_path = tempfile.mkdtemp(prefix="gpg_")
+    try:
+        # Copy GPG test keys to temporary directory
+        gpg_path = tempfile.mkdtemp(prefix="gpg_")
 
-    copy_tree(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), ".gnupg"), gpg_path
-    )
+        shutil.copytree(
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), ".gnupg"),
+            gpg_path,
+            dirs_exist_ok=True,
+        )
 
-    os.chmod(gpg_path, 0o700)
-    os.environ["PORTAGE_GNUPGHOME"] = gpg_path
+        os.chmod(gpg_path, 0o700)
+        os.environ["PORTAGE_GNUPGHOME"] = gpg_path
 
-    yield
+        yield
 
-    global_event_loop().close()
-    shutil.rmtree(gpg_path, ignore_errors=True)
+    finally:
+        global_event_loop().close()
+        shutil.rmtree(gpg_path, ignore_errors=True)
 
 
 # if __name__ == "__main__":

@@ -1,3 +1,231 @@
+Release notes take the form of the following optional categories:
+[Optional short blurb/summary]
+* Breaking changes
+* Security
+* Features
+* Bug fixes
+* Cleanups
+
+portage-3.0.56 (UNRELEASED)
+--------------
+
+Features:
+* sync: git: Add sync-git-verify-max-age-days option.
+
+Bug fixes:
+* ebuild: Add missing newlines in error messages.
+
+Cleanups:
+* Add pytest markers: ft, unit and stress.
+
+portage-3.0.55 (2023-11-06)
+--------------
+
+Bug fixes:
+* Convert portageq helper to a function to avoid breaking external callers
+  (bug #916287, bug #916296).
+
+* Avoid crash with incomplete depgraph for binpkg-respect-use notice (bug #916614).
+
+* Avoid crash with blockers in depgraph for binpkg-respect-use notice (bug #916336).
+
+* Don't call trust helper (e.g. getuto) with --getbinpkg --pretend as we may
+  lack privileges to do anything (bug #915842).
+
+portage-3.0.54 (2023-10-25)
+--------------
+
+Zac has continued working on preparing us for the 'spawn' multiprocessing
+method.
+
+Breaking changes:
+* Finally ban non-PMS helpers portageq, prepinfo, prepman, prepstrip and
+  prepallstrip (bug #899898, bug #906129, bug #906156).
+
+Features:
+* sync: git: Pass --verbose to git when emerge --sync --verbose.
+
+* sync: git: Forcefully update git remote to match sync-uri for non-volatile
+  repositories (bug #905869).
+
+* emerge: Make --binpkg-respect-use output far more concise (don't show
+  packages missing from the merge list and don't show packages w/ multiple
+  BUILD_IDs).
+
+Bug fixes:
+* SpawnProcess, ForkProcess: Pass stdin via fd_pipes for non-background. This
+  fixes e.g. emerge --sync --ask (bug #916116).
+
+* _emerge: Fix looking up package name for error colorization (bug #915551).
+
+* sync: git: Handle when git is configured with 'log.showSignature'.
+
+* StaticFileSet: Fix os.walk for utf8_mode (bug #916182).
+
+* create_trees: Handle bytes arguments for utf8_mode (bug #916149). This broke app-portage/unsymlink-lib.
+
+Cleanups:
+* MergeProcess: Support QueryCommand with spawn start method (bug #916106)
+
+* vardbapi.unpack_contents: Support spawn start method (bug #916112)
+
+* vardbapi.unpack_metadata: Support spawn start method (bug #916108)
+
+* ForkProcess: Implement fd_pipes via send_handle for spawn start method (non-fork)
+  (bug #915896).
+
+portage-3.0.53 (2023-10-20)
+--------------
+
+Standard mix of bug fixes and new features, along with Zac's continued work
+on preparing us for the spawn multiprocessing method.
+
+Features:
+* GNUMAKEFLAGS: also specify "-l $(nproc)", that is, limit by load average,
+  per default.
+
+* Increase default number of maximum backtrack attempts from 10 to 20.
+
+Bug fixes:
+* bintree: Add another API member (invalid_errors) to allow eclean-pkg to suppress
+  errors when cleaning invalid binpkgs (bug #900224).
+
+* repos.conf: Fix default value of sync-rsync-verify-max-age for ::gentoo. It
+  was previously '24' which allowed far too much time with a stale mirror and
+  could lead to users missing important updates.
+
+* Miscellaneous determinism/reproducibility fixes for binpkgs / environment (bug #914441).
+
+* make.conf(5): Update MAKEOPTS guidance to reflect modern practice (bug #821529).
+
+* For locales that have UTF-8 filesystem encoding, use unicode strings rather
+  than raw bytes for file paths in calls to python modules like os and shutil
+  (bug #914722).
+
+  We recommend using a UTF-8 locale for both performance and correctness reasons.
+
+* Eliminate unnecessary package reinstalls (bug #915494).
+
+* Update the git remote URL of an overlay with its configured sync-uri
+  when necessary (bug #905869).
+
+portage-3.0.52 (2023-10-03)
+--------------
+
+This release has a nice speedup for backtracking caching and supports eclean-pkg
+removing invalid binpkgs.
+
+Breaking changes:
+* FEATURES=pkgdir-index-trusted is now on by default. This improves performance
+  with binpkgs, but does require that users run `emaint binhost --fix` if they
+  manually add or remove binpkgs from their PKGDIR (bug #889300).
+
+Features:
+* Refine _slot_operator_check_reverse_dependencies caching (bug #883071).
+
+* bintree: Add new API member (invalid_paths) to allow gentoolkit to later
+  clean up invalid binpkgs (bug #900224).
+
+* gpkg: Run PORTAGE_TRUST_HELPER before remote binary package operations (bug #913070).
+
+* emerge: Use appropriate colors if binpkgs are used in e.g. pkg_pretend
+  messages as well as elog's mod_echo module (bug #914159).
+
+* Show backtrack information after dependency resolution.
+
+Bug fixes:
+* Prevent gpg from removing /dev/null when unlocking signing key (bug #912808).
+
+* emerge: ensure paths are UTF-8 encoded in _needs_move() (bug #913103).
+
+* vartree: keep build dir if postinst fails (bug #704866).
+
+* fetch: fix fetching of layout.conf when FEATURES=force-mirror (bug #877793).
+
+* dispatch-conf, etc-update: fix SELinux security labels on merged files.
+
+* emerge: fix application count when listing search results for ambiguous
+  packages (bug #915054).
+
+* env-update: Write ${EPREFIX}/usr/etc/ld.so.conf with unprefixed paths on
+  prefixed systems to fix the bfd linker in some obscure cases (bug #892549).
+
+* locks: Handle multiprocessing 'spawn' method (bug #915119).
+
+Cleanups:
+* vartree: Remove unused variables and parameters
+
+* locks: Drop obsolete EINTR wrapper
+
+portage-3.0.51 (2023-08-20)
+--------------
+
+This release features better debug logging in particular.
+
+Features:
+* emerge: Set up logging immediately and respect --debug for log level.
+
+* sync: git, rsync: now respects --debug for better output from gemato. This is
+  especially useful for debugging hangs during the 'Refreshing keys' stage.
+
+Bug fixes:
+* sync (inc. emerge-webrsync): Handle https_proxy to help users who only have it set
+  - the expectation is to have http_proxy set (bug #691434, bug #835927, bug #911629)
+
+* sync: git: respect --quiet more for PGP verification (bug #673624).
+
+* emerge-webrsync: Explicitly pass http_proxy or https_proxy into gemato
+  via --proxy (bug #911629).
+
+* doebuild: gate -Oline behind MAKEFLAGS check (bug #909009).
+
+* misc/emerge-delta-webrsync: Fix PGP logic which prevented syncing for this
+  rarely-used tool (bug #911335).
+
+* make.conf(5): Mention https_proxy.
+
+portage-3.0.50 (2023-08-09)
+--------------
+
+This release has a major build system rework to support PEP517 by migrating
+to meson-python, thanks to Chewi!
+
+Breaking changes:
+* The minimum supported Python version is now >= Python 3.9.
+
+* Portage now installed with Meson and Python sdist + wheel now prepared with
+  meson-python for PEP 517 compliance.
+
+* FEATURES=cgroup was removed since it was based on version 1 cgroups, which
+  caused some issues and version 1 cgroups are obsolete. Use
+  FEATURES=pid-sandbox instead.
+
+Bug fixes:
+* install-qa-check.d/05prefix: Fix prefixifying shebang for >= EAPI 7 ebuilds
+  (bug #909147).
+
+* bin/save-ebuild-env.sh: Stop using compgen and hence stop needing readline
+  (bug #909148).
+
+* _reflink_linux_file_copy: Fix -Wmaybe-uninitialized.
+
+* env-update: Check exit code from ldconfig (bug #910376).
+
+* emerge: Fix 'no ebuilds available' message always mentioning binpkgs
+  (bug #909853).
+
+* gpkg: Fix timestamp for binary packages (bug #909067).
+
+* Ensure non-Python (s)bin scripts launch other Python-based Portage scripts
+  using the same environment.
+
+* Use the correct Python library path when launching scripts directly from a
+  virtual environment.
+
+* Define BROOT in pkg_* phases following PMS change.
+
+* portage(5): Fix description of 'volatile' repos.conf setting (bug #911594).
+
 portage-3.0.49 (2023-06-21)
 --------------
 

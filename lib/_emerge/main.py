@@ -12,16 +12,18 @@ portage.proxy.lazyimport.lazyimport(
     globals(),
     "logging",
     "portage.dep:Atom",
+    "portage.output:xtermTitleReset",
     "portage.util:writemsg_level",
     "textwrap",
     "_emerge.actions:load_emerge_config,run_action," + "validate_ebuild_environment",
+    "_emerge.emergelog:emergelog",
     "_emerge.help:emerge_help",
     "_emerge.is_valid_package_atom:insert_category_into_atom",
 )
 from portage import os
 from portage.sync import _SUBMODULE_PATH_MAP
 
-from typing import Optional, List
+from typing import Optional
 
 options = [
     "--alphabetical",
@@ -1162,7 +1164,7 @@ def profile_check(trees, myaction):
     return os.EX_OK
 
 
-def emerge_main(args: Optional[List[str]] = None):
+def emerge_main(args: Optional[list[str]] = None):
     """
     Entry point of emerge
 
@@ -1191,6 +1193,10 @@ def emerge_main(args: Optional[List[str]] = None):
     myaction, myopts, myfiles = parse_opts(args, silent=True)
     if "--debug" in myopts:
         os.environ["PORTAGE_DEBUG"] = "1"
+        portage.util.initialize_logger(logging.DEBUG)
+    else:
+        portage.util.initialize_logger()
+
     if "--config-root" in myopts:
         os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
     if "--sysroot" in myopts:
@@ -1306,3 +1312,11 @@ def emerge_main(args: Optional[List[str]] = None):
             if "porttree" in x.lazy_items:
                 continue
             x["porttree"].dbapi.close_caches()
+
+        # This gets out final log message in before we quit.
+        xterm_titles = "notitles" not in emerge_config.target_config.settings.features
+        if "--pretend" not in emerge_config.opts:
+            emergelog(xterm_titles, " *** terminating.")
+
+        if xterm_titles:
+            xtermTitleReset()

@@ -13,8 +13,6 @@ from portage.tests.resolver.ResolverPlayground import (
 class AutounmaskUseSlotConflictTestCase(TestCase):
     @pytest.mark.xfail()
     def testAutounmaskUseSlotConflict(self):
-        self.todo = True
-
         ebuilds = {
             "sci-libs/K-1": {"IUSE": "+foo", "EAPI": 1},
             "sci-libs/L-1": {"DEPEND": "sci-libs/K[-foo]", "EAPI": 2},

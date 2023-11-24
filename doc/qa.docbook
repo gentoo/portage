@@ -163,8 +163,8 @@
    or more other packages that are known to provide the needed sonames.
    </para>
   </sect2>
-  <sect2 id='qa-unresolved-soname-dependencies-resolved-by-removal-of-unecessary-files'>
-   <title>Removal of unecessary files</title>
+  <sect2 id='qa-unresolved-soname-dependencies-resolved-by-removal-of-unnecessary-files'>
+   <title>Removal of unnecessary files</title>
    <para>
    For packages that install pre-built binaries, it may be possible to
    resolve soname dependencies simply by removing unnecessary files

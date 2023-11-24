@@ -14,6 +14,7 @@ import tempfile
 from copy import copy
 from datetime import datetime
 
+import portage
 from portage import checksum
 from portage import os
 from portage import shutil
@@ -120,21 +121,13 @@ class tar_stream_writer:
         if cmd is None:
             self.proc = None
         else:
-            if sys.hexversion >= 0x03090000:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    user=self.uid,
-                    group=self.gid,
-                )
-            else:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    preexec_fn=self._drop_privileges,
-                )
+            self.proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                user=self.uid,
+                group=self.gid,
+            )
 
             self.read_thread = threading.Thread(
                 target=self._cmd_read_thread, name="tar_stream_cmd_read", daemon=True
@@ -149,29 +142,6 @@ class tar_stream_writer:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-
-    def _drop_privileges(self):
-        if self.uid:
-            try:
-                os.setuid(self.uid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
-                    )
-                )
-                raise
-
-        if self.gid:
-            try:
-                os.setgid(self.gid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
-                    )
-                )
-                raise
 
     def kill(self):
         """
@@ -318,21 +288,13 @@ class tar_stream_reader:
             self.proc = None
         else:
             # Start external decompressor
-            if sys.hexversion >= 0x03090000:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    user=self.uid,
-                    group=self.gid,
-                )
-            else:
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    preexec_fn=self._drop_privileges,
-                )
+            self.proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                user=self.uid,
+                group=self.gid,
+            )
             self.read_io = self.proc.stdout
             # Start stdin block writing thread
             self.thread = threading.Thread(
@@ -378,29 +340,6 @@ class tar_stream_reader:
             if self.killed is False:
                 writemsg(colorize("BAD", f"GPKG subprocess failed: {self.cmd} \n"))
                 raise CompressorOperationFailed("PIPE broken")
-
-    def _drop_privileges(self):
-        if self.uid:
-            try:
-                os.setuid(self.uid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
-                    )
-                )
-                raise
-
-        if self.gid:
-            try:
-                os.setgid(self.gid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
-                    )
-                )
-                raise
 
     def kill(self):
         """
@@ -575,26 +514,15 @@ class checksum_helper:
             )
             gpg_verify_command = [x for x in gpg_verify_command if x != ""]
 
-            if sys.hexversion >= 0x03090000:
-                self.gpg_proc = subprocess.Popen(
-                    gpg_verify_command,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=env,
-                    user=self.uid,
-                    group=self.gid,
-                )
-
-            else:
-                self.gpg_proc = subprocess.Popen(
-                    gpg_verify_command,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=env,
-                    preexec_fn=self._drop_privileges,
-                )
+            self.gpg_proc = subprocess.Popen(
+                gpg_verify_command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                user=self.uid,
+                group=self.gid,
+            )
 
     def __del__(self):
         self.finish()
@@ -619,29 +547,6 @@ class checksum_helper:
         if (not good_signature) or (not trust_signature):
             writemsg(colorize("BAD", f"!!!\n{self.gpg_result.decode()}"))
             raise InvalidSignature("GPG verify failed")
-
-    def _drop_privileges(self):
-        if self.uid:
-            try:
-                os.setuid(self.uid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to user {self.uid} failed."
-                    )
-                )
-                raise
-
-        if self.gid:
-            try:
-                os.setgid(self.gid)
-            except PermissionError:
-                writemsg(
-                    colorize(
-                        "BAD", f"!!! Drop root privileges to group {self.gid} failed."
-                    )
-                )
-                raise
 
     def update(self, data):
         """
@@ -1012,7 +917,7 @@ class gpkg:
         gpkg_version_file = tarfile.TarInfo(
             os.path.join(self.basename, self.gpkg_version)
         )
-        gpkg_version_file.mtime = datetime.utcnow().timestamp()
+        gpkg_version_file.mtime = datetime.now().timestamp()
         container.addfile(gpkg_version_file)
         checksum_info = checksum_helper(self.settings)
         checksum_info.finish()
@@ -1032,7 +937,7 @@ class gpkg:
             checksum_info = checksum_helper(self.settings)
 
         image_tarinfo = self._create_tarinfo("image")
-        image_tarinfo.mtime = datetime.utcnow().timestamp()
+        image_tarinfo.mtime = datetime.now().timestamp()
         with tar_stream_writer(
             image_tarinfo, container, image_tar_format, compression_cmd, checksum_info
         ) as image_writer:
@@ -1114,7 +1019,7 @@ class gpkg:
             gpkg_version_file = tarfile.TarInfo(
                 os.path.join(new_basename, self.gpkg_version)
             )
-            gpkg_version_file.mtime = datetime.utcnow().timestamp()
+            gpkg_version_file.mtime = datetime.now().timestamp()
             container.addfile(gpkg_version_file)
             checksum_info = checksum_helper(self.settings)
             checksum_info.finish()
@@ -1182,7 +1087,7 @@ class gpkg:
             gpkg_version_file = tarfile.TarInfo(
                 os.path.join(self.prefix, self.gpkg_version)
             )
-            gpkg_version_file.mtime = datetime.utcnow().timestamp()
+            gpkg_version_file.mtime = datetime.now().timestamp()
             container.addfile(gpkg_version_file)
             checksum_info = checksum_helper(self.settings)
             checksum_info.finish()
@@ -1253,7 +1158,7 @@ class gpkg:
         if metadata is None:
             metadata = {}
         metadata_tarinfo = self._create_tarinfo("metadata")
-        metadata_tarinfo.mtime = datetime.utcnow().timestamp()
+        metadata_tarinfo.mtime = datetime.now().timestamp()
 
         if self.create_signature:
             checksum_info = checksum_helper(
@@ -1274,7 +1179,7 @@ class gpkg:
             ) as metadata_tar:
                 for m in metadata:
                     m_info = tarfile.TarInfo(os.path.join("metadata", m))
-                    m_info.mtime = datetime.utcnow().timestamp()
+                    m_info.mtime = datetime.now().timestamp()
 
                     if isinstance(metadata[m], bytes):
                         m_data = io.BytesIO(metadata[m])
@@ -1329,7 +1234,7 @@ class gpkg:
         gpkg_version_file = tarfile.TarInfo(
             os.path.join(self.basename, self.gpkg_version)
         )
-        gpkg_version_file.mtime = datetime.utcnow().timestamp()
+        gpkg_version_file.mtime = datetime.now().timestamp()
         container.addfile(gpkg_version_file)
         checksum_info = checksum_helper(self.settings)
         checksum_info.finish()
@@ -1350,7 +1255,7 @@ class gpkg:
         paths = list(contents)
         paths.sort()
         image_tarinfo = self._create_tarinfo("image")
-        image_tarinfo.mtime = datetime.utcnow().timestamp()
+        image_tarinfo.mtime = datetime.now().timestamp()
         with tar_stream_writer(
             image_tarinfo, container, image_tar_format, compression_cmd, checksum_info
         ) as image_writer:
@@ -1518,7 +1423,7 @@ class gpkg:
 
         manifest_tarinfo = tarfile.TarInfo(os.path.join(basename, "Manifest"))
         manifest_tarinfo.size = manifest.tell()
-        manifest_tarinfo.mtime = datetime.utcnow().timestamp()
+        manifest_tarinfo.mtime = datetime.now().timestamp()
         manifest.seek(0)
         container.addfile(manifest_tarinfo, manifest)
         manifest.close()
@@ -1562,7 +1467,7 @@ class gpkg:
         signature = io.BytesIO(checksum_info.gpg_output)
         signature_tarinfo = tarfile.TarInfo(f"{tarinfo.name}.sig")
         signature_tarinfo.size = len(signature.getvalue())
-        signature_tarinfo.mtime = datetime.utcnow().timestamp()
+        signature_tarinfo.mtime = datetime.now().timestamp()
         container.addfile(signature_tarinfo, signature)
 
         if manifest:
@@ -1957,6 +1862,11 @@ class gpkg:
         image_total_size = 0
 
         for parent, dirs, files in os.walk(root_dir):
+            if portage.utf8_mode:
+                parent = os.fsencode(parent)
+                dirs = [os.fsencode(value) for value in dirs]
+                files = [os.fsencode(value) for value in files]
+
             parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
             for d in dirs:
                 try:
@@ -2007,7 +1917,9 @@ class gpkg:
                 if os.path.islink(f):
                     path_link = os.readlink(f)
                     path_link_length = len(
-                        _unicode_encode(
+                        os.fsencode(path_link)
+                        if portage.utf8_mode
+                        else _unicode_encode(
                             path_link, encoding=_encodings["fs"], errors="strict"
                         )
                     )

@@ -34,9 +34,9 @@ class test_lafilefixer(TestCase):
         yield b""
         # no dependency_libs
         yield b"dlname='libfoo.so.1'\n" + b"current=6\n" + b"age=0\n" + b"revision=2\n"
-        # borken dependency_libs
+        # broken dependency_libs
         yield b"dlname='libfoo.so.1'\n" + b"library_names='libfoo.so.1.0.2 libfoo.so.1 libfoo.so'\n" + b"old_library='libpdf.a'\n" + b"dependency_libs=' /usr/lib64/liba.la /usr/lib64/libb.la -lc' \n"
-        # borken dependency_libs
+        # broken dependency_libs
         yield b"dlname='libfoo.so.1'\n" + b"library_names='libfoo.so.1.0.2 libfoo.so.1 libfoo.so'\n" + b"old_library='libpdf.a'\n" + b"dependency_libs=' /usr/lib64/liba.la /usr/lib64/libb.la -lc\n"
         # crap in dependency_libs
         yield b"dlname='libfoo.so.1'\n" + b"library_names='libfoo.so.1.0.2 libfoo.so.1 libfoo.so'\n" + b"old_library='libpdf.a'\n" + b"dependency_libs=' /usr/lib64/liba.la /usr/lib64/libb.la -lc /-lstdc++'\n"

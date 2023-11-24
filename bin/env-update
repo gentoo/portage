@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -37,11 +37,12 @@ import portage
 
 portage._internal_caller = True
 
-try:
-    portage.env_update(makelinks)
-except OSError as e:
-    if e.errno == errno.EACCES:
-        print("env-update: Need superuser access")
-        sys.exit(1)
-    else:
-        raise
+if __name__ == "__main__":
+    try:
+        portage.env_update(makelinks)
+    except OSError as e:
+        if e.errno == errno.EACCES:
+            print("env-update: Need superuser access")
+            sys.exit(1)
+        else:
+            raise

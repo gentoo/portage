@@ -11,7 +11,7 @@ from _emerge.UseFlagDisplay import UseFlagDisplay
 
 class StringFormatTestCase(TestCase):
     """
-    Test that string formatting works correctly in the current interpretter,
+    Test that string formatting works correctly in the current interpreter,
     which may be either python2 or python3.
     """
 

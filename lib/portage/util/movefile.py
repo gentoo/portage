@@ -105,10 +105,11 @@ def _copyxattr(src, dest, exclude=None):
             )
 
 
-def _cmpxattr(src, dest, exclude=None):
+def _cmpxattr(src: bytes, dest: bytes, exclude=None) -> bool:
     """
     Compares extended attributes between |src| and |dest| and returns True
-    if they are equal or xattrs are not supported, False otherwise
+    if they are equal or xattrs are not supported, False otherwise.
+    Assumes all given paths are UTF-8 encoded.
     """
     try:
         src_attrs = xattr.list(src)

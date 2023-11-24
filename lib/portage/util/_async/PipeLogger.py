@@ -17,7 +17,7 @@ class PipeLogger(AbstractPollTask):
 
     """
     This can be used for logging output of a child process,
-    optionally outputing to log_file_path and/or stdout_fd.  It can
+    optionally outputting to log_file_path and/or stdout_fd.  It can
     also monitor for EOF on input_fd, which may be used to detect
     termination of a child process. If log_file_path ends with
     '.gz' then the log file is written with compression.

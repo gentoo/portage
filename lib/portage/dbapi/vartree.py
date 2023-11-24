@@ -106,6 +106,7 @@ import grp
 import io
 from itertools import chain
 import logging
+import multiprocessing
 import os as _os
 import operator
 import pickle
@@ -410,7 +411,7 @@ class vardbapi(dbapi):
     def cpv_inject(self, mycpv):
         "injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
         ensure_dirs(self.getpath(mycpv))
-        counter = self.counter_tick(mycpv=mycpv)
+        counter = self.counter_tick()
         # write local package counter so that emerge clean does the right thing
         write_atomic(self.getpath(mycpv, filename="COUNTER"), str(counter))
 
@@ -809,7 +810,6 @@ class vardbapi(dbapi):
         pull_me = cache_these.union(wants)
         mydata = {"_mtime_": mydir_mtime}
         cache_valid = False
-        cache_incomplete = False
         cache_mtime = None
         metadata = None
         if pkg_data is not None:
@@ -1019,6 +1019,13 @@ class vardbapi(dbapi):
                     pass
         self._bump_mtime(cpv)
 
+    @staticmethod
+    def _async_copy(dbdir, dest_dir):
+        for parent, dirs, files in os.walk(dbdir, onerror=_raise_exc):
+            for key in files:
+                shutil.copy(os.path.join(parent, key), os.path.join(dest_dir, key))
+            break
+
     async def unpack_metadata(self, pkg, dest_dir, loop=None):
         """
         Unpack package metadata to a directory. This method is a coroutine.
@@ -1034,14 +1041,9 @@ class vardbapi(dbapi):
         else:
             cpv = pkg.mycpv
         dbdir = self.getpath(cpv)
-
-        def async_copy():
-            for parent, dirs, files in os.walk(dbdir, onerror=_raise_exc):
-                for key in files:
-                    shutil.copy(os.path.join(parent, key), os.path.join(dest_dir, key))
-                break
-
-        await loop.run_in_executor(ForkExecutor(loop=loop), async_copy)
+        await loop.run_in_executor(
+            ForkExecutor(loop=loop), self._async_copy, dbdir, dest_dir
+        )
 
     async def unpack_contents(
         self,
@@ -1108,19 +1110,18 @@ class vardbapi(dbapi):
         )
         if binpkg_format == "xpak":
             tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
-            pr, pw = os.pipe()
+            pr, pw = multiprocessing.Pipe(duplex=False)
             proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
-            os.close(pr)
-            with os.fdopen(pw, "wb", 0) as pw_file:
-                excluded_config_files = await loop.run_in_executor(
-                    ForkExecutor(loop=loop),
-                    functools.partial(
-                        self._dblink(cpv).quickpkg,
-                        pw_file,
-                        include_config=opts.include_config == "y",
-                        include_unmodified_config=opts.include_unmodified_config == "y",
-                    ),
-                )
+            pr.close()
+            excluded_config_files = await loop.run_in_executor(
+                ForkExecutor(loop=loop),
+                functools.partial(
+                    self._dblink(cpv).quickpkg,
+                    pw,
+                    include_config=opts.include_config == "y",
+                    include_unmodified_config=opts.include_unmodified_config == "y",
+                ),
+            )
             await proc.wait()
             if proc.returncode != os.EX_OK:
                 raise PortageException(f"command failed: {tar_cmd}")
@@ -1156,13 +1157,10 @@ class vardbapi(dbapi):
                 log_path=settings.get("PORTAGE_LOG_FILE"),
             )
 
-    def counter_tick(self, myroot=None, mycpv=None):
-        """
-        @param myroot: ignored, self._eroot is used instead
-        """
-        return self.counter_tick_core(incrementing=1, mycpv=mycpv)
+    def counter_tick(self) -> int:
+        return self.counter_tick_core(incrementing=1)
 
-    def get_counter_tick_core(self, myroot=None, mycpv=None):
+    def get_counter_tick_core(self) -> int:
         """
         Use this method to retrieve the counter instead
         of having to trust the value of a global counter
@@ -1180,10 +1178,7 @@ class vardbapi(dbapi):
         it also corresponds to the total number of
         installation actions that have occurred in
         the history of this package database.
-
-        @param myroot: ignored, self._eroot is used instead
         """
-        del myroot
         counter = -1
         try:
             with open(
@@ -1234,7 +1229,7 @@ class vardbapi(dbapi):
 
         return max_counter + 1
 
-    def counter_tick_core(self, myroot=None, incrementing=1, mycpv=None):
+    def counter_tick_core(self, incrementing: int = 1) -> int:
         """
         This method will grab the next COUNTER value and record it back
         to the global file. Note that every package install must have
@@ -1242,13 +1237,8 @@ class vardbapi(dbapi):
         into the same SLOT and in that case it's important that both
         packages have different COUNTER metadata.
 
-        @param myroot: ignored, self._eroot is used instead
-        @param mycpv: ignored
-        @rtype: int
         @return: new counter value
         """
-        myroot = None
-        mycpv = None
         self.lock()
         try:
             counter = self.get_counter_tick_core() - 1
@@ -1606,7 +1596,7 @@ class vardbapi(dbapi):
 
         def _iter_owners_low_mem(self, path_list):
             """
-            This implemention will make a short-lived dblink instance (and
+            This implementation will make a short-lived dblink instance (and
             parse CONTENTS) for every single installed package. This is
             slower and but uses less memory than the method which uses the
             basename cache.
@@ -2186,7 +2176,9 @@ class dblink:
             # The tarfile module will write pax headers holding the
             # xattrs only if PAX_FORMAT is specified here.
             with tarfile.open(
-                fileobj=output_file,
+                fileobj=output_file
+                if hasattr(output_file, "write")
+                else open(output_file.fileno(), mode="wb", closefd=False),
                 mode="w|",
                 format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT,
             ) as tar:
@@ -2675,10 +2667,6 @@ class dblink:
         ignored_unlink_errnos = self._ignored_unlink_errnos
         ignored_rmdir_errnos = self._ignored_rmdir_errnos
 
-        if not pkgfiles:
-            showMessage(_("No package files given... Grabbing a set.\n"))
-            pkgfiles = self.getcontents()
-
         if others_in_slot is None:
             others_in_slot = []
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
@@ -2706,6 +2694,7 @@ class dblink:
         unmerge_orphans = "unmerge-orphans" in self.settings.features
         calc_prelink = "prelink-checksums" in self.settings.features
 
+        pkgfiles = pkgfiles if pkgfiles else self.getcontents()
         if pkgfiles:
             self.updateprotect()
             mykeys = list(pkgfiles)
@@ -4234,7 +4223,7 @@ class dblink:
             if str_buffer:
                 str_buffer = _unicode_encode("".join(str_buffer))
                 while str_buffer:
-                    str_buffer = str_buffer[os.write(self._pipe, str_buffer) :]
+                    str_buffer = str_buffer[os.write(self._pipe.fileno(), str_buffer) :]
 
     def _emerge_log(self, msg):
         emergelog(False, msg)
@@ -4529,6 +4518,10 @@ class dblink:
                     eagain_error = True
                     break
 
+                if portage.utf8_mode:
+                    parent = os.fsencode(parent)
+                    dirs = [os.fsencode(value) for value in dirs]
+                    files = [os.fsencode(value) for value in files]
                 try:
                     parent = _unicode_decode(
                         parent, encoding=_encodings["merge"], errors="strict"
@@ -4693,7 +4686,7 @@ class dblink:
         for blocker in self._blockers or []:
             blocker = self.vartree.dbapi._dblink(blocker.cpv)
             # It may have been unmerged before lock(s)
-            # were aquired.
+            # were acquired.
             if blocker.exists():
                 blockers.append(blocker)
 
@@ -4998,7 +4991,7 @@ class dblink:
 
         # write local package counter for recording
         if counter is None:
-            counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
+            counter = self.vartree.dbapi.counter_tick()
         with open(
             _unicode_encode(
                 os.path.join(self.dbtmpdir, "COUNTER"),
@@ -5316,9 +5309,12 @@ class dblink:
         # Use atomic_ofstream for automatic coercion of raw bytes to
         # unicode, in order to prevent TypeError when writing raw bytes
         # to TextIOWrapper with python2.
+        contents_tmp_path = os.path.join(self.dbtmpdir, "CONTENTS")
         outfile = atomic_ofstream(
-            _unicode_encode(
-                os.path.join(self.dbtmpdir, "CONTENTS"),
+            contents_tmp_path
+            if portage.utf8_mode
+            else _unicode_encode(
+                contents_tmp_path,
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -5420,7 +5416,7 @@ class dblink:
         @param secondhand: A set of items to merge in pass two (usually
         or symlinks that point to non-existing files that may get merged later)
         @type secondhand: List
-        @param stufftomerge: Either a diretory to merge, or a list of items.
+        @param stufftomerge: Either a directory to merge, or a list of items.
         @type stufftomerge: String or List
         @param cfgfiledict: { File:mtime } mapping for config_protected files
         @type cfgfiledict: Dictionary
@@ -6091,8 +6087,11 @@ class dblink:
                 ebuild_phase.wait()
                 self._elog_process()
 
-                if "noclean" not in self.settings.features and (
-                    retval == os.EX_OK or "fail-clean" in self.settings.features
+                # Keep the build dir around if postinst fails (bug #704866)
+                if (
+                    not self._postinst_failure
+                    and "noclean" not in self.settings.features
+                    and (retval == os.EX_OK or "fail-clean" in self.settings.features)
                 ):
                     if myebuild is None:
                         myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
@@ -6294,12 +6293,15 @@ class dblink:
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
+        src_bytes = _unicode_encode(mysrc, encoding=_encodings["fs"], errors="strict")
+        dest_bytes = _unicode_encode(mydest, encoding=_encodings["fs"], errors="strict")
+
         if "xattr" in self.settings.features:
             excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
-            if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
+            if not _cmpxattr(src_bytes, dest_bytes, exclude=excluded_xattrs):
                 return True
 
-        return not filecmp.cmp(mysrc, mydest, shallow=False)
+        return not filecmp.cmp(src_bytes, dest_bytes, shallow=False)
 
 
 def merge(

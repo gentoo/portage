@@ -1,4 +1,4 @@
-# Copright Gentoo Foundation 2006-2020
+# Copyright Gentoo Foundation 2006-2020
 # Portage Unit Testing Functionality
 
 import io

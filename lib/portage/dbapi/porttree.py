@@ -49,6 +49,8 @@ import functools
 
 import collections
 from collections import OrderedDict
+from collections.abc import Sequence
+from typing import Optional, Union
 from urllib.parse import urlparse
 
 
@@ -435,7 +437,9 @@ class portdbapi(dbapi):
                 return license_path
         return None
 
-    def findname(self, mycpv, mytree=None, myrepo=None):
+    def findname(
+        self, mycpv: str, mytree: Optional[str] = None, myrepo: Optional[str] = None
+    ) -> str:
         return self.findname2(mycpv, mytree, myrepo)[0]
 
     def getRepositoryPath(self, repository_id):
@@ -494,7 +498,12 @@ class portdbapi(dbapi):
         """
         return self.settings.repositories.ignored_repos
 
-    def findname2(self, mycpv, mytree=None, myrepo=None):
+    def findname2(
+        self,
+        mycpv: str,
+        mytree: Optional[str] = None,
+        myrepo: Optional[str] = None,
+    ) -> Union[tuple[None, int], tuple[str, str], tuple[str, None]]:
         """
         Returns the location of the CPV, and what overlay it was in.
         Searches overlays first, then PORTDIR; this allows us to return the first
@@ -541,7 +550,7 @@ class portdbapi(dbapi):
                     continue
                 mytrees.append(repo.location)
 
-        # For optimal performace in this hot spot, we do manual unicode
+        # For optimal performance in this hot spot, we do manual unicode
         # handling here instead of using the wrapped os module.
         encoding = _encodings["fs"]
         errors = "strict"
@@ -643,8 +652,14 @@ class portdbapi(dbapi):
 
         return (metadata, ebuild_hash)
 
-    def aux_get(self, mycpv, mylist, mytree=None, myrepo=None):
-        "stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
+    def aux_get(
+        self,
+        mycpv: str,
+        mylist: Sequence[str],
+        mytree: Optional[str] = None,
+        myrepo: Optional[str] = None,
+    ) -> list[str]:
+        "stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
         'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
         'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise PortageKeyError if error'
         # For external API consumers, self._event_loop returns a new event
@@ -909,7 +924,7 @@ class portdbapi(dbapi):
         return result
 
     def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
-        # returns a filename:size dictionnary of remaining downloads
+        # returns a filename:size dictionary of remaining downloads
         myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
         if myebuild is None:
             raise AssertionError(_("ebuild not found for '%s'") % mypkg)
@@ -1200,12 +1215,12 @@ class portdbapi(dbapi):
 
     def xmatch(
         self,
-        level,
-        origdep,
-        mydep=DeprecationWarning,
-        mykey=DeprecationWarning,
-        mylist=DeprecationWarning,
-    ):
+        level: str,
+        origdep: str,
+        mydep: type[DeprecationWarning] = DeprecationWarning,
+        mykey: type[DeprecationWarning] = DeprecationWarning,
+        mylist: type[DeprecationWarning] = DeprecationWarning,
+    ) -> Union[Sequence[str], str]:
         """
         Caching match function.
 
@@ -1381,7 +1396,7 @@ class portdbapi(dbapi):
 
         return myval
 
-    def match(self, mydep, use_cache=1):
+    def match(self, mydep: str, use_cache: int = 1) -> Union[Sequence[str], str]:
         return self.xmatch("match-visible", mydep)
 
     def gvisible(self, mylist):

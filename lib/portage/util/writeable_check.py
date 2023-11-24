@@ -49,7 +49,7 @@ def linux_ro_checker(dir_list):
             errors="replace",
         ) as f:
             for line in f:
-                # we're interested in dir and both attr fileds which always
+                # we're interested in dir and both attr fields which always
                 # start with either 'ro' or 'rw'
                 # example line:
                 # 14 1 8:3 / / rw,noatime - ext3 /dev/root rw,errors=continue,commit=5,barrier=1,data=writeback

@@ -29,7 +29,7 @@ class BinRepoConfig:
 
     def info_string(self):
         """
-        Returns a formatted string containing informations about the repository.
+        Returns a formatted string containing information about the repository.
         Used by emerge --info.
         """
         indent = " " * 4

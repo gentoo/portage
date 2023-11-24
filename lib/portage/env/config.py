@@ -92,7 +92,7 @@ class PackageMaskFile(ConfigLoaderKlass):
     """
     A class that implements a file-based package.mask
 
-    Entires in package.mask are of the form:
+    Entries in package.mask are of the form:
     atom1
     atom2
     or optionally

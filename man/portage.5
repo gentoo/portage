@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Apr 2023" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Apr 2023" "Portage @VERSION@" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -607,7 +607,7 @@ Files in this directory, including make.conf, repos.conf, sets.conf,
 and any file with a name that begins with "package." can also be directories.
 
 If it is a directory, then all the files in that directory, excluding files
-that begin with '.' or end with '~', will be sorted in lexical order by file
+that begin with '.' or end with '\(ti', will be sorted in lexical order by file
 name and summed together as if they were a single file.
 
 .I Example:
@@ -761,9 +761,9 @@ modifies effective KEYWORDS (rather than ACCEPT_KEYWORDS).
 
 .I Example:
 # always use unstable libgd
-media\-libs/libgd ~x86
+media\-libs/libgd \(tix86
 # only use stable mplayer
-media\-video/mplayer \-~x86
+media\-video/mplayer \-\(tix86
 # always use unstable netcat
 net-analyzer/netcat
 .fi
@@ -775,7 +775,7 @@ three special tokens:
 
 .nf
 \fB*\fR  package is visible if it is stable on any architecture
-\fB~*\fR package is visible if it is in testing on any architecture
+\fB\(ti*\fR package is visible if it is in testing on any architecture
 \fB**\fR package is always visible (KEYWORDS are ignored completely)
 .fi
 
@@ -919,7 +919,7 @@ only.
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information.
 .br
-Configuration specified in \fBrepos.conf\fR can be overriden by
+Configuration specified in \fBrepos.conf\fR can be overridden by
 \fBPORTAGE_REPOSITORIES\fR environmental variable, which has the same
 format as \fBrepos.conf\fR.
 
@@ -1071,6 +1071,10 @@ Extra options to give to git when updating repository (git pull).
 Require the top commit in the repository to contain a good OpenPGP
 signature. Defaults to no, false.
 .TP
+.B sync\-git\-verify\-max\-age\-days
+Warn if repository is older than the specified number of days. Disabled
+when 0. Defaults to disabled.
+.TP
 .B sync\-hooks\-only\-on\-change = yes|no|true|false
 If set to true, then sync of a given repository will not trigger postsync
 hooks unless hooks would have executed for a master repository or the
@@ -1102,12 +1106,12 @@ Extra options to give to mercurial when updating repository (hg pull).
 Enable read\-copy\-update (RCU) behavior for sync operations. The current
 latest immutable version of a repository will be referenced by a symlink
 found where the repository would normally be located (see the \fBlocation\fR
-setting). Repository consumers should resolve the cannonical path of this
+setting). Repository consumers should resolve the canonical path of this
 symlink before attempt to access the repository, and all operations should
 be read\-only, since the repository is considered immutable. Updates occur
 by atomic replacement of the symlink, which causes new consumers to use the
 new immutable version, while any earlier consumers continue to use the
-cannonical path that was resolved earlier. This option requires
+canonical path that was resolved earlier. This option requires
 sync\-allow\-hardlinks and sync\-rcu\-store\-dir options to be enabled, and
 currently also requires that sync\-type is set to rsync. This option is
 disabled by default, since the symlink usage would require special handling
@@ -1265,11 +1269,11 @@ sync\-openpgp\-key\-path setting. Defaults to no, false.
 Specifies whether a repository is volatile.  Volatile repositories
 are assumed to contain changes made outside of Portage.  This prohibits
 optimizations from occurring by assuming the integrity of the repository
-and its caches may be violated.  Disabling this option allows local changes to
-be made to the repository for e.g. development safely.  For git-synced
-repositories, Portage will not perform destructive operations.
-Per default, repositories are considered volatile if their directory is owned
-by either 'root' or 'portage' and if it is under /var/db/repos. Otherwise,
+and its caches may be violated.  Enabling this option allows local changes to
+be made to the repository for e.g. development safely.  When enabled, Portage
+will not perform destructive operations for git-synced repositories.  Per
+default, repositories are considered volatile if their directory is not owned
+by either 'root' or 'portage' or if it is not under /var/db/repos.  Otherwise,
 the repository is considered non volatile.
 .TP
 
@@ -1317,7 +1321,7 @@ sync\-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
 sync\-cvs\-repo = gentoo\-x86
 auto\-sync = yes
 
-# Overlay 'voip' syncronized with layman's plug-in sync module
+# Overlay 'voip' synchronized with layman's plug-in sync module
 [voip]
 location = /var/lib/layman/voip
 sync\-type = laymanator
@@ -1642,7 +1646,7 @@ A list of all the packages which will be displayed when you run `emerge info`.
 A list of all the variables which will be displayed when you run `emerge info`.
 .TP
 .BR license_groups
-This contains groups of licenses that may be specifed in the
+This contains groups of licenses that may be specified in the
 \fBACCEPT_LICENSE\fR variable (see \fBmake.conf\fR(5)). Refer
 to GLEP 23 for further information:
 \fIhttps://www.gentoo.org/glep/glep-0023.html\fR.
@@ -1683,7 +1687,7 @@ given package should vary depending on which profile the user has selected.
 # add stable keyword to libgd
 media\-libs/libgd x86
 # remove stable keyword from mplayer and add unstable keyword
-media\-video/mplayer \-x86 ~x86
+media\-video/mplayer \-x86 \(tix86
 # remove all keywords from netcat
 net-analyzer/netcat -*
 .fi
@@ -1852,7 +1856,7 @@ all objects that the package installed onto your system.
 Contains information about the sonames that a package provides, which is
 automatically generated from the files that it installs. The sonames
 may have been filtered by the \fBPROVIDES_EXCLUDE\fR \fBebuild\fR(5)
-variable. A multilib category, followed by a colon, always preceeds a
+variable. A multilib category, followed by a colon, always precedes a
 list of one or more sonames.
 
 .I Example:
@@ -1866,7 +1870,7 @@ automatically generated from the files that it installs. The sonames
 may have been filtered by the \fBREQUIRES_EXCLUDE\fR \fBebuild\fR(5)
 variable. Any sonames that a package provides are automatically excluded
 from \fBREQUIRES\fR. A multilib category, followed by a colon, always
-preceeds a list of one or more sonames.
+precedes a list of one or more sonames.
 
 .I Example:
 .nf

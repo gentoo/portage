@@ -1,5 +1,7 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import functools
 
 from portage import os
 from portage.util._ctypes import find_library, LoadLibrary
@@ -16,6 +18,10 @@ class SyncfsProcess(ForkProcess):
 
     __slots__ = ("paths",)
 
+    def _start(self):
+        self.target = functools.partial(self._target, self._get_syncfs, self.paths)
+        super()._start()
+
     @staticmethod
     def _get_syncfs():
         filename = find_library("c")
@@ -29,12 +35,13 @@ class SyncfsProcess(ForkProcess):
 
         return None
 
-    def _run(self):
+    @staticmethod
+    def _target(get_syncfs, paths):
         syncfs_failed = False
-        syncfs = self._get_syncfs()
+        syncfs = get_syncfs()
 
         if syncfs is not None:
-            for path in self.paths:
+            for path in paths:
                 try:
                     fd = os.open(path, os.O_RDONLY)
                 except OSError:

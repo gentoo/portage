@@ -1,6 +1,7 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import io
 import multiprocessing
 import platform
@@ -8,6 +9,7 @@ import platform
 import fcntl
 import portage
 from portage import os, _unicode_decode
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util._ctypes import find_library
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
@@ -95,7 +97,7 @@ class MergeProcess(ForkProcess):
             self._locked_vdb = False
 
     def _elog_output_handler(self):
-        output = self._read_buf(self._elog_reader_fd)
+        output = self._read_buf(self._elog_reader_fd.fileno())
         if output:
             lines = _unicode_decode(output).split("\n")
             if len(lines) == 1:
@@ -111,8 +113,8 @@ class MergeProcess(ForkProcess):
                     reporter(msg, phase=phase, key=key, out=out)
 
         elif output is not None:  # EIO/POLLHUP
-            self.scheduler.remove_reader(self._elog_reader_fd)
-            os.close(self._elog_reader_fd)
+            self.scheduler.remove_reader(self._elog_reader_fd.fileno())
+            self._elog_reader_fd.close()
             self._elog_reader_fd = None
             return False
 
@@ -135,16 +137,15 @@ class MergeProcess(ForkProcess):
         post-fork actions.
         """
 
-        elog_reader_fd, elog_writer_fd = os.pipe()
+        elog_reader_fd, elog_writer_fd = multiprocessing.Pipe(duplex=False)
 
         fcntl.fcntl(
-            elog_reader_fd,
+            elog_reader_fd.fileno(),
             fcntl.F_SETFL,
-            fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK,
+            fcntl.fcntl(elog_reader_fd.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK,
         )
 
         mtime_reader, mtime_writer = multiprocessing.Pipe(duplex=False)
-        fd_pipes[mtime_writer.fileno()] = mtime_writer.fileno()
         self.scheduler.add_reader(mtime_reader.fileno(), self._mtime_handler)
         self._mtime_reader = mtime_reader
 
@@ -165,8 +166,7 @@ class MergeProcess(ForkProcess):
             pipe=elog_writer_fd,
             mtime_pipe=mtime_writer,
         )
-        fd_pipes[elog_writer_fd] = elog_writer_fd
-        self.scheduler.add_reader(elog_reader_fd, self._elog_output_handler)
+        self.scheduler.add_reader(elog_reader_fd.fileno(), self._elog_output_handler)
 
         # If a concurrent emerge process tries to install a package
         # in the same SLOT as this one at the same time, there is an
@@ -180,8 +180,33 @@ class MergeProcess(ForkProcess):
 
         self._dblink = mylink
         self._elog_reader_fd = elog_reader_fd
+
+        # Since the entire QueryCommand._db is not required, only pass
+        # in tree types that QueryCommand specifically requires.
+        child_db = {}
+        parent_db = portage.db if QueryCommand._db is None else QueryCommand._db
+        for root in parent_db:
+            child_db[root] = {}
+            for tree_type in ("vartree", "porttree"):
+                child_db[root][tree_type] = parent_db[root][tree_type]
+
+        self.target = functools.partial(
+            self._target,
+            self._counter,
+            self._dblink,
+            self.infloc,
+            self.mydbapi,
+            self.myebuild,
+            self.pkgloc,
+            self.prev_mtimes,
+            self.settings,
+            self.unmerge,
+            self.vartree.dbapi,
+            child_db,
+        )
+
         pids = super()._spawn(args, fd_pipes, **kwargs)
-        os.close(elog_writer_fd)
+        elog_writer_fd.close()
         mtime_writer.close()
         self._buf = ""
         self._elog_keys = set()
@@ -197,13 +222,27 @@ class MergeProcess(ForkProcess):
 
         return pids
 
-    def _run(self):
-        os.close(self._elog_reader_fd)
-        counter = self._counter
-        mylink = self._dblink
-        portage.output.havecolor = not no_color(self.settings)
+    @staticmethod
+    def _target(
+        counter,
+        mylink,
+        infloc,
+        mydbapi,
+        myebuild,
+        pkgloc,
+        prev_mtimes,
+        settings,
+        unmerge,
+        vardb,
+        db,
+    ):
+        if QueryCommand._db is None:
+            # Initialize QueryCommand._db for AbstractEbuildProcess/EbuildIpcDaemon
+            # when not using the multiprocessing fork start method.
+            QueryCommand._db = db
+        portage.output.havecolor = not no_color(settings)
         # Avoid wastful updates of the vdb cache.
-        self.vartree.dbapi._flush_cache_enabled = False
+        vardb._flush_cache_enabled = False
 
         # In this subprocess we don't want PORTAGE_BACKGROUND to
         # suppress stdout/stderr output since they are pipes. We
@@ -211,21 +250,21 @@ class MergeProcess(ForkProcess):
         # already be opened by the parent process, so we set the
         # "subprocess" value for use in conditional logging code
         # involving PORTAGE_LOG_FILE.
-        if not self.unmerge:
+        if not unmerge:
             # unmerge phases have separate logs
-            if self.settings.get("PORTAGE_BACKGROUND") == "1":
-                self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
+            if settings.get("PORTAGE_BACKGROUND") == "1":
+                settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
             else:
-                self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "0"
-            self.settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
-        self.settings["PORTAGE_BACKGROUND"] = "subprocess"
-        self.settings.backup_changes("PORTAGE_BACKGROUND")
+                settings["PORTAGE_BACKGROUND_UNMERGE"] = "0"
+            settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
+        settings["PORTAGE_BACKGROUND"] = "subprocess"
+        settings.backup_changes("PORTAGE_BACKGROUND")
 
         rval = 1
-        if self.unmerge:
+        if unmerge:
             if not mylink.exists():
                 rval = os.EX_OK
-            elif mylink.unmerge(ldpath_mtimes=self.prev_mtimes) == os.EX_OK:
+            elif mylink.unmerge(ldpath_mtimes=prev_mtimes) == os.EX_OK:
                 mylink.lockdb()
                 try:
                     mylink.delete()
@@ -234,11 +273,11 @@ class MergeProcess(ForkProcess):
                 rval = os.EX_OK
         else:
             rval = mylink.merge(
-                self.pkgloc,
-                self.infloc,
-                myebuild=self.myebuild,
-                mydbapi=self.mydbapi,
-                prev_mtimes=self.prev_mtimes,
+                pkgloc,
+                infloc,
+                myebuild=myebuild,
+                mydbapi=mydbapi,
+                prev_mtimes=prev_mtimes,
                 counter=counter,
             )
         return rval
@@ -270,8 +309,8 @@ class MergeProcess(ForkProcess):
 
         self._unlock_vdb()
         if self._elog_reader_fd is not None:
-            self.scheduler.remove_reader(self._elog_reader_fd)
-            os.close(self._elog_reader_fd)
+            self.scheduler.remove_reader(self._elog_reader_fd.fileno())
+            self._elog_reader_fd.close()
             self._elog_reader_fd = None
         if self._elog_keys is not None:
             for key in self._elog_keys:

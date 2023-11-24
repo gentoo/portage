@@ -52,7 +52,7 @@ class PortdbCacheTestCase(TestCase):
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "egencache"),
+            os.path.join(str(self.bindir), "egencache"),
             "--update-manifests",
             "--sign-manifests=n",
             "--repo",

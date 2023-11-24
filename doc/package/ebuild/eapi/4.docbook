@@ -206,7 +206,7 @@ Note that the mysql/sqlite relationship is that of an Exclusive OR (XOR). While 
 REQUIRED_USE="^^ ( mysql sqlite )"
 </para>
 <para>
-Like any block operator, this can be combined with other constraints. For example if the user has flipped on the client flag, one gui must be choosen:
+Like any block operator, this can be combined with other constraints. For example if the user has flipped on the client flag, one gui must be chosen:
 </para>
 <para>
 REQUIRED_USE="client? ( ^^ ( gtk qt motif ) )"

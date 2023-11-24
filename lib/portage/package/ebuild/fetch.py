@@ -234,7 +234,7 @@ def _ensure_distdir(settings, distdir):
     if "FAKED_MODE" in settings:
         # When inside fakeroot, directories with portage's gid appear
         # to have root's gid. Therefore, use root's gid instead of
-        # portage's gid to avoid spurrious permissions adjustments
+        # portage's gid to avoid spurious permissions adjustments
         # when inside fakeroot.
         # PREFIX LOCAL: do not assume root to be 0
         dir_gid = rootgid
@@ -983,7 +983,7 @@ def fetch(
     ]
 
     restrict_fetch = "fetch" in restrict
-    force_mirror = "force-mirror" in features and not restrict_mirror
+    force_mirror = "force-mirror" in features and not restrict_mirror and try_mirrors
 
     file_uri_tuples = []
     # Check for 'items' attribute since OrderedDict is not a dict.

@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Gentoo Authors
+# Copyright 2014-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """
@@ -55,7 +55,7 @@ class SyncBase:
 
     @property
     def has_bin(self):
-        """Checks for existance of the external binary, and also
+        """Checks for existence of the external binary, and also
         checks for storage driver configuration problems.
 
         MUST only be called after _kwargs() has set the logger
@@ -328,18 +328,24 @@ class SyncBase:
                 loop.run_until_complete(decorated_func())
         out.eend(0)
 
-    def _get_openpgp_env(self, openpgp_key_path=None):
+    def _get_openpgp_env(self, openpgp_key_path=None, debug=False):
         if gemato is not None:
             # Override global proxy setting with one provided in emerge configuration
             if "http_proxy" in self.spawn_kwargs["env"]:
                 proxy = self.spawn_kwargs["env"]["http_proxy"]
+            elif "https_proxy" in self.spawn_kwargs["env"]:
+                proxy = self.spawn_kwargs["env"]["https_proxy"]
             else:
                 proxy = None
 
             if openpgp_key_path:
-                openpgp_env = gemato.openpgp.OpenPGPEnvironment(proxy=proxy)
+                openpgp_env = gemato.openpgp.OpenPGPEnvironment(
+                    proxy=proxy, debug=debug
+                )
             else:
-                openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment(proxy=proxy)
+                openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment(
+                    proxy=proxy, debug=debug
+                )
 
             return openpgp_env
 

@@ -1,4 +1,4 @@
-# Copright Gentoo Foundation 2006
+# Copyright Gentoo Foundation 2006
 # Portage Unit Testing Functionality
 
 import tempfile

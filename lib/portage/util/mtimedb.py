@@ -38,7 +38,7 @@ class MtimeDB(dict):
     """The MtimeDB class is used to interact with a file storing the
     current resume lists.
     It is a subclass of ``dict`` and it reads from/writes to JSON, by
-    default, althouth it can be configured to use ``pickle``.
+    default, although it can be configured to use ``pickle``.
     """
 
     # JSON read support has been available since portage-2.1.10.49.

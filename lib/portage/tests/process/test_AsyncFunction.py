@@ -1,6 +1,8 @@
-# Copyright 2020-2021 Gentoo Authors
+# Copyright 2020-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
+import multiprocessing
 import sys
 
 import portage
@@ -15,40 +17,95 @@ from portage.util.futures.unix_events import _set_nonblocking
 class AsyncFunctionTestCase(TestCase):
     @staticmethod
     def _read_from_stdin(pw):
-        os.close(pw)
+        if pw is not None:
+            os.close(pw)
         return "".join(sys.stdin)
 
     async def _testAsyncFunctionStdin(self, loop):
         test_string = "1\n2\n3\n"
-        pr, pw = os.pipe()
-        fd_pipes = {0: pr}
-        reader = AsyncFunction(
-            scheduler=loop, fd_pipes=fd_pipes, target=self._read_from_stdin, args=(pw,)
-        )
-        reader.start()
-        os.close(pr)
-        _set_nonblocking(pw)
-        with open(pw, mode="wb", buffering=0) as pipe_write:
-            await _writer(pipe_write, test_string.encode("utf_8"))
-        self.assertEqual((await reader.async_wait()), os.EX_OK)
-        self.assertEqual(reader.result, test_string)
+        pr, pw = multiprocessing.Pipe(duplex=False)
+        stdin_backup = os.dup(portage._get_stdin().fileno())
+        os.dup2(pr.fileno(), portage._get_stdin().fileno())
+        pr.close()
+        try:
+            reader = AsyncFunction(
+                # Should automatically inherit stdin as fd_pipes[0]
+                # when background is False, for things like
+                # emerge --sync --ask (bug 916116).
+                background=False,
+                scheduler=loop,
+                target=self._read_from_stdin,
+                args=(
+                    pw.fileno()
+                    if multiprocessing.get_start_method() == "fork"
+                    else None,
+                ),
+            )
+            reader.start()
+            # For compatibility with the multiprocessing spawn start
+            # method, we delay restoration of the stdin file descriptor,
+            # since this file descriptor is sent to the subprocess
+            # asynchronously.
+            _set_nonblocking(pw.fileno())
+            with open(pw.fileno(), mode="wb", buffering=0, closefd=False) as pipe_write:
+                await _writer(pipe_write, test_string.encode("utf_8"))
+            pw.close()
+            self.assertEqual((await reader.async_wait()), os.EX_OK)
+            self.assertEqual(reader.result, test_string)
+        finally:
+            os.dup2(stdin_backup, portage._get_stdin().fileno())
+            os.close(stdin_backup)
 
     def testAsyncFunctionStdin(self):
         loop = asyncio._wrap_loop()
         loop.run_until_complete(self._testAsyncFunctionStdin(loop=loop))
 
-    def _test_getpid_fork(self):
+    def testAsyncFunctionStdinSpawn(self):
+        orig_start_method = multiprocessing.get_start_method()
+        if orig_start_method == "spawn":
+            self.skipTest("multiprocessing start method is already spawn")
+        # NOTE: An attempt was made to use multiprocessing.get_context("spawn")
+        # here, but it caused the python process to terminate unexpectedly
+        # during a send_handle call.
+        multiprocessing.set_start_method("spawn", force=True)
+        try:
+            self.testAsyncFunctionStdin()
+        finally:
+            multiprocessing.set_start_method(orig_start_method, force=True)
+
+    @staticmethod
+    def _test_getpid_fork(preexec_fn=None):
         """
         Verify that portage.getpid() cache is updated in a forked child process.
         """
+        if preexec_fn is not None:
+            preexec_fn()
         loop = asyncio._wrap_loop()
         proc = AsyncFunction(scheduler=loop, target=portage.getpid)
         proc.start()
         proc.wait()
-        self.assertEqual(proc.pid, proc.result)
+        return proc.pid == proc.result
 
     def test_getpid_fork(self):
-        self._test_getpid_fork()
+        self.assertTrue(self._test_getpid_fork())
+
+    def test_spawn_getpid(self):
+        """
+        Test portage.getpid() with multiprocessing spawn start method.
+        """
+        loop = asyncio._wrap_loop()
+        proc = AsyncFunction(
+            scheduler=loop,
+            target=self._test_getpid_fork,
+            kwargs=dict(
+                preexec_fn=functools.partial(
+                    multiprocessing.set_start_method, "spawn", force=True
+                )
+            ),
+        )
+        proc.start()
+        self.assertEqual(proc.wait(), 0)
+        self.assertTrue(proc.result)
 
     def test_getpid_double_fork(self):
         """
@@ -59,3 +116,4 @@ class AsyncFunctionTestCase(TestCase):
         proc = AsyncFunction(scheduler=loop, target=self._test_getpid_fork)
         proc.start()
         self.assertEqual(proc.wait(), 0)
+        self.assertTrue(proc.result)

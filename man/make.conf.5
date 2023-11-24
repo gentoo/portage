@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Mar 2023" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Mar 2023" "Portage @VERSION@" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -51,9 +51,9 @@ Defaults to the value of $CHOST.
 .TP
 \fBACCEPT_KEYWORDS\fR = \fI[space delimited list of KEYWORDS]\fR
 Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
-of the 'x86' architecture would set this to '~x86' while ppc users would
-set this to '~ppc'.  This is an incremental variable.  Only define a
-~arch.
+of the 'x86' architecture would set this to '\(tix86' while ppc users would
+set this to '\(tippc'.  This is an incremental variable.  Only define a
+\(tiarch.
 .br
 Defaults to the value of $ARCH.
 .TP
@@ -214,7 +214,9 @@ unless you know what you are doing.
 \fBCCACHE_DIR\fR = \fI[path]\fR
 Defines the location of the ccache working directory.  See the \fBccache\fR(1)
 man page for more information.
-.br
+
+Only trusted users should be granted write access to this location.
+
 Defaults to /var/tmp/ccache
 .TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
@@ -285,6 +287,8 @@ they will be automatically fetched on demand for a given build. If you would
 like to selectively prune obsolete files from this directory, see
 \fBeclean\fR(1) from the gentoolkit package.
 
+Only trusted users should be granted write access to this location.
+
 Use the \fBPORTAGE_RO_DISTDIRS\fR variable to specify one or
 more read-only directories containing distfiles.
 .br
@@ -331,7 +335,7 @@ should not be disabled by default.
 .RS
 .TP
 .B assume\-digests
-When commiting work to cvs with \fBrepoman\fR(1), assume that all existing
+When committing work to cvs with \fBrepoman\fR(1), assume that all existing
 SRC_URI digests are correct.  This feature also affects digest generation via
 \fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
 \fIdigest\fR feature is enabled). Existing digests for files that do not exist
@@ -420,7 +424,7 @@ Enable a special progress indicator when \fBemerge\fR(1) is calculating
 dependencies.
 .TP
 .B case\-insensitive\-fs
-Use case\-insensitive file name comparisions when merging and unmerging
+Use case\-insensitive file name comparisons when merging and unmerging
 files. Most users should not enable this feature, since most filesystems
 are case\-sensitive. You should only enable this feature if you are
 using portage to install files to a case\-insensitive filesystem.
@@ -436,10 +440,6 @@ lead to packages that cannot be emerged. If this happens (if you receive errors
 like "File not recognized: File truncated"), try recompiling the application
 with ccache disabled before reporting a bug. Unless you are doing development
 work, do not enable ccache.
-.TP
-.B cgroup
-Use Linux control group to control processes spawned by ebuilds. This allows
-emerge to safely kill all subprocesses when ebuild phase exits.
 .TP
 .B clean\-logs
 Enable automatic execution of the command specified by the
@@ -717,7 +717,7 @@ bits removed while files that are setgid have the other read bit removed.
 See also \fIsuidctl\fR below.
 .TP
 .B sign
-When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with
+When committing work to cvs with \fBrepoman\fR(1), sign the Manifest with
 a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in
 \fBmake.conf\fR(5).
 .TP
@@ -881,7 +881,7 @@ The user name used to drop root privileges during verification.
 Defaults to "nobody"
 .br
 .TP
-\fBhttp_proxy ftp_proxy RSYNC_PROXY\fR = \fI[protocol://host:port]\fR
+\fBhttp_proxy https_proxy ftp_proxy RSYNC_PROXY\fR = \fI[protocol://host:port]\fR
 These variables are used by network clients such as \fBwget\fR(1) and
 \fBrsync\fR(1). They are only required if you use a
 proxy server for internet access.
@@ -938,12 +938,14 @@ enabled for these flags may be closed as INVALID.
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
 have a dual\-processor system, set this variable to "\-j2" or "\-j3" for
-enhanced build performance with many packages. Suggested settings are
-between \fICPUs+1\fR and \fI2*CPUs+1\fR. In order to avoid
-excess load, the \fB\-\-load\-average\fR option is recommended.
+enhanced build performance with many packages. It is suggested that the jobs
+value used be the minimum of: available RAM divided by 2GB, or the number of
+threads on the system. In order to avoid excess load, the
+\fB\-\-load\-average\fR option is recommended.
 For more information, see \fBmake\fR(1). Also see \fBemerge\fR(1) for
 information about analogous \fB\-\-jobs\fR and \fB\-\-load\-average\fR options.
-Defaults to the number of processors if left unset.
+If unset, defaults to using the number of processors to limit jobs (and
+load average via GNUMAKEFLAGS).
 .TP
 \fBNO_COLOR\fR = \fI[any string]\fR
 Set to any nonempty string (e.g. "1") to disable color by default.
@@ -964,7 +966,9 @@ to its category. However, for backward compatibility with the layout
 used by older versions of portage, if the \fI${PKGDIR}/All\fR directory
 exists then all packages will be stored inside of it and symlinks to
 the packages will be created in the category subdirectories.
-.br
+
+Only trusted users should be granted write access to this location.
+
 Defaults to /var/cache/binpkgs.
 .TP
 .B PORT_LOGDIR
@@ -1213,10 +1217,21 @@ Defaults to 30.
 .TP
 \fBPORTAGE_TMPDIR\fR = \fI[path]\fR
 Defines the location of the temporary build directories.
-.br
+
+Only trusted users should be granted write access to ${PORTAGE_TMPDIR}/portage.
+
 Defaults to /var/tmp.
 
 This should not be set to point anywhere under location of any repository.
+.TP
+\fBPORTAGE_TRUST_HELPER\fR = \fI[path]\fR
+Defines an executable file which initializes and maintains
+/etc/portage/gnupg, installing keys that are trusted for binary package
+signing, and refreshing these keys from a key server. This helper is called
+before all operations involving remote binary packages if and only if
+binpkg-request-signature is in \fBFEATURES\fR.
+.br
+Defaults to "/usr/bin/getuto" (provided by app-portage/getuto).
 .TP
 \fBPORTAGE_USERNAME\fR = \fI[user]\fR
 Defines the username to use when executing in userpriv/etc... modes (i.e.

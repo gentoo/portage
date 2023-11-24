@@ -1,5 +1,7 @@
-# Copyright 2013-2016 Gentoo Foundation
+# Copyright 2013-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import multiprocessing
 
 import portage
 from portage import os
@@ -12,14 +14,9 @@ from _emerge.Package import Package
 from _emerge.PipeReader import PipeReader
 
 
-class DoebuildProcess(ForkProcess):
-    __slots__ = ("doebuild_kwargs", "doebuild_pargs")
-
-    def _run(self):
-        return portage.doebuild(*self.doebuild_pargs, **self.doebuild_kwargs)
-
-
 class DoebuildFdPipesTestCase(TestCase):
+    output_fd = 200
+
     def testDoebuild(self):
         """
         Invoke portage.doebuild() with the fd_pipes parameter, and
@@ -28,7 +25,7 @@ class DoebuildFdPipesTestCase(TestCase):
         supported for API consumers (see bug #475812).
         """
 
-        output_fd = 200
+        output_fd = self.output_fd
         ebuild_body = ["S=${WORKDIR}"]
         for phase_func in (
             "pkg_info",
@@ -124,20 +121,19 @@ class DoebuildFdPipesTestCase(TestCase):
                 "clean",
                 "merge",
             ):
-                pr, pw = os.pipe()
+                pr, pw = multiprocessing.Pipe(duplex=False)
 
-                producer = DoebuildProcess(
-                    doebuild_pargs=(ebuildpath, phase),
-                    doebuild_kwargs={
+                producer = ForkProcess(
+                    target=self._doebuild,
+                    fd_pipes={
+                        1: dev_null.fileno(),
+                    },
+                    args=(QueryCommand._db, pw, ebuildpath, phase),
+                    kwargs={
                         "settings": settings,
                         "mydbapi": portdb,
                         "tree": "porttree",
                         "vartree": root_config.trees["vartree"],
-                        "fd_pipes": {
-                            1: dev_null.fileno(),
-                            2: dev_null.fileno(),
-                            output_fd: pw,
-                        },
                         "prev_mtimes": {},
                     },
                 )
@@ -150,7 +146,7 @@ class DoebuildFdPipesTestCase(TestCase):
                     task_scheduler.start()
                 finally:
                     # PipeReader closes pr
-                    os.close(pw)
+                    pw.close()
 
                 task_scheduler.wait()
                 output = portage._unicode_decode(consumer.getvalue()).rstrip("\n")
@@ -167,3 +163,11 @@ class DoebuildFdPipesTestCase(TestCase):
             dev_null.close()
             playground.cleanup()
             QueryCommand._db = None
+
+    @staticmethod
+    def _doebuild(db, pw, *args, **kwargs):
+        QueryCommand._db = db
+        kwargs["fd_pipes"] = {
+            DoebuildFdPipesTestCase.output_fd: pw.fileno(),
+        }
+        return portage.doebuild(*args, **kwargs)

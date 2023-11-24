@@ -1,17 +1,17 @@
-# Copyright 2005-2022 Gentoo Authors
+# Copyright 2005-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
 import re
 import subprocess
-
-from typing import Tuple
+import datetime
 
 import portage
 from portage import os
 from portage.util import writemsg_level, shlex_split
 from portage.util.futures import asyncio
 from portage.output import create_color_func, EOutput
+from portage.const import TIMESTAMP_FORMAT
 
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
@@ -41,7 +41,7 @@ class GitSync(NewBase):
         """Tests whether the repo actually exists"""
         return os.path.exists(os.path.join(self.repo.location, ".git"))
 
-    def new(self, **kwargs) -> Tuple[int, bool]:
+    def new(self, **kwargs) -> tuple[int, bool]:
         """Do the initial clone of the repository"""
         if kwargs:
             self._kwargs(kwargs)
@@ -133,7 +133,7 @@ class GitSync(NewBase):
 
         return ":".join(directories)
 
-    def update(self) -> Tuple[int, bool]:
+    def update(self) -> tuple[int, bool]:
         """Update existing git repository, and ignore the syncuri. We are
         going to trust the user and assume that the user is in the branch
         that he/she wants updated. We'll let the user manage branches with
@@ -141,14 +141,20 @@ class GitSync(NewBase):
         """
         if not self.has_bin:
             return (1, False)
+
+        opts = self.options.get("emerge_config").opts
+
         git_cmd_opts = ""
         quiet = self.settings.get("PORTAGE_QUIET") == "1"
+        verbose = "--verbose" in opts
 
         # We don't want to operate with a .git outside of the given
         # repo in any circumstances.
         self.spawn_kwargs["env"].update(
             {"GIT_CEILING_DIRECTORIES": self._gen_ceiling_string(self.repo.location)}
         )
+
+        self.add_safe_directory()
 
         if self.repo.module_specific_options.get("sync-git-env"):
             shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
@@ -172,6 +178,8 @@ class GitSync(NewBase):
 
         if quiet:
             git_cmd_opts += " --quiet"
+        elif verbose:
+            git_cmd_opts += " --verbose"
 
         # The logic here is a bit delicate. We need to balance two things:
         # 1. Having a robust sync mechanism which works unattended.
@@ -180,7 +188,7 @@ class GitSync(NewBase):
         #
         # For sync-type=git repositories, we've seen a problem in the wild
         # where shallow clones end up "breaking themselves" especially when
-        # the origin is behing a CDN. 'git pull' might return state X,
+        # the origin is behind a CDN. 'git pull' might return state X,
         # but on a subsequent pull, return state X-1. git will then (sometimes)
         # leave orphaned untracked files in the repository. On a subsequent pull,
         # when state >= X is returned where those files exist in the origin,
@@ -196,7 +204,7 @@ class GitSync(NewBase):
         # 2.
         #   - volatile=no (explicitly set to no), OR
         #   - volatile is unset AND the repository owner is either root or portage
-        # 3. Portage is syncing the respository (rather than e.g. auto-sync=no
+        # 3. Portage is syncing the repository (rather than e.g. auto-sync=no
         # and never running 'emaint sync -r foo')
         #
         # Portage will not clobber if:
@@ -257,8 +265,6 @@ class GitSync(NewBase):
                 f" {self.repo.module_specific_options['sync-git-pull-extra-opts']}"
             )
 
-        self.add_safe_directory()
-
         try:
             remote_branch = portage._unicode_decode(
                 subprocess.check_output(
@@ -296,11 +302,38 @@ class GitSync(NewBase):
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
 
-        git_cmd = "{} fetch {}{}".format(
-            self.bin_command,
-            remote_branch.partition("/")[0],
-            git_cmd_opts,
-        )
+        git_remote = remote_branch.partition("/")[0]
+
+        if not self.repo.volatile:
+            git_get_remote_url_cmd = ["git", "ls-remote", "--get-url", git_remote]
+            git_remote_url = portage._unicode_decode(
+                subprocess.check_output(
+                    git_get_remote_url_cmd,
+                    cwd=portage._unicode_encode(self.repo.location),
+                )
+            ).strip()
+            if git_remote_url != self.repo.sync_uri:
+                git_set_remote_url_cmd = [
+                    "git",
+                    "remote",
+                    "set-url",
+                    git_remote,
+                    self.repo.sync_uri,
+                ]
+                exitcode = portage.process.spawn(
+                    git_set_remote_url_cmd,
+                    cwd=portage._unicode_encode(self.repo.location),
+                    **self.spawn_kwargs,
+                )
+                if exitcode != os.EX_OK:
+                    msg = f"!!! could not update git remote {git_remote}'s url to {self.repo.sync_uri}"
+                    self.logger(self.xterm_titles, msg)
+                    writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+                    return (exitcode, False)
+                elif not quiet:
+                    writemsg_level(" ".join(git_set_remote_url_cmd) + "\n")
+
+        git_cmd = f"{self.bin_command} fetch {git_remote}{git_cmd_opts}"
 
         if not quiet:
             writemsg_level(git_cmd + "\n")
@@ -405,6 +438,52 @@ class GitSync(NewBase):
         return (os.EX_OK, current_rev != previous_rev)
 
     def verify_head(self, revision="-1") -> bool:
+        max_age_days = self.repo.module_specific_options.get(
+            "sync-git-verify-max-age-days", ""
+        )
+        if max_age_days:
+            try:
+                max_age_days = int(max_age_days)
+                if max_age_days <= 0:
+                    raise ValueError(max_age_days)
+            except ValueError:
+                writemsg_level(
+                    f"!!! sync-git-max-age-days must be a positive non-zero integer: {max_age_days}\n",
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+                return False
+            show_timestamp_chk_file_cmd = [
+                self.bin_command,
+                "show",
+                f"{revision}:metadata/timestamp.chk",
+            ]
+            try:
+                timestamp_chk = portage._unicode_decode(
+                    subprocess.check_output(
+                        show_timestamp_chk_file_cmd,
+                        cwd=portage._unicode_encode(self.repo.location),
+                    )
+                ).strip()
+            except subprocess.CalledProcessError as e:
+                writemsg_level(
+                    f"!!! {show_timestamp_chk_file_cmd} failed with {e.returncode}",
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+                return False
+            timestamp = datetime.datetime.strptime(timestamp_chk, TIMESTAMP_FORMAT)
+            max_timestamp_age = datetime.datetime.now() - datetime.timedelta(
+                days=max_age_days
+            )
+            if timestamp < max_timestamp_age:
+                writemsg_level(
+                    f"!!! timestamp (from timestamp.chk) {timestamp} is older than max age {max_timestamp_age}\n",
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+                return False
+
         if self.repo.module_specific_options.get(
             "sync-git-verify-commit-signature", "false"
         ).lower() not in ("true", "yes"):
@@ -418,7 +497,16 @@ class GitSync(NewBase):
             )
             return False
 
-        openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
+        opts = self.options.get("emerge_config").opts
+        debug = "--debug" in opts
+        quiet = self.settings.get("PORTAGE_QUIET") == "1"
+
+        openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path, debug)
+
+        if debug:
+            old_level = logging.getLogger().getEffectiveLevel()
+            logging.getLogger().setLevel(logging.DEBUG)
+            logging.getLogger("gemato").setLevel(logging.DEBUG)
 
         try:
             out = EOutput()
@@ -440,7 +528,15 @@ class GitSync(NewBase):
                 env = os.environ.copy()
                 env["GNUPGHOME"] = openpgp_env.home
 
-            rev_cmd = [self.bin_command, "log", "-n1", "--pretty=format:%G?", revision]
+            rev_cmd = [
+                self.bin_command,
+                "-c",
+                "log.showsignature=0",
+                "log",
+                "-n1",
+                "--pretty=format:%G?",
+                revision,
+            ]
             try:
                 status = portage._unicode_decode(
                     subprocess.check_output(
@@ -453,7 +549,8 @@ class GitSync(NewBase):
                 return False
 
             if status == "G":  # good signature is good
-                out.einfo("Trusted signature found on top commit")
+                if not quiet:
+                    out.einfo("Trusted signature found on top commit")
                 return True
             if status == "U":  # untrusted
                 out.ewarn("Top commit signature is valid but not trusted")
@@ -473,12 +570,22 @@ class GitSync(NewBase):
             else:
                 expl = "unknown issue"
             out.eerror(f"No valid signature found: {expl}")
+
+            if debug:
+                writemsg_level(
+                    f"!!! Got following output from gpg: {status}\n",
+                    level=logging.DEBUG,
+                    noiselevel=-1,
+                )
+
             return False
         finally:
             if openpgp_env is not None:
                 openpgp_env.close()
+            if debug:
+                logging.getLogger().setLevel(old_level)
 
-    def retrieve_head(self, **kwargs) -> Tuple[int, bool]:
+    def retrieve_head(self, **kwargs) -> tuple[int, bool]:
         """Get information about the head commit"""
         if kwargs:
             self._kwargs(kwargs)

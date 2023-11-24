@@ -9,7 +9,7 @@ bad habits that exist in the current codebase.
 Python Version
 --------------
 
-Python 3.7 is the minimum supported version.
+Python 3.9 is the minimum supported version.
 
 Dependencies
 ------------
@@ -213,14 +213,17 @@ Releases
 
 1. Repository mangling:
 	- Update NEWS (for both new version & release date)
-	- Update setup.py
+	- Update meson.build
 and commit.
 
 2. Create a git tag for this release:
 	git tag -a -s portage-3.0.30
 
-3. Create the tarball and run the tests: ./runtests
-   (see PYTHON_SUPPORTED_VERSIONS in runtests).
+3. Create the tarball and run the tests:
+     - meson setup -Dmodules-only=true build
+     - meson test -C build --verbose
+   Use meson setup's --native-file to override the Python version. See
+   Python versions listed in tox.ini.
 
 4. Version bump the ebuild locally (don't push) and verify it can re-install itself:
 	emerge --oneshot sys-apps/portage
@@ -234,8 +237,9 @@ and commit.
 6. Create the release for pypi and upload it there:
 	- python -m venv .venv
 	- . .venv/bin/activate
-	- pip install wheel twine
-	- python setup.py bdist_wheel sdist
+	- pip install build twine
+	- python -m build # build the sdist and arch/Python-specific wheel
+	- python -m build --wheel -Csetup-args="-Dnative-extensions=false" # build the pure wheel
 	- twine upload dist/<filenames>
 
 7. Bugzilla wrangling:

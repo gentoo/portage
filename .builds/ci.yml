@@ -9,31 +9,47 @@ repositories:
   # pypy: https://ppa.launchpadcontent.net/pypy/ppa/ubuntu jammy main "251104D968854915"
 environment:
   PYTHON_VERSIONS:
-    - '3.7'
-    - '3.8'
     - '3.9'
     - '3.10'
     - '3.11'
+    # Python 3.12 seems to (at least sometimes) timeout
+    # - '3.12'
     # Testing PyPy is currently broken, see bug #903709
     # - 'pypy3'
+  PYTEST_ADDOPTS: >
+    -vv
+    -ra
+    -l
+    -o console_output_style=count
+    -o log_cli=true
+    --log-cli-level=info
+    -n logical
+    --dist=worksteal
 tasks:
   - setup-python: |
       portage/.builds/setup-python.sh "${PYTHON_VERSIONS[@]}"
 
-  - test-install: |
+  - setup-tests: |
+      sudo apt-get install -y --no-install-recommends meson pkg-config
       for py in "${PYTHON_VERSIONS[@]}"; do
         source ".venv-$py/bin/activate"
-        pushd portage
-          time ./setup.py clean install
-        popd
+        # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
+        pip install pytest pytest-xdist[psutil] setuptools
+        printf "[binaries]\npython = '%s'\n" "$(command -v python)" \
+            | tee "/tmp/native-$py.ini"
+        meson setup --native-file "/tmp/native-$py.ini" "/tmp/build-$py" portage
         deactivate
       done
 
-  - test-portage: |
+  - test-install: |
       for py in "${PYTHON_VERSIONS[@]}"; do
-        source ".venv-$py/bin/activate"
-        pushd portage
-          ./setup.py clean test
-        popd
-        deactivate
+        time meson install -C "/tmp/build-$py" --destdir "/tmp/install-root-$py"
       done
+
+  - test-portage: |
+      start_time=$EPOCHSECONDS
+      for py in "${PYTHON_VERSIONS[@]}"; do
+        meson test -C "/tmp/build-$py" --verbose
+      done
+      end_time=$EPOCHSECONDS
+      printf "Total elapsed time: %d seconds\n" $((end_time - start_time))

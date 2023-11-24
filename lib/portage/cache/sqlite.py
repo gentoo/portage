@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -52,6 +52,19 @@ class database(fs_template.FsBased):
         config.setdefault("timeout", 15)
         self._config = config
         self._db_connection_info = None
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # These attributes are not picklable, so they are automatically
+        # regenerated after unpickling.
+        state["_db_module"] = None
+        state["_db_error"] = None
+        state["_db_connection_info"] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._import_sqlite()
 
     def _import_sqlite(self):
         # sqlite3 is optional with >=python-2.5
@@ -166,7 +179,7 @@ class database(fs_template.FsBased):
                 cursor.execute(v["create"])
 
     def _db_table_exists(self, table_name):
-        """return true/false dependant on a tbl existing"""
+        """return true/false dependent on a tbl existing"""
         cursor = self._db_cursor
         cursor.execute(
             'SELECT name FROM sqlite_master WHERE type="table" AND name=%s'
@@ -175,7 +188,7 @@ class database(fs_template.FsBased):
         return len(cursor.fetchall()) == 1
 
     def _db_table_get_create(self, table_name):
-        """return true/false dependant on a tbl existing"""
+        """return true/false dependent on a tbl existing"""
         cursor = self._db_cursor
         cursor.execute(
             "SELECT sql FROM sqlite_master WHERE name=%s"
