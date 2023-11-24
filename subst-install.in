@@ -22,6 +22,7 @@ at='@'
 sedexp=(
 	-e "s,${at}EXTRA_PATH${at},@EXTRA_PATH@,g"
 	-e "s,${at}PORTAGE_BASE${at},@PORTAGE_BASE@,g"
+	-e "s,${at}PORTAGE_BASE_PATH${at},@PORTAGE_BASE@,g"
 	-e "s,${at}PORTAGE_BASH${at},@PORTAGE_BASH@,g"
 	-e "s,${at}PORTAGE_EPREFIX${at},@PORTAGE_EPREFIX@,g"
 	-e "s,${at}PORTAGE_MV${at},@PORTAGE_MV@,g"
