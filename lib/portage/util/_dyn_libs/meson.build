@@ -1,6 +1,7 @@
 py.install_sources(
     [
         'LinkageMapELF.py',
+        'LinkageMapMachO.py',   # PREFIX_LOCAL
         'NeededEntry.py',
         'PreservedLibsRegistry.py',
         'display_preserved_libs.py',
