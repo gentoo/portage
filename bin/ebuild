@@ -126,10 +126,7 @@ def main():
         portage.debug.set_trace(True)
 
     if not opts.color == "y" and (
-        opts.color == "n"
-        or portage.util.no_color(portage.settings)
-        or portage.settings.get("TERM") == "dumb"
-        or not sys.stdout.isatty()
+        opts.color == "n" or portage.util.no_color(portage.settings)
     ):
         portage.output.nocolor()
         portage.settings.unlock()

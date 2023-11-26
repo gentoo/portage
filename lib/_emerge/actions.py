@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -2753,10 +2753,6 @@ def adjust_config(myopts, settings):
         else:
             portage.output.havecolor = 0
             settings["NO_COLOR"] = "true"
-        settings.backup_changes("NO_COLOR")
-    elif settings.get("TERM") == "dumb" or not sys.stdout.isatty():
-        portage.output.havecolor = 0
-        settings["NO_COLOR"] = "true"
         settings.backup_changes("NO_COLOR")
 
     if "--pkg-format" in myopts:

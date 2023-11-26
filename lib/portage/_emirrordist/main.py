@@ -1,4 +1,4 @@
-# Copyright 2013-2021 Gentoo Authors
+# Copyright 2013-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -236,7 +236,7 @@ def emirrordist_main(args):
     # completely controlled by commandline arguments.
     env = {}
 
-    if not sys.stdout.isatty():
+    if portage.util.no_color(os.environ):
         portage.output.nocolor()
         env["NO_COLOR"] = "true"
 

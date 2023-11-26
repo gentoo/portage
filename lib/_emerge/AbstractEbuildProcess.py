@@ -80,12 +80,6 @@ class AbstractEbuildProcess(SpawnProcess):
             self._async_wait()
             return
 
-        if self.background:
-            # Automatically prevent color codes from showing up in logs,
-            # since we're not displaying to a terminal anyway.
-            self.settings["NOCOLOR"] = "true"
-            self.settings["NO_COLOR"] = "true"
-
         start_ipc_daemon = False
         if self._enable_ipc_daemon:
             self.settings.pop("PORTAGE_EBUILD_EXIT_FILE", None)
