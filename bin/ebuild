@@ -132,10 +132,6 @@ def main():
         or not sys.stdout.isatty()
     ):
         portage.output.nocolor()
-        portage.settings.unlock()
-        portage.settings["NO_COLOR"] = "true"
-        portage.settings.backup_changes("NO_COLOR")
-        portage.settings.lock()
 
     apply_priorities(portage.settings)
 

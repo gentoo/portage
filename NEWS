@@ -9,6 +9,11 @@ Release notes take the form of the following optional categories:
 portage-3.0.56 (UNRELEASED)
 --------------
 
+Breaking changes:
+* ebuild: no longer implicitly set NOCOLOR and NO_COLOR when color output
+  is disabled for emerge itself.  In order to obtain color-free logs, please
+  either explicitly set NO_COLOR environment variable or use e.g. ansifilter.
+
 Features:
 * sync: git: Add sync-git-verify-max-age-days option.
 
