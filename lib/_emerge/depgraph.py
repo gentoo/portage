@@ -1288,17 +1288,33 @@ class depgraph:
             writemsg(line + "\n", noiselevel=-1)
 
     def _show_ignored_binaries_changed_deps(self, changed_deps):
+        merging = {
+            (pkg.root, pkg.cpv)
+            for pkg in self._dynamic_config._displayed_list or ()
+            if isinstance(pkg, Package)
+        }
+        messages = []
+
+        for pkg in changed_deps:
+            # Don't include recursive deps which aren't in the merge list anyway.
+            if (pkg.root, pkg.cpv) not in merging:
+                continue
+
+            msg = f"     {pkg.cpv}{_repo_separator}{pkg.repo}"
+            if pkg.root_config.settings["ROOT"] != "/":
+                msg += f" for {pkg.root}"
+            messages.append(f"{msg}\n")
+
+        if not messages:
+            return
+
         writemsg(
             "\n!!! The following binary packages have been "
             "ignored due to changed dependencies:\n\n",
             noiselevel=-1,
         )
-
-        for pkg in changed_deps:
-            msg = f"     {pkg.cpv}{_repo_separator}{pkg.repo}"
-            if pkg.root_config.settings["ROOT"] != "/":
-                msg += f" for {pkg.root}"
-            writemsg(f"{msg}\n", noiselevel=-1)
+        for line in messages:
+            writemsg(line, noiselevel=-1)
 
         msg = [
             "",
