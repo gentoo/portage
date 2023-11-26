@@ -2749,15 +2749,10 @@ def adjust_config(myopts, settings):
     if "--color" in myopts:
         if "y" == myopts["--color"]:
             portage.output.havecolor = 1
-            settings["NO_COLOR"] = ""
         else:
             portage.output.havecolor = 0
-            settings["NO_COLOR"] = "true"
-        settings.backup_changes("NO_COLOR")
     elif settings.get("TERM") == "dumb" or not sys.stdout.isatty():
         portage.output.havecolor = 0
-        settings["NO_COLOR"] = "true"
-        settings.backup_changes("NO_COLOR")
 
     if "--pkg-format" in myopts:
         settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]
