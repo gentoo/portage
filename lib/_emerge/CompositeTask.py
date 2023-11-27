@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -9,6 +9,12 @@ class CompositeTask(AsynchronousTask):
     __slots__ = ("_current_task",)
 
     _TASK_QUEUED = -1
+
+    def isAlive(self):
+        """
+        Returns True if started and returncode has not been set.
+        """
+        return self.returncode is None and self._current_task is not None
 
     def _cancel(self):
         if self._current_task is not None:

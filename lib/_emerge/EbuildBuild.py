@@ -96,6 +96,10 @@ class EbuildBuild(CompositeTask):
             return
 
         prefetcher = self.prefetcher
+        if prefetcher is not None and not prefetcher.isAlive():
+            # Cancel it because it hasn't started yet.
+            prefetcher.cancel()
+            self.prefetcher = prefetcher = None
         if prefetcher is None:
             pass
         elif prefetcher.isAlive() and prefetcher.poll() is None:

@@ -940,6 +940,10 @@ class Scheduler(PollScheduler):
                     # is consuming time here.
                     if bintree.isremote(x.cpv):
                         fetcher = self._get_prefetcher(x)
+                        if fetcher is not None and not fetcher.isAlive():
+                            # Cancel it because it hasn't started yet.
+                            fetcher.cancel()
+                            fetcher = None
                         if fetcher is None:
                             fetcher = BinpkgFetcher(pkg=x, scheduler=loop)
                             fetcher.start()
@@ -1963,7 +1967,9 @@ class Scheduler(PollScheduler):
             # CPython 2.7, so it may be possible for CPython to raise KeyError
             # here as well.
             prefetcher = None
-        if prefetcher is not None and not prefetcher.isAlive():
+        if prefetcher is not None and (
+            prefetcher.cancelled or not prefetcher.isAlive()
+        ):
             try:
                 self._task_queues.fetch._task_queue.remove(prefetcher)
             except ValueError:
