@@ -1,4 +1,4 @@
-# Copyright 2016 Gentoo Foundation
+# Copyright 2016-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -6,8 +6,6 @@ from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
     ResolverPlaygroundTestCase,
 )
-
-import pytest
 
 
 class RuntimeCycleMergeOrderTestCase(TestCase):
@@ -77,7 +75,6 @@ class RuntimeCycleMergeOrderTestCase(TestCase):
         finally:
             playground.cleanup()
 
-    @pytest.mark.xfail()
     def testBuildtimeRuntimeCycleMergeOrder(self):
         installed = {
             "dev-util/cmake-3.26.5-r2": {
@@ -192,10 +189,12 @@ class RuntimeCycleMergeOrderTestCase(TestCase):
                     "--usepkg": True,
                 },
                 success=True,
+                # It would also work to punt the dev-util/cmake upgrade
+                # until the end, given it's already installed.
                 mergelist=[
+                    "dev-util/cmake-3.27.8",
                     "net-libs/nghttp2-1.57.0",
                     "[binary]net-misc/curl-8.4.0",
-                    "dev-util/cmake-3.27.8",
                 ],
             ),
         )
