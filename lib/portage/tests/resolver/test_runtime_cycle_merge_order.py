@@ -7,6 +7,8 @@ from portage.tests.resolver.ResolverPlayground import (
     ResolverPlaygroundTestCase,
 )
 
+import pytest
+
 
 class RuntimeCycleMergeOrderTestCase(TestCase):
     def testRuntimeCycleMergeOrder(self):
@@ -68,6 +70,149 @@ class RuntimeCycleMergeOrderTestCase(TestCase):
         )
 
         playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    @pytest.mark.xfail()
+    def testBuildtimeRuntimeCycleMergeOrder(self):
+        installed = {
+            "dev-util/cmake-3.26.5-r2": {
+                "EAPI": "8",
+                "KEYWORDS": "x86",
+                "DEPEND": "net-misc/curl",
+                "RDEPEND": "net-misc/curl",
+            },
+            "net-dns/c-ares-1.21.0": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+                "RDEPEND": "net-dns/c-ares",
+            },
+            "net-misc/curl-8.4.0": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+                "DEPEND": """
+                    net-dns/c-ares
+                    http2? ( net-libs/nghttp2:= )
+                """,
+                "RDEPEND": """
+                    net-dns/c-ares
+                    http2? ( net-libs/nghttp2:= )
+                 """,
+            },
+            "net-dns/c-ares-1.21.0": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+            },
+        }
+
+        binpkgs = {
+            "net-misc/curl-8.4.0": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+                "IUSE": "http2",
+                "USE": "http2",
+                "DEPEND": """
+                    net-dns/c-ares
+                    http2? ( net-libs/nghttp2:= )
+                """,
+                "RDEPEND": """
+                    net-dns/c-ares
+                    http2? ( net-libs/nghttp2:= )
+                """,
+            },
+            "dev-util/cmake-3.26.5-r2": {
+                "EAPI": "8",
+                "KEYWORDS": "x86",
+                "DEPEND": "net-misc/curl",
+                "RDEPEND": "net-misc/curl",
+            },
+        }
+
+        ebuilds = {
+            "dev-util/cmake-3.26.5-r2": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+                "DEPEND": "net-misc/curl",
+                "RDEPEND": "net-misc/curl",
+            },
+            "dev-util/cmake-3.27.8": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "~x86",
+                "DEPEND": "net-misc/curl",
+                "RDEPEND": "net-misc/curl",
+            },
+            "net-dns/c-ares-1.21.0": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+            },
+            "net-libs/nghttp2-1.57.0": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+                "BDEPEND": "dev-util/cmake",
+                "RDEPEND": "net-dns/c-ares",
+            },
+            "net-misc/curl-8.4.0": {
+                "EAPI": "8",
+                "SLOT": "0",
+                "KEYWORDS": "x86",
+                "IUSE": "http2",
+                "DEPEND": """
+                    net-dns/c-ares
+                    http2? ( net-libs/nghttp2:= )
+                """,
+                "RDEPEND": """
+                    net-dns/c-ares
+                    http2? ( net-libs/nghttp2:= )
+                """,
+            },
+        }
+
+        world = ("dev-util/cmake",)
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["@world"],
+                options={
+                    "--verbose": True,
+                    "--update": True,
+                    "--deep": True,
+                    "--newuse": True,
+                    "--usepkg": True,
+                },
+                success=True,
+                mergelist=[
+                    "net-libs/nghttp2-1.57.0",
+                    "[binary]net-misc/curl-8.4.0",
+                    "dev-util/cmake-3.27.8",
+                ],
+            ),
+        )
+
+        playground = ResolverPlayground(
+            world=world,
+            installed=installed,
+            binpkgs=binpkgs,
+            ebuilds=ebuilds,
+            debug=False,
+            user_config={
+                "make.conf": (
+                    f'ACCEPT_KEYWORDS="~x86"',
+                    f'USE="http2"',
+                ),
+            },
+        )
         try:
             for test_case in test_cases:
                 playground.run_TestCase(test_case)
