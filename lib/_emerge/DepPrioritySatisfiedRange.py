@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.DepPriority import DepPriority
@@ -89,7 +89,16 @@ class DepPrioritySatisfiedRange:
     def _ignore_runtime(cls, priority):
         if priority.__class__ is not DepPriority:
             return False
-        return bool(priority.satisfied or priority.optional or not priority.buildtime)
+        # We could split this up into 2 variants (ignoring satisfied
+        # runtime_slot_op, and not) if we need more granularity for ignore_priority
+        # in future.
+        return bool(
+            (
+                (not priority.runtime_slot_op)
+                or (priority.satisfied and priority.runtime_slot_op)
+            )
+            and (priority.satisfied or priority.optional or not priority.buildtime)
+        )
 
     ignore_medium = _ignore_runtime
     ignore_medium_soft = _ignore_satisfied_buildtime_slot_op
