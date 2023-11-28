@@ -9478,17 +9478,30 @@ class depgraph:
                 )
                 selected_nodes = []
                 while cycle_digraph:
+                    # Increase ignore_priority in order to find
+                    # smaller groups of leaf nodes. This solves
+                    # bug 917259 which happened because too many
+                    # leaves were selected at once.
+                    smallest_leaves = None
                     for ignore_priority in ignore_priorities:
                         leaves = cycle_digraph.leaf_nodes(
                             ignore_priority=ignore_priority
                         )
-                        if leaves:
-                            cycle_digraph.difference_update(leaves)
-                            selected_nodes.extend(leaves)
-                            break
-                    else:
-                        selected_nodes.extend(cycle_digraph)
-                        break
+                        if leaves and (
+                            smallest_leaves is None
+                            or len(leaves) < len(smallest_leaves)
+                        ):
+                            smallest_leaves = leaves
+                            if len(smallest_leaves) == 1:
+                                break
+
+                    if smallest_leaves is None:
+                        smallest_leaves = [cycle_digraph.order[-1]]
+
+                    # Only harvest one node at a time, in order to
+                    # minimize the number of ignored dependencies.
+                    cycle_digraph.remove(smallest_leaves[0])
+                    selected_nodes.append(smallest_leaves[0])
 
             if not selected_nodes and myblocker_uninstalls:
                 # An Uninstall task needs to be executed in order to

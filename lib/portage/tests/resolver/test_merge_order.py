@@ -1,4 +1,4 @@
-# Copyright 2011-2020 Gentoo Authors
+# Copyright 2011-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -382,10 +382,12 @@ class MergeOrderTestCase(TestCase):
                 ambiguous_merge_order=True,
                 # The following merge order assertion reflects optimal order for
                 # a circular relationship which is DEPEND in one direction and
-                # RDEPEND in the other.
-                merge_order_assertions=(
-                    ("app-misc/circ-buildtime-a-1", "app-misc/circ-buildtime-c-1"),
-                ),
+                # RDEPEND in the other. However, it is not respected because
+                # it would result in a temporarily broken RDEPEND, so we instead
+                # rely on satisfied installed build-time dependencies.
+                # merge_order_assertions=(
+                #    ("app-misc/circ-buildtime-a-1", "app-misc/circ-buildtime-c-1"),
+                # ),
                 mergelist=[
                     (
                         "app-misc/circ-buildtime-b-1",
@@ -691,8 +693,8 @@ class MergeOrderTestCase(TestCase):
                     "app-misc/circ-post-runtime-b-1",
                     "app-misc/some-app-b-1",
                     "app-misc/circ-runtime-a-1",
-                    "app-misc/circ-runtime-b-1",
                     "app-misc/circ-runtime-c-1",
+                    "app-misc/circ-runtime-b-1",
                     "app-misc/some-app-a-1",
                     "app-misc/blocker-buildtime-unbuilt-a-1",
                     "[uninstall]app-misc/installed-blocker-a-1",
@@ -701,13 +703,13 @@ class MergeOrderTestCase(TestCase):
                     "app-misc/circ-direct-b-1",
                     "x11-base/xorg-server-1.14.1",
                     "media-libs/mesa-9.1.3",
-                    "app-misc/circ-buildtime-a-1",
-                    "app-misc/circ-buildtime-b-1",
                     "app-misc/circ-buildtime-c-1",
+                    "app-misc/circ-buildtime-b-1",
+                    "app-misc/circ-buildtime-a-1",
                     "app-misc/some-app-c-1",
                     "app-misc/circ-satisfied-a-1",
-                    "app-misc/circ-satisfied-b-1",
                     "app-misc/circ-satisfied-c-1",
+                    "app-misc/circ-satisfied-b-1",
                 ],
             ),
         )
