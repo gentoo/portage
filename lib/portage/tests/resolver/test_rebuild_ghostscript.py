@@ -137,9 +137,9 @@ class RebuildGhostscriptTestCase(TestCase):
                 mergelist=[
                     "sys-apps/dbus-1.15.6",
                     "x11-libs/gtk+-3.24.38",
+                    "app-text/ghostscript-gpl-10.01.2",
                     "net-print/cups-2.4.6",
                     "net-dns/avahi-0.8-r7",
-                    "app-text/ghostscript-gpl-10.01.2",
                     "app-text/libspectre-0.2.12",
                     "x11-libs/goffice-0.10.55",
                 ],

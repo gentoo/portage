@@ -56,8 +56,11 @@ class RuntimeCycleMergeOrderTestCase(TestCase):
                     ("app-misc/leaf-b-1", "app-misc/leaf-d-1", "app-misc/leaf-e-1"),
                     ("app-misc/branch-d-1", "app-misc/branch-e-1"),
                     "app-misc/runtime-c-1",
-                    ("app-misc/runtime-cycle-c-1", "app-misc/branch-c-1"),
-                    "app-misc/branch-b-1",
+                    (
+                        "app-misc/branch-b-1",
+                        "app-misc/runtime-cycle-c-1",
+                        "app-misc/branch-c-1",
+                    ),
                     ("app-misc/runtime-cycle-b-1", "app-misc/plugin-b-1"),
                     "app-misc/plugins-consumer-1",
                 ],
