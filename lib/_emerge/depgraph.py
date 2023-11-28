@@ -9498,6 +9498,12 @@ class depgraph:
                     if smallest_leaves is None:
                         smallest_leaves = [cycle_digraph.order[-1]]
 
+                    # Prefer installed leaves, in order to avoid
+                    # merging something too early.
+                    installed_leaves = [pkg for pkg in smallest_leaves if pkg.installed]
+                    if installed_leaves:
+                        smallest_leaves = installed_leaves
+
                     # Only harvest one node at a time, in order to
                     # minimize the number of ignored dependencies.
                     cycle_digraph.remove(smallest_leaves[0])
