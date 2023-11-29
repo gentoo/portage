@@ -19,24 +19,27 @@ class DepPriority(AbstractDepPriority):
 
         buildtime_slot_op                       0
         buildtime                              -1
-        runtime                                -2
-        runtime_post                           -3
-        optional                               -4
-        (none of the above)                    -5
+        runtime_slot_op                        -2
+        runtime                                -3
+        runtime_post                           -4
+        optional                               -5
+        (none of the above)                    -6
 
         """
 
         if self.optional:
-            return -4
+            return -5
         if self.buildtime_slot_op:
             return 0
         if self.buildtime:
             return -1
-        if self.runtime:
+        if self.runtime_slot_op:
             return -2
-        if self.runtime_post:
+        if self.runtime:
             return -3
-        return -5
+        if self.runtime_post:
+            return -4
+        return -6
 
     def __str__(self):
         if self.ignored:
