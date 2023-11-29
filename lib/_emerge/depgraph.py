@@ -9485,10 +9485,10 @@ class depgraph:
                         )
                         if leaves:
                             # Select leaves with minimum ignore_priority,
-                            # in order to ingore as few deps as possible.
+                            # in order to ignore as few deps as possible.
                             break
 
-                    if leaves is None:
+                    if not leaves:
                         leaves = [cycle_digraph.order[-1]]
 
                     # Prefer installed leaves, in order to avoid
