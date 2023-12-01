@@ -9,6 +9,9 @@ Release notes take the form of the following optional categories:
 portage-3.0.56 (UNRELEASED)
 --------------
 
+In particular, this release improves dependency resolution robustness in
+a few scenarios.
+
 Breaking changes:
 * ebuild: no longer implicitly set NOCOLOR and NO_COLOR when color output
   is disabled for emerge itself.  In order to obtain color-free logs, please
@@ -18,13 +21,12 @@ Features:
 * sync: git: Add sync-git-verify-max-age-days option.
 
 Bug fixes:
-* ebuild: Add missing newlines in error messages.
-
 * resolver: Handle merge order correctly for some circular dependencies
   (e.g. app-alternatives/gzip with app-arch/pigz and sys-libs/zlib)
   (bug #690436, bug #917259).
 
-* resolver: Adjust priorities to fix wrong merge order (bug #918683).
+* resolver: Adjust priorities to fix wrong merge order
+  (e.g. net-misc/curl with net-libs/nghttp2) (bug #918683).
 
 * resolver: Optimize find_smallest_cycle (bug #918682).
 
@@ -34,6 +36,8 @@ Bug fixes:
 
 * emerge: Give output referring to emerge-fetch.log for FEATURES="parallel-fetch"
   while waiting for binpkgs (bug #760893).
+
+* ebuild: Add missing newlines in error messages.
 
 Cleanups:
 * tests: Add pytest markers: ft, unit and stress.
