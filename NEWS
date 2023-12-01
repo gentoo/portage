@@ -20,8 +20,25 @@ Features:
 Bug fixes:
 * ebuild: Add missing newlines in error messages.
 
+* resolver: Handle merge order correctly for some circular dependencies
+  (e.g. app-alternatives/gzip with app-arch/pigz and sys-libs/zlib)
+  (bug #690436, bug #917259).
+
+* resolver: Adjust priorities to fix wrong merge order (bug #918683).
+
+* resolver: Optimize find_smallest_cycle (bug #918682).
+
+* emerge: Fix PROMPT_COMMAND crash on shutdown (bug #917033).
+
+* emerge: Fix crash on some build failures (bug #917315).
+
+* emerge: Give output referring to emerge-fetch.log for FEATURES="parallel-fetch"
+  while waiting for binpkgs (bug #760893).
+
 Cleanups:
-* Add pytest markers: ft, unit and stress.
+* tests: Add pytest markers: ft, unit and stress.
+
+* tests: Add test for trust helper --pretend issue (bug #915842).
 
 portage-3.0.55 (2023-11-06)
 --------------
