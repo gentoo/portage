@@ -907,7 +907,11 @@ __eapi8_src_prepare() {
 
 ___best_version_and_has_version_common() {
 	local atom root root_arg
-	local -a cmd=()
+
+	# If ROOT is set to / below then SYSROOT cannot point elsewhere. Even if
+	# ROOT is untouched, setting SYSROOT=/ for this command will always work.
+	local -a cmd=(env SYSROOT=/)
+
 	case $1 in
 		--host-root|-r|-d|-b)
 			root_arg=$1
@@ -932,7 +936,7 @@ ___best_version_and_has_version_common() {
 				# Since portageq requires the root argument be consistent
 				# with EPREFIX, ensure consistency here (bug #655414).
 				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
-				cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
+				cmd+=(EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 			else
 				root=/
 			fi ;;
@@ -948,7 +952,7 @@ ___best_version_and_has_version_common() {
 						# Use /${PORTAGE_OVERRIDE_EPREFIX#/} to support older
 						# EAPIs, as it is equivalent to BROOT.
 						root=/${PORTAGE_OVERRIDE_EPREFIX#/}
-						cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
+						cmd+=(EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 						;;
 				esac
 			else
