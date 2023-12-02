@@ -6,6 +6,13 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.57 (UNRELEASED)
+--------------
+
+Bug fixes:
+* Set SYSROOT appropriately for best_version and has_version so that they work
+  when cross-compiling and IPC is disabled.
+
 portage-3.0.56 (2023-12-01)
 --------------
 
