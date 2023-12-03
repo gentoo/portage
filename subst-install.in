@@ -22,7 +22,6 @@ at='@'
 dirs='/(usr|lib(|[onx]?32|n?64)|etc|bin|sbin|var|opt|run)'
 sedexp=(
 	-r
-	-e "s,${at}EXTRA_PATH${at},@EXTRA_PATH@,g"
 	-e "s,${at}PORTAGE_BASE${at},@PORTAGE_BASE@,g"
 	-e "s,${at}PORTAGE_BASE_PATH${at},@PORTAGE_BASE@,g"
 	-e "s,${at}PORTAGE_BASH${at},@PORTAGE_BASH@,g"

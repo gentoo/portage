@@ -148,9 +148,6 @@ PORTAGE_ROOT_USER='@rootuser@'
 PORTAGE_INST_UID="@rootuid@"
 PORTAGE_INST_GID="@rootgid@"
 
-# Any extra PATHs to add to the ebuild environment's PATH (if any)
-EXTRA_PATH="@EXTRA_PATH@"
-
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"
 
