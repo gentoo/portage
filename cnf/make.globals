@@ -27,12 +27,12 @@ ACCEPT_PROPERTIES="*"
 ACCEPT_RESTRICT="*"
 
 # Miscellaneous paths
-DISTDIR="@PORTAGE_EPREFIX@/var/cache/distfiles"
-PKGDIR="@PORTAGE_EPREFIX@/var/cache/binpkgs"
-RPMDIR="@PORTAGE_EPREFIX@/var/cache/rpm"
+DISTDIR="/var/cache/distfiles"
+PKGDIR="/var/cache/binpkgs"
+RPMDIR="/var/cache/rpm"
 
 # Temporary build directory
-PORTAGE_TMPDIR="@PORTAGE_EPREFIX@/var/tmp"
+PORTAGE_TMPDIR="/var/tmp"
 
 # The compression used for binary packages. Defaults to zstd except for
 # existing installs where bzip2 is used for backward compatibility.
@@ -150,11 +150,6 @@ PORTAGE_INST_GID="@rootgid@"
 
 # Any extra PATHs to add to the ebuild environment's PATH (if any)
 EXTRA_PATH="@EXTRA_PATH@"
-
-# The offset prefix this Portage was configured with (not used by
-# Portage itself)
-CONFIGURE_EPREFIX="@PORTAGE_EPREFIX@"
-# END PREFIX LOCAL
 
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"
