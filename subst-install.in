@@ -19,7 +19,9 @@ portageuser=${portageuser//\\/\\\\\\\\}
 # there are many ways to do this all dynamic, but we only care for raw
 # speed here, so let configure fill in this list and be done with it
 at='@'
+dirs='/(usr|lib(|[onx]?32|n?64)|etc|bin|sbin|var|opt|run)'
 sedexp=(
+	-r
 	-e "s,${at}EXTRA_PATH${at},@EXTRA_PATH@,g"
 	-e "s,${at}PORTAGE_BASE${at},@PORTAGE_BASE@,g"
 	-e "s,${at}PORTAGE_BASE_PATH${at},@PORTAGE_BASE@,g"
@@ -34,7 +36,8 @@ sedexp=(
 	-e "s,${at}rootuid${at},@rootuid@,g"
 	-e "s,${at}rootuser${at},${rootuser},g"
 	-e "s,${at}sysconfdir${at},@sysconfdir@,g"
-	-e "1s,/usr/bin/env ,@PORTAGE_EPREFIX@/usr/bin/,"
+	-e 's,([^[:alnum:]}\\)\\.])'"${dirs}"',\\1@PORTAGE_EPREFIX@/\\2,g'
+	-e 's,^'"${dirs}"',@PORTAGE_EPREFIX@/\\1,'
 )
 
 sources=( )
