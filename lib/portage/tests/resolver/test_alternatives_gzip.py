@@ -16,8 +16,9 @@ class AlternativesGzipTestCase(TestCase):
         find_smallest_cycle selects a large cycle and the topological
         sort produces poor results when leaf_nodes returns
         app-alternatives/gzip as part of a large group of nodes.
-        This problem was solved by increasing ignore_priority in order
-        to find a smaller cycle.
+        This problem was solved by changing the topological sort to
+        increase ignore_priority in order to select a smaller number
+        of leaf nodes at a time.
         """
         ebuilds = {
             "app-alternatives/gzip-1": {

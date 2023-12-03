@@ -9151,7 +9151,14 @@ class depgraph:
 
                 asap_nodes.extend(libc_pkgs)
 
-        def gather_deps(ignore_priority, mergeable_nodes, selected_nodes, node):
+        def gather_deps(
+            ignore_priority,
+            mergeable_nodes,
+            selected_nodes,
+            node,
+            smallest_cycle=None,
+            traversed_nodes=None,
+        ):
             """
             Recursively gather a group of nodes that RDEPEND on
             eachother. This ensures that they are merged as a group
@@ -9171,10 +9178,24 @@ class depgraph:
                 # RDEPENDs installed first, but ignore uninstalls
                 # (these occur when new portage blocks an older package version).
                 return False
+            if traversed_nodes is not None:
+                if node in traversed_nodes:
+                    # Identical to a previously traversed cycle.
+                    return False
+                traversed_nodes.add(node)
             selected_nodes.add(node)
+            if smallest_cycle is not None and len(selected_nodes) >= len(
+                smallest_cycle
+            ):
+                return False
             for child in mygraph.child_nodes(node, ignore_priority=ignore_priority):
                 if not gather_deps(
-                    ignore_priority, mergeable_nodes, selected_nodes, child
+                    ignore_priority,
+                    mergeable_nodes,
+                    selected_nodes,
+                    child,
+                    smallest_cycle=smallest_cycle,
+                    traversed_nodes=traversed_nodes,
                 ):
                     return False
             return True
@@ -9332,12 +9353,21 @@ class depgraph:
                             local_priority_range.MEDIUM_SOFT + 1,
                         )
                     ):
+                        # Traversed nodes for current priority
+                        traversed_nodes = set()
                         for node in nodes:
                             if not mygraph.parent_nodes(node):
                                 continue
+                            if node in traversed_nodes:
+                                continue
                             selected_nodes = set()
                             if gather_deps(
-                                priority, mergeable_nodes, selected_nodes, node
+                                priority,
+                                mergeable_nodes,
+                                selected_nodes,
+                                node,
+                                smallest_cycle=smallest_cycle,
+                                traversed_nodes=traversed_nodes,
                             ):
                                 if smallest_cycle is None or len(selected_nodes) < len(
                                     smallest_cycle
@@ -9345,10 +9375,9 @@ class depgraph:
                                     smallest_cycle = selected_nodes
                                     ignore_priority = priority
 
-                        if smallest_cycle is not None and len(smallest_cycle) == 1:
-                            # The cycle can't get any smaller than this,
-                            # so there is no need to search further since
-                            # we try to minimize ignore_priority.
+                        # Exit this loop with the lowest possible priority, which
+                        # minimizes the use of installed packages to break cycles.
+                        if smallest_cycle is not None:
                             break
 
                     return smallest_cycle, ignore_priority
@@ -9449,17 +9478,29 @@ class depgraph:
                 )
                 selected_nodes = []
                 while cycle_digraph:
+                    leaves = None
                     for ignore_priority in ignore_priorities:
                         leaves = cycle_digraph.leaf_nodes(
                             ignore_priority=ignore_priority
                         )
                         if leaves:
-                            cycle_digraph.difference_update(leaves)
-                            selected_nodes.extend(leaves)
+                            # Select leaves with minimum ignore_priority,
+                            # in order to ignore as few deps as possible.
                             break
-                    else:
-                        selected_nodes.extend(cycle_digraph)
-                        break
+
+                    if not leaves:
+                        leaves = [cycle_digraph.order[-1]]
+
+                    # Prefer installed leaves, in order to avoid
+                    # merging something too early as in bug 917259.
+                    installed_leaves = [pkg for pkg in leaves if pkg.installed]
+                    if installed_leaves:
+                        leaves = installed_leaves
+
+                    # Only harvest one node at a time, in order to
+                    # minimize the number of ignored dependencies.
+                    cycle_digraph.remove(leaves[0])
+                    selected_nodes.append(leaves[0])
 
             if not selected_nodes and myblocker_uninstalls:
                 # An Uninstall task needs to be executed in order to

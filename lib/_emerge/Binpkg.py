@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -110,6 +110,10 @@ class Binpkg(CompositeTask):
         # use the scheduler and fetcher methods to
         # synchronize with the fetcher.
         prefetcher = self.prefetcher
+        if prefetcher is not None and not prefetcher.isAlive():
+            # Cancel it because it hasn't started yet.
+            prefetcher.cancel()
+            self.prefetcher = prefetcher = None
         if prefetcher is None:
             pass
         elif prefetcher.isAlive() and prefetcher.poll() is None:

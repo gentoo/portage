@@ -37,7 +37,13 @@ class DepPriorityNormalRange:
     def _ignore_runtime(cls, priority):
         if priority.__class__ is not DepPriority:
             return False
-        return bool(priority.optional or not priority.buildtime)
+        # If we ever allow "optional" runtime_slot_op, we'll need
+        # to adjust this appropriately. But only build time dependencies
+        # are optional right now, so it's not an issue as-is.
+        return bool(
+            not priority.runtime_slot_op
+            and (priority.optional or not priority.buildtime)
+        )
 
     ignore_medium = _ignore_runtime
     ignore_medium_soft = _ignore_runtime_post
