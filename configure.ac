@@ -97,18 +97,12 @@ then
 	PORTAGE_EPREFIX=`${PREFIX_PORTAGE_PYTHON} -c "import os; print(os.path.normpath('$PORTAGE_EPREFIX'))"`
 fi
 
-AC_ARG_WITH(extra-path, 
-AS_HELP_STRING([--with-extra-path],[specify additional PATHs available to the portage build environment (use with care)]),
-[EXTRA_PATH="$withval"],
-[EXTRA_PATH=""])
-
 AC_SUBST(portageuser)
 AC_SUBST(portagegroup)
 AC_SUBST(rootuser)
 AC_SUBST(rootuid)
 AC_SUBST(rootgid)
 AC_SUBST(PORTAGE_EPREFIX)
-AC_SUBST(EXTRA_PATH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
 
 AC_SUBST(PORTAGE_RM)
