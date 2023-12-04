@@ -9,6 +9,10 @@ Release notes take the form of the following optional categories:
 portage-3.0.57 (UNRELEASED)
 --------------
 
+Features:
+* emerge: Make --binpkg-changed-deps output far more concise (don't show
+  packages missing from the merge list).
+
 Bug fixes:
 * Set SYSROOT appropriately for best_version and has_version so that they work
   when cross-compiling and IPC is disabled.
