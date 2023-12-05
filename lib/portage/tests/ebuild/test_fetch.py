@@ -1,4 +1,4 @@
-# Copyright 2019-2021 Gentoo Authors
+# Copyright 2019-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -577,12 +577,12 @@ class EbuildFetchTestCase(TestCase):
             content_db_state = dict(emdisconf.content_db.items())
             self.assertEqual(content_db_state, dict(emdisconf.content_db.items()))
             self.assertEqual(
-                [
+                {
                     k[len("filename:") :]
                     for k in content_db_state
                     if k.startswith("filename:")
-                ],
-                ["bar", "foo"],
+                },
+                {"bar", "foo"},
             )
             self.assertEqual(
                 content_db_state["filename:foo"], content_db_state["filename:bar"]
