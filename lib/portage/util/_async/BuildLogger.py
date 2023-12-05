@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Gentoo Authors
+# Copyright 2020-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -6,11 +6,39 @@ import subprocess
 
 from _emerge.AsynchronousTask import AsynchronousTask
 
+import portage
 from portage import os
+from portage.proxy.objectproxy import ObjectProxy
 from portage.util import shlex_split
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from portage.util.futures import asyncio
+
+
+class _file_close_wrapper(ObjectProxy):
+    """
+    Prevent fd inheritance via fork, ensuring that we can observe
+    EOF on the read end of the pipe (bug 919072).
+    """
+
+    __slots__ = ("_file",)
+
+    def __init__(self, file):
+        ObjectProxy.__init__(self)
+        object.__setattr__(self, "_file", file)
+        portage.locks._open_fds[file.fileno()] = self
+
+    def _get_target(self):
+        return object.__getattribute__(self, "_file")
+
+    def close(self):
+        file = object.__getattribute__(self, "_file")
+        if not file.closed:
+            # This must only be called if the file is open,
+            # which ensures that file.fileno() does not
+            # collide with an open lock file descriptor.
+            del portage.locks._open_fds[file.fileno()]
+            file.close()
 
 
 class BuildLogger(AsynchronousTask):
@@ -67,7 +95,7 @@ class BuildLogger(AsynchronousTask):
                     os.close(log_input)
                     os.close(filter_output)
                 else:
-                    self._stdin = os.fdopen(stdin, "wb", 0)
+                    self._stdin = _file_close_wrapper(os.fdopen(stdin, "wb", 0))
                     os.close(filter_input)
                     os.close(filter_output)
 
@@ -76,7 +104,7 @@ class BuildLogger(AsynchronousTask):
             # that is missing or broken somehow, create a pipe that
             # logs directly to pipe_logger.
             log_input, stdin = os.pipe()
-            self._stdin = os.fdopen(stdin, "wb", 0)
+            self._stdin = _file_close_wrapper(os.fdopen(stdin, "wb", 0))
 
         # Set background=True so that pipe_logger does not log to stdout.
         pipe_logger = PipeLogger(
