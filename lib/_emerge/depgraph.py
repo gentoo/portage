@@ -3630,7 +3630,7 @@ class depgraph:
                     blocker=False,
                     depth=depth,
                     parent=pkg,
-                    priority=self._priority(runtime=True),
+                    priority=self._priority(cross=self._cross(pkg.root), runtime=True),
                     root=pkg.root,
                 )
                 if not self._add_dep(dep, allow_unsatisfied=allow_unsatisfied):
@@ -3968,17 +3968,26 @@ class depgraph:
         # _dep_disjunctive_stack first, so that choices for build-time
         # deps influence choices for run-time deps (bug 639346).
         deps = (
-            (myroot, edepend["RDEPEND"], self._priority(runtime=True)),
+            (
+                myroot,
+                edepend["RDEPEND"],
+                self._priority(cross=self._cross(pkg.root), runtime=True),
+            ),
             (
                 self._frozen_config._running_root.root,
                 edepend["IDEPEND"],
-                self._priority(runtime=True),
+                self._priority(cross=self._cross(pkg.root), runtime=True),
             ),
-            (myroot, edepend["PDEPEND"], self._priority(runtime_post=True)),
+            (
+                myroot,
+                edepend["PDEPEND"],
+                self._priority(cross=self._cross(pkg.root), runtime_post=True),
+            ),
             (
                 depend_root,
                 edepend["DEPEND"],
                 self._priority(
+                    cross=self._cross(pkg.root),
                     buildtime=True,
                     optional=(pkg.built or ignore_depend_deps),
                     ignored=ignore_depend_deps,
@@ -3988,6 +3997,7 @@ class depgraph:
                 self._frozen_config._running_root.root,
                 edepend["BDEPEND"],
                 self._priority(
+                    cross=self._cross(pkg.root),
                     buildtime=True,
                     optional=(pkg.built or ignore_bdepend_deps),
                     ignored=ignore_bdepend_deps,
@@ -4036,7 +4046,9 @@ class depgraph:
                             self._queue_disjunctive_deps(
                                 pkg,
                                 dep_root,
-                                self._priority(runtime_post=True),
+                                self._priority(
+                                    cross=self._cross(pkg.root), runtime_post=True
+                                ),
                                 test_deps,
                             )
                         )
@@ -4044,7 +4056,9 @@ class depgraph:
                         if test_deps and not self._add_pkg_dep_string(
                             pkg,
                             dep_root,
-                            self._priority(runtime_post=True),
+                            self._priority(
+                                cross=self._cross(pkg.root), runtime_post=True
+                            ),
                             test_deps,
                             allow_unsatisfied,
                         ):
@@ -4359,7 +4373,10 @@ class depgraph:
                     return 0
 
             for atom, child in self._minimize_children(
-                pkg, self._priority(runtime=True), root_config, atoms
+                pkg,
+                self._priority(cross=self._cross(pkg.root), runtime=True),
+                root_config,
+                atoms,
             ):
                 # If this was a specially generated virtual atom
                 # from dep_check, map it back to the original, in
@@ -4369,7 +4386,7 @@ class depgraph:
                 atom = getattr(atom, "_orig_atom", atom)
 
                 # This is a GLEP 37 virtual, so its deps are all runtime.
-                mypriority = self._priority(runtime=True)
+                mypriority = self._priority(cross=self._cross(pkg.root), runtime=True)
                 if not atom.blocker:
                     inst_pkgs = [
                         inst_pkg
@@ -4615,6 +4632,13 @@ class depgraph:
         else:
             priority_constructor = DepPriority
         return priority_constructor(**kwargs)
+
+    def _cross(self, eroot):
+        """
+        Returns True if the ROOT for the given EROOT is not /,
+        or EROOT is cross-prefix.
+        """
+        return eroot != self._frozen_config._running_root.root
 
     def _dep_expand(self, root_config, atom_without_category):
         """
@@ -5788,7 +5812,9 @@ class depgraph:
                             node_priority = priority.copy()
                     else:
                         # virtuals only have runtime deps
-                        node_priority = self._priority(runtime=True)
+                        node_priority = self._priority(
+                            cross=self._cross(node_parent.root), runtime=True
+                        )
 
                     k = Dependency(
                         atom=parent_atom,
@@ -5874,7 +5900,7 @@ class depgraph:
                 pkg._metadata.get("RDEPEND", ""),
                 myuse=self._pkg_use_enabled(pkg),
                 parent=pkg,
-                priority=self._priority(runtime=True),
+                priority=self._priority(cross=self._cross(pkg.root), runtime=True),
             )
         except InvalidDependString as e:
             if not pkg.installed:
