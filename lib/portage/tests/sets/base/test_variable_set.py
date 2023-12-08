@@ -12,6 +12,9 @@ class VariableSetTestCase(TestCase):
     def testVariableSetEmerge(self):
         ebuilds = {
             "dev-go/go-pkg-1": {"BDEPEND": "dev-lang/go"},
+            "www-client/firefox-1": {
+                "BDEPEND": "|| ( virtual/rust:0/a virtual/rust:0/b )"
+            },
         }
         installed = ebuilds
         playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
@@ -20,6 +23,11 @@ class VariableSetTestCase(TestCase):
             ResolverPlaygroundTestCase(
                 ["@golang-rebuild"],
                 mergelist=["dev-go/go-pkg-1"],
+                success=True,
+            ),
+            ResolverPlaygroundTestCase(
+                ["@rust-rebuild"],
+                mergelist=["www-client/firefox-1"],
                 success=True,
             ),
         )
