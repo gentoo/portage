@@ -34,6 +34,7 @@ from portage.exception import (
     DigestException,
     MissingSignature,
     InvalidSignature,
+    SignedPackage,
 )
 from portage.output import colorize, EOutput
 from portage.util._urlopen import urlopen
@@ -991,13 +992,16 @@ class gpkg:
                     finally:
                         image_tar.kill()
 
-    def update_metadata(self, metadata, new_basename=None):
+    def update_metadata(self, metadata, new_basename=None, force=False):
         """
         Update metadata in the gpkg file.
         """
         self._verify_binpkg()
         self.checksums = []
         old_basename = self.prefix
+
+        if self.signature_exist and not force:
+            raise SignedPackage("Cannot update a signed gpkg file")
 
         if new_basename is None:
             new_basename = old_basename
