@@ -16,7 +16,7 @@ class test_gpkg_metadata_case(TestCase):
     def test_gpkg_update_metadata(self):
         playground = ResolverPlayground(
             user_config={
-                "make.conf": ('BINPKG_COMPRESS="gzip"',),
+                "make.conf": ('BINPKG_COMPRESS="gzip"', 'FEATURES="-binpkg-signing"'),
             }
         )
         tmpdir = tempfile.mkdtemp()

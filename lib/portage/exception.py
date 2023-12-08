@@ -197,6 +197,10 @@ class CompressorOperationFailed(PortagePackageException):
     """An error occurred during external operation"""
 
 
+class SignedPackage(PortagePackageException):
+    """Unable to update a signed package"""
+
+
 class InvalidAtom(PortagePackageException):
     """Malformed atom spec"""
 
