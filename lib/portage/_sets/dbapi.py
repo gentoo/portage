@@ -172,7 +172,7 @@ class VariableSet(EverythingSet):
             for include in self._includes:
                 include_atoms.append(Atom(include))
 
-            for x in use_reduce(values, token_class=Atom):
+            for x in use_reduce(values, token_class=Atom, flat=True):
                 if not isinstance(x, Atom):
                     continue
 

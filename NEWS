@@ -20,6 +20,9 @@ Bug fixes:
 * Set SYSROOT appropriately for best_version and has_version so that they work
   when cross-compiling and IPC is disabled.
 
+* sets: VariableSet: Flatten dependencies so that e.g. www-client/firefox
+  appears in @rust-rebuild.
+
 portage-3.0.56 (2023-12-01)
 --------------
 
