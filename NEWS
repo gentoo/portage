@@ -14,6 +14,9 @@ Features:
   packages missing from the merge list).
 
 Bug fixes:
+* Fix package moves for signed binary packages by deleting the old binpkg
+  if it cannot be re-signed, rather than crashing (bug #919419).
+
 * Set SYSROOT appropriately for best_version and has_version so that they work
   when cross-compiling and IPC is disabled.
 
