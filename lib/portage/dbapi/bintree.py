@@ -84,9 +84,12 @@ class bindbapi(fakedbapi):
     _known_keys = frozenset(
         list(fakedbapi._known_keys) + ["CHOST", "repository", "USE"]
     )
+    # Must include keys used to create _pkg_str attributes used in
+    # the fakedbapi _instance_key_multi_instance method.
     _pkg_str_aux_keys = fakedbapi._pkg_str_aux_keys + (
         "BUILD_ID",
         "BUILD_TIME",
+        "SIZE",
         "_mtime_",
     )
 
