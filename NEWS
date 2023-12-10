@@ -21,6 +21,10 @@ Features:
 * ebuild: Inject implicit libc RDEPEND. This avoids "bricking" systems when
   using binpkgs built against a newer glibc (bug #753500, bug #913628).
 
+* BinpkgVerifier: Improve error message on stale binpkg index. This became
+  more common with the portage-3.0.52 default change to FEATURES="pkgdir-index-trusted"
+  (bug #915474).
+
 Bug fixes:
 * Fix package moves for signed binary packages by deleting the old binpkg
   if it cannot be re-signed, rather than crashing (bug #919419).
