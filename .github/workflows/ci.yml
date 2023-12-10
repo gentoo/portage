@@ -29,7 +29,7 @@ jobs:
           set -xe
           echo "force-unsafe-io" | sudo tee /etc/dpkg/dpkg.cfg.d/force-unsafe-io
           sudo apt-get update -q
-          sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson zstd
+          sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson pax-utils zstd
 
           # Patch Ubuntu's old Meson to fix pypy-3.9 detection.
           curl -s -f https://github.com/mesonbuild/meson/commit/2540ad6e9e08370ddd0b6753fdc9314945a672f0.patch | sudo patch -d /usr/lib/python3/dist-packages -p1 --no-backup-if-mismatch

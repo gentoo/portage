@@ -35,7 +35,8 @@ class LibcDepInjectEmergeTestCase(TestCase):
 
         src_install() {
             insinto /usr/bin
-            # We need an ELF binary for the injection to trigger
+            # We need an ELF binary for the injection to trigger, so
+            # use ${BASH} given we know it must be around for running ebuilds.
             cp "${BASH}" "${ED}"/usr/bin/${PN} || die
         }
         """
