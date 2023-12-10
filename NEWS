@@ -9,6 +9,11 @@ Release notes take the form of the following optional categories:
 portage-3.0.57 (UNRELEASED)
 --------------
 
+This release has a series of binpkg robustness fixes. Notably, it includes
+a workaround/fix for binpkgs built against a newer glibc to ensure that they
+aren't merged on a binpkg consumer before merging a newer glibc, which has been
+a longstanding cause of frustration for binpkg users.
+
 Features:
 * emerge: Make --binpkg-changed-deps output far more concise (don't show
   packages missing from the merge list).
