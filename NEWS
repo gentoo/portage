@@ -9,7 +9,8 @@ Release notes take the form of the following optional categories:
 portage-3.0.58 (UNRELEASED)
 --------------
 
-TODO
+Breaking changes:
+* Switch BINPKG_FORMAT to "gpkg" by default (bug #912672).
 
 portage-3.0.57 (2023-12-10)
 --------------
