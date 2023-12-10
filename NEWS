@@ -13,12 +13,24 @@ Features:
 * emerge: Make --binpkg-changed-deps output far more concise (don't show
   packages missing from the merge list).
 
+* ebuild: Inject implicit libc RDEPEND. This avoids "bricking" systems when
+  using binpkgs built against a newer glibc (bug #753500, bug #913628).
+
 Bug fixes:
 * Fix package moves for signed binary packages by deleting the old binpkg
   if it cannot be re-signed, rather than crashing (bug #919419).
 
 * Set SYSROOT appropriately for best_version and has_version so that they work
   when cross-compiling and IPC is disabled.
+
+* bindbapi: Add missing SIZE key for binpkg-multi-instance (bug #906675,
+  bug #918597, bug #919668).
+
+* resolver: Weaken circular dependency handling for cross-root (bug #919174).
+
+* BuildLogger: Avoid hang with -ipc builds (bug #919072).
+
+* soname dependency support: Fix crash with --ignore-soname-deps=n (bug #919311).
 
 * sets: VariableSet: Flatten dependencies so that e.g. www-client/firefox
   appears in @rust-rebuild.
