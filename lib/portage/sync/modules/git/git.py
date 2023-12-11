@@ -500,6 +500,7 @@ class GitSync(NewBase):
         opts = self.options.get("emerge_config").opts
         debug = "--debug" in opts
         quiet = self.settings.get("PORTAGE_QUIET") == "1"
+        verbose = "--verbose" in opts
 
         openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path, debug)
 
@@ -534,35 +535,48 @@ class GitSync(NewBase):
                 "log.showsignature=0",
                 "log",
                 "-n1",
-                "--pretty=format:%G?",
+                "--pretty=format:%G?%n%GF",
                 revision,
             ]
             try:
-                status = portage._unicode_decode(
+                lines = portage._unicode_decode(
                     subprocess.check_output(
                         rev_cmd,
                         cwd=portage._unicode_encode(self.repo.location),
                         env=env,
                     )
-                ).strip()
+                ).splitlines()
             except subprocess.CalledProcessError:
                 return False
 
+            status = lines[0].strip()
+            if len(lines) > 1:
+                signing_key = lines[1].strip()
+
             if status == "G":  # good signature is good
                 if not quiet:
-                    out.einfo("Trusted signature found on top commit")
+                    message = "Trusted signature found on top commit"
+                    if verbose:
+                        message += (
+                            f" (git revision: {revision}, signing key: {signing_key})"
+                        )
+                    out.einfo(message)
                 return True
             if status == "U":  # untrusted
-                out.ewarn("Top commit signature is valid but not trusted")
+                out.ewarn(
+                    f"Top commit signature is valid but not trusted (git revision: {revision}, signing key: {signing_key})"
+                )
                 return True
             if status == "B":
-                expl = "bad signature"
+                expl = (
+                    f"bad signature using key {signing_key} on git revision {revision}"
+                )
             elif status == "X":
-                expl = "expired signature"
+                expl = f"expired signature using key {signing_key} on git revision {revision}"
             elif status == "Y":
-                expl = "expired key"
+                expl = f"expired key using key {signing_key} on git revision {revision}"
             elif status == "R":
-                expl = "revoked key"
+                expl = f"revoked key using key {signing_key} on git revision {revision}"
             elif status == "E":
                 expl = "unable to verify signature (missing key?)"
             elif status == "N":
