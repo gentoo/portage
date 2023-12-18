@@ -930,6 +930,7 @@ class Scheduler(PollScheduler):
                     current_task = clean_phase
                     clean_phase.start()
                     await clean_phase.async_wait()
+                    current_task = None
 
                 if x.built:
                     tree = "bintree"
@@ -981,6 +982,7 @@ class Scheduler(PollScheduler):
                         self._record_pkg_failure(x, settings, verifier.returncode)
                         continue
 
+                    current_task = None
                     if fetched:
                         bintree.inject(
                             x.cpv,
@@ -1030,6 +1032,8 @@ class Scheduler(PollScheduler):
                 current_task = pretend_phase
                 pretend_phase.start()
                 ret = await pretend_phase.async_wait()
+                # Leave current_task assigned in order to trigger clean
+                # on success in the below finally block.
                 if ret != os.EX_OK:
                     failures += 1
                     self._record_pkg_failure(x, settings, ret)
