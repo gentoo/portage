@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
@@ -139,6 +139,7 @@ class ResolverPlayground:
             # EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
             eubin = os.path.join(self.eprefix, "usr", "bin")
             ensure_dirs(eubin)
+            os.symlink(portage._python_interpreter, os.path.join(eubin, "python"))
             for x in self.portage_bin:
                 os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eubin, x))
 
@@ -683,7 +684,7 @@ class ResolverPlayground:
             create_trees_kwargs["target_root"] = self.target_root
 
         env = {
-            "PATH": os.environ["PATH"],
+            "PATH": f"{self.eprefix}/usr/sbin:{self.eprefix}/usr/bin:{os.environ['PATH']}",
             "PORTAGE_REPOSITORIES": "\n".join(
                 "[%s]\n%s"
                 % (

@@ -387,7 +387,7 @@ class SyncLocalTestCase(TestCase):
             "GENTOO_COMMITTER_NAME": committer_name,
             "GENTOO_COMMITTER_EMAIL": committer_email,
             "HOME": homedir,
-            "PATH": os.environ["PATH"],
+            "PATH": settings["PATH"],
             "PORTAGE_GRPNAME": os.environ["PORTAGE_GRPNAME"],
             "PORTAGE_USERNAME": os.environ["PORTAGE_USERNAME"],
             "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),

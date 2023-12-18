@@ -223,7 +223,7 @@ class PortdbCacheTestCase(TestCase):
             pythonpath = PORTAGE_PYM_PATH + pythonpath
 
         env = {
-            "PATH": os.environ.get("PATH", ""),
+            "PATH": settings["PATH"],
             "PORTAGE_OVERRIDE_EPREFIX": eprefix,
             "PORTAGE_PYTHON": portage_python,
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),

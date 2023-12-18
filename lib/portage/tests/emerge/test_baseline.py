@@ -97,7 +97,7 @@ async def _async_test_baseline(playground, binhost, commands):
     profile_path = settings.profile_path
     user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
 
-    path = os.environ.get("PATH")
+    path = settings.get("PATH")
     if path is not None and not path.strip():
         path = None
     if path is None:
