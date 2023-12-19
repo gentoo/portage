@@ -2966,6 +2966,23 @@ class depgraph:
                 return flags
         return None
 
+    def _installed_libc_deps(self, eroot):
+        """
+        Return find_libc_deps result for installed packages from the
+        given EROOT.
+        """
+        try:
+            return self._frozen_config._libc_deps_cache[eroot]
+        except (AttributeError, KeyError) as e:
+            if isinstance(e, AttributeError):
+                self._frozen_config._libc_deps_cache = {}
+
+            self._frozen_config._libc_deps_cache[eroot] = find_libc_deps(
+                self._frozen_config._trees_orig[eroot]["vartree"].dbapi,
+                False,
+            )
+        return self._frozen_config._libc_deps_cache[eroot]
+
     def _changed_deps(self, pkg):
         ebuild = None
         try:
@@ -2985,18 +3002,7 @@ class depgraph:
             else:
                 depvars = Package._runtime_keys
 
-            eroot = pkg.root_config.settings["EROOT"]
-            try:
-                libc_deps = self._frozen_config._libc_deps_cache[eroot]
-            except (AttributeError, KeyError) as e:
-                if isinstance(e, AttributeError):
-                    self._frozen_config._libc_deps_cache = {}
-
-                self._frozen_config._libc_deps_cache[eroot] = find_libc_deps(
-                    self._frozen_config._trees_orig[eroot]["vartree"].dbapi,
-                    False,
-                )
-            libc_deps = self._frozen_config._libc_deps_cache[eroot]
+            libc_deps = self._installed_libc_deps(pkg.root)
 
             # Use _raw_metadata, in order to avoid interaction
             # with --dynamic-deps.
@@ -3726,6 +3732,7 @@ class depgraph:
                     if pkg.requires != installed_instance.requires:
                         continue
 
+                libc_deps = self._installed_libc_deps(pkg.root)
                 depvars = Package._dep_keys
                 try:
                     installed_deps = []
@@ -3736,6 +3743,7 @@ class depgraph:
                             eapi=pkg.eapi,
                             token_class=Atom,
                         )
+                        strip_libc_deps(dep_struct, libc_deps)
                         installed_deps.append(dep_struct)
                 except InvalidDependString:
                     continue
@@ -3759,6 +3767,7 @@ class depgraph:
                             eapi=pkg.eapi,
                             token_class=Atom,
                         )
+                        strip_libc_deps(dep_struct, libc_deps)
                         new_deps.append(dep_struct)
 
                     if new_deps != installed_deps:

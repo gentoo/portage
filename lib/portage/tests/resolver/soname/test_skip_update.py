@@ -1,4 +1,4 @@
-# Copyright 2015-2023 Gentoo Foundation
+# Copyright 2015-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -29,7 +29,10 @@ class SonameSkipUpdateTestCase(TestCase):
     def testSonameSkipUpdate(self, backtrack=3):
         binpkgs = {
             "app-misc/A-1": {
-                "RDEPEND": "dev-libs/B",
+                # Simulate injected libc dep which should not trigger
+                # reinstall due to use of strip_libc_deps in
+                # depgraph._eliminate_rebuilds dep comparison.
+                "RDEPEND": "dev-libs/B >=sys-libs/glibc-2.37",
                 "DEPEND": "dev-libs/B",
                 "REQUIRES": "x86_32: libB.so.1",
             },
@@ -39,6 +42,10 @@ class SonameSkipUpdateTestCase(TestCase):
             "dev-libs/B-1": {
                 "PROVIDES": "x86_32: libB.so.1",
             },
+            "sys-libs/glibc-2.37-r7": {
+                "PROVIDES": "x86_32: libc.so.6",
+            },
+            "virtual/libc-1-r1": {"RDEPEND": "sys-libs/glibc"},
         }
 
         installed = {
@@ -49,6 +56,12 @@ class SonameSkipUpdateTestCase(TestCase):
             },
             "dev-libs/B-1": {
                 "PROVIDES": "x86_32: libB.so.1",
+            },
+            "sys-libs/glibc-2.37-r7": {
+                "PROVIDES": "x86_32: libc.so.6",
+            },
+            "virtual/libc-1-r1": {
+                "RDEPEND": "sys-libs/glibc",
             },
         }
 
