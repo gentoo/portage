@@ -2274,6 +2274,7 @@ def _check_build_log(mysettings, out=None):
     bash_command_not_found_re = re.compile(
         r"(.*): line (\d*): (.*): command not found$"
     )
+    dash_command_not_found_re = re.compile(r"(.*): (\d+): (.*): not found$")
     command_not_found_exclude_re = re.compile(r"/configure: line ")
     helper_missing_file = []
     helper_missing_file_re = re.compile(r"^!!! (do|new).*: .* does not exist$")
@@ -2380,6 +2381,12 @@ def _check_build_log(mysettings, out=None):
 
             if (
                 bash_command_not_found_re.match(line) is not None
+                and command_not_found_exclude_re.search(line) is None
+            ):
+                command_not_found.append(line.rstrip("\n"))
+
+            if (
+                dash_command_not_found_re.match(line) is not None
                 and command_not_found_exclude_re.search(line) is None
             ):
                 command_not_found.append(line.rstrip("\n"))
