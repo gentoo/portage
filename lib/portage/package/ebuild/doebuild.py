@@ -2270,7 +2270,7 @@ def _check_build_log(mysettings, out=None):
         f = gzip.GzipFile(filename="", mode="rb", fileobj=f)
 
     am_maintainer_mode = []
-    bash_command_not_found = []
+    command_not_found = []
     bash_command_not_found_re = re.compile(
         r"(.*): line (\d*): (.*): command not found$"
     )
@@ -2382,7 +2382,7 @@ def _check_build_log(mysettings, out=None):
                 bash_command_not_found_re.match(line) is not None
                 and command_not_found_exclude_re.search(line) is None
             ):
-                bash_command_not_found.append(line.rstrip("\n"))
+                command_not_found.append(line.rstrip("\n"))
 
             if helper_missing_file_re.match(line) is not None:
                 helper_missing_file.append(line.rstrip("\n"))
@@ -2444,10 +2444,10 @@ def _check_build_log(mysettings, out=None):
         )
         _eqawarn(msg)
 
-    if bash_command_not_found:
+    if command_not_found:
         msg = [_("QA Notice: command not found:")]
         msg.append("")
-        msg.extend("\t" + line for line in bash_command_not_found)
+        msg.extend("\t" + line for line in command_not_found)
         _eqawarn(msg)
 
     if helper_missing_file:
