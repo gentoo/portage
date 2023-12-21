@@ -10,6 +10,10 @@ repos:
       - id: check-shebang-scripts-are-executable
       - id: end-of-file-fixer
         exclude: (lib/portage/tests/.gnupg/private-keys-v1.d/.*\.key)
+      - id: mixed-line-ending
+        exclude: (lib/portage/tests/.gnupg/private-keys-v1.d/.*\.key)
+      - id: trailing-whitespace
+        exclude: (cnf/make\.conf\.example\..*\.diff)
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:
