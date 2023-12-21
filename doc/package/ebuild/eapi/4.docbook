@@ -322,7 +322,7 @@ src_install() {
 			</para>
 			<para>
 			The REPLACED_BY variable shall
-			be defined in pkg_prerm and pkg_postrm. It shall contain at most one value. 
+			be defined in pkg_prerm and pkg_postrm. It shall contain at most one value.
 			</para>
 		</section>
 	</section>

@@ -981,7 +981,7 @@ void NESSIEadd(const unsigned char * const source,
 
 /**
  * Get the hash value from the hashing state.
- * 
+ *
  * This method uses the invariant: bufferBits < DIGESTBITS
  */
 void NESSIEfinalize(struct NESSIEstruct * const structpointer,
