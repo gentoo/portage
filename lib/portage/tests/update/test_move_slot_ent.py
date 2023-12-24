@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Gentoo Authors
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -277,17 +277,24 @@ class MoveSlotEntTestCase(TestCase):
                     self.assertEqual(
                         "2/2.30", vardb.aux_get("dev-libs/A-1", ["SLOT"])[0]
                     )
-                    self.assertEqual(
-                        "0/2.30", bindb.aux_get("dev-libs/A-1", ["SLOT"])[0]
-                    )
+
+                    # Stale signed packages removed since a7bbb4fc4d38.
+                    self.assertRaises(KeyError, bindb.aux_get, "dev-libs/A-1", ["SLOT"])
+                    # self.assertEqual(
+                    #    "0/2.30", bindb.aux_get("dev-libs/A-1", ["SLOT"])[0]
+                    # )
 
                     # 0 -> 1
                     self.assertEqual("1", vardb.aux_get("dev-libs/B-1", ["SLOT"])[0])
-                    self.assertEqual("0", bindb.aux_get("dev-libs/B-1", ["SLOT"])[0])
+                    # Stale signed packages removed since a7bbb4fc4d38.
+                    self.assertRaises(KeyError, bindb.aux_get, "dev-libs/B-1", ["SLOT"])
+                    # self.assertEqual("0", bindb.aux_get("dev-libs/B-1", ["SLOT"])[0])
 
                     # 0/1 -> 1 (equivalent to 1/1)
                     self.assertEqual("1", vardb.aux_get("dev-libs/C-1", ["SLOT"])[0])
-                    self.assertEqual("0/1", bindb.aux_get("dev-libs/C-1", ["SLOT"])[0])
+                    # Stale signed packages removed since a7bbb4fc4d38.
+                    self.assertRaises(KeyError, bindb.aux_get, "dev-libs/C-1", ["SLOT"])
+                    # self.assertEqual("0/1", bindb.aux_get("dev-libs/C-1", ["SLOT"])[0])
 
                     # dont_apply_updates
                     self.assertEqual(

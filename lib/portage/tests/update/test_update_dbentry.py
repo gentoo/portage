@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -432,10 +432,13 @@ class UpdateDbentryTestCase(TestCase):
                     rdepend = vardb.aux_get("dev-libs/A-1", ["RDEPEND"])[0]
                     self.assertTrue(old_pattern.search(rdepend) is None)
                     self.assertTrue("dev-libs/M-moved" in rdepend)
-                    rdepend = bindb.aux_get("dev-libs/A-1", ["RDEPEND"])[0]
-                    print(old_pattern.search(rdepend) is None)
-                    self.assertFalse(old_pattern.search(rdepend) is None)
-                    self.assertFalse("dev-libs/M-moved" in rdepend)
+                    # Stale signed packages removed since a7bbb4fc4d38.
+                    self.assertRaises(
+                        KeyError, bindb.aux_get, "dev-libs/A-1", ["RDEPEND"]
+                    )
+                    # rdepend = bindb.aux_get("dev-libs/A-1", ["RDEPEND"])[0]
+                    # self.assertFalse(old_pattern.search(rdepend) is None)
+                    # self.assertFalse("dev-libs/M-moved" in rdepend)
                     rdepend = vardb.aux_get("dev-libs/B-1", ["RDEPEND"])[0]
                     self.assertTrue(old_pattern.search(rdepend) is None)
                     self.assertTrue("dev-libs/M-moved" in rdepend)

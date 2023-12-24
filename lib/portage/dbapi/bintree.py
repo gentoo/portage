@@ -302,15 +302,7 @@ class bindbapi(fakedbapi):
                         "the file will be removed.",
                     )
                 )
-                try:
-                    os.remove(binpkg_path)
-                except OSError as err:
-                    writemsg(
-                        colorize(
-                            "WARN",
-                            f"Failed to remove moved signed package: {binpkg_path} {str(err)}",
-                        )
-                    )
+                self.bintree.remove(cpv)
                 return
             encoding_key = False
         else:
@@ -1788,6 +1780,57 @@ class binarytree:
         cpv._metadata["MD5"] = d["MD5"]
 
         return cpv
+
+    def remove(self, cpv: portage.versions._pkg_str) -> None:
+        """
+        Remove a package instance and update internal state including
+        the package index. This will raise a KeyError if cpv is not
+        found in the internal state. It will display a warning message
+        if the package file was not found on disk, since it could have
+        been removed by another process before this method could
+        acquire a lock.
+
+        @param cpv: The cpv of the existing package to remove
+        @type cpv: portage.versions._pkg_str
+        @rtype: None
+        @return: None
+        @raise KeyError: If cpv does not exist in the internal state
+        """
+        if not self.populated:
+            self.populate()
+        os.makedirs(self.pkgdir, exist_ok=True)
+        pkgindex_lock = lockfile(self._pkgindex_file, wantnewlockfile=1)
+        try:
+            # Will raise KeyError if the package is not found.
+            instance_key = self.dbapi._instance_key(cpv)
+            pkg_path = self.getname(cpv)
+            self.dbapi.cpv_remove(cpv)
+            self._pkg_paths.pop(instance_key, None)
+            if self._remotepkgs is not None:
+                self._remotepkgs.pop(instance_key, None)
+            pkgindex = self._load_pkgindex()
+            if not self._pkgindex_version_supported(pkgindex):
+                pkgindex = self._new_pkgindex()
+
+            path = pkg_path[len(self.pkgdir) + 1 :]
+            for i in range(len(pkgindex.packages) - 1, -1, -1):
+                d = pkgindex.packages[i]
+                if cpv == d.get("CPV"):
+                    if path == d.get("PATH", ""):
+                        del pkgindex.packages[i]
+
+            self._pkgindex_write(pkgindex)
+            try:
+                os.remove(pkg_path)
+            except OSError as err:
+                writemsg(
+                    colorize(
+                        "WARN",
+                        f"Failed to remove package: {binpkg_path} {str(err)}",
+                    )
+                )
+        finally:
+            unlockfile(pkgindex_lock)
 
     def _read_metadata(self, filename, st, keys=None, binpkg_format=None):
         """
