@@ -162,7 +162,10 @@ fi
 __sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
-	[[ -z $1 || -n $2 ]] && die "Usage: add$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${_v}") <colon-delimited list of paths>"
+	[[ $# -eq 1 ]] || die "Usage: add${_v,,} <path>"
+	# Make this fatal after 2024-12-31
+	[[ ${1} == *:* ]] \
+		&& eqawarn "QA Notice: add${_v,,} called with colon-separated argument"
 	export ${var}="${!var:+${!var}:}$1"
 }
 # bash-4 version:
@@ -173,8 +176,9 @@ addwrite()   { __sb_append_var WRITE   "$@" ; }
 adddeny()    { __sb_append_var DENY    "$@" ; }
 addpredict() { __sb_append_var PREDICT "$@" ; }
 
+addread /
+addread "${PORTAGE_TMPDIR}/portage"
 addwrite "${PORTAGE_TMPDIR}/portage"
-addread "/:${PORTAGE_TMPDIR}/portage"
 [[ -n ${PORTAGE_GPG_DIR} ]] && addpredict "${PORTAGE_GPG_DIR}"
 
 # Avoid sandbox violations in temporary directories.

@@ -12,6 +12,10 @@ Features:
 * emerge: depclean now returns with failure if no packages are matched
   (bug #917120)
 
+Bug fixes:
+* addread, addwrite, adddeny, addpredict: Warn about passing a colon-separated
+  list of paths as argument (bug #920654).
+
 portage-3.0.58 (2023-12-14)
 --------------
 
