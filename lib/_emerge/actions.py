@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -1642,7 +1642,11 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                                 if mypriority.runtime:
                                     mypriority.runtime_slot_op = True
 
-                            graph.add(child_node, node, priority=mypriority)
+                            # Drop direct circular deps because the unmerge order
+                            # calculation does not handle them well as demonstrated
+                            # by the test case for bug 916135.
+                            if child_node is not node:
+                                graph.add(child_node, node, priority=mypriority)
 
         if debug:
             writemsg_level("\nunmerge digraph:\n\n", noiselevel=-1, level=logging.DEBUG)

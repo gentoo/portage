@@ -1,7 +1,5 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-import pytest
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
@@ -60,8 +58,12 @@ class SimpleDepcleanTestCase(TestCase):
         finally:
             playground.cleanup()
 
-    @pytest.mark.xfail()
     def testIDEPENDDepclean(self):
+        """
+        Test for bug 916135, where a direct circular dependency caused
+        the unmerge order to fail to account for IDEPEND.
+        """
+
         ebuilds = {
             "dev-util/A-1": {},
             "dev-libs/B-1": {
