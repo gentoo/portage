@@ -4007,7 +4007,9 @@ class depgraph:
             (
                 self._frozen_config._running_root.root,
                 edepend["IDEPEND"],
-                self._priority(cross=self._cross(pkg.root), runtime=True),
+                self._priority(
+                    cross=self._cross(pkg.root), installtime=True, runtime=True
+                ),
             ),
             (
                 myroot,

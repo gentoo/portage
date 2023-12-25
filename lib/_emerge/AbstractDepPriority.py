@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -9,6 +9,7 @@ class AbstractDepPriority(SlotObject):
     __slots__ = (
         "buildtime",
         "buildtime_slot_op",
+        "installtime",
         "runtime",
         "runtime_post",
         "runtime_slot_op",

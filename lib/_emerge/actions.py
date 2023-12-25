@@ -1568,11 +1568,12 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         graph = digraph()
         del cleanlist[:]
 
+        installtime = UnmergeDepPriority(installtime=True, runtime=True)
         runtime = UnmergeDepPriority(runtime=True)
         runtime_post = UnmergeDepPriority(runtime_post=True)
         buildtime = UnmergeDepPriority(buildtime=True)
         priority_map = {
-            "IDEPEND": runtime,
+            "IDEPEND": installtime,
             "RDEPEND": runtime,
             "PDEPEND": runtime_post,
             "BDEPEND": buildtime,
@@ -1683,6 +1684,8 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         break
                 if not nodes:
                     raise AssertionError("no root nodes")
+                # Sort nodes for deterministic results.
+                nodes.sort(reverse=True)
                 if ignore_priority is not None:
                     # Some deps have been dropped due to circular dependencies,
                     # so only pop one node in order to minimize the number that
