@@ -1,7 +1,5 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-import functools
 
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.CompositeTask import CompositeTask
@@ -14,6 +12,7 @@ from portage import os
 from portage.binpkg import get_binpkg_format
 from portage.exception import FileNotFound
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+from portage.util._async.FileCopier import FileCopier
 from portage.util._pty import _create_pty_or_pipe
 
 
@@ -40,6 +39,22 @@ class BinpkgFetcher(CompositeTask):
         self.pkg_path = self.pkg_allocated_path + ".partial"
 
     def _start(self):
+        self._start_task(
+            AsyncTaskFuture(future=self._main(), scheduler=self.scheduler),
+            self._main_exit,
+        )
+
+    async def _main(self) -> int:
+        """
+        Main coroutine which saves the binary package to self.pkg_path
+        and returns the exit status of the fetcher or copier.
+
+        @rtype: int
+        @return: Exit status of fetcher or copier.
+        """
+        pkg = self.pkg
+        bintree = pkg.root_config.trees["bintree"]
+
         fetcher = _BinpkgFetcherProcess(
             background=self.background,
             logfile=self.logfile,
@@ -52,47 +67,67 @@ class BinpkgFetcher(CompositeTask):
         if not self.pretend:
             portage.util.ensure_dirs(os.path.dirname(self.pkg_path))
             if "distlocks" in self.pkg.root_config.settings.features:
-                self._start_task(
-                    AsyncTaskFuture(future=fetcher.async_lock()),
-                    functools.partial(self._start_locked, fetcher),
+                await fetcher.async_lock()
+
+        try:
+            if bintree._remote_has_index:
+                remote_metadata = bintree._remotepkgs[
+                    bintree.dbapi._instance_key(pkg.cpv)
+                ]
+                rel_uri = remote_metadata.get("PATH")
+                if not rel_uri:
+                    # Assume that the remote index is out of date. No path should
+                    # never happen in new portage versions.
+                    rel_uri = pkg.cpv + ".tbz2"
+                remote_base_uri = remote_metadata["BASE_URI"]
+                uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
+            else:
+                raise FileNotFound("Binary packages index not found")
+
+            uri_parsed = urllib_parse_urlparse(uri)
+
+            copier = None
+            if not self.pretend and uri_parsed.scheme in ("", "file"):
+                copier = FileCopier(
+                    src_path=uri_parsed.path,
+                    dest_path=self.pkg_path,
+                    scheduler=self.scheduler,
                 )
-                return
+                copier.start()
+                try:
+                    await copier.async_wait()
+                    copier.future.result()
+                except FileNotFoundError:
+                    await self.scheduler.async_output(
+                        f"!!! File not found: {uri_parsed.path}\n",
+                        log_file=self.logfile,
+                        background=self.background,
+                    )
+                finally:
+                    if copier.isAlive():
+                        copier.cancel()
 
-        self._start_task(fetcher, self._fetcher_exit)
+            else:
+                fetcher.start()
+                try:
+                    await fetcher.async_wait()
+                finally:
+                    if fetcher.isAlive():
+                        fetcher.cancel()
 
-    def _start_locked(self, fetcher, lock_task):
-        self._assert_current(lock_task)
-        if lock_task.cancelled:
-            self._default_final_exit(lock_task)
-            return
+                if not self.pretend and fetcher.returncode == os.EX_OK:
+                    fetcher.sync_timestamp()
+        finally:
+            if fetcher.locked:
+                await fetcher.async_unlock()
 
-        lock_task.future.result()
-        self._start_task(fetcher, self._fetcher_exit)
+        return fetcher.returncode if copier is None else copier.returncode
 
-    def _fetcher_exit(self, fetcher):
-        self._assert_current(fetcher)
-        if not self.pretend and fetcher.returncode == os.EX_OK:
-            fetcher.sync_timestamp()
-        if fetcher.locked:
-            self._start_task(
-                AsyncTaskFuture(future=fetcher.async_unlock()),
-                functools.partial(self._fetcher_exit_unlocked, fetcher),
-            )
-        else:
-            self._fetcher_exit_unlocked(fetcher)
-
-    def _fetcher_exit_unlocked(self, fetcher, unlock_task=None):
-        if unlock_task is not None:
-            self._assert_current(unlock_task)
-            if unlock_task.cancelled:
-                self._default_final_exit(unlock_task)
-                return
-
-            unlock_task.future.result()
-
-        self._current_task = None
-        self.returncode = fetcher.returncode
-        self._async_wait()
+    def _main_exit(self, main_task):
+        if not main_task.cancelled:
+            # Use the fetcher or copier returncode.
+            main_task.returncode = main_task.future.result()
+        self._default_final_exit(main_task)
 
 
 class _BinpkgFetcherProcess(SpawnProcess):

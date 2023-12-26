@@ -814,9 +814,8 @@ def _generate_all_baseline_commands(playground, binhost):
         )
 
         # Remove binrepos.conf and test PORTAGE_BINHOST.
-        def _replace_pkgdir_and_rm_binrepos_conf_file():
+        def _rm_pkgdir_and_rm_binrepos_conf_file():
             shutil.rmtree(pkgdir)
-            os.rename(binhost_dir, pkgdir)
             os.unlink(binrepos_conf_file)
 
         getbinpkgonly_fetchonly = Emerge(
@@ -824,11 +823,25 @@ def _generate_all_baseline_commands(playground, binhost):
             "--getbinpkgonly",
             "dev-libs/A",
             env_mod={"PORTAGE_BINHOST": binhost_uri},
-            preparation=_replace_pkgdir_and_rm_binrepos_conf_file,
+            preparation=_rm_pkgdir_and_rm_binrepos_conf_file,
+        )
+
+        # Test bug 920537 binrepos.conf with local file src-uri.
+        def _rm_pkgdir_and_create_binrepos_conf_with_file_uri():
+            shutil.rmtree(pkgdir)
+            with open(binrepos_conf_file, "w") as f:
+                f.write("[test-binhost]\n")
+                f.write(f"sync-uri = file://{binhost_dir}\n")
+
+        getbinpkgonly_file_uri = Emerge(
+            "-fe",
+            "--getbinpkgonly",
+            "dev-libs/A",
+            preparation=_rm_pkgdir_and_create_binrepos_conf_with_file_uri,
         )
 
         fetch_sequence = PortageCommandSequence(
-            make_package, getbinpkgonly, getbinpkgonly_fetchonly
+            make_package, getbinpkgonly, getbinpkgonly_fetchonly, getbinpkgonly_file_uri
         )
         test_commands["binhost emerge"] = fetch_sequence
     yield test_commands

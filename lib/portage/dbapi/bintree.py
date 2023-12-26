@@ -1411,15 +1411,18 @@ class binarytree:
 
                 # Don't use urlopen for https, unless
                 # PEP 476 is supported (bug #469888).
-                if repo.fetchcommand is None and (
-                    parsed_url.scheme not in ("https",) or _have_pep_476()
-                ):
+                if (
+                    repo.fetchcommand is None or parsed_url.scheme in ("", "file")
+                ) and (parsed_url.scheme not in ("https",) or _have_pep_476()):
                     try:
-                        f = _urlopen(
-                            url, if_modified_since=local_timestamp, proxies=proxies
-                        )
-                        if hasattr(f, "headers") and f.headers.get("timestamp", ""):
-                            remote_timestamp = f.headers.get("timestamp")
+                        if parsed_url.scheme in ("", "file"):
+                            f = open(f"{parsed_url.path.rstrip('/')}/Packages", "rb")
+                        else:
+                            f = _urlopen(
+                                url, if_modified_since=local_timestamp, proxies=proxies
+                            )
+                            if hasattr(f, "headers") and f.headers.get("timestamp", ""):
+                                remote_timestamp = f.headers.get("timestamp")
                     except OSError as err:
                         if (
                             hasattr(err, "code") and err.code == 304
