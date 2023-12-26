@@ -992,7 +992,16 @@ class Scheduler(PollScheduler):
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
-                    await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
+                    try:
+                        await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
+                    except portage.exception.SignatureException as e:
+                        writemsg(
+                            f"!!! Invalid binary package: '{bintree.getname(x.cpv)}', {e}\n",
+                            noiselevel=-1,
+                        )
+                        failures += 1
+                        self._record_pkg_failure(x, settings, 1)
+                        continue
                     ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
                     settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
                     settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
