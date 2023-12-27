@@ -15,6 +15,9 @@ Features:
 
 * bintree: Support 'file://' scheme for binhost src-uri (bug #920537).
 
+* sync: git: Include signing key and git revision in log output with --verbose
+  or if a failure occurs.
+
 Bug fixes:
 * Scheduler: Handle aborted unpack more gracefully (bug #920258).
 
