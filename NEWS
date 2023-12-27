@@ -7,12 +7,39 @@ Release notes take the form of the following optional categories:
 * Cleanups
 
 portage-3.0.59 (UNRELEASED)
+--------------
 
 Features:
 * emerge: depclean now returns with failure if no packages are matched
-  (bug #917120)
+  (bug #917120).
+
+* bintree: Support 'file://' scheme for binhost src-uri (bug #920537).
 
 Bug fixes:
+* Scheduler: Handle aborted unpack more gracefully (bug #920258).
+
+* Scheduler: Handle SignatureException in _run_pkg_pretend to give a proper
+  error message if a signature could not be verified, rather than crashing out
+  (bug #920258).
+
+* ebuild: Improve 'command not found' regex for the dash shell (bug #822033).
+
+* ebuild: Do not skip 'command not found' QA warnings for configure (bug #245716).
+
+* emerge: Fix --binpkg-respect-use output optimization (was broken by refactoring
+  for ROOT support).
+
+* depgraph: Use strip_libc_deps in _eliminate_rebuilds (bug #915494).
+
+* depgraph: Handle IDEPEND circular dependencies for depclean (bug #916135).
+
+* bindbapi: Update Packages index when signed binpkgs are invalidated post-updates
+  (bug #920095).
+
+* _global_updates: Take a lock when performing updates (bug #587088, bug #920095).
+
+* make.conf(5): Fix note about binpkg extension for gpkg.
+
 * addread, addwrite, adddeny, addpredict: Warn about passing a colon-separated
   list of paths as argument (bug #920654).
 
