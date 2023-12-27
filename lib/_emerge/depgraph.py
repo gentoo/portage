@@ -1256,9 +1256,10 @@ class depgraph:
 
             # We don't want to list the same USE flags for multiple build IDs
             seen.setdefault(pkg.root, dict())
-            if (pkg.root, pkg.cpv) not in seen or flag_display not in seen[pkg.root][
-                pkg.cpv
-            ]:
+            if (
+                pkg.cpv not in seen[pkg.root]
+                or flag_display not in seen[pkg.root][pkg.cpv]
+            ):
                 seen[pkg.root].setdefault(pkg.cpv, set()).add(flag_display)
                 # The user can paste this line into package.use
                 messages.append(f"    ={pkg.cpv} {flag_display}")
