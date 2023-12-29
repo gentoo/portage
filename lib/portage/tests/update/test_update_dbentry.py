@@ -1,6 +1,7 @@
 # Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shutil
 import sys
 import re
 import textwrap
@@ -9,6 +10,7 @@ import portage
 from portage import os
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.dep import Atom
+from portage.exception import CorruptionKeyError
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.update import update_dbentry
@@ -186,6 +188,11 @@ class UpdateDbentryTestCase(TestCase):
                 "EAPI": "4",
                 "SLOT": "2",
             },
+            "dev-libs/B-2::test_repo": {
+                "SLOT": "2",
+                "RDEPEND": "dev-libs/M dev-libs/N dev-libs/P",
+                "EAPI": "4",
+            },
             "dev-libs/B-1::test_repo": {
                 "RDEPEND": "dev-libs/M dev-libs/N dev-libs/P",
                 "EAPI": "4",
@@ -212,6 +219,11 @@ class UpdateDbentryTestCase(TestCase):
                 "SLOT": "2",
             },
             "dev-libs/B-1::test_repo": {
+                "RDEPEND": "dev-libs/M dev-libs/N dev-libs/P",
+                "EAPI": "4",
+            },
+            "dev-libs/B-2::test_repo": {
+                "SLOT": "2",
                 "RDEPEND": "dev-libs/M dev-libs/N dev-libs/P",
                 "EAPI": "4",
             },
@@ -269,6 +281,34 @@ class UpdateDbentryTestCase(TestCase):
                         )
                     )
 
+                    # Delete some things in order to trigger CorruptionKeyError during package moves.
+                    corruption_atom = Atom("dev-libs/B:2")
+                    # Demonstrate initial state.
+                    self.assertEqual(bindb.match(corruption_atom), ["dev-libs/B-2"])
+                    for cpv in bindb.match(corruption_atom):
+                        os.unlink(bindb.bintree.getname(cpv))
+                        self.assertRaises(
+                            CorruptionKeyError,
+                            bindb.aux_update,
+                            cpv,
+                            {"RDEPEND": "dev-libs/M-moved"},
+                        )
+                    # Demonstrate corrupt state.
+                    self.assertEqual(bindb.match(corruption_atom), ["dev-libs/B-2"])
+
+                    # Demonstrate initial state.
+                    self.assertEqual(vardb.match(corruption_atom), ["dev-libs/B-2"])
+                    for cpv in vardb.match(corruption_atom):
+                        shutil.rmtree(vardb.getpath(cpv))
+                        self.assertRaises(
+                            CorruptionKeyError,
+                            vardb.aux_update,
+                            cpv,
+                            {"RDEPEND": "dev-libs/M-moved"},
+                        )
+                    # Demonstrate correct state because vardbapi checks the disk.
+                    self.assertEqual(vardb.match(corruption_atom), [])
+
                     global_noiselimit = portage.util.noiselimit
                     portage.util.noiselimit = -2
                     try:
@@ -303,6 +343,26 @@ class UpdateDbentryTestCase(TestCase):
                     rdepend = bindb.aux_get("dev-libs/A-2", ["RDEPEND"])[0]
                     self.assertTrue("dev-libs/M" in rdepend)
                     self.assertTrue("dev-libs/M-moved" not in rdepend)
+
+                    # Demonstrate that match still returns stale results
+                    # due to intentional corruption.
+                    self.assertEqual(bindb.match(corruption_atom), ["dev-libs/B-2"])
+
+                    # Update bintree state so aux_get will properly raise KeyError.
+                    for cpv in bindb.match(corruption_atom):
+                        # Demonstrate that aux_get returns stale results.
+                        self.assertEqual(
+                            ["dev-libs/M dev-libs/N dev-libs/P"],
+                            bindb.aux_get(cpv, ["RDEPEND"]),
+                        )
+                        bindb.bintree.remove(cpv)
+                    self.assertEqual(bindb.match(corruption_atom), [])
+                    self.assertRaises(
+                        KeyError, bindb.aux_get, "dev-libs/B-2", ["RDEPEND"]
+                    )
+                    self.assertRaises(
+                        KeyError, vardb.aux_get, "dev-libs/B-2", ["RDEPEND"]
+                    )
 
                     selected_set.load()
                     self.assertTrue("dev-libs/M" not in selected_set)

@@ -1,4 +1,4 @@
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
@@ -60,6 +60,7 @@ from portage.const import (
 from portage.dbapi import dbapi
 from portage.exception import (
     CommandNotFound,
+    CorruptionKeyError,
     InvalidData,
     InvalidLocation,
     InvalidPackageName,
@@ -990,8 +991,10 @@ class vardbapi(dbapi):
 
     def aux_update(self, cpv, values):
         mylink = self._dblink(cpv)
-        if not mylink.exists():
-            raise KeyError(cpv)
+        try:
+            os.stat(mylink.dbdir)
+        except OSError as oe:
+            raise CorruptionKeyError(cpv) from oe
         self._bump_mtime(cpv)
         self._clear_pkg_cache(mylink)
         for k, v in values.items():

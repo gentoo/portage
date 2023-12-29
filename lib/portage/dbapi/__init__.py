@@ -25,7 +25,11 @@ from portage.const import MERGING_IDENTIFIER
 from portage import os
 from portage import auxdbkeys
 from portage.eapi import _get_eapi_attrs
-from portage.exception import InvalidBinaryPackageFormat, InvalidData
+from portage.exception import (
+    CorruptionKeyError,
+    InvalidBinaryPackageFormat,
+    InvalidData,
+)
 from portage.localization import _
 from _emerge.Package import Package
 
@@ -424,7 +428,7 @@ class dbapi:
             if metadata_updates:
                 try:
                     aux_update(cpv, metadata_updates)
-                except InvalidBinaryPackageFormat as e:
+                except (InvalidBinaryPackageFormat, CorruptionKeyError) as e:
                     warnings.warn(e)
                 if onUpdate:
                     onUpdate(maxval, i + 1)
@@ -470,5 +474,9 @@ class dbapi:
             ):
                 newslot = f"{newslot}/{mycpv.sub_slot}"
             mydata = {"SLOT": newslot + "\n"}
-            self.aux_update(mycpv, mydata)
+            try:
+                self.aux_update(mycpv, mydata)
+            except CorruptionKeyError as e:
+                warnings.warn(e)
+                continue
         return moves

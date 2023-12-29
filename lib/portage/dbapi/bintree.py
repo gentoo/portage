@@ -37,6 +37,7 @@ from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import (
     AlarmSignal,
+    CorruptionKeyError,
     InvalidPackageName,
     InvalidBinaryPackageFormat,
     ParseError,
@@ -210,9 +211,9 @@ class bindbapi(fakedbapi):
                 raise KeyError(mycpv)
             binpkg_path = os.path.join(self.bintree.pkgdir, binpkg_path)
             try:
-                st = os.lstat(binpkg_path)
-            except OSError:
-                raise KeyError(mycpv)
+                st = os.stat(binpkg_path)
+            except OSError as oe:
+                raise CorruptionKeyError(mycpv) from oe
 
             binpkg_format = get_binpkg_format(binpkg_path)
             if binpkg_format == "xpak":
@@ -283,8 +284,10 @@ class bindbapi(fakedbapi):
             cpv_str += f"-{build_id}"
 
         binpkg_path = self.bintree.getname(cpv)
-        if not os.path.exists(binpkg_path):
-            raise KeyError(cpv)
+        try:
+            os.stat(binpkg_path)
+        except OSError as oe:
+            raise CorruptionKeyError(cpv) from oe
 
         binpkg_format = get_binpkg_format(binpkg_path)
         if binpkg_format == "xpak":
@@ -694,7 +697,18 @@ class binarytree:
                 continue
 
             binpkg_path = self.getname(mycpv)
-            if os.path.exists(binpkg_path) and not os.access(binpkg_path, os.W_OK):
+            try:
+                os.stat(binpkg_path)
+            except FileNotFoundError:
+                writemsg(_("!!! File not found: %s\n") % binpkg_path, noiselevel=-1)
+                continue
+            except OSError as oe:
+                writemsg(
+                    _("!!! File os error (path %s): %s\n") % (binpkg_path, oe),
+                    noiselevel=-1,
+                )
+                continue
+            if not os.access(binpkg_path, os.W_OK):
                 writemsg(
                     _("!!! Cannot update readonly binary: %s\n") % mycpv, noiselevel=-1
                 )
@@ -1829,7 +1843,7 @@ class binarytree:
                 writemsg(
                     colorize(
                         "WARN",
-                        f"Failed to remove package: {binpkg_path} {str(err)}",
+                        f"Failed to remove package: {pkg_path} {str(err)}",
                     )
                 )
         finally:
