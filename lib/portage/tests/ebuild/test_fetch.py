@@ -615,12 +615,12 @@ class EbuildFetchTestCase(TestCase):
             emdisconf.content_db.remove(filename)
             # foo should still have a content revision corresponding to bar's content.
             self.assertEqual(
-                [
+                {
                     k[len("filename:") :]
                     for k in emdisconf.content_db
                     if k.startswith("filename:")
-                ],
-                ["bar", "foo"],
+                },
+                {"bar", "foo"},
             )
             self.assertEqual(len(emdisconf.content_db["filename:foo"]), 1)
             self.assertEqual(
