@@ -3,7 +3,7 @@
 
 import sys
 import textwrap
-
+import pytest
 import portage
 from portage import os
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -228,5 +228,95 @@ class MoveEntTestCase(TestCase):
                     )
                     bindb.aux_get("dev-libs/A-2", ["EAPI"])
 
+                finally:
+                    playground.cleanup()
+
+    @pytest.mark.filterwarnings("error")
+    def testMoveEntWithCorruptIndex(self):
+        """
+        Test handling of the Packages index being stale (bug #920828)
+        and gpkg's binpkg-multi-instance handling.
+
+        We expect a UserWarning to be thrown if the gpkg structure is broken,
+        so we promote that to an error.
+        """
+        ebuilds = {
+            "dev-libs/A-moved-1::test_repo": {
+                "EAPI": "4",
+                "SLOT": "2",
+            },
+            "dev-libs/B-1::test_repo": {"EAPI": "4", "RDEPEND": "dev-libs/A-moved"},
+        }
+
+        installed = {
+            "dev-libs/A-1::test_repo": {
+                "EAPI": "4",
+            },
+            "dev-libs/B-1::test_repo": {"EAPI": "4", "RDEPEND": "dev-libs/A"},
+        }
+
+        binpkgs = {
+            "dev-libs/A-1::test_repo": {
+                "EAPI": "4",
+                "BUILD_ID": "1",
+            },
+            "dev-libs/B-1::test_repo": {
+                "EAPI": "4",
+                "BUILD_ID": "1",
+                "RDEPEND": "dev-libs/A",
+            },
+        }
+
+        updates = textwrap.dedent(
+            """
+			move dev-libs/A dev-libs/A-moved
+		"""
+        )
+
+        for binpkg_format in ("gpkg",):
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                playground = ResolverPlayground(
+                    binpkgs=binpkgs,
+                    ebuilds=ebuilds,
+                    installed=installed,
+                    user_config={
+                        "make.conf": (
+                            f'BINPKG_FORMAT="{binpkg_format}"',
+                            f'FEATURES="binpkg-multi-instance pkgdir-index-trusted"',
+                        ),
+                    },
+                    debug=True,
+                )
+
+                settings = playground.settings
+                trees = playground.trees
+                eroot = settings["EROOT"]
+                test_repo_location = settings.repositories["test_repo"].location
+                portdb = trees[eroot]["porttree"].dbapi
+                vardb = trees[eroot]["vartree"].dbapi
+                bindb = trees[eroot]["bintree"].dbapi
+
+                updates_dir = os.path.join(test_repo_location, "profiles", "updates")
+
+                try:
+                    ensure_dirs(updates_dir)
+                    with open(os.path.join(updates_dir, "1Q-2010"), "w") as f:
+                        f.write(updates)
+
+                    # Make the Packages index out-of-date
+                    os.remove(
+                        os.path.join(
+                            bindb.bintree.pkgdir, "dev-libs", "A", "A-1-1.gpkg.tar"
+                        )
+                    )
+
+                    global_noiselimit = portage.util.noiselimit
+                    portage.util.noiselimit = -2
+                    try:
+                        _do_global_updates(trees, {})
+                    finally:
+                        portage.util.noiselimit = global_noiselimit
                 finally:
                     playground.cleanup()

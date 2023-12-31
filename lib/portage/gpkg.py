@@ -998,13 +998,16 @@ class gpkg:
         """
         self._verify_binpkg()
         self.checksums = []
-        old_basename = self.prefix
-
         if self.signature_exist and not force:
             raise SignedPackage("Cannot update a signed gpkg file")
 
         if new_basename is None:
-            new_basename = old_basename
+            if self.basename:
+                new_basename = self.basename
+            elif self.prefix:
+                new_basename = self.prefix
+            else:
+                raise InvalidBinaryPackageFormat("No basename or prefix specified")
         else:
             new_basename = new_basename.split("/", maxsplit=1)[-1]
             self.basename = new_basename
