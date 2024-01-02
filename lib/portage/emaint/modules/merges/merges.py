@@ -22,7 +22,9 @@ class TrackingFile:
         @param tracking_path: file path used to keep track of failed merges
         @type tracking_path: String
         """
-        self._tracking_path = _unicode_encode(tracking_path)
+        self._tracking_path = (
+            tracking_path if portage.utf8_mode else _unicode_encode(tracking_path)
+        )
 
     def save(self, failed_pkgs):
         """
