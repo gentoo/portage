@@ -6,6 +6,20 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.60 (UNRELEASED)
+--------------
+
+Bug fixes:
+* EbuildBinpkg: Avoid crash with verification failure in some cases (bug #921089).
+
+* dbapi: Raise CorruptionKeyError - which is treated as a warning - during pkgmoves
+  to avoid falling over in the event of a corrupt Packages index (bug #920828).
+
+* EbuildFetchTestCase: Fix key order assumption (bug #921107).
+
+* gpkg: Fix basename handling via aux_update (in particular with FEATURES="binpkg-multi-instance")
+  (bug #920828).
+
 portage-3.0.59 (2023-12-27)
 --------------
 
