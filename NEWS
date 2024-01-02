@@ -9,6 +9,8 @@ Release notes take the form of the following optional categories:
 portage-3.0.60 (UNRELEASED)
 --------------
 
+A small set of binpkg robustness fixes.
+
 Bug fixes:
 * EbuildBinpkg: Avoid crash with verification failure in some cases (bug #921089).
 
