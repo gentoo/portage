@@ -9,7 +9,8 @@ Release notes take the form of the following optional categories:
 portage-3.0.61 (UNRELEASED)
 --------------
 
-TODO
+Bug fixes:
+* bintree: Don't call trust helper unless bindb is writable (bug #915842, bug #920180).
 
 portage-3.0.60 (2024-01-02)
 --------------
