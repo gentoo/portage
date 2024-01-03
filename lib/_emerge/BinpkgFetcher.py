@@ -106,7 +106,8 @@ class BinpkgFetcher(CompositeTask):
                 finally:
                     if copier.isAlive():
                         copier.cancel()
-
+                if copier.returncode == os.EX_OK:
+                    fetcher.sync_timestamp()
             else:
                 fetcher.start()
                 try:
