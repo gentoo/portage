@@ -1,4 +1,4 @@
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -2272,16 +2272,6 @@ class binarytree:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
     def _allocate_filename_multi(self, cpv, remote_binpkg_format=None):
-        # First, get the max build_id found when _populate was
-        # called.
-        max_build_id = self._max_build_id(cpv)
-
-        # A new package may have been added concurrently since the
-        # last _populate call, so use increment build_id until
-        # we locate an unused id.
-        pf = catsplit(cpv)[1]
-        build_id = max_build_id + 1
-
         if remote_binpkg_format is None:
             try:
                 binpkg_format = get_binpkg_format(cpv._metadata["PATH"])
@@ -2298,6 +2288,33 @@ class binarytree:
             binpkg_suffix = "gpkg.tar"
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
+
+        # If the preferred path is available then return
+        # that. This prevents unnecessary build_id incrementation
+        # triggered when the _max_build_id method counts remote
+        # build ids.
+        pf = catsplit(cpv)[1]
+        if getattr(cpv, "build_id", False):
+            preferred_path = f"{os.path.join(self.pkgdir, cpv.cp, pf)}-{cpv.build_id}.{binpkg_suffix}"
+            if not os.path.exists(preferred_path):
+                try:
+                    # Avoid races
+                    ensure_dirs(os.path.dirname(preferred_path))
+                    with open(preferred_path, "x") as f:
+                        pass
+                except FileExistsError:
+                    pass
+                else:
+                    return (preferred_path, cpv.build_id)
+
+        # First, get the max build_id found when _populate was
+        # called.
+        max_build_id = self._max_build_id(cpv)
+
+        # A new package may have been added concurrently since the
+        # last _populate call, so use increment build_id until
+        # we locate an unused id.
+        build_id = max_build_id + 1
 
         while True:
             filename = (
