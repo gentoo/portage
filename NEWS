@@ -35,7 +35,7 @@ Features:
 * emerge: depclean now returns with failure if no packages are matched
   (bug #917120).
 
-* bintree: Support 'file://' scheme for binhost src-uri (bug #920537).
+* bintree: Support 'file://' scheme for binhost sync-uri (bug #920537).
 
 * sync: git: Include signing key and git revision in log output with --verbose
   or if a failure occurs.
