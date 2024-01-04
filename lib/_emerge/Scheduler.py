@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
@@ -984,11 +984,19 @@ class Scheduler(PollScheduler):
 
                     current_task = None
                     if fetched:
-                        bintree.inject(
+                        if not bintree.inject(
                             x.cpv,
                             current_pkg_path=fetched,
                             allocated_pkg_path=fetcher.pkg_allocated_path,
-                        )
+                        ):
+                            eerror(
+                                "Binary package is not usable",
+                                phase="pretend",
+                                key=x.cpv,
+                            )
+                            failures += 1
+                            self._record_pkg_failure(x, settings, 1)
+                            continue
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
@@ -1046,20 +1054,22 @@ class Scheduler(PollScheduler):
                 if ret != os.EX_OK:
                     failures += 1
                     self._record_pkg_failure(x, settings, ret)
-                portage.elog.elog_process(x.cpv, settings)
             finally:
                 if current_task is not None:
                     if current_task.isAlive():
                         current_task.cancel()
-                    if current_task.returncode == os.EX_OK:
-                        clean_phase = EbuildPhase(
-                            background=False,
-                            phase="clean",
-                            scheduler=sched_iface,
-                            settings=settings,
-                        )
-                        clean_phase.start()
-                        await clean_phase.async_wait()
+
+                portage.elog.elog_process(x.cpv, settings)
+
+                if current_task is not None and current_task.returncode == os.EX_OK:
+                    clean_phase = EbuildPhase(
+                        background=False,
+                        phase="clean",
+                        scheduler=sched_iface,
+                        settings=settings,
+                    )
+                    clean_phase.start()
+                    await clean_phase.async_wait()
 
                 await build_dir.async_unlock()
                 self._deallocate_config(settings)
