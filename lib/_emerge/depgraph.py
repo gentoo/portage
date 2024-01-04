@@ -9445,8 +9445,16 @@ class depgraph:
                                 smallest_cycle=smallest_cycle,
                                 traversed_nodes=traversed_nodes,
                             ):
-                                if smallest_cycle is None or len(selected_nodes) < len(
-                                    smallest_cycle
+                                if (
+                                    smallest_cycle is None
+                                    or len(selected_nodes) < len(smallest_cycle)
+                                    or (
+                                        all(node.installed for node in selected_nodes)
+                                        and any(
+                                            not node.installed
+                                            for node in smallest_cycle
+                                        )
+                                    )
                                 ):
                                     smallest_cycle = selected_nodes
                                     ignore_priority = priority
