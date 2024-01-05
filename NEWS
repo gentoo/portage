@@ -6,11 +6,21 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.61 (UNRELEASED)
+portage-3.0.61 (2024-01-05)
 --------------
 
+A small set of binpkg robustness fixes.
+
 Bug fixes:
+* BinpkgFetcher: Preserve mtime (bug #921208).
+
 * bintree: Don't call trust helper unless bindb is writable (bug #915842, bug #920180).
+
+* bintree: Avoid unnecessary build id incrementation (bug #921208).
+
+* bintree: Handle inject failures (bug #921327).
+
+* emaint: merges: Fix TrackingFile for utf8_mode (bug #921181).
 
 portage-3.0.60 (2024-01-02)
 --------------
