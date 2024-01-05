@@ -1344,23 +1344,13 @@ class binarytree:
         for repo in reversed(list(self._binrepos_conf.values())):
             base_url = repo.sync_uri
             parsed_url = urlparse(base_url)
-            host = parsed_url.netloc
+            host = parsed_url.hostname or ""
             port = parsed_url.port
-            user = None
-            passwd = None
-            user_passwd = ""
+            user = parsed_url.username
+            passwd = parsed_url.password
+            user_passwd = user + "@" if user else ""
             gpkg_only_warned = False
 
-            if "@" in host:
-                user, host = host.split("@", 1)
-                user_passwd = user + "@"
-                if ":" in user:
-                    user, passwd = user.split(":", 1)
-
-            if port is not None:
-                port_str = f":{port}"
-                if host.endswith(port_str):
-                    host = host[: -len(port_str)]
             pkgindex_file = os.path.join(
                 self.settings["EROOT"],
                 CACHE_PATH,
