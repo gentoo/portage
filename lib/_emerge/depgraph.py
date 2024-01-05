@@ -11927,7 +11927,7 @@ def _resume_depgraph(
                     ) or parent_node.operation not in ("merge", "nomerge"):
                         continue
                     # We need to traverse all priorities here, in order to
-                    # ensure that a package with an unsatisfied depenedency
+                    # ensure that a package with an unsatisfied dependency
                     # won't get pulled in, even indirectly via a soft
                     # dependency.
                     unsatisfied_stack.append((parent_node, atom))
