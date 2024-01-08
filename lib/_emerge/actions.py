@@ -909,7 +909,16 @@ _depclean_result = collections.namedtuple(
 )
 
 
-def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spinner):
+def _calc_depclean(
+    settings,
+    trees,
+    ldpath_mtimes,
+    myopts,
+    action,
+    args_set,
+    spinner,
+    frozen_config=None,
+):
     allow_missing_deps = bool(args_set)
 
     debug = "--debug" in myopts
@@ -988,12 +997,14 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
     writemsg_level("\nCalculating dependencies  ")
     resolver_params = create_depgraph_params(myopts, "remove")
-    resolver = depgraph(settings, trees, myopts, resolver_params, spinner)
+    resolver = depgraph(
+        settings, trees, myopts, resolver_params, spinner, frozen_config=frozen_config
+    )
     resolver._load_vdb()
     vardb = resolver._frozen_config.trees[eroot]["vartree"].dbapi
     real_vardb = trees[eroot]["vartree"].dbapi
 
-    if action == "depclean":
+    if action in ("dep_check", "depclean"):
         if args_set:
             if deselect:
                 # Start with an empty set.
@@ -1002,6 +1013,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                 # Pull in any sets nested within the selected set.
                 selected_set.update(psets["selected"].getNonAtoms())
 
+        if args_set or action == "dep_check":
             # Pull in everything that's installed but not matched
             # by an argument atom since we don't want to clean any
             # package if something depends on it.
@@ -1097,6 +1109,9 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
     if not success:
         return _depclean_result(1, [], False, 0, resolver)
+
+    if action == "dep_check":
+        return _depclean_result(0, [], False, 0, resolver)
 
     def unresolved_deps():
         soname_deps = set()

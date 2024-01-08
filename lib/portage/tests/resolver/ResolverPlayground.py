@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
@@ -33,7 +33,11 @@ from _emerge.actions import _calc_depclean
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.DependencyArg import DependencyArg
-from _emerge.depgraph import backtrack_depgraph
+from _emerge.depgraph import (
+    _frozen_depgraph_config,
+    backtrack_depgraph,
+)
+from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
 
@@ -732,7 +736,16 @@ class ResolverPlayground:
                 portage.util.noiselimit = -2
             _emerge.emergelog._disable = True
 
-            if action in ("depclean", "prune"):
+            # NOTE: frozen_config could be cached and reused if options and params were constant.
+            params_action = (
+                "remove" if action in ("dep_check", "depclean", "prune") else action
+            )
+            params = create_depgraph_params(options, params_action)
+            frozen_config = _frozen_depgraph_config(
+                self.settings, self.trees, options, params, None
+            )
+
+            if params_action == "remove":
                 depclean_result = _calc_depclean(
                     self.settings,
                     self.trees,
@@ -741,6 +754,7 @@ class ResolverPlayground:
                     action,
                     InternalPackageSet(initial_atoms=atoms, allow_wildcard=True),
                     None,
+                    frozen_config=frozen_config,
                 )
                 result = ResolverPlaygroundDepcleanResult(
                     atoms,
@@ -751,9 +765,15 @@ class ResolverPlayground:
                     depclean_result.depgraph,
                 )
             else:
-                params = create_depgraph_params(options, action)
                 success, depgraph, favorites = backtrack_depgraph(
-                    self.settings, self.trees, options, params, action, atoms, None
+                    self.settings,
+                    self.trees,
+                    options,
+                    params,
+                    action,
+                    atoms,
+                    None,
+                    frozen_config=frozen_config,
                 )
                 depgraph._show_merge_list()
                 depgraph.display_problems()
@@ -939,7 +959,8 @@ class ResolverPlaygroundTestCase:
                 )
                 and expected is not None
             ):
-                expected = set(expected)
+                # unsatisfied_deps can be a dict for depclean-like actions
+                expected = expected if isinstance(expected, dict) else set(expected)
 
             elif key == "forced_rebuilds" and expected is not None:
                 expected = {k: set(v) for k, v in expected.items()}
@@ -1109,11 +1130,14 @@ class ResolverPlaygroundDepcleanResult:
         "ordered",
         "req_pkg_count",
         "graph_order",
+        "unsatisfied_deps",
     )
     optional_checks = (
+        "cleanlist",
         "ordered",
         "req_pkg_count",
         "graph_order",
+        "unsatisfied_deps",
     )
 
     def __init__(self, atoms, rval, cleanlist, ordered, req_pkg_count, depgraph):
@@ -1125,3 +1149,10 @@ class ResolverPlaygroundDepcleanResult:
         self.graph_order = [
             _mergelist_str(node, depgraph) for node in depgraph._dynamic_config.digraph
         ]
+        self.unsatisfied_deps = {}
+        for dep in depgraph._dynamic_config._initially_unsatisfied_deps:
+            if isinstance(dep.parent, Package):
+                parent_repr = dep.parent.cpv
+            else:
+                parent_repr = dep.parent.arg
+            self.unsatisfied_deps.setdefault(parent_repr, set()).add(dep.atom)

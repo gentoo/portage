@@ -11723,6 +11723,7 @@ def backtrack_depgraph(
     myaction: Optional[str],
     myfiles: list[str],
     spinner: "_emerge.stdout_spinner.stdout_spinner",
+    frozen_config: Optional[_frozen_depgraph_config] = None,
 ) -> tuple[Any, depgraph, list[str]]:
     """
 
@@ -11747,6 +11748,7 @@ def _backtrack_depgraph(
     myaction: Optional[str],
     myfiles: list[str],
     spinner: "_emerge.stdout_spinner.stdout_spinner",
+    frozen_config: Optional[_frozen_depgraph_config] = None,
 ) -> tuple[Any, depgraph, list[str], int, int]:
     debug = "--debug" in myopts
     mydepgraph = None
@@ -11756,7 +11758,10 @@ def _backtrack_depgraph(
     backtracker = Backtracker(max_depth)
     backtracked = 0
 
-    frozen_config = _frozen_depgraph_config(settings, trees, myopts, myparams, spinner)
+    if frozen_config is None:
+        frozen_config = _frozen_depgraph_config(
+            settings, trees, myopts, myparams, spinner
+        )
 
     while backtracker:
         if debug and mydepgraph is not None:
