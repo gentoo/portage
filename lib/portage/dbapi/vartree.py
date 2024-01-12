@@ -6283,7 +6283,19 @@ class dblink:
             if not _cmpxattr(src_bytes, dest_bytes, exclude=excluded_xattrs):
                 return True
 
-        return not filecmp.cmp(src_bytes, dest_bytes, shallow=False)
+        try:
+            files_equal = filecmp.cmp(src_bytes, dest_bytes, shallow=False)
+        except Exception as e:
+            writemsg(
+                _(
+                    "Exception '%s' happened when comparing files %s and %s, will replace the latter\n"
+                )
+                % (e, mysrc, mydest),
+                noiselevel=-1,
+            )
+            return True
+
+        return not files_equal
 
 
 def merge(
