@@ -109,7 +109,7 @@ class PackageSet:
         for a in atoms:
             self._atommap.setdefault(a.cp, set()).add(a)
 
-    # Not sure if this one should really be in PackageSet
+    # XXX: Not sure if this one should really be in PackageSet
     def findAtomForPackage(self, pkg, modified_use=None):
         """Return the best match for a given package from the arguments, or
         None if there are no matches.  This matches virtual arguments against
