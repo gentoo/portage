@@ -9773,7 +9773,7 @@ class depgraph:
                         continue
 
                     if heuristic_overlap and running_root == task.root:
-                        # Never uninstall sys-apps/portage or it's essential
+                        # Never uninstall sys-apps/portage or its essential
                         # dependencies, except through replacement.
                         try:
                             runtime_dep_atoms = list(
