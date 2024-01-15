@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -3674,9 +3674,19 @@ class depgraph:
         careful to obey the user's wishes if they have explicitly requested
         for a package to be rebuilt or reinstalled for some reason.
         """
-        if "empty" in self._dynamic_config.myparams:
+        # Skip for slot conflicts since the merge list is not valid
+        # anyway, and possible state inconsistencies can trigger
+        # unexpected exceptions as in bug 922038.
+        if "empty" in self._dynamic_config.myparams or any(
+            self._dynamic_config._package_tracker.slot_conflicts()
+        ):
             return False
 
+        # Track packages that we remove from the graph during
+        # this method call, in order to help trace any detected
+        # inconsistency back to this method or some other source
+        # such as _solve_non_slot_operator_slot_conflicts.
+        removed = []
         modified = False
         selective = "selective" in self._dynamic_config.myparams
         for root, atom in self._dynamic_config._slot_operator_replace_installed:
@@ -3777,11 +3787,45 @@ class depgraph:
                 modified = True
                 parent_atoms = []
                 for parent, parent_atom in self._dynamic_config._parent_atoms[pkg]:
-                    priorities = self._dynamic_config.digraph.nodes[pkg][1][parent][:]
+                    try:
+                        priorities = self._dynamic_config.digraph.nodes[pkg][1][parent][
+                            :
+                        ]
+                    except KeyError:
+                        optional_msg = " ({} previously removed from graph)"
+                        warnings.warn(
+                            f"_eliminate_rebuilds inconsistency: parent priorities missing for {parent} -> {pkg} edge"(
+                                optional_msg.format("parent and child")
+                                if parent in removed and pkg in removed
+                                else optional_msg.format("parent")
+                                if parent in removed
+                                else optional_msg.format("child")
+                                if pkg in removed
+                                else ""
+                            )
+                        )
+                        priorities = []
                     parent_atoms.append((parent, parent_atom, priorities))
                 child_parents = {}
                 for child in self._dynamic_config.digraph.child_nodes(pkg):
-                    priorities = self._dynamic_config.digraph.nodes[child][1][pkg][:]
+                    try:
+                        priorities = self._dynamic_config.digraph.nodes[child][1][pkg][
+                            :
+                        ]
+                    except KeyError:
+                        optional_msg = " ({} previously removed from graph)"
+                        warnings.warn(
+                            f"_eliminate_rebuilds inconsistency: parent priorities missing for {pkg} -> {child} edge"(
+                                optional_msg.format("parent and child")
+                                if pkg in removed and child in removed
+                                else optional_msg.format("parent")
+                                if pkg in removed
+                                else optional_msg.format("child")
+                                if child in removed
+                                else ""
+                            )
+                        )
+                        priorities = []
                     child_parents[child] = (
                         [
                             atom
@@ -3793,6 +3837,7 @@ class depgraph:
                         priorities,
                     )
                 self._remove_pkg(pkg, remove_orphans=False)
+                removed.append(pkg)
                 for parent, atom, priorities in parent_atoms:
                     self._add_parent_atom(installed_instance, (parent, atom))
                     for priority in priorities:
@@ -8881,6 +8926,13 @@ class depgraph:
         return True
 
     def _accept_blocker_conflicts(self):
+        """
+        Always returns False when backtracking is enabled, for
+        consistent results. When backtracking is disabled, returns
+        True for options that tolerate conflicts.
+        """
+        if self._dynamic_config._allow_backtracking:
+            return False
         acceptable = False
         for x in ("--buildpkgonly", "--fetchonly", "--fetch-all-uri", "--nodeps"):
             if x in self._frozen_config.myopts:
@@ -11752,7 +11804,8 @@ def _backtrack_depgraph(
 ) -> tuple[Any, depgraph, list[str], int, int]:
     debug = "--debug" in myopts
     mydepgraph = None
-    max_retries = myopts.get("--backtrack", 20)
+    nodeps = "--nodeps" in myopts
+    max_retries = 0 if nodeps else myopts.get("--backtrack", 20)
     max_depth = max(1, (max_retries + 1) // 2)
     allow_backtracking = max_retries > 0
     backtracker = Backtracker(max_depth)
