@@ -1521,14 +1521,16 @@ class Scheduler(PollScheduler):
             self.curval += 1
             merge = PackageMerge(merge=build, scheduler=self._sched_iface)
             self._running_tasks[id(merge)] = merge
-            if (
-                not build.build_opts.buildpkgonly
-                and build.pkg in self._deep_system_deps
+            # By default, merge-wait only allows merge when no builds are executing.
+            # As a special exception, dependencies on system packages are frequently
+            # unspecified and will therefore force merge-wait.
+            is_system_pkg = build.pkg in self._deep_system_deps
+            if not build.build_opts.buildpkgonly and (
+                "merge-wait" in build.settings.features or is_system_pkg
             ):
-                # Since dependencies on system packages are frequently
-                # unspecified, merge them only when no builds are executing.
                 self._merge_wait_queue.append(merge)
-                merge.addStartListener(self._system_merge_started)
+                if is_system_pkg:
+                    merge.addStartListener(self._system_merge_started)
             else:
                 self._task_queues.merge.add(merge)
                 merge.addExitListener(self._merge_exit)

@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Mar 2023" "Portage @VERSION@" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -565,6 +565,15 @@ After a package is merged or unmerged, sync relevant files to
 disk in order to avoid data\-loss in the event of a power failure.
 This feature is enabled by default.
 .TP
+.B merge\-wait
+Wait for all builds to complete before merging new packages, which only
+matters when using the \fBemerge\fR(1) \fB\-\-jobs\fR option. This
+feature is always effectively enabled and it cannot be disabled for
+packages that satisfy direct or indirect dependencies of the system
+set. For other packages, it can be disabled in order to trade the
+possibility of random build failures for greater parallelism.
+This feature is enabled by default.
+.TP
 .B metadata\-transfer
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 In versions of portage >=2.1.5, this feature is disabled by
@@ -637,8 +646,9 @@ terminal to view parallel-fetch progress.
 .TP
 .B parallel\-install
 Use finer\-grained locks when installing packages, allowing for greater
-parallelization. For additional parallelization, disable
-\fIebuild\-locks\fR.
+parallelism. Note that \fIparallel\-install\fR currently has no effect
+unless \fImerge\-wait\fR is disabled. For additional parallelism,
+disable \fIebuild\-locks\fR.
 .TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it
