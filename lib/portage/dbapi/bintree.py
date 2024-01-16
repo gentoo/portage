@@ -306,7 +306,7 @@ class bindbapi(fakedbapi):
                     colorize(
                         "WARN",
                         f"Binpkg update ignored for signed package: {binpkg_path}, "
-                        "the file will be removed.",
+                        "the file will be removed.\n",
                     )
                 )
                 self.bintree.remove(cpv)
@@ -734,7 +734,7 @@ class binarytree:
                     writemsg(
                         colorize(
                             "WARN",
-                            f"Binpkg update ignored for signed package: {binpkg_path}",
+                            f"Binpkg update ignored for signed package: {binpkg_path}\n",
                         )
                     )
                     continue
