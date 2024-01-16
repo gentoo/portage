@@ -12,10 +12,8 @@ __all__ = (
 from portage import os
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
-from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
 from portage.localization import localized_size
-from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import (
     blue,
@@ -246,7 +244,6 @@ class Display:
 
         use_expand = sorted(self.use_expand)
         use_expand.insert(0, "USE")
-        feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.eapi))
 
         for key in use_expand:
             if key in self.use_expand_hidden:
@@ -260,7 +257,6 @@ class Display:
                 old_iuse_map[key],
                 old_use_map[key],
                 is_new,
-                feature_flags,
                 reinst_flags_map.get(key),
             )
 
