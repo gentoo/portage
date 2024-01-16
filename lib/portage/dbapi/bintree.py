@@ -296,8 +296,12 @@ class bindbapi(fakedbapi):
             encoding_key = True
         elif binpkg_format == "gpkg":
             mybinpkg = portage.gpkg.gpkg(self.settings, cpv_str, binpkg_path)
-            mydata = mybinpkg.get_metadata()
-            if mybinpkg.signature_exist:
+            try:
+                mydata = mybinpkg.get_metadata()
+                signature_exist = mybinpkg.signature_exist
+            except SignatureException:
+                signature_exist = True
+            if signature_exist:
                 writemsg(
                     colorize(
                         "WARN",
@@ -721,8 +725,12 @@ class binarytree:
                 decode_metadata_name = False
             elif binpkg_format == "gpkg":
                 mybinpkg = portage.gpkg.gpkg(self.settings, mycpv, binpkg_path)
-                mydata = mybinpkg.get_metadata()
-                if mybinpkg.signature_exist:
+                try:
+                    mydata = mybinpkg.get_metadata()
+                    signature_exist = mybinpkg.signature_exist
+                except SignatureException:
+                    signature_exist = True
+                if signature_exist:
                     writemsg(
                         colorize(
                             "WARN",
