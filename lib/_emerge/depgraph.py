@@ -5286,6 +5286,7 @@ class depgraph:
             for atom in sorted(arg.pset.getAtoms()):
                 self._spinner_update()
                 dep = Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg)
+                fixedup_pkgmove = False
                 try:
                     pprovided = pprovideddict.get(atom.cp)
                     if pprovided and portage.match_from_list(atom, pprovided):
@@ -5318,14 +5319,9 @@ class depgraph:
                         )
 
                         if pkg:
-                            atom = Atom(atom.replace(atom.cp, pkg.cp))
-
-                            if not self._add_pkg(pkg, dep):
-                                writemsg(
-                                    f"\n\n!!! Problem resolving dependencies for {arg.arg=}, {arg.atom=}\n",
-                                    noiselevel=-1,
-                                )
-                                return False, myfavorites
+                            fixedup_pkgmove = True
+                            atom = Atom(f"{atom.replace(atom.cp, pkg.cp)}")
+                            arg = pkg.slot_atom
 
                     if debug:
                         writemsg_level(
@@ -5333,11 +5329,10 @@ class depgraph:
                             noiselevel=-1,
                             level=logging.DEBUG,
                         )
+
                     pkg, existing_node = self._select_package(
                         myroot, atom, onlydeps=onlydeps
                     )
-                    if not arg:
-                        arg = AtomArg(pkg.slot_atom)
 
                     # Is the package installed (at any version)?
                     if pkg and "update_if_installed" in self._dynamic_config.myparams:
@@ -5409,6 +5404,7 @@ class depgraph:
                     if (
                         pkg.installed
                         and "selective" not in self._dynamic_config.myparams
+                        and not fixedup_pkgmove
                         and not self._frozen_config.excluded_pkgs.findAtomForPackage(
                             pkg, modified_use=self._pkg_use_enabled(pkg)
                         )
