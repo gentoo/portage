@@ -3794,7 +3794,8 @@ class depgraph:
                     except KeyError:
                         optional_msg = " ({} previously removed from graph)"
                         warnings.warn(
-                            f"_eliminate_rebuilds inconsistency: parent priorities missing for {parent} -> {pkg} edge"(
+                            f"_eliminate_rebuilds inconsistency: parent priorities missing for {parent} -> {pkg} edge"
+                            + (
                                 optional_msg.format("parent and child")
                                 if parent in removed and pkg in removed
                                 else optional_msg.format("parent")
@@ -3815,7 +3816,8 @@ class depgraph:
                     except KeyError:
                         optional_msg = " ({} previously removed from graph)"
                         warnings.warn(
-                            f"_eliminate_rebuilds inconsistency: parent priorities missing for {pkg} -> {child} edge"(
+                            f"_eliminate_rebuilds inconsistency: parent priorities missing for {pkg} -> {child} edge"
+                            + (
                                 optional_msg.format("parent and child")
                                 if pkg in removed and child in removed
                                 else optional_msg.format("parent")
