@@ -14,7 +14,7 @@ portagegroup = @portagegroup@
 PORTAGE_BIN = @PORTAGE_BASE@/bin
 LN_S = @LN_S@
 INSTALL = @INSTALL@
-INSTALL_subst = $(top_builddir)/subst-install
+INSTALL_subst = $(top_builddir)/subst-install --hprefixify
 
 usr_binprogs = \
 	ebuild \

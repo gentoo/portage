@@ -12,7 +12,7 @@ portageuser = @portageuser@
 portagegroup = @portagegroup@
 
 INSTALL = @INSTALL@
-INSTALL_subst = ${top_builddir}/subst-install
+INSTALL_subst = ${top_builddir}/subst-install --hprefixify
 LN_S = @LN_S@
 
 all:
