@@ -13,7 +13,4 @@ autoconf || die "failed autoconf"
 touch ChangeLog 
 automake -a -c || die "failed automake"
 
-if [ -x ./test.sh ] ; then
-	exec ./test.sh "$@"
-fi
 echo "finished"

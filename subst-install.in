@@ -35,8 +35,8 @@ sedexp=(
 	-e "s,${at}rootuid${at},@rootuid@,g"
 	-e "s,${at}rootuser${at},${rootuser},g"
 	-e "s,${at}sysconfdir${at},@sysconfdir@,g"
-	-e 's,([^[:alnum:]}\\)\\.])'"${dirs}"',\\1@PORTAGE_EPREFIX@/\\2,g'
-	-e 's,^'"${dirs}"',@PORTAGE_EPREFIX@/\\1,'
+	-e 's,([^[:alnum:]}\)\.])'"${dirs}"',\1@PORTAGE_EPREFIX@/\2,g'
+	-e 's,^'"${dirs}"',@PORTAGE_EPREFIX@/\1,'
 )
 
 sources=( )
