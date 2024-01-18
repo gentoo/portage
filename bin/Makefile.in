@@ -14,7 +14,7 @@ portagegroup = @portagegroup@
 PORTAGE_BIN = @PORTAGE_BASE@/bin
 LN_S = @LN_S@
 INSTALL = @INSTALL@
-INSTALL_subst = $(top_builddir)/subst-install --hprefixify
+INSTALL_subst = $(top_builddir)/subst-install
 
 usr_binprogs = \
 	ebuild \
@@ -33,6 +33,9 @@ usr_sbinprogs = \
 	etc-update \
 	fixpackages \
 	regenworld
+
+hprefixify_progs = \
+	etc-update
 
 all:
 
@@ -54,6 +57,12 @@ install:
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			-t "$(DESTDIR)$(PORTAGE_BIN)/$${f}" \
 			"$${files[@]}" ; \
+	done ; \
+	for f in $(hprefixify_progs) ; do \
+		$(INSTALL_subst) --hprefixify -m 755 \
+			-o "$(portageuser)" -g "$(portagegroup)" \
+			-t "$(DESTDIR)$(PORTAGE_BIN)" \
+			"$(srcdir)/$${f}" ; \
 	done
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/bin
 	cd $(DESTDIR)$(prefix)/bin \

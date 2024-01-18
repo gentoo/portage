@@ -37,6 +37,6 @@ install:
 		-t "$(DESTDIR)$(sysconfdir)" \
 		"$(srcdir)"/dispatch-conf.conf \
 		"$(srcdir)"/etc-update.conf
-	( cd $(DESTDIR)$(sysconfdir) && $(LN_S) $(DESTDIR)$(PORTAGE_CONF)/make.globals )
+	( cd $(DESTDIR)$(sysconfdir) && rm -f make.globals && $(LN_S) $(DESTDIR)$(PORTAGE_CONF)/make.globals )
 
 .PHONY:	all install
