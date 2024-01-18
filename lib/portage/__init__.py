@@ -12,8 +12,6 @@ try:
     import asyncio
     import sys
     import errno
-    # PREFIX LOCAL
-    import multiprocessing
 
     if not hasattr(errno, "ESTALE"):
         # ESTALE may not be defined on some systems, such as interix.
