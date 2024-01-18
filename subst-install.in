@@ -24,10 +24,12 @@ sedexp=(
 	-r
 	-e "s,${at}PORTAGE_BASE${at},@PORTAGE_BASE@,g"
 	-e "s,${at}PORTAGE_BASE_PATH${at},@PORTAGE_BASE@,g"
+	-e "s,${at}PORTAGE_BIN_PATH${at},@PORTAGE_BASE@/bin,g"
 	-e "s,${at}PORTAGE_BASH${at},@PORTAGE_BASH@,g"
 	-e "s,${at}PORTAGE_EPREFIX${at},@PORTAGE_EPREFIX@,g"
 	-e "s,${at}PORTAGE_MV${at},@PORTAGE_MV@,g"
 	-e "s,${at}PREFIX_PORTAGE_PYTHON${at},@PREFIX_PORTAGE_PYTHON@,g"
+	-e "s,${at}EPREFIX${at},@PORTAGE_EPREFIX@,g"
 	-e "s,${at}datadir${at},@datadir@,g"
 	-e "s,${at}portagegroup${at},${portagegroup},g"
 	-e "s,${at}portageuser${at},${portageuser},g"
