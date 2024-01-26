@@ -71,7 +71,7 @@ install_qa_check_prefix() {
 					echo "${fn#${D}}:${line[0]} (explicit EPREFIX but target not found)" \
 						>> "${T}"/non-prefix-shebangs-errs
 				else
-					eqawarn "${fn#${D}} has explicit EPREFIX in shebang but target not found (${line[0]})"
+					eqawarn "QA Notice: ${fn#${D}} has explicit EPREFIX in shebang but target not found (${line[0]})"
 				fi
 			fi
 			continue
@@ -81,7 +81,7 @@ install_qa_check_prefix() {
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because a
 				# prefixed variant exists
-				eqawarn "prefixing shebang of ${fn#${D}}"
+				eqawarn "QA Notice:  prefixing shebang of ${fn#${D}}"
 				# statement is made idempotent on purpose, because
 				# symlinks may point to the same target, and hence the
 				# same real file may be sedded multiple times since we
@@ -98,7 +98,7 @@ install_qa_check_prefix() {
 			# unprefixed/invalid shebang, but outside ${PATH}, this may be
 			# intended (e.g. config.guess) so remain silent by default
 			has stricter ${FEATURES} && \
-				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+				eqawarn "QA Notice: invalid shebang in ${fn#${D}}: ${line[0]}"
 		fi
 	done
 	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then

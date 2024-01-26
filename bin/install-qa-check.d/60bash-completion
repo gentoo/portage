@@ -10,7 +10,7 @@ bashcomp_check() {
 		instcompdir=${ED}/usr/share/bash-completion/completions
 	elif [[ -d ${ED}/usr/share/bash-completion ]]; then
 		if [[ ${syscompdir} != ${EPREFIX}/usr/share/bash-completion ]]; then
-			eqawarn "Bash completions were installed in legacy location. Please update"
+			eqawarn "QA Notice: Bash completions were installed in legacy location. Please update"
 			eqawarn "the ebuild to get the install paths using bash-completion-r1.eclass."
 			eqawarn
 		fi
@@ -111,7 +111,7 @@ bashcomp_check() {
 		done
 
 		if [[ -n ${qa_warnings[@]} ]]; then
-			eqawarn "Problems with installed bash completions were found:"
+			eqawarn "QA Notice: Problems with installed bash completions were found:"
 			eqawarn
 			for c in "${qa_warnings[@]}"; do
 				eqawarn "	${c}"
