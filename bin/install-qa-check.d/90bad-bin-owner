@@ -36,7 +36,7 @@ bad_bin_owner_check() {
 	done
 
 	if [[ ${found[@]} ]]; then
-		eqawarn "system executables owned by nonzero uid:"
+		eqawarn "QA Notice: system executables owned by nonzero uid:"
 		for f in "${found[@]}"; do
 			# Strip off the leading destdir before outputting the path.
 			eqawarn "  ${f#${D%/}}"

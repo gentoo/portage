@@ -22,7 +22,7 @@ for arg; do
 		args+=( "${ED%/}/${arg#/}" )
 		# remove the QA warning after 2024-12-31
 		if [[ ${arg:0:1} != / ]]; then
-			eqawarn "${0##*/}: Path '${arg}' does not start with '/'."
+			eqawarn "QA Notice: ${0##*/}: Path '${arg}' does not start with '/'."
 			eqawarn "This is unsupported. Add a slash for a path in \${ED},"
 			eqawarn "or use 'chmod' for a path relative to the working dir."
 		fi

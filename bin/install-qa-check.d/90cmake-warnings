@@ -13,7 +13,7 @@ cmake_warn_check() {
 			| LC_ALL=C sort -u)
 
 		if [[ ${vars} ]]; then
-			eqawarn "One or more CMake variables were not used by the project:"
+			eqawarn "QA Notice: One or more CMake variables were not used by the project:"
 			local v
 			for v in "${vars[@]}"; do
 				eqawarn "  ${v}"
