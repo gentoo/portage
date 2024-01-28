@@ -23,9 +23,10 @@ def _optimized_copyfile(src, dst):
     @param dst: path of destination file
     @type dst: str
     """
-    with open(src, "rb", buffering=0) as src_file, open(
-        dst, "wb", buffering=0
-    ) as dst_file:
+    with (
+        open(src, "rb", buffering=0) as src_file,
+        open(dst, "wb", buffering=0) as dst_file,
+    ):
         _file_copy(src_file.fileno(), dst_file.fileno())
 
 

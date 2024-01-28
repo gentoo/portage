@@ -16,7 +16,6 @@ from portage.util.futures import asyncio
 
 
 class SpawnProcess(SubProcess):
-
     """
     Constructor keyword args are passed into portage.process.spawn().
     The required "args" keyword argument will be passed as the first

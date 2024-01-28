@@ -6,7 +6,6 @@ __all__ = ["ObjectProxy"]
 
 
 class ObjectProxy:
-
     """
     Object that acts as a proxy to another object, forwarding
     attribute accesses and method calls. This can be useful

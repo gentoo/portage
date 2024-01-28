@@ -292,9 +292,11 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
     )
     gather_result.add_done_callback(aux_get_done)
     result.add_done_callback(
-        lambda result: gather_result.cancel()
-        if result.cancelled() and not gather_result.done()
-        else None
+        lambda result: (
+            gather_result.cancel()
+            if result.cancelled() and not gather_result.done()
+            else None
+        )
     )
 
     return result

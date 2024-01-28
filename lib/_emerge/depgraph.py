@@ -408,7 +408,6 @@ class _use_changes(tuple):
 
 
 class _dynamic_depgraph_config:
-
     """
     ``dynamic_depgraph_config`` is an object that is used to collect settings and important data structures that are
     used in calculating Portage dependencies. Each depgraph created by the depgraph.py code gets its own
@@ -3798,11 +3797,15 @@ class depgraph:
                             + (
                                 optional_msg.format("parent and child")
                                 if parent in removed and pkg in removed
-                                else optional_msg.format("parent")
-                                if parent in removed
-                                else optional_msg.format("child")
-                                if pkg in removed
-                                else ""
+                                else (
+                                    optional_msg.format("parent")
+                                    if parent in removed
+                                    else (
+                                        optional_msg.format("child")
+                                        if pkg in removed
+                                        else ""
+                                    )
+                                )
                             )
                         )
                         priorities = []
@@ -3820,11 +3823,15 @@ class depgraph:
                             + (
                                 optional_msg.format("parent and child")
                                 if pkg in removed and child in removed
-                                else optional_msg.format("parent")
-                                if pkg in removed
-                                else optional_msg.format("child")
-                                if child in removed
-                                else ""
+                                else (
+                                    optional_msg.format("parent")
+                                    if pkg in removed
+                                    else (
+                                        optional_msg.format("child")
+                                        if child in removed
+                                        else ""
+                                    )
+                                )
                             )
                         )
                         priorities = []
@@ -5830,9 +5837,9 @@ class depgraph:
                     self._select_atoms_parent = parent
                     mytrees["parent"] = parent
                     mytrees["atom_graph"] = atom_graph
-                    mytrees[
-                        "circular_dependency"
-                    ] = self._dynamic_config._circular_dependency
+                    mytrees["circular_dependency"] = (
+                        self._dynamic_config._circular_dependency
+                    )
                 if priority is not None:
                     mytrees["priority"] = priority
 
@@ -10546,24 +10553,24 @@ class depgraph:
                         filename = "package.accept_keywords"
                     else:
                         filename = "package.keywords"
-                    file_to_write_to[
-                        (abs_user_config, "package.keywords")
-                    ] = find_config_file(abs_user_config, filename)
+                    file_to_write_to[(abs_user_config, "package.keywords")] = (
+                        find_config_file(abs_user_config, filename)
+                    )
 
                 if root in p_mask_change_msg:
-                    file_to_write_to[
-                        (abs_user_config, "package.unmask")
-                    ] = find_config_file(abs_user_config, "package.unmask")
+                    file_to_write_to[(abs_user_config, "package.unmask")] = (
+                        find_config_file(abs_user_config, "package.unmask")
+                    )
 
                 if root in use_changes_msg:
-                    file_to_write_to[
-                        (abs_user_config, "package.use")
-                    ] = find_config_file(abs_user_config, "package.use")
+                    file_to_write_to[(abs_user_config, "package.use")] = (
+                        find_config_file(abs_user_config, "package.use")
+                    )
 
                 if root in license_msg:
-                    file_to_write_to[
-                        (abs_user_config, "package.license")
-                    ] = find_config_file(abs_user_config, "package.license")
+                    file_to_write_to[(abs_user_config, "package.license")] = (
+                        find_config_file(abs_user_config, "package.license")
+                    )
 
             for (abs_user_config, f), path in file_to_write_to.items():
                 if path is None:

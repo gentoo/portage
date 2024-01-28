@@ -106,7 +106,6 @@ class _dummy_list(list):
 
 
 class _better_cache:
-
     """
     The purpose of better_cache is to locate catpkgs in repositories using ``os.listdir()`` as much as possible, which
     is less expensive IO-wise than exhaustively doing a stat on each repo for a particular catpkg. better_cache stores a

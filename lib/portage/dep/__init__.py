@@ -1440,7 +1440,6 @@ class _use_dep:
 
 
 class Atom(str):
-
     """
     For compatibility with existing atom string manipulation code, this
     class emulates most of the str methods that are useful with atoms.

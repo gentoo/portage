@@ -46,9 +46,9 @@ class AsynchronousTask(SlotObject):
         )
         self.addExitListener(exit_listener)
         waiter.add_done_callback(
-            lambda waiter: self.removeExitListener(exit_listener)
-            if waiter.cancelled()
-            else None
+            lambda waiter: (
+                self.removeExitListener(exit_listener) if waiter.cancelled() else None
+            )
         )
         if self.returncode is not None:
             # If the returncode is not None, it means the exit event has already

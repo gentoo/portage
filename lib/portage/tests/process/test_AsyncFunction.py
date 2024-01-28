@@ -36,9 +36,11 @@ class AsyncFunctionTestCase(TestCase):
                 scheduler=loop,
                 target=self._read_from_stdin,
                 args=(
-                    pw.fileno()
-                    if multiprocessing.get_start_method() == "fork"
-                    else None,
+                    (
+                        pw.fileno()
+                        if multiprocessing.get_start_method() == "fork"
+                        else None
+                    ),
                 ),
             )
             reader.start()

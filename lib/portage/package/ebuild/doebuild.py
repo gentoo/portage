@@ -591,9 +591,9 @@ def doebuild_environment(
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
             if "GNUMAKEFLAGS" not in mysettings and "MAKEFLAGS" not in mysettings:
-                mysettings[
-                    "GNUMAKEFLAGS"
-                ] = f"--load-average {nproc} --output-sync=line"
+                mysettings["GNUMAKEFLAGS"] = (
+                    f"--load-average {nproc} --output-sync=line"
+                )
 
         if not eapi_exports_KV(eapi):
             # Discard KV for EAPIs that don't support it. Cached KV is restored
@@ -2773,10 +2773,12 @@ def _post_src_install_uid_fix(mysettings, out):
                         # a normal write might fail due to file permission
                         # settings on some operating systems such as HP-UX
                         write_atomic(
-                            fpath
-                            if portage.utf8_mode
-                            else _unicode_encode(
-                                fpath, encoding=_encodings["merge"], errors="strict"
+                            (
+                                fpath
+                                if portage.utf8_mode
+                                else _unicode_encode(
+                                    fpath, encoding=_encodings["merge"], errors="strict"
+                                )
                             ),
                             new_contents,
                             mode="wb",

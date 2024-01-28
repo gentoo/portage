@@ -446,17 +446,17 @@ class slot_conflict_handler:
                                     modified_use=self.depgraph._pkg_use_enabled(ppkg),
                                 ):
                                     selected_for_display.add((ppkg, atom))
-                                    need_rebuild[
-                                        ppkg
-                                    ] = "matched by --useoldpkg-atoms argument"
+                                    need_rebuild[ppkg] = (
+                                        "matched by --useoldpkg-atoms argument"
+                                    )
                                 elif usepkgonly:
                                     # This case is tricky, so keep quiet in order to avoid false-positives.
                                     pass
                                 elif not self.depgraph._equiv_ebuild_visible(ppkg):
                                     selected_for_display.add((ppkg, atom))
-                                    need_rebuild[
-                                        ppkg
-                                    ] = "ebuild is masked or unavailable"
+                                    need_rebuild[ppkg] = (
+                                        "ebuild is masked or unavailable"
+                                    )
 
                             for ppkg, atom, other_pkg in parents:
                                 selected_for_display.add((ppkg, atom))

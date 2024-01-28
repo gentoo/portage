@@ -246,11 +246,11 @@ class EbuildFetchTestCase(TestCase):
 				"""
                     % orig_fetchcommand.replace("${FILE}", "${FILE}.__download__")
                 )
-            settings[
-                "FETCHCOMMAND"
-            ] = '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
-                BASH_BINARY,
-                temp_fetchcommand,
+            settings["FETCHCOMMAND"] = (
+                '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
+                    BASH_BINARY,
+                    temp_fetchcommand,
+                )
             )
             settings.features.add("skiprocheck")
             settings.features.remove("distlocks")

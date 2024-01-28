@@ -2164,9 +2164,11 @@ class dblink:
             # The tarfile module will write pax headers holding the
             # xattrs only if PAX_FORMAT is specified here.
             with tarfile.open(
-                fileobj=output_file
-                if hasattr(output_file, "write")
-                else open(output_file.fileno(), mode="wb", closefd=False),
+                fileobj=(
+                    output_file
+                    if hasattr(output_file, "write")
+                    else open(output_file.fileno(), mode="wb", closefd=False)
+                ),
                 mode="w|",
                 format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT,
             ) as tar:
@@ -5293,12 +5295,14 @@ class dblink:
         # to TextIOWrapper with python2.
         contents_tmp_path = os.path.join(self.dbtmpdir, "CONTENTS")
         outfile = atomic_ofstream(
-            contents_tmp_path
-            if portage.utf8_mode
-            else _unicode_encode(
-                contents_tmp_path,
-                encoding=_encodings["fs"],
-                errors="strict",
+            (
+                contents_tmp_path
+                if portage.utf8_mode
+                else _unicode_encode(
+                    contents_tmp_path,
+                    encoding=_encodings["fs"],
+                    errors="strict",
+                )
             ),
             mode="w",
             encoding=_encodings["repo.content"],
@@ -6546,9 +6550,9 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                     # Compatible with GNU tar, which saves the xattrs
                     # under the SCHILY.xattr namespace.
                     for k in xattr.list(path_bytes):
-                        tarinfo.pax_headers[
-                            "SCHILY.xattr." + _unicode_decode(k)
-                        ] = _unicode_decode(xattr.get(path_bytes, _unicode_encode(k)))
+                        tarinfo.pax_headers["SCHILY.xattr." + _unicode_decode(k)] = (
+                            _unicode_decode(xattr.get(path_bytes, _unicode_encode(k)))
+                        )
 
                 with open(path_bytes, "rb") as f:
                     tar.addfile(tarinfo, f)

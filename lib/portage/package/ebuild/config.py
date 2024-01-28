@@ -866,10 +866,10 @@ class config:
             # Initialize all USE related variables we track ourselves.
             self.usemask = self._use_manager.getUseMask()
             self.useforce = self._use_manager.getUseForce()
-            self.configdict["conf"][
-                "USE"
-            ] = self._use_manager.extract_global_USE_changes(
-                self.configdict["conf"].get("USE", "")
+            self.configdict["conf"]["USE"] = (
+                self._use_manager.extract_global_USE_changes(
+                    self.configdict["conf"].get("USE", "")
+                )
             )
 
             # Read license_groups and optionally license_groups and package.license from user config
@@ -879,10 +879,10 @@ class config:
                 user_config=local_config,
             )
             # Extract '*/*' entries from package.license
-            self.configdict["conf"][
-                "ACCEPT_LICENSE"
-            ] = self._license_manager.extract_global_changes(
-                self.configdict["conf"].get("ACCEPT_LICENSE", "")
+            self.configdict["conf"]["ACCEPT_LICENSE"] = (
+                self._license_manager.extract_global_changes(
+                    self.configdict["conf"].get("ACCEPT_LICENSE", "")
+                )
             )
 
             # profile.bashrc
@@ -1068,9 +1068,9 @@ class config:
             # reasonable defaults; this is important as without USE_ORDER,
             # USE will always be "" (nothing set)!
             if "USE_ORDER" not in self:
-                self[
-                    "USE_ORDER"
-                ] = "env:pkg:conf:defaults:pkginternal:features:repo:env.d"
+                self["USE_ORDER"] = (
+                    "env:pkg:conf:defaults:pkginternal:features:repo:env.d"
+                )
                 self.backup_changes("USE_ORDER")
 
             if "CBUILD" not in self and "CHOST" in self:
@@ -1689,14 +1689,14 @@ class config:
             if use is None:
                 use = frozenset(settings["PORTAGE_USE"].split())
 
-            values[
-                "ACCEPT_LICENSE"
-            ] = settings._license_manager.get_prunned_accept_license(
-                settings.mycpv,
-                use,
-                settings.get("LICENSE", ""),
-                settings.get("SLOT"),
-                settings.get("PORTAGE_REPO_NAME"),
+            values["ACCEPT_LICENSE"] = (
+                settings._license_manager.get_prunned_accept_license(
+                    settings.mycpv,
+                    use,
+                    settings.get("LICENSE", ""),
+                    settings.get("SLOT"),
+                    settings.get("PORTAGE_REPO_NAME"),
+                )
             )
             values["PORTAGE_PROPERTIES"] = self._flatten("PROPERTIES", use, settings)
             values["PORTAGE_RESTRICT"] = self._flatten("RESTRICT", use, settings)

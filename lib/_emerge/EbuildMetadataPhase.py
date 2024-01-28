@@ -19,7 +19,6 @@ import fcntl
 
 
 class EbuildMetadataPhase(SubProcess):
-
     """
     Asynchronous interface for the ebuild "depend" phase which is
     used to extract metadata from the ebuild.
@@ -200,12 +199,10 @@ class EbuildMetadataPhase(SubProcess):
                 # entries for unsupported EAPIs.
                 if self.eapi_supported:
                     if metadata.get("INHERITED", False):
-                        metadata[
-                            "_eclasses_"
-                        ] = self.portdb.repositories.get_repo_for_location(
-                            self.repo_path
-                        ).eclass_db.get_eclass_data(
-                            metadata["INHERITED"].split()
+                        metadata["_eclasses_"] = (
+                            self.portdb.repositories.get_repo_for_location(
+                                self.repo_path
+                            ).eclass_db.get_eclass_data(metadata["INHERITED"].split())
                         )
                     else:
                         metadata["_eclasses_"] = {}

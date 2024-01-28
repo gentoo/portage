@@ -13,7 +13,6 @@ from _emerge.PackageUninstall import PackageUninstall
 
 
 class MergeListItem(CompositeTask):
-
     """
     TODO: For parallel scheduling, everything here needs asynchronous
     execution support (start, poll, and wait methods).
