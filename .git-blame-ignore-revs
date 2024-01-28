@@ -12,3 +12,5 @@ cb8eda531dad92bec9293c89f93db9b581245fd3
 a83507be7ce04d3ac421f9cbe8b63816809b0f4e
 # */*: rerun black w/ 23.1.0
 4ceb199aab8035fdf2ebd244e213ca63c29b4d5f
+# */*: rerun black w/ 24.1.0
+3d55e159c473075c7b2f87c92293b0df6fa57563
