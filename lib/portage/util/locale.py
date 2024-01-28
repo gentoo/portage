@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Gentoo Authors
+# Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """
@@ -118,7 +118,6 @@ def check_locale(silent=False, env=None):
 
     pid = os.fork()
     if pid == 0:
-        portage._ForkWatcher.hook(portage._ForkWatcher)
         try:
             if env is not None:
                 try:

@@ -1,4 +1,4 @@
-# Copyright 2011-2020 Gentoo Authors
+# Copyright 2011-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -19,7 +19,6 @@ class LockNonblockTestCase(TestCase):
             lock1 = portage.locks.lockfile(path)
             pid = os.fork()
             if pid == 0:
-                portage._ForkWatcher.hook(portage._ForkWatcher)
                 portage.locks._close_fds()
                 # Disable close_fds since we don't exec
                 # (see _setup_pipes docstring).

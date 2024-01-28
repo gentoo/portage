@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -456,7 +456,6 @@ def spawn(
         pid = os.fork()
 
         if pid == 0:
-            portage._ForkWatcher.hook(portage._ForkWatcher)
             try:
                 _exec(
                     binary,
@@ -504,8 +503,8 @@ def spawn(
                 sys.stderr.flush()
 
     finally:
-        # Don't used portage.getpid() here, due to a race with the above
-        # portage._ForkWatcher cache update.
+        # Don't used portage.getpid() here, in case there is a race
+        # with getpid cache invalidation via _ForkWatcher hook.
         if pid == 0 or (pid is None and _os.getpid() != parent_pid):
             # Call os._exit() from a finally block in order
             # to suppress any finally blocks from earlier
@@ -775,9 +774,6 @@ def _exec(
                         if unshare_pid:
                             main_child_pid = os.fork()
                             if main_child_pid == 0:
-                                # The portage.getpid() cache may need to be updated here,
-                                # in case the pre_exec function invokes portage APIs.
-                                portage._ForkWatcher.hook(portage._ForkWatcher)
                                 # pid namespace requires us to become init
                                 binary, myargs = (
                                     portage._python_interpreter,
