@@ -465,12 +465,18 @@ redundant on\-the\-fly compression.  The resulting file will be called
 .B compressdebug
 Compress the debug sections in the split debug files with zlib to save
 space.  See \fBsplitdebug\fR for general split debug
-information (upon which this feature depends).
+information (upon which this feature depends).  See also \fBdedupdebug\fR
+for further debug info size reduction.
 .TP
 .B config\-protect\-if\-modified
 This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
 that have not been modified since they were installed. This feature is
 enabled by default.
+.TP
+.B dedupdebug
+Prior to the debugging info being split and compressed, they are
+deduplicated.  This feature works only if dwz is installed, and is also
+disabled by \fBnostrip\fR.
 .TP
 .B digest
 Autogenerate digests for packages when running the

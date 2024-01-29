@@ -15,8 +15,8 @@ exp_tf() {
 		eval ${var}_${flag}=$(tf has ${flag} ${!var})
 	done
 }
-exp_tf FEATURES compressdebug installsources nostrip splitdebug xattr
-exp_tf PORTAGE_RESTRICT binchecks installsources splitdebug strip
+exp_tf FEATURES compressdebug dedupdebug installsources nostrip splitdebug xattr
+exp_tf PORTAGE_RESTRICT binchecks dedupdebug installsources splitdebug strip
 
 if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
@@ -201,6 +201,10 @@ fi
 [[ ${debugedit} ]] && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
+dwz=$(type -P dwz)
+[[ ${dwz} ]] && dwz_found=true || dwz_found=false
+dwz_warned=false
+
 __multijob_init
 
 # Setup ${T} filesystem layout that we care about.
@@ -246,6 +250,32 @@ __try_symlink() {
 		ln -s "${target}" "${name}" ||
 		[[ -L ${name} ]] ||
 		die "failed to create symlink '${name}'"
+}
+
+# Usage: dedup_elf_debug <src> <inode_dedupdebug>
+dedup_elf_debug() {
+	${FEATURES_dedupdebug} || return 0
+	${PORTAGE_RESTRICT_dedupdebug} && return 0
+
+	debug-print-function "${FUNCNAME}" "$@"
+
+	if ! ${dwz_found} ; then
+		if ! ${dwz_warned} ; then
+			dwz_warned=true
+			ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
+			ewarn "found. This feature will not work unless dwz is installed!"
+		fi
+		return 0
+	fi
+
+	local src=$1              # File to dedup debug symbols
+	local inode_dedupdebug=$2 # Temp path for hard link tracking
+
+	# We already dedupdebug-ed this inode.
+	[[ -L ${inode_dedupdebug} ]] && return 0
+
+	"${dwz}" -- "${src}"
+	touch "${inode_dedupdebug}"
 }
 
 # Usage: save_elf_debug <src> <inode_debug> [splitdebug]
@@ -355,6 +385,7 @@ process_elf() {
 			xt_data=$(dump_xattrs "${x}")
 		fi
 		save_elf_sources "${x}"
+		dedup_elf_debug "${x}" "${inode_link}_dedupdebug"
 	fi
 
 	if ${strip_this} ; then

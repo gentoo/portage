@@ -176,6 +176,7 @@ SUPPORTED_FEATURES = frozenset(
         "compressdebug",
         "compress-index",
         "config-protect-if-modified",
+        "dedupdebug",
         "digest",
         "distcc",
         "distlocks",
