@@ -18,6 +18,7 @@ import os as _os
 
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import Any, Optional, Callable
 
 from portage import os
 from portage import _encodings
@@ -450,68 +451,31 @@ def spawn(
     # fork, so that the result is cached in the main process.
     bool(groups)
 
-    parent_pid = portage.getpid()
-    pid = None
-    try:
-        pid = os.fork()
-
-        if pid == 0:
-            try:
-                _exec(
-                    binary,
-                    mycommand,
-                    opt_name,
-                    fd_pipes,
-                    env,
-                    gid,
-                    groups,
-                    uid,
-                    umask,
-                    cwd,
-                    pre_exec,
-                    close_fds,
-                    unshare_net,
-                    unshare_ipc,
-                    unshare_mount,
-                    unshare_pid,
-                    unshare_flags,
-                )
-            except SystemExit:
-                raise
-            except Exception as e:
-                if isinstance(e, OSError) and e.errno == errno.E2BIG:
-                    # If exec() failed with E2BIG, then this is
-                    # potentially because the environment variables
-                    # grew to large. The following will gather some
-                    # stats about the environment and print a
-                    # diagnostic message to help identifying the
-                    # culprit. See also
-                    # - https://bugs.gentoo.org/721088
-                    # - https://bugs.gentoo.org/830187
-                    if not env_stats:
-                        env_stats = calc_env_stats(env)
-
-                    writemsg(
-                        f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
-                    )
-
-                # We need to catch _any_ exception so that it doesn't
-                # propagate out of this function and cause exiting
-                # with anything other than os._exit()
-                writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
-                traceback.print_exc()
-                sys.stderr.flush()
-
-    finally:
-        # Don't used portage.getpid() here, in case there is a race
-        # with getpid cache invalidation via _ForkWatcher hook.
-        if pid == 0 or (pid is None and _os.getpid() != parent_pid):
-            # Call os._exit() from a finally block in order
-            # to suppress any finally blocks from earlier
-            # in the call stack (see bug #345289). This
-            # finally block has to be setup before the fork
-            # in order to avoid a race condition.
-            os._exit(1)
+    pid = _start_fork(
+        _exec_wrapper,
+        args=(
+            binary,
+            mycommand,
+            opt_name,
+            fd_pipes,
+            env,
+            gid,
+            groups,
+            uid,
+            umask,
+            cwd,
+            pre_exec,
+            close_fds,
+            unshare_net,
+            unshare_ipc,
+            unshare_mount,
+            unshare_pid,
+            unshare_flags,
+            env_stats,
+        ),
+        fd_pipes=fd_pipes,
+        close_fds=close_fds,
+    )
 
     if not isinstance(pid, int):
         raise AssertionError(f"fork returned non-integer: {repr(pid)}")
@@ -633,6 +597,76 @@ def _configure_loopback_interface():
         )
 
 
+def _exec_wrapper(
+    binary,
+    mycommand,
+    opt_name,
+    fd_pipes,
+    env,
+    gid,
+    groups,
+    uid,
+    umask,
+    cwd,
+    pre_exec,
+    close_fds,
+    unshare_net,
+    unshare_ipc,
+    unshare_mount,
+    unshare_pid,
+    unshare_flags,
+    env_stats,
+):
+    """
+    Calls _exec with the given args and handles any raised Exception.
+    The intention is for _exec_wrapper and _exec to be reusable with
+    other process cloning implementations besides _start_fork.
+    """
+    try:
+        _exec(
+            binary,
+            mycommand,
+            opt_name,
+            fd_pipes,
+            env,
+            gid,
+            groups,
+            uid,
+            umask,
+            cwd,
+            pre_exec,
+            close_fds,
+            unshare_net,
+            unshare_ipc,
+            unshare_mount,
+            unshare_pid,
+            unshare_flags,
+        )
+    except Exception as e:
+        if isinstance(e, OSError) and e.errno == errno.E2BIG:
+            # If exec() failed with E2BIG, then this is
+            # potentially because the environment variables
+            # grew to large. The following will gather some
+            # stats about the environment and print a
+            # diagnostic message to help identifying the
+            # culprit. See also
+            # - https://bugs.gentoo.org/721088
+            # - https://bugs.gentoo.org/830187
+            if not env_stats:
+                env_stats = calc_env_stats(env)
+
+            writemsg(
+                f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
+            )
+
+        # We need to catch _any_ exception so that it doesn't
+        # propagate out of this function and cause exiting
+        # with anything other than os._exit()
+        writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
+        traceback.print_exc()
+        sys.stderr.flush()
+
+
 def _exec(
     binary,
     mycommand,
@@ -732,8 +766,6 @@ def _exec(
     # Avoid issues triggered by inheritance of SIGQUIT handler from
     # the parent process (see bug #289486).
     signal.signal(signal.SIGQUIT, signal.SIG_DFL)
-
-    _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
 
     # Unshare (while still uid==0)
     if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
@@ -1112,6 +1144,49 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
                     os.close(fd)
                 except OSError:
                     pass
+
+
+def _start_fork(
+    target: Callable[..., None],
+    args: Optional[tuple[Any, ...]] = (),
+    kwargs: Optional[dict[str, Any]] = {},
+    fd_pipes: Optional[dict[int, int]] = None,
+    close_fds: Optional[bool] = True,
+) -> int:
+    """
+    Execute the target function in a fork. The fd_pipes and
+    close_fds parameters are handled in the fork, before the target
+    function is called. The args and kwargs parameters are passed
+    as positional and keyword arguments for the target function.
+
+    The target, args, and kwargs parameters are intended to
+    be equivalent to the corresponding multiprocessing.Process
+    constructor parameters.
+
+    Ultimately, the intention is for spawn to support other
+    process cloning implementations besides _start_fork, since
+    fork is unsafe for threaded processes as discussed in
+    https://github.com/python/cpython/issues/84559.
+    """
+    parent_pid = portage.getpid()
+    pid = None
+    try:
+        pid = os.fork()
+
+        if pid == 0:
+            _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
+            target(*args, **kwargs)
+    finally:
+        # Don't used portage.getpid() here, in case there is a race
+        # with getpid cache invalidation via _ForkWatcher hook.
+        if pid == 0 or (pid is None and _os.getpid() != parent_pid):
+            # Call os._exit() from a finally block in order
+            # to suppress any finally blocks from earlier
+            # in the call stack (see bug #345289). This
+            # finally block has to be setup before the fork
+            # in order to avoid a race condition.
+            os._exit(1)
+    return pid
 
 
 def find_binary(binary):
