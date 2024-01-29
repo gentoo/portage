@@ -67,6 +67,7 @@ class EbuildPhase(CompositeTask):
     _features_display = (
         "ccache",
         "compressdebug",
+        "dedupdebug",
         "distcc",
         "fakeroot",
         "installsources",
