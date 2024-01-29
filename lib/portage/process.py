@@ -658,13 +658,8 @@ def _exec_wrapper(
             writemsg(
                 f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
             )
-
-        # We need to catch _any_ exception so that it doesn't
-        # propagate out of this function and cause exiting
-        # with anything other than os._exit()
         writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
-        traceback.print_exc()
-        sys.stderr.flush()
+        raise
 
 
 def _exec(
@@ -1174,8 +1169,14 @@ def _start_fork(
         pid = os.fork()
 
         if pid == 0:
-            _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
-            target(*args, **kwargs)
+            try:
+                _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
+                target(*args, **kwargs)
+            except Exception:
+                # We need to catch _any_ exception and display it since the child
+                # process must unconditionally exit via os._exit() if exec fails.
+                traceback.print_exc()
+                sys.stderr.flush()
     finally:
         # Don't used portage.getpid() here, in case there is a race
         # with getpid cache invalidation via _ForkWatcher hook.
