@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import platform
+import resource
 
 import pytest
 
@@ -12,7 +13,9 @@ from portage.const import BASH_BINARY
 @pytest.mark.skipif(platform.system() != "Linux", reason="not Linux")
 def test_spawnE2big(capsys, tmp_path):
     env = dict()
-    env["VERY_LARGE_ENV_VAR"] = "X" * 1024 * 256
+    # Kernel MAX_ARG_STRLEN is defined as 32 * PAGE_SIZE
+    max_arg_strlen_bytes = 32 * resource.getpagesize()
+    env["VERY_LARGE_ENV_VAR"] = "X" * max_arg_strlen_bytes
 
     logfile = tmp_path / "logfile"
     echo_output = "Should never appear"
@@ -24,7 +27,7 @@ def test_spawnE2big(capsys, tmp_path):
     with open(logfile) as f:
         logfile_content = f.read()
         assert (
-            "Largest environment variable: VERY_LARGE_ENV_VAR (262164 bytes)"
+            f"Largest environment variable: VERY_LARGE_ENV_VAR ({max_arg_strlen_bytes + 20} bytes)"
             in logfile_content
         )
     assert retval == 1
