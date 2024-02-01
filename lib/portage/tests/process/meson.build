@@ -8,6 +8,7 @@ py.install_sources(
         'test_pickle.py',
         'test_poll.py',
         'test_spawn_fail_e2big.py',
+        'test_spawn_returnproc.py',
         'test_spawn_warn_large_env.py',
         'test_unshare_net.py',
         '__init__.py',

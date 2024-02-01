@@ -15,6 +15,7 @@ import subprocess
 import sys
 import traceback
 import os as _os
+import warnings
 
 from dataclasses import dataclass
 from functools import lru_cache
@@ -27,6 +28,7 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
+    "portage.util._eventloop.global_event_loop:global_event_loop",
     "portage.util:dump_traceback,writemsg,writemsg_level",
 )
 
@@ -277,12 +279,78 @@ def calc_env_stats(env) -> EnvStats:
 env_too_large_warnings = 0
 
 
+class Process:
+    """
+    An object that wraps OS processes created by spawn.
+    In the future, spawn will return objects of a different type
+    but with a compatible interface to this class, in order
+    to encapsulate implementation-dependent objects like
+    multiprocessing.Process which are designed to manage
+    the process lifecycle and need to persist until it exits.
+    """
+
+    def __init__(self, pid):
+        self.pid = pid
+        self.returncode = None
+        self._exit_waiters = []
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.pid}>"
+
+    async def wait(self):
+        """
+        Wait for the child process to terminate.
+
+        Set and return the returncode attribute.
+        """
+        if self.returncode is not None:
+            return self.returncode
+
+        loop = global_event_loop()
+        if not self._exit_waiters:
+            loop._asyncio_child_watcher.add_child_handler(self.pid, self._child_handler)
+        waiter = loop.create_future()
+        self._exit_waiters.append(waiter)
+        return await waiter
+
+    def _child_handler(self, pid, returncode):
+        if pid != self.pid:
+            raise AssertionError(f"expected pid {self.pid}, got {pid}")
+        self.returncode = returncode
+
+        for waiter in self._exit_waiters:
+            if not waiter.cancelled():
+                waiter.set_result(returncode)
+        self._exit_waiters = None
+
+    def send_signal(self, sig):
+        """Send a signal to the process."""
+        if self.returncode is not None:
+            # Skip signalling a process that we know has already died.
+            return
+
+        try:
+            os.kill(self.pid, sig)
+        except ProcessLookupError:
+            # Suppress the race condition error; bpo-40550.
+            pass
+
+    def terminate(self):
+        """Terminate the process with SIGTERM"""
+        self.send_signal(signal.SIGTERM)
+
+    def kill(self):
+        """Kill the process with SIGKILL"""
+        self.send_signal(signal.SIGKILL)
+
+
 def spawn(
     mycommand,
     env=None,
     opt_name=None,
     fd_pipes=None,
     returnpid=False,
+    returnproc=False,
     uid=None,
     gid=None,
     groups=None,
@@ -315,6 +383,9 @@ def spawn(
     @param returnpid: Return the Process IDs for a successful spawn.
     NOTE: This requires the caller clean up all the PIDs, otherwise spawn will clean them.
     @type returnpid: Boolean
+    @param returnproc: Return a Process object for a successful spawn (conflicts with logfile parameter).
+    NOTE: This requires the caller to asynchronously wait for the Process.
+    @type returnproc: Boolean
     @param uid: User ID to spawn as; useful for dropping privilages
     @type uid: Integer
     @param gid: Group ID to spawn as; useful for dropping privilages
@@ -349,6 +420,11 @@ def spawn(
        somewhere else.)
 
     """
+
+    if logfile and returnproc:
+        raise ValueError(
+            "logfile parameter conflicts with returnproc (use fd_pipes instead)"
+        )
 
     # mycommand is either a str or a list
     if isinstance(mycommand, str):
@@ -491,7 +567,15 @@ def spawn(
     # If the caller wants to handle cleaning up the processes, we tell
     # it about all processes that were created.
     if returnpid:
+        if not portage._internal_caller:
+            warnings.warn(
+                "The portage.process.spawn returnpid paramenter is deprecated and replaced by returnproc",
+                UserWarning,
+                stacklevel=1,
+            )
         return mypids
+    if returnproc:
+        return Process(mypids[0])
 
     # Otherwise we clean them up.
     while mypids:
