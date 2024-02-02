@@ -1,6 +1,7 @@
-# Copyright 2012-2021 Gentoo Authors
+# Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import portage
 from _emerge.SubProcess import SubProcess
 
 
@@ -11,7 +12,7 @@ class PopenProcess(SubProcess):
     )
 
     def _start(self):
-        self.pid = self.proc.pid
+        self._proc = portage.process.Process(self.proc.pid)
         self._registered = True
 
         if self.pipe_reader is None:

@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
@@ -2094,7 +2094,7 @@ def spawn(
         mysettings.configdict["env"]["LOGNAME"] = logname
 
     try:
-        if keywords.get("returnpid"):
+        if keywords.get("returnpid") or keywords.get("returnproc"):
             return spawn_func(mystring, env=mysettings.environ(), **keywords)
 
         proc = EbuildSpawnProcess(

@@ -29,6 +29,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(
     globals(),
     "portage.util._eventloop.global_event_loop:global_event_loop",
+    "portage.util.futures:asyncio",
     "portage.util:dump_traceback,writemsg,writemsg_level",
 )
 
@@ -279,7 +280,21 @@ def calc_env_stats(env) -> EnvStats:
 env_too_large_warnings = 0
 
 
-class Process:
+class AbstractProcess:
+    def send_signal(self, sig):
+        """Send a signal to the process."""
+        if self.returncode is not None:
+            # Skip signalling a process that we know has already died.
+            return
+
+        try:
+            os.kill(self.pid, sig)
+        except ProcessLookupError:
+            # Suppress the race condition error; bpo-40550.
+            pass
+
+
+class Process(AbstractProcess):
     """
     An object that wraps OS processes created by spawn.
     In the future, spawn will return objects of a different type
@@ -289,7 +304,7 @@ class Process:
     the process lifecycle and need to persist until it exits.
     """
 
-    def __init__(self, pid):
+    def __init__(self, pid: int):
         self.pid = pid
         self.returncode = None
         self._exit_waiters = []
@@ -323,18 +338,6 @@ class Process:
                 waiter.set_result(returncode)
         self._exit_waiters = None
 
-    def send_signal(self, sig):
-        """Send a signal to the process."""
-        if self.returncode is not None:
-            # Skip signalling a process that we know has already died.
-            return
-
-        try:
-            os.kill(self.pid, sig)
-        except ProcessLookupError:
-            # Suppress the race condition error; bpo-40550.
-            pass
-
     def terminate(self):
         """Terminate the process with SIGTERM"""
         self.send_signal(signal.SIGTERM)
@@ -342,6 +345,99 @@ class Process:
     def kill(self):
         """Kill the process with SIGKILL"""
         self.send_signal(signal.SIGKILL)
+
+
+class MultiprocessingProcess(AbstractProcess):
+    """
+    An object that wraps OS processes created by multiprocessing.Process.
+    """
+
+    # Number of seconds between poll attempts for process exit status
+    # (after the sentinel has become ready).
+    _proc_join_interval = 0.1
+
+    def __init__(self, proc: multiprocessing.Process):
+        self._proc = proc
+        self.pid = proc.pid
+        self.returncode = None
+        self._exit_waiters = []
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.pid}>"
+
+    async def wait(self):
+        """
+        Wait for the child process to terminate.
+
+        Set and return the returncode attribute.
+        """
+        if self.returncode is not None:
+            return self.returncode
+
+        loop = global_event_loop()
+        if not self._exit_waiters:
+            asyncio.ensure_future(self._proc_join(), loop=loop).add_done_callback(
+                self._proc_join_done
+            )
+        waiter = loop.create_future()
+        self._exit_waiters.append(waiter)
+        return await waiter
+
+    async def _proc_join(self):
+        loop = global_event_loop()
+        sentinel_reader = loop.create_future()
+        proc = self._proc
+        loop.add_reader(
+            proc.sentinel,
+            lambda: sentinel_reader.done() or sentinel_reader.set_result(None),
+        )
+        try:
+            await sentinel_reader
+        finally:
+            # If multiprocessing.Process supports the close method, then
+            # access to proc.sentinel will raise ValueError if the
+            # sentinel has been closed. In this case it's not safe to call
+            # remove_reader, since the file descriptor may have been closed
+            # and then reallocated to a concurrent coroutine. When the
+            # close method is not supported, proc.sentinel remains open
+            # until proc's finalizer is called.
+            try:
+                loop.remove_reader(proc.sentinel)
+            except ValueError:
+                pass
+
+        # Now that proc.sentinel is ready, poll until process exit
+        # status has become available.
+        while True:
+            proc.join(0)
+            if proc.exitcode is not None:
+                break
+            await asyncio.sleep(self._proc_join_interval, loop=loop)
+
+    def _proc_join_done(self, future):
+        # The join task should never be cancelled, so let it raise
+        # asyncio.CancelledError here if that somehow happens.
+        future.result()
+
+        self.returncode = self._proc.exitcode
+        if hasattr(self._proc, "close"):
+            self._proc.close()
+        self._proc = None
+
+        for waiter in self._exit_waiters:
+            if not waiter.cancelled():
+                waiter.set_result(self.returncode)
+        self._exit_waiters = None
+
+    def terminate(self):
+        """Terminate the process with SIGTERM"""
+        if self._proc is not None:
+            self._proc.terminate()
+
+    def kill(self):
+        """Kill the process with SIGKILL"""
+        if self._proc is not None:
+            self._proc.kill()
 
 
 def spawn(

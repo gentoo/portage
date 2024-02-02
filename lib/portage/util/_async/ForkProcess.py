@@ -1,12 +1,13 @@
-# Copyright 2012-2023 Gentoo Authors
+# Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
-import functools
 import multiprocessing
 import warnings
 import signal
 import sys
+
+from typing import Optional
 
 import portage
 from portage import os
@@ -23,16 +24,10 @@ class ForkProcess(SpawnProcess):
         "kwargs",
         "target",
         "_child_connection",
-        "_proc",
-        "_proc_join_task",
     )
 
     _file_names = ("connection", "slave_fd")
     _files_dict = slot_dict_class(_file_names, prefix="")
-
-    # Number of seconds between poll attempts for process exit status
-    # (after the sentinel has become ready).
-    _proc_join_interval = 0.1
 
     _HAVE_SEND_HANDLE = getattr(multiprocessing.reduction, "HAVE_SEND_HANDLE", False)
 
@@ -58,9 +53,8 @@ class ForkProcess(SpawnProcess):
                 duplex=self._HAVE_SEND_HANDLE
             )
 
-        retval = self._spawn(self.args, fd_pipes=self.fd_pipes)
+        self._proc = self._spawn(self.args, fd_pipes=self.fd_pipes)
 
-        self.pid = retval[0]
         self._registered = True
 
         if self._child_connection is None:
@@ -133,7 +127,9 @@ class ForkProcess(SpawnProcess):
 
         await super()._main(build_logger, pipe_logger, loop=loop)
 
-    def _spawn(self, args, fd_pipes=None, **kwargs):
+    def _spawn(
+        self, args: list[str], fd_pipes: Optional[dict[int, int]] = None, **kwargs
+    ) -> portage.process.MultiprocessingProcess:
         """
         Override SpawnProcess._spawn to fork a subprocess that calls
         self._run(). This uses multiprocessing.Process in order to leverage
@@ -175,7 +171,7 @@ class ForkProcess(SpawnProcess):
                 # Handle fd_pipes in _main instead.
                 fd_pipes = None
 
-            self._proc = multiprocessing.Process(
+            proc = multiprocessing.Process(
                 target=self._bootstrap,
                 args=(
                     self._child_connection,
@@ -186,19 +182,12 @@ class ForkProcess(SpawnProcess):
                     kwargs,
                 ),
             )
-            self._proc.start()
+            proc.start()
         finally:
             if stdin_dup is not None:
                 os.close(stdin_dup)
 
-        self._proc_join_task = asyncio.ensure_future(
-            self._proc_join(self._proc, loop=self.scheduler), loop=self.scheduler
-        )
-        self._proc_join_task.add_done_callback(
-            functools.partial(self._proc_join_done, self._proc)
-        )
-
-        return [self._proc.pid]
+        return portage.process.MultiprocessingProcess(proc)
 
     def _cancel(self):
         if self._proc is None:
@@ -206,64 +195,10 @@ class ForkProcess(SpawnProcess):
         else:
             self._proc.terminate()
 
-    def _async_wait(self):
-        if self._proc_join_task is None:
-            super()._async_wait()
-
-    def _async_waitpid(self):
-        if self._proc_join_task is None:
-            super()._async_waitpid()
-
-    async def _proc_join(self, proc, loop=None):
-        sentinel_reader = self.scheduler.create_future()
-        self.scheduler.add_reader(
-            proc.sentinel,
-            lambda: sentinel_reader.done() or sentinel_reader.set_result(None),
-        )
-        try:
-            await sentinel_reader
-        finally:
-            # If multiprocessing.Process supports the close method, then
-            # access to proc.sentinel will raise ValueError if the
-            # sentinel has been closed. In this case it's not safe to call
-            # remove_reader, since the file descriptor may have been closed
-            # and then reallocated to a concurrent coroutine. When the
-            # close method is not supported, proc.sentinel remains open
-            # until proc's finalizer is called.
-            try:
-                self.scheduler.remove_reader(proc.sentinel)
-            except ValueError:
-                pass
-
-        # Now that proc.sentinel is ready, poll until process exit
-        # status has become available.
-        while True:
-            proc.join(0)
-            if proc.exitcode is not None:
-                break
-            await asyncio.sleep(self._proc_join_interval, loop=loop)
-
-    def _proc_join_done(self, proc, future):
-        future.cancelled() or future.result()
-        self._was_cancelled()
-        if self.returncode is None:
-            self.returncode = proc.exitcode
-
-        self._proc = None
-        if hasattr(proc, "close"):
-            proc.close()
-        self._proc_join_task = None
-        self._async_wait()
-
     def _unregister(self):
         super()._unregister()
         if self._proc is not None:
-            if self._proc.is_alive():
-                self._proc.terminate()
-            self._proc = None
-        if self._proc_join_task is not None:
-            self._proc_join_task.cancel()
-            self._proc_join_task = None
+            self._proc.terminate()
 
     @staticmethod
     def _bootstrap(child_connection, have_send_handle, fd_pipes, target, args, kwargs):

@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -137,7 +137,7 @@ class EbuildMetadataPhase(SubProcess):
             self._async_wait()
             return
 
-        self.pid = retval[0]
+        self._proc = portage.process.Process(retval[0])
 
     def _output_handler(self):
         while True:

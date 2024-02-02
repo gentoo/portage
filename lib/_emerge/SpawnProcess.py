@@ -1,4 +1,4 @@
-# Copyright 2008-2023 Gentoo Authors
+# Copyright 2008-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -123,23 +123,15 @@ class SpawnProcess(SubProcess):
                 kwargs[k] = v
 
         kwargs["fd_pipes"] = fd_pipes
-        kwargs["returnpid"] = True
+        kwargs["returnproc"] = True
         kwargs.pop("logfile", None)
 
-        retval = self._spawn(self.args, **kwargs)
+        self._proc = self._spawn(self.args, **kwargs)
 
         if slave_fd is not None:
             os.close(slave_fd)
         if null_input is not None:
             os.close(null_input)
-
-        if isinstance(retval, int):
-            # spawn failed
-            self.returncode = retval
-            self._async_wait()
-            return
-
-        self.pid = retval[0]
 
         if not fd_pipes:
             self._registered = True
@@ -232,7 +224,7 @@ class SpawnProcess(SubProcess):
         got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
         return (master_fd, slave_fd)
 
-    def _spawn(self, args, **kwargs):
+    def _spawn(self, args: list[str], **kwargs) -> portage.process.Process:
         spawn_func = portage.process.spawn
 
         if self._selinux_type is not None:

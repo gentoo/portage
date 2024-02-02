@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -12,11 +12,15 @@ import errno
 
 
 class SubProcess(AbstractPollTask):
-    __slots__ = ("pid",) + ("_dummy_pipe_fd", "_files", "_waitpid_id")
+    __slots__ = ("_dummy_pipe_fd", "_files", "_proc", "_waitpid_id")
 
     # This is how much time we allow for waitpid to succeed after
     # we've sent a kill signal to our subprocess.
     _cancel_timeout = 1  # seconds
+
+    @property
+    def pid(self):
+        return self._proc.pid
 
     def _poll(self):
         # Simply rely on _async_waitpid_cb to set the returncode.
@@ -58,15 +62,11 @@ class SubProcess(AbstractPollTask):
         if self.returncode is not None:
             self._async_wait()
         elif self._waitpid_id is None:
-            self._waitpid_id = self.pid
-            self.scheduler._asyncio_child_watcher.add_child_handler(
-                self.pid, self._async_waitpid_cb
-            )
+            self._waitpid_id = asyncio.ensure_future(self._proc.wait(), self.scheduler)
+            self._waitpid_id.add_done_callback(self._async_waitpid_cb)
 
-    def _async_waitpid_cb(self, pid, returncode):
-        if pid != self.pid:
-            raise AssertionError(f"expected pid {self.pid}, got {pid}")
-        self.returncode = returncode
+    def _async_waitpid_cb(self, future):
+        self.returncode = future.result()
         self._async_wait()
 
     def _orphan_process_warn(self):
@@ -80,7 +80,8 @@ class SubProcess(AbstractPollTask):
         self._registered = False
 
         if self._waitpid_id is not None:
-            self.scheduler._asyncio_child_watcher.remove_child_handler(self._waitpid_id)
+            if not self._waitpid_id.done():
+                self._waitpid_id.cancel()
             self._waitpid_id = None
 
         if self._files is not None:
