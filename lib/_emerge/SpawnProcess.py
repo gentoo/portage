@@ -224,7 +224,9 @@ class SpawnProcess(SubProcess):
         got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
         return (master_fd, slave_fd)
 
-    def _spawn(self, args: list[str], **kwargs) -> portage.process.Process:
+    def _spawn(
+        self, args: list[str], **kwargs
+    ) -> portage.process.MultiprocessingProcess:
         spawn_func = portage.process.spawn
 
         if self._selinux_type is not None:
