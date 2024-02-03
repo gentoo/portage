@@ -1,10 +1,9 @@
 # SOCKSv5 proxy manager for network-sandbox
-# Copyright 2015-2021 Gentoo Authors
+# Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import os
-import signal
 import socket
 
 import portage.data
@@ -22,7 +21,8 @@ class ProxyManager:
 
     def __init__(self):
         self.socket_path = None
-        self._pids = []
+        self._proc = None
+        self._proc_waiter = None
 
     def start(self, settings):
         """
@@ -51,9 +51,9 @@ class ProxyManager:
             spawn_kwargs.update(
                 uid=portage_uid, gid=portage_gid, groups=userpriv_groups, umask=0o077
             )
-        self._pids = spawn(
+        self._proc = spawn(
             [_python_interpreter, server_bin, self.socket_path],
-            returnpid=True,
+            returnproc=True,
             **spawn_kwargs,
         )
 
@@ -61,12 +61,19 @@ class ProxyManager:
         """
         Stop the SOCKSv5 server.
         """
-        for p in self._pids:
-            os.kill(p, signal.SIGINT)
-            os.waitpid(p, 0)
+        if self._proc is not None:
+            self._proc.terminate()
+            loop = asyncio.get_event_loop()
+            if self._proc_waiter is None:
+                self._proc_waiter = asyncio.ensure_future(self._proc.wait(), loop)
+            if loop.is_running():
+                self._proc_waiter.add_done_callback(lambda future: future.result())
+            else:
+                loop.run_until_complete(self._proc_waiter)
 
         self.socket_path = None
-        self._pids = []
+        self._proc = None
+        self._proc_waiter = None
 
     def is_running(self):
         """
@@ -80,16 +87,11 @@ class ProxyManager:
         """
         Wait for the proxy socket to become ready. This method is a coroutine.
         """
+        if self._proc_waiter is None:
+            self._proc_waiter = asyncio.ensure_future(self._proc.wait())
 
         while True:
-            try:
-                wait_retval = os.waitpid(self._pids[0], os.WNOHANG)
-            except OSError as e:
-                if e.errno == errno.EINTR:
-                    continue
-                raise
-
-            if wait_retval is not None and wait_retval != (0, 0):
+            if self._proc_waiter.done():
                 raise OSError(3, "No such process")
 
             try:
