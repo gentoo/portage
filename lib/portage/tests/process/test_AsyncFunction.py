@@ -1,4 +1,4 @@
-# Copyright 2020-2023 Gentoo Authors
+# Copyright 2020-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -44,19 +44,16 @@ class AsyncFunctionTestCase(TestCase):
                 ),
             )
             reader.start()
-            # For compatibility with the multiprocessing spawn start
-            # method, we delay restoration of the stdin file descriptor,
-            # since this file descriptor is sent to the subprocess
-            # asynchronously.
-            _set_nonblocking(pw.fileno())
-            with open(pw.fileno(), mode="wb", buffering=0, closefd=False) as pipe_write:
-                await _writer(pipe_write, test_string.encode("utf_8"))
-            pw.close()
-            self.assertEqual((await reader.async_wait()), os.EX_OK)
-            self.assertEqual(reader.result, test_string)
         finally:
             os.dup2(stdin_backup, portage._get_stdin().fileno())
             os.close(stdin_backup)
+
+        _set_nonblocking(pw.fileno())
+        with open(pw.fileno(), mode="wb", buffering=0, closefd=False) as pipe_write:
+            await _writer(pipe_write, test_string.encode("utf_8"))
+        pw.close()
+        self.assertEqual((await reader.async_wait()), os.EX_OK)
+        self.assertEqual(reader.result, test_string)
 
     def testAsyncFunctionStdin(self):
         loop = asyncio._wrap_loop()
