@@ -124,7 +124,7 @@ class EbuildMetadataPhase(SubProcess):
             mydbapi=self.portdb,
             tree="porttree",
             fd_pipes=fd_pipes,
-            returnpid=True,
+            returnproc=True,
         )
         settings.pop("PORTAGE_PIPE_FD", None)
 
@@ -137,7 +137,7 @@ class EbuildMetadataPhase(SubProcess):
             self._async_wait()
             return
 
-        self._proc = portage.process.Process(retval[0])
+        self._proc = retval
 
     def _output_handler(self):
         while True:
