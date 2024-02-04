@@ -108,7 +108,6 @@ class EbuildMetadataPhase(SubProcess):
             fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK,
         )
 
-        os.set_inheritable(slave_fd, True)
         fd_pipes[slave_fd] = slave_fd
         settings["PORTAGE_PIPE_FD"] = str(slave_fd)
 
@@ -125,7 +124,7 @@ class EbuildMetadataPhase(SubProcess):
             mydbapi=self.portdb,
             tree="porttree",
             fd_pipes=fd_pipes,
-            returnproc=True,
+            returnpid=True,
         )
         settings.pop("PORTAGE_PIPE_FD", None)
 
@@ -138,7 +137,7 @@ class EbuildMetadataPhase(SubProcess):
             self._async_wait()
             return
 
-        self._proc = retval
+        self._proc = portage.process.Process(retval[0])
 
     def _output_handler(self):
         while True:

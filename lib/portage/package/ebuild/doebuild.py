@@ -19,7 +19,6 @@ import sys
 import tempfile
 from textwrap import wrap
 import time
-from typing import Union
 import warnings
 import zlib
 
@@ -247,21 +246,14 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 
 def _spawn_phase(
-    phase,
-    settings,
-    actionmap=None,
-    returnpid=False,
-    returnproc=False,
-    logfile=None,
-    **kwargs,
+    phase, settings, actionmap=None, returnpid=False, logfile=None, **kwargs
 ):
-    if returnproc or returnpid:
+    if returnpid:
         return _doebuild_spawn(
             phase,
             settings,
             actionmap=actionmap,
             returnpid=returnpid,
-            returnproc=returnproc,
             logfile=logfile,
             **kwargs,
         )
@@ -733,8 +725,7 @@ def doebuild(
     prev_mtimes=None,
     fd_pipes=None,
     returnpid=False,
-    returnproc=False,
-) -> Union[int, portage.process.MultiprocessingProcess, list[int]]:
+):
     """
     Wrapper function that invokes specific ebuild phases through the spawning
     of ebuild.sh
@@ -771,15 +762,9 @@ def doebuild(
             for example.
     @type fd_pipes: Dictionary
     @param returnpid: Return a list of process IDs for a successful spawn, or
-            an integer value if spawn is unsuccessful. This parameter is supported
-            supported only when mydo is "depend". NOTE: This requires the caller clean
-            up all returned PIDs.
+            an integer value if spawn is unsuccessful. NOTE: This requires the
+            caller clean up all returned PIDs.
     @type returnpid: Boolean
-    @param returnproc: Return a MultiprocessingProcess instance for a successful spawn, or
-            an integer value if spawn is unsuccessful. This parameter is supported
-            supported only when mydo is "depend". NOTE: This requires the caller to
-            asynchronously wait for the MultiprocessingProcess instance.
-    @type returnproc: Boolean
     @rtype: Boolean
     @return:
     1. 0 for success
@@ -882,24 +867,16 @@ def doebuild(
         writemsg("\n", noiselevel=-1)
         return 1
 
-    if (returnproc or returnpid) and mydo != "depend":
+    if returnpid and mydo != "depend":
         # This case is not supported, since it bypasses the EbuildPhase class
         # which implements important functionality (including post phase hooks
         # and IPC for things like best/has_version and die).
-        if returnproc:
-            raise NotImplementedError(f"returnproc not implemented for phase {mydo}")
         warnings.warn(
             "portage.doebuild() called "
             "with returnpid parameter enabled. This usage will "
             "not be supported in the future.",
-            UserWarning,
+            DeprecationWarning,
             stacklevel=2,
-        )
-    elif returnpid:
-        warnings.warn(
-            "The portage.doebuild() returnpid paramenter is deprecated and replaced by returnproc",
-            UserWarning,
-            stacklevel=1,
         )
 
     if mydo == "fetchall":
@@ -1050,14 +1027,10 @@ def doebuild(
 
         # get possible slot information from the deps file
         if mydo == "depend":
-            if not (returnproc or returnpid):
-                raise TypeError("returnproc or returnpid must be True for depend phase")
+            if not returnpid:
+                raise TypeError("returnpid must be True for depend phase")
             return _spawn_phase(
-                mydo,
-                mysettings,
-                fd_pipes=fd_pipes,
-                returnpid=returnpid,
-                returnproc=returnproc,
+                mydo, mysettings, fd_pipes=fd_pipes, returnpid=returnpid
             )
 
         if mydo == "nofetch":
