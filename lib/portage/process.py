@@ -680,12 +680,11 @@ def spawn(
     # If the caller wants to handle cleaning up the processes, we tell
     # it about all processes that were created.
     if returnpid:
-        if not portage._internal_caller:
-            warnings.warn(
-                "The portage.process.spawn returnpid paramenter is deprecated and replaced by returnproc",
-                UserWarning,
-                stacklevel=1,
-            )
+        warnings.warn(
+            "The portage.process.spawn returnpid parameter is deprecated and replaced by returnproc",
+            UserWarning,
+            stacklevel=1,
+        )
         return mypids
 
     # Otherwise we clean them up.
