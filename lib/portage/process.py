@@ -586,10 +586,10 @@ def spawn(
 
         # Create a tee process, giving it our stdout and stderr
         # as well as the read end of the pipe.
-        mypids.extend(
+        mypids.append(
             spawn(
                 ("tee", "-i", "-a", logfile),
-                returnpid=True,
+                returnproc=True,
                 fd_pipes={0: pr, 1: fd_pipes[1], 2: fd_pipes[2]},
             )
         )
@@ -634,7 +634,7 @@ def spawn(
     # fork, so that the result is cached in the main process.
     bool(groups)
 
-    start_func = _start_proc if returnproc else _start_fork
+    start_func = _start_proc if returnproc or not returnpid else _start_fork
 
     pid = start_func(
         _exec_wrapper,
@@ -666,7 +666,7 @@ def spawn(
         # _start_proc returns a MultiprocessingProcess instance.
         return pid
 
-    if not isinstance(pid, int):
+    if returnpid and not isinstance(pid, int):
         raise AssertionError(f"fork returned non-integer: {repr(pid)}")
 
     # Add the pid to our local and the global pid lists.
@@ -687,6 +687,8 @@ def spawn(
         )
         return mypids
 
+    loop = global_event_loop()
+
     # Otherwise we clean them up.
     while mypids:
         # Pull the last reader in the pipe chain. If all processes
@@ -695,25 +697,22 @@ def spawn(
         pid = mypids.pop(0)
 
         # and wait for it.
-        retval = os.waitpid(pid, 0)[1]
+        retval = loop.run_until_complete(pid.wait())
 
         if retval:
             # If it failed, kill off anything else that
             # isn't dead yet.
             for pid in mypids:
-                # With waitpid and WNOHANG, only check the
-                # first element of the tuple since the second
-                # element may vary (bug #337465).
-                if os.waitpid(pid, os.WNOHANG)[0] == 0:
-                    os.kill(pid, signal.SIGTERM)
-                    os.waitpid(pid, 0)
+                waiter = asyncio.ensure_future(pid.wait(), loop)
+                try:
+                    loop.run_until_complete(
+                        asyncio.wait_for(asyncio.shield(waiter), 0.001)
+                    )
+                except (TimeoutError, asyncio.TimeoutError):
+                    pid.terminate()
+                    loop.run_until_complete(waiter)
 
-            # If it got a signal, return the signal that was sent.
-            if retval & 0xFF:
-                return (retval & 0xFF) << 8
-
-            # Otherwise, return its exit code.
-            return retval >> 8
+            return retval
 
     # Everything succeeded
     return 0
