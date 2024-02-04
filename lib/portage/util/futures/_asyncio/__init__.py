@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -15,9 +15,11 @@ __all__ = (
     "set_child_watcher",
     "get_event_loop_policy",
     "set_event_loop_policy",
+    "shield",
     "sleep",
     "Task",
     "wait",
+    "wait_for",
 )
 
 import types
@@ -33,7 +35,9 @@ from asyncio import (
     FIRST_EXCEPTION,
     Future,
     InvalidStateError,
+    shield,
     TimeoutError,
+    wait_for,
 )
 
 import threading
