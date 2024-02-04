@@ -527,6 +527,9 @@ def spawn(
         mycommand = mycommand.split()
 
     env = os.environ if env is None else env
+    # Sometimes os.environ can fail to pickle as shown in bug 923750
+    # comment 4, so copy it to a dict.
+    env = env if isinstance(env, dict) else dict(env)
 
     env_stats = None
     if warn_on_large_env:
