@@ -1,4 +1,4 @@
-# Copyright 2013-2024 Gentoo Authors
+# Copyright 2013-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import multiprocessing
@@ -167,10 +167,6 @@ class DoebuildFdPipesTestCase(TestCase):
     @staticmethod
     def _doebuild(db, pw, *args, **kwargs):
         QueryCommand._db = db
-        # Somehow pw.fileno() is inheritable when doebuild is
-        # implemented with os.fork(), but not when it is implemented
-        # with multiprocessing.Process.
-        os.set_inheritable(pw.fileno(), True)
         kwargs["fd_pipes"] = {
             DoebuildFdPipesTestCase.output_fd: pw.fileno(),
         }
