@@ -1,4 +1,4 @@
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __docformat__ = "epytext"
@@ -13,7 +13,9 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
+    "portage.process:spawn",
     "portage.util:writemsg",
+    "portage.util.futures:asyncio",
 )
 import portage.util.formatter as formatter
 
@@ -557,13 +559,20 @@ def set_term_size(lines, columns, fd):
     Set the number of lines and columns for the tty that is connected to fd.
     For portability, this simply calls `stty rows $lines columns $columns`.
     """
-    from portage.process import spawn
 
     cmd = ["stty", "rows", str(lines), "columns", str(columns)]
     try:
-        spawn(cmd, env=os.environ, fd_pipes={0: fd})
+        proc = spawn(cmd, env=os.environ, fd_pipes={0: fd}, returnproc=True)
     except CommandNotFound:
         writemsg(_("portage: stty: command not found\n"), noiselevel=-1)
+    else:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.ensure_future(proc.wait(), loop).add_done_callback(
+                lambda future: future.result()
+            )
+        else:
+            loop.run_until_complete(proc.wait())
 
 
 class EOutput:
