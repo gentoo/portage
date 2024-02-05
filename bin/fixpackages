@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -17,44 +17,49 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os
 from portage.output import EOutput
 from textwrap import wrap
 from portage._global_updates import _global_updates
 
-mysettings = portage.settings
-mytrees = portage.db
-mtimedb = portage.mtimedb
 
-description = """The fixpackages program performs package move updates on
-	configuration files, installed packages, and binary packages."""
-description = " ".join(description.split())
+def main():
+    mysettings = portage.settings
+    mytrees = portage.db
+    mtimedb = portage.mtimedb
 
-parser = argparse.ArgumentParser(description=description)
-parser.parse_args()
+    description = """The fixpackages program performs package move updates on
+        configuration files, installed packages, and binary packages."""
+    description = " ".join(description.split())
 
-if mysettings["ROOT"] != "/":
-    out = EOutput()
-    msg = (
-        "The fixpackages program is not intended for use with "
-        + 'ROOT != "/". Instead use `emaint --fix movebin` and/or '
-        + "`emaint --fix moveinst."
-    )
-    for line in wrap(msg, 72):
-        out.eerror(line)
-    sys.exit(1)
+    parser = argparse.ArgumentParser(description=description)
+    parser.parse_args()
 
-try:
-    os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
-except (OSError, ValueError) as e:
-    portage.writemsg(
-        f"!!! Failed to change nice value to '{mysettings['PORTAGE_NICENESS']}'\n"
-    )
-    portage.writemsg(f"!!! {str(e)}\n")
-    del e
+    if mysettings["ROOT"] != "/":
+        out = EOutput()
+        msg = (
+            "The fixpackages program is not intended for use with "
+            + 'ROOT != "/". Instead use `emaint --fix movebin` and/or '
+            + "`emaint --fix moveinst."
+        )
+        for line in wrap(msg, 72):
+            out.eerror(line)
+        sys.exit(1)
 
-_global_updates(mytrees, mtimedb["updates"], if_mtime_changed=False)
+    try:
+        os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
+    except (OSError, ValueError) as e:
+        portage.writemsg(
+            f"!!! Failed to change nice value to '{mysettings['PORTAGE_NICENESS']}'\n"
+        )
+        portage.writemsg(f"!!! {str(e)}\n")
+        del e
 
-print()
-print("Done.")
-print()
+    _global_updates(mytrees, mtimedb["updates"], if_mtime_changed=False)
+
+    print()
+    print("Done.")
+    print()
+
+
+if __name__ == "__main__":
+    main()
