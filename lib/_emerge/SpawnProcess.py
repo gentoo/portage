@@ -41,7 +41,7 @@ class SpawnProcess(SubProcess):
     )
 
     __slots__ = (
-        ("args", "log_filter_file")
+        ("args", "create_pipe", "log_filter_file")
         + _spawn_kwarg_names
         + (
             "_main_task",
@@ -60,15 +60,30 @@ class SpawnProcess(SubProcess):
         else:
             self.fd_pipes = self.fd_pipes.copy()
         fd_pipes = self.fd_pipes
+        log_file_path = None
 
         if fd_pipes or self.logfile or not self.background:
-            master_fd, slave_fd = self._pipe(fd_pipes)
+            if self.create_pipe is not False:
+                master_fd, slave_fd = self._pipe(fd_pipes)
 
-            can_log = self._can_log(slave_fd)
-            if can_log:
-                log_file_path = self.logfile
+                can_log = self._can_log(slave_fd)
+                if can_log:
+                    log_file_path = self.logfile
             else:
-                log_file_path = None
+                if self.logfile:
+                    raise NotImplementedError(
+                        "logfile conflicts with create_pipe=False"
+                    )
+                # When called via process.spawn and ForkProcess._start,
+                # SpawnProcess will have created a pipe earlier, so it
+                # would be redundant to do it here (it could also trigger
+                # spawn recursion via set_term_size as in bug 923750).
+                # Use /dev/null for master_fd, triggering early return
+                # of _main, followed by _async_waitpid.
+                # TODO: Optimize away the need for master_fd here.
+                master_fd = os.open(os.devnull, os.O_RDONLY)
+                slave_fd = None
+                can_log = False
 
             null_input = None
             if not self.background or 0 in fd_pipes:
@@ -97,7 +112,9 @@ class SpawnProcess(SubProcess):
 
             fd_pipes_orig = fd_pipes.copy()
 
-            if log_file_path is not None or self.background:
+            if slave_fd is None:
+                pass
+            elif log_file_path is not None or self.background:
                 fd_pipes[1] = slave_fd
                 fd_pipes[2] = slave_fd
 

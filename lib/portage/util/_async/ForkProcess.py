@@ -75,12 +75,29 @@ class ForkProcess(SpawnProcess):
                 self.fd_pipes.setdefault(0, portage._get_stdin().fileno())
                 self.fd_pipes.setdefault(1, sys.__stdout__.fileno())
                 self.fd_pipes.setdefault(2, sys.__stderr__.fileno())
-                stdout_fd = os.dup(self.fd_pipes[1])
+                if self.create_pipe is not False:
+                    stdout_fd = os.dup(self.fd_pipes[1])
 
             if self._HAVE_SEND_HANDLE:
-                master_fd, slave_fd = self._pipe(self.fd_pipes)
-                self.fd_pipes[1] = slave_fd
-                self.fd_pipes[2] = slave_fd
+                if self.create_pipe is not False:
+                    master_fd, slave_fd = self._pipe(self.fd_pipes)
+                    self.fd_pipes[1] = slave_fd
+                    self.fd_pipes[2] = slave_fd
+                else:
+                    if self.logfile:
+                        raise NotImplementedError(
+                            "logfile conflicts with create_pipe=False"
+                        )
+                    # When called via process.spawn, SpawnProcess
+                    # will have created a pipe earlier, so it would be
+                    # redundant to do it here (it could also trigger spawn
+                    # recursion via set_term_size as in bug 923750). Use
+                    # /dev/null for master_fd, triggering early return
+                    # of _main, followed by _async_waitpid.
+                    # TODO: Optimize away the need for master_fd here.
+                    master_fd = os.open(os.devnull, os.O_RDONLY)
+                    slave_fd = None
+
                 self._files = self._files_dict(connection=connection, slave_fd=slave_fd)
 
                 # Create duplicate file descriptors in self._fd_pipes
@@ -167,7 +184,8 @@ class ForkProcess(SpawnProcess):
                     self._files.connection.close()
                     del self._files.connection
                 if hasattr(self._files, "slave_fd"):
-                    os.close(self._files.slave_fd)
+                    if self._files.slave_fd is not None:
+                        os.close(self._files.slave_fd)
                     del self._files.slave_fd
 
         await super()._main(build_logger, pipe_logger, loop=loop)
