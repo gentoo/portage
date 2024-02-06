@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
+        start-method:
+          - 'fork'
+          - 'spawn'
         python-version:
           - '3.9'
           - '3.10'
@@ -18,6 +21,17 @@ jobs:
           - '3.12-dev'
           - '3.13-dev'
           - 'pypy-3.10'
+        exclude:
+          - python-version: '3.9'
+            start-method: 'spawn'
+          - python-version: '3.10'
+            start-method: 'spawn'
+          - python-version: '3.11'
+            start-method: 'spawn'
+          - python-version: '3.13-dev'
+            start-method: 'spawn'
+          - python-version: 'pypy-3.10'
+            start-method: 'spawn'
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -43,6 +57,32 @@ jobs:
 
           # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
           sudo ln -s /bin/true /usr/bin/getuto
+      - name: Patch python scripts to set spawn start method
+        if: ${{ matrix.start-method == 'spawn' }}
+        run: |
+          IFS=''
+          while read -r bin_file; do
+            if [[ $(head -n1 "${bin_file}") == '#!/usr/bin/env python' ]]; then
+              mode=top
+              while read -r line; do
+                if [[ ${mode} == top ]]; then
+                  if [[ ${line} == \#* ]]; then
+                    echo "${line}"
+                  else
+                    echo "import multiprocessing"
+                    echo 'multiprocessing.set_start_method("spawn", force=True)'
+                    echo "${line}"
+                    mode=bottom
+                  fi
+                else
+                  echo "${line}"
+                fi
+              done < "${bin_file}" > "${bin_file}.new"
+              chmod +x "${bin_file}.new"
+              mv "${bin_file}"{.new,}
+            fi
+          done < <(find bin -maxdepth 1 -type f)
+          sed -i meson.build -e "s|'-m', 'pytest'|'-c', 'import multiprocessing, sys, pytest; multiprocessing.set_start_method(\"spawn\", force=True); sys.exit(pytest.console_main())'|"
       - name: Test meson install --destdir /tmp/install-root
         run: |
           echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
