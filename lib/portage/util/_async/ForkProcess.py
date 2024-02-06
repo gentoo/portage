@@ -153,15 +153,24 @@ class ForkProcess(SpawnProcess):
         This performs blocking IO, intended for invocation via run_in_executor.
         """
         fd_list = list(set(self._fd_pipes.values()))
-        self._files.connection.send(
-            (self._fd_pipes, fd_list),
-        )
-        for fd in fd_list:
-            multiprocessing.reduction.send_handle(
-                self._files.connection,
-                fd,
-                self.pid,
+        try:
+            self._files.connection.send(
+                (self._fd_pipes, fd_list),
             )
+            for fd in fd_list:
+                multiprocessing.reduction.send_handle(
+                    self._files.connection,
+                    fd,
+                    self.pid,
+                )
+        except BrokenPipeError as e:
+            # This case is triggered by testAsynchronousLockWaitCancel
+            # when the test case terminates the child process while
+            # this thread is still sending the fd_pipes (bug 923852).
+            # Even if the child terminated abnormally, then there is
+            # no harm in suppressing the exception here, since the
+            # child error should have gone to stderr.
+            raise asyncio.CancelledError from e
 
         # self._fd_pipes contains duplicates that must be closed.
         for fd in fd_list:
