@@ -1,4 +1,4 @@
-# Copyright 2018-2023 Gentoo Authors
+# Copyright 2018-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -9,7 +9,6 @@ import threading
 import weakref
 import time
 
-import portage
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
@@ -229,16 +228,19 @@ class RetryForkExecutorTestCase(RetryTestCase):
 
     @contextlib.contextmanager
     def _wrap_coroutine_func(self, coroutine_func):
+        uses_subprocess = isinstance(self._executor, ForkExecutor)
         parent_loop = global_event_loop()
-        parent_pid = portage.getpid()
         pending = weakref.WeakValueDictionary()
 
         # Since ThreadPoolExecutor does not propagate cancellation of a
         # parent_future to the underlying coroutine, use kill_switch to
         # propagate task cancellation to wrapper, so that HangForever's
         # thread returns when retry eventually cancels parent_future.
-        def wrapper(kill_switch):
-            if portage.getpid() == parent_pid:
+        if uses_subprocess:
+            wrapper = _run_coroutine_in_subprocess(coroutine_func)
+        else:
+
+            def wrapper(kill_switch):
                 # thread in main process
                 def done_callback(result):
                     result.cancelled() or result.exception() or result.result()
@@ -262,22 +264,19 @@ class RetryForkExecutorTestCase(RetryTestCase):
                 else:
                     return future.result().result()
 
-            # child process
-            loop = global_event_loop()
-            try:
-                return loop.run_until_complete(coroutine_func())
-            finally:
-                loop.close()
-
         def execute_wrapper():
-            kill_switch = threading.Event()
+            # Use kill_switch for threads because they can't be killed
+            # like processes. Do not pass kill_switch to subprocesses
+            # because it is not picklable.
+            kill_switch = None if uses_subprocess else threading.Event()
+            wrapper_args = [kill_switch] if kill_switch else []
             parent_future = asyncio.ensure_future(
-                parent_loop.run_in_executor(self._executor, wrapper, kill_switch),
+                parent_loop.run_in_executor(self._executor, wrapper, *wrapper_args),
                 loop=parent_loop,
             )
 
             def kill_callback(parent_future):
-                if not kill_switch.is_set():
+                if kill_switch is not None and not kill_switch.is_set():
                     kill_switch.set()
 
             parent_future.add_done_callback(kill_callback)
@@ -296,6 +295,19 @@ class RetryForkExecutorTestCase(RetryTestCase):
                 except (Exception, asyncio.CancelledError):
                     pass
                 future.cancelled() or future.exception() or future.result()
+
+
+class _run_coroutine_in_subprocess:
+    def __init__(self, coroutine_func):
+        self._coroutine_func = coroutine_func
+
+    def __call__(self):
+        # child process
+        loop = global_event_loop()
+        try:
+            return loop.run_until_complete(self._coroutine_func())
+        finally:
+            loop.close()
 
 
 class RetryThreadExecutorTestCase(RetryForkExecutorTestCase):
