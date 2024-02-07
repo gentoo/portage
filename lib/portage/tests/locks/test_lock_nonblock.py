@@ -1,6 +1,8 @@
 # Copyright 2011-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import multiprocessing
+import sys
 import tempfile
 import traceback
 
@@ -17,36 +19,34 @@ class LockNonblockTestCase(TestCase):
         try:
             path = os.path.join(tempdir, "lock_me")
             lock1 = portage.locks.lockfile(path)
-            pid = os.fork()
-            if pid == 0:
-                portage.locks._close_fds()
-                # Disable close_fds since we don't exec
-                # (see _setup_pipes docstring).
-                portage.process._setup_pipes({0: 0, 1: 1, 2: 2}, close_fds=False)
-                rval = 2
-                try:
-                    try:
-                        lock2 = portage.locks.lockfile(path, flags=os.O_NONBLOCK)
-                    except portage.exception.TryAgain:
-                        rval = os.EX_OK
-                    else:
-                        rval = 1
-                        portage.locks.unlockfile(lock2)
-                except SystemExit:
-                    raise
-                except:
-                    traceback.print_exc()
-                finally:
-                    os._exit(rval)
-
-            self.assertEqual(pid > 0, True)
-            pid, status = os.waitpid(pid, 0)
-            self.assertEqual(os.WIFEXITED(status), True)
-            self.assertEqual(os.WEXITSTATUS(status), os.EX_OK)
+            proc = multiprocessing.Process(target=self._lock_subprocess, args=(path,))
+            proc.start()
+            self.assertEqual(proc.pid > 0, True)
+            proc.join()
+            self.assertEqual(proc.exitcode, os.EX_OK)
 
             portage.locks.unlockfile(lock1)
         finally:
             shutil.rmtree(tempdir)
+
+    @staticmethod
+    def _lock_subprocess(path):
+        portage.locks._close_fds()
+        # Disable close_fds since we don't exec
+        # (see _setup_pipes docstring).
+        portage.process._setup_pipes({0: 0, 1: 1, 2: 2}, close_fds=False)
+        rval = 2
+        try:
+            try:
+                lock2 = portage.locks.lockfile(path, flags=os.O_NONBLOCK)
+            except portage.exception.TryAgain:
+                rval = os.EX_OK
+            else:
+                rval = 1
+                portage.locks.unlockfile(lock2)
+        except Exception:
+            traceback.print_exc()
+        sys.exit(rval)
 
     def testLockNonblock(self):
         self._testLockNonblock()
