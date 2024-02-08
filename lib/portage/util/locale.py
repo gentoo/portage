@@ -9,7 +9,8 @@ locale.
 
 import locale
 import logging
-import os
+import multiprocessing
+import sys
 import textwrap
 import traceback
 
@@ -96,6 +97,24 @@ def _check_locale(silent):
     return True
 
 
+def _set_and_check_locale(silent, env, mylocale):
+    try:
+        if env is not None:
+            try:
+                locale.setlocale(locale.LC_CTYPE, mylocale)
+            except locale.Error:
+                sys.exit(2)
+
+        ret = _check_locale(silent)
+        if ret is None:
+            sys.exit(2)
+        else:
+            sys.exit(0 if ret else 1)
+    except Exception:
+        traceback.print_exc()
+        sys.exit(2)
+
+
 def check_locale(silent=False, env=None):
     """
     Check whether the locale is sane. Returns True if it is, prints
@@ -116,29 +135,20 @@ def check_locale(silent=False, env=None):
         except KeyError:
             pass
 
-    pid = os.fork()
-    if pid == 0:
-        try:
-            if env is not None:
-                try:
-                    locale.setlocale(locale.LC_CTYPE, portage._native_string(mylocale))
-                except locale.Error:
-                    os._exit(2)
+    # TODO: Make async version of check_locale and call it from
+    # EbuildPhase instead of config.environ(), since it's bad to
+    # synchronously wait for the process in the main event loop
+    # thread where config.environ() tends to be called.
+    proc = multiprocessing.Process(
+        target=_set_and_check_locale,
+        args=(silent, env, None if env is None else portage._native_string(mylocale)),
+    )
+    proc.start()
+    proc.join()
 
-            ret = _check_locale(silent)
-            if ret is None:
-                os._exit(2)
-            else:
-                os._exit(0 if ret else 1)
-        except Exception:
-            traceback.print_exc()
-            os._exit(2)
-
-    pid2, ret = os.waitpid(pid, 0)
-    assert pid == pid2
     pyret = None
-    if os.WIFEXITED(ret):
-        ret = os.WEXITSTATUS(ret)
+    if proc.exitcode >= 0:
+        ret = proc.exitcode
         if ret != 2:
             pyret = ret == 0
 
