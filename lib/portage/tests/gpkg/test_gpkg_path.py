@@ -1,4 +1,4 @@
-# Copyright Gentoo Foundation 2006
+# Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
 import tempfile
@@ -308,6 +308,7 @@ class test_gpkg_path_case(TestCase):
             self.assertEqual(r, ())
         finally:
             shutil.rmtree(tmpdir)
+            playground.cleanup()
 
     def test_gpkg_long_filename(self):
         playground = ResolverPlayground(
