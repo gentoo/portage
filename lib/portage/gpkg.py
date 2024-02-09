@@ -149,9 +149,9 @@ class tar_stream_writer:
         kill external program if any error happened in python
         """
         if self.proc is not None:
-            self.proc.stdin.close()
-            self.proc.kill()
             self.killed = True
+            self.proc.kill()
+            self.proc.stdin.close()
             self.close()
 
     def _cmd_read_thread(self):
@@ -347,9 +347,9 @@ class tar_stream_reader:
         kill external program if any error happened in python
         """
         if self.proc is not None:
-            self.proc.stdin.close()
-            self.proc.kill()
             self.killed = True
+            self.proc.kill()
+            self.proc.stdin.close()
             self.close()
 
     def read(self, bufsize=-1):
