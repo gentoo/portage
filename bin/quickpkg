@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -341,10 +341,6 @@ def quickpkg_main(options, args, eout):
         portage.settings.features.remove("xattr")
         portage.settings.lock()
 
-    if portage.settings.get("BINPKG_GPG_SIGNING_KEY", None):
-        gpg = GPG(portage.settings)
-        gpg.unlock()
-
     infos = {}
     infos["successes"] = []
     infos["missing"] = []
@@ -444,11 +440,18 @@ if __name__ == "__main__":
     def sigwinch_handler(signum, frame):
         lines, eout.term_columns = portage.output.get_term_size()
 
+    gpg = None
+    if portage.settings.get("BINPKG_GPG_SIGNING_KEY", None):
+        gpg = GPG(portage.settings)
+        gpg.unlock()
+
     signal.signal(signal.SIGWINCH, sigwinch_handler)
     try:
         retval = quickpkg_main(options, args, eout)
     finally:
         os.umask(old_umask)
         signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+        if gpg is not None:
+            gpg.stop()
         global_event_loop().close()
     sys.exit(retval)

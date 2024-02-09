@@ -1,4 +1,4 @@
-# Copyright Gentoo Foundation 2006-2020
+# Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
 import io
@@ -26,6 +26,7 @@ class test_gpkg_gpg_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
 
         try:
             settings = playground.settings
@@ -68,6 +69,8 @@ class test_gpkg_gpg_case(TestCase):
                 InvalidSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
             )
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()
 
@@ -81,6 +84,7 @@ class test_gpkg_gpg_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
 
         try:
             settings = playground.settings
@@ -112,6 +116,8 @@ class test_gpkg_gpg_case(TestCase):
             )
 
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()
 
@@ -133,6 +139,7 @@ class test_gpkg_gpg_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
 
         try:
             settings = playground.settings
@@ -151,6 +158,8 @@ class test_gpkg_gpg_case(TestCase):
             binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
             binpkg_2.decompress(os.path.join(tmpdir, "test"))
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()
 
@@ -165,6 +174,7 @@ class test_gpkg_gpg_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
 
         try:
             settings = playground.settings
@@ -195,6 +205,8 @@ class test_gpkg_gpg_case(TestCase):
                 MissingSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
             )
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()
 
@@ -208,6 +220,7 @@ class test_gpkg_gpg_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
 
         try:
             settings = playground.settings
@@ -264,6 +277,8 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
                 InvalidSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
             )
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()
 
@@ -285,6 +300,7 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
 
         try:
             settings = playground.settings
@@ -306,6 +322,8 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
             )
 
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()
 
@@ -319,6 +337,7 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
 
         try:
             settings = playground.settings
@@ -370,5 +389,7 @@ EP1pgSXXGtlUnv6akg/wueFJKEr9KQs=
             )
 
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()

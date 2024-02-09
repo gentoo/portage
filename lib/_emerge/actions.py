@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -548,8 +548,10 @@ def action_build(
             mergelist_shown = True
             if retval != os.EX_OK:
                 return retval
+        return os.EX_OK
 
-    else:
+    gpg = None
+    try:
         if not mergelist_shown:
             # If we haven't already shown the merge list above, at
             # least show warnings about missed updates and such.
@@ -688,8 +690,10 @@ def action_build(
                         ldpath_mtimes,
                         autoclean=1,
                     )
-
         return retval
+    finally:
+        if gpg is not None:
+            gpg.stop()
 
 
 def action_config(settings, trees, myopts, myfiles):

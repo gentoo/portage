@@ -1,4 +1,4 @@
-# Copyright Gentoo Foundation 2006-2020
+# Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
 import io
@@ -98,6 +98,7 @@ class test_gpkg_metadata_url_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
         try:
             settings = playground.settings
             gpg = GPG(settings)
@@ -156,5 +157,7 @@ IkCfAP49AOYjzuQPP0n5P0SGCINnAVEXN7QLQ4PurY/lt7cT2gEAq01stXjFhrz5
                 "http://127.0.0.1:" + str(port) + "/test-2.gpkg.tar",
             )
         finally:
+            if gpg is not None:
+                gpg.stop()
             shutil.rmtree(tmpdir)
             playground.cleanup()
