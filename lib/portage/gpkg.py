@@ -1,7 +1,8 @@
-# Copyright 2001-2020 Gentoo Authors
+# Copyright 2001-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tarfile
+import traceback
 import io
 import threading
 import subprocess
@@ -151,7 +152,10 @@ class tar_stream_writer:
         if self.proc is not None:
             self.killed = True
             self.proc.kill()
-            self.proc.stdin.close()
+            try:
+                self.proc.stdin.close()
+            except BrokenPipeError:
+                traceback.print_exc()
             self.close()
 
     def _cmd_read_thread(self):
@@ -213,7 +217,7 @@ class tar_stream_writer:
         if self.proc is not None:
             self.proc.stdin.close()
             if self.proc.wait() != os.EX_OK:
-                if not self.error:
+                if not (self.killed or self.error):
                     raise CompressorOperationFailed("compression failed")
             if self.read_thread.is_alive():
                 self.read_thread.join()
@@ -349,7 +353,10 @@ class tar_stream_reader:
         if self.proc is not None:
             self.killed = True
             self.proc.kill()
-            self.proc.stdin.close()
+            try:
+                self.proc.stdin.close()
+            except BrokenPipeError:
+                traceback.print_exc()
             self.close()
 
     def read(self, bufsize=-1):
@@ -986,11 +993,13 @@ class gpkg:
                     try:
                         image_safe = tar_safe_extract(image, "image")
                         image_safe.extractall(decompress_dir)
+                        image_tar.close()
                     except Exception as ex:
                         writemsg(colorize("BAD", "!!!Extract failed."))
                         raise
                     finally:
-                        image_tar.kill()
+                        if not image_tar.closed:
+                            image_tar.kill()
 
     def update_metadata(self, metadata, new_basename=None, force=False):
         """
