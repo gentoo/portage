@@ -1,4 +1,4 @@
-# Copyright 2020-2023 Gentoo Authors
+# Copyright 2020-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -64,41 +64,50 @@ class AuxdbTestCase(TestCase):
             user_config={"modules": (f"portdbapi.auxdbmodule = {auxdbmodule}",)},
         )
 
-        portdb = playground.trees[playground.eroot]["porttree"].dbapi
-        metadata_keys = ["DEFINED_PHASES", "DEPEND", "EAPI", "INHERITED"]
+        try:
+            portdb = playground.trees[playground.eroot]["porttree"].dbapi
+            metadata_keys = ["DEFINED_PHASES", "DEPEND", "EAPI", "INHERITED"]
 
-        test_func = functools.partial(
-            self._run_test_mod_async, ebuilds, metadata_keys, portdb
-        )
-
-        results = test_func()
-
-        self._compare_results(
-            ebuilds, eclass_defined_phases, eclass_depend, ebuild_inherited, results
-        )
-
-        loop = asyncio._wrap_loop()
-        picklable_or_fork = picklable or multiprocessing.get_start_method == "fork"
-        if picklable_or_fork:
-            results = loop.run_until_complete(
-                loop.run_in_executor(ForkExecutor(), test_func)
+            test_func = functools.partial(
+                self._run_test_mod_async, ebuilds, metadata_keys, portdb
             )
+
+            results = test_func()
 
             self._compare_results(
                 ebuilds, eclass_defined_phases, eclass_depend, ebuild_inherited, results
             )
 
-        auxdb = portdb.auxdb[portdb.getRepositoryPath("test_repo")]
-        cpv = next(iter(ebuilds))
+            loop = asyncio._wrap_loop()
+            picklable_or_fork = picklable or multiprocessing.get_start_method == "fork"
+            if picklable_or_fork:
+                results = loop.run_until_complete(
+                    loop.run_in_executor(ForkExecutor(), test_func)
+                )
 
-        modify_auxdb = functools.partial(self._modify_auxdb, auxdb, cpv)
+                self._compare_results(
+                    ebuilds,
+                    eclass_defined_phases,
+                    eclass_depend,
+                    ebuild_inherited,
+                    results,
+                )
 
-        if multiproc and picklable_or_fork:
-            loop.run_until_complete(loop.run_in_executor(ForkExecutor(), modify_auxdb))
-        else:
-            modify_auxdb()
+            auxdb = portdb.auxdb[portdb.getRepositoryPath("test_repo")]
+            cpv = next(iter(ebuilds))
 
-        self.assertEqual(auxdb[cpv]["RESTRICT"], "test")
+            modify_auxdb = functools.partial(self._modify_auxdb, auxdb, cpv)
+
+            if multiproc and picklable_or_fork:
+                loop.run_until_complete(
+                    loop.run_in_executor(ForkExecutor(), modify_auxdb)
+                )
+            else:
+                modify_auxdb()
+
+            self.assertEqual(auxdb[cpv]["RESTRICT"], "test")
+        finally:
+            playground.cleanup()
 
     def _compare_results(
         self, ebuilds, eclass_defined_phases, eclass_depend, ebuild_inherited, results
