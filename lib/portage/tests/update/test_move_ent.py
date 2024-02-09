@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Gentoo Authors
+# Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -287,7 +287,7 @@ class MoveEntTestCase(TestCase):
                             f'FEATURES="binpkg-multi-instance pkgdir-index-trusted"',
                         ),
                     },
-                    debug=True,
+                    debug=False,
                 )
 
                 settings = playground.settings
