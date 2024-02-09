@@ -8,12 +8,14 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
+    "_emerge.EbuildPhase:_setup_locale",
     "portage.package.ebuild._metadata_invalid:eapi_invalid",
 )
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.util.futures import asyncio
 
 import fcntl
 
@@ -44,6 +46,12 @@ class EbuildMetadataPhase(SubProcess):
     _files_dict = slot_dict_class(_file_names, prefix="")
 
     def _start(self):
+        asyncio.ensure_future(
+            self._async_start(), loop=self.scheduler
+        ).add_done_callback(self._async_start_done)
+
+    async def _async_start(self):
+
         ebuild_path = self.ebuild_hash.location
 
         with open(
@@ -74,6 +82,9 @@ class EbuildMetadataPhase(SubProcess):
         settings = self.settings
         settings.setcpv(self.cpv)
         settings.configdict["pkg"]["EAPI"] = parsed_eapi
+
+        # This requires above setcpv and EAPI setup.
+        await _setup_locale(self.settings)
 
         debug = settings.get("PORTAGE_DEBUG") == "1"
         master_fd = None
@@ -138,6 +149,16 @@ class EbuildMetadataPhase(SubProcess):
             return
 
         self._proc = retval
+
+    def _async_start_done(self, future):
+        future.cancelled() or future.result()
+        if future.cancelled():
+            self.cancel()
+            self._was_cancelled()
+
+        if self.returncode is not None:
+            self._unregister()
+            self.wait()
 
     def _output_handler(self):
         while True:
