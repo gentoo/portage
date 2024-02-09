@@ -1,4 +1,4 @@
-# Copyright 2013-2023 Gentoo Authors
+# Copyright 2013-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -226,7 +226,7 @@ class SecuritySetTestCase(TestCase):
         # Give each GLSA a clean slate
         for glsa in glsas:
             playground = ResolverPlayground(
-                ebuilds=ebuilds, installed=installed, world=world, debug=True
+                ebuilds=ebuilds, installed=installed, world=world, debug=False
             )
 
             try:
