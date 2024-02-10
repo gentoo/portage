@@ -105,28 +105,30 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
+# Type annotation imports
+from _emerge.stdout_spinner import stdout_spinner
+
+
+class _emerge_config(SlotObject):
+    __slots__ = ("action", "args", "opts", "running_config", "target_config", "trees")
+
+    # Support unpack as tuple, for load_emerge_config backward compatibility.
+    def __iter__(self):
+        yield self.target_config.settings
+        yield self.trees
+        yield self.target_config.mtimedb
+
+    def __getitem__(self, index):
+        return list(self)[index]
+
+    def __len__(self):
+        return 3
+
 
 def action_build(
-    emerge_config,
-    trees=DeprecationWarning,
-    mtimedb=DeprecationWarning,
-    myopts=DeprecationWarning,
-    myaction=DeprecationWarning,
-    myfiles=DeprecationWarning,
-    spinner=None,
+    emerge_config: _emerge_config,
+    spinner: stdout_spinner,
 ):
-    if not isinstance(emerge_config, _emerge_config):
-        warnings.warn(
-            "_emerge.actions.action_build() now expects "
-            "an _emerge_config instance as the first parameter",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        emerge_config = load_emerge_config(
-            action=myaction, args=myfiles, trees=trees, opts=myopts
-        )
-        adjust_configs(emerge_config.opts, emerge_config.trees)
-
     settings, trees, mtimedb = emerge_config
     myopts = emerge_config.opts
     myaction = emerge_config.action
@@ -2889,22 +2891,6 @@ def getportageversion(
     unameout = platform.release() + " " + platform.machine()
 
     return f"Portage {portage.VERSION} ({pythonver}, {profilever}, {gccver}, {','.join(libcver)}, {unameout})"
-
-
-class _emerge_config(SlotObject):
-    __slots__ = ("action", "args", "opts", "running_config", "target_config", "trees")
-
-    # Support unpack as tuple, for load_emerge_config backward compatibility.
-    def __iter__(self):
-        yield self.target_config.settings
-        yield self.trees
-        yield self.target_config.mtimedb
-
-    def __getitem__(self, index):
-        return list(self)[index]
-
-    def __len__(self):
-        return 3
 
 
 def load_emerge_config(emerge_config=None, env=None, **kargs):
