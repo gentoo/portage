@@ -2,7 +2,6 @@
 # Portage Unit Testing Functionality
 
 import io
-import random
 import tarfile
 import tempfile
 from functools import partial
