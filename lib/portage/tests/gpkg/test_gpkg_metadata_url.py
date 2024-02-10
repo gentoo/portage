@@ -19,7 +19,7 @@ from portage.gpg import GPG
 
 
 class test_gpkg_metadata_url_case(TestCase):
-    def httpd(self, directory, port, httpd_future):
+    def httpd(self, directory, httpd_future):
         try:
             import http.server
             import socketserver
@@ -28,11 +28,11 @@ class test_gpkg_metadata_url_case(TestCase):
 
         Handler = partial(http.server.SimpleHTTPRequestHandler, directory=directory)
 
-        with socketserver.TCPServer(("127.0.0.1", port), Handler) as httpd:
+        with socketserver.TCPServer(("127.0.0.1", 0), Handler) as httpd:
             httpd_future.set_result(httpd)
             httpd.serve_forever()
 
-    def start_http_server(self, directory, port):
+    def start_http_server(self, directory):
         try:
             import threading
         except ImportError:
@@ -40,7 +40,7 @@ class test_gpkg_metadata_url_case(TestCase):
 
         httpd_future = Future()
         server = threading.Thread(
-            target=self.httpd, args=(directory, port, httpd_future), daemon=True
+            target=self.httpd, args=(directory, httpd_future), daemon=True
         )
         server.start()
         return httpd_future.result()
@@ -59,13 +59,7 @@ class test_gpkg_metadata_url_case(TestCase):
         server = None
         try:
             settings = playground.settings
-            for _ in range(0, 5):
-                port = random.randint(30000, 60000)
-                try:
-                    server = self.start_http_server(tmpdir, port)
-                except OSError:
-                    continue
-                break
+            server = self.start_http_server(tmpdir)
 
             orig_full_path = os.path.join(tmpdir, "orig/")
             os.makedirs(orig_full_path)
@@ -84,7 +78,7 @@ class test_gpkg_metadata_url_case(TestCase):
             test_gpkg.compress(os.path.join(tmpdir, "orig"), meta)
 
             meta_from_url = test_gpkg.get_metadata_url(
-                "http://127.0.0.1:" + str(port) + "/test.gpkg.tar"
+                "http://{0}:{1}/test.gpkg.tar".format(*server.server_address)
             )
 
             self.assertEqual(meta, meta_from_url)
@@ -111,13 +105,7 @@ class test_gpkg_metadata_url_case(TestCase):
             gpg = GPG(settings)
             gpg.unlock()
 
-            for _ in range(0, 5):
-                port = random.randint(30000, 60000)
-                try:
-                    server = self.start_http_server(tmpdir, port)
-                except OSError:
-                    continue
-                break
+            server = self.start_http_server(tmpdir)
 
             orig_full_path = os.path.join(tmpdir, "orig/")
             os.makedirs(orig_full_path)
@@ -161,7 +149,7 @@ IkCfAP49AOYjzuQPP0n5P0SGCINnAVEXN7QLQ4PurY/lt7cT2gEAq01stXjFhrz5
             self.assertRaises(
                 InvalidSignature,
                 test_gpkg.get_metadata_url,
-                "http://127.0.0.1:" + str(port) + "/test-2.gpkg.tar",
+                "http://{0}:{1}/test-2.gpkg.tar".format(*server.server_address),
             )
         finally:
             if gpg is not None:
