@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Don't use the unicode-wrapped os and shutil modules here since
@@ -6,6 +6,7 @@
 import os
 import shutil
 import warnings
+from functools import partial
 
 try:
     import selinux
@@ -134,14 +135,12 @@ class spawn_wrapper:
 
     def __call__(self, *args, **kwargs):
         if self._con is not None:
-            pre_exec = kwargs.get("pre_exec")
-
-            def _pre_exec():
-                if pre_exec is not None:
-                    pre_exec()
-                setexec(self._con)
-
-            kwargs["pre_exec"] = _pre_exec
+            pre_exec = partial(setexec, self._con)
+            kwargs["pre_exec"] = (
+                portage.process._chain_pre_exec_fns(pre_exec, kwargs["pre_exec"])
+                if kwargs.get("pre_exec")
+                else pre_exec
+            )
 
         return self._spawn_func(*args, **kwargs)
 

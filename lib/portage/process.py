@@ -18,7 +18,7 @@ import os as _os
 import warnings
 
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
 
 from portage import os
@@ -1383,16 +1383,26 @@ def _start_fork(
     return pid
 
 
-class _setup_pipes_after_fork:
-    def __init__(self, target, fd_pipes):
+class _chain_pre_exec_fns:
+    """
+    Wraps a target function to call pre_exec functions just before
+    the original target function.
+    """
+
+    def __init__(self, target, *args):
         self._target = target
-        self._fd_pipes = fd_pipes
+        self._pre_exec_fns = args
 
     def __call__(self, *args, **kwargs):
-        for fd in set(self._fd_pipes.values()):
-            os.set_inheritable(fd, True)
-        _setup_pipes(self._fd_pipes, close_fds=False, inheritable=True)
+        for pre_exec in self._pre_exec_fns:
+            pre_exec()
         return self._target(*args, **kwargs)
+
+
+def _setup_pipes_after_fork(fd_pipes):
+    for fd in set(fd_pipes.values()):
+        os.set_inheritable(fd, True)
+    _setup_pipes(fd_pipes, close_fds=False, inheritable=True)
 
 
 def _start_proc(
@@ -1419,7 +1429,7 @@ def _start_proc(
     # which ForkProcess does not handle because its target
     # function does not necessarily exec.
     if fd_pipes and multiprocessing.get_start_method() == "fork":
-        target = _setup_pipes_after_fork(target, fd_pipes)
+        target = _chain_pre_exec_fns(target, partial(_setup_pipes_after_fork, fd_pipes))
         fd_pipes = None
 
     proc = ForkProcess(
