@@ -1,4 +1,4 @@
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -37,6 +37,34 @@ class OverlapDNFTestCase(TestCase):
                         ["cat/B", "cat/F"],
                     ],
                     ["||", "cat/C", "cat/D"],
+                ],
+            ),
+        )
+
+        for dep_str, result in test_cases:
+            self.assertEqual(
+                _overlap_dnf(use_reduce(dep_str, token_class=Atom, opconvert=True)),
+                result,
+            )
+
+
+class DuplicateOverlapDNFTestCase(TestCase):
+    def testDuplicateOverlapDNF(self):
+        """
+        Demonstrate unnecessary DNF expansion for duplicate
+        any-of blocks as in bug 891137.
+        """
+        test_cases = (
+            (
+                "|| ( cat/A cat/B ) || ( cat/A cat/B )",
+                [
+                    [
+                        "||",
+                        ["cat/A", "cat/A"],
+                        ["cat/A", "cat/B"],
+                        ["cat/B", "cat/A"],
+                        ["cat/B", "cat/B"],
+                    ],
                 ],
             ),
         )
