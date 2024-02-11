@@ -77,7 +77,7 @@ class test_gpkg_metadata_url_case(TestCase):
             test_gpkg.compress(os.path.join(tmpdir, "orig"), meta)
 
             meta_from_url = test_gpkg.get_metadata_url(
-                "http://{0}:{1}/test.gpkg.tar".format(*server.server_address)
+                "http://{}:{}/test.gpkg.tar".format(*server.server_address)
             )
 
             self.assertEqual(meta, meta_from_url)
@@ -148,7 +148,7 @@ IkCfAP49AOYjzuQPP0n5P0SGCINnAVEXN7QLQ4PurY/lt7cT2gEAq01stXjFhrz5
             self.assertRaises(
                 InvalidSignature,
                 test_gpkg.get_metadata_url,
-                "http://{0}:{1}/test-2.gpkg.tar".format(*server.server_address),
+                "http://{}:{}/test-2.gpkg.tar".format(*server.server_address),
             )
         finally:
             if gpg is not None:
