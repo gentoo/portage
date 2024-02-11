@@ -961,7 +961,13 @@ def _exec(
         if filename is not None:
             libc = LoadLibrary(filename)
             if libc is not None:
-                try:
+                # unshare() may not be supported by libc
+                if not hasattr(libc, "unshare"):
+                    unshare_net = False
+                    unshare_ipc = False
+                    unshare_mount = False
+                    unshare_pid = False
+                else:
                     # Since a failed unshare call could corrupt process
                     # state, first validate that the call can succeed.
                     # The parent process should call _unshare_validate
@@ -992,117 +998,154 @@ def _exec(
                         )
                     else:
                         if unshare_pid:
-                            main_child_pid = os.fork()
-                            if main_child_pid == 0:
-                                # pid namespace requires us to become init
-                                binary, myargs = (
-                                    portage._python_interpreter,
-                                    [
-                                        portage._python_interpreter,
-                                        os.path.join(portage._bin_path, "pid-ns-init"),
-                                        _unicode_encode(
-                                            "" if uid is None else str(uid)
-                                        ),
-                                        _unicode_encode(
-                                            "" if gid is None else str(gid)
-                                        ),
-                                        _unicode_encode(
-                                            ""
-                                            if groups is None
-                                            else ",".join(
-                                                str(group) for group in groups
-                                            )
-                                        ),
-                                        _unicode_encode(
-                                            "" if umask is None else str(umask)
-                                        ),
-                                        _unicode_encode(
-                                            ",".join(str(fd) for fd in fd_pipes)
-                                        ),
-                                        binary,
-                                    ]
-                                    + myargs,
-                                )
-                                uid = None
-                                gid = None
-                                groups = None
-                                umask = None
-                            else:
-                                # Execute a supervisor process which will forward
-                                # signals to init and forward exit status to the
-                                # parent process. The supervisor process runs in
-                                # the global pid namespace, so skip /proc remount
-                                # and other setup that's intended only for the
-                                # init process.
-                                binary, myargs = portage._python_interpreter, [
+                            # pid namespace requires us to become init
+                            binary, myargs = (
+                                portage._python_interpreter,
+                                [
                                     portage._python_interpreter,
                                     os.path.join(portage._bin_path, "pid-ns-init"),
-                                    str(main_child_pid),
+                                    _unicode_encode("" if uid is None else str(uid)),
+                                    _unicode_encode("" if gid is None else str(gid)),
+                                    _unicode_encode(
+                                        ""
+                                        if groups is None
+                                        else ",".join(str(group) for group in groups)
+                                    ),
+                                    _unicode_encode(
+                                        "" if umask is None else str(umask)
+                                    ),
+                                    _unicode_encode(
+                                        ",".join(str(fd) for fd in fd_pipes)
+                                    ),
+                                    binary,
                                 ]
-
-                                os.execve(binary, myargs, env)
-
-                        if unshare_mount:
-                            # mark the whole filesystem as slave to avoid
-                            # mounts escaping the namespace
-                            s = subprocess.Popen(["mount", "--make-rslave", "/"])
-                            mount_ret = s.wait()
-                            if mount_ret != 0:
-                                # TODO: should it be fatal maybe?
-                                writemsg(
-                                    "Unable to mark mounts slave: %d\n" % (mount_ret,),
-                                    noiselevel=-1,
-                                )
-                        if unshare_pid:
-                            # we need at least /proc being slave
-                            s = subprocess.Popen(["mount", "--make-slave", "/proc"])
-                            mount_ret = s.wait()
-                            if mount_ret != 0:
-                                # can't proceed with shared /proc
-                                writemsg(
-                                    "Unable to mark /proc slave: %d\n" % (mount_ret,),
-                                    noiselevel=-1,
-                                )
-                                os._exit(1)
-                            # mount new /proc for our namespace
-                            s = subprocess.Popen(
-                                ["mount", "-n", "-t", "proc", "proc", "/proc"]
+                                + myargs,
                             )
-                            mount_ret = s.wait()
-                            if mount_ret != 0:
-                                writemsg(
-                                    "Unable to mount new /proc: %d\n" % (mount_ret,),
-                                    noiselevel=-1,
-                                )
-                                os._exit(1)
-                        if unshare_net:
-                            # use 'localhost' to avoid hostname resolution problems
-                            try:
-                                # pypy3 does not implement socket.sethostname()
-                                new_hostname = b"localhost"
-                                if hasattr(socket, "sethostname"):
-                                    socket.sethostname(new_hostname)
-                                else:
-                                    if (
-                                        libc.sethostname(
-                                            new_hostname, len(new_hostname)
-                                        )
-                                        != 0
-                                    ):
-                                        errno_value = ctypes.get_errno()
-                                        raise OSError(
-                                            errno_value, os.strerror(errno_value)
-                                        )
-                            except Exception as e:
-                                writemsg(
-                                    'Unable to set hostname: %s (for FEATURES="network-sandbox")\n'
-                                    % (e,),
-                                    noiselevel=-1,
-                                )
-                            _configure_loopback_interface()
-                except AttributeError:
-                    # unshare() not supported by libc
-                    pass
+                            uid = None
+                            gid = None
+                            groups = None
+                            umask = None
+
+                            # Use _start_fork for os.fork() error handling, ensuring
+                            # that if exec fails then the child process will display
+                            # a traceback before it exits via os._exit to suppress any
+                            # finally blocks from parent's call stack (bug 345289).
+                            main_child_pid = _start_fork(
+                                _exec2,
+                                args=(
+                                    binary,
+                                    myargs,
+                                    env,
+                                    gid,
+                                    groups,
+                                    uid,
+                                    umask,
+                                    cwd,
+                                    pre_exec,
+                                    unshare_net,
+                                    unshare_ipc,
+                                    unshare_mount,
+                                    unshare_pid,
+                                ),
+                                fd_pipes=None,
+                                close_fds=False,
+                            )
+
+                            # Execute a supervisor process which will forward
+                            # signals to init and forward exit status to the
+                            # parent process. The supervisor process runs in
+                            # the global pid namespace, so skip /proc remount
+                            # and other setup that's intended only for the
+                            # init process.
+                            binary, myargs = portage._python_interpreter, [
+                                portage._python_interpreter,
+                                os.path.join(portage._bin_path, "pid-ns-init"),
+                                str(main_child_pid),
+                            ]
+
+                            os.execve(binary, myargs, env)
+
+    # Reachable only if unshare_pid is False.
+    _exec2(
+        binary,
+        myargs,
+        env,
+        gid,
+        groups,
+        uid,
+        umask,
+        cwd,
+        pre_exec,
+        unshare_net,
+        unshare_ipc,
+        unshare_mount,
+        unshare_pid,
+    )
+
+
+def _exec2(
+    binary,
+    myargs,
+    env,
+    gid,
+    groups,
+    uid,
+    umask,
+    cwd,
+    pre_exec,
+    unshare_net,
+    unshare_ipc,
+    unshare_mount,
+    unshare_pid,
+):
+    if unshare_mount:
+        # mark the whole filesystem as slave to avoid
+        # mounts escaping the namespace
+        s = subprocess.Popen(["mount", "--make-rslave", "/"])
+        mount_ret = s.wait()
+        if mount_ret != 0:
+            # TODO: should it be fatal maybe?
+            writemsg(
+                "Unable to mark mounts slave: %d\n" % (mount_ret,),
+                noiselevel=-1,
+            )
+    if unshare_pid:
+        # we need at least /proc being slave
+        s = subprocess.Popen(["mount", "--make-slave", "/proc"])
+        mount_ret = s.wait()
+        if mount_ret != 0:
+            # can't proceed with shared /proc
+            writemsg(
+                "Unable to mark /proc slave: %d\n" % (mount_ret,),
+                noiselevel=-1,
+            )
+            os._exit(1)
+        # mount new /proc for our namespace
+        s = subprocess.Popen(["mount", "-n", "-t", "proc", "proc", "/proc"])
+        mount_ret = s.wait()
+        if mount_ret != 0:
+            writemsg(
+                "Unable to mount new /proc: %d\n" % (mount_ret,),
+                noiselevel=-1,
+            )
+            os._exit(1)
+    if unshare_net:
+        # use 'localhost' to avoid hostname resolution problems
+        try:
+            # pypy3 does not implement socket.sethostname()
+            new_hostname = b"localhost"
+            if hasattr(socket, "sethostname"):
+                socket.sethostname(new_hostname)
+            else:
+                if libc.sethostname(new_hostname, len(new_hostname)) != 0:
+                    errno_value = ctypes.get_errno()
+                    raise OSError(errno_value, os.strerror(errno_value))
+        except Exception as e:
+            writemsg(
+                f'Unable to set hostname: {e} (for FEATURES="network-sandbox")\n',
+                noiselevel=-1,
+            )
+        _configure_loopback_interface()
 
     # Set requested process permissions.
     if gid:
@@ -1260,7 +1303,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
     actually does nothing in this case), which avoids possible
     interference.
     """
-
+    fd_pipes = {} if fd_pipes is None else fd_pipes
     reverse_map = {}
     # To protect from cases where direct assignment could
     # clobber needed fds ({1:2, 2:1}) we create a reverse map
