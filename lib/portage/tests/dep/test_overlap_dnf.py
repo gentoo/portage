@@ -1,4 +1,4 @@
-# Copyright 2017-2023 Gentoo Authors
+# Copyright 2017-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -51,20 +51,39 @@ class OverlapDNFTestCase(TestCase):
 class DuplicateOverlapDNFTestCase(TestCase):
     def testDuplicateOverlapDNF(self):
         """
-        Demonstrate unnecessary DNF expansion for duplicate
-        any-of blocks as in bug 891137.
+        Demonstrate deduplication of any-of blocks, preventing unnecessary
+        DNF expansion for duplicate any-of blocks as in bug 891137.
         """
         test_cases = (
+            ("|| ( cat/A cat/B ) || ( cat/A cat/B )", [["||", "cat/A", "cat/B"]]),
             (
-                "|| ( cat/A cat/B ) || ( cat/A cat/B )",
+                "|| ( cat/A cat/B ) cat/E || ( cat/C cat/D ) || ( cat/A cat/B )",
+                ["cat/E", ["||", "cat/A", "cat/B"], ["||", "cat/C", "cat/D"]],
+            ),
+            (
+                "|| ( cat/A cat/B ) cat/D || ( cat/B cat/C ) || ( cat/A cat/B )",
+                [
+                    "cat/D",
+                    [
+                        "||",
+                        ["cat/A", "cat/B"],
+                        ["cat/A", "cat/C"],
+                        ["cat/B", "cat/B"],
+                        ["cat/B", "cat/C"],
+                    ],
+                ],
+            ),
+            (
+                "|| ( cat/A cat/B ) || ( cat/C cat/D )  || ( ( cat/B cat/E ) cat/F ) || ( cat/A cat/B )",
                 [
                     [
                         "||",
-                        ["cat/A", "cat/A"],
-                        ["cat/A", "cat/B"],
-                        ["cat/B", "cat/A"],
-                        ["cat/B", "cat/B"],
+                        ["cat/A", "cat/B", "cat/E"],
+                        ["cat/A", "cat/F"],
+                        ["cat/B", "cat/B", "cat/E"],
+                        ["cat/B", "cat/F"],
                     ],
+                    ["||", "cat/C", "cat/D"],
                 ],
             ),
         )
