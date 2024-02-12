@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -8,20 +8,16 @@ from portage.util.SlotObject import SlotObject
 
 
 class EbuildFetchonly(SlotObject):
-    __slots__ = ("fetch_all", "pkg", "pretend", "settings")
+    __slots__ = ("ebuild_path", "fetch_all", "pkg", "pretend", "settings")
 
     def execute(self):
         settings = self.settings
         pkg = self.pkg
         portdb = pkg.root_config.trees["porttree"].dbapi
-        ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
-        if ebuild_path is None:
-            raise AssertionError(f"ebuild not found for '{pkg.cpv}'")
-        settings.setcpv(pkg)
         debug = settings.get("PORTAGE_DEBUG") == "1"
 
         rval = portage.doebuild(
-            ebuild_path,
+            self.ebuild_path,
             "fetch",
             settings=settings,
             debug=debug,

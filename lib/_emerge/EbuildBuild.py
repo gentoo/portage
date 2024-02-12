@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -22,6 +22,7 @@ from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+from portage.util.futures.executor.fork import ForkExecutor
 from portage.util.path import first_existing
 
 
@@ -152,29 +153,25 @@ class EbuildBuild(CompositeTask):
         if opts.fetchonly:
             if opts.pretend:
                 fetcher = EbuildFetchonly(
+                    ebuild_path=self._ebuild_path,
                     fetch_all=opts.fetch_all_uri,
                     pkg=pkg,
                     pretend=opts.pretend,
                     settings=settings,
                 )
-                retval = fetcher.execute()
-                if retval == os.EX_OK:
-                    self._current_task = None
-                    self.returncode = os.EX_OK
-                    self._async_wait()
-                else:
-                    # For pretend mode, the convention it to execute
-                    # pkg_nofetch and return a successful exitcode.
-                    self._start_task(
-                        SpawnNofetchWithoutBuilddir(
-                            background=self.background,
-                            portdb=self.pkg.root_config.trees[self._tree].dbapi,
-                            ebuild_path=self._ebuild_path,
-                            scheduler=self.scheduler,
-                            settings=self.settings,
+                # Execute EbuildFetchonly in a subprocess since it needs to
+                # run the event loop itself (even for pretend mode since it
+                # may need to fetch mirror layouts as reported in bug 702154).
+                self._start_task(
+                    AsyncTaskFuture(
+                        background=self.background,
+                        scheduler=self.scheduler,
+                        future=self.scheduler.run_in_executor(
+                            ForkExecutor(loop=self.scheduler), fetcher.execute
                         ),
-                        self._default_final_exit,
-                    )
+                    ),
+                    self._fetchonly_exit,
+                )
                 return
 
             quiet_setting = settings.get("PORTAGE_QUIET", False)
@@ -241,8 +238,12 @@ class EbuildBuild(CompositeTask):
         self._start_task(pre_clean_phase, self._pre_clean_exit)
 
     def _fetchonly_exit(self, fetcher):
+        if not fetcher.cancelled and isinstance(fetcher, AsyncTaskFuture):
+            # Set returncode from EbuildFetchonly.execute() result, since
+            # it can fail if it can't resolve a mirror for a file.
+            fetcher.returncode = fetcher.future.result()
         self._final_exit(fetcher)
-        if self.returncode != os.EX_OK:
+        if not self.cancelled and self.returncode != os.EX_OK:
             self.returncode = None
             portdb = self.pkg.root_config.trees[self._tree].dbapi
             self._start_task(

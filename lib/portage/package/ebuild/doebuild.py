@@ -1334,32 +1334,20 @@ def doebuild(
                 dist_digests = mf.getTypeDigests("DIST")
 
             loop = asyncio._safe_loop()
-            if loop.is_running():
-                # Called by EbuildFetchonly for emerge --pretend --fetchonly.
-                success = fetch(
+            success = loop.run_until_complete(
+                loop.run_in_executor(
+                    ForkExecutor(loop=loop),
+                    _fetch_subprocess,
                     fetchme,
                     mysettings,
-                    listonly=listonly,
-                    fetchonly=fetchonly,
-                    allow_missing_digests=False,
-                    digests=dist_digests,
+                    listonly,
+                    dist_digests,
+                    fetchonly,
                 )
-            else:
-                success = loop.run_until_complete(
-                    loop.run_in_executor(
-                        ForkExecutor(loop=loop),
-                        _fetch_subprocess,
-                        fetchme,
-                        mysettings,
-                        listonly,
-                        dist_digests,
-                        fetchonly,
-                    )
-                )
+            )
             if not success:
                 # Since listonly mode is called by emerge --pretend in an
-                # asynchronous context, spawn_nofetch would trigger event loop
-                # recursion here, therefore delegate execution of pkg_nofetch
+                # asynchronous context, execution of pkg_nofetch is delegated
                 # to the caller (bug 657360).
                 if not listonly:
                     spawn_nofetch(
