@@ -156,6 +156,8 @@ environ_whitelist = frozenset(
         "PORTAGE_INST_UID",
         "PORTAGE_IPC_DAEMON",
         "PORTAGE_IUSE",
+        "PORTAGE_JOBSERVER_ADDRESS",
+        "PORTAGE_JOBSERVER_PORT",
         "PORTAGE_ECLASS_LOCATIONS",
         "PORTAGE_LOG_FILE",
         "PORTAGE_OVERRIDE_EPREFIX",

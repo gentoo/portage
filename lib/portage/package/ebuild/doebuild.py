@@ -24,6 +24,7 @@ import warnings
 import zlib
 
 import portage
+from portage.const import JOBSERVER_WRAP_PATH_LIST
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -327,6 +328,11 @@ def _doebuild_path(settings, eapi=None):
             if p not in pathset:
                 path.append(p)
                 pathset.add(p)
+
+    if "jobserver" in settings.features:
+        jobserver_path = JOBSERVER_WRAP_PATH_LIST.copy()
+        jobserver_path.extend(path)
+        path = jobserver_path
 
     settings["PATH"] = ":".join(path)
 
@@ -1995,6 +2001,29 @@ def spawn(
         keywords["unshare_ipc"] = not ipc
         keywords["unshare_mount"] = mountns
         keywords["unshare_pid"] = pidns
+
+        if (
+            keywords["unshare_net"]
+            and "jobserver" in features
+            and mysettings.get("PORTAGE_JOBSERVER_REMOTE", "false") == "false"
+        ):
+            # Find the primary jobserver PID for network namespace sharing.
+            jobserver_pid = None
+
+            if os.path.isfile("/var/run/jobserver.pid"):
+                try:
+                    with open("/var/run/jobserver.pid") as f:
+                        jobserver_pid = int(f.read())
+                except (ValueError, PermissionError):
+                    pass
+
+            if jobserver_pid and os.path.isfile(f"/proc/{jobserver_pid}/cmdline"):
+                try:
+                    with open(f"/proc/{jobserver_pid}/cmdline") as f:
+                        if "jobserver" in f.read():
+                            keywords["jobserver_pid"] = jobserver_pid
+                except PermissionError:
+                    pass
 
         if (
             not networked

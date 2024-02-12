@@ -469,6 +469,7 @@ def spawn(
     unshare_mount=False,
     unshare_pid=False,
     warn_on_large_env=False,
+    jobserver_pid=None,
 ) -> Union[int, MultiprocessingProcess, list[int]]:
     """
     Spawns a given command.
@@ -657,6 +658,7 @@ def spawn(
             unshare_pid,
             unshare_flags,
             env_stats,
+            jobserver_pid,
         ),
         fd_pipes=fd_pipes,
         close_fds=close_fds,
@@ -809,6 +811,7 @@ def _exec_wrapper(
     unshare_pid,
     unshare_flags,
     env_stats,
+    jobserver_pid,
 ):
     """
     Calls _exec with the given args and handles any raised Exception.
@@ -834,6 +837,7 @@ def _exec_wrapper(
             unshare_mount,
             unshare_pid,
             unshare_flags,
+            jobserver_pid,
         )
     except Exception as e:
         if isinstance(e, OSError) and e.errno == errno.E2BIG:
@@ -873,6 +877,7 @@ def _exec(
     unshare_mount,
     unshare_pid,
     unshare_flags,
+    jobserver_pid,
 ):
     """
     Execute a given binary with options
@@ -910,6 +915,8 @@ def _exec(
     @type unshare_pid: Boolean
     @param unshare_flags: Flags for the unshare(2) function
     @type unshare_flags: Integer
+    @param jobserver_pid: Jobserver PID to bind network namespace
+    @type jobserver_pid: Integer
     @rtype: None
     @return: Never returns (calls os.execve)
     """
@@ -991,6 +998,53 @@ def _exec(
                             noiselevel=-1,
                         )
                     else:
+                        if unshare_net:
+                            if jobserver_pid:
+                                # Set current network NS from the jobserver network NS
+                                try:
+                                    with open(
+                                        f"/proc/{jobserver_pid}/ns/net"
+                                    ) as jobserver_netns:
+                                        errno_value = libc.setns(
+                                            jobserver_netns.fileno(), 0x40000000
+                                        )  # CLONE_NEWNET
+                                    if errno_value != 0:
+                                        writemsg(
+                                            'Unable to setns from jobserver namespace")\n',
+                                            noiselevel=-1,
+                                        )
+                                        os._exit(1)
+                                except OSError as e:
+                                    writemsg(
+                                        f"Unable to find jobserver PID: {jobserver_pid}\n"
+                                        + str(e),
+                                    )
+                                    os._exit(1)
+                            else:
+                                # use 'localhost' to avoid hostname resolution problems
+                                try:
+                                    # pypy3 does not implement socket.sethostname()
+                                    new_hostname = b"localhost"
+                                    if hasattr(socket, "sethostname"):
+                                        socket.sethostname(new_hostname)
+                                    else:
+                                        if (
+                                            libc.sethostname(
+                                                new_hostname, len(new_hostname)
+                                            )
+                                            != 0
+                                        ):
+                                            errno_value = ctypes.get_errno()
+                                            raise OSError(
+                                                errno_value, os.strerror(errno_value)
+                                            )
+                                except Exception as e:
+                                    writemsg(
+                                        'Unable to set hostname: %s (for FEATURES="network-sandbox")\n'
+                                        % (e,),
+                                        noiselevel=-1,
+                                    )
+                                _configure_loopback_interface()
                         if unshare_pid:
                             main_child_pid = os.fork()
                             if main_child_pid == 0:
@@ -1075,31 +1129,6 @@ def _exec(
                                     noiselevel=-1,
                                 )
                                 os._exit(1)
-                        if unshare_net:
-                            # use 'localhost' to avoid hostname resolution problems
-                            try:
-                                # pypy3 does not implement socket.sethostname()
-                                new_hostname = b"localhost"
-                                if hasattr(socket, "sethostname"):
-                                    socket.sethostname(new_hostname)
-                                else:
-                                    if (
-                                        libc.sethostname(
-                                            new_hostname, len(new_hostname)
-                                        )
-                                        != 0
-                                    ):
-                                        errno_value = ctypes.get_errno()
-                                        raise OSError(
-                                            errno_value, os.strerror(errno_value)
-                                        )
-                            except Exception as e:
-                                writemsg(
-                                    'Unable to set hostname: %s (for FEATURES="network-sandbox")\n'
-                                    % (e,),
-                                    noiselevel=-1,
-                                )
-                            _configure_loopback_interface()
                 except AttributeError:
                     # unshare() not supported by libc
                     pass

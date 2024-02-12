@@ -35,7 +35,10 @@ from portage import os
 from portage import shutil
 from portage import _encodings, _unicode_decode
 from portage.binrepo.config import BinRepoConfigLoader
-from portage.const import BINREPOS_CONF_FILE, _DEPCLEAN_LIB_CHECK_DEFAULT
+from portage.const import (
+    BINREPOS_CONF_FILE,
+    _DEPCLEAN_LIB_CHECK_DEFAULT,
+)
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
@@ -49,6 +52,7 @@ from portage.exception import (
     GPGException,
     InvalidBinaryPackageFormat,
 )
+from portage.jobserver import JobServer
 from portage.output import (
     colorize,
     create_color_func,
@@ -664,6 +668,10 @@ def action_build(
         if mergecount == 0:
             retval = os.EX_OK
         else:
+            if "jobserver" in settings.features:
+                job_server = JobServer(settings)
+                job_server.start()
+
             mergetask = Scheduler(
                 settings,
                 trees,

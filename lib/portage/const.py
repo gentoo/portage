@@ -98,6 +98,11 @@ PORTAGE_PYM_PATH = os.path.realpath(os.path.join(__file__, "../.."))
 LOCALE_DATA_PATH = f"{PORTAGE_BASE_PATH}/locale"  # FIXME: not used
 EBUILD_SH_BINARY = f"{PORTAGE_BIN_PATH}/ebuild.sh"
 MISC_SH_BINARY = f"{PORTAGE_BIN_PATH}/misc-functions.sh"
+JOBSERVER_BINARY = f"{BINARY_PREFIX}/usr/bin/ejobserver"
+JOBSERVER_WRAP_PATH_LIST = [
+    f"{BINARY_PREFIX}/usr/local/lib/portage/jobserver",
+    f"{BINARY_PREFIX}/usr/lib/portage/jobserver",
+]
 SANDBOX_BINARY = f"{BINARY_PREFIX}/usr/bin/sandbox"
 FAKEROOT_BINARY = f"{BINARY_PREFIX}/usr/bin/fakeroot"
 BASH_BINARY = f"{BINARY_PREFIX}/bin/bash"
@@ -190,6 +195,7 @@ SUPPORTED_FEATURES = frozenset(
         "icecream",
         "installsources",
         "ipc-sandbox",
+        "jobserver",
         "keeptemp",
         "keepwork",
         "lmirror",

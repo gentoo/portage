@@ -1,0 +1,453 @@
+#!/usr/bin/env python
+# Copyright 2022 Gentoo Authors
+
+import ipaddress
+import sys
+import socket
+
+import argparse
+import threading
+import grp
+import os
+import pwd
+import datetime
+import multiprocessing
+import platform
+from socketserver import ThreadingTCPServer, BaseRequestHandler
+from time import sleep
+
+import portage.process
+from portage.util._ctypes import find_library, LoadLibrary
+
+
+__address__ = "127.0.0.1"
+__port__ = 25721
+__max_jobs__ = 1
+__job_delay__ = 0
+__min_free_mem__ = 2097152
+__max_load__ = None
+__parent_pid__ = None
+__server__ = None
+__primary_server__ = None
+
+
+__job_assign_lock__ = threading.Lock()
+__job_counter_lock__ = threading.Semaphore(10240)
+__job_free_slot_lock__ = threading.Semaphore(__max_jobs__)
+__job_running_lock__ = threading.Semaphore(__max_jobs__)
+__last_active__ = datetime.datetime.utcnow()
+__jobs_status__ = ""
+
+__parent_status__ = ""
+__show_status__ = False
+
+__has_ipv6 = None
+
+# from /usr/include/bits/sched.h
+CLONE_NEWNS = 0x00020000
+CLONE_NEWUTS = 0x04000000
+CLONE_NEWIPC = 0x08000000
+CLONE_NEWPID = 0x20000000
+CLONE_NEWNET = 0x40000000
+
+
+class JobServer(BaseRequestHandler):
+    def handle(self):
+        global __job_assign_lock__
+        global __job_counter_lock__
+        global __job_free_slot_lock__
+        global __job_running_lock__
+        global __last_active__
+
+        __job_counter_lock__.acquire()
+        __last_active__ = datetime.datetime.utcnow()
+
+        with __job_assign_lock__:
+            __job_free_slot_lock__.acquire()
+            self._allow_job()
+            __job_running_lock__.acquire()
+            self.request.sendall(b"OK")
+            sleep(__job_delay__)
+
+        while True:
+            try:
+                data = self.request.recv(10)
+            except Exception:
+                break
+            if not data:
+                break
+
+    def finish(self):
+        global __job_counter_lock__
+        global __job_free_slot_lock__
+        global __job_running_lock__
+        global __job_delay__
+
+        __job_running_lock__.release()
+        __job_counter_lock__.release()
+        __job_free_slot_lock__.release()
+
+    def _allow_job(self):
+        global __job_running_lock__
+        global __min_free_mem__
+        global __max_load__
+        global __jobs_status__
+        global __parent_status__
+
+        wait = True
+        while wait:
+            wait = False
+            if __job_running_lock__._value == __max_jobs__:
+                # Allow at least one job to run
+                break
+
+            if __min_free_mem__ is not None:
+                with open("/proc/meminfo") as f:
+                    for line in f.readlines():
+                        if line.startswith("MemAvailable:"):
+                            if int(line.split()[1]) < __min_free_mem__:
+                                __jobs_status__ = "Insufficient Free Memory"
+                                wait = True
+                            break
+
+            if not wait and __max_load__ is not None:
+                if os.getloadavg()[0] > __max_load__:
+                    __jobs_status__ = "System Load Too High"
+                    wait = True
+
+            if wait:
+                sleep(1)
+
+        __jobs_status__ = ""
+        return True
+
+
+def job_status():
+    global __last_active__
+    global __parent_status__
+    idled = False
+    while True:
+        all_jobs = 10240 - __job_counter_lock__._value
+        running_jobs = __max_jobs__ - __job_running_lock__._value
+        waiting_jobs = all_jobs - running_jobs
+
+        if __show_status__:
+            print(
+                f"\r                                                                                                            ",
+                end="",
+            )
+            print(
+                f"\rR:{running_jobs :> 5} /{__max_jobs__ :< 5} | W:{waiting_jobs :< 5} | {__jobs_status__} | {__parent_status__}",
+                end="",
+            )
+
+        if all_jobs == 0:
+            if not idled:
+                __last_active__ = datetime.datetime.utcnow()
+                idled = True
+        else:
+            __last_active__ = datetime.datetime.utcnow()
+
+        sleep(1)
+
+
+def wait_parent():
+    global __parent_status__
+    parent_running = True
+    ping_wait = 30
+
+    while True:
+        # Check if parent is still running
+        if __parent_pid__ is not None and parent_running:
+            try:
+                os.kill(__parent_pid__, 0)
+            except ProcessLookupError:
+                parent_running = False
+            except PermissionError:
+                pass
+
+        if not parent_running:
+            idle_time = datetime.datetime.utcnow() - __last_active__
+
+            if idle_time.seconds > 60:
+                if __primary_server__:
+                    __server__.shutdown()
+                return
+            elif idle_time.seconds < 5:
+                __parent_status__ = "Parent is not running"
+            else:
+                __parent_status__ = (
+                    "Idle, shutting down in " + str(60 - idle_time.seconds) + " seconds"
+                )
+
+        # Ping the other job server we are still running
+        if not __primary_server__ and parent_running and ping_wait >= 30:
+            ping_wait = 0
+            if __address__.version == 4:
+                ping_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            else:
+                ping_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            try:
+                ping_sock.connect((str(__address__), __port__))
+                ping_sock.shutdown(socket.SHUT_RDWR)
+                ping_sock.close()
+            except OSError as e:
+                print(f"Error: {e}")
+
+        sleep(5)
+        ping_wait += 5
+
+
+if __name__ == "__main__":
+    usage = "jobserver [options]"
+    parser = argparse.ArgumentParser(usage=usage)
+    parser.add_argument(
+        "-a",
+        "--address",
+        action="store",
+        dest="address",
+        default="127.0.0.1",
+        help="Listen address for job server (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        action="store",
+        dest="port",
+        type=int,
+        default=25721,
+        help="Listen port for job server (default: 25721)",
+    )
+    parser.add_argument(
+        "-r",
+        "--remote",
+        action="store_true",
+        dest="remote",
+        default=False,
+        help="The address is a remote job server, do not try start server",
+    )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        action="store",
+        dest="jobs",
+        type=int,
+        default=0,
+        help="Max allowed jobs for job client (default: current CPU cores)",
+    )
+    parser.add_argument(
+        "-m",
+        "--min-free-mem",
+        action="store",
+        dest="mem",
+        type=int,
+        default=2048,
+        help="Minimum free memory (in MiB) to start a new job (default: 2048). Set to 0 to disable.",
+    )
+    parser.add_argument(
+        "-l",
+        "--max-load",
+        action="store",
+        dest="load",
+        type=float,
+        default=0,
+        help="Max system load to start a new job (default: 0). Set to 0 to disable.",
+    )
+    parser.add_argument(
+        "-d",
+        "--dalay",
+        action="store",
+        dest="delay",
+        type=float,
+        default=0,
+        help="Delay (in seconds, can be decimal number) between new jobs (default: 0). Set to 0 to disable.",
+    )
+    parser.add_argument(
+        "-P",
+        "--portage-pid",
+        action="store",
+        dest="ppid",
+        type=int,
+        default=0,
+        help="Parent portage PID to check when can shutdown (default: 0). Set to 0 to disable.",
+    )
+    parser.add_argument(
+        "-s",
+        "--stats",
+        action="store_true",
+        dest="stats",
+        default=False,
+        help="Show job server stats (default: False)",
+    )
+    parser.add_argument(
+        "-S",
+        "--sandbox",
+        action="store_true",
+        dest="sandbox",
+        default=False,
+        help="Run job server in portage network sandbox (default: False)",
+    )
+    options, args = parser.parse_known_args(sys.argv[1:])
+
+    __address__ = ipaddress.ip_address(options.address)
+    __port__ = options.port
+
+    if options.jobs == 0:
+        __max_jobs__ = multiprocessing.cpu_count()
+    else:
+        __max_jobs__ = options.jobs
+
+    __job_free_slot_lock__ = threading.Semaphore(__max_jobs__)
+    __job_running_lock__ = threading.Semaphore(__max_jobs__)
+
+    if options.mem == 0:
+        __min_free_mem__ = None
+    else:
+        __min_free_mem__ = options.mem * 1024
+
+    if options.load == 0:
+        __max_load__ = None
+    else:
+        __max_load__ = options.load
+
+    if options.ppid == 0:
+        __parent_pid__ = None
+    else:
+        __parent_pid__ = options.ppid
+
+    if options.remote:
+        __primary_server__ = False
+    else:
+        # Check if primary jobserver is running
+        jobserver_pid = None
+
+        if os.path.isfile("/var/run/jobserver.pid"):
+            try:
+                with open("/var/run/jobserver.pid") as f:
+                    jobserver_pid = int(f.read())
+            except (ValueError, PermissionError):
+                pass
+
+        if jobserver_pid:
+            if os.path.isfile(f"/proc/{jobserver_pid}/cmdline"):
+                try:
+                    with open(f"/proc/{jobserver_pid}/cmdline") as f:
+                        if "jobserver" not in f.read():
+                            jobserver_pid = None
+                except PermissionError:
+                    jobserver_pid = None
+            else:
+                # Dead jobserver
+                os.remove("/var/run/jobserver.pid")
+                jobserver_pid = None
+
+        if options.sandbox:
+            if os.getuid() == 0 and platform.system() == "Linux":
+                filename = find_library("c")
+                if filename is not None:
+                    libc = LoadLibrary(filename)
+                else:
+                    print(f"Cannot find libc.", file=sys.stderr)
+                    sys.exit(1)
+
+                if jobserver_pid:
+                    # Join the primary jobserver network namespace.
+                    if not os.path.exists(f"/proc/{jobserver_pid}/ns/net"):
+                        print(
+                            f"Sandbox network namespace not found. Did CONFIG_NET_NS enabled in kernel?",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+
+                    try:
+                        with open(f"/proc/{jobserver_pid}/ns/net") as jobserver_netns:
+                            errno_value = libc.setns(
+                                jobserver_netns.fileno(), CLONE_NEWNET
+                            )
+                        if errno_value != 0:
+                            print(
+                                f"Unable to join sandbox network namespace.",
+                                file=sys.stderr,
+                            )
+                            sys.exit(1)
+                    except OSError as e:
+                        print(
+                            f"Unable to join sandbox network namespace.",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+                    __primary_server__ = False
+                else:
+                    # Create a new network namespace for jobserver.
+                    portage.process._has_ipv6()
+                    unshare_flags = 0
+                    unshare_flags |= CLONE_NEWNET | CLONE_NEWUTS
+                    errno = portage.process._unshare_validate(unshare_flags)
+                    if errno == 0 and libc.unshare(unshare_flags) != 0:
+                        print(
+                            f"Create sandbox network namespace failed. Did CONFIG_NET_NS enabled in kernel?",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+                    portage.process._configure_loopback_interface()
+                    __primary_server__ = True
+            else:
+                print(
+                    f"Sandbox only supported in Linux with root permission.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+        else:
+            # Not in sandbox mode.
+            if jobserver_pid is None:
+                __primary_server__ = True
+            else:
+                __primary_server__ = False
+
+    # Fork and drop root privileges if we are root.
+    if os.getuid() == 0:
+        child_pid = os.fork()
+        if child_pid == 0:
+            portage_uid = pwd.getpwnam("portage").pw_uid
+            portage_gid = grp.getgrnam("portage").gr_gid
+            os.setgroups([])
+            os.setgid(portage_gid)
+            os.setuid(portage_uid)
+        else:
+            if __primary_server__:
+                # We are the primary jobserver root process, wait for child process to exit.
+                try:
+                    with open("/var/run/jobserver.pid", "w") as jobserver_pid_file:
+                        jobserver_pid_file.write(str(child_pid))
+                    errno = os.waitpid(child_pid, 0)
+                finally:
+                    os.remove("/var/run/jobserver.pid")
+                sys.exit(errno)
+            else:
+                # We are not the primary jobserver, just let the child process runnning.
+                sys.exit(0)
+
+    if __primary_server__:
+        __show_status__ = options.stats
+    else:
+        __show_status__ = False
+
+    if __parent_pid__:
+        wait_parent_thread = threading.Thread(target=wait_parent, daemon=True)
+        wait_parent_thread.start()
+
+    status_thread = threading.Thread(target=job_status, daemon=True)
+    status_thread.start()
+
+    if __primary_server__:
+        ThreadingTCPServer.allow_reuse_address = True
+        __server__ = ThreadingTCPServer((str(__address__), options.port), JobServer)
+        try:
+            __server__.serve_forever()
+        except KeyboardInterrupt:
+            __server__.shutdown()
+
+    elif __parent_pid__:
+        wait_parent_thread.join()
+    else:
+        sys.exit(0)
