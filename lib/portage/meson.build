@@ -33,6 +33,7 @@ py.install_sources(
         'gpg.py',
         'gpkg.py',
         installation_py,
+        'jobserver.py',
         'localization.py',
         'locks.py',
         'mail.py',

@@ -82,6 +82,7 @@ try:
         "portage.elog",
         "portage.exception",
         "portage.getbinpkg",
+        "portage.jobserver",
         "portage.locks",
         "portage.locks:lockdir,lockfile,unlockdir,unlockfile",
         "portage.mail",

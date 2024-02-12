@@ -1,6 +1,7 @@
 py_bins = [
     'ebuild',
     'egencache',
+    'ejobserver',
     'emerge',
     'emirrordist',
     'glsa-check',
@@ -10,7 +11,8 @@ py_bins = [
 ]
 
 other_bins = [
-    'emerge-webrsync'
+    'emerge-webrsync',
+    'ejobwrapper.sh'
 ]
 
 py_sbins = [

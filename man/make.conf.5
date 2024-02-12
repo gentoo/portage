@@ -543,6 +543,10 @@ and \fBbinpkg-dostrip\fR is enabled.
 Isolate the ebuild phase functions from host IPC namespace. Supported
 only on Linux. Requires IPC namespace support in kernel.
 .TP
+.B jobserver
+Enable portage built-in job server. Request disable network-sandbox if
+using remote job server.
+.TP
 .B keeptemp
 Do not delete the ${T} directory after the merge process.
 .TP
@@ -1118,6 +1122,52 @@ will set idle io priority. For more information about ionice, see
 Portage will also set the autogroup-nice value (see fBsched\fR(7))), if
 FEATURES="pid\-sandbox" is enabled.
 .TP
+\fBPORTAGE_JOBSERVER_ADDRESS\fR = \fI[IPv4 or IPv6 address]\fR
+This variable set the address of job server and listen address if the
+server will be started locally.
+.br
+Defaults to "127.0.0.1".
+.TP
+\fBPORTAGE_JOBSERVER_DELAY\fR = \fI[number]\fR
+This variable set the delay between each starts of new job to reduce
+the chance of OOM on low memory system.
+Set to "0" to disable this limitation.
+.br
+Defaults to "0"
+.TP
+\fBPORTAGE_JOBSERVER_MAX_JOBS\fR = \fI[number]\fR
+This variable set the max allowed concurrent jobs for local portage
+started job server.
+.br
+Defaults to current CPU cores.
+.TP
+\fBPORTAGE_JOBSERVER_MIN_FREE_MEMORY\fR = \fI[number]\fR
+This variable set the minimal free memory (in MiB) to allow start a
+new job for local portage started job server.
+Set to "0" to disable this limitation.
+.br
+Defaults to "2048".
+.TP
+\fBPORTAGE_JOBSERVER_PORT\fR = \fI[port]\fR
+This variable set the port of job server and listen port if the server
+will be started locally.
+.br
+Defaults to "25721".
+.TP
+\fBPORTAGE_JOBSERVER_REMOTE\fR = \fI[boolean]\fR
+This variable tell portage to start a local job server or use a remote one.
+Set to "true" to use remote job server that configured in
+\fBPORTAGE_JOBSERVER_ADDRESS\fR and \fBPORTAGE_JOBSERVER_PORT\fR.
+.br
+Defaults to "false"
+.TP
+\fBPORTAGE_JOBSERVER_SYSTEM_LOAD\fR = \fI[number]\fR
+This variable set the maximum system load to allow start a new job
+for local portage started job server.
+Set to "0" to disable this limitation.
+.br
+Defaults to "0"
+.TP
 \fBPORTAGE_SCHEDULING_POLICY\fR = \fI[policy name]\fR Allows changing the
 current scheduling policy. The supported options are \fBother\fR, \fBbatch\fR,
 \fBidle\fR, \fBfifo\fR, \fBround-robin\fR and \fBdeadline\fR. When unset, the
@@ -1126,6 +1176,15 @@ Users that wish to minimize the Portage's impact on system responsiveness
 should set scheduling policy to \fBidle\fR, which significantly reduces the
 disruption to the rest of the system by scheduling Portage as extremely low
 priority processes. see \fBsched\fR(7) for more information.
+.TP
+\fBPORTAGE_SCHEDULING_POLICY\fR = \fI[policy name]\fR
+Allows changing the current scheduling policy. The supported options are
+\fBother\fR, \fBbatch\fR, \fBidle\fR, \fBfifo\fR, and \fBround-robin\fR. When
+unset, the scheduling policy remains unchanged, by default Linux uses 'other'
+policy. Users that wish to minimize the Portage's impact on system
+responsiveness should set scheduling policy to \fBidle\fR, which significantly
+reduces the disruption to the rest of the system by scheduling Portage as
+extremely low priority processes. see \fBsched\fR(7) for more information.
 .TP
 \fBPORTAGE_SCHEDULING_PRIORITY\fR = \fI[priority]\fR
 Allows changing the priority (1-99) of the current scheduling policy, only
