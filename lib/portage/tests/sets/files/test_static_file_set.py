@@ -23,6 +23,7 @@ class StaticFileSetTestCase(TestCase):
 
     def tearDown(self):
         os.unlink(self.testfile)
+        super().tearDown()
 
     def testSampleStaticFileSet(self):
         s = StaticFileSet(self.testfile)

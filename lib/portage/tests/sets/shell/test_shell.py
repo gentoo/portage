@@ -14,7 +14,7 @@ class CommandOutputSetTestCase(TestCase):
         super().setUp()
 
     def tearDown(self):
-        pass
+        super().tearDown()
 
     def testCommand(self):
         params = set(test_cps)

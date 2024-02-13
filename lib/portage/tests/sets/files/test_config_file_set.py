@@ -28,6 +28,7 @@ class ConfigFileSetTestCase(TestCase):
 
     def tearDown(self):
         os.unlink(self.testfile)
+        super().tearDown()
 
     def testConfigStaticFileSet(self):
         s = ConfigFileSet(self.testfile)

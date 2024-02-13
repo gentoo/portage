@@ -79,6 +79,7 @@ class TestCase(unittest.TestCase):
         self.cnf_etc_path = cnf_etc_path
         self.bindir = cnf_bindir
         self.sbindir = cnf_sbindir
+        self._orig_multiprocessing_start_method = None
 
     def setUp(self):
         """
@@ -86,8 +87,26 @@ class TestCase(unittest.TestCase):
         done relatively late in order to work with the pytest-xdist
         plugin due to execnet usage.
         """
-        if os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD") == "spawn":
+        self._orig_multiprocessing_start_method = multiprocessing.get_start_method()
+        if (
+            os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD") == "spawn"
+            and self._orig_multiprocessing_start_method != "spawn"
+        ):
             multiprocessing.set_start_method("spawn", force=True)
+
+    def tearDown(self):
+        """
+        Restore the original multiprocessing start method if it was
+        changed during self.setUp(), in order to avoid crashing
+        pytest-xdist workers for bug 924416.
+        """
+        if self._orig_multiprocessing_start_method and (
+            multiprocessing.get_start_method()
+            != self._orig_multiprocessing_start_method
+        ):
+            multiprocessing.set_start_method(
+                self._orig_multiprocessing_start_method, force=True
+            )
 
     def assertRaisesMsg(self, msg, excClass, callableObj, *args, **kwargs):
         """Fail unless an exception of class excClass is thrown

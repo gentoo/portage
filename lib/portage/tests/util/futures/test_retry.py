@@ -226,6 +226,7 @@ class RetryForkExecutorTestCase(RetryTestCase):
 
     def tearDown(self):
         self._tearDownExecutor()
+        super().tearDown()
 
     @contextlib.contextmanager
     def _wrap_coroutine_func(self, coroutine_func):
