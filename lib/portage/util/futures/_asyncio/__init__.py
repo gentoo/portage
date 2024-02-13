@@ -9,6 +9,7 @@ __all__ = (
     "CancelledError",
     "Future",
     "InvalidStateError",
+    "Lock",
     "TimeoutError",
     "get_child_watcher",
     "get_event_loop",
@@ -22,6 +23,7 @@ __all__ = (
     "wait_for",
 )
 
+import sys
 import types
 import weakref
 
@@ -35,6 +37,7 @@ from asyncio import (
     FIRST_EXCEPTION,
     Future,
     InvalidStateError,
+    Lock as _Lock,
     shield,
     TimeoutError,
     wait_for,
@@ -157,6 +160,20 @@ def iscoroutinefunction(func):
     if _real_asyncio.iscoroutinefunction(func):
         return True
     return False
+
+
+class Lock(_Lock):
+    """
+    Inject loop parameter for python3.9 or less in order to avoid
+    "got Future <Future pending> attached to a different loop" errors.
+    """
+
+    def __init__(self, **kwargs):
+        if sys.version_info >= (3, 10):
+            kwargs.pop("loop", None)
+        elif "loop" not in kwargs:
+            kwargs["loop"] = _safe_loop()._loop
+        super().__init__(**kwargs)
 
 
 class Task(Future):
