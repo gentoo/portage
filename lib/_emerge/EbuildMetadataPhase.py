@@ -8,6 +8,7 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
+    "_emerge.EbuildPhase:_setup_locale",
     "portage.package.ebuild._metadata_invalid:eapi_invalid",
 )
 from portage import os
@@ -82,6 +83,9 @@ class EbuildMetadataPhase(SubProcess):
         settings = self.settings
         settings.setcpv(self.cpv)
         settings.configdict["pkg"]["EAPI"] = parsed_eapi
+
+        # This requires above setcpv and EAPI setup.
+        await _setup_locale(self.settings)
 
         debug = settings.get("PORTAGE_DEBUG") == "1"
         master_fd = None
