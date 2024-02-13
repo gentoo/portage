@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
@@ -44,6 +44,7 @@ class MetadataRegen(AsyncScheduler):
         valid_pkgs = self._valid_pkgs
         cp_set = self._cp_set
         consumer = self._consumer
+        config_pool = []
 
         portage.writemsg_stdout("Regenerating cache entries...\n")
         for cp in self._cp_iter:
@@ -73,12 +74,23 @@ class MetadataRegen(AsyncScheduler):
                             consumer(cpv, repo_path, metadata, ebuild_hash, True)
                         continue
 
+                    if config_pool:
+                        settings = config_pool.pop()
+                    else:
+                        settings = portage.config(clone=portdb.settings)
+
+                    deallocate_config = self.scheduler.create_future()
+                    deallocate_config.add_done_callback(
+                        lambda future: config_pool.append(future.result())
+                    )
+
                     yield EbuildMetadataPhase(
                         cpv=cpv,
                         ebuild_hash=ebuild_hash,
                         portdb=portdb,
                         repo_path=repo_path,
-                        settings=portdb.doebuild_settings,
+                        settings=settings,
+                        deallocate_config=deallocate_config,
                         write_auxdb=self._write_auxdb,
                     )
 
