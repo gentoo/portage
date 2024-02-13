@@ -46,6 +46,12 @@ class EbuildMetadataPhase(SubProcess):
     _files_dict = slot_dict_class(_file_names, prefix="")
 
     def _start(self):
+        asyncio.ensure_future(
+            self._async_start(), loop=self.scheduler
+        ).add_done_callback(self._async_start_done)
+        self._registered = True
+
+    async def _async_start(self):
         ebuild_path = self.ebuild_hash.location
 
         with open(
@@ -116,7 +122,6 @@ class EbuildMetadataPhase(SubProcess):
         self._raw_metadata = []
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
-        self._registered = True
 
         retval = portage.doebuild(
             ebuild_path,
@@ -149,16 +154,6 @@ class EbuildMetadataPhase(SubProcess):
             return
 
         self._proc = retval
-
-        asyncio.ensure_future(
-            self._async_start(), loop=self.scheduler
-        ).add_done_callback(self._async_start_done)
-
-    async def _async_start(self):
-        # Call async check_locale here for bug 923841, but code
-        # also needs to migrate from _start to here, including
-        # the self.deallocate_config set_result call.
-        pass
 
     def _async_start_done(self, future):
         future.cancelled() or future.result()
