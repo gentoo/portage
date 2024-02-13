@@ -18,9 +18,12 @@ class SubProcess(AbstractPollTask):
     # we've sent a kill signal to our subprocess.
     _cancel_timeout = 1  # seconds
 
+    def isAlive(self):
+        return (self._registered or self.pid is not None) and self.returncode is None
+
     @property
     def pid(self):
-        return self._proc.pid
+        return None if self._proc is None else self._proc.pid
 
     def _poll(self):
         # Simply rely on _async_waitpid_cb to set the returncode.
