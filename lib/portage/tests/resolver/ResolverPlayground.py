@@ -3,6 +3,7 @@
 
 import bz2
 import fnmatch
+import subprocess
 import tempfile
 import portage
 
@@ -18,8 +19,6 @@ from portage.const import (
 from portage.process import find_binary
 from portage.dep import Atom, _repo_separator
 from portage.dbapi.bintree import binarytree
-from portage.package.ebuild.config import config
-from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
 from portage.tests import cnf_path
@@ -323,22 +322,25 @@ class ResolverPlayground:
                     f.write(misc_content)
 
     def _create_ebuild_manifests(self, ebuilds):
-        tmpsettings = config(clone=self.settings)
-        tmpsettings["PORTAGE_QUIET"] = "1"
-        for cpv in ebuilds:
-            a = Atom("=" + cpv, allow_repo=True)
-            repo = a.repo
-            if repo is None:
-                repo = "test_repo"
-
-            repo_dir = self._get_repo_dir(repo)
-            ebuild_dir = os.path.join(repo_dir, a.cp)
-            ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
-
-            portdb = self.trees[self.eroot]["porttree"].dbapi
-            tmpsettings["O"] = ebuild_dir
-            if not digestgen(mysettings=tmpsettings, myportdb=portdb):
-                raise AssertionError(f"digest creation failed for {ebuild_path}")
+        for repo_name in self._repositories:
+            if repo_name == "DEFAULT":
+                continue
+            egencache_cmd = [
+                "egencache",
+                f"--repo={repo_name}",
+                "--update",
+                "--update-manifests",
+                "--sign-manifests=n",
+                "--strict-manifests=n",
+                f"--repositories-configuration={self.settings['PORTAGE_REPOSITORIES']}",
+                f"--jobs={portage.util.cpuinfo.get_cpu_count()}",
+            ]
+            result = subprocess.run(
+                egencache_cmd,
+                env=self.settings.environ(),
+            )
+            if result.returncode != os.EX_OK:
+                raise AssertionError(f"command failed: {egencache_cmd}")
 
     def _create_binpkgs(self, binpkgs):
         # When using BUILD_ID, there can be multiple instances for the

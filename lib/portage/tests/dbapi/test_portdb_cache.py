@@ -1,6 +1,7 @@
-# Copyright 2012-2023 Gentoo Authors
+# Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -63,6 +64,7 @@ class PortdbCacheTestCase(TestCase):
         python_cmd = (portage_python, "-b", "-Wd", "-c")
 
         test_commands = (
+            (lambda: shutil.rmtree(md5_cache_dir) or True,),
             (lambda: not os.path.exists(pms_cache_dir),),
             (lambda: not os.path.exists(md5_cache_dir),),
             python_cmd
