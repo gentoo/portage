@@ -14,6 +14,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.util.futures import asyncio
 
 import fcntl
 
@@ -33,6 +34,7 @@ class EbuildMetadataPhase(SubProcess):
         "portdb",
         "repo_path",
         "settings",
+        "deallocate_config",
         "write_auxdb",
     ) + (
         "_eapi",
@@ -127,6 +129,15 @@ class EbuildMetadataPhase(SubProcess):
             returnproc=True,
         )
         settings.pop("PORTAGE_PIPE_FD", None)
+        # At this point we can return settings to the caller
+        # since we never use it for anything more than an
+        # eapi_invalid call after this, and eapi_invalid is
+        # insensitive to concurrent modifications.
+        if (
+            self.deallocate_config is not None
+            and not self.deallocate_config.cancelled()
+        ):
+            self.deallocate_config.set_result(settings)
 
         os.close(slave_fd)
         null_input.close()
@@ -138,6 +149,29 @@ class EbuildMetadataPhase(SubProcess):
             return
 
         self._proc = retval
+
+        asyncio.ensure_future(
+            self._async_start(), loop=self.scheduler
+        ).add_done_callback(self._async_start_done)
+
+    async def _async_start(self):
+        # Call async check_locale here for bug 923841, but code
+        # also needs to migrate from _start to here, including
+        # the self.deallocate_config set_result call.
+        pass
+
+    def _async_start_done(self, future):
+        future.cancelled() or future.result()
+        if not self._was_cancelled() and future.cancelled():
+            self.cancel()
+            self._was_cancelled()
+
+        if self.deallocate_config is not None and not self.deallocate_config.done():
+            self.deallocate_config.set_result(self.settings)
+
+        if self.returncode is not None:
+            self._unregister()
+            self.wait()
 
     def _output_handler(self):
         while True:
