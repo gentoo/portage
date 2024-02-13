@@ -90,8 +90,5 @@ jobs:
       - name: Run tests for ${{ matrix.python-version }}
         run: |
           [[ "${{ matrix.start-method }}" == "spawn" ]] && export PORTAGE_MULTIPROCESSING_START_METHOD=spawn
-          # spawn start-method crashes pytest-xdist workers (bug 924416)
-          [[ "${{ matrix.start-method }}" == "spawn" ]] && \
-            export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count" || \
-            export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
+          export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
           meson test -C /tmp/build --verbose
