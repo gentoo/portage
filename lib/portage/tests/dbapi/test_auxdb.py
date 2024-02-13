@@ -16,9 +16,7 @@ class AuxdbTestCase(TestCase):
             from portage.cache.anydbm import database
         except ImportError:
             self.skipTest("dbm import failed")
-        self._test_mod(
-            "portage.cache.anydbm.database", multiproc=False, picklable=False
-        )
+        self._test_mod("portage.cache.anydbm.database", multiproc=False, picklable=True)
 
     def test_flat_hash_md5(self):
         self._test_mod("portage.cache.flat_hash.md5_database")
