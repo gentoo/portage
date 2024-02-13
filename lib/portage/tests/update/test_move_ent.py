@@ -231,6 +231,9 @@ class MoveEntTestCase(TestCase):
                 finally:
                     playground.cleanup()
 
+    # Ignore "The loop argument is deprecated" since this argument is conditionally
+    # added to asyncio.Lock as needed for compatibility with python 3.9.
+    @pytest.mark.filterwarnings("ignore:The loop argument is deprecated")
     @pytest.mark.filterwarnings("error")
     def testMoveEntWithCorruptIndex(self):
         """
