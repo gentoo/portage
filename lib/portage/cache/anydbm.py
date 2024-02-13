@@ -1,4 +1,4 @@
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -66,6 +66,21 @@ class database(fs_template.FsBased):
             except dbm.error as e:
                 raise cache_errors.InitializationError(self.__class__, e)
         self._ensure_access(self._db_path)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # These attributes are not picklable, so they are automatically
+        # regenerated after unpickling.
+        state["_database__db"] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        mode = "w"
+        if dbm.whichdb(self._db_path) in ("dbm.gnu", "gdbm"):
+            # Allow multiple concurrent writers (see bug #53607).
+            mode += "u"
+        self.__db = dbm.open(self._db_path, mode, self._perms)
 
     def iteritems(self):
         # dbm doesn't implement items()
