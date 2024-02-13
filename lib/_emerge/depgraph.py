@@ -754,6 +754,7 @@ class depgraph:
 
     def _dynamic_deps_preload(self, fake_vartree):
         portdb = fake_vartree._portdb
+        config_pool = []
         for pkg in fake_vartree.dbapi:
             self._spinner_update()
             self._dynamic_config._package_tracker.add_installed_pkg(pkg)
@@ -768,12 +769,22 @@ class depgraph:
             if metadata is not None:
                 fake_vartree.dynamic_deps_preload(pkg, metadata)
             else:
+                if config_pool:
+                    settings = config_pool.pop()
+                else:
+                    settings = portage.config(clone=portdb.settings)
+
+                deallocate_config = portdb._event_loop.create_future()
+                deallocate_config.add_done_callback(
+                    lambda future: config_pool.append(future.result())
+                )
                 proc = EbuildMetadataPhase(
                     cpv=pkg.cpv,
                     ebuild_hash=ebuild_hash,
                     portdb=portdb,
                     repo_path=repo_path,
                     settings=portdb.doebuild_settings,
+                    deallocate_config=deallocate_config,
                 )
                 proc.addExitListener(self._dynamic_deps_proc_exit(pkg, fake_vartree))
                 yield proc
