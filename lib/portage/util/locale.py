@@ -17,7 +17,6 @@ import traceback
 import portage
 from portage.util import _unicode_decode, writemsg_level
 from portage.util._ctypes import find_library, LoadLibrary
-from portage.util.futures import asyncio
 
 
 locale_categories = (
@@ -122,10 +121,7 @@ def check_locale(silent=False, env=None):
     warning and returns False if it is not. Returns None if the check
     can not be executed due to platform limitations.
     """
-    return asyncio.run(async_check_locale(silent=silent, env=env))
 
-
-async def async_check_locale(silent=False, env=None):
     if env is not None:
         for v in ("LC_ALL", "LC_CTYPE", "LANG"):
             if v in env:
@@ -139,17 +135,20 @@ async def async_check_locale(silent=False, env=None):
         except KeyError:
             pass
 
+    # TODO: Make async version of check_locale and call it from
+    # EbuildPhase instead of config.environ(), since it's bad to
+    # synchronously wait for the process in the main event loop
+    # thread where config.environ() tends to be called.
     proc = multiprocessing.Process(
         target=_set_and_check_locale,
         args=(silent, env, None if env is None else portage._native_string(mylocale)),
     )
     proc.start()
-    proc = portage.process.MultiprocessingProcess(proc)
-    await proc.wait()
+    proc.join()
 
     pyret = None
-    if proc.returncode >= 0:
-        ret = proc.returncode
+    if proc.exitcode >= 0:
+        ret = proc.exitcode
         if ret != 2:
             pyret = ret == 0
 
@@ -158,22 +157,13 @@ async def async_check_locale(silent=False, env=None):
     return pyret
 
 
-async_check_locale.__doc__ = check_locale.__doc__
-async_check_locale.__doc__ += """
-    This function is a coroutine.
-"""
-
-
 def split_LC_ALL(env):
     """
     Replace LC_ALL with split-up LC_* variables if it is defined.
     Works on the passed environment (or settings instance).
     """
     lc_all = env.get("LC_ALL")
-    if lc_all:
+    if lc_all is not None:
         for c in locale_categories:
             env[c] = lc_all
-        # Set empty so that config.reset() can restore LC_ALL state,
-        # since del can permanently delete variables which are not
-        # stored in the config's backupenv.
-        env["LC_ALL"] = ""
+        del env["LC_ALL"]

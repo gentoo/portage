@@ -15,7 +15,6 @@ __all__ = (
     "set_child_watcher",
     "get_event_loop_policy",
     "set_event_loop_policy",
-    "run",
     "shield",
     "sleep",
     "Task",
@@ -105,14 +104,6 @@ def set_child_watcher(watcher):
     """Equivalent to calling
     get_event_loop_policy().set_child_watcher(watcher)."""
     return get_event_loop_policy().set_child_watcher(watcher)
-
-
-# Emulate run since it's the preferred python API.
-def run(coro):
-    return _safe_loop().run_until_complete(coro)
-
-
-run.__doc__ = _real_asyncio.run.__doc__
 
 
 def create_subprocess_exec(*args, **kwargs):
