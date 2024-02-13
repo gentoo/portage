@@ -1,5 +1,5 @@
 # testConfigFileSet.py -- Portage Unit Testing Functionality
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -13,6 +13,7 @@ class ConfigFileSetTestCase(TestCase):
     """Simple Test Case for ConfigFileSet"""
 
     def setUp(self):
+        super().setUp()
         fd, self.testfile = tempfile.mkstemp(
             suffix=".testdata", prefix=self.__class__.__name__, text=True
         )

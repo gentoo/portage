@@ -1,5 +1,5 @@
 # test_NewsItem.py -- Portage Unit Testing Functionality
-# Copyright 2007-2023 Gentoo Authors
+# Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -114,6 +114,7 @@ class NewsItemTestCase(TestCase):
     }
 
     def setUp(self) -> None:
+        super().setUp()
         self.profile_base = "/var/db/repos/gentoo/profiles/default-linux"
         self.profile = f"{self.profile_base}/x86/2007.0/"
         self.keywords = "x86"

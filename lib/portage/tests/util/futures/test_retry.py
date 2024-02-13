@@ -221,6 +221,7 @@ class RetryForkExecutorTestCase(RetryTestCase):
             self._executor = None
 
     def setUp(self):
+        super().setUp()
         self._setUpExecutor()
 
     def tearDown(self):

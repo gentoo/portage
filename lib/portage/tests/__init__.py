@@ -1,8 +1,9 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2023 Gentoo Authors
+# Copyright 2006-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
+import multiprocessing
 import sys
 import time
 import unittest
@@ -78,6 +79,15 @@ class TestCase(unittest.TestCase):
         self.cnf_etc_path = cnf_etc_path
         self.bindir = cnf_bindir
         self.sbindir = cnf_sbindir
+
+    def setUp(self):
+        """
+        Setup multiprocessing start method if needed. It needs to be
+        done relatively late in order to work with the pytest-xdist
+        plugin due to execnet usage.
+        """
+        if os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD") == "spawn":
+            multiprocessing.set_start_method("spawn", force=True)
 
     def assertRaisesMsg(self, msg, excClass, callableObj, *args, **kwargs):
         """Fail unless an exception of class excClass is thrown
