@@ -14,6 +14,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.util.futures import asyncio
 
 import fcntl
 
@@ -33,6 +34,7 @@ class EbuildMetadataPhase(SubProcess):
         "portdb",
         "repo_path",
         "settings",
+        "deallocate_config",
         "write_auxdb",
     ) + (
         "_eapi",
@@ -44,6 +46,13 @@ class EbuildMetadataPhase(SubProcess):
     _files_dict = slot_dict_class(_file_names, prefix="")
 
     def _start(self):
+        asyncio.ensure_future(
+            self._async_start(), loop=self.scheduler
+        ).add_done_callback(self._async_start_done)
+        self._registered = True
+
+    async def _async_start(self):
+
         ebuild_path = self.ebuild_hash.location
 
         with open(
@@ -114,7 +123,6 @@ class EbuildMetadataPhase(SubProcess):
         self._raw_metadata = []
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
-        self._registered = True
 
         retval = portage.doebuild(
             ebuild_path,
@@ -127,6 +135,15 @@ class EbuildMetadataPhase(SubProcess):
             returnproc=True,
         )
         settings.pop("PORTAGE_PIPE_FD", None)
+        # At this point we can return settings to the caller
+        # since we never use it for anything more than an
+        # eapi_invalid call after this, and eapi_invalid is
+        # insensitive to concurrent modifications.
+        if (
+            self.deallocate_config is not None
+            and not self.deallocate_config.cancelled()
+        ):
+            self.deallocate_config.set_result(settings)
 
         os.close(slave_fd)
         null_input.close()
@@ -138,6 +155,29 @@ class EbuildMetadataPhase(SubProcess):
             return
 
         self._proc = retval
+
+    def _async_start_done(self, future):
+        future.cancelled() or future.result()
+        if future.cancelled():
+            self.cancel()
+            self._was_cancelled()
+
+        if self.deallocate_config is not None and not self.deallocate_config.done():
+            self.deallocate_config.set_result(self.settings)
+
+        if self.returncode is not None:
+            self._unregister()
+            self.wait()
+
+    def _async_start_done(self, future):
+        future.cancelled() or future.result()
+        if future.cancelled():
+            self.cancel()
+            self._was_cancelled()
+
+        if self.returncode is not None:
+            self._unregister()
+            self.wait()
 
     def _output_handler(self):
         while True:
