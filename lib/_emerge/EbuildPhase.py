@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -24,6 +24,7 @@ from portage.package.ebuild.prepare_build_dirs import (
     _prepare_fake_distdir,
     _prepare_fake_filesdir,
 )
+from portage.eapi import _get_eapi_attrs
 from portage.util import writemsg, ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.BuildLogger import BuildLogger
@@ -54,10 +55,32 @@ portage.proxy.lazyimport.lazyimport(
     + "_post_src_install_write_metadata,"
     + "_preinst_bsdflags",
     "portage.util.futures.unix_events:_set_nonblocking",
+    "portage.util.locale:async_check_locale,split_LC_ALL",
 )
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+
+
+async def _setup_locale(settings):
+    eapi_attrs = _get_eapi_attrs(settings["EAPI"])
+    if eapi_attrs.posixish_locale:
+        split_LC_ALL(settings)
+        settings["LC_COLLATE"] = "C"
+        # check_locale() returns None when check can not be executed.
+        if await async_check_locale(silent=True, env=settings.environ()) is False:
+            # try another locale
+            for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
+                settings["LC_CTYPE"] = l
+                if await async_check_locale(silent=True, env=settings.environ()):
+                    # TODO: output the following only once
+                    # writemsg(
+                    #     _("!!! LC_CTYPE unsupported, using %s instead\n")
+                    #     % self.settings["LC_CTYPE"]
+                    # )
+                    break
+            else:
+                raise AssertionError("C locale did not pass the test!")
 
 
 class EbuildPhase(CompositeTask):
@@ -95,6 +118,9 @@ class EbuildPhase(CompositeTask):
         self._start_task(AsyncTaskFuture(future=future), self._async_start_exit)
 
     async def _async_start(self):
+
+        await _setup_locale(self.settings)
+
         need_builddir = self.phase not in EbuildProcess._phases_without_builddir
 
         if need_builddir:

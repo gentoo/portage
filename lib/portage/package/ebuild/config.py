@@ -29,7 +29,6 @@ portage.proxy.lazyimport.lazyimport(
     "portage.dbapi.vartree:vartree",
     "portage.package.ebuild.doebuild:_phase_func_map",
     "portage.util.compression_probe:_compressors",
-    "portage.util.locale:check_locale,split_LC_ALL",
 )
 from portage import bsd_chflags, load_mod, os, selinux, _unicode_decode
 from portage.const import (
@@ -3371,20 +3370,17 @@ class config:
                 mydict["EBUILD_PHASE_FUNC"] = phase_func
 
         if eapi_attrs.posixish_locale:
-            split_LC_ALL(mydict)
-            mydict["LC_COLLATE"] = "C"
-            # check_locale() returns None when check can not be executed.
-            if check_locale(silent=True, env=mydict) is False:
-                # try another locale
-                for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
-                    mydict["LC_CTYPE"] = l
-                    if check_locale(silent=True, env=mydict):
-                        # TODO: output the following only once
-                        # 						writemsg(_("!!! LC_CTYPE unsupported, using %s instead\n")
-                        # 								% mydict["LC_CTYPE"])
-                        break
-                else:
-                    raise AssertionError("C locale did not pass the test!")
+            if mydict.get("LC_ALL"):
+                # Sometimes this method is called for processes
+                # that are not ebuild phases, so only raise
+                # AssertionError for actual ebuild phases.
+                if phase and phase not in ("clean", "cleanrm", "fetch"):
+                    raise AssertionError(
+                        f"LC_ALL={mydict['LC_ALL']} for posixish locale. It seems that split_LC_ALL was not called for phase {phase}?"
+                    )
+            elif "LC_ALL" in mydict:
+                # Delete placeholder from split_LC_ALL.
+                del mydict["LC_ALL"]
 
         if not eapi_attrs.exports_PORTDIR:
             mydict.pop("PORTDIR", None)
