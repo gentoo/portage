@@ -53,7 +53,7 @@ jobs:
           python -m site
           python -m pip install --upgrade pip
           # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
-          python -m pip install pytest pytest-xdist setuptools
+          python -m pip install pytest pytest-rerunfailures pytest-xdist setuptools
 
           # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
           sudo ln -s /bin/true /usr/bin/getuto
@@ -90,8 +90,7 @@ jobs:
       - name: Run tests for ${{ matrix.python-version }}
         run: |
           [[ "${{ matrix.start-method }}" == "spawn" ]] && export PORTAGE_MULTIPROCESSING_START_METHOD=spawn
-          # spawn start-method crashes pytest-xdist workers (bug 924416)
-          [[ "${{ matrix.start-method }}" == "spawn" ]] && \
-            export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count" || \
-            export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
+          export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
+          # Use pytest-rerunfailures to workaround pytest-xdist worker crashes with spawn start-method (bug 924416).
+          [[ "${{ matrix.start-method }}" == "spawn" ]] && PYTEST_ADDOPTS+=" --reruns 5 --only-rerun 'worker .* crashed while running'"
           meson test -C /tmp/build --verbose
