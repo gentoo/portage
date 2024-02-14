@@ -1,4 +1,4 @@
-# Copyright 2020-2023 Gentoo Authors
+# Copyright 2020-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -30,6 +30,11 @@ class _file_close_wrapper(ObjectProxy):
 
     def _get_target(self):
         return object.__getattribute__(self, "_file")
+
+    def __getattribute__(self, attr):
+        if attr == "close":
+            return object.__getattribute__(self, attr)
+        return getattr(object.__getattribute__(self, "_file"), attr)
 
     def close(self):
         file = object.__getattribute__(self, "_file")
