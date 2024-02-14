@@ -13,6 +13,9 @@ Features:
 * cnf: make.conf.example.arc: add for the arc arch.
 * ELF: add entries for ARC machines
 
+Bug fixes:
+* emerge: Skip installed packages with emptytree in depgraph selection (bug #651018).
+
 portage-3.0.61 (2024-01-05)
 --------------
 
