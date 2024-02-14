@@ -7,7 +7,6 @@ import atexit
 import errno
 import fcntl
 import logging
-import multiprocessing
 import platform
 import signal
 import socket
@@ -21,7 +20,7 @@ from dataclasses import dataclass
 from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
 
-from portage import os
+from portage import multiprocessing, os
 from portage import _encodings
 from portage import _unicode_encode
 import portage

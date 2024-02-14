@@ -2,8 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-import multiprocessing
 
+from portage import multiprocessing
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util.futures import asyncio

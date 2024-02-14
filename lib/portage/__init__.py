@@ -1,4 +1,4 @@
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -17,6 +17,7 @@ try:
         # ESTALE may not be defined on some systems, such as interix.
         errno.ESTALE = -1
     import functools
+    import multiprocessing as _multiprocessing
     import re
     import types
     import platform
@@ -444,6 +445,42 @@ def _get_stdin():
         return sys.__stdin__
     return sys.stdin
 
+
+class _multiprocessing_proxy(proxy.objectproxy.ObjectProxy):
+    """
+    Wrap the multiprocessing module to return a private multiprocessing
+    context instead. It's safe to call set_start_method on this and
+    it will only affect portage internals, which makes it compatible
+    with the pytest-xdist plugin (see bug 924416).
+    """
+
+    def _get_target(self):
+        global _multiprocessing_context
+        if _multiprocessing_context is None:
+            kwargs = {}
+            if os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD") == "spawn":
+                kwargs["method"] = "spawn"
+            _multiprocessing_context = _multiprocessing.get_context(**kwargs)
+        return _multiprocessing_context
+
+    def __getattribute__(self, attr):
+        if attr == "reduction":
+            # multiprocessing context does not have a reduction attribute
+            return _multiprocessing.reduction
+        elif attr == "set_start_method":
+            # multiprocessing context does not support set_start_method
+            return object.__getattribute__(self, "set_start_method")
+
+        result = object.__getattribute__(self, "_get_target")()
+        return getattr(result, attr)
+
+    def set_start_method(self, method, force=False):
+        global _multiprocessing_context
+        _multiprocessing_context = _multiprocessing.get_context(method)
+
+
+_multiprocessing_context = None
+multiprocessing = _multiprocessing_proxy()
 
 _shell_quote_re = re.compile(r"[\s><=*\\\"'$`;&|(){}\[\]#!~?]")
 

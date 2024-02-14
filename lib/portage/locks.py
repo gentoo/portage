@@ -20,7 +20,6 @@ __all__ = [
 import errno
 import fcntl
 import functools
-import multiprocessing
 import sys
 import tempfile
 import time
@@ -28,7 +27,7 @@ import typing
 import warnings
 
 import portage
-from portage import os, _encodings, _unicode_decode
+from portage import multiprocessing, os, _encodings, _unicode_decode
 from portage.exception import (
     DirectoryNotFound,
     FileNotFound,

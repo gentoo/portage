@@ -1,14 +1,13 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
 import io
-import multiprocessing
 import platform
 
 import fcntl
 import portage
-from portage import os, _unicode_decode
+from portage import multiprocessing, os, _unicode_decode
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util._ctypes import find_library
 import portage.elog.messages

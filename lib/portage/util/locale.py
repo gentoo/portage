@@ -9,12 +9,12 @@ locale.
 
 import locale
 import logging
-import multiprocessing
 import sys
 import textwrap
 import traceback
 
 import portage
+from portage import multiprocessing
 from portage.util import _unicode_decode, writemsg_level
 from portage.util._ctypes import find_library, LoadLibrary
 from portage.util.futures import asyncio

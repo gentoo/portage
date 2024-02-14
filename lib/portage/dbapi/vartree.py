@@ -75,7 +75,7 @@ from portage.util.futures import asyncio
 from portage import abssymlink, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
-from portage import os
+from portage import multiprocessing, os
 from portage import shutil
 from portage import _encodings
 from portage import _os_merge
@@ -102,7 +102,6 @@ import grp
 import io
 from itertools import chain
 import logging
-import multiprocessing
 import os as _os
 import operator
 import pickle

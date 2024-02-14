@@ -1,12 +1,10 @@
 # Copyright 2020-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import functools
-import multiprocessing
 import sys
 
 import portage
-from portage import os
+from portage import multiprocessing, os
 from portage.tests import TestCase
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage.util.futures import asyncio
@@ -88,6 +86,10 @@ class AsyncFunctionTestCase(TestCase):
     def test_getpid_fork(self):
         self.assertTrue(self._test_getpid_fork())
 
+    @staticmethod
+    def _set_start_method_spawn():
+        multiprocessing.set_start_method("spawn", force=True)
+
     def test_spawn_getpid(self):
         """
         Test portage.getpid() with multiprocessing spawn start method.
@@ -96,11 +98,10 @@ class AsyncFunctionTestCase(TestCase):
         proc = AsyncFunction(
             scheduler=loop,
             target=self._test_getpid_fork,
-            kwargs=dict(
-                preexec_fn=functools.partial(
-                    multiprocessing.set_start_method, "spawn", force=True
-                )
-            ),
+            # Don't use partial(multiprocessing.set_start_method)
+            # since the set_start_method attribute from the parent
+            # process may not be valid in the child process.
+            kwargs=dict(preexec_fn=self._set_start_method_spawn),
         )
         proc.start()
         self.assertEqual(proc.wait(), 0)

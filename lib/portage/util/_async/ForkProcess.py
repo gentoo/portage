@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
-import multiprocessing
 import warnings
 import signal
 import sys
@@ -10,7 +9,7 @@ import sys
 from typing import Optional
 
 import portage
-from portage import os
+from portage import multiprocessing, os
 from portage.cache.mappings import slot_dict_class
 from portage.util.futures import asyncio
 from _emerge.SpawnProcess import SpawnProcess

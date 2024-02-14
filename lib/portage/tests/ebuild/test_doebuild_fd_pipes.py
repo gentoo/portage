@@ -1,10 +1,8 @@
-# Copyright 2013-2023 Gentoo Authors
+# Copyright 2013-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import multiprocessing
-
 import portage
-from portage import os
+from portage import multiprocessing, os
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand

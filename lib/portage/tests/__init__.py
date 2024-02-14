@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
-import multiprocessing
 import sys
 import time
 import unittest
@@ -12,7 +11,7 @@ from pathlib import Path
 from unittest.runner import TextTestResult as _TextTestResult
 
 import portage
-from portage import os
+from portage import multiprocessing, os
 from portage.util import no_color
 from portage import _encodings
 from portage import _unicode_decode

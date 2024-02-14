@@ -1,13 +1,12 @@
 # Copyright 2011-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import multiprocessing
 import sys
 import tempfile
 import traceback
 
 import portage
-from portage import os
+from portage import multiprocessing, os
 from portage import shutil
 from portage.exception import TryAgain
 from portage.tests import TestCase
