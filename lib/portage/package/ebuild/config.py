@@ -2114,6 +2114,9 @@ class config:
                     "test" in restrict
                     and not "all" in allow_test
                     and not ("test_network" in properties and "network" in allow_test)
+                    and not (
+                        "test_privileged" in properties and "privileged" in allow_test
+                    )
                 )
 
         if restrict_test and "test" in self.features:

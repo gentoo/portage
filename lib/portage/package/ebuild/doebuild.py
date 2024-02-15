@@ -239,6 +239,9 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
             ebuild_sh_arg,
         )
 
+    if phase == "test" and "test_privileged" in settings["PORTAGE_PROPERTIES"].split():
+        kwargs["droppriv"] = False
+
     settings["EBUILD_PHASE"] = phase
     try:
         return spawn(cmd, settings, **kwargs)
