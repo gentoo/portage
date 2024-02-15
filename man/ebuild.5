@@ -811,6 +811,11 @@ is installed.
 The package manager may run tests that require an internet connection, even if
 the ebuild has
 .IR RESTRICT=test .
+.TP
+.I test_privileged
+The package manager may run tests that require superuser permissions, even if
+the ebuild has
+.IR RESTRICT=test .
 .RE
 .PD 1
 .TP
