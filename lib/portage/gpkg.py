@@ -2111,7 +2111,7 @@ class gpkg:
 
         if self.basename and self.prefix and not self.prefix.startswith(self.basename):
             writemsg(
-                colorize("WARN", f"Package basename mismatched, using {self.prefix}")
+                colorize("WARN", f"Package basename mismatched, using {self.prefix}\n")
             )
 
         all_files = tar.getmembers()
