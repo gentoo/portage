@@ -9,9 +9,53 @@ Release notes take the form of the following optional categories:
 portage-3.0.62 (UNRELEASED)
 --------------
 
+A lot of asyncio fixes from Zac to kill off unsafe fork use (not reflected here,
+at least for now, to make clear the user-visible changes in this release) and
+a lot of misc. bug fixes.
+
 Features:
-* cnf: make.conf.example.arc: add for the arc arch.
-* ELF: add entries for ARC machines
+* cnf: make.conf.example.arc: Add for the arc arch.
+
+* ELF: Add entries for ARC machines
+
+* bintree: Use urllib to parse PORTAGE_BINHOST / sync-uri so IPv6 works (bug #921400).
+
+* FEATURES: Add FEATURES="merge-wait", enabled by default, to control whether
+  we do parallel merges of images to the live filesystem (bug #663324).
+
+  If enabled, we serialize these merges.
+
+  For now, this makes FEATURES="parallel-install" a no-op, but in future, it
+  will be improved to allow parallel merges, just not while any packages are
+  compiling.
+
+* estrip: Add FEATURES="dedupdebug" (bug #906368).
+
+  This uses sys-devel/dwz to deduplicate installed DWARF debug information.
+
+  Future improvements may be made for multifile support.
+
+* Support PROPERTIES="test_privileged" to not drop privileges for tests (bug #924585).
+
+Bug fixes:
+* vartree: Make _needs_move() resilient to corrupt files on the live filesystem
+  (do a full copy/replace).
+
+* binpkgs: Handle SignatureException during package moves (bug #922142).
+
+* gpkg, bintree, binpkg: Add missing newlines to signed binpkg update notice.
+
+* emerge: Backtrack consistently regardless of --fetchonly (bug #922038).
+
+* emaint: Cleanup duplicate 'usage:' output.
+
+* installed_dynlibs: Resolve *.so symlinks (bug #921170).
+
+* bin: Consistently prefix eqawarn with 'QA Notice' (bug #728046).
+
+* _overlap_dnf: Deduplicate any-of blocks which improves performance (bug #891137).
+
+* tests: Handle larger PAGE_SIZE in environment size check (bug #923368).
 
 portage-3.0.61 (2024-01-05)
 --------------
