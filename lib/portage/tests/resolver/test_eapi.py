@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -199,7 +199,7 @@ class EAPITestCase(TestCase):
             mergelist=["dev-libs/A-1.0", "dev-libs/B-1.0"],
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, debug=True)
+        playground = ResolverPlayground(ebuilds=ebuilds)
         try:
             playground.run_TestCase(test_case)
             self.assertEqual(test_case.test_success, True, test_case.fail_msg)

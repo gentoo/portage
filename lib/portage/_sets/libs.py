@@ -33,7 +33,6 @@ class LibraryConsumerSet(PackageSet):
 
 
 class LibraryFileConsumerSet(LibraryConsumerSet):
-
     """
     Note: This does not detect libtool archive (*.la) files that consume the
     specified files (revdep-rebuild is able to detect them).

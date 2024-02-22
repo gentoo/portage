@@ -504,7 +504,8 @@ __dyn_test() {
 	fi
 
 	if has test ${PORTAGE_RESTRICT} && ! has all ${ALLOW_TEST} &&
-			! { has test_network ${PORTAGE_PROPERTIES} && has network ${ALLOW_TEST}; }
+			! { has test_network ${PORTAGE_PROPERTIES} && has network ${ALLOW_TEST}; } &&
+			! { has test_privileged ${PORTAGE_PROPERTIES} && has privileged ${ALLOW_TEST}; }
 	then
 		einfo "Skipping make test/check due to ebuild restriction."
 		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"

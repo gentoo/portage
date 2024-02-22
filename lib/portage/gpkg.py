@@ -1,7 +1,8 @@
-# Copyright 2001-2020 Gentoo Authors
+# Copyright 2001-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tarfile
+import traceback
 import io
 import threading
 import subprocess
@@ -34,6 +35,7 @@ from portage.exception import (
     DigestException,
     MissingSignature,
     InvalidSignature,
+    SignedPackage,
 )
 from portage.output import colorize, EOutput
 from portage.util._urlopen import urlopen
@@ -150,7 +152,10 @@ class tar_stream_writer:
         if self.proc is not None:
             self.killed = True
             self.proc.kill()
-            self.proc.stdin.close()
+            try:
+                self.proc.stdin.close()
+            except BrokenPipeError:
+                traceback.print_exc()
             self.close()
 
     def _cmd_read_thread(self):
@@ -212,7 +217,7 @@ class tar_stream_writer:
         if self.proc is not None:
             self.proc.stdin.close()
             if self.proc.wait() != os.EX_OK:
-                if not self.error:
+                if not (self.killed or self.error):
                     raise CompressorOperationFailed("compression failed")
             if self.read_thread.is_alive():
                 self.read_thread.join()
@@ -348,7 +353,10 @@ class tar_stream_reader:
         if self.proc is not None:
             self.killed = True
             self.proc.kill()
-            self.proc.stdin.close()
+            try:
+                self.proc.stdin.close()
+            except BrokenPipeError:
+                traceback.print_exc()
             self.close()
 
     def read(self, bufsize=-1):
@@ -985,22 +993,30 @@ class gpkg:
                     try:
                         image_safe = tar_safe_extract(image, "image")
                         image_safe.extractall(decompress_dir)
+                        image_tar.close()
                     except Exception as ex:
                         writemsg(colorize("BAD", "!!!Extract failed."))
                         raise
                     finally:
-                        image_tar.kill()
+                        if not image_tar.closed:
+                            image_tar.kill()
 
-    def update_metadata(self, metadata, new_basename=None):
+    def update_metadata(self, metadata, new_basename=None, force=False):
         """
         Update metadata in the gpkg file.
         """
         self._verify_binpkg()
         self.checksums = []
-        old_basename = self.prefix
+        if self.signature_exist and not force:
+            raise SignedPackage("Cannot update a signed gpkg file")
 
         if new_basename is None:
-            new_basename = old_basename
+            if self.basename:
+                new_basename = self.basename
+            elif self.prefix:
+                new_basename = self.prefix
+            else:
+                raise InvalidBinaryPackageFormat("No basename or prefix specified")
         else:
             new_basename = new_basename.split("/", maxsplit=1)[-1]
             self.basename = new_basename
@@ -2095,7 +2111,7 @@ class gpkg:
 
         if self.basename and self.prefix and not self.prefix.startswith(self.basename):
             writemsg(
-                colorize("WARN", f"Package basename mismatched, using {self.prefix}")
+                colorize("WARN", f"Package basename mismatched, using {self.prefix}\n")
             )
 
         all_files = tar.getmembers()

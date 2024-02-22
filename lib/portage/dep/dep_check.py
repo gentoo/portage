@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["dep_check", "dep_eval", "dep_wordreduce", "dep_zapdeps"]
@@ -963,7 +963,8 @@ def _overlap_dnf(dep_struct):
     order to minimize the number of packages chosen to satisfy cases like
     "|| ( foo bar ) || ( bar baz )" as in bug #632026. Non-overlapping
     groups are excluded from the conversion, since DNF leads to exponential
-    explosion of the formula.
+    explosion of the formula. Duplicate || groups are eliminated since
+    DNF expansion of duplicates is nonsensical (bug #891137).
 
     When dep_struct does not contain any overlapping groups, no DNF
     conversion will be performed, and dep_struct will be returned as-is.
@@ -1021,7 +1022,17 @@ def _overlap_dnf(dep_struct):
         if len(disjunctions) > 1:
             overlap = True
             # convert overlapping disjunctions to DNF
-            result.extend(_dnf_convert(sorted(disjunctions.values(), key=order_key)))
+            dedup_set = set()
+            unique_disjunctions = []
+            for x in sorted(disjunctions.values(), key=order_key):
+                dep_repr = portage.dep.paren_enclose(x, opconvert=True)
+                if dep_repr not in dedup_set:
+                    dedup_set.add(dep_repr)
+                    unique_disjunctions.append(x)
+            if len(unique_disjunctions) > 1:
+                result.extend(_dnf_convert(unique_disjunctions))
+            else:
+                result.extend(unique_disjunctions)
         else:
             # pass through non-overlapping disjunctions
             result.append(disjunctions.popitem()[1])

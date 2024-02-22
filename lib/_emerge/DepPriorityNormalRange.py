@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.DepPriority import DepPriority
@@ -41,7 +41,7 @@ class DepPriorityNormalRange:
         # to adjust this appropriately. But only build time dependencies
         # are optional right now, so it's not an issue as-is.
         return bool(
-            not priority.runtime_slot_op
+            not (priority.runtime_slot_op and not priority.cross)
             and (priority.optional or not priority.buildtime)
         )
 

@@ -8,7 +8,6 @@ from _emerge.AbstractPollTask import AbstractPollTask
 
 
 class PipeReader(AbstractPollTask):
-
     """
     Reads output from one or more files and saves it in memory,
     for retrieval via the getvalue() method. This is driven by

@@ -29,7 +29,6 @@ portage.proxy.lazyimport.lazyimport(
     "portage.dbapi.vartree:vartree",
     "portage.package.ebuild.doebuild:_phase_func_map",
     "portage.util.compression_probe:_compressors",
-    "portage.util.locale:check_locale,split_LC_ALL",
 )
 from portage import bsd_chflags, load_mod, os, selinux, _unicode_decode
 from portage.const import (
@@ -868,10 +867,10 @@ class config:
             # Initialize all USE related variables we track ourselves.
             self.usemask = self._use_manager.getUseMask()
             self.useforce = self._use_manager.getUseForce()
-            self.configdict["conf"][
-                "USE"
-            ] = self._use_manager.extract_global_USE_changes(
-                self.configdict["conf"].get("USE", "")
+            self.configdict["conf"]["USE"] = (
+                self._use_manager.extract_global_USE_changes(
+                    self.configdict["conf"].get("USE", "")
+                )
             )
 
             # Read license_groups and optionally license_groups and package.license from user config
@@ -881,10 +880,10 @@ class config:
                 user_config=local_config,
             )
             # Extract '*/*' entries from package.license
-            self.configdict["conf"][
-                "ACCEPT_LICENSE"
-            ] = self._license_manager.extract_global_changes(
-                self.configdict["conf"].get("ACCEPT_LICENSE", "")
+            self.configdict["conf"]["ACCEPT_LICENSE"] = (
+                self._license_manager.extract_global_changes(
+                    self.configdict["conf"].get("ACCEPT_LICENSE", "")
+                )
             )
 
             # profile.bashrc
@@ -1070,9 +1069,9 @@ class config:
             # reasonable defaults; this is important as without USE_ORDER,
             # USE will always be "" (nothing set)!
             if "USE_ORDER" not in self:
-                self[
-                    "USE_ORDER"
-                ] = "env:pkg:conf:defaults:pkginternal:features:repo:env.d"
+                self["USE_ORDER"] = (
+                    "env:pkg:conf:defaults:pkginternal:features:repo:env.d"
+                )
                 self.backup_changes("USE_ORDER")
 
             if "CBUILD" not in self and "CHOST" in self:
@@ -1698,14 +1697,14 @@ class config:
             if use is None:
                 use = frozenset(settings["PORTAGE_USE"].split())
 
-            values[
-                "ACCEPT_LICENSE"
-            ] = settings._license_manager.get_prunned_accept_license(
-                settings.mycpv,
-                use,
-                settings.get("LICENSE", ""),
-                settings.get("SLOT"),
-                settings.get("PORTAGE_REPO_NAME"),
+            values["ACCEPT_LICENSE"] = (
+                settings._license_manager.get_prunned_accept_license(
+                    settings.mycpv,
+                    use,
+                    settings.get("LICENSE", ""),
+                    settings.get("SLOT"),
+                    settings.get("PORTAGE_REPO_NAME"),
+                )
             )
             values["PORTAGE_PROPERTIES"] = self._flatten("PROPERTIES", use, settings)
             values["PORTAGE_RESTRICT"] = self._flatten("RESTRICT", use, settings)
@@ -2123,6 +2122,9 @@ class config:
                     "test" in restrict
                     and not "all" in allow_test
                     and not ("test_network" in properties and "network" in allow_test)
+                    and not (
+                        "test_privileged" in properties and "privileged" in allow_test
+                    )
                 )
 
         if restrict_test and "test" in self.features:
@@ -3377,20 +3379,17 @@ class config:
                 mydict["EBUILD_PHASE_FUNC"] = phase_func
 
         if eapi_attrs.posixish_locale:
-            split_LC_ALL(mydict)
-            mydict["LC_COLLATE"] = "C"
-            # check_locale() returns None when check can not be executed.
-            if check_locale(silent=True, env=mydict) is False:
-                # try another locale
-                for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
-                    mydict["LC_CTYPE"] = l
-                    if check_locale(silent=True, env=mydict):
-                        # TODO: output the following only once
-                        # 						writemsg(_("!!! LC_CTYPE unsupported, using %s instead\n")
-                        # 								% mydict["LC_CTYPE"])
-                        break
-                else:
-                    raise AssertionError("C locale did not pass the test!")
+            if mydict.get("LC_ALL"):
+                # Sometimes this method is called for processes
+                # that are not ebuild phases, so only raise
+                # AssertionError for actual ebuild phases.
+                if phase and phase not in ("clean", "cleanrm", "fetch"):
+                    raise AssertionError(
+                        f"LC_ALL={mydict['LC_ALL']} for posixish locale. It seems that split_LC_ALL was not called for phase {phase}?"
+                    )
+            elif "LC_ALL" in mydict:
+                # Delete placeholder from split_LC_ALL.
+                del mydict["LC_ALL"]
 
         if not eapi_attrs.exports_PORTDIR:
             mydict.pop("PORTDIR", None)

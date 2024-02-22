@@ -1,14 +1,51 @@
-# Copyright 2021 Gentoo Authors
+# Copyright 2021-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import stat
+
+import portage
 
 
 def installed_dynlibs(directory):
-    for _dirpath, _dirnames, filenames in os.walk(directory):
+    """
+    This traverses installed *.so symlinks to check if they point to
+    regular files. If a symlink target is outside of the top directory,
+    traversal follows the corresponding file inside the top directory
+    if it exists, and otherwise stops following the symlink.
+    """
+    directory_prefix = f"{directory.rstrip(os.sep)}{os.sep}"
+    for parent, _dirnames, filenames in os.walk(directory):
         for filename in filenames:
             if filename.endswith(".so"):
-                return True
+                filename_abs = os.path.join(parent, filename)
+                target = filename_abs
+                levels = 0
+                while True:
+                    try:
+                        st = os.lstat(target)
+                    except OSError:
+                        break
+                    if stat.S_ISREG(st.st_mode):
+                        return True
+                    elif stat.S_ISLNK(st.st_mode):
+                        levels += 1
+                        if levels == 40:
+                            portage.writemsg(
+                                f"too many levels of symbolic links: {filename_abs}\n",
+                                noiselevel=-1,
+                            )
+                            break
+                        target = portage.abssymlink(target)
+                        if not target.startswith(directory_prefix):
+                            # If target is outside the top directory, then follow the
+                            # corresponding file inside the top directory if it exists,
+                            # and otherwise stop following.
+                            target = os.path.join(
+                                directory_prefix, target.lstrip(os.sep)
+                            )
+                    else:
+                        break
     return False
 
 

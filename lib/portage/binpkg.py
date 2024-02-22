@@ -67,7 +67,7 @@ def get_binpkg_format(binpkg_path, check_file=False, remote=False):
         writemsg(
             colorize(
                 "WARN",
-                "File {} binpkg format mismatch, actual format: {}".format(
+                "File {} binpkg format mismatch, actual format: {}\n".format(
                     binpkg_path, file_format
                 ),
             )

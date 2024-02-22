@@ -62,7 +62,7 @@ class OptionItem:
 
 
 def usage(module_controller):
-    _usage = "usage: emaint [options] COMMAND"
+    _usage = "emaint [options] COMMAND"
 
     desc = (
         "The emaint program provides an interface to system health "

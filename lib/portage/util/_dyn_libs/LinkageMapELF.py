@@ -52,7 +52,6 @@ _approx_multilib_categories = {
 
 
 class LinkageMapELF:
-
     """Models dynamic linker dependencies."""
 
     _needed_aux_key = "NEEDED.ELF.2"
@@ -107,7 +106,6 @@ class LinkageMapELF:
         return key
 
     class _ObjectKey:
-
         """Helper class used as _obj_properties keys for objects."""
 
         __slots__ = ("_key",)
@@ -515,7 +513,6 @@ class LinkageMapELF:
         os = _os_merge
 
         class _LibraryCache:
-
             """
             Caches properties associated with paths.
 

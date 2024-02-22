@@ -754,6 +754,9 @@ see the \fBQA CONTROL VARIABLES\fR section for more specific exemptions.
 .I bindist
 Distribution of built packages is restricted.
 .TP
+.I dedupdebug
+Disables dedupdebug for specific packages.
+.TP
 .I fetch
 like \fImirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
 .TP
@@ -806,6 +809,11 @@ is installed.
 .TP
 .I test_network
 The package manager may run tests that require an internet connection, even if
+the ebuild has
+.IR RESTRICT=test .
+.TP
+.I test_privileged
+The package manager may run tests that require superuser permissions, even if
 the ebuild has
 .IR RESTRICT=test .
 .RE

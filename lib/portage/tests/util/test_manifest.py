@@ -1,6 +1,7 @@
-# Copyright 2022 Gentoo Authors
+# Copyright 2022-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shutil
 import tempfile
 
 from pathlib import Path
@@ -10,7 +11,8 @@ from portage.tests import TestCase
 
 class ManifestTestCase(TestCase):
     def test_simple_addFile(self):
-        tempdir = Path(tempfile.mkdtemp()) / "app-portage" / "diffball"
+        base_tempdir = tempfile.mkdtemp()
+        tempdir = Path(base_tempdir) / "app-portage" / "diffball"
         manifest = Manifest(str(tempdir), required_hashes=["SHA512", "BLAKE2B"])
 
         (tempdir / "files").mkdir(parents=True)
@@ -29,3 +31,4 @@ class ManifestTestCase(TestCase):
             manifest.getFileData("AUX", "test.patch", "SHA512"),
             "e30d069dcf284cbcb2d5685f03ca362469026b469dec4f8655d0c9a2bf317f5d9f68f61855ea403f4959bc0b9c003ae824fb9d6ab2472a739950623523af9da9",
         )
+        shutil.rmtree(base_tempdir)

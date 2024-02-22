@@ -1,4 +1,4 @@
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
@@ -65,6 +65,7 @@ from portage.const import (
 from portage.dbapi import dbapi
 from portage.exception import (
     CommandNotFound,
+    CorruptionKeyError,
     InvalidData,
     InvalidLocation,
     InvalidPackageName,
@@ -1005,8 +1006,10 @@ class vardbapi(dbapi):
 
     def aux_update(self, cpv, values):
         mylink = self._dblink(cpv)
-        if not mylink.exists():
-            raise KeyError(cpv)
+        try:
+            os.stat(mylink.dbdir)
+        except OSError as oe:
+            raise CorruptionKeyError(cpv) from oe
         self._bump_mtime(cpv)
         self._clear_pkg_cache(mylink)
         for k, v in values.items():
@@ -2176,9 +2179,11 @@ class dblink:
             # The tarfile module will write pax headers holding the
             # xattrs only if PAX_FORMAT is specified here.
             with tarfile.open(
-                fileobj=output_file
-                if hasattr(output_file, "write")
-                else open(output_file.fileno(), mode="wb", closefd=False),
+                fileobj=(
+                    output_file
+                    if hasattr(output_file, "write")
+                    else open(output_file.fileno(), mode="wb", closefd=False)
+                ),
                 mode="w|",
                 format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT,
             ) as tar:
@@ -5311,12 +5316,14 @@ class dblink:
         # to TextIOWrapper with python2.
         contents_tmp_path = os.path.join(self.dbtmpdir, "CONTENTS")
         outfile = atomic_ofstream(
-            contents_tmp_path
-            if portage.utf8_mode
-            else _unicode_encode(
-                contents_tmp_path,
-                encoding=_encodings["fs"],
-                errors="strict",
+            (
+                contents_tmp_path
+                if portage.utf8_mode
+                else _unicode_encode(
+                    contents_tmp_path,
+                    encoding=_encodings["fs"],
+                    errors="strict",
+                )
             ),
             mode="w",
             encoding=_encodings["repo.content"],
@@ -6301,7 +6308,19 @@ class dblink:
             if not _cmpxattr(src_bytes, dest_bytes, exclude=excluded_xattrs):
                 return True
 
-        return not filecmp.cmp(src_bytes, dest_bytes, shallow=False)
+        try:
+            files_equal = filecmp.cmp(src_bytes, dest_bytes, shallow=False)
+        except Exception as e:
+            writemsg(
+                _(
+                    "Exception '%s' happened when comparing files %s and %s, will replace the latter\n"
+                )
+                % (e, mysrc, mydest),
+                noiselevel=-1,
+            )
+            return True
+
+        return not files_equal
 
 
 def merge(
@@ -6552,9 +6571,9 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                     # Compatible with GNU tar, which saves the xattrs
                     # under the SCHILY.xattr namespace.
                     for k in xattr.list(path_bytes):
-                        tarinfo.pax_headers[
-                            "SCHILY.xattr." + _unicode_decode(k)
-                        ] = _unicode_decode(xattr.get(path_bytes, _unicode_encode(k)))
+                        tarinfo.pax_headers["SCHILY.xattr." + _unicode_decode(k)] = (
+                            _unicode_decode(xattr.get(path_bytes, _unicode_encode(k)))
+                        )
 
                 with open(path_bytes, "rb") as f:
                     tar.addfile(tarinfo, f)

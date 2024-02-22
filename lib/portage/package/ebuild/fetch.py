@@ -1565,6 +1565,7 @@ def fetch(
                 tried_locations.add(loc)
                 if listonly:
                     writemsg_stdout(loc + " ", noiselevel=-1)
+                    fetched = 2
                     continue
                 # allow different fetchcommands per protocol
                 protocol = loc[0 : loc.find("://")]

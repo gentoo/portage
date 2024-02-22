@@ -1,5 +1,8 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import io
+import sys
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
@@ -55,14 +58,34 @@ class EbuildBinpkg(CompositeTask):
 
         pkg = self.pkg
         bintree = pkg.root_config.trees["bintree"]
-        self._binpkg_info = bintree.inject(
-            pkg.cpv,
-            current_pkg_path=self._binpkg_tmpfile,
-            allocated_pkg_path=self.pkg_allocated_path,
-        )
+
+        stdout_orig = sys.stdout
+        stderr_orig = sys.stderr
+        out = io.StringIO()
+        try:
+            sys.stdout = out
+            sys.stderr = out
+
+            self._binpkg_info = bintree.inject(
+                pkg.cpv,
+                current_pkg_path=self._binpkg_tmpfile,
+                allocated_pkg_path=self.pkg_allocated_path,
+            )
+
+        finally:
+            sys.stdout = stdout_orig
+            sys.stderr = stderr_orig
+
+            output_value = out.getvalue()
+            if output_value:
+                self.scheduler.output(
+                    output_value,
+                    log_path=self.settings.get("PORTAGE_LOG_FILE"),
+                    background=self.background,
+                )
 
         self._current_task = None
-        self.returncode = os.EX_OK
+        self.returncode = 1 if self._binpkg_info is None else os.EX_OK
         self.wait()
 
     def get_binpkg_info(self):

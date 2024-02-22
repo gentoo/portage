@@ -1,4 +1,4 @@
-# Copyright 2006-2009 Gentoo Foundation
+# Copyright 2006-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -13,6 +13,7 @@ class PortageModulesFileTestCase(TestCase):
     modules = ["spanky", "zmedico", "antarus", "ricer", "5", "6"]
 
     def setUp(self):
+        super().setUp()
         self.items = {}
         for k, v in zip(self.keys + self.invalid_keys, self.modules):
             self.items[k] = v

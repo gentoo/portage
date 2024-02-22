@@ -98,7 +98,7 @@ src_install() {
         portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
         profile_path = settings.profile_path
 
-        path = os.environ.get("PATH")
+        path = settings.get("PATH")
         if path is not None and not path.strip():
             path = None
         if path is None:

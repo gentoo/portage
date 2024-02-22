@@ -1,8 +1,9 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
 import fnmatch
+import subprocess
 import tempfile
 import portage
 
@@ -18,8 +19,6 @@ from portage.const import (
 from portage.process import find_binary
 from portage.dep import Atom, _repo_separator
 from portage.dbapi.bintree import binarytree
-from portage.package.ebuild.config import config
-from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
 from portage.tests import cnf_path
@@ -33,7 +32,11 @@ from _emerge.actions import _calc_depclean
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.DependencyArg import DependencyArg
-from _emerge.depgraph import backtrack_depgraph
+from _emerge.depgraph import (
+    _frozen_depgraph_config,
+    backtrack_depgraph,
+)
+from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
 
@@ -139,6 +142,7 @@ class ResolverPlayground:
             # EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
             eubin = os.path.join(self.eprefix, "usr", "bin")
             ensure_dirs(eubin)
+            os.symlink(portage._python_interpreter, os.path.join(eubin, "python"))
             for x in self.portage_bin:
                 os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eubin, x))
 
@@ -262,7 +266,7 @@ class ResolverPlayground:
 
             try:
                 os.makedirs(profile_path)
-            except os.error:
+            except OSError:
                 pass
 
             repo_name_file = os.path.join(profile_path, "repo_name")
@@ -305,7 +309,7 @@ class ResolverPlayground:
             ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
             try:
                 os.makedirs(ebuild_dir)
-            except os.error:
+            except OSError:
                 pass
 
             with open(ebuild_path, "w") as f:
@@ -318,22 +322,25 @@ class ResolverPlayground:
                     f.write(misc_content)
 
     def _create_ebuild_manifests(self, ebuilds):
-        tmpsettings = config(clone=self.settings)
-        tmpsettings["PORTAGE_QUIET"] = "1"
-        for cpv in ebuilds:
-            a = Atom("=" + cpv, allow_repo=True)
-            repo = a.repo
-            if repo is None:
-                repo = "test_repo"
-
-            repo_dir = self._get_repo_dir(repo)
-            ebuild_dir = os.path.join(repo_dir, a.cp)
-            ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
-
-            portdb = self.trees[self.eroot]["porttree"].dbapi
-            tmpsettings["O"] = ebuild_dir
-            if not digestgen(mysettings=tmpsettings, myportdb=portdb):
-                raise AssertionError(f"digest creation failed for {ebuild_path}")
+        for repo_name in self._repositories:
+            if repo_name == "DEFAULT":
+                continue
+            egencache_cmd = [
+                "egencache",
+                f"--repo={repo_name}",
+                "--update",
+                "--update-manifests",
+                "--sign-manifests=n",
+                "--strict-manifests=n",
+                f"--repositories-configuration={self.settings['PORTAGE_REPOSITORIES']}",
+                f"--jobs={portage.util.cpuinfo.get_cpu_count()}",
+            ]
+            result = subprocess.run(
+                egencache_cmd,
+                env=self.settings.environ(),
+            )
+            if result.returncode != os.EX_OK:
+                raise AssertionError(f"command failed: {egencache_cmd}")
 
     def _create_binpkgs(self, binpkgs):
         # When using BUILD_ID, there can be multiple instances for the
@@ -413,7 +420,7 @@ class ResolverPlayground:
             vdb_pkg_dir = os.path.join(self.vdbdir, a.cpv)
             try:
                 os.makedirs(vdb_pkg_dir)
-            except os.error:
+            except OSError:
                 pass
 
             metadata = installed[cpv].copy()
@@ -459,7 +466,7 @@ class ResolverPlayground:
 
         try:
             os.makedirs(user_config_dir)
-        except os.error:
+        except OSError:
             pass
 
         for repo in self._repositories:
@@ -641,7 +648,7 @@ class ResolverPlayground:
 
         try:
             os.makedirs(default_sets_conf_dir)
-        except os.error:
+        except OSError:
             pass
 
         provided_sets_portage_conf = os.path.join(str(cnf_path), "sets", "portage.conf")
@@ -654,7 +661,7 @@ class ResolverPlayground:
 
         try:
             os.makedirs(set_config_dir)
-        except os.error:
+        except OSError:
             pass
 
         for sets_file, lines in sets.items():
@@ -685,7 +692,7 @@ class ResolverPlayground:
             create_trees_kwargs["target_root"] = self.target_root
 
         env = {
-            "PATH": os.environ["PATH"],
+            "PATH": f"{self.eprefix}/usr/sbin:{self.eprefix}/usr/bin:{os.environ['PATH']}",
             "PORTAGE_REPOSITORIES": "\n".join(
                 "[%s]\n%s"
                 % (
@@ -733,7 +740,16 @@ class ResolverPlayground:
                 portage.util.noiselimit = -2
             _emerge.emergelog._disable = True
 
-            if action in ("depclean", "prune"):
+            # NOTE: frozen_config could be cached and reused if options and params were constant.
+            params_action = (
+                "remove" if action in ("dep_check", "depclean", "prune") else action
+            )
+            params = create_depgraph_params(options, params_action)
+            frozen_config = _frozen_depgraph_config(
+                self.settings, self.trees, options, params, None
+            )
+
+            if params_action == "remove":
                 depclean_result = _calc_depclean(
                     self.settings,
                     self.trees,
@@ -742,6 +758,7 @@ class ResolverPlayground:
                     action,
                     InternalPackageSet(initial_atoms=atoms, allow_wildcard=True),
                     None,
+                    frozen_config=frozen_config,
                 )
                 result = ResolverPlaygroundDepcleanResult(
                     atoms,
@@ -752,9 +769,15 @@ class ResolverPlayground:
                     depclean_result.depgraph,
                 )
             else:
-                params = create_depgraph_params(options, action)
                 success, depgraph, favorites = backtrack_depgraph(
-                    self.settings, self.trees, options, params, action, atoms, None
+                    self.settings,
+                    self.trees,
+                    options,
+                    params,
+                    action,
+                    atoms,
+                    None,
+                    frozen_config=frozen_config,
                 )
                 depgraph._show_merge_list()
                 depgraph.display_problems()
@@ -940,7 +963,8 @@ class ResolverPlaygroundTestCase:
                 )
                 and expected is not None
             ):
-                expected = set(expected)
+                # unsatisfied_deps can be a dict for depclean-like actions
+                expected = expected if isinstance(expected, dict) else set(expected)
 
             elif key == "forced_rebuilds" and expected is not None:
                 expected = {k: set(v) for k, v in expected.items()}
@@ -1110,11 +1134,14 @@ class ResolverPlaygroundDepcleanResult:
         "ordered",
         "req_pkg_count",
         "graph_order",
+        "unsatisfied_deps",
     )
     optional_checks = (
+        "cleanlist",
         "ordered",
         "req_pkg_count",
         "graph_order",
+        "unsatisfied_deps",
     )
 
     def __init__(self, atoms, rval, cleanlist, ordered, req_pkg_count, depgraph):
@@ -1126,3 +1153,10 @@ class ResolverPlaygroundDepcleanResult:
         self.graph_order = [
             _mergelist_str(node, depgraph) for node in depgraph._dynamic_config.digraph
         ]
+        self.unsatisfied_deps = {}
+        for dep in depgraph._dynamic_config._initially_unsatisfied_deps:
+            if isinstance(dep.parent, Package):
+                parent_repr = dep.parent.cpv
+            else:
+                parent_repr = dep.parent.arg
+            self.unsatisfied_deps.setdefault(parent_repr, set()).add(dep.atom)

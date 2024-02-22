@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
@@ -708,48 +708,47 @@ class RsyncSync(NewBase):
         command.append(syncuri.rstrip("/") + "/metadata/timestamp.chk")
         command.append(tmpservertimestampfile)
         content = None
-        pids = []
+        proc = None
+        proc_waiter = None
+        loop = asyncio.get_event_loop()
         try:
             # Timeout here in case the server is unresponsive.  The
             # --timeout rsync option doesn't apply to the initial
             # connection attempt.
             try:
-                if self.rsync_initial_timeout:
-                    portage.exception.AlarmSignal.register(self.rsync_initial_timeout)
-
-                pids.extend(
-                    portage.process.spawn(command, returnpid=True, **self.spawn_kwargs)
+                proc = portage.process.spawn(
+                    command, returnproc=True, **self.spawn_kwargs
                 )
-                exitcode = os.waitpid(pids[0], 0)[1]
+                proc_waiter = asyncio.ensure_future(proc.wait(), loop)
+                future = (
+                    asyncio.wait_for(
+                        asyncio.shield(proc_waiter), self.rsync_initial_timeout
+                    )
+                    if self.rsync_initial_timeout
+                    else proc_waiter
+                )
+                exitcode = loop.run_until_complete(future)
                 if self.usersync_uid is not None:
                     portage.util.apply_permissions(
                         tmpservertimestampfile, uid=os.getuid()
                     )
                 content = portage.grabfile(tmpservertimestampfile)
             finally:
-                if self.rsync_initial_timeout:
-                    portage.exception.AlarmSignal.unregister()
                 try:
                     os.unlink(tmpservertimestampfile)
                 except OSError:
                     pass
-        except portage.exception.AlarmSignal:
+        except (TimeoutError, asyncio.TimeoutError):
             # timed out
             print("timed out")
             # With waitpid and WNOHANG, only check the
             # first element of the tuple since the second
             # element may vary (bug #337465).
-            if pids and os.waitpid(pids[0], os.WNOHANG)[0] == 0:
-                os.kill(pids[0], signal.SIGTERM)
-                os.waitpid(pids[0], 0)
+            if proc_waiter and not proc_waiter.done():
+                proc.terminate()
+                loop.run_until_complete(proc_waiter)
             # This is the same code rsync uses for timeout.
             exitcode = 30
-        else:
-            if exitcode != os.EX_OK:
-                if exitcode & 0xFF:
-                    exitcode = (exitcode & 0xFF) << 8
-                else:
-                    exitcode = exitcode >> 8
 
         if content:
             try:
@@ -758,7 +757,6 @@ class RsyncSync(NewBase):
                 )
             except (OverflowError, ValueError):
                 pass
-        del command, pids, content
 
         if exitcode == os.EX_OK:
             if (servertimestamp != 0) and (servertimestamp == timestamp):

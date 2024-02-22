@@ -15,6 +15,7 @@ py.install_sources(
         'test_get_required_use_flags.py',
         'test_isjustname.py',
         'test_isvalidatom.py',
+        'test_libc.py',
         'test_match_from_list.py',
         'test_overlap_dnf.py',
         'test_paren_reduce.py',

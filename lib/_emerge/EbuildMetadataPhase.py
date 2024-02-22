@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -8,18 +8,19 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
+    "_emerge.EbuildPhase:_setup_locale",
     "portage.package.ebuild._metadata_invalid:eapi_invalid",
 )
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.util.futures import asyncio
 
 import fcntl
 
 
 class EbuildMetadataPhase(SubProcess):
-
     """
     Asynchronous interface for the ebuild "depend" phase which is
     used to extract metadata from the ebuild.
@@ -34,6 +35,7 @@ class EbuildMetadataPhase(SubProcess):
         "portdb",
         "repo_path",
         "settings",
+        "deallocate_config",
         "write_auxdb",
     ) + (
         "_eapi",
@@ -45,6 +47,12 @@ class EbuildMetadataPhase(SubProcess):
     _files_dict = slot_dict_class(_file_names, prefix="")
 
     def _start(self):
+        asyncio.ensure_future(
+            self._async_start(), loop=self.scheduler
+        ).add_done_callback(self._async_start_done)
+        self._registered = True
+
+    async def _async_start(self):
         ebuild_path = self.ebuild_hash.location
 
         with open(
@@ -75,6 +83,9 @@ class EbuildMetadataPhase(SubProcess):
         settings = self.settings
         settings.setcpv(self.cpv)
         settings.configdict["pkg"]["EAPI"] = parsed_eapi
+
+        # This requires above setcpv and EAPI setup.
+        await _setup_locale(self.settings)
 
         debug = settings.get("PORTAGE_DEBUG") == "1"
         master_fd = None
@@ -115,7 +126,6 @@ class EbuildMetadataPhase(SubProcess):
         self._raw_metadata = []
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
-        self._registered = True
 
         retval = portage.doebuild(
             ebuild_path,
@@ -125,9 +135,18 @@ class EbuildMetadataPhase(SubProcess):
             mydbapi=self.portdb,
             tree="porttree",
             fd_pipes=fd_pipes,
-            returnpid=True,
+            returnproc=True,
         )
         settings.pop("PORTAGE_PIPE_FD", None)
+        # At this point we can return settings to the caller
+        # since we never use it for anything more than an
+        # eapi_invalid call after this, and eapi_invalid is
+        # insensitive to concurrent modifications.
+        if (
+            self.deallocate_config is not None
+            and not self.deallocate_config.cancelled()
+        ):
+            self.deallocate_config.set_result(settings)
 
         os.close(slave_fd)
         null_input.close()
@@ -138,7 +157,20 @@ class EbuildMetadataPhase(SubProcess):
             self._async_wait()
             return
 
-        self.pid = retval[0]
+        self._proc = retval
+
+    def _async_start_done(self, future):
+        future.cancelled() or future.result()
+        if not self._was_cancelled() and future.cancelled():
+            self.cancel()
+            self._was_cancelled()
+
+        if self.deallocate_config is not None and not self.deallocate_config.done():
+            self.deallocate_config.set_result(self.settings)
+
+        if self.returncode is not None:
+            self._unregister()
+            self.wait()
 
     def _output_handler(self):
         while True:
@@ -200,12 +232,10 @@ class EbuildMetadataPhase(SubProcess):
                 # entries for unsupported EAPIs.
                 if self.eapi_supported:
                     if metadata.get("INHERITED", False):
-                        metadata[
-                            "_eclasses_"
-                        ] = self.portdb.repositories.get_repo_for_location(
-                            self.repo_path
-                        ).eclass_db.get_eclass_data(
-                            metadata["INHERITED"].split()
+                        metadata["_eclasses_"] = (
+                            self.portdb.repositories.get_repo_for_location(
+                                self.repo_path
+                            ).eclass_db.get_eclass_data(metadata["INHERITED"].split())
                         )
                     else:
                         metadata["_eclasses_"] = {}

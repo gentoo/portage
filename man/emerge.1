@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Mar 2023" "Portage @VERSION@" "Portage"
+.TH "EMERGE" "1" "Jan 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -747,7 +747,8 @@ file to always be merged.
 .TP
 .BR \-\-nodeps ", " \-O
 Merges specified packages without merging any dependencies.  Note that
-the build may fail if the dependencies aren't satisfied.
+the build may fail if the dependencies aren't satisfied. This option
+implies \fB--backtrack=0\fR.
 .TP
 .BR \-\-noreplace ", " \-n
 Skips the packages specified on the command\-line that have already

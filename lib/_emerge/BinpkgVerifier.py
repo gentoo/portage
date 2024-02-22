@@ -41,11 +41,23 @@ class BinpkgVerifier(CompositeTask):
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
                 raise
-            self.scheduler.output(
-                f"!!! Fetching Binary failed for '{self.pkg.cpv}'\n",
-                log_path=self.logfile,
-                background=self.background,
-            )
+
+            # We might end up here with FEATURES="pkgdir-index-trusted" if
+            # binpkgs have been removed manually without refreshing the index.
+            if bintree.dbapi.cpv_exists(self.pkg.cpv):
+                self.scheduler.output(
+                    f"!!! Tried to use non-existent binary for '{self.pkg.cpv}'\n"
+                    + f"!!! Likely caused by an outdated index. Run 'emaint binhost -f'.\n",
+                    log_path=self.logfile,
+                    background=self.background,
+                )
+            else:
+                self.scheduler.output(
+                    f"!!! Fetching Binary failed for '{self.pkg.cpv}'\n",
+                    log_path=self.logfile,
+                    background=self.background,
+                )
+
             self.returncode = 1
             self._async_wait()
             return

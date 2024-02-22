@@ -1,6 +1,5 @@
 py.install_sources(
     [
-        'test_child_watcher.py',
         'test_event_loop_in_fork.py',
         'test_pipe_closed.py',
         'test_policy_wrapper_recursion.py',

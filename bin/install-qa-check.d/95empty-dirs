@@ -26,7 +26,7 @@ find_empty_dirs() {
 	done < <(find "${ED}" -depth -mindepth 1 -type d -empty -print0 ${striparg} | LC_COLLATE=C sort -z)
 
 	if [[ ${warn_dirs[@]} ]]; then
-		eqawarn "One or more empty directories installed to /var:"
+		eqawarn "QA Notice: One or more empty directories installed to /var:"
 		eqawarn
 		for d in "${warn_dirs[@]}"; do
 			eqawarn "  ${d#${ED%/}}"

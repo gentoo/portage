@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
@@ -19,6 +19,7 @@ import sys
 import tempfile
 from textwrap import wrap
 import time
+from typing import Union
 import warnings
 import zlib
 # PREFIX LOCAL
@@ -82,6 +83,7 @@ from portage.dep import (
     paren_enclose,
     use_reduce,
 )
+from portage.dep.libc import find_libc_deps
 from portage.eapi import (
     eapi_exports_KV,
     eapi_exports_merge_type,
@@ -124,7 +126,7 @@ from portage.util.futures.executor.fork import ForkExecutor
 from portage.util.path import first_existing
 from portage.util.socks5 import get_socks5_proxy
 from portage.util._dyn_libs.dyn_libs import check_dyn_libs_inconsistent
-from portage.versions import _pkgsplit
+from portage.versions import _pkgsplit, pkgcmp
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
@@ -243,6 +245,9 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
             ebuild_sh_arg,
         )
 
+    if phase == "test" and "test_privileged" in settings["PORTAGE_PROPERTIES"].split():
+        kwargs["droppriv"] = False
+
     settings["EBUILD_PHASE"] = phase
     try:
         return spawn(cmd, settings, **kwargs)
@@ -251,14 +256,21 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 
 def _spawn_phase(
-    phase, settings, actionmap=None, returnpid=False, logfile=None, **kwargs
+    phase,
+    settings,
+    actionmap=None,
+    returnpid=False,
+    returnproc=False,
+    logfile=None,
+    **kwargs,
 ):
-    if returnpid:
+    if returnproc or returnpid:
         return _doebuild_spawn(
             phase,
             settings,
             actionmap=actionmap,
             returnpid=returnpid,
+            returnproc=returnproc,
             logfile=logfile,
             **kwargs,
         )
@@ -601,9 +613,9 @@ def doebuild_environment(
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
             if "GNUMAKEFLAGS" not in mysettings and "MAKEFLAGS" not in mysettings:
-                mysettings[
-                    "GNUMAKEFLAGS"
-                ] = f"--load-average {nproc} --output-sync=line"
+                mysettings["GNUMAKEFLAGS"] = (
+                    f"--load-average {nproc} --output-sync=line"
+                )
 
         if not eapi_exports_KV(eapi):
             # Discard KV for EAPIs that don't support it. Cached KV is restored
@@ -735,7 +747,8 @@ def doebuild(
     prev_mtimes=None,
     fd_pipes=None,
     returnpid=False,
-):
+    returnproc=False,
+) -> Union[int, portage.process.MultiprocessingProcess, list[int]]:
     """
     Wrapper function that invokes specific ebuild phases through the spawning
     of ebuild.sh
@@ -772,9 +785,15 @@ def doebuild(
             for example.
     @type fd_pipes: Dictionary
     @param returnpid: Return a list of process IDs for a successful spawn, or
-            an integer value if spawn is unsuccessful. NOTE: This requires the
-            caller clean up all returned PIDs.
+            an integer value if spawn is unsuccessful. This parameter is supported
+            supported only when mydo is "depend". NOTE: This requires the caller clean
+            up all returned PIDs.
     @type returnpid: Boolean
+    @param returnproc: Return a MultiprocessingProcess instance for a successful spawn, or
+            an integer value if spawn is unsuccessful. This parameter is supported
+            supported only when mydo is "depend". NOTE: This requires the caller to
+            asynchronously wait for the MultiprocessingProcess instance.
+    @type returnproc: Boolean
     @rtype: Boolean
     @return:
     1. 0 for success
@@ -877,16 +896,24 @@ def doebuild(
         writemsg("\n", noiselevel=-1)
         return 1
 
-    if returnpid and mydo != "depend":
+    if (returnproc or returnpid) and mydo != "depend":
         # This case is not supported, since it bypasses the EbuildPhase class
         # which implements important functionality (including post phase hooks
         # and IPC for things like best/has_version and die).
+        if returnproc:
+            raise NotImplementedError(f"returnproc not implemented for phase {mydo}")
         warnings.warn(
             "portage.doebuild() called "
             "with returnpid parameter enabled. This usage will "
             "not be supported in the future.",
-            DeprecationWarning,
+            UserWarning,
             stacklevel=2,
+        )
+    elif returnpid:
+        warnings.warn(
+            "The portage.doebuild() returnpid parameter is deprecated and replaced by returnproc",
+            UserWarning,
+            stacklevel=1,
         )
 
     if mydo == "fetchall":
@@ -1037,10 +1064,14 @@ def doebuild(
 
         # get possible slot information from the deps file
         if mydo == "depend":
-            if not returnpid:
-                raise TypeError("returnpid must be True for depend phase")
+            if not (returnproc or returnpid):
+                raise TypeError("returnproc or returnpid must be True for depend phase")
             return _spawn_phase(
-                mydo, mysettings, fd_pipes=fd_pipes, returnpid=returnpid
+                mydo,
+                mysettings,
+                fd_pipes=fd_pipes,
+                returnpid=returnpid,
+                returnproc=returnproc,
             )
 
         if mydo == "nofetch":
@@ -1317,32 +1348,20 @@ def doebuild(
                 dist_digests = mf.getTypeDigests("DIST")
 
             loop = asyncio._safe_loop()
-            if loop.is_running():
-                # Called by EbuildFetchonly for emerge --pretend --fetchonly.
-                success = fetch(
+            success = loop.run_until_complete(
+                loop.run_in_executor(
+                    ForkExecutor(loop=loop),
+                    _fetch_subprocess,
                     fetchme,
                     mysettings,
-                    listonly=listonly,
-                    fetchonly=fetchonly,
-                    allow_missing_digests=False,
-                    digests=dist_digests,
+                    listonly,
+                    dist_digests,
+                    fetchonly,
                 )
-            else:
-                success = loop.run_until_complete(
-                    loop.run_in_executor(
-                        ForkExecutor(loop=loop),
-                        _fetch_subprocess,
-                        fetchme,
-                        mysettings,
-                        listonly,
-                        dist_digests,
-                        fetchonly,
-                    )
-                )
+            )
             if not success:
                 # Since listonly mode is called by emerge --pretend in an
-                # asynchronous context, spawn_nofetch would trigger event loop
-                # recursion here, therefore delegate execution of pkg_nofetch
+                # asynchronous context, execution of pkg_nofetch is delegated
                 # to the caller (bug 657360).
                 if not listonly:
                     spawn_nofetch(
@@ -2189,7 +2208,7 @@ def spawn(
         mysettings.configdict["env"]["LOGNAME"] = logname
 
     try:
-        if keywords.get("returnpid"):
+        if keywords.get("returnpid") or keywords.get("returnproc"):
             return spawn_func(mystring, env=mysettings.environ(), **keywords)
 
         proc = EbuildSpawnProcess(
@@ -2369,11 +2388,11 @@ def _check_build_log(mysettings, out=None):
         f = gzip.GzipFile(filename="", mode="rb", fileobj=f)
 
     am_maintainer_mode = []
-    bash_command_not_found = []
+    command_not_found = []
     bash_command_not_found_re = re.compile(
         r"(.*): line (\d*): (.*): command not found$"
     )
-    command_not_found_exclude_re = re.compile(r"/configure: line ")
+    dash_command_not_found_re = re.compile(r"(.*): (\d+): (.*): not found$")
     helper_missing_file = []
     helper_missing_file_re = re.compile(r"^!!! (do|new).*: .* does not exist$")
 
@@ -2477,11 +2496,11 @@ def _check_build_log(mysettings, out=None):
             ):
                 am_maintainer_mode.append(line.rstrip("\n"))
 
-            if (
-                bash_command_not_found_re.match(line) is not None
-                and command_not_found_exclude_re.search(line) is None
-            ):
-                bash_command_not_found.append(line.rstrip("\n"))
+            if bash_command_not_found_re.match(line) is not None:
+                command_not_found.append(line.rstrip("\n"))
+
+            if dash_command_not_found_re.match(line) is not None:
+                command_not_found.append(line.rstrip("\n"))
 
             if helper_missing_file_re.match(line) is not None:
                 helper_missing_file.append(line.rstrip("\n"))
@@ -2543,10 +2562,10 @@ def _check_build_log(mysettings, out=None):
         )
         _eqawarn(msg)
 
-    if bash_command_not_found:
+    if command_not_found:
         msg = [_("QA Notice: command not found:")]
         msg.append("")
-        msg.extend("\t" + line for line in bash_command_not_found)
+        msg.extend("\t" + line for line in command_not_found)
         _eqawarn(msg)
 
     if helper_missing_file:
@@ -2587,8 +2606,8 @@ def _post_src_install_write_metadata(settings):
     """
 
     eapi_attrs = _get_eapi_attrs(settings.configdict["pkg"]["EAPI"])
-
     build_info_dir = os.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
+    metadata_buffer = {}
 
     metadata_keys = ["IUSE"]
     if eapi_attrs.iuse_effective:
@@ -2597,12 +2616,12 @@ def _post_src_install_write_metadata(settings):
     for k in metadata_keys:
         v = settings.configdict["pkg"].get(k)
         if v is not None:
-            write_atomic(os.path.join(build_info_dir, k), v + "\n")
+            metadata_buffer[k] = v
 
     for k in ("CHOST",):
         v = settings.get(k)
         if v is not None:
-            write_atomic(os.path.join(build_info_dir, k), v + "\n")
+            metadata_buffer[k] = v
 
     with open(
         _unicode_encode(
@@ -2642,17 +2661,7 @@ def _post_src_install_write_metadata(settings):
             except OSError:
                 pass
             continue
-        with open(
-            _unicode_encode(
-                os.path.join(build_info_dir, k),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            mode="w",
-            encoding=_encodings["repo.content"],
-            errors="strict",
-        ) as f:
-            f.write(f"{v}\n")
+        metadata_buffer[k] = v
 
     if eapi_attrs.slot_operator:
         deps = evaluate_slot_operator_equal_deps(settings, use, QueryCommand.get_db())
@@ -2664,17 +2673,20 @@ def _post_src_install_write_metadata(settings):
                 except OSError:
                     pass
                 continue
-            with open(
-                _unicode_encode(
-                    os.path.join(build_info_dir, k),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
-                mode="w",
-                encoding=_encodings["repo.content"],
+
+            metadata_buffer[k] = v
+
+    for k, v in metadata_buffer.items():
+        with open(
+            _unicode_encode(
+                os.path.join(build_info_dir, k),
+                encoding=_encodings["fs"],
                 errors="strict",
-            ) as f:
-                f.write(f"{v}\n")
+            ),
+            mode="w",
+            encoding=_encodings["repo.content"],
+        ) as f:
+            f.write(f"{v}\n")
 
 
 def _preinst_bsdflags(mysettings):
@@ -2879,10 +2891,12 @@ def _post_src_install_uid_fix(mysettings, out):
                         # a normal write might fail due to file permission
                         # settings on some operating systems such as HP-UX
                         write_atomic(
-                            fpath
-                            if portage.utf8_mode
-                            else _unicode_encode(
-                                fpath, encoding=_encodings["merge"], errors="strict"
+                            (
+                                fpath
+                                if portage.utf8_mode
+                                else _unicode_encode(
+                                    fpath, encoding=_encodings["merge"], errors="strict"
+                                )
                             ),
                             new_contents,
                             mode="wb",
@@ -2956,6 +2970,48 @@ def _reapply_bsdflags_to_image(mysettings):
         )
 
 
+def _inject_libc_dep(build_info_dir, mysettings):
+    #
+    # We could skip this for non-binpkgs but there doesn't seem to be much
+    # value in that, as users shouldn't downgrade libc anyway.
+    injected_libc_depstring = []
+    for libc_realized_atom in find_libc_deps(
+        QueryCommand.get_db()[mysettings["EROOT"]]["vartree"].dbapi, True
+    ):
+        if pkgcmp(mysettings.mycpv, libc_realized_atom) is not None:
+            # We don't want to inject deps on ourselves (libc)
+            injected_libc_depstring = []
+            break
+
+        injected_libc_depstring.append(f">={libc_realized_atom}")
+
+    rdepend_file = os.path.join(build_info_dir, "RDEPEND")
+    # Slurp the existing contents because we need to mangle it a bit
+    # It'll look something like (if it exists):
+    # ```
+    # app-misc/foo dev-libs/bar
+    # <newline>
+    # ````
+    rdepend = None
+    if os.path.exists(rdepend_file):
+        with open(rdepend_file, encoding="utf-8") as f:
+            rdepend = f.readlines()
+        rdepend = "\n".join(rdepend).strip()
+
+    # For RDEPEND, we want an implicit dependency on >=${PROVIDER_OF_LIBC}
+    # to avoid runtime breakage when merging binpkgs, see bug #753500.
+    #
+    if injected_libc_depstring:
+        if rdepend:
+            rdepend += f" {' '.join(injected_libc_depstring).strip()}"
+        else:
+            # The package doesn't have an RDEPEND, so make one up.
+            rdepend = " ".join(injected_libc_depstring)
+
+        with open(rdepend_file, "w", encoding="utf-8") as f:
+            f.write(f"{rdepend}\n")
+
+
 def _post_src_install_soname_symlinks(mysettings, out):
     """
     Check that libraries in $D have corresponding soname symlinks.
@@ -2965,9 +3021,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
     """
 
     image_dir = mysettings["D"]
-    needed_filename = os.path.join(
-        mysettings["PORTAGE_BUILDDIR"], "build-info", "NEEDED.ELF.2"
-    )
+    build_info_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info")
+    needed_filename = os.path.join(build_info_dir, "NEEDED.ELF.2")
 
     f = None
     try:
@@ -2986,6 +3041,11 @@ def _post_src_install_soname_symlinks(mysettings, out):
     finally:
         if f is not None:
             f.close()
+
+    # We do RDEPEND mangling here instead of the natural location
+    # in _post_src_install_write_metadata because NEEDED hasn't been
+    # written yet at that point.
+    _inject_libc_dep(build_info_dir, mysettings)
 
     metadata = {}
     for k in ("QA_PREBUILT", "QA_SONAME_NO_SYMLINK"):

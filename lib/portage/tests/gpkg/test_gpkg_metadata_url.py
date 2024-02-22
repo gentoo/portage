@@ -1,12 +1,12 @@
-# Copyright Gentoo Foundation 2006-2020
+# Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
 import io
-import random
 import tarfile
 import tempfile
 from functools import partial
 from os import urandom
+from concurrent.futures import Future
 
 from portage.gpkg import gpkg
 from portage import os
@@ -18,7 +18,7 @@ from portage.gpg import GPG
 
 
 class test_gpkg_metadata_url_case(TestCase):
-    def httpd(self, directory, port):
+    def httpd(self, directory, httpd_future):
         try:
             import http.server
             import socketserver
@@ -27,20 +27,22 @@ class test_gpkg_metadata_url_case(TestCase):
 
         Handler = partial(http.server.SimpleHTTPRequestHandler, directory=directory)
 
-        with socketserver.TCPServer(("127.0.0.1", port), Handler) as httpd:
+        with socketserver.TCPServer(("127.0.0.1", 0), Handler) as httpd:
+            httpd_future.set_result(httpd)
             httpd.serve_forever()
 
-    def start_http_server(self, directory, port):
+    def start_http_server(self, directory):
         try:
             import threading
         except ImportError:
             self.skipTest("threading module not exists")
 
+        httpd_future = Future()
         server = threading.Thread(
-            target=self.httpd, args=(directory, port), daemon=True
+            target=self.httpd, args=(directory, httpd_future), daemon=True
         )
         server.start()
-        return server
+        return httpd_future.result()
 
     def test_gpkg_get_metadata_url(self):
         playground = ResolverPlayground(
@@ -53,15 +55,10 @@ class test_gpkg_metadata_url_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        server = None
         try:
             settings = playground.settings
-            for _ in range(0, 5):
-                port = random.randint(30000, 60000)
-                try:
-                    server = self.start_http_server(tmpdir, port)
-                except OSError:
-                    continue
-                break
+            server = self.start_http_server(tmpdir)
 
             orig_full_path = os.path.join(tmpdir, "orig/")
             os.makedirs(orig_full_path)
@@ -80,11 +77,13 @@ class test_gpkg_metadata_url_case(TestCase):
             test_gpkg.compress(os.path.join(tmpdir, "orig"), meta)
 
             meta_from_url = test_gpkg.get_metadata_url(
-                "http://127.0.0.1:" + str(port) + "/test.gpkg.tar"
+                "http://{}:{}/test.gpkg.tar".format(*server.server_address)
             )
 
             self.assertEqual(meta, meta_from_url)
         finally:
+            if server is not None:
+                server.shutdown()
             shutil.rmtree(tmpdir)
             playground.cleanup()
 
@@ -98,18 +97,14 @@ class test_gpkg_metadata_url_case(TestCase):
             }
         )
         tmpdir = tempfile.mkdtemp()
+        gpg = None
+        server = None
         try:
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
 
-            for _ in range(0, 5):
-                port = random.randint(30000, 60000)
-                try:
-                    server = self.start_http_server(tmpdir, port)
-                except OSError:
-                    continue
-                break
+            server = self.start_http_server(tmpdir)
 
             orig_full_path = os.path.join(tmpdir, "orig/")
             os.makedirs(orig_full_path)
@@ -153,8 +148,12 @@ IkCfAP49AOYjzuQPP0n5P0SGCINnAVEXN7QLQ4PurY/lt7cT2gEAq01stXjFhrz5
             self.assertRaises(
                 InvalidSignature,
                 test_gpkg.get_metadata_url,
-                "http://127.0.0.1:" + str(port) + "/test-2.gpkg.tar",
+                "http://{}:{}/test-2.gpkg.tar".format(*server.server_address),
             )
         finally:
+            if gpg is not None:
+                gpg.stop()
+            if server is not None:
+                server.shutdown()
             shutil.rmtree(tmpdir)
             playground.cleanup()

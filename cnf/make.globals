@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # System-wide defaults for the Portage system
 
@@ -38,9 +38,9 @@ PORTAGE_TMPDIR="/var/tmp"
 # existing installs where bzip2 is used for backward compatibility.
 BINPKG_COMPRESS="zstd"
 
-# The format used for binary packages. The default is use old "xpak" format.
-# Set to "gpkg" to use new gentoo binary package format.
-BINPKG_FORMAT="xpak"
+# The format used for binary packages. The default is to use the new "gpkg" format.
+# Set to "xpak" to use the old gentoo binary package format.
+BINPKG_FORMAT="gpkg"
 
 # The binary package default GPG signing command.
 # flock is used to avoid a racing condition of gnupg
@@ -77,7 +77,7 @@ FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${ho
 FEATURES="assume-digests binpkg-docompress binpkg-dostrip binpkg-logs
           binpkg-multi-instance buildpkg-live
           config-protect-if-modified distlocks ebuild-locks
-          fixlafiles ipc-sandbox merge-sync multilib-strict
+          fixlafiles ipc-sandbox merge-sync merge-wait multilib-strict
           network-sandbox news parallel-fetch pkgdir-index-trusted pid-sandbox
           preserve-libs protect-owned qa-unresolved-soname-deps
           sandbox sfperms strict

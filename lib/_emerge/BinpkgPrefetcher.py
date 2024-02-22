@@ -1,5 +1,8 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import io
+import sys
 
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.CompositeTask import CompositeTask
@@ -45,12 +48,31 @@ class BinpkgPrefetcher(CompositeTask):
             self.wait()
             return
 
-        self._bintree.inject(
-            self.pkg.cpv,
-            current_pkg_path=self.pkg_path,
-            allocated_pkg_path=self.pkg_allocated_path,
-        )
+        stdout_orig = sys.stdout
+        stderr_orig = sys.stderr
+        out = io.StringIO()
+        try:
+            sys.stdout = out
+            sys.stderr = out
+
+            injected_pkg = self._bintree.inject(
+                self.pkg.cpv,
+                current_pkg_path=self.pkg_path,
+                allocated_pkg_path=self.pkg_allocated_path,
+            )
+
+        finally:
+            sys.stdout = stdout_orig
+            sys.stderr = stderr_orig
+
+            output_value = out.getvalue()
+            if output_value:
+                self.scheduler.output(
+                    output_value,
+                    log_path=self.scheduler.fetch.log_file,
+                    background=self.background,
+                )
 
         self._current_task = None
-        self.returncode = os.EX_OK
+        self.returncode = 1 if injected_pkg is None else os.EX_OK
         self.wait()

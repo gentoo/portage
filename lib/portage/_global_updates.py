@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import stat
@@ -38,9 +38,14 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     if secpass < 2 or "SANDBOX_ACTIVE" in os.environ or len(trees) != 1:
         return False
 
-    return _do_global_updates(
-        trees, prev_mtimes, quiet=quiet, if_mtime_changed=if_mtime_changed
-    )
+    vardb = trees[trees._running_eroot]["vartree"].dbapi
+    vardb.lock()
+    try:
+        return _do_global_updates(
+            trees, prev_mtimes, quiet=quiet, if_mtime_changed=if_mtime_changed
+        )
+    finally:
+        vardb.unlock()
 
 
 def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
@@ -127,7 +132,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                 retupd = True
 
     if retupd:
-        if os.access(bindb.bintree.pkgdir, os.W_OK):
+        if bindb.writable:
             # Call binarytree.populate(), since we want to make sure it's
             # only populated with local packages here (getbinpkgs=0).
             bindb.bintree.populate()

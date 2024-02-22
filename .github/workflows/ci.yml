@@ -11,12 +11,27 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
+        start-method:
+          - 'fork'
+          - 'spawn'
         python-version:
           - '3.9'
           - '3.10'
           - '3.11'
           - '3.12-dev'
+          - '3.13-dev'
           - 'pypy-3.10'
+        exclude:
+          - python-version: '3.9'
+            start-method: 'spawn'
+          - python-version: '3.10'
+            start-method: 'spawn'
+          - python-version: '3.11'
+            start-method: 'spawn'
+          - python-version: '3.13-dev'
+            start-method: 'spawn'
+          - python-version: 'pypy-3.10'
+            start-method: 'spawn'
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -29,7 +44,7 @@ jobs:
           set -xe
           echo "force-unsafe-io" | sudo tee /etc/dpkg/dpkg.cfg.d/force-unsafe-io
           sudo apt-get update -q
-          sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson zstd
+          sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson pax-utils zstd
 
           # Patch Ubuntu's old Meson to fix pypy-3.9 detection.
           curl -s -f https://github.com/mesonbuild/meson/commit/2540ad6e9e08370ddd0b6753fdc9314945a672f0.patch | sudo patch -d /usr/lib/python3/dist-packages -p1 --no-backup-if-mismatch
@@ -38,10 +53,35 @@ jobs:
           python -m site
           python -m pip install --upgrade pip
           # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
-          python -m pip install pytest pytest-xdist setuptools
+          python -m pip install pytest pytest-rerunfailures pytest-xdist setuptools
 
           # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
           sudo ln -s /bin/true /usr/bin/getuto
+      - name: Patch python scripts to set spawn start method
+        if: ${{ matrix.start-method == 'spawn' }}
+        run: |
+          IFS=''
+          while read -r bin_file; do
+            if [[ $(head -n1 "${bin_file}") == '#!/usr/bin/env python' ]]; then
+              mode=top
+              while read -r line; do
+                if [[ ${mode} == top ]]; then
+                  if [[ ${line} == \#* ]]; then
+                    echo "${line}"
+                  else
+                    echo "import multiprocessing"
+                    echo 'multiprocessing.set_start_method("spawn", force=True)'
+                    echo "${line}"
+                    mode=bottom
+                  fi
+                else
+                  echo "${line}"
+                fi
+              done < "${bin_file}" > "${bin_file}.new"
+              chmod +x "${bin_file}.new"
+              mv "${bin_file}"{.new,}
+            fi
+          done < <(find bin -maxdepth 1 -type f)
       - name: Test meson install --destdir /tmp/install-root
         run: |
           echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
@@ -49,5 +89,8 @@ jobs:
           meson install -C /tmp/build --destdir /tmp/install-root
       - name: Run tests for ${{ matrix.python-version }}
         run: |
+          [[ "${{ matrix.start-method }}" == "spawn" ]] && export PORTAGE_MULTIPROCESSING_START_METHOD=spawn
           export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
+          # Use pytest-rerunfailures to workaround pytest-xdist worker crashes with spawn start-method (bug 924416).
+          [[ "${{ matrix.start-method }}" == "spawn" ]] && PYTEST_ADDOPTS+=" --reruns 5 --only-rerun 'worker .* crashed while running'"
           meson test -C /tmp/build --verbose

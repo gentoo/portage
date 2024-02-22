@@ -14,7 +14,6 @@ from _emerge.AbstractPollTask import AbstractPollTask
 
 
 class PipeLogger(AbstractPollTask):
-
     """
     This can be used for logging output of a child process,
     optionally outputting to log_file_path and/or stdout_fd.  It can

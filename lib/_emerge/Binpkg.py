@@ -1,6 +1,8 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import io
+import sys
 import functools
 import _emerge.emergelog
 from _emerge.EbuildPhase import EbuildPhase
@@ -244,12 +246,36 @@ class Binpkg(CompositeTask):
         pkg_count = self.pkg_count
 
         if self._fetched_pkg:
-            pkg_path = self._bintree.getname(
-                self._bintree.inject(
+            stdout_orig = sys.stdout
+            stderr_orig = sys.stderr
+            out = io.StringIO()
+            try:
+                sys.stdout = out
+                sys.stderr = out
+
+                injected_pkg = self._bintree.inject(
                     pkg.cpv,
                     current_pkg_path=self._fetched_pkg,
                     allocated_pkg_path=self._pkg_allocated_path,
-                ),
+                )
+            finally:
+                sys.stdout = stdout_orig
+                sys.stderr = stderr_orig
+
+                output_value = out.getvalue()
+                if output_value:
+                    self.scheduler.output(
+                        output_value,
+                        log_path=self.settings.get("PORTAGE_LOG_FILE"),
+                        background=self.background,
+                    )
+
+            if injected_pkg is None:
+                self._async_unlock_builddir(returncode=1)
+                return
+
+            pkg_path = self._bintree.getname(
+                injected_pkg,
                 allocate_new=False,
             )
         else:

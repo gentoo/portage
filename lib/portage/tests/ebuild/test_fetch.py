@@ -1,4 +1,4 @@
-# Copyright 2019-2021 Gentoo Authors
+# Copyright 2019-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -246,11 +246,11 @@ class EbuildFetchTestCase(TestCase):
 				"""
                     % orig_fetchcommand.replace("${FILE}", "${FILE}.__download__")
                 )
-            settings[
-                "FETCHCOMMAND"
-            ] = '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
-                BASH_BINARY,
-                temp_fetchcommand,
+            settings["FETCHCOMMAND"] = (
+                '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
+                    BASH_BINARY,
+                    temp_fetchcommand,
+                )
             )
             settings.features.add("skiprocheck")
             settings.features.remove("distlocks")
@@ -577,12 +577,12 @@ class EbuildFetchTestCase(TestCase):
             content_db_state = dict(emdisconf.content_db.items())
             self.assertEqual(content_db_state, dict(emdisconf.content_db.items()))
             self.assertEqual(
-                [
+                {
                     k[len("filename:") :]
                     for k in content_db_state
                     if k.startswith("filename:")
-                ],
-                ["bar", "foo"],
+                },
+                {"bar", "foo"},
             )
             self.assertEqual(
                 content_db_state["filename:foo"], content_db_state["filename:bar"]
@@ -615,12 +615,12 @@ class EbuildFetchTestCase(TestCase):
             emdisconf.content_db.remove(filename)
             # foo should still have a content revision corresponding to bar's content.
             self.assertEqual(
-                [
+                {
                     k[len("filename:") :]
                     for k in emdisconf.content_db
                     if k.startswith("filename:")
-                ],
-                ["bar", "foo"],
+                },
+                {"bar", "foo"},
             )
             self.assertEqual(len(emdisconf.content_db["filename:foo"]), 1)
             self.assertEqual(

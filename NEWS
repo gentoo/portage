@@ -6,6 +6,179 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.62 (2024-02-22)
+--------------
+
+This release has a lot of misc. bug fixes as well as many asyncio fixes from Zac to
+kill off unsafe fork use.
+
+Features:
+* cnf: make.conf.example.arc: Add for the arc arch.
+
+* ELF: Add entries for ARC machines
+
+* bintree: Use urllib to parse PORTAGE_BINHOST / sync-uri so IPv6 works (bug #921400).
+
+* FEATURES: Add FEATURES="merge-wait", enabled by default, to control whether
+  we do parallel merges of images to the live filesystem (bug #663324).
+
+  If enabled, we serialize these merges.
+
+  For now, this makes FEATURES="parallel-install" a no-op, but in future, it
+  will be improved to allow parallel merges, just not while any packages are
+  compiling.
+
+* estrip: Add FEATURES="dedupdebug" (bug #906368).
+
+  This uses sys-devel/dwz to deduplicate installed DWARF debug information.
+
+  Future improvements may be made for multifile support.
+
+* Support PROPERTIES="test_privileged" to not drop privileges for tests (bug #924585).
+
+Bug fixes:
+* vartree: Make _needs_move() resilient to corrupt files on the live filesystem
+  (do a full copy/replace).
+
+* binpkgs: Handle SignatureException during package moves (bug #922142).
+
+* gpkg, bintree, binpkg: Add missing newlines to signed binpkg update notice.
+
+* emerge: Backtrack consistently regardless of --fetchonly (bug #922038).
+
+* emaint: Cleanup duplicate 'usage:' output.
+
+* installed_dynlibs: Resolve *.so symlinks (bug #921170).
+
+* bin: Consistently prefix eqawarn with 'QA Notice' (bug #728046).
+
+* _overlap_dnf: Deduplicate any-of blocks which improves performance (bug #891137).
+
+* tests: Handle larger PAGE_SIZE in environment size check (bug #923368).
+
+Cleanups:
+* tests: Add a job with multiprocessing set to the 'spawn' method.
+
+* tests: Fix missing playground cleanups.
+
+* process.spawn: Add abstraction for os.fork() to allow migrating callers to it.
+
+portage-3.0.61 (2024-01-05)
+--------------
+
+A small set of binpkg robustness fixes.
+
+Bug fixes:
+* BinpkgFetcher: Preserve mtime (bug #921208).
+
+* bintree: Don't call trust helper unless bindb is writable (bug #915842, bug #920180).
+
+* bintree: Avoid unnecessary build id incrementation (bug #921208).
+
+* bintree: Handle inject failures (bug #921327).
+
+* emaint: merges: Fix TrackingFile for utf8_mode (bug #921181).
+
+portage-3.0.60 (2024-01-02)
+--------------
+
+A small set of binpkg robustness fixes.
+
+Bug fixes:
+* EbuildBinpkg: Avoid crash with verification failure in some cases (bug #921089).
+
+* dbapi: Raise CorruptionKeyError - which is treated as a warning - during pkgmoves
+  to avoid falling over in the event of a corrupt Packages index (bug #920828).
+
+* EbuildFetchTestCase: Fix key order assumption (bug #921107).
+
+* gpkg: Fix basename handling via aux_update (in particular with FEATURES="binpkg-multi-instance")
+  (bug #920828).
+
+portage-3.0.59 (2023-12-27)
+--------------
+
+Features:
+* emerge: depclean now returns with failure if no packages are matched
+  (bug #917120).
+
+* bintree: Support 'file://' scheme for binhost sync-uri (bug #920537).
+
+* sync: git: Include signing key and git revision in log output with --verbose
+  or if a failure occurs.
+
+Bug fixes:
+* Scheduler: Handle aborted unpack more gracefully (bug #920258).
+
+* Scheduler: Handle SignatureException in _run_pkg_pretend to give a proper
+  error message if a signature could not be verified, rather than crashing out
+  (bug #920258).
+
+* ebuild: Improve 'command not found' regex for the dash shell (bug #822033).
+
+* ebuild: Do not skip 'command not found' QA warnings for configure (bug #245716).
+
+* emerge: Fix --binpkg-respect-use output optimization (was broken by refactoring
+  for ROOT support).
+
+* depgraph: Use strip_libc_deps in _eliminate_rebuilds (bug #915494).
+
+* depgraph: Handle IDEPEND circular dependencies for depclean (bug #916135).
+
+* bindbapi: Update Packages index when signed binpkgs are invalidated post-updates
+  (bug #920095).
+
+* _global_updates: Take a lock when performing updates (bug #587088, bug #920095).
+
+* make.conf(5): Fix note about binpkg extension for gpkg.
+
+* addread, addwrite, adddeny, addpredict: Warn about passing a colon-separated
+  list of paths as argument (bug #920654).
+
+portage-3.0.58 (2023-12-14)
+--------------
+
+Breaking changes:
+* Switch BINPKG_FORMAT to "gpkg" by default (bug #912672).
+
+portage-3.0.57 (2023-12-10)
+--------------
+
+This release has a series of binpkg robustness fixes. Notably, it includes
+a workaround/fix for binpkgs built against a newer glibc to ensure that they
+aren't merged on a binpkg consumer before merging a newer glibc, which has been
+a longstanding cause of frustration for binpkg users.
+
+Features:
+* emerge: Make --binpkg-changed-deps output far more concise (don't show
+  packages missing from the merge list).
+
+* ebuild: Inject implicit libc RDEPEND. This avoids "bricking" systems when
+  using binpkgs built against a newer glibc (bug #753500, bug #913628).
+
+* BinpkgVerifier: Improve error message on stale binpkg index. This became
+  more common with the portage-3.0.52 default change to FEATURES="pkgdir-index-trusted"
+  (bug #915474).
+
+Bug fixes:
+* Fix package moves for signed binary packages by deleting the old binpkg
+  if it cannot be re-signed, rather than crashing (bug #919419).
+
+* Set SYSROOT appropriately for best_version and has_version so that they work
+  when cross-compiling and IPC is disabled.
+
+* bindbapi: Add missing SIZE key for binpkg-multi-instance (bug #906675,
+  bug #918597, bug #919668).
+
+* resolver: Weaken circular dependency handling for cross-root (bug #919174).
+
+* BuildLogger: Avoid hang with -ipc builds (bug #919072).
+
+* soname dependency support: Fix crash with --ignore-soname-deps=n (bug #919311).
+
+* sets: VariableSet: Flatten dependencies so that e.g. www-client/firefox
+  appears in @rust-rebuild.
+
 portage-3.0.56 (2023-12-01)
 --------------
 

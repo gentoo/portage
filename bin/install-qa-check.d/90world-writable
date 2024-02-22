@@ -10,7 +10,7 @@ world_writable_check() {
 	set -f
 
 	if [[ -n ${unsafe_files} ]] ; then
-		eqawarn "QA Security Notice: world writable file(s):"
+		eqawarn "QA Notice: world writable file(s):"
 
 		eqatag -v world-writable ${unsafe_files}
 

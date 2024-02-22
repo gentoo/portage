@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -9,17 +9,22 @@ __all__ = (
     "CancelledError",
     "Future",
     "InvalidStateError",
+    "Lock",
     "TimeoutError",
     "get_child_watcher",
     "get_event_loop",
     "set_child_watcher",
     "get_event_loop_policy",
     "set_event_loop_policy",
+    "run",
+    "shield",
     "sleep",
     "Task",
     "wait",
+    "wait_for",
 )
 
+import sys
 import types
 import weakref
 
@@ -33,7 +38,10 @@ from asyncio import (
     FIRST_EXCEPTION,
     Future,
     InvalidStateError,
+    Lock as _Lock,
+    shield,
     TimeoutError,
+    wait_for,
 )
 
 import threading
@@ -102,6 +110,14 @@ def set_child_watcher(watcher):
     return get_event_loop_policy().set_child_watcher(watcher)
 
 
+# Emulate run since it's the preferred python API.
+def run(coro):
+    return _safe_loop().run_until_complete(coro)
+
+
+run.__doc__ = _real_asyncio.run.__doc__
+
+
 def create_subprocess_exec(*args, **kwargs):
     """
     Create a subprocess.
@@ -153,6 +169,20 @@ def iscoroutinefunction(func):
     if _real_asyncio.iscoroutinefunction(func):
         return True
     return False
+
+
+class Lock(_Lock):
+    """
+    Inject loop parameter for python3.9 or less in order to avoid
+    "got Future <Future pending> attached to a different loop" errors.
+    """
+
+    def __init__(self, **kwargs):
+        if sys.version_info >= (3, 10):
+            kwargs.pop("loop", None)
+        elif "loop" not in kwargs:
+            kwargs["loop"] = _safe_loop()._loop
+        super().__init__(**kwargs)
 
 
 class Task(Future):

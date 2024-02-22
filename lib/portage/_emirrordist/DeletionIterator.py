@@ -27,9 +27,11 @@ class DeletionIterator:
         distfiles_set = set()
         distfiles_set.update(
             (
-                filename
-                if isinstance(filename, DistfileName)
-                else DistfileName(filename)
+                (
+                    filename
+                    if isinstance(filename, DistfileName)
+                    else DistfileName(filename)
+                )
                 for filename in itertools.chain.from_iterable(
                     layout.get_filenames(distdir) for layout in self._config.layouts
                 )

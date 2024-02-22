@@ -1,5 +1,5 @@
 # testCommandOututSet.py -- Portage Unit Testing Functionality
-# Copyright 2007-2020 Gentoo Authors
+# Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.process import find_binary
@@ -11,7 +11,7 @@ class CommandOutputSetTestCase(TestCase):
     """Simple Test Case for CommandOutputSet"""
 
     def setUp(self):
-        pass
+        super().setUp()
 
     def tearDown(self):
         pass

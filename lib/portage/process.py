@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -15,9 +15,11 @@ import subprocess
 import sys
 import traceback
 import os as _os
+import warnings
 
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import lru_cache, partial
+from typing import Any, Optional, Callable, Union
 
 from portage import os
 from portage import _encodings
@@ -26,6 +28,9 @@ import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
+    "portage.util._async.ForkProcess:ForkProcess",
+    "portage.util._eventloop.global_event_loop:global_event_loop",
+    "portage.util.futures:asyncio",
     "portage.util:dump_traceback,writemsg,writemsg_level",
 )
 
@@ -296,12 +301,180 @@ def calc_env_stats(env) -> EnvStats:
 env_too_large_warnings = 0
 
 
+class AbstractProcess:
+    def send_signal(self, sig):
+        """Send a signal to the process."""
+        if self.returncode is not None:
+            # Skip signalling a process that we know has already died.
+            return
+
+        try:
+            os.kill(self.pid, sig)
+        except ProcessLookupError:
+            # Suppress the race condition error; bpo-40550.
+            pass
+
+
+class Process(AbstractProcess):
+    """
+    An object that wraps OS processes which do not have an
+    associated multiprocessing.Process instance. Ultimately,
+    we need to stop using os.fork() to create these processes
+    because it is unsafe for threaded processes as discussed
+    in https://github.com/python/cpython/issues/84559.
+
+    Note that if subprocess.Popen is used without pass_fds
+    or preexec_fn parameters, then it avoids using os.fork()
+    by instead using posix_spawn. This approach is not used
+    by spawn because it needs to execute python code prior
+    to exec, so it instead uses multiprocessing.Process,
+    which only uses os.fork() when the multiprocessing start
+    method is fork.
+    """
+
+    def __init__(self, pid: int):
+        self.pid = pid
+        self.returncode = None
+        self._exit_waiters = []
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.pid}>"
+
+    async def wait(self):
+        """
+        Wait for the child process to terminate.
+
+        Set and return the returncode attribute.
+        """
+        if self.returncode is not None:
+            return self.returncode
+
+        loop = global_event_loop()
+        if not self._exit_waiters:
+            loop._asyncio_child_watcher.add_child_handler(self.pid, self._child_handler)
+        waiter = loop.create_future()
+        self._exit_waiters.append(waiter)
+        return await waiter
+
+    def _child_handler(self, pid, returncode):
+        if pid != self.pid:
+            raise AssertionError(f"expected pid {self.pid}, got {pid}")
+        self.returncode = returncode
+
+        for waiter in self._exit_waiters:
+            if not waiter.cancelled():
+                waiter.set_result(returncode)
+        self._exit_waiters = None
+
+    def terminate(self):
+        """Terminate the process with SIGTERM"""
+        self.send_signal(signal.SIGTERM)
+
+    def kill(self):
+        """Kill the process with SIGKILL"""
+        self.send_signal(signal.SIGKILL)
+
+
+class MultiprocessingProcess(AbstractProcess):
+    """
+    An object that wraps OS processes created by multiprocessing.Process.
+    """
+
+    # Number of seconds between poll attempts for process exit status
+    # (after the sentinel has become ready).
+    _proc_join_interval = 0.1
+
+    def __init__(self, proc: multiprocessing.Process):
+        self._proc = proc
+        self.pid = proc.pid
+        self.returncode = None
+        self._exit_waiters = []
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.pid}>"
+
+    async def wait(self):
+        """
+        Wait for the child process to terminate.
+
+        Set and return the returncode attribute.
+        """
+        if self.returncode is not None:
+            return self.returncode
+
+        loop = global_event_loop()
+        if not self._exit_waiters:
+            asyncio.ensure_future(self._proc_join(), loop=loop).add_done_callback(
+                self._proc_join_done
+            )
+        waiter = loop.create_future()
+        self._exit_waiters.append(waiter)
+        return await waiter
+
+    async def _proc_join(self):
+        loop = global_event_loop()
+        sentinel_reader = loop.create_future()
+        proc = self._proc
+        loop.add_reader(
+            proc.sentinel,
+            lambda: sentinel_reader.done() or sentinel_reader.set_result(None),
+        )
+        try:
+            await sentinel_reader
+        finally:
+            # If multiprocessing.Process supports the close method, then
+            # access to proc.sentinel will raise ValueError if the
+            # sentinel has been closed. In this case it's not safe to call
+            # remove_reader, since the file descriptor may have been closed
+            # and then reallocated to a concurrent coroutine. When the
+            # close method is not supported, proc.sentinel remains open
+            # until proc's finalizer is called.
+            try:
+                loop.remove_reader(proc.sentinel)
+            except ValueError:
+                pass
+
+        # Now that proc.sentinel is ready, poll until process exit
+        # status has become available.
+        while True:
+            proc.join(0)
+            if proc.exitcode is not None:
+                break
+            await asyncio.sleep(self._proc_join_interval, loop=loop)
+
+    def _proc_join_done(self, future):
+        # The join task should never be cancelled, so let it raise
+        # asyncio.CancelledError here if that somehow happens.
+        future.result()
+
+        self.returncode = self._proc.exitcode
+        if hasattr(self._proc, "close"):
+            self._proc.close()
+        self._proc = None
+
+        for waiter in self._exit_waiters:
+            if not waiter.cancelled():
+                waiter.set_result(self.returncode)
+        self._exit_waiters = None
+
+    def terminate(self):
+        """Terminate the process with SIGTERM"""
+        if self._proc is not None:
+            self._proc.terminate()
+
+    def kill(self):
+        """Kill the process with SIGKILL"""
+        if self._proc is not None:
+            self._proc.kill()
+
+
 def spawn(
     mycommand,
     env=None,
     opt_name=None,
     fd_pipes=None,
     returnpid=False,
+    returnproc=False,
     uid=None,
     gid=None,
     groups=None,
@@ -316,7 +489,7 @@ def spawn(
     unshare_mount=False,
     unshare_pid=False,
     warn_on_large_env=False,
-):
+) -> Union[int, MultiprocessingProcess, list[int]]:
     """
     Spawns a given command.
 
@@ -334,6 +507,9 @@ def spawn(
     @param returnpid: Return the Process IDs for a successful spawn.
     NOTE: This requires the caller clean up all the PIDs, otherwise spawn will clean them.
     @type returnpid: Boolean
+    @param returnproc: Return a MultiprocessingProcess instance (conflicts with logfile parameter).
+    NOTE: This requires the caller to asynchronously wait for the MultiprocessingProcess instance.
+    @type returnproc: Boolean
     @param uid: User ID to spawn as; useful for dropping privilages
     @type uid: Integer
     @param gid: Group ID to spawn as; useful for dropping privilages
@@ -369,11 +545,19 @@ def spawn(
 
     """
 
+    if logfile and returnproc:
+        raise ValueError(
+            "logfile parameter conflicts with returnproc (use fd_pipes instead)"
+        )
+
     # mycommand is either a str or a list
     if isinstance(mycommand, str):
         mycommand = mycommand.split()
 
     env = os.environ if env is None else env
+    # Sometimes os.environ can fail to pickle as shown in bug 923750
+    # comment 4, so copy it to a dict.
+    env = env if isinstance(env, dict) else dict(env)
 
     env_stats = None
     if warn_on_large_env:
@@ -422,10 +606,10 @@ def spawn(
 
         # Create a tee process, giving it our stdout and stderr
         # as well as the read end of the pipe.
-        mypids.extend(
+        mypids.append(
             spawn(
                 ("tee", "-i", "-a", logfile),
-                returnpid=True,
+                returnproc=True,
                 fd_pipes={0: pr, 1: fd_pipes[1], 2: fd_pipes[2]},
             )
         )
@@ -470,71 +654,39 @@ def spawn(
     # fork, so that the result is cached in the main process.
     bool(groups)
 
-    parent_pid = portage.getpid()
-    pid = None
-    try:
-        pid = os.fork()
+    start_func = _start_proc if returnproc or not returnpid else _start_fork
 
-        if pid == 0:
-            portage._ForkWatcher.hook(portage._ForkWatcher)
-            try:
-                _exec(
-                    binary,
-                    mycommand,
-                    opt_name,
-                    fd_pipes,
-                    env,
-                    gid,
-                    groups,
-                    uid,
-                    umask,
-                    cwd,
-                    pre_exec,
-                    close_fds,
-                    unshare_net,
-                    unshare_ipc,
-                    unshare_mount,
-                    unshare_pid,
-                    unshare_flags,
-                )
-            except SystemExit:
-                raise
-            except Exception as e:
-                if isinstance(e, OSError) and e.errno == errno.E2BIG:
-                    # If exec() failed with E2BIG, then this is
-                    # potentially because the environment variables
-                    # grew to large. The following will gather some
-                    # stats about the environment and print a
-                    # diagnostic message to help identifying the
-                    # culprit. See also
-                    # - https://bugs.gentoo.org/721088
-                    # - https://bugs.gentoo.org/830187
-                    if not env_stats:
-                        env_stats = calc_env_stats(env)
+    pid = start_func(
+        _exec_wrapper,
+        args=(
+            binary,
+            mycommand,
+            opt_name,
+            fd_pipes,
+            env,
+            gid,
+            groups,
+            uid,
+            umask,
+            cwd,
+            pre_exec,
+            close_fds,
+            unshare_net,
+            unshare_ipc,
+            unshare_mount,
+            unshare_pid,
+            unshare_flags,
+            env_stats,
+        ),
+        fd_pipes=fd_pipes,
+        close_fds=close_fds,
+    )
 
-                    writemsg(
-                        f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
-                    )
+    if returnproc:
+        # _start_proc returns a MultiprocessingProcess instance.
+        return pid
 
-                # We need to catch _any_ exception so that it doesn't
-                # propagate out of this function and cause exiting
-                # with anything other than os._exit()
-                writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
-                traceback.print_exc()
-                sys.stderr.flush()
-
-    finally:
-        # Don't used portage.getpid() here, due to a race with the above
-        # portage._ForkWatcher cache update.
-        if pid == 0 or (pid is None and _os.getpid() != parent_pid):
-            # Call os._exit() from a finally block in order
-            # to suppress any finally blocks from earlier
-            # in the call stack (see bug #345289). This
-            # finally block has to be setup before the fork
-            # in order to avoid a race condition.
-            os._exit(1)
-
-    if not isinstance(pid, int):
+    if returnpid and not isinstance(pid, int):
         raise AssertionError(f"fork returned non-integer: {repr(pid)}")
 
     # Add the pid to our local and the global pid lists.
@@ -548,7 +700,14 @@ def spawn(
     # If the caller wants to handle cleaning up the processes, we tell
     # it about all processes that were created.
     if returnpid:
+        warnings.warn(
+            "The portage.process.spawn returnpid parameter is deprecated and replaced by returnproc",
+            UserWarning,
+            stacklevel=1,
+        )
         return mypids
+
+    loop = global_event_loop()
 
     # Otherwise we clean them up.
     while mypids:
@@ -558,25 +717,22 @@ def spawn(
         pid = mypids.pop(0)
 
         # and wait for it.
-        retval = os.waitpid(pid, 0)[1]
+        retval = loop.run_until_complete(pid.wait())
 
         if retval:
             # If it failed, kill off anything else that
             # isn't dead yet.
             for pid in mypids:
-                # With waitpid and WNOHANG, only check the
-                # first element of the tuple since the second
-                # element may vary (bug #337465).
-                if os.waitpid(pid, os.WNOHANG)[0] == 0:
-                    os.kill(pid, signal.SIGTERM)
-                    os.waitpid(pid, 0)
+                waiter = asyncio.ensure_future(pid.wait(), loop)
+                try:
+                    loop.run_until_complete(
+                        asyncio.wait_for(asyncio.shield(waiter), 0.001)
+                    )
+                except (TimeoutError, asyncio.TimeoutError):
+                    pid.terminate()
+                    loop.run_until_complete(waiter)
 
-            # If it got a signal, return the signal that was sent.
-            if retval & 0xFF:
-                return (retval & 0xFF) << 8
-
-            # Otherwise, return its exit code.
-            return retval >> 8
+            return retval
 
     # Everything succeeded
     return 0
@@ -652,6 +808,71 @@ def _configure_loopback_interface():
         writemsg(
             f"Unable to configure loopback interface: {e.strerror}\n", noiselevel=-1
         )
+
+
+def _exec_wrapper(
+    binary,
+    mycommand,
+    opt_name,
+    fd_pipes,
+    env,
+    gid,
+    groups,
+    uid,
+    umask,
+    cwd,
+    pre_exec,
+    close_fds,
+    unshare_net,
+    unshare_ipc,
+    unshare_mount,
+    unshare_pid,
+    unshare_flags,
+    env_stats,
+):
+    """
+    Calls _exec with the given args and handles any raised Exception.
+    The intention is for _exec_wrapper and _exec to be reusable with
+    other process cloning implementations besides _start_fork.
+    """
+    try:
+        _exec(
+            binary,
+            mycommand,
+            opt_name,
+            fd_pipes,
+            env,
+            gid,
+            groups,
+            uid,
+            umask,
+            cwd,
+            pre_exec,
+            close_fds,
+            unshare_net,
+            unshare_ipc,
+            unshare_mount,
+            unshare_pid,
+            unshare_flags,
+        )
+    except Exception as e:
+        if isinstance(e, OSError) and e.errno == errno.E2BIG:
+            # If exec() failed with E2BIG, then this is
+            # potentially because the environment variables
+            # grew to large. The following will gather some
+            # stats about the environment and print a
+            # diagnostic message to help identifying the
+            # culprit. See also
+            # - https://bugs.gentoo.org/721088
+            # - https://bugs.gentoo.org/830187
+            if not env_stats:
+                env_stats = calc_env_stats(env)
+
+            writemsg(
+                f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
+            )
+        writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
+        raise
 
 
 def _exec(
@@ -754,15 +975,19 @@ def _exec(
     # the parent process (see bug #289486).
     signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
-    _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
-
     # Unshare (while still uid==0)
     if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
         filename = find_library("c")
         if filename is not None:
             libc = LoadLibrary(filename)
             if libc is not None:
-                try:
+                # unshare() may not be supported by libc
+                if not hasattr(libc, "unshare"):
+                    unshare_net = False
+                    unshare_ipc = False
+                    unshare_mount = False
+                    unshare_pid = False
+                else:
                     # Since a failed unshare call could corrupt process
                     # state, first validate that the call can succeed.
                     # The parent process should call _unshare_validate
@@ -793,120 +1018,154 @@ def _exec(
                         )
                     else:
                         if unshare_pid:
-                            main_child_pid = os.fork()
-                            if main_child_pid == 0:
-                                # The portage.getpid() cache may need to be updated here,
-                                # in case the pre_exec function invokes portage APIs.
-                                portage._ForkWatcher.hook(portage._ForkWatcher)
-                                # pid namespace requires us to become init
-                                binary, myargs = (
-                                    portage._python_interpreter,
-                                    [
-                                        portage._python_interpreter,
-                                        os.path.join(portage._bin_path, "pid-ns-init"),
-                                        _unicode_encode(
-                                            "" if uid is None else str(uid)
-                                        ),
-                                        _unicode_encode(
-                                            "" if gid is None else str(gid)
-                                        ),
-                                        _unicode_encode(
-                                            ""
-                                            if groups is None
-                                            else ",".join(
-                                                str(group) for group in groups
-                                            )
-                                        ),
-                                        _unicode_encode(
-                                            "" if umask is None else str(umask)
-                                        ),
-                                        _unicode_encode(
-                                            ",".join(str(fd) for fd in fd_pipes)
-                                        ),
-                                        binary,
-                                    ]
-                                    + myargs,
-                                )
-                                uid = None
-                                gid = None
-                                groups = None
-                                umask = None
-                            else:
-                                # Execute a supervisor process which will forward
-                                # signals to init and forward exit status to the
-                                # parent process. The supervisor process runs in
-                                # the global pid namespace, so skip /proc remount
-                                # and other setup that's intended only for the
-                                # init process.
-                                binary, myargs = portage._python_interpreter, [
+                            # pid namespace requires us to become init
+                            binary, myargs = (
+                                portage._python_interpreter,
+                                [
                                     portage._python_interpreter,
                                     os.path.join(portage._bin_path, "pid-ns-init"),
-                                    str(main_child_pid),
+                                    _unicode_encode("" if uid is None else str(uid)),
+                                    _unicode_encode("" if gid is None else str(gid)),
+                                    _unicode_encode(
+                                        ""
+                                        if groups is None
+                                        else ",".join(str(group) for group in groups)
+                                    ),
+                                    _unicode_encode(
+                                        "" if umask is None else str(umask)
+                                    ),
+                                    _unicode_encode(
+                                        ",".join(str(fd) for fd in fd_pipes)
+                                    ),
+                                    binary,
                                 ]
-
-                                os.execve(binary, myargs, env)
-
-                        if unshare_mount:
-                            # mark the whole filesystem as slave to avoid
-                            # mounts escaping the namespace
-                            s = subprocess.Popen(["mount", "--make-rslave", "/"])
-                            mount_ret = s.wait()
-                            if mount_ret != 0:
-                                # TODO: should it be fatal maybe?
-                                writemsg(
-                                    "Unable to mark mounts slave: %d\n" % (mount_ret,),
-                                    noiselevel=-1,
-                                )
-                        if unshare_pid:
-                            # we need at least /proc being slave
-                            s = subprocess.Popen(["mount", "--make-slave", "/proc"])
-                            mount_ret = s.wait()
-                            if mount_ret != 0:
-                                # can't proceed with shared /proc
-                                writemsg(
-                                    "Unable to mark /proc slave: %d\n" % (mount_ret,),
-                                    noiselevel=-1,
-                                )
-                                os._exit(1)
-                            # mount new /proc for our namespace
-                            s = subprocess.Popen(
-                                ["mount", "-n", "-t", "proc", "proc", "/proc"]
+                                + myargs,
                             )
-                            mount_ret = s.wait()
-                            if mount_ret != 0:
-                                writemsg(
-                                    "Unable to mount new /proc: %d\n" % (mount_ret,),
-                                    noiselevel=-1,
-                                )
-                                os._exit(1)
-                        if unshare_net:
-                            # use 'localhost' to avoid hostname resolution problems
-                            try:
-                                # pypy3 does not implement socket.sethostname()
-                                new_hostname = b"localhost"
-                                if hasattr(socket, "sethostname"):
-                                    socket.sethostname(new_hostname)
-                                else:
-                                    if (
-                                        libc.sethostname(
-                                            new_hostname, len(new_hostname)
-                                        )
-                                        != 0
-                                    ):
-                                        errno_value = ctypes.get_errno()
-                                        raise OSError(
-                                            errno_value, os.strerror(errno_value)
-                                        )
-                            except Exception as e:
-                                writemsg(
-                                    'Unable to set hostname: %s (for FEATURES="network-sandbox")\n'
-                                    % (e,),
-                                    noiselevel=-1,
-                                )
-                            _configure_loopback_interface()
-                except AttributeError:
-                    # unshare() not supported by libc
-                    pass
+                            uid = None
+                            gid = None
+                            groups = None
+                            umask = None
+
+                            # Use _start_fork for os.fork() error handling, ensuring
+                            # that if exec fails then the child process will display
+                            # a traceback before it exits via os._exit to suppress any
+                            # finally blocks from parent's call stack (bug 345289).
+                            main_child_pid = _start_fork(
+                                _exec2,
+                                args=(
+                                    binary,
+                                    myargs,
+                                    env,
+                                    gid,
+                                    groups,
+                                    uid,
+                                    umask,
+                                    cwd,
+                                    pre_exec,
+                                    unshare_net,
+                                    unshare_ipc,
+                                    unshare_mount,
+                                    unshare_pid,
+                                ),
+                                fd_pipes=None,
+                                close_fds=False,
+                            )
+
+                            # Execute a supervisor process which will forward
+                            # signals to init and forward exit status to the
+                            # parent process. The supervisor process runs in
+                            # the global pid namespace, so skip /proc remount
+                            # and other setup that's intended only for the
+                            # init process.
+                            binary, myargs = portage._python_interpreter, [
+                                portage._python_interpreter,
+                                os.path.join(portage._bin_path, "pid-ns-init"),
+                                str(main_child_pid),
+                            ]
+
+                            os.execve(binary, myargs, env)
+
+    # Reachable only if unshare_pid is False.
+    _exec2(
+        binary,
+        myargs,
+        env,
+        gid,
+        groups,
+        uid,
+        umask,
+        cwd,
+        pre_exec,
+        unshare_net,
+        unshare_ipc,
+        unshare_mount,
+        unshare_pid,
+    )
+
+
+def _exec2(
+    binary,
+    myargs,
+    env,
+    gid,
+    groups,
+    uid,
+    umask,
+    cwd,
+    pre_exec,
+    unshare_net,
+    unshare_ipc,
+    unshare_mount,
+    unshare_pid,
+):
+    if unshare_mount:
+        # mark the whole filesystem as slave to avoid
+        # mounts escaping the namespace
+        s = subprocess.Popen(["mount", "--make-rslave", "/"])
+        mount_ret = s.wait()
+        if mount_ret != 0:
+            # TODO: should it be fatal maybe?
+            writemsg(
+                "Unable to mark mounts slave: %d\n" % (mount_ret,),
+                noiselevel=-1,
+            )
+    if unshare_pid:
+        # we need at least /proc being slave
+        s = subprocess.Popen(["mount", "--make-slave", "/proc"])
+        mount_ret = s.wait()
+        if mount_ret != 0:
+            # can't proceed with shared /proc
+            writemsg(
+                "Unable to mark /proc slave: %d\n" % (mount_ret,),
+                noiselevel=-1,
+            )
+            os._exit(1)
+        # mount new /proc for our namespace
+        s = subprocess.Popen(["mount", "-n", "-t", "proc", "proc", "/proc"])
+        mount_ret = s.wait()
+        if mount_ret != 0:
+            writemsg(
+                "Unable to mount new /proc: %d\n" % (mount_ret,),
+                noiselevel=-1,
+            )
+            os._exit(1)
+    if unshare_net:
+        # use 'localhost' to avoid hostname resolution problems
+        try:
+            # pypy3 does not implement socket.sethostname()
+            new_hostname = b"localhost"
+            if hasattr(socket, "sethostname"):
+                socket.sethostname(new_hostname)
+            else:
+                if libc.sethostname(new_hostname, len(new_hostname)) != 0:
+                    errno_value = ctypes.get_errno()
+                    raise OSError(errno_value, os.strerror(errno_value))
+        except Exception as e:
+            writemsg(
+                f'Unable to set hostname: {e} (for FEATURES="network-sandbox")\n',
+                noiselevel=-1,
+            )
+        _configure_loopback_interface()
 
     # Set requested process permissions.
     if gid:
@@ -1064,7 +1323,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
     actually does nothing in this case), which avoids possible
     interference.
     """
-
+    fd_pipes = {} if fd_pipes is None else fd_pipes
     reverse_map = {}
     # To protect from cases where direct assignment could
     # clobber needed fds ({1:2, 2:1}) we create a reverse map
@@ -1136,6 +1395,119 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
                     os.close(fd)
                 except OSError:
                     pass
+
+
+def _start_fork(
+    target: Callable[..., None],
+    args: Optional[tuple[Any, ...]] = (),
+    kwargs: Optional[dict[str, Any]] = {},
+    fd_pipes: Optional[dict[int, int]] = None,
+    close_fds: Optional[bool] = True,
+) -> int:
+    """
+    Execute the target function in a fork. The fd_pipes and
+    close_fds parameters are handled in the fork, before the target
+    function is called. The args and kwargs parameters are passed
+    as positional and keyword arguments for the target function.
+
+    The target, args, and kwargs parameters are intended to
+    be equivalent to the corresponding multiprocessing.Process
+    constructor parameters.
+
+    Ultimately, the intention is for spawn to support other
+    process cloning implementations besides _start_fork, since
+    fork is unsafe for threaded processes as discussed in
+    https://github.com/python/cpython/issues/84559.
+    """
+    parent_pid = portage.getpid()
+    pid = None
+    try:
+        pid = os.fork()
+
+        if pid == 0:
+            try:
+                _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
+                target(*args, **kwargs)
+            except Exception:
+                # We need to catch _any_ exception and display it since the child
+                # process must unconditionally exit via os._exit() if exec fails.
+                traceback.print_exc()
+                sys.stderr.flush()
+    finally:
+        # Don't used portage.getpid() here, in case there is a race
+        # with getpid cache invalidation via _ForkWatcher hook.
+        if pid == 0 or (pid is None and _os.getpid() != parent_pid):
+            # Call os._exit() from a finally block in order
+            # to suppress any finally blocks from earlier
+            # in the call stack (see bug #345289). This
+            # finally block has to be setup before the fork
+            # in order to avoid a race condition.
+            os._exit(1)
+    return pid
+
+
+class _chain_pre_exec_fns:
+    """
+    Wraps a target function to call pre_exec functions just before
+    the original target function.
+    """
+
+    def __init__(self, target, *args):
+        self._target = target
+        self._pre_exec_fns = args
+
+    def __call__(self, *args, **kwargs):
+        for pre_exec in self._pre_exec_fns:
+            pre_exec()
+        return self._target(*args, **kwargs)
+
+
+def _setup_pipes_after_fork(fd_pipes):
+    for fd in set(fd_pipes.values()):
+        os.set_inheritable(fd, True)
+    _setup_pipes(fd_pipes, close_fds=False, inheritable=True)
+
+
+def _start_proc(
+    target: Callable[..., None],
+    args: Optional[tuple[Any, ...]] = (),
+    kwargs: Optional[dict[str, Any]] = {},
+    fd_pipes: Optional[dict[int, int]] = None,
+    close_fds: Optional[bool] = False,
+) -> MultiprocessingProcess:
+    """
+    Execute the target function using multiprocess.Process.
+    If the close_fds parameter is True then NotImplementedError
+    is raised, since it is risky to forcefully close file
+    descriptors that have references (bug 374335), and PEP 446
+    should ensure that any relevant file descriptors are
+    non-inheritable and therefore automatically closed on exec.
+    """
+    if close_fds:
+        raise NotImplementedError(
+            "close_fds is not supported (since file descriptors are non-inheritable by default for exec)"
+        )
+
+    # Manage fd_pipes inheritance for spawn/exec (bug 923755),
+    # which ForkProcess does not handle because its target
+    # function does not necessarily exec.
+    if fd_pipes and multiprocessing.get_start_method() == "fork":
+        target = _chain_pre_exec_fns(target, partial(_setup_pipes_after_fork, fd_pipes))
+        fd_pipes = None
+
+    proc = ForkProcess(
+        scheduler=global_event_loop(),
+        target=target,
+        args=args,
+        kwargs=kwargs,
+        fd_pipes=fd_pipes,
+        create_pipe=False,  # Pipe creation is delegated to the caller (see bug 923750).
+    )
+    proc.start()
+
+    # ForkProcess conveniently holds a MultiprocessingProcess
+    # instance that is suitable to return here.
+    return proc._proc
 
 
 def find_binary(binary):

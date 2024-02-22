@@ -43,7 +43,7 @@ bad_bin_group_write_check() {
 	done
 
 	if [[ ${found[@]} ]]; then
-		eqawarn "system executables group-writable by nonzero gid:"
+		eqawarn "QA Notice: system executables group-writable by nonzero gid:"
 		for f in "${found[@]}"; do
 			# Strip off the leading destdir before outputting the path.
 			eqawarn "  ${f#${D%/}}"

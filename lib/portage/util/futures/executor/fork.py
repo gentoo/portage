@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ("ForkExecutor",)
@@ -40,7 +40,9 @@ class ForkExecutor:
         """
         future = self._loop.create_future()
         proc = AsyncFunction(
-            target=functools.partial(self._guarded_fn_call, fn, args, kwargs)
+            target=functools.partial(self._guarded_fn_call, fn, args, kwargs),
+            # Directly inherit stdio streams and run in the foreground with no log.
+            create_pipe=False,
         )
         self._submit_queue.append((future, proc))
         self._schedule()

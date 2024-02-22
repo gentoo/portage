@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Gentoo Authors
+# Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """
@@ -9,13 +9,15 @@ locale.
 
 import locale
 import logging
-import os
+import multiprocessing
+import sys
 import textwrap
 import traceback
 
 import portage
 from portage.util import _unicode_decode, writemsg_level
 from portage.util._ctypes import find_library, LoadLibrary
+from portage.util.futures import asyncio
 
 
 locale_categories = (
@@ -96,13 +98,34 @@ def _check_locale(silent):
     return True
 
 
+def _set_and_check_locale(silent, env, mylocale):
+    try:
+        if env is not None:
+            try:
+                locale.setlocale(locale.LC_CTYPE, mylocale)
+            except locale.Error:
+                sys.exit(2)
+
+        ret = _check_locale(silent)
+        if ret is None:
+            sys.exit(2)
+        else:
+            sys.exit(0 if ret else 1)
+    except Exception:
+        traceback.print_exc()
+        sys.exit(2)
+
+
 def check_locale(silent=False, env=None):
     """
     Check whether the locale is sane. Returns True if it is, prints
     warning and returns False if it is not. Returns None if the check
     can not be executed due to platform limitations.
     """
+    return asyncio.run(async_check_locale(silent=silent, env=env))
 
+
+async def async_check_locale(silent=False, env=None):
     if env is not None:
         for v in ("LC_ALL", "LC_CTYPE", "LANG"):
             if v in env:
@@ -116,30 +139,17 @@ def check_locale(silent=False, env=None):
         except KeyError:
             pass
 
-    pid = os.fork()
-    if pid == 0:
-        portage._ForkWatcher.hook(portage._ForkWatcher)
-        try:
-            if env is not None:
-                try:
-                    locale.setlocale(locale.LC_CTYPE, portage._native_string(mylocale))
-                except locale.Error:
-                    os._exit(2)
+    proc = multiprocessing.Process(
+        target=_set_and_check_locale,
+        args=(silent, env, None if env is None else portage._native_string(mylocale)),
+    )
+    proc.start()
+    proc = portage.process.MultiprocessingProcess(proc)
+    await proc.wait()
 
-            ret = _check_locale(silent)
-            if ret is None:
-                os._exit(2)
-            else:
-                os._exit(0 if ret else 1)
-        except Exception:
-            traceback.print_exc()
-            os._exit(2)
-
-    pid2, ret = os.waitpid(pid, 0)
-    assert pid == pid2
     pyret = None
-    if os.WIFEXITED(ret):
-        ret = os.WEXITSTATUS(ret)
+    if proc.returncode >= 0:
+        ret = proc.returncode
         if ret != 2:
             pyret = ret == 0
 
@@ -148,13 +158,22 @@ def check_locale(silent=False, env=None):
     return pyret
 
 
+async_check_locale.__doc__ = check_locale.__doc__
+async_check_locale.__doc__ += """
+    This function is a coroutine.
+"""
+
+
 def split_LC_ALL(env):
     """
     Replace LC_ALL with split-up LC_* variables if it is defined.
     Works on the passed environment (or settings instance).
     """
     lc_all = env.get("LC_ALL")
-    if lc_all is not None:
+    if lc_all:
         for c in locale_categories:
             env[c] = lc_all
-        del env["LC_ALL"]
+        # Set empty so that config.reset() can restore LC_ALL state,
+        # since del can permanently delete variables which are not
+        # stored in the config's backupenv.
+        env["LC_ALL"] = ""

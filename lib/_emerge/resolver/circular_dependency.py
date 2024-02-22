@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -132,8 +132,19 @@ class circular_dependency_handler:
             for ppkg, atom in parent_atoms:
                 if ppkg == parent:
                     changed_parent = ppkg
-                    parent_atom = atom.unevaluated_atom
+                    parent_atom = atom
                     break
+
+            if parent_atom.package:
+                parent_atom = parent_atom.unevaluated_atom
+            else:
+                # Treat soname deps as unconditional for now. In some
+                # cases they can be avoided by a rebuild with changed
+                # USE, but ebuilds sometimes do not specify the
+                # corresponding conditional dependency (especially for
+                # system packages like gcc which provides libstdc++.so.6
+                # and libgcc_s.so.1).
+                continue
 
             try:
                 affecting_use = extract_affecting_use(
@@ -178,7 +189,7 @@ class circular_dependency_handler:
 
             if len(affecting_use) > self.MAX_AFFECTING_USE:
                 # Limit the number of combinations explored (bug #555698).
-                # First, discard irrelevent flags that are not enabled.
+                # First, discard irrelevant flags that are not enabled.
                 # Since extract_affecting_use doesn't distinguish between
                 # positive and negative effects (flag? vs. !flag?), assume
                 # a positive relationship.
@@ -243,8 +254,8 @@ class circular_dependency_handler:
                     continue
 
                 # Check if a USE change conflicts with use requirements of the parents.
-                # If a requiremnet is hard, ignore the suggestion.
-                # If the requirment is conditional, warn the user that other changes might be needed.
+                # If a requirement is hard, ignore the suggestion.
+                # If the requirement is conditional, warn the user that other changes might be needed.
                 followup_change = False
                 parent_parent_atoms = self.depgraph._dynamic_config._parent_atoms.get(
                     changed_parent

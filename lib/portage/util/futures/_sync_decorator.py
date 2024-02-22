@@ -39,9 +39,11 @@ def _sync_methods(obj, loop=None):
     loop = asyncio._wrap_loop(loop)
     return _ObjectAttrWrapper(
         obj,
-        lambda attr: _sync_decorator(attr, loop=loop)
-        if asyncio.iscoroutinefunction(attr)
-        else attr,
+        lambda attr: (
+            _sync_decorator(attr, loop=loop)
+            if asyncio.iscoroutinefunction(attr)
+            else attr
+        ),
     )
 
 

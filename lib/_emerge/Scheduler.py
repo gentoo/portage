@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
@@ -930,6 +930,7 @@ class Scheduler(PollScheduler):
                     current_task = clean_phase
                     clean_phase.start()
                     await clean_phase.async_wait()
+                    current_task = None
 
                 if x.built:
                     tree = "bintree"
@@ -981,16 +982,34 @@ class Scheduler(PollScheduler):
                         self._record_pkg_failure(x, settings, verifier.returncode)
                         continue
 
+                    current_task = None
                     if fetched:
-                        bintree.inject(
+                        if not bintree.inject(
                             x.cpv,
                             current_pkg_path=fetched,
                             allocated_pkg_path=fetcher.pkg_allocated_path,
-                        )
+                        ):
+                            eerror(
+                                "Binary package is not usable",
+                                phase="pretend",
+                                key=x.cpv,
+                            )
+                            failures += 1
+                            self._record_pkg_failure(x, settings, 1)
+                            continue
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
-                    await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
+                    try:
+                        await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
+                    except portage.exception.SignatureException as e:
+                        writemsg(
+                            f"!!! Invalid binary package: '{bintree.getname(x.cpv)}', {e}\n",
+                            noiselevel=-1,
+                        )
+                        failures += 1
+                        self._record_pkg_failure(x, settings, 1)
+                        continue
                     ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
                     settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
                     settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
@@ -1030,23 +1049,27 @@ class Scheduler(PollScheduler):
                 current_task = pretend_phase
                 pretend_phase.start()
                 ret = await pretend_phase.async_wait()
+                # Leave current_task assigned in order to trigger clean
+                # on success in the below finally block.
                 if ret != os.EX_OK:
                     failures += 1
                     self._record_pkg_failure(x, settings, ret)
-                portage.elog.elog_process(x.cpv, settings)
             finally:
                 if current_task is not None:
                     if current_task.isAlive():
                         current_task.cancel()
-                    if current_task.returncode == os.EX_OK:
-                        clean_phase = EbuildPhase(
-                            background=False,
-                            phase="clean",
-                            scheduler=sched_iface,
-                            settings=settings,
-                        )
-                        clean_phase.start()
-                        await clean_phase.async_wait()
+
+                portage.elog.elog_process(x.cpv, settings)
+
+                if current_task is not None and current_task.returncode == os.EX_OK:
+                    clean_phase = EbuildPhase(
+                        background=False,
+                        phase="clean",
+                        scheduler=sched_iface,
+                        settings=settings,
+                    )
+                    clean_phase.start()
+                    await clean_phase.async_wait()
 
                 await build_dir.async_unlock()
                 self._deallocate_config(settings)
@@ -1498,14 +1521,16 @@ class Scheduler(PollScheduler):
             self.curval += 1
             merge = PackageMerge(merge=build, scheduler=self._sched_iface)
             self._running_tasks[id(merge)] = merge
-            if (
-                not build.build_opts.buildpkgonly
-                and build.pkg in self._deep_system_deps
+            # By default, merge-wait only allows merge when no builds are executing.
+            # As a special exception, dependencies on system packages are frequently
+            # unspecified and will therefore force merge-wait.
+            is_system_pkg = build.pkg in self._deep_system_deps
+            if not build.build_opts.buildpkgonly and (
+                "merge-wait" in build.settings.features or is_system_pkg
             ):
-                # Since dependencies on system packages are frequently
-                # unspecified, merge them only when no builds are executing.
                 self._merge_wait_queue.append(merge)
-                merge.addStartListener(self._system_merge_started)
+                if is_system_pkg:
+                    merge.addStartListener(self._system_merge_started)
             else:
                 self._task_queues.merge.add(merge)
                 merge.addExitListener(self._merge_exit)

@@ -1,4 +1,4 @@
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"]
@@ -41,7 +41,9 @@ from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
+import contextlib
 import os as _os
+import threading
 import traceback
 import warnings
 import errno
@@ -106,7 +108,6 @@ class _dummy_list(list):
 
 
 class _better_cache:
-
     """
     The purpose of better_cache is to locate catpkgs in repositories using ``os.listdir()`` as much as possible, which
     is less expensive IO-wise than exhaustively doing a stat on each repo for a particular catpkg. better_cache stores a
@@ -240,6 +241,7 @@ class portdbapi(dbapi):
         # this purpose because doebuild makes many changes to the config
         # instance that is passed in.
         self.doebuild_settings = config(clone=self.settings)
+        self._doebuild_settings_lock = asyncio.Lock()
         self.depcachedir = os.path.realpath(self.settings.depcachedir)
 
         if os.environ.get("SANDBOX_ON") == "1":
@@ -356,6 +358,17 @@ class portdbapi(dbapi):
         self._aux_cache = {}
         self._better_cache = None
         self._broken_ebuilds = set()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # These attributes are not picklable, so they are automatically
+        # regenerated after unpickling.
+        state["_doebuild_settings_lock"] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._doebuild_settings_lock = asyncio.Lock()
 
     def _set_porttrees(self, porttrees):
         """
@@ -670,7 +683,7 @@ class portdbapi(dbapi):
             self.async_aux_get(mycpv, mylist, mytree=mytree, myrepo=myrepo, loop=loop)
         )
 
-    def async_aux_get(self, mycpv, mylist, mytree=None, myrepo=None, loop=None):
+    async def async_aux_get(self, mycpv, mylist, mytree=None, myrepo=None, loop=None):
         """
         Asynchronous form form of aux_get.
 
@@ -695,13 +708,11 @@ class portdbapi(dbapi):
         # Callers of this method certainly want the same event loop to
         # be used for all calls.
         loop = asyncio._wrap_loop(loop)
-        future = loop.create_future()
         cache_me = False
         if myrepo is not None:
             mytree = self.treemap.get(myrepo)
             if mytree is None:
-                future.set_exception(PortageKeyError(myrepo))
-                return future
+                raise PortageKeyError(myrepo)
 
         if (
             mytree is not None
@@ -720,16 +731,14 @@ class portdbapi(dbapi):
         ):
             aux_cache = self._aux_cache.get(mycpv)
             if aux_cache is not None:
-                future.set_result([aux_cache.get(x, "") for x in mylist])
-                return future
+                return [aux_cache.get(x, "") for x in mylist]
             cache_me = True
 
         try:
             cat, pkg = mycpv.split("/", 1)
         except ValueError:
             # Missing slash. Can't find ebuild so raise PortageKeyError.
-            future.set_exception(PortageKeyError(mycpv))
-            return future
+            raise PortageKeyError(mycpv)
 
         myebuild, mylocation = self.findname2(mycpv, mytree)
 
@@ -738,12 +747,12 @@ class portdbapi(dbapi):
                 "!!! aux_get(): %s\n" % _("ebuild not found for '%s'") % mycpv,
                 noiselevel=1,
             )
-            future.set_exception(PortageKeyError(mycpv))
-            return future
+            raise PortageKeyError(mycpv)
 
         mydata, ebuild_hash = self._pull_valid_cache(mycpv, myebuild, mylocation)
 
         if mydata is not None:
+            future = loop.create_future()
             self._aux_get_return(
                 future,
                 mycpv,
@@ -755,37 +764,71 @@ class portdbapi(dbapi):
                 cache_me,
                 None,
             )
-            return future
+            return future.result()
 
         if myebuild in self._broken_ebuilds:
-            future.set_exception(PortageKeyError(mycpv))
-            return future
+            raise PortageKeyError(mycpv)
 
-        proc = EbuildMetadataPhase(
-            cpv=mycpv,
-            ebuild_hash=ebuild_hash,
-            portdb=self,
-            repo_path=mylocation,
-            scheduler=loop,
-            settings=self.doebuild_settings,
-        )
+        proc = None
+        deallocate_config = None
+        async with contextlib.AsyncExitStack() as stack:
+            try:
+                if (
+                    threading.current_thread() is threading.main_thread()
+                    and loop is asyncio._safe_loop()
+                ):
+                    # In this case use self._doebuild_settings_lock to manage concurrency.
+                    deallocate_config = loop.create_future()
+                    await stack.enter_async_context(self._doebuild_settings_lock)
+                    settings = self.doebuild_settings
+                else:
+                    if portage._internal_caller:
+                        raise AssertionError(
+                            f"async_aux_get called from thread {threading.current_thread()} with loop {loop}"
+                        )
+                    # Clone a config instance since we do not have a thread-safe config pool.
+                    settings = portage.config(clone=self.settings)
 
-        proc.addExitListener(
-            functools.partial(
-                self._aux_get_return,
-                future,
-                mycpv,
-                mylist,
-                myebuild,
-                ebuild_hash,
-                mydata,
-                mylocation,
-                cache_me,
-            )
-        )
-        future.add_done_callback(functools.partial(self._aux_get_cancel, proc))
-        proc.start()
-        return future
+                proc = EbuildMetadataPhase(
+                    cpv=mycpv,
+                    ebuild_hash=ebuild_hash,
+                    portdb=self,
+                    repo_path=mylocation,
+                    scheduler=loop,
+                    settings=settings,
+                    deallocate_config=deallocate_config,
+                )
+
+                future = loop.create_future()
+                proc.addExitListener(
+                    functools.partial(
+                        self._aux_get_return,
+                        future,
+                        mycpv,
+                        mylist,
+                        myebuild,
+                        ebuild_hash,
+                        mydata,
+                        mylocation,
+                        cache_me,
+                    )
+                )
+                future.add_done_callback(functools.partial(self._aux_get_cancel, proc))
+                proc.start()
+
+            finally:
+                # Wait for deallocate_config before releasing
+                # self._doebuild_settings_lock if needed.
+                if deallocate_config is not None:
+                    if proc is None or not proc.isAlive():
+                        deallocate_config.done() or deallocate_config.cancel()
+                    else:
+                        await deallocate_config
+
+        # After deallocate_config is done, release self._doebuild_settings_lock
+        # by leaving the stack context, and wait for proc to finish and
+        # trigger a call to self._aux_get_return.
+        return await future
 
     @staticmethod
     def _aux_get_cancel(proc, future):
@@ -890,7 +933,7 @@ class portdbapi(dbapi):
                         )
                     )
                 else:
-                    result.set_exception(future.exception())
+                    result.set_exception(aux_get_future.exception())
                 return
 
             eapi, myuris = aux_get_future.result()
@@ -914,8 +957,9 @@ class portdbapi(dbapi):
             except Exception as e:
                 result.set_exception(e)
 
-        aux_get_future = self.async_aux_get(
-            mypkg, ["EAPI", "SRC_URI"], mytree=mytree, loop=loop
+        aux_get_future = asyncio.ensure_future(
+            self.async_aux_get(mypkg, ["EAPI", "SRC_URI"], mytree=mytree, loop=loop),
+            loop,
         )
         result.add_done_callback(
             lambda result: aux_get_future.cancel() if result.cancelled() else None

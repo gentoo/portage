@@ -3,7 +3,11 @@
 
 from unittest.mock import MagicMock, patch
 
-from _emerge.actions import run_action
+from _emerge.actions import get_libc_version, run_action
+
+from portage.const import LIBC_PACKAGE_ATOM
+from portage.dbapi.virtual import fakedbapi
+from portage.dep import Atom
 from portage.tests import TestCase
 
 
@@ -45,3 +49,20 @@ class RunActionTestCase(TestCase):
         bt.populate.assert_called_once_with(
             getbinpkgs=False, getbinpkg_refresh=True, pretend=False
         )
+
+    def testGetSystemLibc(self):
+        """
+        Check that get_libc_version extracts the right version string
+        from the provider LIBC_PACKAGE_ATOM for emerge --info and friends.
+        """
+        settings = MagicMock()
+
+        settings.getvirtuals.return_value = {
+            LIBC_PACKAGE_ATOM: [Atom("=sys-libs/musl-1.2.3")]
+        }
+        settings.__getitem__.return_value = {}
+
+        vardb = fakedbapi(settings)
+        vardb.cpv_inject("sys-libs/musl-1.2.3", {"SLOT": "0"})
+
+        self.assertEqual(get_libc_version(vardb), ["musl-1.2.3"])

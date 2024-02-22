@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Mar 2023" "Portage @VERSION@" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -118,7 +118,7 @@ values are \fIxpak\fI or \fIgpkg\fI.  If \fBBINPKG_FORMAT\fR is set to \fIxpak\f
 packages will have the file extension .tbz2 for any compression type for historical
 reasons.  If \fBBINPKG_FORMAT\fR is set to \fIxpak\fR, and FEATURES="binpkg-multi-instance"
 is set, packages will have the file extension .xpak.  If \fBBINPKG_FORMAT\fR is set
-to \fIgpkg\fR, packages will have the file extension .gpkg.
+to \fIgpkg\fR, packages will have the file extension .gpkg.tar.
 .TP
 \fBBINPKG_COMPRESS\fR = \fI"compression"\fR
 This variable is used to determine the compression used for \fIbinary
@@ -468,12 +468,18 @@ redundant on\-the\-fly compression.  The resulting file will be called
 .B compressdebug
 Compress the debug sections in the split debug files with zlib to save
 space.  See \fBsplitdebug\fR for general split debug
-information (upon which this feature depends).
+information (upon which this feature depends).  See also \fBdedupdebug\fR
+for further debug info size reduction.
 .TP
 .B config\-protect\-if\-modified
 This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
 that have not been modified since they were installed. This feature is
 enabled by default.
+.TP
+.B dedupdebug
+Prior to the debugging info being split and compressed, they are
+deduplicated.  This feature works only if dwz is installed, and is also
+disabled by \fBnostrip\fR.
 .TP
 .B digest
 Autogenerate digests for packages when running the
@@ -568,6 +574,15 @@ After a package is merged or unmerged, sync relevant files to
 disk in order to avoid data\-loss in the event of a power failure.
 This feature is enabled by default.
 .TP
+.B merge\-wait
+Wait for all builds to complete before merging new packages, which only
+matters when using the \fBemerge\fR(1) \fB\-\-jobs\fR option. This
+feature is always effectively enabled and it cannot be disabled for
+packages that satisfy direct or indirect dependencies of the system
+set. For other packages, it can be disabled in order to trade the
+possibility of random build failures for greater parallelism.
+This feature is enabled by default.
+.TP
 .B metadata\-transfer
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 In versions of portage >=2.1.5, this feature is disabled by
@@ -640,8 +655,9 @@ terminal to view parallel-fetch progress.
 .TP
 .B parallel\-install
 Use finer\-grained locks when installing packages, allowing for greater
-parallelization. For additional parallelization, disable
-\fIebuild\-locks\fR.
+parallelism. Note that \fIparallel\-install\fR currently has no effect
+unless \fImerge\-wait\fR is disabled. For additional parallelism,
+disable \fIebuild\-locks\fR.
 .TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it
@@ -1312,6 +1328,10 @@ by developers when testing specific packages.
 Run tests in packages specifying \fBPROPERTIES\fR="\fBtest_network\fR".  Note
 that this will most likely cause Internet access during the test suite which
 could cause additional costs, privacy concerns and intermittent test failures.
+.TP
+.B privileged
+Run tests in packages specifying \fBPROPERTIES\fR="\fBtest_privileged\fR".  Note
+that this will cause the test suite to be run with superuser permissions.
 .TP
 .RE
 .TP

@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # BEGIN PREFIX LOCAL
@@ -197,6 +197,7 @@ SUPPORTED_FEATURES = frozenset(
         "compressdebug",
         "compress-index",
         "config-protect-if-modified",
+        "dedupdebug",
         "digest",
         "distcc",
         "distlocks",
@@ -215,6 +216,7 @@ SUPPORTED_FEATURES = frozenset(
         "keepwork",
         "lmirror",
         "merge-sync",
+        "merge-wait",
         "metadata-transfer",
         "mirror",
         "mount-sandbox",

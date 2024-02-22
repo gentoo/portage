@@ -475,7 +475,7 @@ class dispatch:
 
         try:
             os.rename(newconf, curconf)
-        except (OSError, os.error) as why:
+        except OSError as why:
             writemsg(
                 f"dispatch-conf: Error renaming {newconf} to {curconf}: {str(why)}; fatal\n",
                 noiselevel=-1,

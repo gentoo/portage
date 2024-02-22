@@ -191,7 +191,7 @@ src_install() {
         fake_bin = os.path.join(eprefix, "bin")
         portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 
-        path = os.environ.get("PATH")
+        path = settings.get("PATH")
         if path is not None and not path.strip():
             path = None
         if path is None:

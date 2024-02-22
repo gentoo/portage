@@ -96,6 +96,7 @@ class DepPrioritySatisfiedRange:
             (
                 (not priority.runtime_slot_op)
                 or (priority.satisfied and priority.runtime_slot_op)
+                or priority.cross
             )
             and (priority.satisfied or priority.optional or not priority.buildtime)
         )

@@ -1,5 +1,5 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
-# Copyright 2007-2013 Gentoo Foundation
+# Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -78,10 +78,7 @@ def portage_func(func, args, exit_status=0):
     f = open("/dev/null", "wb")
     fd_pipes = {0: 0, 1: f.fileno(), 2: f.fileno()}
 
-    def pre_exec():
-        os.chdir(env["S"])
-
-    spawn([func] + args.split(), env=env, fd_pipes=fd_pipes, pre_exec=pre_exec)
+    spawn([func] + args.split(), env=env, fd_pipes=fd_pipes, cwd=env["S"])
     f.close()
 
 

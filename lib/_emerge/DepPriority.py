@@ -1,11 +1,11 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractDepPriority import AbstractDepPriority
 
 
 class DepPriority(AbstractDepPriority):
-    __slots__ = ("satisfied", "optional", "ignored")
+    __slots__ = ("cross", "ignored", "optional", "satisfied")
 
     def __int__(self):
         """

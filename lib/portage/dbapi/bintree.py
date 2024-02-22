@@ -1,4 +1,4 @@
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -37,6 +37,7 @@ from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import (
     AlarmSignal,
+    CorruptionKeyError,
     InvalidPackageName,
     InvalidBinaryPackageFormat,
     ParseError,
@@ -84,9 +85,12 @@ class bindbapi(fakedbapi):
     _known_keys = frozenset(
         list(fakedbapi._known_keys) + ["CHOST", "repository", "USE"]
     )
+    # Must include keys used to create _pkg_str attributes used in
+    # the fakedbapi _instance_key_multi_instance method.
     _pkg_str_aux_keys = fakedbapi._pkg_str_aux_keys + (
         "BUILD_ID",
         "BUILD_TIME",
+        "SIZE",
         "_mtime_",
     )
 
@@ -209,9 +213,9 @@ class bindbapi(fakedbapi):
                 raise KeyError(mycpv)
             binpkg_path = os.path.join(self.bintree.pkgdir, binpkg_path)
             try:
-                st = os.lstat(binpkg_path)
-            except OSError:
-                raise KeyError(mycpv)
+                st = os.stat(binpkg_path)
+            except OSError as oe:
+                raise CorruptionKeyError(mycpv) from oe
 
             binpkg_format = get_binpkg_format(binpkg_path)
             if binpkg_format == "xpak":
@@ -282,8 +286,10 @@ class bindbapi(fakedbapi):
             cpv_str += f"-{build_id}"
 
         binpkg_path = self.bintree.getname(cpv)
-        if not os.path.exists(binpkg_path):
-            raise KeyError(cpv)
+        try:
+            os.stat(binpkg_path)
+        except OSError as oe:
+            raise CorruptionKeyError(cpv) from oe
 
         binpkg_format = get_binpkg_format(binpkg_path)
         if binpkg_format == "xpak":
@@ -292,7 +298,21 @@ class bindbapi(fakedbapi):
             encoding_key = True
         elif binpkg_format == "gpkg":
             mybinpkg = portage.gpkg.gpkg(self.settings, cpv_str, binpkg_path)
-            mydata = mybinpkg.get_metadata()
+            try:
+                mydata = mybinpkg.get_metadata()
+                signature_exist = mybinpkg.signature_exist
+            except SignatureException:
+                signature_exist = True
+            if signature_exist:
+                writemsg(
+                    colorize(
+                        "WARN",
+                        f"Binpkg update ignored for signed package: {binpkg_path}, "
+                        "the file will be removed.\n",
+                    )
+                )
+                self.bintree.remove(cpv)
+                return
             encoding_key = False
         else:
             raise InvalidBinaryPackageFormat(
@@ -689,13 +709,23 @@ class binarytree:
                 continue
 
             binpkg_path = self.getname(mycpv)
-            if os.path.exists(binpkg_path) and not os.access(binpkg_path, os.W_OK):
+            try:
+                os.stat(binpkg_path)
+            except FileNotFoundError:
+                writemsg(_("!!! File not found: %s\n") % binpkg_path, noiselevel=-1)
+                continue
+            except OSError as oe:
+                writemsg(
+                    _("!!! File os error (path %s): %s\n") % (binpkg_path, oe),
+                    noiselevel=-1,
+                )
+                continue
+            if not os.access(binpkg_path, os.W_OK):
                 writemsg(
                     _("!!! Cannot update readonly binary: %s\n") % mycpv, noiselevel=-1
                 )
                 continue
 
-            moves += 1
             binpkg_format = get_binpkg_format(binpkg_path)
             if binpkg_format == "xpak":
                 mytbz2 = portage.xpak.tbz2(binpkg_path)
@@ -703,18 +733,24 @@ class binarytree:
                 decode_metadata_name = False
             elif binpkg_format == "gpkg":
                 mybinpkg = portage.gpkg.gpkg(self.settings, mycpv, binpkg_path)
-                mydata = mybinpkg.get_metadata()
-                if mybinpkg.signature_exist:
+                try:
+                    mydata = mybinpkg.get_metadata()
+                    signature_exist = mybinpkg.signature_exist
+                except SignatureException:
+                    signature_exist = True
+                if signature_exist:
                     writemsg(
                         colorize(
                             "WARN",
-                            f"Binpkg update ignored for signed package: {binpkg_path}",
+                            f"Binpkg update ignored for signed package: {binpkg_path}\n",
                         )
                     )
                     continue
                 decode_metadata_name = True
             else:
                 continue
+
+            moves += 1
 
             updated_items = update_dbentries([mylist], mydata, parent=mycpv)
             mydata.update(updated_items)
@@ -1314,7 +1350,7 @@ class binarytree:
             # when binpackages are involved, not only when we refuse unsigned
             # ones. (If the keys have expired we end up refusing signed but
             # technically invalid packages...)
-            if not pretend:
+            if not pretend and self.dbapi.writable:
                 self._run_trust_helper()
             gpkg_only = True
         else:
@@ -1324,23 +1360,13 @@ class binarytree:
         for repo in reversed(list(self._binrepos_conf.values())):
             base_url = repo.sync_uri
             parsed_url = urlparse(base_url)
-            host = parsed_url.netloc
+            host = parsed_url.hostname or ""
             port = parsed_url.port
-            user = None
-            passwd = None
-            user_passwd = ""
+            user = parsed_url.username
+            passwd = parsed_url.password
+            user_passwd = user + "@" if user else ""
             gpkg_only_warned = False
 
-            if "@" in host:
-                user, host = host.split("@", 1)
-                user_passwd = user + "@"
-                if ":" in user:
-                    user, passwd = user.split(":", 1)
-
-            if port is not None:
-                port_str = f":{port}"
-                if host.endswith(port_str):
-                    host = host[: -len(port_str)]
             pkgindex_file = os.path.join(
                 self.settings["EROOT"],
                 CACHE_PATH,
@@ -1405,15 +1431,18 @@ class binarytree:
 
                 # Don't use urlopen for https, unless
                 # PEP 476 is supported (bug #469888).
-                if repo.fetchcommand is None and (
-                    parsed_url.scheme not in ("https",) or _have_pep_476()
-                ):
+                if (
+                    repo.fetchcommand is None or parsed_url.scheme in ("", "file")
+                ) and (parsed_url.scheme not in ("https",) or _have_pep_476()):
                     try:
-                        f = _urlopen(
-                            url, if_modified_since=local_timestamp, proxies=proxies
-                        )
-                        if hasattr(f, "headers") and f.headers.get("timestamp", ""):
-                            remote_timestamp = f.headers.get("timestamp")
+                        if parsed_url.scheme in ("", "file"):
+                            f = open(f"{parsed_url.path.rstrip('/')}/Packages", "rb")
+                        else:
+                            f = _urlopen(
+                                url, if_modified_since=local_timestamp, proxies=proxies
+                            )
+                            if hasattr(f, "headers") and f.headers.get("timestamp", ""):
+                                remote_timestamp = f.headers.get("timestamp")
                     except OSError as err:
                         if (
                             hasattr(err, "code") and err.code == 304
@@ -1774,6 +1803,57 @@ class binarytree:
         cpv._metadata["MD5"] = d["MD5"]
 
         return cpv
+
+    def remove(self, cpv: portage.versions._pkg_str) -> None:
+        """
+        Remove a package instance and update internal state including
+        the package index. This will raise a KeyError if cpv is not
+        found in the internal state. It will display a warning message
+        if the package file was not found on disk, since it could have
+        been removed by another process before this method could
+        acquire a lock.
+
+        @param cpv: The cpv of the existing package to remove
+        @type cpv: portage.versions._pkg_str
+        @rtype: None
+        @return: None
+        @raise KeyError: If cpv does not exist in the internal state
+        """
+        if not self.populated:
+            self.populate()
+        os.makedirs(self.pkgdir, exist_ok=True)
+        pkgindex_lock = lockfile(self._pkgindex_file, wantnewlockfile=1)
+        try:
+            # Will raise KeyError if the package is not found.
+            instance_key = self.dbapi._instance_key(cpv)
+            pkg_path = self.getname(cpv)
+            self.dbapi.cpv_remove(cpv)
+            self._pkg_paths.pop(instance_key, None)
+            if self._remotepkgs is not None:
+                self._remotepkgs.pop(instance_key, None)
+            pkgindex = self._load_pkgindex()
+            if not self._pkgindex_version_supported(pkgindex):
+                pkgindex = self._new_pkgindex()
+
+            path = pkg_path[len(self.pkgdir) + 1 :]
+            for i in range(len(pkgindex.packages) - 1, -1, -1):
+                d = pkgindex.packages[i]
+                if cpv == d.get("CPV"):
+                    if path == d.get("PATH", ""):
+                        del pkgindex.packages[i]
+
+            self._pkgindex_write(pkgindex)
+            try:
+                os.remove(pkg_path)
+            except OSError as err:
+                writemsg(
+                    colorize(
+                        "WARN",
+                        f"Failed to remove package: {pkg_path} {str(err)}",
+                    )
+                )
+        finally:
+            unlockfile(pkgindex_lock)
 
     def _read_metadata(self, filename, st, keys=None, binpkg_format=None):
         """
@@ -2198,16 +2278,6 @@ class binarytree:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
     def _allocate_filename_multi(self, cpv, remote_binpkg_format=None):
-        # First, get the max build_id found when _populate was
-        # called.
-        max_build_id = self._max_build_id(cpv)
-
-        # A new package may have been added concurrently since the
-        # last _populate call, so use increment build_id until
-        # we locate an unused id.
-        pf = catsplit(cpv)[1]
-        build_id = max_build_id + 1
-
         if remote_binpkg_format is None:
             try:
                 binpkg_format = get_binpkg_format(cpv._metadata["PATH"])
@@ -2224,6 +2294,33 @@ class binarytree:
             binpkg_suffix = "gpkg.tar"
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
+
+        # If the preferred path is available then return
+        # that. This prevents unnecessary build_id incrementation
+        # triggered when the _max_build_id method counts remote
+        # build ids.
+        pf = catsplit(cpv)[1]
+        if getattr(cpv, "build_id", False):
+            preferred_path = f"{os.path.join(self.pkgdir, cpv.cp, pf)}-{cpv.build_id}.{binpkg_suffix}"
+            if not os.path.exists(preferred_path):
+                try:
+                    # Avoid races
+                    ensure_dirs(os.path.dirname(preferred_path))
+                    with open(preferred_path, "x") as f:
+                        pass
+                except FileExistsError:
+                    pass
+                else:
+                    return (preferred_path, cpv.build_id)
+
+        # First, get the max build_id found when _populate was
+        # called.
+        max_build_id = self._max_build_id(cpv)
+
+        # A new package may have been added concurrently since the
+        # last _populate call, so use increment build_id until
+        # we locate an unused id.
+        build_id = max_build_id + 1
 
         while True:
             filename = (

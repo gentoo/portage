@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Gentoo Foundation
+# Copyright 2013-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import threading
@@ -14,6 +14,7 @@ from portage.exception import PortageException, PortageKeyError
 from portage.package.ebuild.fetch import DistfileName
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.TaskScheduler import TaskScheduler
+from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
 from .FetchTask import FetchTask
 from _emerge.CompositeTask import CompositeTask
@@ -276,8 +277,11 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
         result.set_result(fetch_tasks)
 
     def future_generator():
-        yield config.portdb.async_aux_get(
-            cpv, ("RESTRICT",), myrepo=repo_config.name, loop=loop
+        yield asyncio.ensure_future(
+            config.portdb.async_aux_get(
+                cpv, ("RESTRICT",), myrepo=repo_config.name, loop=loop
+            ),
+            loop,
         )
         yield config.portdb.async_fetch_map(cpv, mytree=repo_config.location, loop=loop)
 
@@ -292,9 +296,11 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
     )
     gather_result.add_done_callback(aux_get_done)
     result.add_done_callback(
-        lambda result: gather_result.cancel()
-        if result.cancelled() and not gather_result.done()
-        else None
+        lambda result: (
+            gather_result.cancel()
+            if result.cancelled() and not gather_result.done()
+            else None
+        )
     )
 
     return result

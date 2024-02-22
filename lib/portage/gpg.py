@@ -1,10 +1,9 @@
-# Copyright 2001-2020 Gentoo Authors
+# Copyright 2001-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
 import sys
 import threading
-import time
 
 from portage import os
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -24,6 +23,7 @@ class GPG:
         """
         self.settings = settings
         self.thread = None
+        self._terminated = None
         self.GPG_signing_base_command = self.settings.get(
             "BINPKG_GPG_SIGNING_BASE_COMMAND"
         )
@@ -73,6 +73,7 @@ class GPG:
                 self.GPG_unlock_command = shlex_split(
                     varexpand(self.GPG_unlock_command, mydict=self.settings)
                 )
+                self._terminated = threading.Event()
                 self.thread = threading.Thread(target=self.gpg_keepalive, daemon=True)
                 self.thread.start()
 
@@ -81,16 +82,17 @@ class GPG:
         Stop keepalive thread.
         """
         if self.thread is not None:
-            self.keepalive = False
+            self._terminated.set()
 
     def gpg_keepalive(self):
         """
         Call GPG unlock command every 5 mins to avoid the passphrase expired.
         """
         count = 0
-        while self.keepalive:
+        while not self._terminated.is_set():
             if count < 5:
-                time.sleep(60)
+                if self._terminated.wait(60):
+                    break
                 count += 1
                 continue
             else:
@@ -102,5 +104,5 @@ class GPG:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
             )
-            if proc.wait() != os.EX_OK:
+            if proc.wait() != os.EX_OK and not self._terminated.is_set():
                 raise GPGException("GPG keepalive failed")
