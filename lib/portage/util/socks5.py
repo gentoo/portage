@@ -2,15 +2,16 @@
 # Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import asyncio
 import errno
 import os
 import socket
+from typing import Union
 
 import portage.data
 from portage import _python_interpreter
 from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.process import atexit_register, spawn
-from portage.util.futures import asyncio
 
 
 class ProxyManager:
@@ -57,23 +58,36 @@ class ProxyManager:
             **spawn_kwargs,
         )
 
-    def stop(self):
+    def stop(self) -> Union[None, asyncio.Future]:
         """
         Stop the SOCKSv5 server.
+
+        If there is a running asyncio event loop then asyncio.Future is
+        returned which should be used to wait for the server process
+        to exit.
         """
+        future = None
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
         if self._proc is not None:
             self._proc.terminate()
-            loop = asyncio.get_event_loop()
-            if self._proc_waiter is None:
-                self._proc_waiter = asyncio.ensure_future(self._proc.wait(), loop)
-            if loop.is_running():
-                self._proc_waiter.add_done_callback(lambda future: future.result())
+            if loop is None:
+                asyncio.run(self._proc.wait())
             else:
-                loop.run_until_complete(self._proc_waiter)
+                if self._proc_waiter is None:
+                    self._proc_waiter = asyncio.ensure_future(self._proc.wait(), loop)
+                future = asyncio.shield(self._proc_waiter)
+
+        if loop is not None and future is None:
+            future = loop.create_future()
+            future.set_result(None)
 
         self.socket_path = None
         self._proc = None
         self._proc_waiter = None
+        return future
 
     def is_running(self):
         """

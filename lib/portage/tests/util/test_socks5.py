@@ -1,6 +1,7 @@
-# Copyright 2019-2021 Gentoo Authors
+# Copyright 2019-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import asyncio
 import functools
 import shutil
 import socket
@@ -10,7 +11,6 @@ import time
 
 import portage
 from portage.tests import TestCase
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util import socks5
 from portage.const import PORTAGE_BIN_PATH
 
@@ -88,18 +88,20 @@ class AsyncHTTPServerTestCase(TestCase):
             if f is not None:
                 f.close()
 
-    def test_http_server(self):
+    async def _test_http_server(self):
+        asyncio.run(self._test_http_server())
+
+    async def _test_http_server(self):
         host = "127.0.0.1"
         content = b"Hello World!\n"
         path = "/index.html"
-        loop = global_event_loop()
+
+        loop = asyncio.get_running_loop()
         for i in range(2):
             with AsyncHTTPServer(host, {path: content}, loop) as server:
                 for j in range(2):
-                    result = loop.run_until_complete(
-                        loop.run_in_executor(
-                            None, self._fetch_directly, host, server.server_port, path
-                        )
+                    result = await loop.run_in_executor(
+                        None, self._fetch_directly, host, server.server_port, path
                     )
                     self.assertEqual(result, content)
 
@@ -177,7 +179,10 @@ class Socks5ServerTestCase(TestCase):
             return f.read()
 
     def test_socks5_proxy(self):
-        loop = global_event_loop()
+        asyncio.run(self._test_socks5_proxy())
+
+    async def _test_socks5_proxy(self):
+        loop = asyncio.get_running_loop()
 
         host = "127.0.0.1"
         content = b"Hello World!"
@@ -193,20 +198,18 @@ class Socks5ServerTestCase(TestCase):
                 }
 
                 proxy = socks5.get_socks5_proxy(settings)
-                loop.run_until_complete(socks5.proxy.ready())
+                await socks5.proxy.ready()
 
-                result = loop.run_until_complete(
-                    loop.run_in_executor(
-                        None,
-                        self._fetch_via_proxy,
-                        proxy,
-                        host,
-                        server.server_port,
-                        path,
-                    )
+                result = await loop.run_in_executor(
+                    None,
+                    self._fetch_via_proxy,
+                    proxy,
+                    host,
+                    server.server_port,
+                    path,
                 )
 
                 self.assertEqual(result, content)
         finally:
-            socks5.proxy.stop()
+            await socks5.proxy.stop()
             shutil.rmtree(tempdir)
