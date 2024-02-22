@@ -6,12 +6,11 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.62 (UNRELEASED)
+portage-3.0.62 (2024-02-22)
 --------------
 
-A lot of asyncio fixes from Zac to kill off unsafe fork use (not reflected here,
-at least for now, to make clear the user-visible changes in this release) and
-a lot of misc. bug fixes.
+This release has a lot of misc. bug fixes as well as many asyncio fixes from Zac to
+kill off unsafe fork use.
 
 Features:
 * cnf: make.conf.example.arc: Add for the arc arch.
@@ -56,6 +55,13 @@ Bug fixes:
 * _overlap_dnf: Deduplicate any-of blocks which improves performance (bug #891137).
 
 * tests: Handle larger PAGE_SIZE in environment size check (bug #923368).
+
+Cleanups:
+* tests: Add a job with multiprocessing set to the 'spawn' method.
+
+* tests: Fix missing playground cleanups.
+
+* process.spawn: Add abstraction for os.fork() to allow migrating callers to it.
 
 portage-3.0.61 (2024-01-05)
 --------------
