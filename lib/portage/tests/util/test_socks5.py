@@ -12,6 +12,8 @@ import time
 import portage
 from portage.tests import TestCase
 from portage.util import socks5
+from portage.util.futures.executor.fork import ForkExecutor
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.const import PORTAGE_BIN_PATH
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -189,8 +191,10 @@ class Socks5ServerTestCase(TestCase):
         path = "/index.html"
         proxy = None
         tempdir = tempfile.mkdtemp()
+        previous_exithandlers = portage.process._exithandlers
 
         try:
+            portage.process._exithandlers = []
             with AsyncHTTPServer(host, {path: content}, loop) as server:
                 settings = {
                     "PORTAGE_TMPDIR": tempdir,
@@ -211,5 +215,50 @@ class Socks5ServerTestCase(TestCase):
 
                 self.assertEqual(result, content)
         finally:
-            await socks5.proxy.stop()
+            try:
+                # Also run_exitfuncs to test atexit hook cleanup.
+                await socks5.proxy.stop()
+                self.assertNotEqual(portage.process._exithandlers, [])
+                portage.process.run_exitfuncs()
+                self.assertEqual(portage.process._exithandlers, [])
+            finally:
+                portage.process._exithandlers = previous_exithandlers
+                shutil.rmtree(tempdir)
+
+
+class Socks5ServerLoopCloseTestCase(TestCase):
+    """
+    For bug 925240, test that the socks5 proxy is automatically
+    terminated when the main event loop is closed, using a subprocess
+    for isolation.
+    """
+
+    def testSocks5ServerLoopClose(self):
+        asyncio.run(self._testSocks5ServerLoopClose())
+
+    async def _testSocks5ServerLoopClose(self):
+        loop = asyncio.get_running_loop()
+        self.assertEqual(
+            await loop.run_in_executor(
+                ForkExecutor(loop=loop), self._testSocks5ServerLoopCloseSubprocess
+            ),
+            True,
+        )
+
+    @staticmethod
+    def _testSocks5ServerLoopCloseSubprocess():
+        loop = global_event_loop()
+        tempdir = tempfile.mkdtemp()
+        try:
+            settings = {
+                "PORTAGE_TMPDIR": tempdir,
+                "PORTAGE_BIN_PATH": PORTAGE_BIN_PATH,
+            }
+
+            socks5.get_socks5_proxy(settings)
+            loop.run_until_complete(socks5.proxy.ready())
+        finally:
+            loop.close()
             shutil.rmtree(tempdir)
+
+        return not socks5.proxy.is_running()

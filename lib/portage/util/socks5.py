@@ -8,6 +8,13 @@ import os
 import socket
 from typing import Union
 
+import portage
+
+portage.proxy.lazyimport.lazyimport(
+    globals(),
+    "portage.util._eventloop.global_event_loop:global_event_loop",
+)
+
 import portage.data
 from portage import _python_interpreter
 from portage.data import portage_gid, portage_uid, userpriv_groups
@@ -74,10 +81,15 @@ class ProxyManager:
         if self._proc is not None:
             self._proc.terminate()
             if loop is None:
-                asyncio.run(self._proc.wait())
+                # In this case spawn internals would have used
+                # portage's global loop when attaching a waiter to
+                # self._proc, so we are obligated to use that.
+                global_event_loop().run_until_complete(self._proc.wait())
             else:
                 if self._proc_waiter is None:
-                    self._proc_waiter = asyncio.ensure_future(self._proc.wait(), loop)
+                    self._proc_waiter = asyncio.ensure_future(
+                        self._proc.wait(), loop=loop
+                    )
                 future = asyncio.shield(self._proc_waiter)
 
         if loop is not None and future is None:
