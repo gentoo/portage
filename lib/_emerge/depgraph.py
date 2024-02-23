@@ -7640,19 +7640,6 @@ class depgraph:
                         continue
 
                     if (
-                        empty
-                        and pkg.installed
-                        and not self._frozen_config.excluded_pkgs.findAtomForPackage(
-                            pkg, modified_use=self._pkg_use_enabled(pkg)
-                        )
-                    ):
-                        # With --emptytree option we assume no packages
-                        # are installed, so we do not select them.
-                        # But we allow installed packages to satisfy dependency requirements
-                        # if they're explicitly excluded, so we allow them to be selected.
-                        continue
-
-                    if (
                         not pkg.installed
                         and self._frozen_config.excluded_pkgs.findAtomForPackage(
                             pkg, modified_use=self._pkg_use_enabled(pkg)

@@ -1,4 +1,4 @@
-# Copyright 2014-2024 Gentoo Foundation
+# Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -292,8 +292,8 @@ class UseFlagsTestCase(TestCase):
                     "--usepkg": True,
                 },
                 success=False,
-                mergelist=None,
-                slot_collision_solutions=None,
+                mergelist=["[binary]dev-libs/A-2", "dev-libs/B-1"],
+                slot_collision_solutions=[],
             ),
         )
 
