@@ -1,11 +1,12 @@
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["dbapi"]
 
 import functools
+import logging
 import re
-import warnings
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 from collections.abc import Sequence
 
@@ -429,7 +430,9 @@ class dbapi:
                 try:
                     aux_update(cpv, metadata_updates)
                 except (InvalidBinaryPackageFormat, CorruptionKeyError) as e:
-                    warnings.warn(e)
+                    logging.warning(
+                        f"{e.__class__.__name__}: {e}", exc_info=sys.exc_info()
+                    )
                 if onUpdate:
                     onUpdate(maxval, i + 1)
             if onProgress:
@@ -477,6 +480,6 @@ class dbapi:
             try:
                 self.aux_update(mycpv, mydata)
             except CorruptionKeyError as e:
-                warnings.warn(e)
+                logging.warning(f"{e.__class__.__name__}: {e}", exc_info=sys.exc_info())
                 continue
         return moves
