@@ -783,7 +783,7 @@ class depgraph:
                     ebuild_hash=ebuild_hash,
                     portdb=portdb,
                     repo_path=repo_path,
-                    settings=portdb.doebuild_settings,
+                    settings=settings,
                     deallocate_config=deallocate_config,
                 )
                 proc.addExitListener(self._dynamic_deps_proc_exit(pkg, fake_vartree))
