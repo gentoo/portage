@@ -406,7 +406,7 @@ def async_loop():
     yield asyncio._wrap_loop()
 
 
-@pytest.fixture(params=SUPPORTED_GENTOO_BINPKG_FORMATS, scope="module")
+@pytest.fixture(params=SUPPORTED_GENTOO_BINPKG_FORMATS, scope="function")
 def playground(request, tmp_path_factory):
     """Fixture that provides instances of ``ResolverPlayground``
     each one with one supported value for ``BINPKG_FORMAT``."""
