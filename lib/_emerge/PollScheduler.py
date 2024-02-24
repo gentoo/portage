@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import threading
@@ -38,6 +38,13 @@ class PollScheduler:
         self._sched_iface = SchedulerInterface(
             self._event_loop, is_background=self._is_background
         )
+
+    @property
+    def _loop(self):
+        """
+        Returns the real underlying asyncio loop.
+        """
+        return self._event_loop._loop
 
     def _is_background(self):
         return self._background

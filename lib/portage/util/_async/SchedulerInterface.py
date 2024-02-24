@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Gentoo Authors
+# Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
@@ -48,6 +48,13 @@ class SchedulerInterface(SlotObject):
         self._is_background = is_background
         for k in self._event_loop_attrs:
             setattr(self, k, getattr(event_loop, k))
+
+    @property
+    def _loop(self):
+        """
+        Returns the real underlying asyncio loop.
+        """
+        return self._event_loop._loop
 
     @staticmethod
     def _return_false():
