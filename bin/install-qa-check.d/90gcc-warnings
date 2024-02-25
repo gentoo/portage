@@ -44,9 +44,12 @@ gcc_warn_check() {
 			# those three do not have matching -W flags, it seems
 			'warning: .*will always overflow destination buffer'
 			# compile-time part of FORTIFY_SOURCE
-			'warning: .*\[-Wstringop-overflow\]'
-			'warning: .*\[-Wstringop-overread\]'
-			'warning: .*\[-Wstringop-truncation\]'
+			# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR88443)
+			#'warning: .*\[-Wstringop-overflow\]'
+			# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR97048)
+			#'warning: .*\[-Wstringop-overread\]'
+			# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR88781)
+			#'warning: .*\[-Wstringop-truncation\]'
 			# clang-only, equivalent of -Wstringop-overflow
 			'warning: .*\[-Wfortify-source\]'
 			'warning: .*assuming pointer wraparound does not occur'
@@ -68,7 +71,8 @@ gcc_warn_check() {
 			'warning: .*function.*\[-Wpointer-arith\]'
 			# the address of ... will never be NULL and likes
 			# (uses of function refs & string constants in conditionals)
-			'warning: .*\[-Waddress\]'
+			# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR103360)
+			#'warning: .*\[-Waddress\]'
 
 			# TODO: we want to enable these but bash currently triggers
 			# them with a trick in random.c where it intentionally wants
@@ -95,7 +99,8 @@ gcc_warn_check() {
 			'warning: .*matching.*\[-Wformat=\]'
 
 			# function returns address of local variable
-			'warning: .*\[-Wreturn-local-addr\]'
+			# XXX: Commented out for bug #925460 (https://gcc.gnu.org/PR93644)
+			#'warning: .*\[-Wreturn-local-addr\]'
 			# missing return at end of function, or non-void return in a void function
 			# (clang at least aggressively optimises on this)
 			'warning: .*\[-Wreturn-type\]'
@@ -123,7 +128,8 @@ gcc_warn_check() {
 			'warning: .*\[-Wodr\]'
 			# warning: argument value A will result in undefined behaviour (Clang)
 			'warning: .*\[-Wargument-undefined-behaviour\]'
-			'warning: .*\[-Wnull-dereference\]'
+			# XXX: Commented out because of GCC FPs (https://gcc.gnu.org/PR86172)
+			#'warning: .*\[-Wnull-dereference\]'
 
 			# general sensible warnings (will be rejected by modern compilers soon)
 			'warning: .*\[-Wmain\]'

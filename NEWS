@@ -12,6 +12,8 @@ portage-3.0.63 (UNRELEASED)
 Bug fixes:
 * emerge: Skip installed packages with emptytree in depgraph selection (bug #651018).
 
+* bin/install-qa-check.d: 90gcc-warnings: drop warnings with too many FPs (bug #925460).
+
 portage-3.0.62 (2024-02-22)
 --------------
 
