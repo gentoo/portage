@@ -32,7 +32,7 @@ class SpawnReturnProcTestCase(TestCase):
         loop = global_event_loop()
 
         async def watch_pid():
-            proc = spawn([sleep_binary, 9999], returnproc=True)
+            proc = spawn([sleep_binary, "9999"], returnproc=True)
             proc.terminate()
             self.assertEqual(await proc.wait(), -signal.SIGTERM)
 
