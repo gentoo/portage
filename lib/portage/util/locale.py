@@ -16,7 +16,7 @@ import traceback
 
 import portage
 from portage.util import _unicode_decode, writemsg_level
-from portage.util._ctypes import find_library, LoadLibrary
+from portage.util._ctypes import load_libc
 from portage.util.futures import asyncio
 
 
@@ -46,10 +46,7 @@ def _check_locale(silent):
     try:
         from portage.util import libc
     except ImportError:
-        libc_fn = find_library("c")
-        if libc_fn is None:
-            return None
-        libc = LoadLibrary(libc_fn)
+        (libc, _) = load_libc()
         if libc is None:
             return None
 

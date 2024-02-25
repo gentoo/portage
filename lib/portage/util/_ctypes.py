@@ -48,3 +48,18 @@ def LoadLibrary(name):
         _library_handles[name] = handle
 
     return handle
+
+
+def load_libc():
+    """
+    Loads the C standard library, returns a tuple with the CDLL handle and
+    the filename. Returns (None, None) if unavailable.
+    """
+    filename = find_library("c")
+    if filename is None:
+        # find_library fails for musl where there is no soname
+        filename = "libc.so"
+    try:
+        return (LoadLibrary(filename), filename)
+    except OSError:
+        return (None, None)

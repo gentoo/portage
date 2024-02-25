@@ -37,7 +37,7 @@ portage.proxy.lazyimport.lazyimport(
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
 from portage.proxy.objectproxy import ObjectProxy
-from portage.util._ctypes import find_library, LoadLibrary, ctypes
+from portage.util._ctypes import load_libc, LoadLibrary, ctypes
 
 try:
     from portage.util.netlink import RtNetlink
@@ -960,11 +960,9 @@ def _exec(
     have_unshare = False
     libc = None
     if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
-        filename = find_library("c")
-        if filename is not None:
-            libc = LoadLibrary(filename)
-            if libc is not None:
-                have_unshare = hasattr(libc, "unshare")
+        (libc, _) = load_libc()
+        if libc is not None:
+            have_unshare = hasattr(libc, "unshare")
 
     if not have_unshare:
         # unshare() may not be supported by libc
@@ -1212,11 +1210,7 @@ class _unshare_validator:
         """
         # This ctypes library lookup caches the result for use in the
         # subprocess when the multiprocessing start method is fork.
-        filename = find_library("c")
-        if filename is None:
-            return errno.ENOTSUP
-
-        libc = LoadLibrary(filename)
+        (libc, filename) = load_libc()
         if libc is None:
             return errno.ENOTSUP
 

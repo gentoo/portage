@@ -6,8 +6,15 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.64 (UNRELEASED)
+--------------
+
+Bug fixes:
+
+
 portage-3.0.63 (2024-02-25)
 --------------
+* ctypes: Add workaround for loading libc on musl
 
 Bug fixes:
 * emerge: Skip installed packages with emptytree in depgraph selection (bug #651018).

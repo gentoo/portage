@@ -10,7 +10,7 @@ import fcntl
 import portage
 from portage import os, _unicode_decode
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage.util._ctypes import find_library
+from portage.util._ctypes import load_libc
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util import no_color
@@ -64,7 +64,7 @@ class MergeProcess(ForkProcess):
         # process, so that it's only done once rather than
         # for each child process.
         if platform.system() == "Linux" and "merge-sync" in settings.features:
-            find_library("c")
+            load_libc()
 
         # Inherit stdin by default, so that the pdb SIGUSR1
         # handler is usable for the subprocess.
