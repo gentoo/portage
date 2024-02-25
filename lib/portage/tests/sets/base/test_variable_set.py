@@ -1,4 +1,4 @@
-# Copyright 2022 Gentoo Authors
+# Copyright 2022-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -10,6 +10,10 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class VariableSetTestCase(TestCase):
     def testVariableSetEmerge(self):
+
+        # Using local set definition because @golang-rebuild migrated to dev-lang/go since bug 919751.
+        golang_rebuild = "{class=portage.sets.dbapi.VariableSet,variable=BDEPEND,includes=dev-lang/go}"
+
         ebuilds = {
             "dev-go/go-pkg-1": {"BDEPEND": "dev-lang/go"},
             "www-client/firefox-1": {
@@ -21,7 +25,7 @@ class VariableSetTestCase(TestCase):
 
         test_cases = (
             ResolverPlaygroundTestCase(
-                ["@golang-rebuild"],
+                [f"@golang-rebuild{golang_rebuild}"],
                 mergelist=["dev-go/go-pkg-1"],
                 success=True,
             ),

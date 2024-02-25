@@ -28,7 +28,7 @@ from portage.exception import InvalidBinaryPackageFormat
 from portage.gpg import GPG
 
 import _emerge
-from _emerge.actions import _calc_depclean
+from _emerge.actions import _calc_depclean, expand_set_arguments
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.DependencyArg import DependencyArg
@@ -746,6 +746,14 @@ class ResolverPlayground:
             frozen_config = _frozen_depgraph_config(
                 self.settings, self.trees, options, params, None
             )
+
+            atoms, retval = expand_set_arguments(
+                atoms, action, self.trees[self.eroot]["root_config"]
+            )
+            if retval != os.EX_OK:
+                raise AssertionError(
+                    f"expand_set_arguments failed with retval {retval}"
+                )
 
             if params_action == "remove":
                 depclean_result = _calc_depclean(
