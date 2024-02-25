@@ -6,13 +6,41 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.63 (UNRELEASED)
+portage-3.0.63 (2024-02-25)
 --------------
 
 Bug fixes:
 * emerge: Skip installed packages with emptytree in depgraph selection (bug #651018).
 
 * bin/install-qa-check.d: 90gcc-warnings: drop warnings with too many FPs (bug #925460).
+
+* AsyncioEventLoop: Call process.run_exitfuncs() before close (bug #925240).
+
+  Fixes hang with FEATURES="network-sandbox-proxy" or FEATURES="distcc".
+
+* SchedulerInterface/PollScheduler: Add _loop property (bug #925333).
+
+  Fixes erroneous assert.
+
+* _dynamic_deps_preload: Fix settings reference (bug #925350).
+
+  Fix KeyError with --dynamic-deps.
+
+* process.spawn: Fix logic for missing libc.unshare on musl (bug #925311).
+
+  Fix handling when we can't unshare where we might e.g. modify the hostname
+  of the real system on musl.
+
+* dbapi: Fix TypeError when passing Exception to warnings.warn (bug #922935).
+
+  Fix testUpdateDbentryDbapiTestCase.
+
+* _start_proc: Prevent premature ForkProcess garbage collection (bug #925456).
+
+  Fix warnings/errors like "[ERROR] Task was destroyed but it is pending!".
+
+Cleanups:
+* More asyncio porting.
 
 portage-3.0.62 (2024-02-22)
 --------------
