@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # SOCKSv5 proxy server for network-sandbox
-# Copyright 2015-2022 Gentoo Authors
+# Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import asyncio
@@ -218,27 +218,21 @@ class Socks5Server:
             return
 
 
+async def run_socks5_server(socket_path):
+    s = Socks5Server()
+    server = await asyncio.start_unix_server(s.handle_proxy_conn, socket_path)
+
+    try:
+        await asyncio.get_running_loop().create_future()
+    finally:
+        server.close()
+        await server.wait_closed()
+        os.unlink(socket_path)
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <socket-path>")
         sys.exit(1)
 
-    loop = asyncio.new_event_loop()
-    s = Socks5Server()
-    server = loop.run_until_complete(
-        asyncio.start_unix_server(s.handle_proxy_conn, sys.argv[1])
-    )
-
-    ret = 0
-    try:
-        try:
-            loop.run_forever()
-        except KeyboardInterrupt:
-            pass
-        except:
-            ret = 1
-    finally:
-        server.close()
-        loop.run_until_complete(server.wait_closed())
-        loop.close()
-        os.unlink(sys.argv[1])
+    asyncio.run(run_socks5_server(sys.argv[1]))

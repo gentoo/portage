@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -77,6 +77,7 @@ class IpcDaemonTestCase(TestCase):
                 task_scheduler = TaskScheduler(
                     iter([daemon, proc]), max_jobs=2, event_loop=event_loop
                 )
+                self.assertTrue(task_scheduler._loop is event_loop._loop)
 
                 self.received_command = False
 

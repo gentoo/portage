@@ -783,7 +783,7 @@ class depgraph:
                     ebuild_hash=ebuild_hash,
                     portdb=portdb,
                     repo_path=repo_path,
-                    settings=portdb.doebuild_settings,
+                    settings=settings,
                     deallocate_config=deallocate_config,
                 )
                 proc.addExitListener(self._dynamic_deps_proc_exit(pkg, fake_vartree))
@@ -7637,6 +7637,19 @@ class depgraph:
                     if pkg.built and root_slot in self._rebuild.rebuild_list:
                         continue
                     if pkg.installed and root_slot in self._rebuild.reinstall_list:
+                        continue
+
+                    if (
+                        empty
+                        and pkg.installed
+                        and not self._frozen_config.excluded_pkgs.findAtomForPackage(
+                            pkg, modified_use=self._pkg_use_enabled(pkg)
+                        )
+                    ):
+                        # With --emptytree option we assume no packages
+                        # are installed, so we do not select them.
+                        # But we allow installed packages to satisfy dependency requirements
+                        # if they're explicitly excluded, so we allow them to be selected.
                         continue
 
                     if (

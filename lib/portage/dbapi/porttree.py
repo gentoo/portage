@@ -775,7 +775,7 @@ class portdbapi(dbapi):
             try:
                 if (
                     threading.current_thread() is threading.main_thread()
-                    and loop is asyncio._safe_loop()
+                    and loop._loop is asyncio._safe_loop()._loop
                 ):
                     # In this case use self._doebuild_settings_lock to manage concurrency.
                     deallocate_config = loop.create_future()

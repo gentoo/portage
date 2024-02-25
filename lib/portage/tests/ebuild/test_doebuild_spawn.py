@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import textwrap
@@ -86,6 +86,7 @@ class DoebuildSpawnTestCase(TestCase):
             open(os.path.join(settings["T"], "environment"), "wb").close()
 
             scheduler = SchedulerInterface(global_event_loop())
+            self.assertTrue(scheduler._loop is global_event_loop()._loop)
             for phase in ("_internal_test",):
                 # Test EbuildSpawnProcess by calling doebuild.spawn() with
                 # returnpid=False. This case is no longer used by portage

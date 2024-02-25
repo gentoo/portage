@@ -38,6 +38,7 @@ from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 # PREFIX LOCAL
 from portage.const import MACOSSANDBOX_BINARY
 from portage.exception import CommandNotFound
+from portage.proxy.objectproxy import ObjectProxy
 from portage.util._ctypes import find_library, LoadLibrary, ctypes
 
 try:
@@ -976,114 +977,119 @@ def _exec(
     signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
     # Unshare (while still uid==0)
+    have_unshare = False
+    libc = None
     if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
         filename = find_library("c")
         if filename is not None:
             libc = LoadLibrary(filename)
             if libc is not None:
-                # unshare() may not be supported by libc
-                if not hasattr(libc, "unshare"):
-                    unshare_net = False
-                    unshare_ipc = False
-                    unshare_mount = False
-                    unshare_pid = False
-                else:
-                    # Since a failed unshare call could corrupt process
-                    # state, first validate that the call can succeed.
-                    # The parent process should call _unshare_validate
-                    # before it forks, so that all child processes can
-                    # reuse _unshare_validate results that have been
-                    # cached by the parent process.
-                    errno_value = _unshare_validate(unshare_flags)
-                    if errno_value == 0 and libc.unshare(unshare_flags) != 0:
-                        errno_value = ctypes.get_errno()
-                    if errno_value != 0:
-                        involved_features = []
-                        if unshare_ipc:
-                            involved_features.append("ipc-sandbox")
-                        if unshare_mount:
-                            involved_features.append("mount-sandbox")
-                        if unshare_net:
-                            involved_features.append("network-sandbox")
-                        if unshare_pid:
-                            involved_features.append("pid-sandbox")
+                have_unshare = hasattr(libc, "unshare")
 
-                        writemsg(
-                            'Unable to unshare: %s (for FEATURES="%s")\n'
-                            % (
-                                errno.errorcode.get(errno_value, "?"),
-                                " ".join(involved_features),
-                            ),
-                            noiselevel=-1,
-                        )
-                    else:
-                        if unshare_pid:
-                            # pid namespace requires us to become init
-                            binary, myargs = (
-                                portage._python_interpreter,
-                                [
-                                    portage._python_interpreter,
-                                    os.path.join(portage._bin_path, "pid-ns-init"),
-                                    _unicode_encode("" if uid is None else str(uid)),
-                                    _unicode_encode("" if gid is None else str(gid)),
-                                    _unicode_encode(
-                                        ""
-                                        if groups is None
-                                        else ",".join(str(group) for group in groups)
-                                    ),
-                                    _unicode_encode(
-                                        "" if umask is None else str(umask)
-                                    ),
-                                    _unicode_encode(
-                                        ",".join(str(fd) for fd in fd_pipes)
-                                    ),
-                                    binary,
-                                ]
-                                + myargs,
-                            )
-                            uid = None
-                            gid = None
-                            groups = None
-                            umask = None
+    if not have_unshare:
+        # unshare() may not be supported by libc
+        unshare_net = False
+        unshare_ipc = False
+        unshare_mount = False
+        unshare_pid = False
 
-                            # Use _start_fork for os.fork() error handling, ensuring
-                            # that if exec fails then the child process will display
-                            # a traceback before it exits via os._exit to suppress any
-                            # finally blocks from parent's call stack (bug 345289).
-                            main_child_pid = _start_fork(
-                                _exec2,
-                                args=(
-                                    binary,
-                                    myargs,
-                                    env,
-                                    gid,
-                                    groups,
-                                    uid,
-                                    umask,
-                                    cwd,
-                                    pre_exec,
-                                    unshare_net,
-                                    unshare_ipc,
-                                    unshare_mount,
-                                    unshare_pid,
-                                ),
-                                fd_pipes=None,
-                                close_fds=False,
-                            )
+    if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
+        # Since a failed unshare call could corrupt process
+        # state, first validate that the call can succeed.
+        # The parent process should call _unshare_validate
+        # before it forks, so that all child processes can
+        # reuse _unshare_validate results that have been
+        # cached by the parent process.
+        errno_value = _unshare_validate(unshare_flags)
+        if errno_value == 0 and libc.unshare(unshare_flags) != 0:
+            errno_value = ctypes.get_errno()
+        if errno_value != 0:
+            involved_features = []
+            if unshare_ipc:
+                involved_features.append("ipc-sandbox")
+            if unshare_mount:
+                involved_features.append("mount-sandbox")
+            if unshare_net:
+                involved_features.append("network-sandbox")
+            if unshare_pid:
+                involved_features.append("pid-sandbox")
 
-                            # Execute a supervisor process which will forward
-                            # signals to init and forward exit status to the
-                            # parent process. The supervisor process runs in
-                            # the global pid namespace, so skip /proc remount
-                            # and other setup that's intended only for the
-                            # init process.
-                            binary, myargs = portage._python_interpreter, [
-                                portage._python_interpreter,
-                                os.path.join(portage._bin_path, "pid-ns-init"),
-                                str(main_child_pid),
-                            ]
+            writemsg(
+                'Unable to unshare: %s (for FEATURES="%s")\n'
+                % (
+                    errno.errorcode.get(errno_value, "?"),
+                    " ".join(involved_features),
+                ),
+                noiselevel=-1,
+            )
 
-                            os.execve(binary, myargs, env)
+            unshare_net = False
+            unshare_ipc = False
+            unshare_mount = False
+            unshare_pid = False
+
+    if unshare_pid:
+        # pid namespace requires us to become init
+        binary, myargs = (
+            portage._python_interpreter,
+            [
+                portage._python_interpreter,
+                os.path.join(portage._bin_path, "pid-ns-init"),
+                _unicode_encode("" if uid is None else str(uid)),
+                _unicode_encode("" if gid is None else str(gid)),
+                _unicode_encode(
+                    "" if groups is None else ",".join(str(group) for group in groups)
+                ),
+                _unicode_encode("" if umask is None else str(umask)),
+                _unicode_encode(",".join(str(fd) for fd in fd_pipes)),
+                binary,
+            ]
+            + myargs,
+        )
+        uid = None
+        gid = None
+        groups = None
+        umask = None
+
+        # Use _start_fork for os.fork() error handling, ensuring
+        # that if exec fails then the child process will display
+        # a traceback before it exits via os._exit to suppress any
+        # finally blocks from parent's call stack (bug 345289).
+        main_child_pid = _start_fork(
+            _exec2,
+            args=(
+                binary,
+                myargs,
+                env,
+                gid,
+                groups,
+                uid,
+                umask,
+                cwd,
+                pre_exec,
+                unshare_net,
+                unshare_ipc,
+                unshare_mount,
+                unshare_pid,
+                libc,
+            ),
+            fd_pipes=None,
+            close_fds=False,
+        )
+
+        # Execute a supervisor process which will forward
+        # signals to init and forward exit status to the
+        # parent process. The supervisor process runs in
+        # the global pid namespace, so skip /proc remount
+        # and other setup that's intended only for the
+        # init process.
+        binary, myargs = portage._python_interpreter, [
+            portage._python_interpreter,
+            os.path.join(portage._bin_path, "pid-ns-init"),
+            str(main_child_pid),
+        ]
+
+        os.execve(binary, myargs, env)
 
     # Reachable only if unshare_pid is False.
     _exec2(
@@ -1100,6 +1106,7 @@ def _exec(
         unshare_ipc,
         unshare_mount,
         unshare_pid,
+        libc,
     )
 
 
@@ -1117,6 +1124,7 @@ def _exec2(
     unshare_ipc,
     unshare_mount,
     unshare_pid,
+    libc,
 ):
     if unshare_mount:
         # mark the whole filesystem as slave to avoid
@@ -1506,8 +1514,44 @@ def _start_proc(
     proc.start()
 
     # ForkProcess conveniently holds a MultiprocessingProcess
-    # instance that is suitable to return here.
-    return proc._proc
+    # instance that is suitable to return here, but use _GCProtector
+    # to protect the ForkProcess instance from being garbage collected
+    # and triggering messages like this (bug 925456):
+    # [ERROR] Task was destroyed but it is pending!
+    return _GCProtector(proc._proc, proc.async_wait)
+
+
+class _GCProtector(ObjectProxy):
+    """
+    Proxy a target object, and also hold a reference to something
+    extra in order to protect it from garbage collection. Override
+    the wait method to first call target's wait method and then
+    wait for extra (a coroutine function) before returning the result.
+    """
+
+    __slots__ = ("_extra", "_target")
+
+    def __init__(self, target, extra):
+        super().__init__()
+        object.__setattr__(self, "_target", target)
+        object.__setattr__(self, "_extra", extra)
+
+    def _get_target(self):
+        return object.__getattribute__(self, "_target")
+
+    def __getattribute__(self, attr):
+        if attr == "wait":
+            return object.__getattribute__(self, attr)
+        return getattr(object.__getattribute__(self, "_target"), attr)
+
+    async def wait(self):
+        """
+        Wrap the target's wait method to also wait for an extra
+        coroutine function.
+        """
+        result = await object.__getattribute__(self, "_target").wait()
+        await object.__getattribute__(self, "_extra")()
+        return result
 
 
 def find_binary(binary):

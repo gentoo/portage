@@ -406,7 +406,7 @@ def async_loop():
     yield asyncio._wrap_loop()
 
 
-@pytest.fixture(params=SUPPORTED_GENTOO_BINPKG_FORMATS, scope="module")
+@pytest.fixture(params=SUPPORTED_GENTOO_BINPKG_FORMATS, scope="function")
 def playground(request, tmp_path_factory):
     """Fixture that provides instances of ``ResolverPlayground``
     each one with one supported value for ``BINPKG_FORMAT``."""
@@ -805,7 +805,7 @@ def _generate_all_baseline_commands(playground, binhost):
         test_commands["binhost emerge"] = Noop()
     else:
         # The next emerge has been added to split this test from the rest:
-        make_package = Emerge("--buildpkg", "dev-libs/A")
+        make_package = Emerge("-e", "--buildpkg", "dev-libs/A")
         getbinpkgonly = Emerge(
             "-e",
             "--getbinpkgonly",

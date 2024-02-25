@@ -1,8 +1,9 @@
-# Copyright 2018-2023 Gentoo Authors
+# Copyright 2018-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import signal
+import threading
 
 import asyncio as _real_asyncio
 from asyncio.events import AbstractEventLoop as _AbstractEventLoop
@@ -14,6 +15,7 @@ except ImportError:
     PidfdChildWatcher = None
 
 import portage
+from portage.util import socks5
 
 
 class AsyncioEventLoop(_AbstractEventLoop):
@@ -25,18 +27,14 @@ class AsyncioEventLoop(_AbstractEventLoop):
     def __init__(self, loop=None):
         loop = loop or _real_asyncio.get_event_loop()
         self._loop = loop
-        self.run_until_complete = (
-            self._run_until_complete
-            if portage._internal_caller
-            else loop.run_until_complete
-        )
+        self.run_until_complete = self._run_until_complete
         self.call_soon = loop.call_soon
         self.call_soon_threadsafe = loop.call_soon_threadsafe
         self.call_later = loop.call_later
         self.call_at = loop.call_at
         self.is_running = loop.is_running
         self.is_closed = loop.is_closed
-        self.close = loop.close
+        self.close = self._close
         self.create_future = (
             loop.create_future
             if hasattr(loop, "create_future")
@@ -55,9 +53,35 @@ class AsyncioEventLoop(_AbstractEventLoop):
         self.get_debug = loop.get_debug
         self._wakeup_fd = -1
         self._child_watcher = None
+        # Used to drop recursive calls to _close.
+        self._closing = False
+        # Initialized in _run_until_complete.
+        self._is_main = None
 
         if portage._internal_caller:
             loop.set_exception_handler(self._internal_caller_exception_handler)
+
+    def _close(self):
+        """
+        Before closing the main loop, run portage.process.run_exitfuncs()
+        with the event loop running so that anything attached can clean
+        itself up (like the socks5 ProxyManager for bug 925240).
+        """
+        if not (self._closing or self.is_closed()):
+            self._closing = True
+            if self._is_main:
+                self.run_until_complete(self._close_main())
+            self._loop.close()
+            self._closing = False
+
+    async def _close_main(self):
+        # Even though this has an exit hook, invoke it here so that
+        # we can properly wait for it and avoid messages like this:
+        # [ERROR] Task was destroyed but it is pending!
+        if socks5.proxy.is_running():
+            await socks5.proxy.stop()
+
+        portage.process.run_exitfuncs()
 
     @staticmethod
     def _internal_caller_exception_handler(loop, context):
@@ -139,6 +163,12 @@ class AsyncioEventLoop(_AbstractEventLoop):
         In order to avoid potential interference with API consumers, this
         implementation is only used when portage._internal_caller is True.
         """
+        if self._is_main is None:
+            self._is_main = threading.current_thread() is threading.main_thread()
+
+        if not portage._internal_caller:
+            return self._loop.run_until_complete(future)
+
         if self._wakeup_fd != -1:
             signal.set_wakeup_fd(self._wakeup_fd)
             self._wakeup_fd = -1

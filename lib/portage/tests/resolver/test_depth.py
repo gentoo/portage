@@ -1,4 +1,4 @@
-# Copyright 2011-2020 Gentoo Authors
+# Copyright 2011-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -317,6 +317,12 @@ class ResolverDepthTestCase(TestCase):
                     "virtual/libusb-0",
                     "sys-fs/udev-164",
                 ],
+            ),
+            ResolverPlaygroundTestCase(
+                ["@world"],
+                options={"--emptytree": True, "--exclude": ["dev-libs/B"]},
+                success=True,
+                mergelist=["dev-libs/C-2", "dev-libs/A-2"],
             ),
         )
 

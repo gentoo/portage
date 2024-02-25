@@ -325,13 +325,37 @@ def _safe_loop():
 
 
 def _get_running_loop():
+    """
+    This calls the real asyncio get_running_loop() and wraps that with
+    portage's internal AsyncioEventLoop wrapper. If there is no running
+    asyncio event loop but portage has a reference to another running
+    loop in this thread, then use that instead.
+
+    This behavior enables portage internals to use the real asyncio.run
+    while remaining compatible with internal code that does not use the
+    real asyncio.run.
+    """
+    try:
+        _loop = _real_asyncio.get_running_loop()
+    except RuntimeError:
+        _loop = None
+
     with _thread_weakrefs.lock:
         if _thread_weakrefs.pid == portage.getpid():
             try:
                 loop = _thread_weakrefs.loops[threading.get_ident()]
             except KeyError:
-                return None
-            return loop if loop.is_running() else None
+                pass
+            else:
+                if _loop is loop._loop:
+                    return loop
+                elif _loop is None:
+                    return loop if loop.is_running() else None
+
+    # If _loop it not None here it means it was probably a temporary
+    # loop created by asyncio.run, so we don't try to cache it, and
+    # just return a temporary wrapper.
+    return None if _loop is None else _AsyncioEventLoop(loop=_loop)
 
 
 def _thread_weakrefs_atexit():
