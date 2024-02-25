@@ -36,6 +36,7 @@ portage.proxy.lazyimport.lazyimport(
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
+from portage.proxy.objectproxy import ObjectProxy
 from portage.util._ctypes import find_library, LoadLibrary, ctypes
 
 try:
@@ -1493,8 +1494,44 @@ def _start_proc(
     proc.start()
 
     # ForkProcess conveniently holds a MultiprocessingProcess
-    # instance that is suitable to return here.
-    return proc._proc
+    # instance that is suitable to return here, but use _GCProtector
+    # to protect the ForkProcess instance from being garbage collected
+    # and triggering messages like this (bug 925456):
+    # [ERROR] Task was destroyed but it is pending!
+    return _GCProtector(proc._proc, proc.async_wait)
+
+
+class _GCProtector(ObjectProxy):
+    """
+    Proxy a target object, and also hold a reference to something
+    extra in order to protect it from garbage collection. Override
+    the wait method to first call target's wait method and then
+    wait for extra (a coroutine function) before returning the result.
+    """
+
+    __slots__ = ("_extra", "_target")
+
+    def __init__(self, target, extra):
+        super().__init__()
+        object.__setattr__(self, "_target", target)
+        object.__setattr__(self, "_extra", extra)
+
+    def _get_target(self):
+        return object.__getattribute__(self, "_target")
+
+    def __getattribute__(self, attr):
+        if attr == "wait":
+            return object.__getattribute__(self, attr)
+        return getattr(object.__getattribute__(self, "_target"), attr)
+
+    async def wait(self):
+        """
+        Wrap the target's wait method to also wait for an extra
+        coroutine function.
+        """
+        result = await object.__getattribute__(self, "_target").wait()
+        await object.__getattribute__(self, "_extra")()
+        return result
 
 
 def find_binary(binary):
