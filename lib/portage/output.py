@@ -8,6 +8,7 @@ import itertools
 import re
 import subprocess
 import sys
+from typing import Optional
 
 import portage
 
@@ -554,10 +555,16 @@ def get_term_size(fd=None):
     return (0, 0)
 
 
-def set_term_size(lines, columns, fd):
+def set_term_size(lines: int, columns: int, fd: int) -> Optional[asyncio.Future]:
     """
     Set the number of lines and columns for the tty that is connected to fd.
     For portability, this simply calls `stty rows $lines columns $columns`.
+
+    If spawn succeeds and the event loop is running then an instance of
+    asyncio.Future is returned and the caller should wait for it in order
+    to prevent possible error messages like this:
+
+    [ERROR] Task was destroyed but it is pending!
     """
 
     cmd = ["stty", "rows", str(lines), "columns", str(columns)]
@@ -568,9 +575,7 @@ def set_term_size(lines, columns, fd):
     else:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            asyncio.ensure_future(proc.wait(), loop).add_done_callback(
-                lambda future: future.result()
-            )
+            return asyncio.ensure_future(proc.wait(), loop=loop)
         else:
             loop.run_until_complete(proc.wait())
 

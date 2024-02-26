@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousLock import AsynchronousLock
@@ -233,7 +233,9 @@ class _BinpkgFetcherProcess(SpawnProcess):
         stdout_pipe = None
         if not self.background:
             stdout_pipe = fd_pipes.get(1)
-        got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
+        self._pty_ready, master_fd, slave_fd = _create_pty_or_pipe(
+            copy_term_size=stdout_pipe
+        )
         return (master_fd, slave_fd)
 
     def sync_timestamp(self):
