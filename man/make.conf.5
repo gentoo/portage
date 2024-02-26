@@ -652,9 +652,12 @@ terminal to view parallel-fetch progress.
 .TP
 .B parallel\-install
 Use finer\-grained locks when installing packages, allowing for greater
-parallelism. Note that \fIparallel\-install\fR currently has no effect
-unless \fImerge\-wait\fR is disabled. For additional parallelism,
-disable \fIebuild\-locks\fR.
+parallelism. For additional parallelism disable \fIebuild\-locks\fR.
+Also disable \fImerge\-wait\fR for additional parallelism if desired,
+but that increases the possibility of random build failures. When
+\fIparallel\-install\fR is used together with \fImerge\-wait\fR,
+parallel installation occurs in batches when there are no builds
+running.
 .TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it

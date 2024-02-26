@@ -1519,17 +1519,20 @@ class Scheduler(PollScheduler):
             self._deallocate_config(build.settings)
         elif build.returncode == os.EX_OK:
             self.curval += 1
-            merge = PackageMerge(merge=build, scheduler=self._sched_iface)
+            merge = PackageMerge(
+                is_system_pkg=(build.pkg in self._deep_system_deps),
+                merge=build,
+                scheduler=self._sched_iface,
+            )
             self._running_tasks[id(merge)] = merge
             # By default, merge-wait only allows merge when no builds are executing.
             # As a special exception, dependencies on system packages are frequently
             # unspecified and will therefore force merge-wait.
-            is_system_pkg = build.pkg in self._deep_system_deps
             if not build.build_opts.buildpkgonly and (
-                "merge-wait" in build.settings.features or is_system_pkg
+                "merge-wait" in build.settings.features or merge.is_system_pkg
             ):
                 self._merge_wait_queue.append(merge)
-                if is_system_pkg:
+                if merge.is_system_pkg:
                     merge.addStartListener(self._system_merge_started)
             else:
                 self._task_queues.merge.add(merge)
@@ -1804,13 +1807,32 @@ class Scheduler(PollScheduler):
                 and not self._jobs
                 and not self._task_queues.merge
             ):
-                task = self._merge_wait_queue.popleft()
-                task.scheduler = self._sched_iface
-                self._merge_wait_scheduled.append(task)
-                self._task_queues.merge.add(task)
-                task.addExitListener(self._merge_wait_exit_handler)
-                self._status_display.merges = len(self._task_queues.merge)
-                state_change += 1
+                while self._merge_wait_queue:
+                    # If we added non-system packages to the merge queue in a
+                    # previous iteration of this loop, then for system packages we
+                    # need to come back later when the merge queue is empty.
+                    # TODO: Maybe promote non-system packages to the front of the
+                    # queue and process them within the current loop, though that
+                    # causes merge order to differ from the order builds finish.
+                    if (
+                        self._task_queues.merge
+                        and self._merge_wait_queue[0].is_system_pkg
+                    ):
+                        break
+                    task = self._merge_wait_queue.popleft()
+                    task.scheduler = self._sched_iface
+                    self._merge_wait_scheduled.append(task)
+                    self._task_queues.merge.add(task)
+                    task.addExitListener(self._merge_wait_exit_handler)
+                    self._status_display.merges = len(self._task_queues.merge)
+                    state_change += 1
+                    # For system packages, always serialize install regardless of
+                    # parallel-install, in order to mitigate failures triggered
+                    # by fragile states as in bug 256616. For other packages,
+                    # continue to populate self._task_queues.merge, which will
+                    # serialize install unless parallel-install is enabled.
+                    if task.is_system_pkg:
+                        break
 
             if self._schedule_tasks_imp():
                 state_change += 1
