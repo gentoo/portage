@@ -656,7 +656,9 @@ class tar_safe_extract:
                     raise ValueError("Path traversal detected.")
                 if member.isdev():
                     writemsg(
-                        colorize("BAD", f"Danger: device file detected: {member.name}\n")
+                        colorize(
+                            "BAD", f"Danger: device file detected: {member.name}\n"
+                        )
                     )
                     raise ValueError("Device file detected.")
                 if member.islnk() and (member.linkname not in self.file_list):
