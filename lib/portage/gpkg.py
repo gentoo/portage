@@ -382,7 +382,7 @@ class tar_stream_reader:
             try:
                 if self.proc.wait() != os.EX_OK:
                     if not self.killed:
-                        writemsg(colorize("BAD", f"GPKG external program failed."))
+                        writemsg(colorize("BAD", f"GPKG external program failed.\n"))
                         raise CompressorOperationFailed("decompression failed")
             finally:
                 self.proc.stdout.close()
@@ -418,7 +418,7 @@ class checksum_helper:
                 else:
                     self.uid = pwd.getpwnam(drop_user).pw_uid
             except KeyError:
-                writemsg(colorize("BAD", f"!!! Failed to find user {drop_user}."))
+                writemsg(colorize("BAD", f"!!! Failed to find user {drop_user}.\n"))
                 raise
 
             try:
@@ -428,7 +428,7 @@ class checksum_helper:
                 else:
                     self.gid = grp.getgrnam(drop_group).gr_gid
             except KeyError:
-                writemsg(colorize("BAD", f"!!! Failed to find group {drop_group}."))
+                writemsg(colorize("BAD", f"!!! Failed to find group {drop_group}.\n"))
                 raise
         else:
             self.uid = None
@@ -636,33 +636,33 @@ class tar_safe_extract:
                 ):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: duplicate files detected: {member.name}"
+                            "BAD", f"Danger: duplicate files detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Duplicate files detected.")
                 if member.name.startswith("/"):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: absolute path detected: {member.name}"
+                            "BAD", f"Danger: absolute path detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Absolute path detected.")
                 if member.name.startswith("../") or ("/../" in member.name):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: path traversal detected: {member.name}"
+                            "BAD", f"Danger: path traversal detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Path traversal detected.")
                 if member.isdev():
                     writemsg(
-                        colorize("BAD", f"Danger: device file detected: {member.name}")
+                        colorize("BAD", f"Danger: device file detected: {member.name}\n")
                     )
                     raise ValueError("Device file detected.")
                 if member.islnk() and (member.linkname not in self.file_list):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: hardlink escape detected: {member.name}"
+                            "BAD", f"Danger: hardlink escape detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Hardlink escape detected.")
@@ -995,7 +995,7 @@ class gpkg:
                         image_safe.extractall(decompress_dir)
                         image_tar.close()
                     except Exception as ex:
-                        writemsg(colorize("BAD", "!!!Extract failed."))
+                        writemsg(colorize("BAD", "!!!Extract failed.\n"))
                         raise
                     finally:
                         if not image_tar.closed:
