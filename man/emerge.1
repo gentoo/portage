@@ -447,15 +447,17 @@ Tells emerge to ignore binary packages for which the corresponding
 ebuild dependencies have changed since the packages were built.
 In order to help avoid issues with resolving inconsistent dependencies,
 this option is automatically enabled unless the \fB\-\-usepkgonly\fR
-option is enabled. Behavior with respect to changed build\-time
+(or \fB\-\-getbinpkgonly\fR) option is enabled.
+Behavior with respect to changed build\-time
 dependencies is controlled by the \fB\-\-with\-bdeps\fR option.
 .TP
 .BR "\-\-binpkg\-respect\-use [ y | n ]"
 Tells emerge to ignore binary packages if their USE flags
 don't match the current configuration. In order to help avoid issues
 with resolving inconsistent USE flag settings, this option is
-automatically enabled unless the \fB\-\-usepkgonly\fR option
-is enabled. If \fB\-\-binpkg\-respect\-use\fR is given explicitly,
+automatically enabled unless the \fB\-\-usepkgonly\fR
+(or \fB\-\-getbinpkgonly\fR) option is enabled.
+If \fB\-\-binpkg\-respect\-use\fR is given explicitly,
 then it implies \fB\-\-autounmask\-use=n\fR, because these options
 naturally oppose each other.
 .TP
