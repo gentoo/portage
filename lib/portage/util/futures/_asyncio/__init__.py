@@ -38,6 +38,7 @@ from asyncio import (
     FIRST_EXCEPTION,
     Future,
     InvalidStateError,
+    iscoroutinefunction,
     Lock as _Lock,
     shield,
     TimeoutError,
@@ -51,7 +52,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(
     globals(),
     "portage.util.futures.unix_events:_PortageEventLoopPolicy",
-    "portage.util.futures:compat_coroutine@_compat_coroutine",
 )
 from portage.util._eventloop.asyncio_event_loop import (
     AsyncioEventLoop as _AsyncioEventLoop,
@@ -156,19 +156,6 @@ def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
     supported since python 3.10.
     """
     return _real_asyncio.wait(futures, timeout=timeout, return_when=return_when)
-
-
-def iscoroutinefunction(func):
-    """
-    Return True if func is a decorated coroutine function,
-    supporting both asyncio.coroutine and compat_coroutine since
-    their behavior is identical for all practical purposes.
-    """
-    if _compat_coroutine._iscoroutinefunction(func):
-        return True
-    if _real_asyncio.iscoroutinefunction(func):
-        return True
-    return False
 
 
 class Lock(_Lock):

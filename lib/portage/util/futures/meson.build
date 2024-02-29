@@ -1,6 +1,5 @@
 py.install_sources(
     [
-        'compat_coroutine.py',
         'extendedfutures.py',
         'futures.py',
         'iter_completed.py',
