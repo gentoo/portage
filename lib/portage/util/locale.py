@@ -43,12 +43,9 @@ def _check_locale(silent):
     """
     The inner locale check function.
     """
-    try:
-        from portage.util import libc
-    except ImportError:
-        (libc, _) = load_libc()
-        if libc is None:
-            return None
+    (libc, _) = load_libc()
+    if libc is None:
+        return None
 
     lc = list(range(ord("a"), ord("z") + 1))
     uc = list(range(ord("A"), ord("Z") + 1))

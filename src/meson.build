@@ -2,14 +2,6 @@
 # and for development. Meson does not allow you to build in-place and Python
 # cannot create a single namespace from two identically-named paths.
 
-libc_ext = py.extension_module(
-    'libc',
-    'portage_util_libc.c',
-    dependencies : py.dependency(),
-    subdir : 'portage' / 'util',
-    install : true
-)
-
 whirlpool_ext = py.extension_module(
     '_whirlpool',
     'portage_util__whirlpool.c',
@@ -21,7 +13,6 @@ whirlpool_ext = py.extension_module(
 run_command(
     [
         'ln', '-srnf',
-        libc_ext.full_path(),
         whirlpool_ext.full_path(),
         meson.project_source_root() / 'lib' / 'portage' / 'util/'
     ],
