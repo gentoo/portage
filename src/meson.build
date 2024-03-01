@@ -19,23 +19,3 @@ run_command(
     capture : false,
     check : true
 )
-
-if host_machine.system() == 'linux'
-    reflink_ext = py.extension_module(
-        'reflink_linux',
-        'portage_util_file_copy_reflink_linux.c',
-        dependencies : py.dependency(),
-        subdir : 'portage' / 'util' / 'file_copy',
-        install : true
-    )
-
-    run_command(
-        [
-            'ln', '-srnf',
-            reflink_ext.full_path(),
-            meson.project_source_root() / 'lib' / 'portage' / 'util' / 'file_copy/'
-        ],
-        capture : false,
-        check : true
-    )
-endif
