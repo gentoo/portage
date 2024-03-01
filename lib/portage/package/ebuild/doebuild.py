@@ -43,6 +43,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util._async.SchedulerInterface:SchedulerInterface",
     "portage.util._eventloop.global_event_loop:global_event_loop",
     "portage.util.ExtractKernelVersion:ExtractKernelVersion",
+    "_emerge.EbuildPhase:_setup_locale",
 )
 
 from portage import (
@@ -1033,6 +1034,13 @@ def doebuild(
         doebuild_environment(
             myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi
         )
+
+        # For returnproc or returnpid assume that the event loop is running
+        # so we can't run the event loop to call _setup_locale in this case
+        # and we have to assume the caller took care of it (otherwise
+        # config.environ() will raise AssertionError).
+        if not (returnproc or returnpid):
+            asyncio.run(_setup_locale(mysettings))
 
         if mydo in clean_phases:
             builddir_lock = None

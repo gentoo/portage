@@ -1,4 +1,4 @@
-# Copyright 2013-2023 Gentoo Authors
+# Copyright 2013-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import multiprocessing
@@ -27,20 +27,22 @@ class DoebuildFdPipesTestCase(TestCase):
 
         output_fd = self.output_fd
         ebuild_body = ["S=${WORKDIR}"]
-        for phase_func in (
-            "pkg_info",
-            "pkg_nofetch",
-            "pkg_pretend",
-            "pkg_setup",
-            "src_unpack",
-            "src_prepare",
-            "src_configure",
-            "src_compile",
-            "src_test",
-            "src_install",
+        for phase_func, default in (
+            ("pkg_info", False),
+            ("pkg_nofetch", False),
+            ("pkg_pretend", False),
+            ("pkg_setup", False),
+            ("pkg_config", False),
+            ("src_unpack", False),
+            ("src_prepare", True),
+            ("src_configure", False),
+            ("src_compile", False),
+            ("src_test", False),
+            ("src_install", False),
         ):
             ebuild_body.append(
-                ("%s() { echo ${EBUILD_PHASE}" " 1>&%s; }") % (phase_func, output_fd)
+                ("%s() { %secho ${EBUILD_PHASE}" " 1>&%s; }")
+                % (phase_func, "default; " if default else "", output_fd)
             )
 
         ebuild_body.append("")
@@ -48,7 +50,7 @@ class DoebuildFdPipesTestCase(TestCase):
 
         ebuilds = {
             "app-misct/foo-1": {
-                "EAPI": "5",
+                "EAPI": "8",
                 "MISC_CONTENT": ebuild_body,
             }
         }
@@ -103,24 +105,33 @@ class DoebuildFdPipesTestCase(TestCase):
                 type_name="ebuild",
             )
             settings.setcpv(pkg)
-            ebuildpath = portdb.findname(cpv)
-            self.assertNotEqual(ebuildpath, None)
 
-            for phase in (
-                "info",
-                "nofetch",
-                "pretend",
-                "setup",
-                "unpack",
-                "prepare",
-                "configure",
-                "compile",
-                "test",
-                "install",
-                "qmerge",
-                "clean",
-                "merge",
+            # Try to trigger the config.environ() split_LC_ALL assertion for bug 925863.
+            settings["LC_ALL"] = "C"
+
+            source_ebuildpath = portdb.findname(cpv)
+            self.assertNotEqual(source_ebuildpath, None)
+
+            for phase, tree, ebuildpath in (
+                ("info", "porttree", source_ebuildpath),
+                ("nofetch", "porttree", source_ebuildpath),
+                ("pretend", "porttree", source_ebuildpath),
+                ("setup", "porttree", source_ebuildpath),
+                ("unpack", "porttree", source_ebuildpath),
+                ("prepare", "porttree", source_ebuildpath),
+                ("configure", "porttree", source_ebuildpath),
+                ("compile", "porttree", source_ebuildpath),
+                ("test", "porttree", source_ebuildpath),
+                ("install", "porttree", source_ebuildpath),
+                ("qmerge", "porttree", source_ebuildpath),
+                ("clean", "porttree", source_ebuildpath),
+                ("merge", "porttree", source_ebuildpath),
+                ("clean", "porttree", source_ebuildpath),
+                ("config", "vartree", root_config.trees["vartree"].dbapi.findname(cpv)),
             ):
+                if ebuildpath is not source_ebuildpath:
+                    self.assertNotEqual(ebuildpath, None)
+
                 pr, pw = multiprocessing.Pipe(duplex=False)
 
                 producer = ForkProcess(
@@ -131,8 +142,8 @@ class DoebuildFdPipesTestCase(TestCase):
                     args=(QueryCommand._db, pw, ebuildpath, phase),
                     kwargs={
                         "settings": settings,
-                        "mydbapi": portdb,
-                        "tree": "porttree",
+                        "mydbapi": root_config.trees[tree].dbapi,
+                        "tree": tree,
                         "vartree": root_config.trees["vartree"],
                         "prev_mtimes": {},
                     },
