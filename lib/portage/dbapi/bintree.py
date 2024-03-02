@@ -1624,7 +1624,7 @@ class binarytree:
                             binpkg_format = get_binpkg_format(
                                 d.get("PATH"), remote=True
                             )
-                        except InvalidBinaryPackageFormat:
+                        except InvalidBinaryPackageFormat as e:
                             writemsg(
                                 colorize(
                                     "WARN",
