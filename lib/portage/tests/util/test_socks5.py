@@ -216,10 +216,9 @@ class Socks5ServerTestCase(TestCase):
                 self.assertEqual(result, content)
         finally:
             try:
-                # Also run_exitfuncs to test atexit hook cleanup.
-                await socks5.proxy.stop()
+                # Also run_coroutine_exitfuncs to test atexit hook cleanup.
                 self.assertNotEqual(portage.process._exithandlers, [])
-                portage.process.run_exitfuncs()
+                await portage.process.run_coroutine_exitfuncs()
                 self.assertEqual(portage.process._exithandlers, [])
             finally:
                 portage.process._exithandlers = previous_exithandlers
