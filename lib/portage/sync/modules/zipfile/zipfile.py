@@ -10,7 +10,7 @@ import tempfile
 import urllib.request
 
 import portage
-from portage.util import writemsg_level
+from portage.util import writemsg_level, writemsg_stdout
 from portage.sync.syncbase import SyncBase
 
 
@@ -31,13 +31,31 @@ class ZipFile(SyncBase):
         if kwargs:
             self._kwargs(kwargs)
 
-        # initial checkout
-        zip_uri = self.repo.sync_uri
+        req = urllib.request.Request(url=self.repo.sync_uri)
 
-        with urllib.request.urlopen(zip_uri) as response:
-            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                shutil.copyfileobj(response, tmp_file)
-            zip_file = tmp_file.name
+        info = portage.grabdict(os.path.join(self.repo.location, ".info"))
+        if "etag" in info:
+            req.add_header("If-None-Match", info["etag"][0])
+
+        try:
+            with urllib.request.urlopen(req) as response:
+                with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                    shutil.copyfileobj(response, tmp_file)
+
+                zip_file = tmp_file.name
+                etag = response.headers.get("etag")
+
+        except urllib.error.HTTPError as resp:
+            if resp.code == 304:
+                writemsg_stdout(">>> The repository has not changed.\n", noiselevel=-1)
+                return (os.EX_OK, False)
+
+            writemsg_level(
+                f"!!! Unable to obtain zip archive: {resp}\n",
+                noiselevel=-1,
+                level=logging.ERROR,
+            )
+            return (1, False)
 
         if not zipfile.is_zipfile(zip_file):
             msg = "!!! file is not a zip archive."
@@ -76,6 +94,10 @@ class ZipFile(SyncBase):
                 with archive.open(n) as srcfile:
                     with open(dstpath, "wb") as dstfile:
                         shutil.copyfileobj(srcfile, dstfile)
+
+        with open(os.path.join(self.repo.location, ".info"), "w") as infofile:
+            if etag:
+                infofile.write(f"etag {etag}\n")
 
         os.unlink(zip_file)
 
