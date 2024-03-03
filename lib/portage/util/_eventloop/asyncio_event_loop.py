@@ -79,8 +79,14 @@ class AsyncioEventLoop(_AbstractEventLoop):
         # we can properly wait for it and avoid messages like this:
         # [ERROR] Task was destroyed but it is pending!
         if socks5.proxy.is_running():
-            await socks5.proxy.stop()
+            # TODO: Convert socks5.proxy.stop() to a regular coroutine
+            # function so that it doesn't need to be wrapped like this.
+            async def stop_socks5_proxy():
+                await socks5.proxy.stop()
 
+            portage.process.atexit_register(stop_socks5_proxy)
+
+        await portage.process.run_coroutine_exitfuncs()
         portage.process.run_exitfuncs()
 
     @staticmethod

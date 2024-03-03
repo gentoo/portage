@@ -6,6 +6,7 @@
 import atexit
 import errno
 import fcntl
+import io
 import logging
 import multiprocessing
 import platform
@@ -224,6 +225,34 @@ def run_exitfuncs():
 
     if exc_info is not None:
         raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
+
+
+async def run_coroutine_exitfuncs():
+    """
+    This is the same as run_exitfuncs but it uses asyncio.iscoroutinefunction
+    to check which functions to run. It is called by the AsyncioEventLoop
+    _close_main method just before the loop is closed.
+    """
+    tasks = []
+    for index, (func, targs, kargs) in reversed(list(enumerate(_exithandlers))):
+        if asyncio.iscoroutinefunction(func):
+            del _exithandlers[index]
+            tasks.append(asyncio.ensure_future(func(*targs, **kargs)))
+    tracebacks = []
+    exc_info = None
+    for task in tasks:
+        try:
+            await task
+        except Exception:
+            file = io.StringIO()
+            traceback.print_exc(file=file)
+            tracebacks.append(file.getvalue())
+            exc_info = sys.exc_info()
+    if len(tracebacks) > 1:
+        for tb in tracebacks[:-1]:
+            print(tb, file=sys.stderr, flush=True)
+    if exc_info is not None:
+        raise exc_info[1].with_traceback(exc_info[2])
 
 
 atexit.register(run_exitfuncs)
