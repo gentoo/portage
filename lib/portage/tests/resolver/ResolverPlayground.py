@@ -54,6 +54,7 @@ class ResolverPlayground:
             "make.conf",
             "modules",
             "package.accept_keywords",
+            "package.env",
             "package.keywords",
             "package.license",
             "package.mask",

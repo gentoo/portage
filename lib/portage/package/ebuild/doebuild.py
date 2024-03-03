@@ -1813,6 +1813,14 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
     invalid_dep_exempt_phases = {"clean", "cleanrm", "help", "prerm", "postrm"}
     all_keys = set(Package.metadata_keys)
     all_keys.add("SRC_URI")
+    # Since configdict["pkg"]["USE"] may contain package.use settings
+    # from config.setcpv, it is inappropriate to use here (bug 675748),
+    # so discard it. This is only an issue because configdict["pkg"] is
+    # a sub-optimal place to extract metadata from. This issue does not
+    # necessarily indicate a flaw in the Package constructor, since
+    # passing in precalculated USE can be valid for things like
+    # autounmask USE changes.
+    all_keys.discard("USE")
     all_keys = tuple(all_keys)
     metadata = mysettings.configdict["pkg"]
     if all(k in metadata for k in ("PORTAGE_REPO_NAME", "SRC_URI")):
@@ -1837,6 +1845,10 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
             self.dbapi = mydb
 
     root_config = RootConfig(mysettings, {"porttree": FakeTree(mydbapi)}, None)
+
+    # A USE calculation from setcpv should always be available here because
+    # mysettings.mycpv is not None, so use it to prevent redundant setcpv calls.
+    metadata["USE"] = mysettings["PORTAGE_USE"]
 
     pkg = Package(
         built=False,

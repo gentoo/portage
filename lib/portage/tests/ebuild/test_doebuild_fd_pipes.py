@@ -51,8 +51,21 @@ class DoebuildFdPipesTestCase(TestCase):
         ebuilds = {
             "app-misct/foo-1": {
                 "EAPI": "8",
+                "IUSE": "+foo +bar",
+                "REQUIRED_USE": "|| ( foo bar )",
                 "MISC_CONTENT": ebuild_body,
             }
+        }
+
+        # Populate configdict["pkg"]["USE"] with something arbitrary in order
+        # to try and trigger bug 675748 in doebuild _validate_deps.
+        arbitrary_package_use = "baz"
+
+        user_config = {
+            # In order to trigger bug 675748, package.env must be non-empty,
+            # but the referenced env file can be empty.
+            "package.env": (f"app-misct/foo {os.devnull}",),
+            "package.use": (f"app-misct/foo {arbitrary_package_use}",),
         }
 
         # Override things that may be unavailable, or may have portability
@@ -63,7 +76,7 @@ class DoebuildFdPipesTestCase(TestCase):
         self.assertEqual(true_binary is None, False, "true command not found")
 
         dev_null = open(os.devnull, "wb")
-        playground = ResolverPlayground(ebuilds=ebuilds)
+        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
         try:
             QueryCommand._db = playground.trees
             root_config = playground.trees[playground.eroot]["root_config"]
@@ -105,6 +118,10 @@ class DoebuildFdPipesTestCase(TestCase):
                 type_name="ebuild",
             )
             settings.setcpv(pkg)
+
+            # Demonstrate that settings.configdict["pkg"]["USE"] contains our arbitrary
+            # package.use setting in order to trigger bug 675748.
+            self.assertEqual(settings.configdict["pkg"]["USE"], arbitrary_package_use)
 
             # Try to trigger the config.environ() split_LC_ALL assertion for bug 925863.
             settings["LC_ALL"] = "C"
