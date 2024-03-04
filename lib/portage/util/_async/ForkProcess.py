@@ -91,11 +91,8 @@ class ForkProcess(SpawnProcess):
                     # When called via process.spawn, SpawnProcess
                     # will have created a pipe earlier, so it would be
                     # redundant to do it here (it could also trigger spawn
-                    # recursion via set_term_size as in bug 923750). Use
-                    # /dev/null for master_fd, triggering early return
-                    # of _main, followed by _async_waitpid.
-                    # TODO: Optimize away the need for master_fd here.
-                    master_fd = os.open(os.devnull, os.O_RDONLY)
+                    # recursion via set_term_size as in bug 923750).
+                    master_fd = None
                     slave_fd = None
 
                 self._files = self._files_dict(connection=connection, slave_fd=slave_fd)
