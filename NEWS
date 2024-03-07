@@ -12,6 +12,8 @@ portage-3.0.64 (UNRELEASED)
 Bug fixes:
 * ctypes: Add workaround for loading libc on musl.
 
+* util: set a timeout for urlopen calls (bug #926221).
+
 portage-3.0.63 (2024-02-25)
 --------------
 
