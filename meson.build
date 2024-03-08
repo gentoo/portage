@@ -97,6 +97,20 @@ if native_extensions
     subdir('src')
 endif
 
+if system_wide
+	METADATA = configure_file(
+		input : 'cnf/METADATA',
+		output : 'METADATA',
+		configuration : conf_data
+	)
+	install_data(
+		[
+			METADATA
+		],
+		install_dir : py.get_install_dir() / 'portage-@0@.dist-info'.format(conf_data.get('VERSION'))
+	)
+endif
+
 test(
     'pytest',
     py,
