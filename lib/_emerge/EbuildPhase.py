@@ -254,6 +254,9 @@ class EbuildPhase(CompositeTask):
                     )
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
+                self.settings.mycpv._db.bintree._ensure_dir(
+                    os.path.dirname(self.settings["PORTAGE_BINPKG_TMPFILE"])
+                )
 
     def _async_start_exit(self, task):
         task.future.cancelled() or task.future.result()

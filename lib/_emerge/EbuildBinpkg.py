@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -29,6 +29,7 @@ class EbuildBinpkg(CompositeTask):
         pkg_allocated_path, build_id = bintree.getname_build_id(
             pkg.cpv, allocate_new=True
         )
+        bintree._ensure_dir(os.path.dirname(pkg_allocated_path))
 
         self.pkg_allocated_path = pkg_allocated_path
         self._binpkg_tmpfile = self.pkg_allocated_path + "." + str(portage.getpid())

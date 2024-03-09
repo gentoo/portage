@@ -72,6 +72,7 @@ import traceback
 import warnings
 from gzip import GzipFile
 from itertools import chain
+from pathlib import PurePath
 from urllib.parse import urlparse
 
 
@@ -839,11 +840,18 @@ class binarytree:
             return
         pkgdir_gid = pkgdir_st.st_gid
         pkgdir_grp_mode = 0o2070 & pkgdir_st.st_mode
-        try:
-            ensure_dirs(path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0)
-        except PortageException:
-            if not os.path.isdir(path):
-                raise
+
+        components = []
+        for component in PurePath(path).relative_to(self.pkgdir).parts:
+            components.append(component)
+            component_path = os.path.join(self.pkgdir, *components)
+            try:
+                ensure_dirs(
+                    component_path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0
+                )
+            except PortageException:
+                if not os.path.isdir(component_path):
+                    raise
 
     def _file_permissions(self, path):
         try:

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -511,7 +511,11 @@ __dyn_package() {
 	export SANDBOX_ON="0"
 	[[ -z "${PORTAGE_BINPKG_TMPFILE}" ]] && \
 		die "PORTAGE_BINPKG_TMPFILE is unset"
-	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
+	if [[ ! -d ${PORTAGE_BINPKG_TMPFILE%/*} ]]; then
+		# Warn because we don't set PKGDIR directory permissions here.
+		ewarn "__dyn_package: Creating PORTAGE_BINPKG_TMPFILE parent dir: ${PORTAGE_BINPKG_TMPFILE%/*}"
+		mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
+	fi
 
 	if [[ ! -z "${BUILD_ID}" ]]; then
 		echo -n "${BUILD_ID}" > "${PORTAGE_BUILDDIR}"/build-info/BUILD_ID
