@@ -92,17 +92,10 @@ async def _setup_repo_revisions(settings):
         and repo_name
         and "PORTAGE_REPO_REVISIONS" not in settings.configdict["pkg"]
     ):
-        inherits = frozenset(
-            (
-                await db.async_aux_get(
-                    settings.mycpv,
-                    ["INHERITED"],
-                    myrepo=repo_name,
-                )
-            )[0].split()
-        )
         repo = db.repositories[repo_name]
-        ec_dict = repo.eclass_db.get_eclass_data(inherits)
+        ec_dict = repo.eclass_db.get_eclass_data(
+            settings.configdict["pkg"]["INHERITED"].split()
+        )
         referenced_repos = {repo.name: repo}
         for ec_info in ec_dict.values():
             ec_repo = db.repositories.get_repo_for_location(
