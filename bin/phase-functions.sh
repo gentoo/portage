@@ -719,6 +719,7 @@ __dyn_install() {
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[[ -n "${PORTAGE_REPO_NAME}" ]]  && echo "${PORTAGE_REPO_NAME}" > repository
+	[[ -n ${PORTAGE_REPO_REVISIONS} ]] && echo "${PORTAGE_REPO_REVISIONS}" > REPO_REVISIONS
 	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}; then
 		>> DEBUGBUILD
 	fi

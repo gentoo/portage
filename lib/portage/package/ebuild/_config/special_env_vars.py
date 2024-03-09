@@ -165,6 +165,7 @@ environ_whitelist = frozenset(
         "PORTAGE_PYTHON",
         "PORTAGE_PYTHONPATH",
         "PORTAGE_QUIET",
+        "PORTAGE_REPO_REVISIONS",
         "PORTAGE_REPO_NAME",
         "PORTAGE_REPOSITORIES",
         "PORTAGE_RESTRICT",

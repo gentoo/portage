@@ -4,6 +4,7 @@
 import functools
 import gzip
 import io
+import json
 import sys
 import tempfile
 
@@ -83,6 +84,50 @@ async def _setup_locale(settings):
                 raise AssertionError("C locale did not pass the test!")
 
 
+async def _setup_repo_revisions(settings):
+    repo_name = settings.configdict["pkg"].get("PORTAGE_REPO_NAME")
+    db = getattr(settings.mycpv, "_db", None)
+    if (
+        isinstance(db, portage.portdbapi)
+        and repo_name
+        and "PORTAGE_REPO_REVISIONS" not in settings.configdict["pkg"]
+    ):
+        inherits = frozenset(
+            (
+                await db.async_aux_get(
+                    settings.mycpv,
+                    ["INHERITED"],
+                    myrepo=repo_name,
+                )
+            )[0].split()
+        )
+        repo = db.repositories[repo_name]
+        ec_dict = repo.eclass_db.get_eclass_data(inherits)
+        referenced_repos = {repo.name: repo}
+        for ec_info in ec_dict.values():
+            ec_repo = db.repositories.get_repo_for_location(
+                os.path.dirname(os.path.dirname(ec_info.location))
+            )
+            referenced_repos.setdefault(ec_repo.name, ec_repo)
+        repo_revisions = {}
+        for repo_ref in referenced_repos.values():
+            if repo_ref.sync_type:
+                sync = portage.sync.module_controller.get_class(repo_ref.sync_type)()
+                try:
+                    # TODO: Wait for subprocesses asynchronously here.
+                    status, repo_revision = sync.retrieve_head(
+                        options={"repo": repo_ref}
+                    )
+                except NotImplementedError:
+                    pass
+                else:
+                    if status == os.EX_OK:
+                        repo_revisions[repo_ref.name] = repo_revision.strip()
+        settings.configdict["pkg"]["PORTAGE_REPO_REVISIONS"] = json.dumps(
+            repo_revisions, ensure_ascii=False, sort_keys=True
+        )
+
+
 class EbuildPhase(CompositeTask):
     __slots__ = ("actionmap", "fd_pipes", "phase", "settings") + ("_ebuild_lock",)
 
@@ -120,6 +165,7 @@ class EbuildPhase(CompositeTask):
     async def _async_start(self):
 
         await _setup_locale(self.settings)
+        await _setup_repo_revisions(self.settings)
 
         need_builddir = self.phase not in EbuildProcess._phases_without_builddir
 
