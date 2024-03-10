@@ -255,6 +255,13 @@ install_qa_check() {
 			"${PORTAGE_BIN_PATH}"/estrip --prepallstrip
 		fi
 	fi
+
+	# Prematurely delete WORKDIR in case merge-wait is enabled to
+	# decrease the space used by portage build directories until the
+	# packages are merged and cleaned.
+	if has merge-wait ${FEATURES} && ! has keepwork ${FEATURES}; then
+		rm -rf "${WORKDIR}"
+	fi
 }
 
 __dyn_instprep() {
