@@ -26,6 +26,15 @@ class ZipFile(SyncBase):
     def __init__(self):
         SyncBase.__init__(self, "emerge", ">=sys-apps/portage-2.3")
 
+    def retrieve_head(self, **kwargs):
+        """Get information about the checksum of the unpacked archive"""
+        if kwargs:
+            self._kwargs(kwargs)
+        info = portage.grabdict(os.path.join(self.repo.location, ".info"))
+        if "etag" in info:
+            return (os.EX_OK, info["etag"][0])
+        return (1, False)
+
     def sync(self, **kwargs):
         """Sync the repository"""
         if kwargs:

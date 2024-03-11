@@ -21,10 +21,11 @@ module_spec = {
             "sourcefile": "zipfile",
             "class": "ZipFile",
             "description": doc,
-            "functions": ["sync"],
+            "functions": ["sync", "retrieve_head"],
             "func_desc": {
                 "sync": "Performs an archived http download of the "
                 + "repository, then unpacks it.",
+                "retrieve_head": "Returns the checksum of the unpacked archive.",
             },
             "validate_config": CheckSyncConfig,
             "module_specific_options": (),
