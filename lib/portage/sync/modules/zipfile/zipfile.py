@@ -35,6 +35,16 @@ class ZipFile(SyncBase):
             return (os.EX_OK, info["etag"][0])
         return (1, False)
 
+    def _do_cmp(self, f1, f2):
+        bufsize = 8 * 1024
+        while True:
+            b1 = f1.read(bufsize)
+            b2 = f2.read(bufsize)
+            if b1 != b2:
+                return False
+            if not b1:
+                return True
+
     def sync(self, **kwargs):
         """Sync the repository"""
         if kwargs:
@@ -76,7 +86,15 @@ class ZipFile(SyncBase):
             return (1, False)
 
         # Drop previous tree
-        shutil.rmtree(self.repo.location)
+        tempdir = tempfile.mkdtemp(prefix=".temp", dir=self.repo.location)
+        tmpname = os.path.basename(tempdir)
+
+        for name in os.listdir(self.repo.location):
+            if name != tmpname:
+                os.rename(
+                    os.path.join(self.repo.location, name),
+                    os.path.join(tempdir, name),
+                )
 
         with zipfile.ZipFile(zip_file) as archive:
             strip_comp = 0
@@ -101,8 +119,20 @@ class ZipFile(SyncBase):
                     continue
 
                 with archive.open(n) as srcfile:
+                    prvpath = os.path.join(tempdir, *parts[strip_comp:])
+
+                    if os.path.exists(prvpath):
+                        with open(prvpath, "rb") as prvfile:
+                            if self._do_cmp(prvfile, srcfile):
+                                os.rename(prvpath, dstpath)
+                                continue
+                        srcfile.seek(0)
+
                     with open(dstpath, "wb") as dstfile:
                         shutil.copyfileobj(srcfile, dstfile)
+
+        # Drop previous tree
+        shutil.rmtree(tempdir)
 
         with open(os.path.join(self.repo.location, ".info"), "w") as infofile:
             if etag:
