@@ -1,4 +1,4 @@
-.TH "EMAINT" "1" "Feb 2021" "Portage @VERSION@" "Portage"
+.TH "EMAINT" "1" "Mar 2024" "Portage @VERSION@" "Portage"
 .SH NAME
 emaint \- performs package management related system health checks and maintenance
 .SH SYNOPSIS
@@ -54,6 +54,11 @@ Perform package move updates for installed packages.
 .br
 OPTIONS: check, fix
 .TP
+.BR revisions
+Purge repo_revisions history file.
+.br
+OPTIONS: purgerepos, purgeallrepos
+.TP
 .BR sync
 Perform sync actions on specified repositories.
 .br
@@ -86,6 +91,13 @@ deleted.
 .TP
 .BR \-y ", " \-\-yes
 Do not prompt for emerge invocations.
+.SH OPTIONS revisions command only
+.TP
+.BR \-\-purgeallrepos
+Purge revisions for all repos.
+.TP
+.BR \-\-purgerepos \ \fIREPO\fR
+Purge revisions for the specified repo(s).
 .SH OPTIONS sync command only
 .TP
 .BR \-a ", " \-\-auto
@@ -121,6 +133,10 @@ Contains the paths and md5sums of all the config files being tracked.
 .B /var/lib/portage/failed-merges
 Contains the packages and timestamps of any failed merges being cleaned from
 the system, and to be re-emerged.
+.TP
+.B /var/lib/portage/repo_revisions
+Contains the most recent repository revisions obtained via either
+\fBemaint sync\fR or \fBemerge \-\-sync\fR.
 .SH "SEE ALSO"
 .BR emerge (1),
 .BR portage (5)

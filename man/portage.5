@@ -134,6 +134,7 @@ database to track installed packages
 .BR /var/lib/portage/
 .nf
 config
+repo_revisions
 world
 world_sets
 .fi
@@ -1900,6 +1901,20 @@ x86_32: ld-linux.so.2 libc.so.6 x86_64: ld-linux-x86-64.so.2 libc.so.6
 Hashes which are used to determine whether files in config protected
 directories have been modified since being installed.  Files which have not
 been modified will automatically be unmerged.
+.TP
+.BR repo_revisions
+Contains the most recent repository revisions obtained via either
+\fBemaint sync\fR or \fBemerge \-\-sync\fR. The format is a JSON
+object which maps a repo name to list of revisions in descending
+order by time. In cases when revisions are not ordered by time,
+the volatile attribute should be set in \fBrepos.conf\fR in order
+to prevent unordered revisions from being stored in the
+repo_revisions file. The \fBemaint revisions\fR command can be
+used to purge revisions for specific repos, which should be done
+in any case when there is a need to roll back to an older
+revision (the \fBemerge\-webrsync \-\-revert\fR option calls
+\fBemaint revisions\fR in order to purge all revision history
+for the repository).
 .TP
 .BR world
 Every time you emerge a package, the package that you requested is
