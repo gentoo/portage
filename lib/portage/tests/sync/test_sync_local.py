@@ -1,7 +1,8 @@
-# Copyright 2014-2023 Gentoo Authors
+# Copyright 2014-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
+import json
 import subprocess
 import sys
 import textwrap
@@ -9,8 +10,9 @@ import textwrap
 import portage
 from portage import os, shutil, _shell_quote
 from portage import _unicode_decode
-from portage.const import PORTAGE_PYM_PATH, TIMESTAMP_FORMAT
+from portage.const import PORTAGE_PYM_PATH, REPO_REVISIONS, TIMESTAMP_FORMAT
 from portage.process import find_binary
+from portage.sync.revision_history import get_repo_revision_history
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
@@ -43,6 +45,7 @@ class SyncLocalTestCase(TestCase):
 			sync-rcu = %(sync-rcu)s
 			sync-rcu-store-dir = %(EPREFIX)s/var/repositories/test_repo_rcu_storedir
 			auto-sync = %(auto-sync)s
+			volatile = no
 			%(repo_extra_keys)s
 		"""
         )
@@ -50,7 +53,7 @@ class SyncLocalTestCase(TestCase):
         profile = {"eapi": ("5",), "package.use.stable.mask": ("dev-libs/A flag",)}
 
         ebuilds = {
-            "dev-libs/A-0": {},
+            "dev-libs/A-0": {"EAPI": "8"},
             "sys-apps/portage-3.0": {"IUSE": "+python_targets_python3_8"},
         }
 
@@ -81,7 +84,7 @@ class SyncLocalTestCase(TestCase):
         rcu_store_dir = os.path.join(eprefix, "var/repositories/test_repo_rcu_storedir")
 
         cmds = {}
-        for cmd in ("emerge", "emaint"):
+        for cmd in ("egencache", "emerge", "emaint"):
             for bindir in (self.bindir, self.sbindir):
                 path = os.path.join(str(bindir), cmd)
                 if os.path.exists(path):
@@ -298,6 +301,21 @@ class SyncLocalTestCase(TestCase):
                 ),
             ),
             (repo.location, git_cmd + ("init-db",)),
+            # Ensure manifests and cache are valid after
+            # previous calls to alter_ebuild.
+            (
+                homedir,
+                cmds["egencache"]
+                + (
+                    f"--repo={repo.name}",
+                    "--update",
+                    "--update-manifests",
+                    "--sign-manifests=n",
+                    "--strict-manifests=n",
+                    f"--repositories-configuration={settings['PORTAGE_REPOSITORIES']}",
+                    f"--jobs={portage.util.cpuinfo.get_cpu_count()}",
+                ),
+            ),
             (repo.location, git_cmd + ("add", ".")),
             (repo.location, git_cmd + ("commit", "-a", "-m", "add whole repo")),
         )
@@ -312,6 +330,54 @@ class SyncLocalTestCase(TestCase):
 
         delete_git_dir = (
             (homedir, lambda: shutil.rmtree(os.path.join(repo.location, ".git"))),
+        )
+
+        def get_revision_history(sync_type="git"):
+            # Override volatile to False here because it gets set
+            # True by RepoConfig when repo.location is not root
+            # or portage owned.
+            try:
+                volatile_orig = repo.volatile
+                repo.volatile = False
+                sync_type_orig = repo.sync_type
+                repo.sync_type = sync_type
+                revision_history = get_repo_revision_history(eroot, repos=[repo])
+            finally:
+                repo.sync_type = sync_type_orig
+                repo.volatile = volatile_orig
+
+            return revision_history
+
+        repo_revisions_cmds = (
+            (homedir, lambda: self.assertTrue(bool(get_revision_history()))),
+            (
+                homedir,
+                lambda: self.assertTrue(
+                    os.path.exists(os.path.join(eroot, REPO_REVISIONS))
+                ),
+            ),
+            (homedir, cmds["emaint"] + ("revisions", f"--purgerepos={repo.name}")),
+            (
+                homedir,
+                lambda: self.assertFalse(
+                    os.path.exists(os.path.join(eroot, REPO_REVISIONS))
+                ),
+            ),
+            (homedir, lambda: self.assertTrue(bool(get_revision_history()))),
+            (
+                homedir,
+                lambda: self.assertTrue(
+                    os.path.exists(os.path.join(eroot, REPO_REVISIONS))
+                ),
+            ),
+            (homedir, cmds["emaint"] + ("revisions", "--purgeallrepos")),
+            (
+                homedir,
+                lambda: self.assertFalse(
+                    os.path.exists(os.path.join(eroot, REPO_REVISIONS))
+                ),
+            ),
+            (homedir, lambda: self.assertTrue(bool(get_revision_history()))),
         )
 
         def hg_init_global_config():
@@ -451,6 +517,7 @@ class SyncLocalTestCase(TestCase):
                 + sync_type_git_shallow
                 + upstream_git_commit
                 + sync_cmds
+                + repo_revisions_cmds
                 + mercurial_tests
             ):
                 if hasattr(cmd, "__call__"):

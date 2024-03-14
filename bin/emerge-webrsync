@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -732,6 +732,7 @@ main() {
 	[[ ${do_debug} -eq 1 ]] && set -x
 
 	if [[ -n ${revert_date} ]] ; then
+		emaint revisions --purgerepos="${repo_name}"
 		do_snapshot 1 "${revert_date}"
 	else
 		do_latest_snapshot
