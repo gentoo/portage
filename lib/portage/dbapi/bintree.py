@@ -48,6 +48,7 @@ from portage.exception import (
 from portage.localization import _
 from portage.output import colorize
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.sync.revision_history import get_repo_revision_history
 from portage.util import ensure_dirs
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
@@ -62,6 +63,7 @@ from portage import _unicode_encode
 import codecs
 import errno
 import io
+import json
 import re
 import shlex
 import stat
@@ -135,13 +137,19 @@ class bindbapi(fakedbapi):
             "USE",
             "_mtime_",
         }
+        # Keys required only when initially adding a package.
+        self._init_aux_keys = {
+            "REPO_REVISIONS",
+        }
         self._aux_cache = {}
         self._aux_cache_slot_dict_cache = None
 
     @property
     def _aux_cache_slot_dict(self):
         if self._aux_cache_slot_dict_cache is None:
-            self._aux_cache_slot_dict_cache = slot_dict_class(self._aux_cache_keys)
+            self._aux_cache_slot_dict_cache = slot_dict_class(
+                chain(self._aux_cache_keys, self._init_aux_keys)
+            )
         return self._aux_cache_slot_dict_cache
 
     def __getstate__(self):
@@ -1791,6 +1799,11 @@ class binarytree:
                 pkgindex = self._new_pkgindex()
 
             d = self._inject_file(pkgindex, cpv, full_path)
+            repo_revisions = (
+                json.loads(d["REPO_REVISIONS"]) if d.get("REPO_REVISIONS") else None
+            )
+            if repo_revisions:
+                self._inject_repo_revisions(pkgindex.header, repo_revisions)
             self._update_pkgindex_header(pkgindex.header)
             self._pkgindex_write(pkgindex)
 
@@ -1872,7 +1885,7 @@ class binarytree:
         @return: package metadata
         """
         if keys is None:
-            keys = self.dbapi._aux_cache_keys
+            keys = chain(self.dbapi._aux_cache_keys, self.dbapi._init_aux_keys)
             metadata = self.dbapi._aux_cache_slot_dict()
         else:
             metadata = {}
@@ -1915,6 +1928,56 @@ class binarytree:
                     metadata[k] = " ".join(v.split())
 
         return metadata
+
+    def _inject_repo_revisions(self, header, repo_revisions):
+        """
+        Inject REPO_REVISIONS from a package into the index header,
+        using a history of synced revisions to guarantee forward
+        progress. This queries the relevant repos to check if any
+        new revisions have appeared in the absence of a proper sync
+        operation.
+
+        This does not expose REPO_REVISIONS that do not appear in
+        the sync history, since such revisions suggest that the
+        package was not built locally, and in this case its
+        REPO_REVISIONS are not intended to be exposed.
+        """
+        synced_repo_revisions = get_repo_revision_history(
+            self.settings["EROOT"],
+            [self.settings.repositories[repo_name] for repo_name in repo_revisions],
+        )
+        header_repo_revisions = (
+            json.loads(header["REPO_REVISIONS"]) if header.get("REPO_REVISIONS") else {}
+        )
+        for repo_name, repo_revision in repo_revisions.items():
+            rev_list = synced_repo_revisions.get(repo_name, [])
+            header_rev = header_repo_revisions.get(repo_name)
+            if not rev_list or header_rev in (repo_revision, rev_list[0]):
+                continue
+            try:
+                header_rev_index = (
+                    None if header_rev is None else rev_list.index(header_rev)
+                )
+            except ValueError:
+                header_rev_index = None
+            try:
+                repo_revision_index = rev_list.index(repo_revision)
+            except ValueError:
+                repo_revision_index = None
+            if repo_revision_index is not None and (
+                header_rev_index is None or repo_revision_index < header_rev_index
+            ):
+                # There is forward progress when repo_revision is more recent
+                # than header_rev or header_rev was not found in the history.
+                # Do not expose repo_revision here if it does not appear in
+                # the history, since this suggests that the package was not
+                # built locally and in this case its REPO_REVISIONS are not
+                # intended to be exposed here.
+                header_repo_revisions[repo_name] = repo_revision
+        if header_repo_revisions:
+            header["REPO_REVISIONS"] = json.dumps(
+                header_repo_revisions, ensure_ascii=False, sort_keys=True
+            )
 
     def _inject_file(self, pkgindex, cpv, filename):
         """

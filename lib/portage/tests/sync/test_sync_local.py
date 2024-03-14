@@ -380,6 +380,45 @@ class SyncLocalTestCase(TestCase):
             (homedir, lambda: self.assertTrue(bool(get_revision_history()))),
         )
 
+        def assert_latest_rev_in_packages_index(positive):
+            """
+            If we build a binary package then its REPO_REVISIONS should
+            propagate into $PKGDIR/Packages as long as it results in
+            forward progress according to the repo revision history.
+            """
+            revision_history = get_revision_history()
+            prefix = "REPO_REVISIONS:"
+            header_repo_revisions = None
+            try:
+                with open(
+                    os.path.join(settings["PKGDIR"], "Packages"), encoding="utf8"
+                ) as f:
+                    for line in f:
+                        if line.startswith(prefix):
+                            header_repo_revisions = line[len(prefix) :].strip()
+                            break
+            except FileNotFoundError:
+                pass
+
+            if positive:
+                self.assertFalse(header_repo_revisions is None)
+
+            if header_repo_revisions is None:
+                header_repo_revisions = {}
+            else:
+                header_repo_revisions = json.loads(header_repo_revisions)
+
+            (self.assertEqual if positive else self.assertNotEqual)(
+                revision_history.get(repo.name, [False])[0],
+                header_repo_revisions.get(repo.name, None),
+            )
+
+        pkgindex_revisions_cmds = (
+            (homedir, lambda: assert_latest_rev_in_packages_index(False)),
+            (homedir, cmds["emerge"] + ("-B", "dev-libs/A")),
+            (homedir, lambda: assert_latest_rev_in_packages_index(True)),
+        )
+
         def hg_init_global_config():
             with open(os.path.join(homedir, ".hgrc"), "w") as f:
                 f.write(f"[ui]\nusername = {committer_name} <{committer_email}>\n")
@@ -447,18 +486,25 @@ class SyncLocalTestCase(TestCase):
                 pythonpath = ":" + pythonpath
             pythonpath = PORTAGE_PYM_PATH + pythonpath
 
-        env = {
-            "PORTAGE_OVERRIDE_EPREFIX": eprefix,
-            "DISTDIR": distdir,
-            "GENTOO_COMMITTER_NAME": committer_name,
-            "GENTOO_COMMITTER_EMAIL": committer_email,
-            "HOME": homedir,
-            "PATH": settings["PATH"],
-            "PORTAGE_GRPNAME": os.environ["PORTAGE_GRPNAME"],
-            "PORTAGE_USERNAME": os.environ["PORTAGE_USERNAME"],
-            "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
-            "PYTHONPATH": pythonpath,
-        }
+        env = settings.environ()
+        env.update(
+            {
+                "PORTAGE_OVERRIDE_EPREFIX": eprefix,
+                "DISTDIR": distdir,
+                "GENTOO_COMMITTER_NAME": committer_name,
+                "GENTOO_COMMITTER_EMAIL": committer_email,
+                "HOME": homedir,
+                "PORTAGE_INST_GID": str(os.getgid()),
+                "PORTAGE_INST_UID": str(os.getuid()),
+                "PORTAGE_GRPNAME": os.environ["PORTAGE_GRPNAME"],
+                "PORTAGE_USERNAME": os.environ["PORTAGE_USERNAME"],
+                "PYTHONDONTWRITEBYTECODE": os.environ.get(
+                    "PYTHONDONTWRITEBYTECODE", ""
+                ),
+                "PYTHONPATH": pythonpath,
+            }
+        )
+
         repos_set_conf("rsync")
 
         if os.environ.get("SANDBOX_ON") == "1":
@@ -518,6 +564,7 @@ class SyncLocalTestCase(TestCase):
                 + upstream_git_commit
                 + sync_cmds
                 + repo_revisions_cmds
+                + pkgindex_revisions_cmds
                 + mercurial_tests
             ):
                 if hasattr(cmd, "__call__"):
