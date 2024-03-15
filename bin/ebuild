@@ -304,6 +304,10 @@ def main():
 
     tmpsettings.features.discard("fail-clean")
 
+    # We don't implement merge-wait for the ebuild command, so discard
+    # it from FEATURES. This prevents premature WORKDIR removal.
+    tmpsettings.features.discard("merge-wait")
+
     if "merge" in pargs and "noauto" in tmpsettings.features:
         print("Disabling noauto in features... merge disables it. (qmerge doesn't)")
         tmpsettings.features.discard("noauto")
