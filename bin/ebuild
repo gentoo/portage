@@ -270,7 +270,8 @@ def main():
     ebuild_changed = False
     if mytree == "porttree" and build_dir_phases.intersection(pargs):
         ebuild_changed = (
-            portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)[0] is None
+            portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir, force=True)[0]
+            is None
         )
 
     # Make configuration adjustments to portage.portdb.doebuild_settings,
