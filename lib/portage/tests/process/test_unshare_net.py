@@ -42,7 +42,7 @@ class UnshareNetTestCase(TestCase):
                 f"Unable to unshare: {errno.errorcode.get(self.ABILITY_TO_UNSHARE, '?')}"
             )
         env = os.environ.copy()
-        env["IPV6"] = "1" if portage.process._has_ipv6() else ""
+        env["IPV6"] = "1" if portage.process.has_ipv6() else ""
         self.assertEqual(
             portage.process.spawn(
                 [BASH_BINARY, "-c", UNSHARE_NET_TEST_SCRIPT], unshare_net=True, env=env

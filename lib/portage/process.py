@@ -631,8 +631,8 @@ def spawn(
         fd_pipes[1] = pw
         fd_pipes[2] = pw
 
-    # Cache _has_ipv6() result for use in child processes.
-    _has_ipv6()
+    # Cache has_ipv6() result for use in child processes.
+    has_ipv6()
 
     # This caches the libc library lookup and _unshare_validator results
     # in the current process, so that results are cached for use in
@@ -751,7 +751,7 @@ def spawn(
 __has_ipv6 = None
 
 
-def _has_ipv6():
+def has_ipv6():
     """
     Test that both userland and kernel support IPv6, by attempting
     to create a socket and listen on any unused port of the IPv6
@@ -812,7 +812,7 @@ def _configure_loopback_interface():
             ifindex = rtnl.get_link_ifindex(b"lo")
             rtnl.set_link_up(ifindex)
             rtnl.add_address(ifindex, socket.AF_INET, "10.0.0.1", 8)
-            if _has_ipv6():
+            if has_ipv6():
                 rtnl.add_address(ifindex, socket.AF_INET6, "fd::1", 8)
     except OSError as e:
         writemsg(
