@@ -41,6 +41,12 @@ __save_ebuild_env() (
 				MAPFILE+=( PYTHONPATH )
 			fi
 		fi
+
+		# These variables contains build host specific configuration. We
+		# want binpkgs generated on different sized hosts to be
+		# identical, so strip them from the binpkg. It's also not needed
+		# for installing / removing a package.
+		unset MAKEOPTS NINJAOPTS
 	fi
 
 	MAPFILE+=(
