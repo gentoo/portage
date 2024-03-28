@@ -16,6 +16,11 @@ __save_ebuild_env() {
 		unset S __E_DESTTREE __E_INSDESTTREE __E_DOCDESTTREE __E_EXEDESTTREE \
 			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
 			PORTAGE_DOCOMPRESS_SKIP PORTAGE_DOSTRIP PORTAGE_DOSTRIP_SKIP
+		# This value contains build host specific configuration. We want
+		# binpkgs generated on different sized hosts to be identical,
+		# so strip this value from the binpkg. It's also not needed for
+		# installing / removing a package.
+		unset MAKEOPTS
 		if [[ -n ${PYTHONPATH} &&
 			${PYTHONPATH%%:*} -ef ${PORTAGE_PYM_PATH} ]] ; then
 			if [[ ${PYTHONPATH} == *:* ]] ; then
