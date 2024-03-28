@@ -18,6 +18,7 @@ from portage import _unicode_decode
 from portage import os
 from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.output import create_color_func, yellow, blue, bold
+from portage.process import has_ipv6
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from portage.sync.syncbase import NewBase
 from portage.util import writemsg, writemsg_level, writemsg_stdout
@@ -253,9 +254,7 @@ class RsyncSync(NewBase):
             family = socket.AF_UNSPEC
             if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
                 family = socket.AF_INET
-            elif socket.has_ipv6 and (
-                "-6" in all_rsync_opts or "--ipv6" in all_rsync_opts
-            ):
+            elif has_ipv6() and ("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
                 family = socket.AF_INET6
 
             addrinfos = None
@@ -279,7 +278,7 @@ class RsyncSync(NewBase):
             if addrinfos:
                 AF_INET = socket.AF_INET
                 AF_INET6 = None
-                if socket.has_ipv6:
+                if has_ipv6():
                     AF_INET6 = socket.AF_INET6
 
                 ips_v4 = []
