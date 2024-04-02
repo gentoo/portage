@@ -48,6 +48,10 @@ def eapi_supports_prefix(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).prefix
 
 
+def eapi_exports_pms_vars(eapi: str) -> bool:
+    return _get_eapi_attrs(eapi).exports_pms_vars
+
+
 def eapi_exports_AA(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).exports_AA
 
@@ -157,6 +161,7 @@ _eapi_attrs = collections.namedtuple(
         "exports_ECLASSDIR",
         "exports_KV",
         "exports_merge_type",
+        "exports_pms_vars",
         "exports_PORTDIR",
         "exports_replace_vars",
         "feature_flag_test",
@@ -197,6 +202,7 @@ class Eapi:
         "6",
         "7",
         "8",
+        "9",
     )
 
     _eapi_val: int = -1
@@ -235,6 +241,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             exports_ECLASSDIR=False,
             exports_KV=False,
             exports_merge_type=True,
+            exports_pms_vars=True,
             exports_PORTDIR=True,
             exports_replace_vars=True,
             feature_flag_test=False,
@@ -274,6 +281,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             exports_ECLASSDIR=eapi <= Eapi("6"),
             exports_KV=eapi <= Eapi("3"),
             exports_merge_type=eapi >= Eapi("4"),
+            exports_pms_vars=eapi <= Eapi("8"),
             exports_PORTDIR=eapi <= Eapi("6"),
             exports_replace_vars=eapi >= Eapi("4"),
             feature_flag_test=False,
