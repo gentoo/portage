@@ -181,6 +181,7 @@ SUPPORTED_FEATURES = frozenset(
         "digest",
         "distcc",
         "distlocks",
+        "dont-export-a",
         "downgrade-backup",
         "ebuild-locks",
         "fail-clean",

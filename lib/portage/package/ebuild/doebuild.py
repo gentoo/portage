@@ -82,6 +82,7 @@ from portage.dep import (
 )
 from portage.dep.libc import find_libc_deps
 from portage.eapi import (
+    eapi_exports_A,
     eapi_exports_KV,
     eapi_exports_merge_type,
     eapi_exports_replace_vars,
@@ -2133,9 +2134,37 @@ def spawn(
         logname_backup = mysettings.configdict["env"].get("LOGNAME")
         mysettings.configdict["env"]["LOGNAME"] = logname
 
+    eapi = mysettings["EAPI"]
+
+    unexported_env_vars = set()
+    if "dont-export-a" in mysettings.features or not eapi_exports_A(eapi):
+        unexported_env_vars.add("A")
+
+    if unexported_env_vars:
+        orig_env = mysettings.environ()
+        # Copy since we are potentially removing keys from the dict.
+        env = orig_env.copy()
+
+        t = env["T"]
+        if not os.path.isdir(t):
+            os.makedirs(t)
+
+        ebuildExtraSource = os.path.join(t, "portage-ebuild-extra-source")
+        with open(ebuildExtraSource, mode="w") as f:
+            for var_name in unexported_env_vars:
+                var_value = orig_env.get(var_name)
+                if var_value is None:
+                    continue
+                f.write(f"{var_name}='{var_value}'\n")
+                del env[var_name]
+
+        env["PORTAGE_EBUILD_EXTRA_SOURCE"] = str(ebuildExtraSource)
+    else:
+        env = mysettings.environ()
+
     try:
         if keywords.get("returnpid") or keywords.get("returnproc"):
-            return spawn_func(mystring, env=mysettings.environ(), **keywords)
+            return spawn_func(mystring, env=env, **keywords)
 
         proc = EbuildSpawnProcess(
             background=False,
