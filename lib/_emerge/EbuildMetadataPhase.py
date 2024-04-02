@@ -36,6 +36,7 @@ class EbuildMetadataPhase(SubProcess):
         "repo_path",
         "settings",
         "deallocate_config",
+        "portage_ebuild_extra_source",
         "write_auxdb",
     ) + (
         "_eapi",
@@ -165,6 +166,10 @@ class EbuildMetadataPhase(SubProcess):
             self.cancel()
             self._was_cancelled()
 
+        self.portage_ebuild_extra_source = self.settings.get(
+            "PORTAGE_EBUILD_EXTRA_SOURCE"
+        )
+
         if self.deallocate_config is not None and not self.deallocate_config.done():
             self.deallocate_config.set_result(self.settings)
 
@@ -191,6 +196,8 @@ class EbuildMetadataPhase(SubProcess):
         if self._files is not None:
             self.scheduler.remove_reader(self._files.ebuild)
         SubProcess._unregister(self)
+        if self.portage_ebuild_extra_source:
+            os.unlink(self.portage_ebuild_extra_source)
 
     def _async_waitpid_cb(self, *args, **kwargs):
         """
