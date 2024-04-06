@@ -482,4 +482,4 @@ preferred-modules=
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "BaseException, Exception".
-overgeneral-exceptions=BaseException
+overgeneral-exceptions=builtins.BaseException
