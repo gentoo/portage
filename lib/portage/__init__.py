@@ -732,7 +732,7 @@ if installation.TYPE == installation.TYPES.SOURCE:
                 output = _unicode_decode(proc.communicate()[0], encoding=encoding)
                 status = proc.wait()
                 if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-                    VERSION = output.lstrip('portage-').strip()
+                    VERSION = output.lstrip("portage-").strip().replace("-g", "+g")
             else:
                 VERSION = "HEAD"
             return VERSION
