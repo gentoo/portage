@@ -77,9 +77,6 @@ bashcomp_check() {
 			fi
 
 			if [[ -z ${completions[@]} ]]; then
-				qa_warnings+=(
-					"${f##*/}: does not define any completions (failed to source?)."
-				)
 				continue
 			fi
 
