@@ -47,6 +47,10 @@ __save_ebuild_env() (
 		# identical, so strip them from the binpkg. It's also not needed
 		# for installing / removing a package.
 		unset MAKEOPTS NINJAOPTS
+
+		# These variables are constantly changing. Strip them so we
+		# don't introduce non-reproducible data into the binpkg.
+		unset EPOCHREALTIME EPOCHSECONDS SRANDOM
 	fi
 
 	MAPFILE+=(
