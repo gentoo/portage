@@ -1140,7 +1140,7 @@ expire while it is in use by a running process.
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid non\-empty values: cvs, git, mercurial, rsync, svn, webrsync
+Valid non\-empty values: cvs, git, mercurial, rsync, zipfile, svn, webrsync
 (emerge\-webrsync)
 .br
 This attribute can be set to empty value to disable synchronization of given
@@ -1165,6 +1165,8 @@ cvs: [cvs://]:access_method:[username@]hostname[:port]:/path
 git: (git|git+ssh|http|https)://[username@]hostname[:port]/path
 .br
 rsync: (rsync|ssh)://[username@]hostname[:port]/(module|path)
+.br
+zipfile: (http|https)://hostname[:port]/path/to/zipfile.zip
 .TP
 Examples:
 .RS
@@ -1326,6 +1328,13 @@ auto\-sync = yes
 location = /var/lib/layman/voip
 sync\-type = laymanator
 sync\-uri = git://anongit.gentoo.org/proj/voip.git
+auto\-sync = yes
+
+# Overlay with latest ebuild repository snapshot.
+[snapshot]
+location = /var/db/repos/snapshot
+sync\-type = zipfile
+sync\-uri = https://github.com/gentoo/gentoo/archive/refs/heads/master.zip
 auto\-sync = yes
 .fi
 .RE
