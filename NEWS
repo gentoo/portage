@@ -9,10 +9,103 @@ Release notes take the form of the following optional categories:
 portage-3.0.64 (UNRELEASED)
 --------------
 
+Features:
+* Scheduler: Support parallel-install with merge-wait (bug #256616, bug #925213).
+
+  This makes the (future) improvement mentioned in portage-3.0.62's NEWS.
+
+* phase-functions: prematurely delete WORKDIR if FEATURES=merge-wait
+
+  The 'merge-wait' feature could lead to running out of disk space on
+  PORTAGE_TMPDIR's filesystem because many more workdirs were kept around
+  until merging was queued up. We now purge the workdirs but keep the image
+  around until merging.
+
+* Start to record REPO_REVISIONS in build-info in VDB (bug #924772).
+
+  Ultimately the intention is to expose this information in binhost
+  metadata so that clients can select consistent revisions of source
+  repositories.
+
+* util: file_copy: Support btrfs's FICLONE ioctl for fast file clones.
+
+  Added when implementing the below 'src: Drop linux_reflink C module.'
+  cleanup.
+
+* sync: Add new 'zipfile' sync-type.
+
+  This allows fetching ebuild repositories via snapshots from e.g. GitHub,
+  gitweb, cgit.
+
 Bug fixes:
 * ctypes: Add workaround for loading libc on musl.
 
 * util: set a timeout for urlopen calls (bug #926221).
+
+* SpawnProcess: Fix noise / warnings caused by set_term_size (bug #923750, bug #925456).
+
+* binpkg, gpkg: Add missing newlines to error messages.
+
+* writable_check: Improve whitespace handling when parsing /proc/self/mountinfo (bug #925888).
+
+* doebuild: Call _setup_locale (bug #925863).
+
+  This is needed to more robustly handle invalid or inappropriate locale settings.
+
+* binarytree._populate_remote: Fix UnboundLocalError for binpkg-request-signature (bug #926048).
+
+* elog/mod_custom: Spawn processes in background (bug #925907).
+
+  Fixes a noisy crash on exit.
+
+* Fix REQUIRED_USE error with --fetchonly --pretend but not --fetchonly (bug #675748).
+
+* socks5: Fix exit with FEATURES="network-sandbox-proxy" or FEATURES="distcc" (bug #925240).
+
+* meson.build: Install dist-info METADATA (bug #920330).
+
+  This is needed for 'pip' to not be confused when Portage is installed system-wide.
+
+* EbuildPhase/EbuildBinpkg: Ensure PKGDIR subdirectory permissions (bug #712222).
+
+  A warning (failure) was observed with FEATURES="installsources" otherwise.
+
+* config: Sort FEATURES to avoid non-determinism (bug #914441).
+
+* man: Document autoenabled options by --getbinpkgonly.
+
+* BinpkgPrefetcher: Use eerror for binarytree inject failures (bug #927632).
+
+  This improves the readability of the error substantially.
+
+* install-qa-check.d: Remove QA warning when no bash completions are found  (bug #928599, bug #928869).
+
+  This check had too many false positives.
+
+* lib: use more pure git-describe output for --version (bug #912209).
+
+  This makes 'emerge --version' info far nicer when using portage-9999.
+
+* lib: adhere to python package version conventions (bug #926966).
+
+  (Note that this needed fixing even before the change for bug #912209).
+
+Cleanups:
+* cnf: sets: Migrate @golang-rebuild to dev-lang/go (removed from Portage) (bug #919751).
+
+* src: Drop libc C module.
+
+  This was only used for `find_library` on musl. We've now implemented
+  an alternative workaround for this.
+
+* src: Drop linux_reflink C module.
+
+  This is now implemented in pure Python, which also means PyPy can
+  benefit.
+
+  Testsuite coverage was also improved for this area.
+
+* Delete compat_coroutine module.
 
 portage-3.0.63 (2024-02-25)
 --------------
