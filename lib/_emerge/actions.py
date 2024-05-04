@@ -2070,11 +2070,11 @@ def action_info(settings, trees, myopts, myfiles):
         append(ccache_str)
 
     myvars = [
-        "sys-devel/autoconf",
-        "sys-devel/automake",
+        "dev-build/autoconf",
+        "dev-build/automake",
         "virtual/os-headers",
         "sys-devel/binutils",
-        "sys-devel/libtool",
+        "dev-build/libtool",
         "dev-lang/python",
     ]
     myvars += portage.util.grabfile(settings["PORTDIR"] + "/profiles/info_pkgs")
