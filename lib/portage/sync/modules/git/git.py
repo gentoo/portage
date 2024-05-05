@@ -606,6 +606,7 @@ class GitSync(NewBase):
         if self.bin_command is None:
             # return quietly so that we don't pollute emerge --info output
             return (1, False)
+        self.add_safe_directory()
         rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
         try:
             ret = (
