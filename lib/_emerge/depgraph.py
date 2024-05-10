@@ -4040,16 +4040,24 @@ class depgraph:
         if removal_action:
             depend_root = myroot
         else:
+            root_deps = self._frozen_config.myopts.get("--root-deps")
+
             if eapi_attrs.bdepend:
                 depend_root = pkg.root_config.settings["ESYSROOT"]
             else:
                 depend_root = self._frozen_config._running_root.root
-                root_deps = self._frozen_config.myopts.get("--root-deps")
-                if root_deps is not None:
-                    if root_deps is True:
-                        depend_root = myroot
-                    elif root_deps == "rdeps":
-                        ignore_depend_deps = True
+                if root_deps == "rdeps":
+                    ignore_depend_deps = True
+
+            if root_deps == True:
+                edepend["RDEPEND"] += (
+                    " "
+                    + edepend["IDEPEND"]
+                    + " "
+                    + edepend["DEPEND"]
+                    + " "
+                    + edepend["BDEPEND"]
+                )
 
         # If rebuild mode is not enabled, it's safe to discard ignored
         # build-time dependencies. If you want these deps to be traversed
@@ -8391,7 +8399,7 @@ class depgraph:
         for root in self._frozen_config.roots:
             if root != self._frozen_config.target_root and (
                 "remove" in self._dynamic_config.myparams
-                or self._frozen_config.myopts.get("--root-deps") is not None
+                or self._frozen_config.myopts.get("--root-deps") == "rdeps"
             ):
                 # Only pull in deps for the relevant root.
                 continue
@@ -8626,7 +8634,7 @@ class depgraph:
             dep_keys = Package._runtime_keys
             for myroot in self._frozen_config.trees:
                 if (
-                    self._frozen_config.myopts.get("--root-deps") is not None
+                    self._frozen_config.myopts.get("--root-deps") == "rdeps"
                     and myroot != self._frozen_config.target_root
                 ):
                     continue

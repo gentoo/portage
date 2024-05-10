@@ -981,21 +981,15 @@ Set the \fBROOT\fR environment variable.
 Set the \fBSYSROOT\fR environment variable.
 .TP
 .BR \-\-root\-deps[=rdeps]
-If no argument is given then build\-time dependencies of packages for
-\fBROOT\fR are installed to \fBROOT\fR instead of /.
-If the \fBrdeps\fR argument is given then discard all build\-time dependencies
-of packages for \fBROOT\fR.
-This option is only meaningful when used together with \fBROOT\fR and it should
-not be enabled under normal circumstances!
+This option is only meaningful when used together with \fBROOT\fR.
 
-Does not affect EAPIs that support \fBBDEPEND\fR.  \fBEAPI 7\fR introduces
-\fBBDEPEND\fR as a means to adjust installation into / and \fBROOT\fR.  Use
-the \fBSYSROOT\fR environment variable to control where \fBDEPEND\fR
-is installed to under \fBEAPI 7\fR.
+If no argument is given, then build\-time dependencies of packages for
+\fBROOT\fR are installed to \fBROOT\fR as well as /.
 
-When ebuilds with different EAPIs feature in the same emerge run, the
-appropriate behaviour for each EAPI is applied independently to each
-ebuild.
+If the \fBrdeps\fR argument is given, then all build\-time dependencies of
+packages for \fBROOT\fR are ignored entirely. This option should not be enabled
+under normal circumstances! It is not applied to ebuilds at \fBEAPI 7\fR or
+later.
 .TP
 .BR "\-\-search\-index < y | n >"
 Enable or disable indexed search for search actions. This option is

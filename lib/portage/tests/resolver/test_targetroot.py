@@ -66,7 +66,11 @@ class TargetRootTestCase(TestCase):
                 ambiguous_merge_order=True,
                 success=True,
                 mergelist=[
-                    ("dev-libs/B-1{targetroot}", "dev-libs/C-1{targetroot}"),
+                    (
+                        "dev-libs/B-1",
+                        "dev-libs/B-1{targetroot}",
+                        "dev-libs/C-1{targetroot}",
+                    ),
                     "dev-libs/A-1{targetroot}",
                 ],
             ),
