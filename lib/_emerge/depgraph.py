@@ -1181,7 +1181,7 @@ class depgraph:
                     "NOTE: Refer to the following page for more information about dependency",
                     "      change(s) without revision bump:",
                     "",
-                    "          https://wiki.gentoo.org/wiki/Project:Portage/Changed_Deps",
+                    "          https://wiki.gentoo.org/wiki/Project:Portage/Changed_dependencies",
                     "",
                     "      In order to suppress reports about dependency changes, add",
                     "      --changed-deps-report=n to the EMERGE_DEFAULT_OPTS variable in",
