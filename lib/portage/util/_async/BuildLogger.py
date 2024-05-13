@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
+import shlex
 import subprocess
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -9,7 +10,6 @@ from _emerge.AsynchronousTask import AsynchronousTask
 import portage
 from portage import os
 from portage.proxy.objectproxy import ObjectProxy
-from portage.util import shlex_split
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from portage.util.futures import asyncio
@@ -76,7 +76,7 @@ class BuildLogger(AsynchronousTask):
         if self.log_path is not None:
             log_filter_file = self.log_filter_file
             if log_filter_file is not None:
-                split_value = shlex_split(log_filter_file)
+                split_value = shlex.split(log_filter_file)
                 log_filter_file = split_value if split_value else None
             if log_filter_file:
                 filter_input, stdin = os.pipe()

@@ -1,6 +1,7 @@
 # Copyright 2001-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
 import subprocess
 import sys
 import threading
@@ -9,7 +10,7 @@ from portage import os
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.exception import GPGException
 from portage.output import colorize
-from portage.util import shlex_split, varexpand, writemsg, writemsg_stdout
+from portage.util import varexpand, writemsg, writemsg_stdout
 
 
 class GPG:
@@ -60,7 +61,7 @@ class GPG:
                 # GPG does not need to ask password, so can be ignored.
                 writemsg(f"{colorize('WARN', str(e))}\n")
 
-            cmd = shlex_split(varexpand(self.GPG_unlock_command, mydict=self.settings))
+            cmd = shlex.split(varexpand(self.GPG_unlock_command, mydict=self.settings))
             return_code = subprocess.Popen(cmd, stdout=subprocess.DEVNULL).wait()
 
             if return_code == os.EX_OK:
@@ -70,7 +71,7 @@ class GPG:
                 raise GPGException("GPG unlock failed")
 
             if self.keepalive:
-                self.GPG_unlock_command = shlex_split(
+                self.GPG_unlock_command = shlex.split(
                     varexpand(self.GPG_unlock_command, mydict=self.settings)
                 )
                 self._terminated = threading.Event()

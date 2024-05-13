@@ -34,6 +34,7 @@ signal.signal(signal.SIGUSR1, debug_signal)
 
 import argparse
 from os import path as osp
+import shlex
 import sys
 import textwrap
 
@@ -107,9 +108,7 @@ def main():
         parser.error("missing required args")
 
     if not opts.ignore_default_opts:
-        default_opts = portage.util.shlex_split(
-            portage.settings.get("EBUILD_DEFAULT_OPTS", "")
-        )
+        default_opts = shlex.split(portage.settings.get("EBUILD_DEFAULT_OPTS", ""))
         opts, pargs = parser.parse_known_args(default_opts + sys.argv[1:])
 
     debug = opts.debug

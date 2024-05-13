@@ -14,6 +14,7 @@ from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
 import pickle
+import shlex
 import sys
 import socket
 import time
@@ -525,7 +526,7 @@ def file_get(
     from portage.util import varexpand
     from portage.process import spawn
 
-    myfetch = [varexpand(x, mydict=variables) for x in portage.util.shlex_split(fcmd)]
+    myfetch = [varexpand(x, mydict=variables) for x in shlex.split(fcmd)]
     fd_pipes = {
         0: portage._get_stdin().fileno(),
         1: sys.__stdout__.fileno(),

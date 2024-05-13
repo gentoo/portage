@@ -717,15 +717,6 @@ def writedict(mydict, myfilename, writekey=True):
     write_atomic(myfilename, "".join(lines))
 
 
-def shlex_split(s):
-    """
-    This is equivalent to shlex.split, but if the current interpreter is
-    python2, it temporarily encodes unicode strings to bytes since python2's
-    shlex.split() doesn't handle unicode strings.
-    """
-    return shlex.split(s)
-
-
 class _getconfig_shlex(shlex.shlex):
     def __init__(self, portage_tolerant=False, **kwargs):
         shlex.shlex.__init__(self, **kwargs)
@@ -1968,7 +1959,7 @@ def find_updated_config_files(target_root, config_protect):
                     % os.path.split(x.rstrip(os.path.sep))
                 )
             mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-            cmd = shlex_split(mycommand)
+            cmd = shlex.split(mycommand)
 
             cmd = [
                 _unicode_encode(arg, encoding=encoding, errors="strict") for arg in cmd

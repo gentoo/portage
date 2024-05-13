@@ -6,6 +6,7 @@ import io
 import logging
 import warnings
 import re
+import shlex
 import typing
 
 import portage
@@ -21,7 +22,6 @@ from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (
     normalize_path,
     read_corresponding_eapi_file,
-    shlex_split,
     stack_lists,
     writemsg,
     writemsg_level,
@@ -656,7 +656,7 @@ class RepoConfigLoader:
             portdir_orig = portdir
             overlays.append(portdir)
         try:
-            port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
+            port_ov = [normalize_path(i) for i in shlex.split(portdir_overlay)]
         except ValueError as e:
             # File "/usr/lib/python3.2/shlex.py", line 168, in read_token
             # 	raise ValueError("No closing quotation")

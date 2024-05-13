@@ -4,6 +4,7 @@
 import argparse
 import locale
 import platform
+import shlex
 import sys
 
 import portage
@@ -1295,7 +1296,7 @@ def emerge_main(args: Optional[list[str]] = None):
     tmpcmdline = []
     if "--ignore-default-opts" not in myopts:
         tmpcmdline.extend(
-            portage.util.shlex_split(
+            shlex.split(
                 emerge_config.target_config.settings.get("EMERGE_DEFAULT_OPTS", "")
             )
         )

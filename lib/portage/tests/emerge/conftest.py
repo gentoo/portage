@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
+import shlex
 from typing import Optional, Callable  # ,  Self
 
 from portage.const import (
@@ -17,7 +18,7 @@ from portage import shutil
 from portage.util.futures import asyncio
 from portage.tests import cnf_bindir, cnf_sbindir
 from portage.process import find_binary
-from portage.util import find_updated_config_files, shlex_split
+from portage.util import find_updated_config_files
 import portage
 
 import pytest
@@ -378,7 +379,7 @@ def _check_foo_file(pkgdir, filename, must_exist) -> None:
 
 def _check_number_of_protected_files(must_have, eroot, config_protect) -> None:
     assert must_have == len(
-        list(find_updated_config_files(eroot, shlex_split(config_protect)))
+        list(find_updated_config_files(eroot, shlex.split(config_protect)))
     )
 
 
@@ -798,7 +799,7 @@ def _generate_all_baseline_commands(playground, binhost):
     with open(binrepos_conf_file, "w") as f:
         f.write("[test-binhost]\n")
         f.write(f"sync-uri = {binhost_uri}\n")
-    fetchcommand = portage.util.shlex_split(settings["FETCHCOMMAND"])
+    fetchcommand = shlex.split(settings["FETCHCOMMAND"])
     fetch_bin = portage.process.find_binary(fetchcommand[0])
 
     if fetch_bin is None:

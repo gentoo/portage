@@ -3,7 +3,8 @@
 
 import portage
 from portage import os
-from portage.util import shlex_split, varexpand
+from portage.util import varexpand
+import shlex
 
 # default clean command from make.globals
 ## PORTAGE_LOGDIR_CLEAN = 'find "${PORTAGE_LOGDIR}" -type f ! -name "summary.log*" -mtime +7 -delete'
@@ -55,7 +56,7 @@ class CleanLogs:
 
         clean_cmd = settings.get("PORTAGE_LOGDIR_CLEAN")
         if clean_cmd:
-            clean_cmd = shlex_split(clean_cmd)
+            clean_cmd = shlex.split(clean_cmd)
             if "-mtime" in clean_cmd and num_of_days is not None:
                 if num_of_days == 0:
                     i = clean_cmd.index("-mtime")

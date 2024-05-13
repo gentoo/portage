@@ -13,6 +13,7 @@ import os as _os
 import platform
 import pwd
 import re
+import shlex
 import signal
 import stat
 import sys
@@ -107,7 +108,6 @@ from portage.util import (
     apply_recursive_permissions,
     apply_secpass_permissions,
     noiselimit,
-    shlex_split,
     varexpand,
     writemsg,
     writemsg_stdout,
@@ -677,7 +677,7 @@ def doebuild_environment(
                     "{JOBS}",
                     str(makeopts_to_job_count(mysettings.get("MAKEOPTS", "1"))),
                 )
-                compression_binary = shlex_split(
+                compression_binary = shlex.split(
                     varexpand(compression_binary, mydict=settings)
                 )[0]
             except IndexError as e:
@@ -698,7 +698,7 @@ def doebuild_environment(
                     )
                     cmd = [
                         varexpand(x, mydict=settings)
-                        for x in shlex_split(compression_binary)
+                        for x in shlex.split(compression_binary)
                     ]
                     # Filter empty elements
                     cmd = [x for x in cmd if x != ""]
@@ -2990,8 +2990,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
     if qa_prebuilt:
         qa_prebuilt = re.compile(
             "|".join(
-                fnmatch.translate(x.lstrip(os.sep))
-                for x in portage.util.shlex_split(qa_prebuilt)
+                fnmatch.translate(x.lstrip(os.sep)) for x in shlex.split(qa_prebuilt)
             )
         )
 
