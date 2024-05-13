@@ -2790,7 +2790,11 @@ class config:
             for curdb in mydbs:
                 v = curdb.get(k)
                 if v is not None:
-                    incremental_list.append(v.split())
+                    if k in ("CONFIG_PROTECT", "CONFIG_PROTECT_MASK"):
+                        values = shlex.split(v)
+                    else:
+                        values = v.split()
+                    incremental_list.append(values)
 
         if "FEATURES" in increment_lists:
             increment_lists["FEATURES"].append(self._features_overrides)
@@ -2830,7 +2834,11 @@ class config:
 
             # store setting in last element of configlist, the original environment:
             if myflags or mykey in self:
-                self.configlist[-1][mykey] = " ".join(sorted(myflags))
+                if mykey in ("CONFIG_PROTECT", "CONFIG_PROTECT_MASK"):
+                    value = shlex.join(myflags)
+                else:
+                    value = " ".join(sorted(myflags))
+                self.configlist[-1][mykey] = value
 
         # Do the USE calculation last because it depends on USE_EXPAND.
         use_expand = self.get("USE_EXPAND", "").split()
