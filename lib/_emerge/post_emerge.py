@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import shlex
 import textwrap
 
 import portage
@@ -93,7 +94,7 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     settings.regenerate()
     settings.lock()
 
-    config_protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
+    config_protect = shlex.split(settings.get("CONFIG_PROTECT", ""))
     infodirs = settings.get("INFOPATH", "").split(":") + settings.get(
         "INFODIR", ""
     ).split(":")

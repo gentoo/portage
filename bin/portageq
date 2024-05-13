@@ -33,6 +33,7 @@ try:
     signal.signal(signal.SIGUSR1, debug_signal)
 
     import argparse
+    import shlex
     import sys
     import types
 
@@ -410,8 +411,8 @@ try:
         from portage.util import ConfigProtect
 
         settings = portage.settings
-        protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
-        protect_mask = portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", ""))
+        protect = shlex.split(settings.get("CONFIG_PROTECT", ""))
+        protect_mask = shlex.split(settings.get("CONFIG_PROTECT_MASK", ""))
         protect_obj = ConfigProtect(
             root,
             protect,
@@ -449,8 +450,8 @@ try:
         from portage.util import ConfigProtect
 
         settings = portage.settings
-        protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
-        protect_mask = portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", ""))
+        protect = shlex.split(settings.get("CONFIG_PROTECT", ""))
+        protect_mask = shlex.split(settings.get("CONFIG_PROTECT_MASK", ""))
         protect_obj = ConfigProtect(
             root,
             protect,

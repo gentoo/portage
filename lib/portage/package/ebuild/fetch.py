@@ -11,6 +11,7 @@ import json
 import logging
 import random
 import re
+import shlex
 import stat
 import sys
 import tempfile
@@ -67,7 +68,6 @@ from portage.util import (
     apply_secpass_permissions,
     ensure_dirs,
     grabdict,
-    shlex_split,
     varexpand,
     writemsg,
     writemsg_level,
@@ -975,7 +975,7 @@ def fetch(
 
     ro_distdirs = [
         x
-        for x in shlex_split(mysettings.get("PORTAGE_RO_DISTDIRS", ""))
+        for x in shlex.split(mysettings.get("PORTAGE_RO_DISTDIRS", ""))
         if os.path.isdir(x)
     ]
 
@@ -1736,7 +1736,7 @@ def fetch(
                             variables[k] = v
 
                     myfetch = varexpand(locfetch, mydict=variables)
-                    myfetch = shlex_split(myfetch)
+                    myfetch = shlex.split(myfetch)
 
                     myret = -1
                     try:

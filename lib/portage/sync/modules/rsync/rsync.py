@@ -5,6 +5,7 @@ import datetime
 import logging
 import random
 import re
+import shlex
 import signal
 import socket
 import sys
@@ -91,9 +92,7 @@ class RsyncSync(NewBase):
         self.extra_rsync_opts = list()
         if self.repo.module_specific_options.get("sync-rsync-extra-opts"):
             self.extra_rsync_opts.extend(
-                portage.util.shlex_split(
-                    self.repo.module_specific_options["sync-rsync-extra-opts"]
-                )
+                shlex.split(self.repo.module_specific_options["sync-rsync-extra-opts"])
             )
 
         exitcode = 0
@@ -599,9 +598,7 @@ class RsyncSync(NewBase):
         # defaults.
 
         portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-        rsync_opts.extend(
-            portage.util.shlex_split(self.settings.get("PORTAGE_RSYNC_OPTS", ""))
-        )
+        rsync_opts.extend(shlex.split(self.settings.get("PORTAGE_RSYNC_OPTS", "")))
         for opt in ("--recursive", "--times"):
             if opt not in rsync_opts:
                 portage.writemsg(

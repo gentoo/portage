@@ -63,6 +63,7 @@ import codecs
 import errno
 import io
 import re
+import shlex
 import stat
 import subprocess
 import tempfile
@@ -1474,9 +1475,7 @@ class binarytree:
                             ssh_args.append(f"-p{port}")
                         # NOTE: shlex evaluates embedded quotes
                         ssh_args.extend(
-                            portage.util.shlex_split(
-                                self.settings.get("PORTAGE_SSH_OPTS", "")
-                            )
+                            shlex.split(self.settings.get("PORTAGE_SSH_OPTS", ""))
                         )
                         ssh_args.append(user_passwd + host)
                         ssh_args.append("--")

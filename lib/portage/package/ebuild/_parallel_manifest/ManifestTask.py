@@ -3,6 +3,7 @@
 
 import errno
 import re
+import shlex
 import subprocess
 
 from portage import os
@@ -11,7 +12,7 @@ from portage.const import MANIFEST2_IDENTIFIERS
 from portage.dep import _repo_separator
 from portage.exception import InvalidDependString
 from portage.localization import _
-from portage.util import atomic_ofstream, grablines, shlex_split, varexpand, writemsg
+from portage.util import atomic_ofstream, grablines, varexpand, writemsg
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
@@ -187,7 +188,7 @@ class ManifestTask(CompositeTask):
             gpg_vars = gpg_vars.copy()
         gpg_vars["FILE"] = self._manifest_path
         gpg_cmd = varexpand(self.gpg_cmd, mydict=gpg_vars)
-        gpg_cmd = shlex_split(gpg_cmd)
+        gpg_cmd = shlex.split(gpg_cmd)
         gpg_proc = PopenProcess(
             proc=subprocess.Popen(
                 gpg_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT

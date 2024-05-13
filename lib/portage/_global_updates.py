@@ -1,6 +1,7 @@
 # Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
 import stat
 
 from portage import best, os
@@ -15,7 +16,7 @@ from portage.update import (
     update_config_files,
     update_dbentry,
 )
-from portage.util import grabfile, shlex_split, writemsg, writemsg_stdout, write_atomic
+from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
 
 
 def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
@@ -227,8 +228,8 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 
         update_config_files(
             root,
-            shlex_split(mysettings.get("CONFIG_PROTECT", "")),
-            shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
+            shlex.split(mysettings.get("CONFIG_PROTECT", "")),
+            shlex.split(mysettings.get("CONFIG_PROTECT_MASK", "")),
             repo_map,
             match_callback=_config_repo_match,
             case_insensitive="case-insensitive-fs" in mysettings.features,

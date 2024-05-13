@@ -3,6 +3,7 @@
 
 __all__ = ("LocationsManager",)
 
+import shlex
 import warnings
 
 import portage
@@ -21,7 +22,6 @@ from portage.util import (
     grabfile,
     normalize_path,
     read_corresponding_eapi_file,
-    shlex_split,
     writemsg,
 )
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
@@ -421,7 +421,7 @@ class LocationsManager:
             self.portdir_overlay = ""
 
         self.overlay_profiles = []
-        for ov in shlex_split(self.portdir_overlay):
+        for ov in shlex.split(self.portdir_overlay):
             ov = normalize_path(ov)
             profiles_dir = os.path.join(ov, "profiles")
             if isdir_raise_eaccess(profiles_dir):

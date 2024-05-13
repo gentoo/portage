@@ -3,6 +3,7 @@
 
 import functools
 import io
+import shlex
 import tempfile
 import types
 
@@ -129,7 +130,7 @@ class EbuildFetchTestCase(TestCase):
             ),
         )
 
-        fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
+        fetchcommand = shlex.split(playground.settings["FETCHCOMMAND"])
         fetch_bin = portage.process.find_binary(fetchcommand[0])
         if fetch_bin is None:
             self.skipTest(
@@ -137,7 +138,7 @@ class EbuildFetchTestCase(TestCase):
             )
         eubin = os.path.join(playground.eprefix, "usr", "bin")
         os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
-        resumecommand = portage.util.shlex_split(playground.settings["RESUMECOMMAND"])
+        resumecommand = shlex.split(playground.settings["RESUMECOMMAND"])
         resume_bin = portage.process.find_binary(resumecommand[0])
         if resume_bin is None:
             self.skipTest(

@@ -5,6 +5,7 @@ from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
 from urllib.parse import urlparse as urllib_parse_urlparse
+import shlex
 import stat
 import sys
 import portage
@@ -201,8 +202,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 
         fetch_env = dict(settings.items())
         fetch_args = [
-            portage.util.varexpand(x, mydict=fcmd_vars)
-            for x in portage.util.shlex_split(fcmd)
+            portage.util.varexpand(x, mydict=fcmd_vars) for x in shlex.split(fcmd)
         ]
 
         if self.fd_pipes is None:

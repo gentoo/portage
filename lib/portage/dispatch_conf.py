@@ -7,6 +7,7 @@
 
 import errno
 import functools
+import shlex
 import stat
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import portage
 from portage import _encodings, os, shutil
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
-from portage.util import shlex_split, varexpand
+from portage.util import varexpand
 from portage.util.hooks import perform_hooks
 from portage.util.path import iter_parents
 
@@ -34,7 +35,7 @@ def diffstatusoutput(cmd, file1, file2):
     """
     # Use Popen to emulate getstatusoutput(), since getstatusoutput() may
     # raise a UnicodeDecodeError which makes the output inaccessible.
-    args = shlex_split(cmd % (file1, file2))
+    args = shlex.split(cmd % (file1, file2))
 
     args = (portage._unicode_encode(x, errors="strict") for x in args)
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

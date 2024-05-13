@@ -15,6 +15,7 @@ import logging
 import platform
 import pwd
 import re
+import shlex
 import sys
 import traceback
 import warnings
@@ -78,7 +79,6 @@ from portage.util import (
     grabfile_package,
     LazyItemsDict,
     normalize_path,
-    shlex_split,
     stack_dictlist,
     stack_dicts,
     stack_lists,
@@ -628,7 +628,7 @@ class config:
                 v = confs.get("PORTDIR_OVERLAY")
                 if v is not None:
                     portdir_overlay = v
-                    known_repos.extend(shlex_split(v))
+                    known_repos.extend(shlex.split(v))
                 v = confs.get("SYNC")
                 if v is not None:
                     portdir_sync = v
@@ -1580,7 +1580,7 @@ class config:
                     )
 
                 try:
-                    compression_binary = shlex_split(
+                    compression_binary = shlex.split(
                         portage.util.varexpand(compression["compress"], mydict=self)
                     )[0]
                 except IndexError as e:

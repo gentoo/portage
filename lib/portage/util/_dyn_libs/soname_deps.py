@@ -7,8 +7,8 @@ import functools
 from itertools import chain
 import os
 import re
+import shlex
 
-from portage.util import shlex_split
 from portage.util import (
     normalize_path,
     varexpand,
@@ -45,10 +45,10 @@ class SonameDepsProcessor:
 
     @staticmethod
     def _exclude_pattern(s):
-        # shlex_split enables quoted whitespace inside patterns
+        # shlex.split enables quoted whitespace inside patterns
         if s:
             pat = re.compile(
-                "|".join(fnmatch.translate(x.lstrip(os.sep)) for x in shlex_split(s))
+                "|".join(fnmatch.translate(x.lstrip(os.sep)) for x in shlex.split(s))
             )
         else:
             pat = None

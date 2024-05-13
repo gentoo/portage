@@ -9,6 +9,7 @@ import subprocess
 import errno
 import pwd
 import grp
+import shlex
 import stat
 import sys
 import tempfile
@@ -40,7 +41,7 @@ from portage.exception import (
 from portage.output import colorize, EOutput
 from portage.util._urlopen import urlopen
 from portage.util import writemsg
-from portage.util import shlex_split, varexpand
+from portage.util import varexpand
 from portage.util.compression_probe import _compressors
 from portage.util.cpuinfo import makeopts_to_job_count
 from portage.process import find_binary
@@ -464,7 +465,7 @@ class checksum_helper:
                     "--batch --no-tty",
                 )
 
-                gpg_signing_command = shlex_split(
+                gpg_signing_command = shlex.split(
                     varexpand(gpg_signing_command, mydict=self.settings)
                 )
                 gpg_signing_command = [x for x in gpg_signing_command if x != ""]
@@ -517,7 +518,7 @@ class checksum_helper:
                     "[SIGNATURE]", "--output - -"
                 )
 
-            gpg_verify_command = shlex_split(
+            gpg_verify_command = shlex.split(
                 varexpand(gpg_verify_command, mydict=self.settings)
             )
             gpg_verify_command = [x for x in gpg_verify_command if x != ""]
@@ -1756,13 +1757,13 @@ class gpkg:
         cmd = compressor[mode].replace(
             "{JOBS}", str(makeopts_to_job_count(self.settings.get("MAKEOPTS", "1")))
         )
-        cmd = shlex_split(varexpand(cmd, mydict=self.settings))
+        cmd = shlex.split(varexpand(cmd, mydict=self.settings))
 
         # Filter empty elements that make Popen fail
         cmd = [x for x in cmd if x != ""]
 
         if (not cmd) and ((mode + "_alt") in compressor):
-            cmd = shlex_split(
+            cmd = shlex.split(
                 varexpand(compressor[mode + "_alt"], mydict=self.settings)
             )
             cmd = [x for x in cmd if x != ""]

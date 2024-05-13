@@ -3,12 +3,13 @@
 
 import logging
 import re
+import shlex
 import subprocess
 import datetime
 
 import portage
 from portage import os
-from portage.util import writemsg_level, shlex_split
+from portage.util import writemsg_level
 from portage.util.futures import asyncio
 from portage.output import create_color_func, EOutput
 from portage.const import TIMESTAMP_FORMAT
@@ -62,7 +63,7 @@ class GitSync(NewBase):
 
         git_cmd_opts = ""
         if self.repo.module_specific_options.get("sync-git-env"):
-            shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
+            shlexed_env = shlex.split(self.repo.module_specific_options["sync-git-env"])
             env = {
                 k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
@@ -71,7 +72,7 @@ class GitSync(NewBase):
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-git-clone-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-git-clone-env"]
             )
             clone_env = {
@@ -157,7 +158,7 @@ class GitSync(NewBase):
         self.add_safe_directory()
 
         if self.repo.module_specific_options.get("sync-git-env"):
-            shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
+            shlexed_env = shlex.split(self.repo.module_specific_options["sync-git-env"])
             env = {
                 k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
@@ -166,7 +167,7 @@ class GitSync(NewBase):
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-git-pull-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-git-pull-env"]
             )
             pull_env = {

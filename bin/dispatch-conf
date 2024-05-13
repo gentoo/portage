@@ -14,6 +14,7 @@
 import atexit
 import errno
 import re
+import shlex
 import subprocess
 import sys
 import termios
@@ -89,7 +90,7 @@ def cmd_var_is_valid(cmd):
     Return true if the first whitespace-separated token contained
     in cmd is an executable file, false otherwise.
     """
-    cmd = portage.util.shlex_split(cmd)
+    cmd = shlex.split(cmd)
     if not cmd:
         return False
 
@@ -130,7 +131,7 @@ class dispatch:
             if pager is None or not cmd_var_is_valid(pager):
                 pager = "cat"
 
-        pager_basename = os.path.basename(portage.util.shlex_split(pager)[0])
+        pager_basename = os.path.basename(shlex.split(pager)[0])
         if pager_basename == "less":
             less_opts = self.options.get("less-opts")
             if less_opts is not None and less_opts.strip():
@@ -202,7 +203,7 @@ class dispatch:
         protect_obj = portage.util.ConfigProtect(
             config_root,
             config_paths,
-            portage.util.shlex_split(portage.settings.get("CONFIG_PROTECT_MASK", "")),
+            shlex.split(portage.settings.get("CONFIG_PROTECT_MASK", "")),
             case_insensitive=("case-insensitive-fs" in portage.settings.features),
         )
 
@@ -616,4 +617,4 @@ if len(sys.argv) > 1:
     # for testing
     d.grind(sys.argv[1:])
 else:
-    d.grind(portage.util.shlex_split(portage.settings.get("CONFIG_PROTECT", "")))
+    d.grind(shlex.split(portage.settings.get("CONFIG_PROTECT", "")))

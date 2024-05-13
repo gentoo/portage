@@ -11,12 +11,10 @@ from portage.util.compression_probe import (
 )
 from portage.util.cpuinfo import makeopts_to_job_count
 from portage.process import find_binary
-from portage.util import (
-    shlex_split,
-    varexpand,
-)
+from portage.util import varexpand
 from portage.exception import InvalidBinaryPackageFormat
 from portage.binpkg import get_binpkg_format
+import shlex
 import signal
 import subprocess
 import tarfile
@@ -46,9 +44,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             output = process.communicate()[0]
             if b"--xattrs" in output:
                 tar_options = ["--xattrs", "--xattrs-include='*'"]
-                for x in portage.util.shlex_split(
-                    self.env.get("PORTAGE_XATTR_EXCLUDE", "")
-                ):
+                for x in shlex.split(self.env.get("PORTAGE_XATTR_EXCLUDE", "")):
                     tar_options.append(portage._shell_quote(f"--xattrs-exclude={x}"))
                 tar_options = " ".join(tar_options)
 
@@ -82,7 +78,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             return
 
         try:
-            decompression_binary = shlex_split(varexpand(decomp_cmd, mydict=self.env))[
+            decompression_binary = shlex.split(varexpand(decomp_cmd, mydict=self.env))[
                 0
             ]
         except IndexError:
@@ -93,7 +89,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             if decomp.get("decompress_alt"):
                 decomp_cmd = decomp.get("decompress_alt")
             try:
-                decompression_binary = shlex_split(
+                decompression_binary = shlex.split(
                     varexpand(decomp_cmd, mydict=self.env)
                 )[0]
             except IndexError:

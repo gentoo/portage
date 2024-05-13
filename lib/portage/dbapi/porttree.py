@@ -13,7 +13,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.dep:Atom,dep_getkey,match_from_list,use_reduce,_match_slot",
     "portage.package.ebuild.doebuild:doebuild",
     "portage.package.ebuild.fetch:get_mirror_url,_download_suffix",
-    "portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level",
+    "portage.util:ensure_dirs,writemsg,writemsg_level",
     "portage.util.listdir:listdir",
     "portage.versions:best,catsplit,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp,_pkg_str",
 )
@@ -48,6 +48,7 @@ import traceback
 import warnings
 import errno
 import functools
+import shlex
 
 import collections
 from collections import OrderedDict
@@ -1016,7 +1017,7 @@ class portdbapi(dbapi):
                 existing_size = 0
                 ro_distdirs = self.settings.get("PORTAGE_RO_DISTDIRS")
                 if ro_distdirs is not None:
-                    for x in shlex_split(ro_distdirs):
+                    for x in shlex.split(ro_distdirs):
                         try:
                             mystat = os.stat(
                                 portage.package.ebuild.fetch.get_mirror_url(

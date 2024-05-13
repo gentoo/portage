@@ -2,11 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import shlex
 import subprocess
 
 import portage
 from portage import os
-from portage.util import writemsg_level, shlex_split
+from portage.util import writemsg_level
 
 from portage.sync.syncbase import NewBase
 
@@ -46,7 +47,7 @@ class MercurialSync(NewBase):
 
         hg_cmd_opts = ""
         if self.repo.module_specific_options.get("sync-mercurial-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-mercurial-env"]
             )
             env = {
@@ -57,7 +58,7 @@ class MercurialSync(NewBase):
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-mercurial-clone-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-mercurial-clone-env"]
             )
             clone_env = {
@@ -82,7 +83,7 @@ class MercurialSync(NewBase):
         writemsg_level(hg_cmd + "\n")
 
         exitcode = portage.process.spawn(
-            shlex_split(hg_cmd),
+            shlex.split(hg_cmd),
             cwd=portage._unicode_encode(self.repo.location),
             **self.spawn_kwargs,
         )
@@ -102,7 +103,7 @@ class MercurialSync(NewBase):
 
         hg_cmd_opts = ""
         if self.repo.module_specific_options.get("sync-mercurial-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-mercurial-env"]
             )
             env = {
@@ -113,7 +114,7 @@ class MercurialSync(NewBase):
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-mercurial-pull-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-mercurial-pull-env"]
             )
             pull_env = {
@@ -139,7 +140,7 @@ class MercurialSync(NewBase):
         )
 
         exitcode = portage.process.spawn(
-            shlex_split(hg_cmd),
+            shlex.split(hg_cmd),
             cwd=portage._unicode_encode(self.repo.location),
             **self.spawn_kwargs,
         )

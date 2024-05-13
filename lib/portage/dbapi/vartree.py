@@ -109,6 +109,7 @@ import pickle
 import platform
 import pwd
 import re
+import shlex
 import stat
 import tempfile
 import textwrap
@@ -927,13 +928,9 @@ class vardbapi(dbapi):
         env_file = self.getpath(cpv, filename="environment.bz2")
         if not os.path.isfile(env_file):
             return {}
-        bunzip2_cmd = portage.util.shlex_split(
-            self.settings.get("PORTAGE_BUNZIP2_COMMAND", "")
-        )
+        bunzip2_cmd = shlex.split(self.settings.get("PORTAGE_BUNZIP2_COMMAND", ""))
         if not bunzip2_cmd:
-            bunzip2_cmd = portage.util.shlex_split(
-                self.settings["PORTAGE_BZIP2_COMMAND"]
-            )
+            bunzip2_cmd = shlex.split(self.settings["PORTAGE_BZIP2_COMMAND"])
             bunzip2_cmd.append("-d")
         args = bunzip2_cmd + ["-c", env_file]
         try:
@@ -1082,7 +1079,7 @@ class vardbapi(dbapi):
         )
 
         # Method parameters may override QUICKPKG_DEFAULT_OPTS.
-        opts_list = portage.util.shlex_split(settings.get("QUICKPKG_DEFAULT_OPTS", ""))
+        opts_list = shlex.split(settings.get("QUICKPKG_DEFAULT_OPTS", ""))
         if include_config is not None:
             opts_list.append(f"--include-config={'y' if include_config else 'n'}")
         if include_unmodified_config is not None:
@@ -1863,8 +1860,8 @@ class dblink:
         if self._protect_obj is None:
             self._protect_obj = ConfigProtect(
                 self._eroot,
-                portage.util.shlex_split(self.settings.get("CONFIG_PROTECT", "")),
-                portage.util.shlex_split(self.settings.get("CONFIG_PROTECT_MASK", "")),
+                shlex.split(self.settings.get("CONFIG_PROTECT", "")),
+                shlex.split(self.settings.get("CONFIG_PROTECT_MASK", "")),
                 case_insensitive=("case-insensitive-fs" in self.settings.features),
             )
 
@@ -2142,8 +2139,8 @@ class dblink:
         if not include_config:
             confprot = ConfigProtect(
                 settings["EROOT"],
-                portage.util.shlex_split(settings.get("CONFIG_PROTECT", "")),
-                portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", "")),
+                shlex.split(settings.get("CONFIG_PROTECT", "")),
+                shlex.split(settings.get("CONFIG_PROTECT_MASK", "")),
                 case_insensitive=("case-insensitive-fs" in settings.features),
             )
 
@@ -2694,9 +2691,7 @@ class dblink:
             # process symlinks second-to-last, directories last.
             mydirs = set()
 
-            uninstall_ignore = portage.util.shlex_split(
-                self.settings.get("UNINSTALL_IGNORE", "")
-            )
+            uninstall_ignore = shlex.split(self.settings.get("UNINSTALL_IGNORE", ""))
 
             def unlink(file_name, lstatobj):
                 if bsd_chflags:
@@ -3868,7 +3863,7 @@ class dblink:
         real_relative_paths = {}
 
         collision_ignore = []
-        for x in portage.util.shlex_split(self.settings.get("COLLISION_IGNORE", "")):
+        for x in shlex.split(self.settings.get("COLLISION_IGNORE", "")):
             if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
                 x = normalize_path(x)
                 x += "/*"

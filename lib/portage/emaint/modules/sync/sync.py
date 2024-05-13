@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import shlex
 
 import portage
 
@@ -52,7 +53,7 @@ class SyncRepos:
 
             # Parse EMERGE_DEFAULT_OPTS, for settings like
             # --package-moves=n.
-            cmdline = portage.util.shlex_split(
+            cmdline = shlex.split(
                 emerge_config.target_config.settings.get("EMERGE_DEFAULT_OPTS", "")
             )
             emerge_config.opts = parse_opts(cmdline, silent=True)[1]
@@ -298,7 +299,7 @@ class SyncRepos:
 
         chk_updated_cfg_files(
             self.emerge_config.target_config.root,
-            portage.util.shlex_split(
+            shlex.split(
                 self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "")
             ),
         )
