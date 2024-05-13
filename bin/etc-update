@@ -127,7 +127,7 @@ scan() {
 	local find_opts
 	local path
 
-	for path in ${SCAN_PATHS} ; do
+	for path in "${SCAN_PATHS[@]}" ; do
 		path="${EROOT%/}${path}"
 
 		if [[ ! -d ${path} ]] ; then
@@ -171,7 +171,7 @@ scan() {
 			live_file=$(get_live_file)
 
 			local mpath
-			for mpath in ${CONFIG_PROTECT_MASK}; do
+			for mpath in "${MASKED_PATHS[@]}"; do
 				mpath="${EROOT%/}${mpath}"
 				if [[ "${rpath}" == "${mpath}"* ]] ; then
 					${QUIET} || echo "Updating masked file: ${live_file}"
@@ -813,7 +813,13 @@ else
 fi
 
 export PORTAGE_TMPDIR
-SCAN_PATHS=${*:-${CONFIG_PROTECT}}
+if [[ $# -gt 0 ]]; then
+	SCAN_PATHS=( "$@" )
+else
+	# Handle quoted whitespace
+	eval "SCAN_PATHS=( ${CONFIG_PROTECT} )"
+fi
+eval "MASKED_PATHS=( ${CONFIG_PROTECT_MASK} )"
 [[ " ${FEATURES} " == *" case-insensitive-fs "* ]] && \
 	case_insensitive=true || case_insensitive=false
 [[ " ${FEATURES} " == *" selinux "* ]] && \
@@ -888,9 +894,7 @@ if ${NONINTERACTIVE_MV} ; then
 fi
 
 if ${VERBOSE} ; then
-	for v in "${portage_vars[@]}" "${cfg_vars[@]}" TMP SCAN_PATHS ; do
-		echo "${v}=${!v}"
-	done
+	declare -p "${portage_vars[@]}" "${cfg_vars[@]}" TMP SCAN_PATHS
 fi
 
 scan
