@@ -298,9 +298,7 @@ class SyncRepos:
 
         chk_updated_cfg_files(
             self.emerge_config.target_config.root,
-            portage.util.shlex_split(
-                self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "")
-            ),
+            self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "").split(),
         )
 
         msgs = []

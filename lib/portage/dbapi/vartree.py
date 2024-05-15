@@ -1863,8 +1863,8 @@ class dblink:
         if self._protect_obj is None:
             self._protect_obj = ConfigProtect(
                 self._eroot,
-                portage.util.shlex_split(self.settings.get("CONFIG_PROTECT", "")),
-                portage.util.shlex_split(self.settings.get("CONFIG_PROTECT_MASK", "")),
+                self.settings.get("CONFIG_PROTECT", "").split(),
+                self.settings.get("CONFIG_PROTECT_MASK", "").split(),
                 case_insensitive=("case-insensitive-fs" in self.settings.features),
             )
 
@@ -2142,8 +2142,8 @@ class dblink:
         if not include_config:
             confprot = ConfigProtect(
                 settings["EROOT"],
-                portage.util.shlex_split(settings.get("CONFIG_PROTECT", "")),
-                portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", "")),
+                settings.get("CONFIG_PROTECT", "").split(),
+                settings.get("CONFIG_PROTECT_MASK", "").split(),
                 case_insensitive=("case-insensitive-fs" in settings.features),
             )
 

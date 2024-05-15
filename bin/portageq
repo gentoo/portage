@@ -410,8 +410,8 @@ try:
         from portage.util import ConfigProtect
 
         settings = portage.settings
-        protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
-        protect_mask = portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", ""))
+        protect = settings.get("CONFIG_PROTECT", "").split()
+        protect_mask = settings.get("CONFIG_PROTECT_MASK", "").split()
         protect_obj = ConfigProtect(
             root,
             protect,
@@ -449,8 +449,8 @@ try:
         from portage.util import ConfigProtect
 
         settings = portage.settings
-        protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
-        protect_mask = portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", ""))
+        protect = settings.get("CONFIG_PROTECT", "").split()
+        protect_mask = settings.get("CONFIG_PROTECT_MASK", "").split()
         protect_obj = ConfigProtect(
             root,
             protect,
