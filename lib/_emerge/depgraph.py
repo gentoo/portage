@@ -8177,6 +8177,7 @@ class depgraph:
                     ):
                         return pkg, existing_node
 
+            matched_oldpkg = [x for x in matched_oldpkg if x in matched_packages]
             visible_matches = []
             if matched_oldpkg:
                 visible_matches = [
