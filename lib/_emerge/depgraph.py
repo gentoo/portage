@@ -55,7 +55,7 @@ from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReas
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.dep._slot_operator import evaluate_slot_operator_equal_deps
-from portage.util import ConfigProtect, shlex_split, new_protect_filename
+from portage.util import ConfigProtect, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import ensure_dirs, normalize_path
 from portage.util import writemsg_level, write_atomic
@@ -10650,8 +10650,8 @@ class depgraph:
                 settings = self._frozen_config.roots[root].settings
                 protect_obj[root] = ConfigProtect(
                     settings["PORTAGE_CONFIGROOT"],
-                    shlex_split(settings.get("CONFIG_PROTECT", "")),
-                    shlex_split(settings.get("CONFIG_PROTECT_MASK", "")),
+                    settings.get("CONFIG_PROTECT", "").split(),
+                    settings.get("CONFIG_PROTECT_MASK", "").split(),
                     case_insensitive=("case-insensitive-fs" in settings.features),
                 )
 

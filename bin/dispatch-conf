@@ -202,7 +202,7 @@ class dispatch:
         protect_obj = portage.util.ConfigProtect(
             config_root,
             config_paths,
-            portage.util.shlex_split(portage.settings.get("CONFIG_PROTECT_MASK", "")),
+            portage.settings.get("CONFIG_PROTECT_MASK", "").split(),
             case_insensitive=("case-insensitive-fs" in portage.settings.features),
         )
 
@@ -616,4 +616,4 @@ if len(sys.argv) > 1:
     # for testing
     d.grind(sys.argv[1:])
 else:
-    d.grind(portage.util.shlex_split(portage.settings.get("CONFIG_PROTECT", "")))
+    d.grind(portage.settings.get("CONFIG_PROTECT", "").split())
