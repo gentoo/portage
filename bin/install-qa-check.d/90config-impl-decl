@@ -49,6 +49,15 @@ add_default_skips() {
 		res_ndestroy
 		statacl
 	)
+
+	QA_CONFIG_IMPL_DECL_SKIP+=(
+		# Available in c23, these gnulib checks are expected to fail
+		alignof
+		static_assert
+		unreachable
+		# also gnulib, but checks both linux/non-linux headers
+		MIN
+	)
 }
 
 find_log_targets() {
