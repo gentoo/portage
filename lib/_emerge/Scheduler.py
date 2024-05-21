@@ -1998,8 +1998,6 @@ class Scheduler(PollScheduler):
                 else:
                     task.addExitListener(self._build_exit)
 
-        return bool(state_change)
-
     def _get_prefetcher(self, pkg):
         try:
             prefetcher = self._prefetchers.pop(pkg, None)
