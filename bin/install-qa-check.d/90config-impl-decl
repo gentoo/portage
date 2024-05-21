@@ -58,6 +58,18 @@ add_default_skips() {
 		# also gnulib, but checks both linux/non-linux headers
 		MIN
 	)
+	if [[ ${CHOST} = *musl* ]]; then
+		QA_CONFIG_IMPL_DECL_SKIP+=(
+			# gnulib checks for functions that aren't available on musl.
+
+			# regex.m4 always emits these warnings, but they are noisy to fix
+			# and the check will correctly fail due to missing macros anyway.
+			re_set_syntax
+			re_compile_pattern
+			re_search
+			re_match
+		)
+	fi
 }
 
 find_log_targets() {
