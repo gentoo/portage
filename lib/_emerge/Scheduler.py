@@ -1953,11 +1953,11 @@ class Scheduler(PollScheduler):
         @return: True if state changed, False otherwise.
         """
 
-        state_change = 0
+        state_change = False
 
         while True:
             if not self._keep_scheduling():
-                return bool(state_change)
+                return state_change
 
             if (
                 self._choose_pkg_return_early
@@ -1966,13 +1966,13 @@ class Scheduler(PollScheduler):
                 or not self._can_add_job()
                 or self._job_delay()
             ):
-                return bool(state_change)
+                return state_change
 
             pkg = self._choose_pkg()
             if pkg is None:
-                return bool(state_change)
+                return state_change
 
-            state_change += 1
+            state_change = True
 
             if not pkg.installed:
                 self._pkg_count.curval += 1
