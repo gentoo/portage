@@ -1985,15 +1985,6 @@ class Scheduler(PollScheduler):
                 self._task_queues.merge.addFront(merge)
                 merge.addExitListener(self._merge_exit)
 
-            elif pkg.built:
-                self._jobs += 1
-                self._previous_job_start_time = time.time()
-                self._status_display.running = self._jobs
-                self._running_tasks[id(task)] = task
-                task.scheduler = self._sched_iface
-                self._task_queues.jobs.add(task)
-                task.addExitListener(self._extract_exit)
-
             else:
                 self._jobs += 1
                 self._previous_job_start_time = time.time()
@@ -2001,7 +1992,11 @@ class Scheduler(PollScheduler):
                 self._running_tasks[id(task)] = task
                 task.scheduler = self._sched_iface
                 self._task_queues.jobs.add(task)
-                task.addExitListener(self._build_exit)
+
+                if pkg.built:
+                    task.addExitListener(self._extract_exit)
+                else:
+                    task.addExitListener(self._build_exit)
 
         return bool(state_change)
 
