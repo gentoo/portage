@@ -446,8 +446,6 @@ unpack() {
 						echo "${my_output}" >&2
 						die "${myfail}"
 					fi
-				else
-					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
 				;;
 			rar)
@@ -459,8 +457,6 @@ unpack() {
 				fi
 				if ___eapi_unpack_supports_rar; then
 					unrar x -idq -o+ "${srcdir}${x}" || die "${myfail}"
-				else
-					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
 				;;
 			lha|lzh)
@@ -473,8 +469,6 @@ unpack() {
 				fi
 				if ___eapi_unpack_supports_lha; then
 					lha xfq "${srcdir}${x}" || die "${myfail}"
-				else
-					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
 				;;
 			a)
@@ -545,8 +539,6 @@ unpack() {
 				fi
 				if ___eapi_unpack_supports_xz; then
 					__unpack_tar "xz -T$(___makeopts_jobs) -d"
-				else
-					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
 				;;
 			txz)
@@ -558,12 +550,7 @@ unpack() {
 				fi
 				if ___eapi_unpack_supports_txz; then
 					XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
-				else
-					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
-				;;
-			*)
-				__vecho "unpack ${x}: file format not recognized. Ignoring."
 				;;
 		esac
 	done
