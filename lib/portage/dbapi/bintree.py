@@ -1408,7 +1408,7 @@ class binarytree:
                 url = base_url.rstrip("/") + "/Packages"
                 f = None
 
-                if not getbinpkg_refresh and local_timestamp:
+                if local_timestamp and (repo.frozen or not getbinpkg_refresh):
                     raise UseCachedCopyOfRemoteIndex()
 
                 try:
@@ -1566,11 +1566,12 @@ class binarytree:
                             noiselevel=-1,
                         )
             except UseCachedCopyOfRemoteIndex:
+                desc = "frozen" if repo.frozen else "up-to-date"
                 writemsg_stdout("\n")
                 writemsg_stdout(
                     colorize(
                         "GOOD",
-                        _("Local copy of remote index is up-to-date and will be used."),
+                        _("Local copy of remote index is %s and will be used.") % desc,
                     )
                     + "\n"
                 )

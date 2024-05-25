@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Apr 2023" "Portage @VERSION@" "Portage"
+.TH "PORTAGE" "5" "May 2024" "Portage @VERSION@" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -641,6 +641,12 @@ is intended to be used as a replacement for the \fBmake.conf\fR(5)
 .RS
 .I Attributes supported in DEFAULT section:
 .RS
+.TP
+.B frozen = yes|no|true|false
+Use the most recently cached copy of the remote index, and do not
+attempt to refresh it. This should only be set temporarily in order to
+guarantee consistent and reproducible dependency calculations (for
+mixed binary and source updates).
 .TP
 .B fetchcommand
 Specifies a \fBFETCHCOMMAND\fR used to fetch files from a repository,
