@@ -9313,14 +9313,7 @@ class depgraph:
 
                 asap_nodes.extend(libc_pkgs)
 
-        def gather_deps(
-            ignore_priority,
-            mergeable_nodes,
-            selected_nodes,
-            node,
-            smallest_cycle=None,
-            traversed_nodes=None,
-        ):
+        def gather_deps(ignore_priority, mergeable_nodes, selected_nodes, node):
             """
             Recursively gather a group of nodes that RDEPEND on
             eachother. This ensures that they are merged as a group
@@ -9340,24 +9333,10 @@ class depgraph:
                 # RDEPENDs installed first, but ignore uninstalls
                 # (these occur when new portage blocks an older package version).
                 return False
-            if traversed_nodes is not None:
-                if node in traversed_nodes:
-                    # Identical to a previously traversed cycle.
-                    return False
-                traversed_nodes.add(node)
             selected_nodes.add(node)
-            if smallest_cycle is not None and len(selected_nodes) >= len(
-                smallest_cycle
-            ):
-                return False
             for child in mygraph.child_nodes(node, ignore_priority=ignore_priority):
                 if not gather_deps(
-                    ignore_priority,
-                    mergeable_nodes,
-                    selected_nodes,
-                    child,
-                    smallest_cycle=smallest_cycle,
-                    traversed_nodes=traversed_nodes,
+                    ignore_priority, mergeable_nodes, selected_nodes, child
                 ):
                     return False
             return True
@@ -9515,21 +9494,12 @@ class depgraph:
                             local_priority_range.MEDIUM_SOFT + 1,
                         )
                     ):
-                        # Traversed nodes for current priority
-                        traversed_nodes = set()
                         for node in nodes:
                             if not mygraph.parent_nodes(node):
                                 continue
-                            if node in traversed_nodes:
-                                continue
                             selected_nodes = set()
                             if gather_deps(
-                                priority,
-                                mergeable_nodes,
-                                selected_nodes,
-                                node,
-                                smallest_cycle=smallest_cycle,
-                                traversed_nodes=traversed_nodes,
+                                priority, mergeable_nodes, selected_nodes, node
                             ):
                                 if smallest_cycle is None or len(selected_nodes) < len(
                                     smallest_cycle

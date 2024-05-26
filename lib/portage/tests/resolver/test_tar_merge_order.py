@@ -12,7 +12,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class TarMergeOrderTestCase(TestCase):
-    @pytest.mark.xfail(reason="bug #922629 isn't yet fixed")
     def testTarMergeOrder(self):
         """
         Test for bug #922629 where binary app-arch/tar[acl] was merged
@@ -21,6 +20,9 @@ class TarMergeOrderTestCase(TestCase):
 
         It poorly interacted with @system containing app-alternatives/tar
         as a circular dependency on app-arch/tar.
+
+        Bisect found that commit 49e01d041c74680a81860b819daff812d83df02f
+        triggered the issue.
         """
 
         ebuilds = {
