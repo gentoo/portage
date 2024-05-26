@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2009-2018 Gentoo Foundation
+# Copyright 2009-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -7,10 +7,6 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 if ! ___eapi_has_dohtml; then
 	die "'${0##*/}' has been banned for EAPI '${EAPI}'"
 	exit 1
-fi
-
-if ___eapi_has_dohtml_deprecated; then
-	eqawarn "QA Notice: '${0##*/}' is deprecated in EAPI '${EAPI}'"
 fi
 
 # Use safe cwd, avoiding unsafe import for bug #469338.

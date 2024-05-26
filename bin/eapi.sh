@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2012-2023 Gentoo Authors
+# Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # PHASES
@@ -78,10 +78,6 @@ ___eapi_has_einstall() {
 
 ___eapi_has_dohtml() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-slot-abi|5|6)$ ]]
-}
-
-___eapi_has_dohtml_deprecated() {
-	[[ ${1-${EAPI-0}} == 6 ]]
 }
 
 ___eapi_has_dolib_libopts() {
