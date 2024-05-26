@@ -81,6 +81,7 @@ py.install_sources(
         'test_slot_operator_update_probe_parent_downgrade.py',
         'test_solve_non_slot_operator_slot_conflicts.py',
         'test_targetroot.py',
+        'test_tar_merge_order.py',
         'test_unmerge_order.py',
         'test_unnecessary_slot_upgrade.py',
         'test_update.py',
