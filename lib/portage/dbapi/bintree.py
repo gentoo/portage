@@ -1400,6 +1400,7 @@ class binarytree:
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
+            changed = True
             local_timestamp = pkgindex.header.get("TIMESTAMP", None)
             try:
                 download_timestamp = float(pkgindex.header.get("DOWNLOAD_TIMESTAMP", 0))
@@ -1574,6 +1575,7 @@ class binarytree:
                             noiselevel=-1,
                         )
             except UseCachedCopyOfRemoteIndex:
+                changed = False
                 desc = "frozen" if repo.frozen else "up-to-date"
                 writemsg_stdout("\n")
                 writemsg_stdout(
@@ -1611,7 +1613,7 @@ class binarytree:
                     os.unlink(tmp_filename)
                 except OSError:
                     pass
-            if pkgindex is rmt_idx:
+            if pkgindex is rmt_idx and changed:
                 pkgindex.modified = False  # don't update the header
                 pkgindex.header["DOWNLOAD_TIMESTAMP"] = "%d" % time.time()
                 try:
