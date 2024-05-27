@@ -1,4 +1,4 @@
-# Copyright 2004-2023 Gentoo Authors
+# Copyright 2004-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.cache.mappings import UserDict
@@ -70,6 +70,7 @@ import shlex
 import stat
 import string
 import sys
+import tempfile
 import traceback
 import glob
 from typing import Optional, TextIO
@@ -1446,21 +1447,22 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
         if follow_links:
             canonical_path = os.path.realpath(filename)
             object.__setattr__(self, "_real_name", canonical_path)
-            tmp_name = "%s.%i" % (canonical_path, portage.getpid())
+            parent, basename = os.path.split(canonical_path)
+            fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
+            object.__setattr__(self, "_tmp_name", tmp_name)
             try:
                 object.__setattr__(
                     self,
                     "_file",
                     open_func(
-                        _unicode_encode(
-                            tmp_name, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        fd,
                         mode=mode,
                         **kargs,
                     ),
                 )
                 return
-            except OSError as e:
+            except OSError:
+                os.close(fd)
                 if canonical_path == filename:
                     raise
                 # Ignore this error, since it's irrelevant
@@ -1468,16 +1470,22 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                 # new error if necessary.
 
         object.__setattr__(self, "_real_name", filename)
-        tmp_name = "%s.%i" % (filename, portage.getpid())
-        object.__setattr__(
-            self,
-            "_file",
-            open_func(
-                _unicode_encode(tmp_name, encoding=_encodings["fs"], errors="strict"),
-                mode=mode,
-                **kargs,
-            ),
-        )
+        parent, basename = os.path.split(filename)
+        fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
+        object.__setattr__(self, "_tmp_name", tmp_name)
+        try:
+            object.__setattr__(
+                self,
+                "_file",
+                open_func(
+                    fd,
+                    mode=mode,
+                    **kargs,
+                ),
+            )
+        except OSError:
+            os.close(fd)
+            raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
@@ -1498,13 +1506,14 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
         and performs the atomic replacement via os.rename().  If the abort()
         method has been called, then the temp file is closed and removed."""
         f = object.__getattribute__(self, "_file")
+        tmp_name = object.__getattribute__(self, "_tmp_name")
         real_name = object.__getattribute__(self, "_real_name")
         if not f.closed:
             try:
                 f.close()
                 if not object.__getattribute__(self, "_aborted"):
                     try:
-                        apply_stat_permissions(f.name, os.stat(real_name))
+                        apply_stat_permissions(tmp_name, os.stat(real_name))
                     except OperationNotPermitted:
                         pass
                     except FileNotFound:
@@ -1514,12 +1523,12 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                             pass
                         else:
                             raise
-                    os.rename(f.name, real_name)
+                    os.rename(tmp_name, real_name)
             finally:
                 # Make sure we cleanup the temp file
                 # even if an exception is raised.
                 try:
-                    os.unlink(f.name)
+                    os.unlink(tmp_name)
                 except OSError as oe:
                     pass
 
