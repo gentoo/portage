@@ -1434,7 +1434,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
     error occurs)."""
 
     def __init__(self, filename, mode="w", follow_links=True, **kargs):
-        """Opens a temporary filename.pid in the same directory as filename."""
+        """Opens a temporary file in the same directory as filename."""
         ObjectProxy.__init__(self)
         object.__setattr__(self, "_aborted", False)
         if "b" in mode:
@@ -1447,10 +1447,11 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
         if follow_links:
             canonical_path = os.path.realpath(filename)
             object.__setattr__(self, "_real_name", canonical_path)
-            parent, basename = os.path.split(canonical_path)
-            fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
-            object.__setattr__(self, "_tmp_name", tmp_name)
+            fd = None
             try:
+                parent, basename = os.path.split(canonical_path)
+                fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
+                object.__setattr__(self, "_tmp_name", tmp_name)
                 object.__setattr__(
                     self,
                     "_file",
@@ -1462,7 +1463,8 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                 )
                 return
             except OSError:
-                os.close(fd)
+                if fd is not None:
+                    os.close(fd)
                 if canonical_path == filename:
                     raise
                 # Ignore this error, since it's irrelevant
@@ -1470,10 +1472,11 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                 # new error if necessary.
 
         object.__setattr__(self, "_real_name", filename)
-        parent, basename = os.path.split(filename)
-        fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
-        object.__setattr__(self, "_tmp_name", tmp_name)
+        fd = None
         try:
+            parent, basename = os.path.split(filename)
+            fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
+            object.__setattr__(self, "_tmp_name", tmp_name)
             object.__setattr__(
                 self,
                 "_file",
@@ -1484,7 +1487,8 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                 ),
             )
         except OSError:
-            os.close(fd)
+            if fd is not None:
+                os.close(fd)
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1505,15 +1509,26 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
         """Closes the temporary file, copies permissions (if possible),
         and performs the atomic replacement via os.rename().  If the abort()
         method has been called, then the temp file is closed and removed."""
-        f = object.__getattribute__(self, "_file")
-        tmp_name = object.__getattribute__(self, "_tmp_name")
-        real_name = object.__getattribute__(self, "_real_name")
-        if not f.closed:
+        try:
+            f = object.__getattribute__(self, "_file")
+        except AttributeError:
+            f = None
+        if f is not None and not f.closed:
+            real_name = object.__getattribute__(self, "_real_name")
+            tmp_name = object.__getattribute__(self, "_tmp_name")
             try:
                 f.close()
                 if not object.__getattribute__(self, "_aborted"):
                     try:
-                        apply_stat_permissions(tmp_name, os.stat(real_name))
+                        try:
+                            st = os.stat(real_name)
+                        except FileNotFoundError:
+                            umask_test_file = f"{tmp_name}_umask_test"
+                            with open(umask_test_file, "w") as f:
+                                st = os.fstat(f.fileno())
+                                os.unlink(umask_test_file)
+
+                        apply_stat_permissions(tmp_name, st)
                     except OperationNotPermitted:
                         pass
                     except FileNotFound:
@@ -1529,7 +1544,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                 # even if an exception is raised.
                 try:
                     os.unlink(tmp_name)
-                except OSError as oe:
+                except OSError:
                     pass
 
     def abort(self):
