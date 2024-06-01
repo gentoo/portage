@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -183,11 +183,12 @@ class MergeProcess(ForkProcess):
 
         # Since the entire QueryCommand._db is not required, only pass
         # in tree types that QueryCommand specifically requires.
+        # NOTE: For FEATURES=*-backup bintree is needed (bug 933297).
         child_db = {}
         parent_db = portage.db if QueryCommand._db is None else QueryCommand._db
         for root in parent_db:
             child_db[root] = {}
-            for tree_type in ("vartree", "porttree"):
+            for tree_type in ("bintree", "porttree", "vartree"):
                 child_db[root][tree_type] = parent_db[root][tree_type]
 
         self.target = functools.partial(
