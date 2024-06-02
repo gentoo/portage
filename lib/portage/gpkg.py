@@ -628,6 +628,15 @@ class tar_safe_extract:
         if self.closed:
             raise OSError("Tar file is closed.")
         temp_dir = tempfile.TemporaryDirectory(dir=dest_dir)
+        # The below tar member security checks can be refactored as a filter function
+        # that raises an exception. Use tarfile.fully_trusted_filter for now, which
+        # is simply an identity function:
+        # def fully_trusted_filter(member, dest_path):
+        #     return member
+        try:
+            self.tar.extraction_filter = tarfile.fully_trusted_filter
+        except AttributeError:
+            pass
         try:
             while True:
                 member = self.tar.next()
