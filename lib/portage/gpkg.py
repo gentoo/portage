@@ -100,6 +100,7 @@ class tar_stream_writer:
         self.closed = False
         self.container = container
         self.killed = False
+        self.error = False
         self.tar_format = tar_format
         self.tarinfo = tarinfo
         self.uid = uid
