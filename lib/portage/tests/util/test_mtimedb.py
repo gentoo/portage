@@ -1,4 +1,4 @@
-# Copyright 2022 Gentoo Foundation
+# Copyright 2022-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from unittest.mock import patch, mock_open
@@ -30,6 +30,16 @@ _ONE_RESUME_LIST_JSON = b"""{
 		"/usr/local/lib64": 1711784303
 	},
 	"resume": {
+		"binpkgs": [
+			{
+				"CPV": "another-cat/another-package-4.3.2-r1",
+				"BUILD_ID": 1,
+				"BUILD_TIME": 1710959527,
+				"MTIME": 1710966082,
+				"SIZE": 20480,
+				"EROOT": "/"
+			}
+		],
 		"favorites": [
 			"@world"
 		],
@@ -41,7 +51,7 @@ _ONE_RESUME_LIST_JSON = b"""{
 				"merge"
 			],
 			[
-				"ebuild",
+				"binary",
 				"/",
 				"another-cat/another-package-4.3.2-r1",
 				"merge"
@@ -66,7 +76,7 @@ _ONE_RESUME_LIST_JSON = b"""{
 		"/var/db/repos/gentoo/profiles/updates/2Q-2022": 1752846209,
 		"/var/db/repos/gentoo/profiles/updates/4Q-2021": 1742787797
 	},
-	"version": "3.0.30"
+	"version": "3.0.65"
 }
 """
 
@@ -259,10 +269,20 @@ class MtimeDBTestCase(TestCase):
         self.assertEqual(
             mtimedb["resume"],
             {
+                "binpkgs": [
+                    {
+                        "CPV": "another-cat/another-package-4.3.2-r1",
+                        "BUILD_ID": 1,
+                        "BUILD_TIME": 1710959527,
+                        "MTIME": 1710966082,
+                        "SIZE": 20480,
+                        "EROOT": "/",
+                    }
+                ],
                 "favorites": ["@world"],
                 "mergelist": [
                     ["ebuild", "/", "some-cat/some-package-1.2.3-r4", "merge"],
-                    ["ebuild", "/", "another-cat/another-package-4.3.2-r1", "merge"],
+                    ["binary", "/", "another-cat/another-package-4.3.2-r1", "merge"],
                 ],
                 "myopts": {
                     "--buildpkg": True,
@@ -287,7 +307,7 @@ class MtimeDBTestCase(TestCase):
                 "/var/db/repos/gentoo/profiles/updates/4Q-2021": 1742787797,
             },
         )
-        self.assertEqual(mtimedb["version"], "3.0.30")
+        self.assertEqual(mtimedb["version"], "3.0.65")
 
     @patch("portage.util.mtimedb.MtimeDB._MtimeDB__write_to_disk")
     def test_commit_writes_to_disk_if_needed_and_possible(self, pwrite2disk):

@@ -11066,6 +11066,13 @@ class depgraph:
         else:
             args = []
 
+        binpkgs_map = {}
+        binpkgs = resume_data.get("binpkgs")
+        if binpkgs:
+            for x in binpkgs:
+                if isinstance(x, dict) and "EROOT" in x and "CPV" in x:
+                    binpkgs_map[(x["EROOT"], x["CPV"])] = x
+
         serialized_tasks = []
         masked_tasks = []
         for x in mergelist:
@@ -11096,8 +11103,22 @@ class depgraph:
             except InvalidAtom:
                 continue
 
+            if pkg_type == "binary":
+                binpkg_info = binpkgs_map.get((myroot, pkg_key))
+            else:
+                binpkg_info = False
+
             pkg = None
             for pkg in self._iter_match_pkgs(root_config, pkg_type, atom):
+                if binpkg_info:
+                    if not (
+                        pkg.cpv.build_id == binpkg_info.get("BUILD_ID")
+                        and pkg.cpv.build_time == binpkg_info.get("BUILD_TIME")
+                        and pkg.cpv.mtime == binpkg_info.get("MTIME")
+                        and pkg.cpv.file_size == binpkg_info.get("SIZE")
+                    ):
+                        continue
+
                 if not self._pkg_visibility_check(
                     pkg
                 ) or self._frozen_config.excluded_pkgs.findAtomForPackage(

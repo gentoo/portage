@@ -2116,6 +2116,19 @@ class Scheduler(PollScheduler):
             for x in self._mergelist
             if isinstance(x, Package) and x.operation == "merge"
         ]
+        # Store binpkgs using the same keys as $PKGDIR/Packages plus EROOT.
+        mtimedb["resume"]["binpkgs"] = [
+            {
+                "CPV": str(x.cpv),
+                "BUILD_ID": x.cpv.build_id,
+                "BUILD_TIME": x.cpv.build_time,
+                "MTIME": x.cpv.mtime,
+                "SIZE": x.cpv.file_size,
+                "EROOT": x.root,
+            }
+            for x in self._mergelist
+            if isinstance(x, Package) and x.type_name == "binary"
+        ]
 
         mtimedb.commit()
 

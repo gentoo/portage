@@ -216,6 +216,13 @@ def action_build(
         if not isinstance(favorites, list):
             del mtimedb[k]
             continue
+        binpkgs = resume_data.get("binpkgs")
+        if binpkgs and (
+            not isinstance(binpkgs, list)
+            or any(not isinstance(x, dict) for x in binpkgs)
+        ):
+            del mtimedb[k]
+            continue
 
     resume = False
     if "--resume" in myopts and ("resume" in mtimedb or "resume_backup" in mtimedb):
