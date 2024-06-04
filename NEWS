@@ -9,7 +9,69 @@ Release notes take the form of the following optional categories:
 portage-3.0.65 (UNRELEASED)
 --------------
 
-TODO
+Features:
+* binrepos.conf: Support "frozen" attribute (bug #932739).
+
+  This avoids mutating the local index cache by fetching changes from a
+  binpkg host when running emerge repeatedly. It's useful for consistency
+  between emerge runs while completing an update.
+
+  It should only be used temporarily, not set on a permanent basis.
+
+* bintree: Add REPO_REVISIONS to Packages index header (bug #924772).
+
+  Portage will now store synced revisions at /var/lib/portage/repo_revisions.
+
+  This associates a binpkg being built with the repository state / revision
+  at a time, which will ultimately later allow pinning binhost clients
+  to <= the last commit the binhost was updated at.
+
+  It's also useful for pinning source builds from the same revision as
+  when binary builds were done for consistency and to minimize rebuilds and
+  maximize binpkg use.
+
+* mtimedb: Record binpkg BUILD_ID and BUILD_TIME (bug #933442).
+
+  This fixes 'emerge --resume' to correctly pick up binpkgs and not
+  recalculate.
+
+Bug fixes:
+* unpack: Skip unrecognized file formats silently, fixing PMS compliance.
+
+* estrip: Don't use splitdebug for .o files (bug #787623).
+
+  This fixes splitdebug mangling debug information with Clang.
+
+* sync: git: Add safe.directory for getting HEAD commit (bug #930992).
+
+* install-qa-checks.d: 90config-impl-decl: Suppress known false positives
+  for gnulib on glibc and musl.
+
+* CONFIG_PROTECT: Don't use shlex.split (as it's a whitespace-separated list).
+
+* depgraph: Fix crash with --useoldpkg with subslot bumps (bug #932804).
+
+* depgraph: find_smallest_cycle: Revert optimization which caused
+  merge order regression (bug #922629).
+
+  A new testcase is also added.
+
+* sync: Don't use IPv6 for rsync when disabled (bug #927241).
+
+* atomic_ofstream: Use mkstemp instead of PID for PID namespace safety (bug #851015).
+
+* MergeProcess: Pass bintree to subprocess (bug #933297).
+
+  This fixes FEATURES="downgrade-backup".
+
+* tar_stream_writer: Improve error handling (bug #933385).
+
+Cleanups:
+* Scheduler: Improve legibility.
+
+* portage.util.shlex_split: Drop legacy Python 2 wrapper.
+
+* eapi.sh: Drop obsolete ___eapi_has_dohtml_deprecated().
 
 portage-3.0.64 (2024-04-28)
 --------------
