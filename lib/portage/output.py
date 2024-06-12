@@ -270,16 +270,12 @@ _legal_terms_re = re.compile(
 )
 _disable_xtermTitle = None
 _max_xtermTitle_len = 253
+_title_init_seq = None
+_title_finish_seq = None
 
 
 def xtermTitle(mystr, raw=False):
-    global _disable_xtermTitle
-    if _disable_xtermTitle is None:
-        _disable_xtermTitle = not (
-            sys.__stderr__.isatty()
-            and "TERM" in os.environ
-            and _legal_terms_re.match(os.environ["TERM"]) is not None
-        )
+    init_xterm_titles()
 
     if dotitles and not _disable_xtermTitle:
         # If the title string is too big then the terminal can
@@ -287,7 +283,7 @@ def xtermTitle(mystr, raw=False):
         if len(mystr) > _max_xtermTitle_len:
             mystr = mystr[:_max_xtermTitle_len]
         if not raw:
-            mystr = f"\x1b]0;{mystr}\x07"
+            mystr = format_xterm_title(mystr)
 
         # avoid potential UnicodeEncodeError
         mystr = _unicode_encode(
@@ -302,18 +298,14 @@ default_xterm_title = None
 
 
 def xtermTitleReset():
+    init_xterm_titles()
     global default_xterm_title
     if default_xterm_title is None:
         prompt_command = os.environ.get("PROMPT_COMMAND")
         if prompt_command == "":
             default_xterm_title = ""
         elif prompt_command is not None:
-            if (
-                dotitles
-                and "TERM" in os.environ
-                and _legal_terms_re.match(os.environ["TERM"]) is not None
-                and sys.__stderr__.isatty()
-            ):
+            if dotitles and not _disable_xtermTitle:
                 from portage.process import find_binary, spawn
 
                 shell = os.environ.get("SHELL")
@@ -337,11 +329,15 @@ def xtermTitleReset():
             home = os.environ.get("HOME", "")
             if home != "" and pwd.startswith(home):
                 pwd = "~" + pwd[len(home) :]
-            default_xterm_title = "\x1b]0;{}@{}:{}\x07".format(
-                os.environ.get("LOGNAME", ""),
-                os.environ.get("HOSTNAME", "").split(".", 1)[0],
-                pwd,
+            default_xterm_title = format_xterm_title(
+                "{}@{}:{}".format(
+                    os.environ.get("LOGNAME", ""),
+                    os.environ.get("HOSTNAME", "").split(".", 1)[0],
+                    pwd,
+                )
             )
+    # since PROMPT_COMMAND can already contain escape sequences, output the
+    # title as a raw sequence without adding any additional sequences.
     xtermTitle(default_xterm_title, raw=True)
 
 
@@ -509,6 +505,63 @@ class StyleWriter(formatter.DumbWriter):
             self.style_listener(styles)
 
 
+def init_curses(fd):
+    try:
+        import curses
+
+        try:
+            curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
+            return curses
+        except curses.error:
+            return None
+    except ImportError:
+        return None
+
+
+def init_xterm_titles():
+    global _disable_xtermTitle
+    global _title_init_seq
+    global _title_finish_seq
+
+    if _disable_xtermTitle is not None:
+        # already initialized
+        return
+
+    _disable_xtermTitle = True
+
+    if not sys.__stderr__.isatty() or "TERM" not in os.environ:
+        return
+
+    try:
+        # by default check if we can dynamically query the proper title
+        # setting sequence via terminfo
+        curses = init_curses(sys.stderr)
+
+        if curses is not None:
+            tsl = curses.tigetstr("tsl").decode()
+            fsl = curses.tigetstr("fsl").decode()
+            if tsl and fsl:
+                _xtermTitle_supported = True
+                _title_init_seq = tsl
+                _title_finish_seq = fsl
+            return
+    except curses.error:
+        pass
+
+    if _legal_terms_re.match(os.environ["TERM"]) is not None:
+        # as a fallback use the well known xterm escape sequences for the hard
+        # coded suppoted terminal list
+        _disable_xtermTitle = False
+        _title_init_seq = "\x1b]0;"
+        _title_finish_seq = "\x07"
+
+
+def format_xterm_title(mystr):
+    if _disable_xtermTitle:
+        return mystr
+    return _title_init_seq + mystr + _title_finish_seq
+
+
 def get_term_size(fd=None):
     """
     Get the number of lines and columns of the tty that is connected to
@@ -522,15 +575,12 @@ def get_term_size(fd=None):
         fd = sys.stdout
     if not hasattr(fd, "isatty") or not fd.isatty():
         return (0, 0)
-    try:
-        import curses
 
-        try:
-            curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
+    try:
+        curses = init_curses(fd)
+        if curses is not None:
             return curses.tigetnum("lines"), curses.tigetnum("cols")
-        except curses.error:
-            pass
-    except ImportError:
+    except curses.error:
         pass
 
     try:
