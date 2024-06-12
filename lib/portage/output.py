@@ -268,20 +268,65 @@ def nc_len(mystr):
 _legal_terms_re = re.compile(
     r"^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux|st-256color|alacritty|konsole|foot)"
 )
-_disable_xtermTitle = None
-_max_xtermTitle_len = 253
+_xterm_title_supported = None
+_max_xterm_title_len = 253
 _title_init_seq = None
 _title_finish_seq = None
+_default_xterm_title = None
+
+
+def init_xterm_titles():
+    global _xterm_title_supported
+    global _title_init_seq
+    global _title_finish_seq
+
+    if _xterm_title_supported is not None:
+        # already initialized
+        return
+
+    _xterm_title_supported = False
+
+    if not sys.__stderr__.isatty() or "TERM" not in os.environ:
+        return
+
+    try:
+        # by default check if we can dynamically query the proper title
+        # setting sequence via terminfo
+        curses = init_curses(sys.stderr)
+
+        if curses is not None:
+            tsl = curses.tigetstr("tsl").decode()
+            fsl = curses.tigetstr("fsl").decode()
+            if tsl and fsl:
+                _xterm_title_supported = True
+                _title_init_seq = tsl
+                _title_finish_seq = fsl
+            return
+    except curses.error:
+        pass
+
+    if _legal_terms_re.match(os.environ["TERM"]) is not None:
+        # as a fallback use the well known xterm escape sequences for the hard
+        # coded suppoted terminal list
+        _xterm_title_supported = True
+        _title_init_seq = "\x1b]0;"
+        _title_finish_seq = "\x07"
+
+
+def format_xterm_title(mystr):
+    if not _xterm_title_supported:
+        return mystr
+    return _title_init_seq + mystr + _title_finish_seq
 
 
 def xtermTitle(mystr, raw=False):
     init_xterm_titles()
 
-    if dotitles and not _disable_xtermTitle:
+    if dotitles and _xterm_title_supported:
         # If the title string is too big then the terminal can
         # misbehave. Therefore, truncate it if it's too big.
-        if len(mystr) > _max_xtermTitle_len:
-            mystr = mystr[:_max_xtermTitle_len]
+        if len(mystr) > _max_xterm_title_len:
+            mystr = mystr[:_max_xterm_title_len]
         if not raw:
             mystr = format_xterm_title(mystr)
 
@@ -294,18 +339,15 @@ def xtermTitle(mystr, raw=False):
         f.flush()
 
 
-default_xterm_title = None
-
-
 def xtermTitleReset():
     init_xterm_titles()
-    global default_xterm_title
-    if default_xterm_title is None:
+    global _default_xterm_title
+    if _default_xterm_title is None:
         prompt_command = os.environ.get("PROMPT_COMMAND")
         if prompt_command == "":
-            default_xterm_title = ""
+            _default_xterm_title = ""
         elif prompt_command is not None:
-            if dotitles and not _disable_xtermTitle:
+            if dotitles and _xterm_title_supported:
                 from portage.process import find_binary, spawn
 
                 shell = os.environ.get("SHELL")
@@ -329,7 +371,7 @@ def xtermTitleReset():
             home = os.environ.get("HOME", "")
             if home != "" and pwd.startswith(home):
                 pwd = "~" + pwd[len(home) :]
-            default_xterm_title = format_xterm_title(
+            _default_xterm_title = format_xterm_title(
                 "{}@{}:{}".format(
                     os.environ.get("LOGNAME", ""),
                     os.environ.get("HOSTNAME", "").split(".", 1)[0],
@@ -338,7 +380,7 @@ def xtermTitleReset():
             )
     # since PROMPT_COMMAND can already contain escape sequences, output the
     # title as a raw sequence without adding any additional sequences.
-    xtermTitle(default_xterm_title, raw=True)
+    xtermTitle(_default_xterm_title, raw=True)
 
 
 def notitles():
@@ -516,50 +558,6 @@ def init_curses(fd):
             return None
     except ImportError:
         return None
-
-
-def init_xterm_titles():
-    global _disable_xtermTitle
-    global _title_init_seq
-    global _title_finish_seq
-
-    if _disable_xtermTitle is not None:
-        # already initialized
-        return
-
-    _disable_xtermTitle = True
-
-    if not sys.__stderr__.isatty() or "TERM" not in os.environ:
-        return
-
-    try:
-        # by default check if we can dynamically query the proper title
-        # setting sequence via terminfo
-        curses = init_curses(sys.stderr)
-
-        if curses is not None:
-            tsl = curses.tigetstr("tsl").decode()
-            fsl = curses.tigetstr("fsl").decode()
-            if tsl and fsl:
-                _xtermTitle_supported = True
-                _title_init_seq = tsl
-                _title_finish_seq = fsl
-            return
-    except curses.error:
-        pass
-
-    if _legal_terms_re.match(os.environ["TERM"]) is not None:
-        # as a fallback use the well known xterm escape sequences for the hard
-        # coded suppoted terminal list
-        _disable_xtermTitle = False
-        _title_init_seq = "\x1b]0;"
-        _title_finish_seq = "\x07"
-
-
-def format_xterm_title(mystr):
-    if _disable_xtermTitle:
-        return mystr
-    return _title_init_seq + mystr + _title_finish_seq
 
 
 def get_term_size(fd=None):
