@@ -528,6 +528,10 @@ __dyn_package() {
 		echo -n "${BUILD_ID}" > "${PORTAGE_BUILDDIR}"/build-info/BUILD_ID
 	fi
 
+	if [[ "${BUILD_TIME}" == "ebuild" ]]; then
+		find ${D} -exec touch -h -r ${EBUILD} {} \;
+	fi
+
 	if [[ "${BINPKG_FORMAT}" == "xpak" ]]; then
 		local tar_options=""
 
