@@ -14,6 +14,12 @@ Features:
   as well as / for all EAPIs rather than instead of / for EAPI 6 and below
   (bug #435066).
 
+Bug fixes:
+* ebuild: Handle Bash 5.2's change in behavior which enables the shopt
+  'globskipdots' by default. This is needed to avoid breaking existing
+  working ebuilds. Future EAPIs will need to adjust the logic
+  added by this change. See bug #907061.
+
 portage-3.0.65 (2024-06-04)
 --------------
 
