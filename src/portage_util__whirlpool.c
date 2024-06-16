@@ -1112,30 +1112,42 @@ static PyTypeObject WhirlpoolType = {
     .tp_methods = Whirlpool_methods,
 };
 
+static int
+whirlpool_exec(PyObject *mod)
+{
+    if (PyType_Ready(&WhirlpoolType) < 0)
+        return -1;
+
+    Py_INCREF(&WhirlpoolType);
+    if (PyModule_AddObject(mod, "Whirlpool", (PyObject *) &WhirlpoolType) < 0) {
+        Py_DECREF(&WhirlpoolType);
+        return -1;
+    }
+
+    return 0;
+}
+
+static PyModuleDef_Slot _whirlpoolmodule_slots[] = {
+    {Py_mod_exec, whirlpool_exec},
+#ifdef Py_MOD_PER_INTERPRETER_GIL_SUPPORTED
+    {Py_mod_multiple_interpreters, Py_MOD_PER_INTERPRETER_GIL_SUPPORTED},
+#endif
+#ifdef Py_MOD_GIL_NOT_USED
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
+#endif
+    {0, NULL},
+};
+
 static PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
     .m_name = "_whirlpool",
     .m_doc = "Reference Whirlpool implementation",
-    .m_size = -1,
+    .m_size = 0,
+    .m_slots = _whirlpoolmodule_slots,
 };
 
 PyMODINIT_FUNC
 PyInit__whirlpool(void)
 {
-    PyObject *m;
-    if (PyType_Ready(&WhirlpoolType) < 0)
-        return NULL;
-
-    m = PyModule_Create(&moduledef);
-    if (m == NULL)
-        return NULL;
-
-    Py_INCREF(&WhirlpoolType);
-    if (PyModule_AddObject(m, "Whirlpool", (PyObject *) &WhirlpoolType) < 0) {
-        Py_DECREF(&WhirlpoolType);
-        Py_DECREF(m);
-        return NULL;
-    }
-
-    return m;
+    return PyModuleDef_Init(&moduledef);
 }
