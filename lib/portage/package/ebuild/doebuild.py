@@ -2390,7 +2390,7 @@ def _check_build_log(mysettings, out=None):
     make_jobserver_re = re.compile(r"g?make\[\d+\]: warning: jobserver unavailable:")
     make_jobserver = []
 
-    # we deduplicate these since they is repeated for every setup.py call
+    # we deduplicate these since they are repeated for every setup.py call
     setuptools_warn = set()
     setuptools_warn_re = re.compile(r".*\/setuptools\/.*: .*Warning: (.*)")
     # skip useless version normalization warnings
