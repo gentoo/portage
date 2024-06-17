@@ -20,6 +20,8 @@ Bug fixes:
   working ebuilds. Future EAPIs will need to adjust the logic
   added by this change. See bug #907061.
 
+* make.globals: add bcachefs_effective.* and bcachefs.* to PORTAGE_XATTR_EXCLUDE
+
 * vartree, movefile: Warn when rewriting a symlink (bug #934514).
 
 * repository: config: Allow a repository to be configured using one of its
