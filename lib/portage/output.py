@@ -292,7 +292,7 @@ def init_xterm_titles():
     try:
         # by default check if we can dynamically query the proper title
         # setting sequence via terminfo
-        curses = init_curses(sys.stderr)
+        curses = init_curses()
 
         if curses is not None:
             tsl = curses.tigetstr("tsl").decode()
@@ -334,7 +334,7 @@ def xtermTitle(mystr, raw=False):
         mystr = _unicode_encode(
             mystr, encoding=_encodings["stdio"], errors="backslashreplace"
         )
-        f = sys.stderr.buffer
+        f = sys.__stderr__.buffer
         f.write(mystr)
         f.flush()
 
@@ -547,7 +547,7 @@ class StyleWriter(formatter.DumbWriter):
             self.style_listener(styles)
 
 
-def init_curses(fd):
+def init_curses(fd=sys.__stderr__):
     try:
         import curses
 
