@@ -1559,6 +1559,7 @@ class Scheduler(PollScheduler):
             self._deallocate_config(build.settings)
         self._jobs -= 1
         self._status_display.running = self._jobs
+        self._status_display.merge_wait = len(self._merge_wait_queue)
         self._schedule()
 
     def _extract_exit(self, build):
@@ -1835,6 +1836,8 @@ class Scheduler(PollScheduler):
                     # serialize install unless parallel-install is enabled.
                     if task.is_system_pkg:
                         break
+
+                self._status_display.merge_wait = len(self._merge_wait_queue)
 
             if self._schedule_tasks_imp():
                 state_change += 1

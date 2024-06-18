@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -38,6 +38,7 @@ class JobStatusDisplay:
         object.__setattr__(self, "quiet", quiet)
         object.__setattr__(self, "xterm_titles", xterm_titles)
         object.__setattr__(self, "maxval", 0)
+        object.__setattr__(self, "merge_wait", 0)
         object.__setattr__(self, "merges", 0)
         object.__setattr__(self, "_changed", False)
         object.__setattr__(self, "_displayed", False)
@@ -261,6 +262,13 @@ class JobStatusDisplay:
             f.add_literal_data(failed_str)
             f.pop_style()
             f.add_literal_data(" failed")
+
+        if self.merge_wait:
+            f.add_literal_data(", ")
+            f.push_style(number_style)
+            f.add_literal_data(f"{self.merge_wait}")
+            f.pop_style()
+            f.add_literal_data(" merge wait")
 
         padding = self._jobs_column_width - len(plain_output.getvalue())
         if padding > 0:

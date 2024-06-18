@@ -13,6 +13,7 @@ Features:
 * emerge: Make bare --root-deps option install build-time dependencies to ROOT
   as well as / for all EAPIs rather than instead of / for EAPI 6 and below
   (bug #435066).
+* Show length of merge-wait queue as part of the status display
 
 Bug fixes:
 * ebuild: Handle Bash 5.2's change in behavior which enables the shopt
