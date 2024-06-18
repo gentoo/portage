@@ -65,7 +65,7 @@ class JobStatusDisplay:
         if self._isatty:
             width = portage.output.get_term_size()[1]
         else:
-            width = 80
+            width = 100
         self._set_width(width)
 
     def _set_width(self, width):
