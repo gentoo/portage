@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -165,6 +165,7 @@ def insert_optional_args(args):
         "--getbinpkgonly": y_or_n,
         "--ignore-world": y_or_n,
         "--jobs": valid_integers,
+        "--jobs-tmpdir-space-threshold": valid_floats,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
         "--onlydeps-with-ideps": y_or_n,
@@ -521,6 +522,10 @@ def parse_opts(tmpcmdline, silent=False):
         "--jobs": {
             "shortopt": "-j",
             "help": "Specifies the number of packages to build " + "simultaneously.",
+            "action": "store",
+        },
+        "--jobs-tmpdir-space-threshold": {
+            "help": "Specifies maximum used space ratio when starting a new job.",
             "action": "store",
         },
         "--keep-going": {
@@ -1033,6 +1038,24 @@ def parse_opts(tmpcmdline, silent=False):
 
         myoptions.jobs = jobs
 
+    if myoptions.jobs_tmpdir_space_threshold == "True":
+        myoptions.jobs_tmpdir_space_threshold = None
+
+    if myoptions.jobs_tmpdir_space_threshold:
+        try:
+            jobs_tmpdir_space_threshold = float(myoptions.jobs_tmpdir_space_threshold)
+        except ValueError:
+            jobs_tmpdir_space_threshold = 0.0
+
+        if jobs_tmpdir_space_threshold <= 0.0 or jobs_tmpdir_space_threshold > 1.0:
+            jobs_tmpdir_space_threshold = None
+            if not silent:
+                parser.error(
+                    f"Invalid --jobs-tmpdir-space-threshold: '{myoptions.jobs_tmpdir_space_threshold}'\n"
+                )
+
+        myoptions.jobs_tmpdir_space_threshold = jobs_tmpdir_space_threshold
+
     if myoptions.load_average == "True":
         myoptions.load_average = None
 
@@ -1304,6 +1327,16 @@ def emerge_main(args: Optional[list[str]] = None):
     emerge_config.action, emerge_config.opts, emerge_config.args = parse_opts(
         tmpcmdline
     )
+    if (
+        "--jobs-tmpdir-space-threshold" in emerge_config.opts
+        and "keep-work" in emerge_config.running_config.settings.features
+    ):
+        writemsg_level(
+            "--jobs-tmpdir-space-threshold conflicts with FEATURES=keep-work\n",
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+        return 1
 
     try:
         return run_action(emerge_config)

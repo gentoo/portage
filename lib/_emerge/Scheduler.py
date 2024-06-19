@@ -26,6 +26,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
+from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
@@ -64,7 +65,7 @@ FAILURE = 1
 
 
 class Scheduler(PollScheduler):
-    # max time between loadavg checks (seconds)
+    # max time between loadavg and tmpdir space checks (seconds)
     _loadavg_latency = 30
 
     # max time between display status updates (seconds)
@@ -229,6 +230,7 @@ class Scheduler(PollScheduler):
         if max_jobs is None:
             max_jobs = 1
         self._set_max_jobs(max_jobs)
+        self._jobs_tmpdir_space_threshold = myopts.get("--jobs-tmpdir-space-threshold")
         self._running_root = trees[trees._running_eroot]["root_config"]
         self.edebug = 0
         if settings.get("PORTAGE_DEBUG", "") == "1":
@@ -1573,7 +1575,10 @@ class Scheduler(PollScheduler):
         self._main_exit = self._event_loop.create_future()
 
         if (
-            self._max_load is not None
+            (
+                self._max_load is not None
+                or self._jobs_tmpdir_space_threshold is not None
+            )
             and self._loadavg_latency is not None
             and (self._max_jobs is True or self._max_jobs > 1)
         ):
@@ -1791,6 +1796,30 @@ class Scheduler(PollScheduler):
 
     def _running_job_count(self):
         return self._jobs
+
+    def _can_add_job(self):
+        if not super()._can_add_job():
+            return False
+
+        if self._jobs_tmpdir_space_threshold is not None and hasattr(os, "statvfs"):
+            tmpdir = first_existing(
+                os.path.join(self.settings["PORTAGE_TMPDIR"], "portage")
+            )
+            try:
+                vfs_stat = os.statvfs(tmpdir)
+            except OSError as e:
+                writemsg_level(
+                    f"!!! statvfs('{tmpdir}'): {e}\n",
+                    noiselevel=-1,
+                    level=logging.ERROR,
+                )
+            else:
+                if (
+                    (vfs_stat.f_blocks - vfs_stat.f_bavail) / vfs_stat.f_blocks
+                ) > self._jobs_tmpdir_space_threshold:
+                    return False
+
+        return True
 
     def _schedule_tasks(self):
         while True:

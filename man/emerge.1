@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "May 2024" "Portage @VERSION@" "Portage"
+.TH "EMERGE" "1" "Jun 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -692,6 +692,14 @@ build output to be redirected to logs.
 Note that interactive packages currently force a setting
 of \fI\-\-jobs=1\fR. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
+.TP
+.BR \-\-jobs\-tmpdir\-space\-threshold[=RATIO]
+Specifies the maximum ratio of used space allowed (a floating\-point
+number) in \fBPORTAGE_TMPDIR\fR when starting a new job. With no
+argument, removes a previous space ratio threshold. For example,
+use a ratio of \fI0.85\fR to stop starting new jobs when the space
+usage in \fBPORTAGE_TMPDIR\fR exceeds \fI85%\fR. This option conflicts
+with \fBFEATURES="keep\-work"\fR.
 .TP
 .BR "\-\-keep\-going [ y | n ]"
 Continue as much as possible after an error. When an error occurs,
