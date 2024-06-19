@@ -210,6 +210,11 @@ def movefile(
         try:
             target = os.readlink(src)
             if mysettings and "D" in mysettings and target.startswith(mysettings["D"]):
+                writemsg(
+                    f"!!! {_('Absolute symlink points to image directory.')}\n",
+                    noiselevel=-1,
+                )
+                writemsg(f"!!! {dest} -> {target}\n", noiselevel=-1)
                 target = target[len(mysettings["D"]) - 1 :]
             # Atomically update the path if it exists.
             try:

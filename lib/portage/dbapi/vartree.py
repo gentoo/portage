@@ -5563,6 +5563,16 @@ class dblink:
                 myabsto = myabsto.lstrip(sep)
                 if self.settings and self.settings["D"]:
                     if myto.startswith(self.settings["D"]):
+                        self._eqawarn(
+                            "preinst",
+                            [
+                                _(
+                                    "QA Notice: Absolute symlink %s points to %s inside the image directory.\n"
+                                    "Removing the leading %s from its path."
+                                )
+                                % (mydest, myto, self.settings["D"])
+                            ],
+                        )
                         myto = myto[len(self.settings["D"]) - 1 :]
                 # myrealto contains the path of the real file to which this symlink points.
                 # we can simply test for existence of this file to see if the target has been merged yet

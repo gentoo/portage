@@ -20,6 +20,8 @@ Bug fixes:
   working ebuilds. Future EAPIs will need to adjust the logic
   added by this change. See bug #907061.
 
+* vartree, movefile: Warn when rewriting a symlink (bug #934514).
+
 portage-3.0.65 (2024-06-04)
 --------------
 
