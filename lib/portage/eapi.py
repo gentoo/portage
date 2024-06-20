@@ -150,6 +150,7 @@ _eapi_attrs = collections.namedtuple(
         "allows_package_provided",
         "bdepend",
         "broot",
+        "empty_groups_always_true",
         "exports_AA",
         "exports_EBUILD_PHASE_FUNC",
         "exports_ECLASSDIR",
@@ -172,10 +173,9 @@ _eapi_attrs = collections.namedtuple(
         "slot_deps",
         "src_uri_arrows",
         "strong_blocks",
+        "sysroot",
         "use_deps",
         "use_dep_defaults",
-        "empty_groups_always_true",
-        "sysroot",
     ),
 )
 
