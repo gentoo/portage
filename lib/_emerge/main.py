@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -165,6 +165,8 @@ def insert_optional_args(args):
         "--getbinpkgonly": y_or_n,
         "--ignore-world": y_or_n,
         "--jobs": valid_integers,
+        "--jobs-tmpdir-blocks-threshold": valid_floats,
+        "--jobs-tmpdir-files-threshold": valid_floats,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
         "--onlydeps-with-ideps": y_or_n,
@@ -521,6 +523,14 @@ def parse_opts(tmpcmdline, silent=False):
         "--jobs": {
             "shortopt": "-j",
             "help": "Specifies the number of packages to build " + "simultaneously.",
+            "action": "store",
+        },
+        "--jobs-tmpdir-blocks-threshold": {
+            "help": "Specifies maximum used blocks ratio when starting a new job.",
+            "action": "store",
+        },
+        "--jobs-tmpdir-files-threshold": {
+            "help": "Specifies maximum used files ratio when starting a new job.",
             "action": "store",
         },
         "--keep-going": {
@@ -1033,6 +1043,42 @@ def parse_opts(tmpcmdline, silent=False):
 
         myoptions.jobs = jobs
 
+    if myoptions.jobs_tmpdir_blocks_threshold == "True":
+        myoptions.jobs_tmpdir_blocks_threshold = None
+
+    if myoptions.jobs_tmpdir_blocks_threshold:
+        try:
+            jobs_tmpdir_blocks_threshold = float(myoptions.jobs_tmpdir_blocks_threshold)
+        except ValueError:
+            jobs_tmpdir_blocks_threshold = 0.0
+
+        if jobs_tmpdir_blocks_threshold <= 0.0 or jobs_tmpdir_blocks_threshold > 1.0:
+            jobs_tmpdir_blocks_threshold = None
+            if not silent:
+                parser.error(
+                    f"Invalid --jobs-tmpdir-blocks-threshold: '{myoptions.jobs_tmpdir_blocks_threshold}'\n"
+                )
+
+        myoptions.jobs_tmpdir_blocks_threshold = jobs_tmpdir_blocks_threshold
+
+    if myoptions.jobs_tmpdir_files_threshold == "True":
+        myoptions.jobs_tmpdir_files_threshold = None
+
+    if myoptions.jobs_tmpdir_files_threshold:
+        try:
+            jobs_tmpdir_files_threshold = float(myoptions.jobs_tmpdir_files_threshold)
+        except ValueError:
+            jobs_tmpdir_files_threshold = 0.0
+
+        if jobs_tmpdir_files_threshold <= 0.0 or jobs_tmpdir_files_threshold > 1.0:
+            jobs_tmpdir_files_threshold = None
+            if not silent:
+                parser.error(
+                    f"Invalid --jobs-tmpdir-files-threshold: '{myoptions.jobs_tmpdir_files_threshold}'\n"
+                )
+
+        myoptions.jobs_tmpdir_files_threshold = jobs_tmpdir_files_threshold
+
     if myoptions.load_average == "True":
         myoptions.load_average = None
 
@@ -1304,6 +1350,27 @@ def emerge_main(args: Optional[list[str]] = None):
     emerge_config.action, emerge_config.opts, emerge_config.args = parse_opts(
         tmpcmdline
     )
+    if (
+        "--jobs-tmpdir-blocks-threshold" in emerge_config.opts
+        and "keepwork" in emerge_config.running_config.settings.features
+    ):
+        writemsg_level(
+            "--jobs-tmpdir-blocks-threshold conflicts with FEATURES=keepwork\n",
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+        return 1
+
+    if (
+        "--jobs-tmpdir-files-threshold" in emerge_config.opts
+        and "keepwork" in emerge_config.running_config.settings.features
+    ):
+        writemsg_level(
+            "--jobs-tmpdir-files-threshold conflicts with FEATURES=keepwork\n",
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+        return 1
 
     try:
         return run_action(emerge_config)
