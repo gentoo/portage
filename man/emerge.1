@@ -689,6 +689,18 @@ Note that interactive packages currently force a setting
 of \fI\-\-jobs=1\fR. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
 .TP
+.BR \-\-jobs\-tmpdir\-require\-free\-gb[=GB]
+Specifies the required remainnig capacity (in GiB) of \fPORTAGE_TMPDIR\fR
+before additional emerge jobs are started. A decaying function is used to
+reduce the limit for every additional emerge job after the second.
+Specifiy \fI0\fR to disable this check. Defaults to \fI18\fR GiB.
+.TP
+.BR \-\-jobs\-tmpdir\-require\-free\-kilo\-inodes[=KILO\-INODES]
+Specifies the required remaining inodes (in thousands) of \fPORTAGE_TMPDIR\fR
+before additional emerge emerge job are started. A decaying function is used to
+reduce the limit for every additional emerge job after the second.
+Set to \fI0\fR to disable this check. Defaults to \fI1100\fR.
+.TP
 .BR "\-\-keep\-going [ y | n ]"
 Continue as much as possible after an error. When an error occurs,
 dependencies are recalculated for remaining packages and any with
