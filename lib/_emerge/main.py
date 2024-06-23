@@ -154,6 +154,8 @@ def insert_optional_args(args):
         "--getbinpkgonly": y_or_n,
         "--ignore-world": y_or_n,
         "--jobs": valid_integers,
+        "--jobs-tmpdir-require-free-gb": valid_integers,
+        "--jobs-tmpdir-require-free-kilo-inodes": valid_integers,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
         "--onlydeps-with-ideps": y_or_n,
@@ -512,6 +514,14 @@ def parse_opts(tmpcmdline, silent=False):
         "--jobs": {
             "shortopt": "-j",
             "help": "Specifies the number of packages to build " + "simultaneously.",
+            "action": "store",
+        },
+        "--jobs-tmpdir-require-free-gb": {
+            "help": "Specifies the required remaining capacity (in GiB) of PORTAGE_TMPDIR before a new emerge job is started. Set to 0 to disable this check",
+            "action": "store",
+        },
+        "--jobs-tmpdir-require-free-kilo-inodes": {
+            "help": "Specifies the required remaining inodes (in thousands) of PORTAGE_TMPDIR before a new emerge job is started. Set to 0 to disable this check",
             "action": "store",
         },
         "--keep-going": {
@@ -1023,6 +1033,34 @@ def parse_opts(tmpcmdline, silent=False):
                 parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
 
         myoptions.jobs = jobs
+
+    if myoptions.jobs_tmpdir_require_free_gb:
+        try:
+            jobs_tmpdir_require_free_gb = int(myoptions.jobs_tmpdir_require_free_gb)
+        except ValueError:
+            jobs_tmpdir_require_free_gb = 0
+            if not silent:
+                parser.error(
+                    f"Invalid --jobs-tmpdir-require-free-gb parameter: '{myoptions.jobs_tmpdir_require_free_gb}'\n"
+                )
+
+        myoptions.jobs_tmpdir_require_free_gb = jobs_tmpdir_require_free_gb
+
+    if myoptions.jobs_tmpdir_require_free_kilo_inodes:
+        try:
+            jobs_tmpdir_require_free_kilo_inodes = int(
+                myoptions.jobs_tmpdir_require_free_kilo_indoes
+            )
+        except ValueError:
+            jobs_tmpdir_require_free_kilo_inodes = 0
+            if not silent:
+                parser.error(
+                    f"Invalid --jobs-tmpdir-require-free-kilo-inodes parameter: '{myoptions.jobs_tmpdir_require_free_kilo_indoes}'\n"
+                )
+
+        myoptions.jobs_tmpdir_require_free_kilo_inodes = (
+            jobs_tmpdir_require_free_kilo_inodes
+        )
 
     if myoptions.load_average == "True":
         myoptions.load_average = None

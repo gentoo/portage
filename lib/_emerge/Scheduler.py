@@ -27,6 +27,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
+from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
@@ -65,7 +66,7 @@ FAILURE = 1
 
 
 class Scheduler(PollScheduler):
-    # max time between loadavg checks (seconds)
+    # max time between loadavg and tmpdir statvfs checks (seconds)
     _loadavg_latency = 30
 
     # max time between display status updates (seconds)
@@ -233,6 +234,18 @@ class Scheduler(PollScheduler):
             max_jobs = 1
         self._set_max_jobs(max_jobs)
         self._running_root = trees[trees._running_eroot]["root_config"]
+        self._jobs_tmpdir_require_free_gb = myopts.get("--jobs-tmpdir-require-free-gb")
+        if not self._jobs_tmpdir_require_free_gb:
+            # dev-lang/rust-1.77.1: ~16 GiB
+            # www-client/chromium-126.0.6478.57: ~18 GiB
+            self._jobs_tmpdir_require_free_gb = 18
+        self._jobs_tmpdir_require_free_kilo_inodes = myopts.get(
+            "--jobs-tmpdir-require-free-kilo-inodes"
+        )
+        if not self._jobs_tmpdir_require_free_kilo_inodes:
+            # dev-lang/rust-1.77.1: ~ 450k inodes
+            # www-client/chromium-126.0.6478.57: ~1011K
+            self._jobs_tmpdir_require_free_kilo_inodes = 1100
         self.edebug = 0
         if settings.get("PORTAGE_DEBUG", "") == "1":
             self.edebug = 1
@@ -1816,6 +1829,96 @@ class Scheduler(PollScheduler):
 
     def _running_job_count(self):
         return self._jobs
+
+    _warned_tmpdir_free_space = False
+    _warned_tmpdir_free_inodes = False
+
+    def _can_add_job(self):
+        if not super()._can_add_job():
+            return False
+
+        running_job_count = self._running_job_count()
+        if running_job_count == 0 and not self._merge_wait_queue:
+            # Ensure there is forward progress if there are no running
+            # jobs and no jobs in the _merge_wait_queue.
+            return True
+
+        if (
+            self._jobs_tmpdir_require_free_gb is not None
+            or self._jobs_tmpdir_require_free_kilo_inodes is not None
+        ) and hasattr(os, "statvfs"):
+            tmpdirs = set()
+            for root in self.trees:
+                settings = self.trees[root]["root_config"].settings
+                if settings["PORTAGE_TMPDIR"] in tmpdirs:
+                    continue
+                tmpdirs.add(settings["PORTAGE_TMPDIR"])
+                tmpdir = first_existing(
+                    os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+                )
+                try:
+                    vfs_stat = os.statvfs(tmpdir)
+                except OSError as e:
+                    writemsg_level(
+                        f"!!! statvfs('{tmpdir}'): {e}\n",
+                        noiselevel=-1,
+                        level=logging.ERROR,
+                    )
+                else:
+                    # Use a decaying function to take potential future PORTAGE_TMPDIR consumption
+                    # of currently running jobs and the new job into account.
+                    def scale_to_jobs(num):
+                        # The newly started job is fully taken into account.
+                        res = num
+                        # All currently running jobs are taken into account with less weight,
+                        # since it is likely that they are already using space in PORTAGE_TMPDIR.
+                        for i in range(2, running_job_count + 2):
+                            res += (1 / i) * num
+                        return res
+
+                    if (
+                        self._jobs_tmpdir_require_free_gb
+                        and self._jobs_tmpdir_require_free_gb != 0
+                    ):
+                        required_free_bytes = (
+                            self._jobs_tmpdir_require_free_gb * 1024 * 1024 * 1024
+                        )
+                        required_free_bytes = scale_to_jobs(required_free_bytes)
+
+                        actual_free_bytes = vfs_stat.f_bsize * vfs_stat.f_bavail
+
+                        if actual_free_bytes < required_free_bytes:
+                            if not self._warned_tmpdir_free_space:
+                                msg = f"--- {tmpdir} has not enough free space, emerge job parallelism reduced. free: {actual_free_bytes} bytes, required {required_free_bytes} bytes"
+                                portage.writemsg_stdout(
+                                    colorize("WARN", f"\n{msg}\n"), noiselevel=-1
+                                )
+                                self._logger.log(msg)
+
+                                self._warned_tmpdir_free_space = True
+                            return False
+
+                    if (
+                        self._jobs_tmpdir_require_free_kilo_inodes
+                        and self._jobs_tmpdir_require_free_kilo_inodes != 0
+                    ):
+                        required_free_inodes = (
+                            self._jobs_tmpdir_require_free_kilo_inodes * 1000
+                        )
+                        required_free_inodes = scale_to_jobs(required_free_inodes)
+
+                        if vfs_stat.f_favail < required_free_inodes:
+                            if not self._warned_tmpdir_free_idnoes:
+                                msg = f"--- {tmpdir} has not enough free inodes, emerge job parallelism reduced. free: {vfs_stat.f_favail} inodes, required: {required_free_inodes} inodes"
+                                portage.writemsg_stdout(
+                                    colorize("WARN", f"\n{msg}\n"), noiselevel=-1
+                                )
+                                self._logger.log(msg)
+
+                                self._warned_tmpdir_free_inodes = True
+                            return False
+
+        return True
 
     def _schedule_tasks(self):
         while True:
