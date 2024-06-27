@@ -26,6 +26,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
+from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
@@ -64,7 +65,7 @@ FAILURE = 1
 
 
 class Scheduler(PollScheduler):
-    # max time between loadavg checks (seconds)
+    # max time between loadavg and tmpdir statvfs checks (seconds)
     _loadavg_latency = 30
 
     # max time between display status updates (seconds)
@@ -229,6 +230,10 @@ class Scheduler(PollScheduler):
         if max_jobs is None:
             max_jobs = 1
         self._set_max_jobs(max_jobs)
+        self._jobs_tmpdir_blocks_threshold = myopts.get(
+            "--jobs-tmpdir-blocks-threshold"
+        )
+        self._jobs_tmpdir_files_threshold = myopts.get("--jobs-tmpdir-files-threshold")
         self._running_root = trees[trees._running_eroot]["root_config"]
         self.edebug = 0
         if settings.get("PORTAGE_DEBUG", "") == "1":
@@ -1573,7 +1578,11 @@ class Scheduler(PollScheduler):
         self._main_exit = self._event_loop.create_future()
 
         if (
-            self._max_load is not None
+            (
+                self._max_load is not None
+                or self._jobs_tmpdir_blocks_threshold is not None
+                or self._jobs_tmpdir_files_threshold is not None
+            )
             and self._loadavg_latency is not None
             and (self._max_jobs is True or self._max_jobs > 1)
         ):
@@ -1791,6 +1800,53 @@ class Scheduler(PollScheduler):
 
     def _running_job_count(self):
         return self._jobs
+
+    def _can_add_job(self):
+        if not super()._can_add_job():
+            return False
+
+        running_job_count = self._running_job_count()
+        if running_job_count == 0 and not self._merge_wait_queue:
+            # Ensure there is forward progress if there are no running
+            # jobs and no jobs in the _merge_wait_queue.
+            return True
+
+        if (
+            self._jobs_tmpdir_blocks_threshold is not None
+            or self._jobs_tmpdir_files_threshold is not None
+        ) and hasattr(os, "statvfs"):
+            tmpdirs = set()
+            for root in self.trees:
+                settings = self.trees[root]["root_config"].settings
+                if settings["PORTAGE_TMPDIR"] in tmpdirs:
+                    continue
+                tmpdirs.add(settings["PORTAGE_TMPDIR"])
+                tmpdir = first_existing(
+                    os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+                )
+                try:
+                    vfs_stat = os.statvfs(tmpdir)
+                except OSError as e:
+                    writemsg_level(
+                        f"!!! statvfs('{tmpdir}'): {e}\n",
+                        noiselevel=-1,
+                        level=logging.ERROR,
+                    )
+                else:
+                    if (
+                        self._jobs_tmpdir_blocks_threshold is not None
+                        and (vfs_stat.f_blocks - vfs_stat.f_bavail) / vfs_stat.f_blocks
+                    ) >= self._jobs_tmpdir_blocks_threshold:
+                        return False
+                    if (
+                        self._jobs_tmpdir_files_threshold is not None
+                        and vfs_stat.f_files > 0
+                        and ((vfs_stat.f_files - vfs_stat.f_favail) / vfs_stat.f_files)
+                        >= self._jobs_tmpdir_files_threshold
+                    ):
+                        return False
+
+        return True
 
     def _schedule_tasks(self):
         while True:
