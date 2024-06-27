@@ -1009,7 +1009,7 @@ class portdbapi(dbapi):
 
             if mystat is None:
                 try:
-                    mystat = os.stat(file_path + _download_suffix)
+                    mystat = os.stat(file_path + str(_download_suffix))
                 except OSError:
                     pass
 
