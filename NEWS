@@ -19,6 +19,7 @@ Bug fixes:
   'globskipdots' by default. This is needed to avoid breaking existing
   working ebuilds. Future EAPIs will need to adjust the logic
   added by this change. See bug #907061.
+* make.globals: dd bcachefs_effective.* and bcachefs.* to PORTAGE_XATTR_EXCLUDE
 
 * vartree, movefile: Warn when rewriting a symlink (bug #934514).
 
