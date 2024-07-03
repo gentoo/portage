@@ -287,7 +287,7 @@ class MoveEntTestCase(TestCase):
                     user_config={
                         "make.conf": (
                             f'BINPKG_FORMAT="{binpkg_format}"',
-                            f'FEATURES="binpkg-multi-instance pkgdir-index-trusted"',
+                            'FEATURES="binpkg-multi-instance pkgdir-index-trusted"',
                         ),
                     },
                     debug=False,
