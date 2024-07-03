@@ -1047,10 +1047,10 @@ def fetch(
             if not file_restrict_mirror:
                 location_lists.append(public_mirrors)
 
-            for l in itertools.chain(*location_lists):
+            for location in itertools.chain(*location_lists):
                 filedict[myfile].append(
                     functools.partial(
-                        get_mirror_url, l, myfile, mysettings, mirror_cache
+                        get_mirror_url, location, myfile, mysettings, mirror_cache
                     )
                 )
         if myuri is None:

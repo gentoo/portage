@@ -2795,18 +2795,18 @@ def adjust_config(myopts, settings):
 
 
 def display_missing_pkg_set(root_config, set_name):
-    msg = []
-    msg.append(
+    msgs = []
+    msgs.append(
         f"emerge: There are no sets to satisfy '{colorize('INFORM', set_name)}'. "
         "The following sets exist:"
     )
-    msg.append("")
+    msgs.append("")
 
     for s in sorted(root_config.sets):
-        msg.append(f"    {s}")
-    msg.append("")
+        msgs.append(f"    {s}")
+    msgs.append("")
 
-    writemsg_level("".join(f"{l}\n" for l in msg), level=logging.ERROR, noiselevel=-1)
+    writemsg_level("".join(f"{msg}\n" for msg in msgs), level=logging.ERROR, noiselevel=-1)
 
 
 def relative_profile_path(portdir, abs_profile):
@@ -3053,7 +3053,7 @@ def check_procfs():
         return os.EX_OK
     msg = f"It seems that {procfs_path} is not mounted. You have been warned."
     writemsg_level(
-        "".join(f"!!! {l}\n" for l in textwrap.wrap(msg, 70)),
+        "".join(f"!!! {line}\n" for line in textwrap.wrap(msg, 70)),
         level=logging.ERROR,
         noiselevel=-1,
     )
@@ -3368,15 +3368,15 @@ def repo_name_check(trees):
         pass
 
     if missing_repo_names:
-        msg = []
-        msg.append(
+        msgs = []
+        msgs.append(
             "WARNING: One or more repositories " + "have missing repo_name entries:"
         )
-        msg.append("")
+        msgs.append("")
         for p in missing_repo_names:
             msg.append(f"\t{p}/profiles/repo_name")
-        msg.append("")
-        msg.extend(
+        msgs.append("")
+        msgs.extend(
             textwrap.wrap(
                 "NOTE: Each repo_name entry "
                 + "should be a plain text file containing a unique "
@@ -3384,9 +3384,9 @@ def repo_name_check(trees):
                 70,
             )
         )
-        msg.append("\n")
+        msgs.append("\n")
         writemsg_level(
-            "".join(f"{l}\n" for l in msg), level=logging.WARNING, noiselevel=-1
+            "".join(f"{msg}\n" for msg in msgs), level=logging.WARNING, noiselevel=-1
         )
 
     return bool(missing_repo_names)
@@ -3403,18 +3403,18 @@ def repo_name_duplicate_check(trees):
                     ignored_repos.setdefault(k, []).extend(paths)
 
     if ignored_repos:
-        msg = []
-        msg.append(
+        msgs = []
+        msgs.append(
             "WARNING: One or more repositories " + "have been ignored due to duplicate"
         )
-        msg.append("  profiles/repo_name entries:")
-        msg.append("")
+        msgs.append("  profiles/repo_name entries:")
+        msgs.append("")
         for k in sorted(ignored_repos):
-            msg.append(f"  {', '.join(k)} overrides")
+            msgs.append(f"  {', '.join(k)} overrides")
             for path in ignored_repos[k]:
-                msg.append(f"    {path}")
-            msg.append("")
-        msg.extend(
+                msgs.append(f"    {path}")
+            msgs.append("")
+        msgs.extend(
             "  " + x
             for x in textwrap.wrap(
                 "All profiles/repo_name entries must be unique in order "
@@ -3423,9 +3423,9 @@ def repo_name_duplicate_check(trees):
                 + "/etc/portage/make.conf if you would like to disable this warning."
             )
         )
-        msg.append("\n")
+        msgs.append("\n")
         writemsg_level(
-            "".join(f"{l}\n" for l in msg), level=logging.WARNING, noiselevel=-1
+            "".join(f"{msg}\n" for msg in msgs), level=logging.WARNING, noiselevel=-1
         )
 
     return bool(ignored_repos)

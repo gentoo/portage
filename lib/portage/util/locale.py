@@ -67,9 +67,9 @@ def _check_locale(silent):
             + "en_US.UTF-8) in /etc/locale.gen and setting it "
             + "as LC_CTYPE in make.conf."
         )
-        msg = [l for l in textwrap.wrap(msg, 70)]
+        msg = [line for line in textwrap.wrap(msg, 70)]
         msg.append("")
-        chars = lambda l: "".join(_unicode_decode(chr(x)) for x in l)
+        chars = lambda line: "".join(_unicode_decode(chr(x)) for x in line)
         if uc != ruc:
             msg.extend(
                 [
@@ -85,7 +85,7 @@ def _check_locale(silent):
                 ]
             )
         writemsg_level(
-            "".join([f"!!! {l}\n" for l in msg]), level=logging.ERROR, noiselevel=-1
+            "".join([f"!!! {line}\n" for line in msg]), level=logging.ERROR, noiselevel=-1
         )
         return False
 

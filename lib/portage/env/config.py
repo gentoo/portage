@@ -59,8 +59,8 @@ class GenericFile(UserDict):
 
     def load(self):
         for loader in self.loaders:
-            l = loader(self.filename, None)
-            data, errors = l.load()
+            file = loader(self.filename, None)
+            data, errors = file.load()
             if len(data) and not len(errors):
                 (self.data, self.errors) = (data, errors)
                 return

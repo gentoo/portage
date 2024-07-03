@@ -124,8 +124,8 @@ class database(fs_template.FsBased):
                     raise
                 del e
                 continue
-            for l in dir_list:
-                p = os.path.join(dir_path, l)
+            for directory in dir_list:
+                p = os.path.join(dir_path, directory)
                 try:
                     st = os.lstat(p)
                 except OSError:

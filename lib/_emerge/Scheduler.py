@@ -445,15 +445,15 @@ class Scheduler(PollScheduler):
                     level=logging.INFO,
                     noiselevel=-1,
                 )
-                msg = [""]
+                msgs = [""]
                 for pkg in interactive_tasks:
                     pkg_str = "  " + colorize("INFORM", str(pkg.cpv))
                     if pkg.root_config.settings["ROOT"] != "/":
                         pkg_str += " for " + pkg.root
-                    msg.append(pkg_str)
-                msg.append("")
+                    msgs.append(pkg_str)
+                msgs.append("")
                 writemsg_level(
-                    "".join(f"{l}\n" for l in msg),
+                    "".join(f"{msg}\n" for msg in msgs),
                     level=logging.INFO,
                     noiselevel=-1,
                 )
@@ -954,15 +954,15 @@ class Scheduler(PollScheduler):
                             # bintree.inject call which moves the file.
                             fetched = fetcher.pkg_path
                         else:
-                            msg = (
+                            msgs = (
                                 "Fetching in the background:",
                                 fetcher.pkg_path,
                                 "To view fetch progress, run in another terminal:",
                                 f"tail -f {self._fetch_log}",
                             )
                             out = portage.output.EOutput()
-                            for l in msg:
-                                out.einfo(l)
+                            for msg in msgs:
+                                out.einfo(msg)
                         if await fetcher.async_wait() != os.EX_OK:
                             failures += 1
                             self._record_pkg_failure(x, settings, fetcher.returncode)
@@ -1121,14 +1121,14 @@ class Scheduler(PollScheduler):
             # for ensuring sane $PWD (bug #239560) and storing elog messages.
             tmpdir = root_config.settings.get("PORTAGE_TMPDIR", "")
             if not tmpdir or not os.path.isdir(tmpdir):
-                msg = (
+                msgs = (
                     "The directory specified in your PORTAGE_TMPDIR variable does not exist:",
                     tmpdir,
                     "Please create this directory or correct your PORTAGE_TMPDIR setting.",
                 )
                 out = portage.output.EOutput()
-                for l in msg:
-                    out.eerror(l)
+                for msg in msgs:
+                    out.eerror(msg)
                 return FAILURE
 
             if self._background:

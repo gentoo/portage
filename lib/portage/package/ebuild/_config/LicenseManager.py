@@ -95,15 +95,15 @@ class LicenseManager:
             rValue.append("@" + group_name)
         elif license_group:
             traversed_groups.add(group_name)
-            for l in license_group:
-                if l.startswith("-"):
+            for lic in license_group:
+                if lic.startswith("-"):
                     writemsg(
                         _("Skipping invalid element %s" " in license group '%s'\n")
-                        % (l, group_name),
+                        % (lic, group_name),
                         noiselevel=-1,
                     )
                 else:
-                    rValue.extend(self._expandLicenseToken(l, traversed_groups))
+                    rValue.extend(self._expandLicenseToken(lic, traversed_groups))
         else:
             if self._license_groups and group_name not in self._undef_lic_groups:
                 self._undef_lic_groups.add(group_name)

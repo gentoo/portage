@@ -1309,12 +1309,12 @@ class vardbapi(dbapi):
                     raise
             else:
                 new_needed = []
-                for l in needed_lines:
-                    l = l.rstrip("\n")
-                    if not l:
+                for line in needed_lines:
+                    line = line.rstrip("\n")
+                    if not line:
                         continue
                     try:
-                        entry = NeededEntry.parse(needed_filename, l)
+                        entry = NeededEntry.parse(needed_filename, line)
                     except InvalidData as e:
                         writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                         continue
@@ -4154,8 +4154,8 @@ class dblink:
     def _elog(self, funcname, phase, lines):
         func = getattr(portage.elog.messages, funcname)
         if self._scheduler is None:
-            for l in lines:
-                func(l, phase=phase, key=self.mycpv)
+            for line in lines:
+                func(line, phase=phase, key=self.mycpv)
         else:
             background = self.settings.get("PORTAGE_BACKGROUND") == "1"
             log_path = None

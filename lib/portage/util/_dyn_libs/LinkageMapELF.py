@@ -281,29 +281,29 @@ class LinkageMapELF:
                     raise
                 raise CommandNotFound(args[0])
             else:
-                for l in proc.stdout:
+                for line in proc.stdout:
                     try:
-                        l = _unicode_decode(
-                            l, encoding=_encodings["content"], errors="strict"
+                        line = _unicode_decode(
+                            line, encoding=_encodings["content"], errors="strict"
                         )
                     except UnicodeDecodeError:
-                        l = _unicode_decode(
-                            l, encoding=_encodings["content"], errors="replace"
+                        line = _unicode_decode(
+                            line, encoding=_encodings["content"], errors="replace"
                         )
                         writemsg_level(
                             _(
                                 "\nError decoding characters "
                                 "returned from scanelf: %s\n\n"
                             )
-                            % (l,),
+                            % (line,),
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
-                    l = l[3:].rstrip("\n")
-                    if not l:
+                    line = line[3:].rstrip("\n")
+                    if not line:
                         continue
                     try:
-                        entry = NeededEntry.parse("scanelf", l)
+                        entry = NeededEntry.parse("scanelf", line)
                     except InvalidData as e:
                         writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                         continue
@@ -369,23 +369,23 @@ class LinkageMapELF:
 
         while True:
             try:
-                owner, location, l = lines.pop()
+                owner, location, line = lines.pop()
             except IndexError:
                 break
-            l = l.rstrip("\n")
-            if not l:
+            line = line.rstrip("\n")
+            if not line:
                 continue
-            if "\0" in l:
+            if "\0" in line:
                 # os.stat() will raise "TypeError: must be encoded string
                 # without NULL bytes, not str" in this case.
                 writemsg_level(
-                    _("\nLine contains null byte(s) " "in %s: %s\n\n") % (location, l),
+                    _("\nLine contains null byte(s) " "in %s: %s\n\n") % (location, line),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
                 continue
             try:
-                entry = NeededEntry.parse(location, l)
+                entry = NeededEntry.parse(location, line)
             except InvalidData as e:
                 writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                 continue

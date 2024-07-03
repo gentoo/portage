@@ -273,21 +273,21 @@ class SQLDatabase(template.database):
             raise cache_errors.CacheCorruption(self, cpv, e)
 
         oldcpv = None
-        l = []
+        items = []
         for x, y, v in self.con.fetchall():
             if oldcpv != x:
                 if oldcpv is not None:
-                    d = dict(l)
+                    d = dict(items)
                     if "_eclasses_" in d:
                         d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
                     else:
                         d["_eclasses_"] = {}
                     yield cpv, d
-                l.clear()
+                items.clear()
                 oldcpv = x
-            l.append((y, v))
+            items.append((y, v))
         if oldcpv is not None:
-            d = dict(l)
+            d = dict(items)
             if "_eclasses_" in d:
                 d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
             else:

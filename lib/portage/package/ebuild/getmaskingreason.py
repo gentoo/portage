@@ -80,13 +80,13 @@ def getmaskingreason(
     for profile in locations:
         pmask_filename = os.path.join(profile, "package.mask")
         node = None
-        for l, recursive_filename in grablines(
+        for line, recursive_filename in grablines(
             pmask_filename, recursive=1, remember_source_file=True
         ):
             if node is None or node[0] != recursive_filename:
                 node = (recursive_filename, [])
                 pmasklists.append(node)
-            node[1].append(l)
+            node[1].append(line)
 
     pmaskdict = settings._mask_manager._pmaskdict
     if mycp in pmaskdict:
@@ -98,18 +98,18 @@ def getmaskingreason(
                     comment_valid = -1
                     pmask_filename = pmask[0]
                     for i in range(len(pmask[1])):
-                        l = pmask[1][i].strip()
+                        line = pmask[1][i].strip()
                         try:
                             l_atom = Atom(
-                                l, allow_repo=True, allow_wildcard=True
+                                line, allow_repo=True, allow_wildcard=True
                             ).without_repo
                         except InvalidAtom:
                             l_atom = None
-                        if l == "":
+                        if line == "":
                             comment = ""
                             comment_valid = -1
-                        elif l[0] == "#":
-                            comment += l + "\n"
+                        elif line[0] == "#":
+                            comment += line + "\n"
                             comment_valid = i + 1
                         elif l_atom == x:
                             if comment_valid != i:

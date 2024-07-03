@@ -2010,14 +2010,14 @@ _ld_so_include_re = re.compile(r"^include\s+(\S.*)")
 
 def getlibpaths(root, env=None):
     def read_ld_so_conf(path):
-        for l in grabfile(path):
-            include_match = _ld_so_include_re.match(l)
+        for file in grabfile(path):
+            include_match = _ld_so_include_re.match(file)
             if include_match is not None:
                 subpath = os.path.join(os.path.dirname(path), include_match.group(1))
                 for p in glob.glob(subpath):
                     yield from read_ld_so_conf(p)
             else:
-                yield l
+                yield file
 
     """ Return a list of paths that are used for library lookups """
     if env is None:

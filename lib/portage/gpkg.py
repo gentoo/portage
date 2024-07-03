@@ -545,11 +545,11 @@ class checksum_helper:
         good_signature = False
         trust_signature = False
 
-        for l in gpg_status.splitlines():
-            if l.startswith("[GNUPG:] GOODSIG"):
+        for line in gpg_status.splitlines():
+            if line.startswith("[GNUPG:] GOODSIG"):
                 good_signature = True
 
-            if l.startswith("[GNUPG:] TRUST_ULTIMATE") or l.startswith(
+            if line.startswith("[GNUPG:] TRUST_ULTIMATE") or line.startswith(
                 "[GNUPG:] TRUST_FULLY"
             ):
                 trust_signature = True

@@ -71,8 +71,8 @@ async def _setup_locale(settings):
         # check_locale() returns None when check can not be executed.
         if await async_check_locale(silent=True, env=settings.environ()) is False:
             # try another locale
-            for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
-                settings["LC_CTYPE"] = l
+            for locale in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
+                settings["LC_CTYPE"] = locale
                 if await async_check_locale(silent=True, env=settings.environ()):
                     # TODO: output the following only once
                     # writemsg(

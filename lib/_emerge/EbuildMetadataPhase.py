@@ -208,11 +208,11 @@ class EbuildMetadataPhase(SubProcess):
             ).splitlines()
             metadata = {}
             metadata_valid = True
-            for l in metadata_lines:
-                if "=" not in l:
+            for line in metadata_lines:
+                if "=" not in line:
                     metadata_valid = False
                     break
-                key, value = l.split("=", 1)
+                key, value = line.split("=", 1)
                 metadata[key] = value
 
             if metadata_valid:
