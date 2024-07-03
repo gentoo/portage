@@ -72,7 +72,8 @@ def collect_ebuild_messages(path):
                     raise ValueError(msgtype)
             except ValueError:
                 writemsg(
-                    _("!!! malformed entry in " "log file: '%s': %s\n") % (filename, line),
+                    _("!!! malformed entry in " "log file: '%s': %s\n")
+                    % (filename, line),
                     noiselevel=-1,
                 )
                 continue

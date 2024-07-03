@@ -2806,7 +2806,9 @@ def display_missing_pkg_set(root_config, set_name):
         msgs.append(f"    {s}")
     msgs.append("")
 
-    writemsg_level("".join(f"{msg}\n" for msg in msgs), level=logging.ERROR, noiselevel=-1)
+    writemsg_level(
+        "".join(f"{msg}\n" for msg in msgs), level=logging.ERROR, noiselevel=-1
+    )
 
 
 def relative_profile_path(portdir, abs_profile):

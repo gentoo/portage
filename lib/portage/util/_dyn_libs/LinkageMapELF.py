@@ -379,7 +379,8 @@ class LinkageMapELF:
                 # os.stat() will raise "TypeError: must be encoded string
                 # without NULL bytes, not str" in this case.
                 writemsg_level(
-                    _("\nLine contains null byte(s) " "in %s: %s\n\n") % (location, line),
+                    _("\nLine contains null byte(s) " "in %s: %s\n\n")
+                    % (location, line),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
