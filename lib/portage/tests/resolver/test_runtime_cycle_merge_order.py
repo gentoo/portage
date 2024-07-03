@@ -204,8 +204,8 @@ class RuntimeCycleMergeOrderTestCase(TestCase):
             debug=False,
             user_config={
                 "make.conf": (
-                    f'ACCEPT_KEYWORDS="~x86"',
-                    f'USE="http2"',
+                    'ACCEPT_KEYWORDS="~x86"',
+                    'USE="http2"',
                 ),
             },
         )

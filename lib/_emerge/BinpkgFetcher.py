@@ -30,7 +30,7 @@ class BinpkgFetcher(CompositeTask):
         binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
         if not binpkg_path:
             raise FileNotFound(
-                f"PATH not found in the binpkg index, the binhost's portage is probably out of date."
+                "PATH not found in the binpkg index, the binhost's portage is probably out of date."
             )
         binpkg_format = get_binpkg_format(binpkg_path)
 

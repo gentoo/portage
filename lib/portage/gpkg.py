@@ -384,7 +384,7 @@ class tar_stream_reader:
             try:
                 if self.proc.wait() != os.EX_OK:
                     if not self.killed:
-                        writemsg(colorize("BAD", f"GPKG external program failed.\n"))
+                        writemsg(colorize("BAD", "GPKG external program failed.\n"))
                         raise CompressorOperationFailed("decompression failed")
             finally:
                 self.proc.stdout.close()
@@ -2120,7 +2120,7 @@ class gpkg:
         return the first one.
         """
         if self.gpkg_version not in (os.path.basename(f) for f in tar.getnames()):
-            raise InvalidBinaryPackageFormat(f"Invalid gpkg file")
+            raise InvalidBinaryPackageFormat("Invalid gpkg file")
 
         if self.basename and self.prefix and not self.prefix.startswith(self.basename):
             writemsg(

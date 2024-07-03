@@ -47,7 +47,7 @@ class BinpkgVerifier(CompositeTask):
             if bintree.dbapi.cpv_exists(self.pkg.cpv):
                 self.scheduler.output(
                     f"!!! Tried to use non-existent binary for '{self.pkg.cpv}'\n"
-                    + f"!!! Likely caused by an outdated index. Run 'emaint binhost -f'.\n",
+                    + "!!! Likely caused by an outdated index. Run 'emaint binhost -f'.\n",
                     log_path=self.logfile,
                     background=self.background,
                 )
