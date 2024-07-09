@@ -943,7 +943,9 @@ class RepoConfigLoader:
                         del prepos[repo_name]
                         continue
 
-                    if repo.name != repo_name:
+                    if repo.name != repo_name and (
+                        repo.aliases is None or repo_name not in repo.aliases
+                    ):
                         writemsg_level(
                             "!!! %s\n"
                             % _(
@@ -957,13 +959,13 @@ class RepoConfigLoader:
                         del prepos[repo_name]
                         continue
 
-                location_map[repo.location] = repo_name
-                treemap[repo_name] = repo.location
+                location_map[repo.location] = repo.name
+                treemap[repo.name] = repo.location
 
         # Add alias mappings, but never replace unaliased mappings.
         for repo_name, repo in list(prepos.items()):
             names = set()
-            names.add(repo_name)
+            names.add(repo.name)
             if repo.aliases:
                 aliases = stack_lists([repo.aliases], incremental=True)
                 names.update(aliases)
