@@ -22,6 +22,9 @@ Bug fixes:
 
 * vartree, movefile: Warn when rewriting a symlink (bug #934514).
 
+* repository: config: Allow a repository to be configured using one of its
+  aliases rather than its primary name.
+
 portage-3.0.65 (2024-06-04)
 --------------
 
