@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -386,6 +386,7 @@ class _pkg_str(str):
         file_size: Optional[int] = None,
         mtime: Optional[int] = None,
         db: Any = None,
+        repoconfig: Any = None,
     ):
         return str.__new__(cls, cpv)
 
@@ -402,6 +403,7 @@ class _pkg_str(str):
         file_size: Optional[int] = None,
         mtime: Optional[int] = None,
         db: Any = None,
+        repoconfig: Any = None,
     ):
         if not isinstance(cpv, str):
             # Avoid TypeError from str.__init__ with PyPy.
@@ -420,6 +422,8 @@ class _pkg_str(str):
             self.__dict__["_settings"] = settings
         if db is not None:
             self.__dict__["_db"] = db
+        if repoconfig is not None:
+            self.__dict__["_repoconfig"] = repoconfig
         if eapi is not None:
             self.__dict__["eapi"] = eapi
 

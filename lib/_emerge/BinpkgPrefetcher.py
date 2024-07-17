@@ -51,6 +51,13 @@ class BinpkgPrefetcher(CompositeTask):
             self.wait()
             return
 
+        if self._bintree.get_local_repo_location(self.pkg.cpv):
+            os.rename(self.pkg_path, self.pkg_allocated_path)
+            self._current_task = None
+            self.returncode = os.EX_OK
+            self.wait()
+            return
+
         injected_pkg = None
         stdout_orig = sys.stdout
         stderr_orig = sys.stderr

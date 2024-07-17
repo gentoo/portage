@@ -34,8 +34,14 @@ class BinpkgFetcher(CompositeTask):
             )
         binpkg_format = get_binpkg_format(binpkg_path)
 
+        getname_kwargs = {}
+        if not bintree.get_local_repo_location(pkg.cpv):
+            getname_kwargs.update(
+                dict(allocate_new=True, remote_binpkg_format=binpkg_format)
+            )
+
         self.pkg_allocated_path = pkg.root_config.trees["bintree"].getname(
-            pkg.cpv, allocate_new=True, remote_binpkg_format=binpkg_format
+            pkg.cpv, **getname_kwargs
         )
         self.pkg_path = self.pkg_allocated_path + ".partial"
 

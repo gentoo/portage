@@ -170,7 +170,7 @@ class Binpkg(CompositeTask):
         pkg_count = self.pkg_count
         fetcher = None
 
-        if self.opts.getbinpkg and self._bintree.isremote(pkg.cpv):
+        if self.opts.getbinpkg and self._bintree.download_required(pkg.cpv):
             fetcher = BinpkgFetcher(
                 background=self.background,
                 logfile=self.settings.get("PORTAGE_LOG_FILE"),
@@ -245,7 +245,10 @@ class Binpkg(CompositeTask):
         pkg = self.pkg
         pkg_count = self.pkg_count
 
-        if self._fetched_pkg:
+        if self._fetched_pkg and self._bintree.get_local_repo_location(pkg.cpv):
+            os.rename(self._fetched_pkg, self._pkg_allocated_path)
+            pkg_path = self._pkg_allocated_path
+        elif self._fetched_pkg:
             stdout_orig = sys.stdout
             stderr_orig = sys.stderr
             out = io.StringIO()

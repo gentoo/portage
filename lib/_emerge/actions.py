@@ -1882,7 +1882,7 @@ def action_info(settings, trees, myopts, myfiles):
             matches.reverse()
             for match in matches:
                 if pkg_type == "binary":
-                    if db.bintree.isremote(match):
+                    if db.bintree.download_required(match):
                         continue
                 auxkeys = ["EAPI", "DEFINED_PHASES"]
                 metadata = dict(zip(auxkeys, db.aux_get(match, auxkeys)))

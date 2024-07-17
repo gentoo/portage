@@ -468,7 +468,7 @@ class bindbapi(fakedbapi):
         pkg = getattr(pkg, "cpv", pkg)
 
         filesdict = {}
-        if not self.bintree.isremote(pkg):
+        if not self.bintree.download_required(pkg):
             pass
         else:
             metadata = self.bintree._remotepkgs[self._instance_key(pkg)]
@@ -1630,7 +1630,11 @@ class binarytree:
                 remote_base_uri = pkgindex.header.get("URI", base_url)
                 for d in pkgindex.packages:
                     cpv = _pkg_str(
-                        d["CPV"], metadata=d, settings=self.settings, db=self.dbapi
+                        d["CPV"],
+                        metadata=d,
+                        settings=self.settings,
+                        db=self.dbapi,
+                        repoconfig=repo,
                     )
                     # Local package instances override remote instances
                     # with the same instance_key.
@@ -2265,6 +2269,14 @@ class binarytree:
             path = self._pkg_paths.get(instance_key)
             if path is not None:
                 filename = os.path.join(self.pkgdir, path)
+            elif instance_key in self._remotepkgs:
+                remote_metadata = self._remotepkgs[instance_key]
+                location = self.get_local_repo_location(cpv)
+                if location:
+                    return (
+                        os.path.join(location, remote_metadata["PATH"]),
+                        int(remote_metadata["BUILD_ID"]),
+                    )
 
         if filename is None and not allocate_new:
             try:
@@ -2422,7 +2434,10 @@ class binarytree:
 
     def isremote(self, pkgname):
         """Returns true if the package is kept remotely and it has not been
-        downloaded (or it is only partially downloaded)."""
+        downloaded (or it is only partially downloaded), or if the package
+        is cached in a binrepo location (use download_required to check if
+        cached file has correct size and mtime).
+        """
         if self._remotepkgs is None:
             return False
         instance_key = self.dbapi._instance_key(pkgname)
@@ -2433,6 +2448,55 @@ class binarytree:
         # Presence in self._remotepkgs implies that it's remote. When a
         # package is downloaded, state is updated by self.inject().
         return True
+
+    def download_required(self, pkgname):
+        """Returns True if package is remote and download is required."""
+        if not self._remotepkgs:
+            return False
+
+        instance_key = self.dbapi._instance_key(pkgname)
+        remote_metadata = self._remotepkgs.get(instance_key)
+        if remote_metadata is None:
+            return False
+
+        if not remote_metadata["CPV"]._repoconfig.location:
+            # In this case the package would have been removed from
+            # self._remotepkgs if it was already downloaded.
+            return True
+
+        pkg_path = self.getname(pkgname)
+        try:
+            st = os.stat(pkg_path)
+        except OSError:
+            return True
+
+        return (
+            int(remote_metadata["SIZE"]) != st.st_size
+            or int(remote_metadata["_mtime_"]) != st[stat.ST_MTIME]
+        )
+
+    def get_local_repo_location(self, pkgname):
+        """Returns local repo location associated with pkgname or None
+        if a location is not associated."""
+        # Since pkgname._repoconfig is not guaranteed to be present
+        # here, retrieve it from the remote metadata.
+        if not self._remotepkgs:
+            return None
+        instance_key = self.dbapi._instance_key(pkgname)
+        remote_metadata = self._remotepkgs.get(instance_key)
+        if remote_metadata is None:
+            return False
+        repoconfig = remote_metadata["CPV"]._repoconfig
+        if repoconfig is None:
+            return None
+        if repoconfig.location:
+            location = normalize_path(repoconfig.location)
+            if location == self.pkgdir:
+                # If the cache location is set to the same location as
+                # PKGDIR, then behave as though it is unset so that
+                # packages will be correctly injected into PKGDIR.
+                return None
+        return repoconfig.location
 
     def get_pkgindex_uri(self, cpv):
         """Returns the URI to the Packages file for a given package."""

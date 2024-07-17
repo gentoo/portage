@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "May 2024" "Portage @VERSION@" "Portage"
+.TH "PORTAGE" "5" "Jul 2024" "Portage @VERSION@" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -666,6 +666,11 @@ overriding the value from \fBmake.conf\fR(5).
 .B priority
 Specifies priority of given repository. When a package exists in multiple
 repositories, those with higher priority are preferred.
+.TP
+.B location
+Specify a cache location which serves as a partial local mirror of a
+remote repository. If unset then the effective default is PKGDIR
+(see \fBmake.conf\fR(5)).
 .TP
 .B sync\-uri
 Specifies URI of repository used for `emerge \-\-getbinpkg`.

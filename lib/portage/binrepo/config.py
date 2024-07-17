@@ -16,6 +16,7 @@ class BinRepoConfig:
         "name",
         "name_fallback",
         "fetchcommand",
+        "location",
         "priority",
         "resumecommand",
         "sync_uri",
@@ -40,6 +41,8 @@ class BinRepoConfig:
         indent = " " * 4
         repo_msg = []
         repo_msg.append(self.name or self.name_fallback)
+        if self.location:
+            repo_msg.append(indent + "location: " + self.location)
         if self.priority is not None:
             repo_msg.append(indent + "priority: " + str(self.priority))
         repo_msg.append(indent + "sync-uri: " + self.sync_uri)

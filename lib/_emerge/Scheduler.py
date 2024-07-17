@@ -830,7 +830,7 @@ class Scheduler(PollScheduler):
         elif (
             pkg.type_name == "binary"
             and "--getbinpkg" in self.myopts
-            and pkg.root_config.trees["bintree"].isremote(pkg.cpv)
+            and pkg.root_config.trees["bintree"].download_required(pkg.cpv)
         ):
             prefetcher = BinpkgPrefetcher(
                 background=True, pkg=pkg, scheduler=self._sched_iface
@@ -939,7 +939,7 @@ class Scheduler(PollScheduler):
 
                     # Display fetch on stdout, so that it's always clear what
                     # is consuming time here.
-                    if bintree.isremote(x.cpv):
+                    if bintree.download_required(x.cpv):
                         fetcher = self._get_prefetcher(x)
                         if fetcher is not None and not fetcher.isAlive():
                             # Cancel it because it hasn't started yet.
@@ -983,7 +983,9 @@ class Scheduler(PollScheduler):
                         continue
 
                     current_task = None
-                    if fetched:
+                    if fetched and bintree.get_local_repo_location(x.cpv):
+                        os.rename(fetched, fetcher.pkg_allocated_path)
+                    elif fetched:
                         if not bintree.inject(
                             x.cpv,
                             current_pkg_path=fetched,
