@@ -162,7 +162,7 @@ gcc_warn_check() {
 		# Force C locale to work around slow multibyte locales, bug #160234
 		# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
 		# binary when we run in the C locale.
-		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E -a "${joined_msgs}" "${PORTAGE_LOG_FILE}" | uniq)
+		f=$(LC_ALL='C' sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' < "${PORTAGE_LOG_FILE}" | LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E -a "${joined_msgs}" | uniq)
 		if [[ -n ${f} ]] ; then
 			abort="yes"
 
