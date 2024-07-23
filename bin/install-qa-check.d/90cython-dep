@@ -13,7 +13,7 @@ cython_dep_check() {
 		# In debug mode, the grep calls will produce false positives
 		# if they're shown in the trace.
 		local reset_debug=0
-		if [[ ${-/x/} != $- ]] ; then
+		if [[ $- == *x* ]] ; then
 			set +x
 			reset_debug=1
 		fi

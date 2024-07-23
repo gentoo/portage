@@ -473,7 +473,7 @@ __try_source() {
 	if [[ -r ${1} && -f ${1} ]]; then
 		local debug_on=false
 
-		if [[ "${PORTAGE_DEBUG}" == "1" ]] && [[ "${-/x/}" == "$-" ]]; then
+		if [[ ${PORTAGE_DEBUG} == 1 ]] && [[ $- != *x* ]]; then
 			debug_on=true
 		fi
 
@@ -628,7 +628,7 @@ if ! has "${EBUILD_PHASE}" clean cleanrm ; then
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 		unset PORTAGE_EXPLICIT_INHERIT
 
-		if [[ ${PORTAGE_DEBUG} != 1 || ${-/x/} != $- ]] ; then
+		if [[ ${PORTAGE_DEBUG} != 1 || $- == *x* ]] ; then
 			source "${EBUILD}" || die "error sourcing ebuild"
 		else
 			set -x
