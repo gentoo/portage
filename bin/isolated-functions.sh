@@ -173,7 +173,7 @@ die() {
 	# __dump_trace is useless when the main script is a helper binary
 	local main_index
 	(( main_index = ${#BASH_SOURCE[@]} - 1 ))
-	if has ${BASH_SOURCE[${main_index}]##*/} ebuild.sh misc-functions.sh ; then
+	if [[ ${BASH_SOURCE[main_index]##*/} == @(ebuild|misc-functions).sh ]]; then
 	__dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
@@ -207,8 +207,8 @@ die() {
 	# misc-functions.sh, since those are the only cases where the environment
 	# contains the hook functions. When necessary (like for __helpers_die), die
 	# hooks are automatically called later by a misc-functions.sh invocation.
-	if has ${BASH_SOURCE[${main_index}]##*/} ebuild.sh misc-functions.sh && \
-		[[ ${EBUILD_PHASE} != depend ]] ; then
+	if [[ ${EBUILD_PHASE} != depend && ${BASH_SOURCE[main_index]##*/} == @(ebuild|misc-functions).sh ]]
+	then
 		local x
 		for x in ${EBUILD_DEATH_HOOKS}; do
 			${x} "$@" >&2 1>&2

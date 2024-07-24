@@ -238,7 +238,7 @@ use() {
 		# any number of phase hooks, so that global scope eclass
 		# initialization can by migrated to phase hooks in new EAPIs.
 		# Example: add_phase_hook before pkg_setup ${ECLASS}_pre_pkg_setup
-		#if [[ -n ${EAPI} ]] && ! has "${EAPI}" 0 1 2 3 ; then
+		#if [[ ${EAPI} && ${EAPI} != [0123] ]]; then
 		#	die "use() called during invalid phase: ${EBUILD_PHASE}"
 		#fi
 		true
@@ -371,8 +371,7 @@ unpack() {
 		esac
 
 		if ___eapi_unpack_is_case_sensitive \
-				&& ! has "${suffix}" "${suffix_insensitive}" \
-					ZIP Z 7Z RAR LHA LHa; then
+				&& [[ ${suffix} != @("${suffix_insensitive}"|ZIP|Z|7Z|RAR|LH[Aa]) ]]; then
 			suffix_known=""
 		fi
 

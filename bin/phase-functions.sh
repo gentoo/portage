@@ -929,7 +929,7 @@ __ebuild_phase_funcs() {
 				src_test() { default; }
 
 			# defaults starting with EAPI 4
-			if ! has ${eapi} 2 3; then
+			if [[ ${eapi} != [23] ]]; then
 				[[ ${phase_func} == src_install ]] && \
 					default_src_install() { __eapi4_src_install; }
 
@@ -938,7 +938,7 @@ __ebuild_phase_funcs() {
 			fi
 
 			# defaults starting with EAPI 6
-			if ! has ${eapi} 2 3 4 5; then
+			if [[ ${eapi} != [2-5] ]]; then
 				[[ ${phase_func} == src_prepare ]] && \
 					default_src_prepare() { __eapi6_src_prepare; }
 				[[ ${phase_func} == src_install ]] && \
@@ -949,7 +949,7 @@ __ebuild_phase_funcs() {
 			fi
 
 			# defaults starting with EAPI 8
-			if ! has ${eapi} 2 3 4 5 6 7; then
+			if [[ ${eapi} != [2-7] ]]; then
 				[[ ${phase_func} == src_prepare ]] && \
 					default_src_prepare() { __eapi8_src_prepare; }
 			fi
@@ -1014,8 +1014,7 @@ __ebuild_main() {
 		__ebuild_phase_with_hooks pkg_nofetch
 		;;
 	prerm|postrm|preinst|postinst|config|info)
-		if has "${1}" config info && \
-			! declare -F "pkg_${1}" >/dev/null ; then
+		if [[ $1 == @(config|info) ]] && ! declare -F "pkg_${1}" >/dev/null; then
 			ewarn  "pkg_${1}() is not defined: '${EBUILD##*/}'"
 		fi
 		export SANDBOX_ON="0"
@@ -1120,7 +1119,7 @@ __ebuild_main() {
 	esac
 
 	# Save the env only for relevant phases.
-	if ! has "${1}" clean help info nofetch ; then
+	if [[ $1 != @(clean|help|info|nofetch) ]]; then
 		umask 002
 
 		# Use safe cwd, avoiding unsafe import for bug #469338.

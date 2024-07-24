@@ -520,15 +520,24 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 				fi
 			${BODY}
 			}"
-		elif has ${BIN} autoconf automake aclocal libtoolize ; then
+		elif [[ ${BIN} == @(autoconf|automake|aclocal|libtoolize) ]]; then
 			FUNC_SRC="${BIN}() {
-				if ! has \${FUNCNAME[1]} eautoreconf eaclocal _elibtoolize \\
-					eautoheader eautoconf eautomake autotools_run_tool \\
-					autotools_check_macro autotools_get_subdirs \\
-					autotools_get_auxdir ; then
+				case \${FUNCNAME[1]} in
+					eautoreconf           |\\
+					eaclocal              |\\
+					_elibtoolize          |\\
+					eautoheader           |\\
+					eautoconf             |\\
+					eautomake             |\\
+					autotools_run_tool    |\\
+					autotools_check_macro |\\
+					autotools_get_subdirs |\\
+					autotools_get_auxdir  )
+					;;
+				*)
 					eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
 					eqawarn \"Use autotools.eclass instead of calling '${BIN}' directly.\"
-				fi
+				esac
 			${BODY}
 			}"
 		else
@@ -546,7 +555,8 @@ fi
 export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
 trap 'exit 1' SIGTERM
 
-if ! has "${EBUILD_PHASE}" clean cleanrm depend && ! [[ ${EMERGE_FROM} = ebuild && ${EBUILD_PHASE} = setup ]] && [[ -f "${T}"/environment ]]; then
+if [[ ${EBUILD_PHASE} != @(clean|cleanrm|depend) ]] && ! [[ ${EBUILD_PHASE} == setup && ${EMERGE_FROM} == ebuild ]] && [[ -f ${T}/environment ]]
+then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
@@ -591,7 +601,7 @@ eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.
-if ! has "${EBUILD_PHASE}" clean cleanrm ; then
+if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 	if [[ ${EBUILD_PHASE} = setup && ${EMERGE_FROM} = ebuild ]] || \
 	[[ ${EBUILD_PHASE} = depend || ! -f ${T}/environment || -f ${PORTAGE_BUILDDIR}/.ebuild_changed || " ${FEATURES} " == *" noauto "* ]] ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
