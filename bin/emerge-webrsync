@@ -105,16 +105,17 @@ do_debug=0
 keep=false
 
 handle_pgp_setup() {
+	local attr repo_has_webrsync_verify webrsync_gpg
+
 	# WEBRSYNC_VERIFY_SIGNATURE=0: disable PGP verification
 	# WEBRSYNC_VERIFY_SIGNATURE=1: use gemato for verification, fallback to regular gpg
 	# WEBRSYNC_VERIFY_SIGNATURE=2: use legacy FEATURES="webrsync-gpg"
 	WEBRSYNC_VERIFY_SIGNATURE=1
 
-	has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
+	has webrsync-gpg ${FEATURES} && webrsync_gpg=1
 
-	repo_has_webrsync_verify=$(
-		has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature	| LC_ALL=C tr '[:upper:]' '[:lower:]') true yes
-	)
+	attr=$(__repo_attr "${repo_name}" sync-webrsync-verify-signature)
+	[[ ${attr,,} == @(true|yes) ]] && repo_has_webrsync_verify=1
 
 	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] || [[ ${repo_has_webrsync_verify} -eq 1 ]]; then
 		# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
