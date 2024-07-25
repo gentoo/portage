@@ -537,6 +537,9 @@ hasv() {
 	return 1
 }
 
+# Determines whether the first parameter is stringwise equal to any of the
+# following parameters. Do NOT use this function for checking whether a word is
+# contained by another string. For that, use contains_word() instead.
 has() {
 	local needle=$1
 	shift
@@ -674,6 +677,15 @@ debug-print-function() {
 
 debug-print-section() {
 	debug-print "now in section ${*}"
+}
+
+# Considers the first parameter as a word and the second parameter as a string
+# comprising zero or more whitespace-separated words before determining whether
+# said word can be matched against any of them. It addresses a use case for
+# which the has() function is commonly misappropriated, with maximal efficiency.
+contains_word() {
+	local IFS
+	[[ $1 == +([![:space:]]) && " ${*:2} " == *[[:space:]]"$1"[[:space:]]* ]]
 }
 
 true
