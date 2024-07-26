@@ -10,9 +10,12 @@ openrc_check() {
 			# if empty conf.d/init.d dir exists (baselayout), then i will be "/etc/conf.d/*" and not exist
 			[[ ! -e ${i} ]] && continue
 			if [[ ${d} == /etc/init.d && ${i} != *.sh ]] ; then
-				# skip non-shell-script for bug #451386
-				[[ $(head -n1 "${i}") =~ ^#!.*[[:space:]/](openrc-run|runscript|sh)$ ]] || continue
-				if [[ $(head -n1 "${i}") == '#!/sbin/runscript' ]] ; then
+				if ! read -r < "${i}" ; then
+					continue
+				elif [[ ${REPLY} != '#!'*[[:blank:]/]@(openrc-run|runscript|sh) ]] ; then
+					# skip non-shell-script for bug #451386
+					continue
+				elif [[ ${REPLY} == '#!/sbin/runscript' ]] ; then
 					eqawarn "QA Notice: #!/sbin/runscript is deprecated, use #!/sbin/openrc-run instead:"
 					while read -r ;
 						do eqawarn "   ${REPLY}"
