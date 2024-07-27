@@ -366,10 +366,10 @@ unpack() {
 		elif ___eapi_unpack_supports_absolute_paths; then
 			# EAPI 6 allows absolute and deep relative paths
 			srcdir=
-			if [[ ${f} == ${DISTDIR%/}/* ]]; then
+			if [[ ${f} == "${DISTDIR%/}"/* ]]; then
 				eqawarn "QA Notice: unpack called with redundant \${DISTDIR} in path"
 			fi
-		elif [[ ${f} == ${DISTDIR%/}/* ]]; then
+		elif [[ ${f} == "${DISTDIR%/}"/* ]]; then
 			die "Arguments to unpack() cannot begin with \${DISTDIR} in EAPI ${EAPI}"
 		elif [[ ${f} == /* ]]; then
 			die "Arguments to unpack() cannot be absolute in EAPI ${EAPI}"
