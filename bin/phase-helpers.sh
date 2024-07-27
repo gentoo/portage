@@ -414,9 +414,9 @@ unpack() {
 				;;
 			zip|jar)
 				# unzip will interactively prompt under some error conditions,
-				# as reported in bug #336285
-				( set +x ; while true ; do echo n || break ; done ) | \
-				unzip -qo "${srcdir}${f}" || die "${myfail}"
+				# as reported in bug #336285. Inducing EOF on STDIN makes for
+				# an adequate countermeasure.
+				unzip -qo "${srcdir}${f}" </dev/null || die "${myfail}"
 				;;
 			gz|z)
 				__unpack_tar "gzip -d"
