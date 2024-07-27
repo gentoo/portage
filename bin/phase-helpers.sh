@@ -393,7 +393,13 @@ unpack() {
 		else
 			die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
 		fi
-		[[ ! -s ${srcdir}${f} ]] && die "unpack: ${f} does not exist"
+
+		# Tolerate only regular files that are non-empty.
+		if [[ ! -f ${srcdir}${f} ]]; then
+			die "unpack: ${f@Q} either does not exist or is not a regular file"
+		elif [[ ! -s ${srcdir}${f} ]]; then
+			die "unpack: ${f@Q} cannot be unpacked because it is an empty file"
+		fi
 
 		suffix_known=""
 		case ${suffix,,} in
