@@ -332,7 +332,6 @@ unpack() {
 	local suffix suffix_insensitive
 	local suffix_known
 	local myfail
-	local eapi=${EAPI:-0}
 
 	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
