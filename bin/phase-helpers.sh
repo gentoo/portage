@@ -1046,15 +1046,12 @@ if ___eapi_has_eapply; then
 			if [[ -d ${f} ]]; then
 				_eapply_get_files() {
 					local LC_ALL=POSIX
-					local prev_shopt=$(shopt -p nullglob)
-					shopt -s nullglob
 					local f
 					for f in "${1}"/*; do
-						if [[ ${f} == *.diff || ${f} == *.patch ]]; then
+						if [[ ${f} == *.@(diff|patch) ]]; then
 							files+=( "${f}" )
 						fi
 					done
-					${prev_shopt}
 				}
 
 				local files=()
@@ -1099,8 +1096,6 @@ if ___eapi_has_eapply_user; then
 
 		local applied d f
 		local -A _eapply_user_patches
-		local prev_shopt=$(shopt -p nullglob)
-		shopt -s nullglob
 
 		# Patches from all matched directories are combined into a
 		# sorted (POSIX order) list of the patch basenames. Patches
@@ -1117,7 +1112,7 @@ if ___eapi_has_eapply_user; then
 		# all of the above may be optionally followed by a slot
 		for d in "${basedir}"/${CATEGORY}/{${P}-${PR},${P},${PN}}{:${SLOT%/*},}; do
 			for f in "${d}"/*; do
-				if [[ ( ${f} == *.diff || ${f} == *.patch ) &&
+				if [[ ${f} == *.@(diff|patch) &&
 					-z ${_eapply_user_patches[${f##*/}]} ]]; then
 					_eapply_user_patches[${f##*/}]=${f}
 				fi
@@ -1139,8 +1134,6 @@ if ___eapi_has_eapply_user; then
 			done < <(printf -- '%s\0' "${!_eapply_user_patches[@]}" |
 				LC_ALL=C sort -z)
 		fi
-
-		${prev_shopt}
 
 		if [[ -n ${applied} ]]; then
 			einfo "User patches applied."
