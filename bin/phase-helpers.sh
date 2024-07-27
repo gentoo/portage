@@ -986,7 +986,6 @@ fi
 if ___eapi_has_eapply; then
 	eapply() {
 		local failed patch_cmd=patch
-		local -x LC_COLLATE=POSIX
 
 		# for bsd userland support, use gpatch if available
 		type -P gpatch > /dev/null && patch_cmd=gpatch
