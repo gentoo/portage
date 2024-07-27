@@ -333,7 +333,9 @@ unpack() {
 	local suffix
 	local f
 
-	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
+	if (( $# == 0 )); then
+		die "unpack: too few arguments (got 0; expected at least 1)"
+	fi
 
 	__unpack_tar() {
 		local inner_suffix
@@ -396,13 +398,13 @@ unpack() {
 		fi
 
 		if [[ -n ${suffix_known} ]]; then
-			__vecho ">>> Unpacking ${f} to ${PWD}"
+			__vecho ">>> Unpacking ${f@Q} to ${PWD}"
 		else
-			__vecho "=== Skipping unpack of ${f}"
+			__vecho "=== Skipping unpack of ${f@Q}"
 			continue
 		fi
 
-		myfail="unpack: failure unpacking ${f}"
+		myfail="unpack: failure unpacking ${f@Q}"
 		case ${suffix,,} in
 			tar)
 				tar xof "${srcdir}${f}" || die "${myfail}"
