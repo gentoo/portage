@@ -328,8 +328,8 @@ use_enable() {
 unpack() {
 	local srcdir
 	local x
-	local y y_insensitive
-	local suffix suffix_insensitive
+	local y
+	local suffix
 	local suffix_known
 	local myfail
 
@@ -337,10 +337,8 @@ unpack() {
 
 	for x in "$@"; do
 		suffix=${x##*.}
-		suffix_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${suffix}")
 		y=${x%.*}
 		y=${y##*.}
-		y_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${y}")
 
 		# wrt PMS 12.3.15 Misc Commands
 		if [[ ${x} != */* ]]; then
@@ -369,7 +367,7 @@ unpack() {
 		[[ ! -s ${srcdir}${x} ]] && die "unpack: ${x} does not exist"
 
 		suffix_known=""
-		case ${suffix_insensitive} in
+		case ${suffix,,} in
 			tar|tgz|tbz2|tbz|zip|jar|gz|z|bz2|bz|a|deb|lzma) suffix_known=1 ;;
 			7z)      ___eapi_unpack_supports_7z  && suffix_known=1 ;;
 			rar)     ___eapi_unpack_supports_rar && suffix_known=1 ;;
@@ -379,7 +377,7 @@ unpack() {
 		esac
 
 		if ___eapi_unpack_is_case_sensitive \
-				&& [[ ${suffix} != @("${suffix_insensitive}"|ZIP|Z|7Z|RAR|LH[Aa]) ]]; then
+				&& [[ ${suffix} != @("${suffix,,}"|ZIP|Z|7Z|RAR|LH[Aa]) ]]; then
 			suffix_known=""
 		fi
 
@@ -391,7 +389,7 @@ unpack() {
 		fi
 
 		__unpack_tar() {
-			if [[ ${y_insensitive} == tar ]] \
+			if [[ ${y,,} == tar ]] \
 					&& ! ___eapi_unpack_is_case_sensitive \
 					|| [[ ${y} == tar ]]; then
 				$1 -c -- "${srcdir}${x}" | tar xof -
@@ -404,7 +402,7 @@ unpack() {
 		}
 
 		myfail="unpack: failure unpacking ${x}"
-		case "${suffix_insensitive}" in
+		case ${suffix,,} in
 			tar)
 				tar xof "${srcdir}${x}" || die "${myfail}"
 				;;
