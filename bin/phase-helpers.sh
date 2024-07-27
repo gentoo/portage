@@ -335,6 +335,19 @@ unpack() {
 
 	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
+	__unpack_tar() {
+		if [[ ${y,,} == tar ]] \
+				&& ! ___eapi_unpack_is_case_sensitive \
+				|| [[ ${y} == tar ]]; then
+			$1 -c -- "${srcdir}${x}" | tar xof -
+			__assert_sigpipe_ok "${myfail}"
+		else
+			local cwd_dest=${x##*/}
+			cwd_dest=${cwd_dest%.*}
+			$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "${myfail}"
+		fi
+	}
+
 	for x in "$@"; do
 		suffix=${x##*.}
 		y=${x%.*}
@@ -387,19 +400,6 @@ unpack() {
 			__vecho "=== Skipping unpack of ${x}"
 			continue
 		fi
-
-		__unpack_tar() {
-			if [[ ${y,,} == tar ]] \
-					&& ! ___eapi_unpack_is_case_sensitive \
-					|| [[ ${y} == tar ]]; then
-				$1 -c -- "${srcdir}${x}" | tar xof -
-				__assert_sigpipe_ok "${myfail}"
-			else
-				local cwd_dest=${x##*/}
-				cwd_dest=${cwd_dest%.*}
-				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "${myfail}"
-			fi
-		}
 
 		myfail="unpack: failure unpacking ${x}"
 		case ${suffix,,} in
