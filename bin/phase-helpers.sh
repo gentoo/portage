@@ -1098,8 +1098,8 @@ if ___eapi_has_eapply_user; then
 		[[ ${columns} == 0 ]] && columns=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
 		(( columns > 0 )) || (( columns = 80 ))
 
-		local applied d f
-		local -A _eapply_user_patches
+		local -A patch_by
+		local d f basename hr
 
 		# Patches from all matched directories are combined into a
 		# sorted (POSIX order) list of the patch basenames. Patches
@@ -1114,34 +1114,29 @@ if ___eapi_has_eapply_user; then
 		# 2. ${CATEGORY}/${P}
 		# 3. ${CATEGORY}/${PN}
 		# all of the above may be optionally followed by a slot
-		for d in "${basedir}"/${CATEGORY}/{${P}-${PR},${P},${PN}}{:${SLOT%/*},}; do
+		for d in "${basedir}"/"${CATEGORY}"/{"${PN}","${P}","${P}-${PR}"}{,":${SLOT%/*}"}; do
 			for f in "${d}"/*; do
-				if [[ ${f} == *.@(diff|patch) &&
-					-z ${_eapply_user_patches[${f##*/}]} ]]; then
-					_eapply_user_patches[${f##*/}]=${f}
+				if [[ ${f} == *.@(diff|patch) ]]; then
+					basename=${f##*/}
+					if [[ -s ${f} ]]; then
+						patch_by[$basename]=${f}
+					else
+						unset -v 'patch_by[$basename]'
+					fi
 				fi
 			done
 		done
 
-		if [[ ${#_eapply_user_patches[@]} -gt 0 ]]; then
-			while read -r -d '' f; do
-				f=${_eapply_user_patches[${f}]}
-				if [[ -s ${f} ]]; then
-					if [[ -z ${applied} ]]; then
-						einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 3; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
-						einfo "Applying user patches from ${basedir} ..."
-					fi
-
-					eapply "${f}"
-					applied=1
-				fi
-			done < <(printf -- '%s\0' "${!_eapply_user_patches[@]}" |
-				LC_ALL=C sort -z)
-		fi
-
-		if [[ -n ${applied} ]]; then
+		if (( ${#patch_by[@]} > 0 )); then
+			printf -v hr "%$(( columns - 3 ))s"
+			hr=${hr//?/=}
+			einfo "${PORTAGE_COLOR_INFO}${hr}${PORTAGE_COLOR_NORMAL}"
+			einfo "Applying user patches from ${basedir} ..."
+			while IFS= read -rd '' basename; do
+				eapply "${patch_by[$basename]}"
+			done < <(printf '%s\0' "${!patch_by[@]}" | LC_ALL=C sort -z)
 			einfo "User patches applied."
-			einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 3; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
+			einfo "${PORTAGE_COLOR_INFO}${hr}${PORTAGE_COLOR_NORMAL}"
 		fi
 	}
 fi
