@@ -328,6 +328,7 @@ use_enable() {
 unpack() {
 	local created_symlink
 	local suffix_known
+	local -a bzip2_cmd
 	local basename
 	local srcdir
 	local suffix
@@ -346,9 +347,23 @@ unpack() {
 			inner_suffix=${inner_suffix,,}
 		fi
 		if [[ ${inner_suffix} == tar ]]; then
-			$1 -c -- "${srcdir}${f}" | tar xof -
+			"$@" -c -- "${srcdir}${f}" | tar xof -
 		else
-			$1 -c -- "${srcdir}${f}" > "${basename%.*}"
+			"$@" -c -- "${srcdir}${f}" > "${basename%.*}"
+		fi
+	}
+
+	__compose_bzip2_cmd() {
+		local IFS
+
+		read -rd '' -a bzip2_cmd <<<"${PORTAGE_BUNZIP2_COMMAND}"
+		if (( ! ${#bzip2_cmd[@]} )); then
+			read -rd '' -a bzip2_cmd <<<"${PORTAGE_BZIP2_COMMAND}"
+			if (( ${#bzip2_cmd[@]} )); then
+				bzip2_cmd+=( -d )
+			else
+				die "unpack: both PORTAGE_BUNZIP2_COMMAND and PORTAGE_BZIP2_COMMAND specify null commands"
+			fi
 		fi
 	}
 
@@ -410,7 +425,8 @@ unpack() {
 				tar xozf "${srcdir}${f}"
 				;;
 			tbz|tbz2)
-				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${f}" | tar xof -
+				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
+				"${bzip2_cmd[@]}" -c -- "${srcdir}${f}" | tar xof -
 				;;
 			zip|jar)
 				# unzip will interactively prompt under some error conditions,
@@ -419,10 +435,11 @@ unpack() {
 				unzip -qo "${srcdir}${f}" </dev/null
 				;;
 			gz|z)
-				__unpack_tar "gzip -d"
+				__unpack_tar gzip -d
 				;;
 			bz2|bz)
-				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
+				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
+				__unpack_tar "${bzip2_cmd[@]}"
 				;;
 			7z)
 				local my_output
@@ -465,10 +482,10 @@ unpack() {
 				fi
 				;;
 			lzma)
-				__unpack_tar "lzma -d"
+				__unpack_tar lzma -d
 				;;
 			xz)
-				__unpack_tar "xz -T$(___makeopts_jobs) -d"
+				__unpack_tar xz -T"$(___makeopts_jobs)" -d
 				;;
 			txz)
 				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${f}"
