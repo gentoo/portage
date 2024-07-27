@@ -112,32 +112,41 @@ docinto() {
 }
 
 insopts() {
-	export INSOPTIONS="$@"
+	local IFS
 
-	# `install` should never be called with '-s' ...
-	has -s ${INSOPTIONS} && die "Never call insopts() with -s"
+	if has -s "$@"; then
+		die "Never call insopts() with -s"
+	else
+		export INSOPTIONS=$*
+	fi
 }
 
 diropts() {
-	export DIROPTIONS="$@"
+	local IFS
+
+	export DIROPTIONS=$*
 }
 
 exeopts() {
-	export EXEOPTIONS="$@"
+	local IFS
 
-	# `install` should never be called with '-s' ...
-	has -s ${EXEOPTIONS} && die "Never call exeopts() with -s"
+	if has -s "$@"; then
+		die "Never call exeopts() with -s"
+	else
+		export EXEOPTIONS=$*
+	fi
 }
 
 libopts() {
+	local IFS
+
 	if ! ___eapi_has_dolib_libopts; then
 		die "'${FUNCNAME}' has been banned for EAPI '${EAPI}'"
+	elif has -s "$@"; then
+		die "Never call libopts() with -s"
+	else
+		export LIBOPTIONS=$*
 	fi
-
-	export LIBOPTIONS="$@"
-
-	# `install` should never be called with '-s' ...
-	has -s ${LIBOPTIONS} && die "Never call libopts() with -s"
 }
 
 docompress() {

@@ -31,14 +31,14 @@ __strip_duplicate_slashes() {
 KV_major() {
 	[[ -z ${1} ]] && return 1
 
-	local KV=$@
+	local KV=$1
 	echo "${KV%%.*}"
 }
 
 KV_minor() {
 	[[ -z ${1} ]] && return 1
 
-	local KV=$@
+	local KV=$1
 	KV=${KV#*.}
 	echo "${KV%%.*}"
 }
@@ -46,7 +46,7 @@ KV_minor() {
 KV_micro() {
 	[[ -z ${1} ]] && return 1
 
-	local KV=$@
+	local KV=$1
 	KV=${KV#*.*.}
 	echo "${KV%%[^[:digit:]]*}"
 }
