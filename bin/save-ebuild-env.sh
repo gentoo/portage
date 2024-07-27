@@ -10,8 +10,7 @@
 # be excluded from the output. These function are not needed for installation
 # or removal of the packages, and can therefore be safely excluded.
 #
-__save_ebuild_env() {
-	(
+__save_ebuild_env() (
 	if has --exclude-init-phases $* ; then
 		unset S __E_DESTTREE __E_INSDESTTREE __E_DOCDESTTREE __E_EXEDESTTREE \
 			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
@@ -134,5 +133,4 @@ __save_ebuild_env() {
 	if [[ ${BASH_VERSINFO[0]} == 3 ]]; then
 		export
 	fi
-	)
-}
+)
