@@ -19,7 +19,7 @@ export MOPREFIX=${PN}
 # Do not compress files which are smaller than this (in bytes), bug #169260
 export PORTAGE_DOCOMPRESS_SIZE_LIMIT="128"
 declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
-declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
+declare -a PORTAGE_DOCOMPRESS_SKIP=( "/usr/share/doc/${PF}/html" )
 declare -a PORTAGE_DOSTRIP=( / )
 has strip ${PORTAGE_RESTRICT} && PORTAGE_DOSTRIP=()
 declare -a PORTAGE_DOSTRIP_SKIP=()
@@ -572,11 +572,11 @@ econf() {
 
 			if ___eapi_econf_passes_--docdir_and_--htmldir; then
 				if [[ ${conf_help} == *--docdir* ]]; then
-					conf_args+=( --docdir="${EPREFIX}"/usr/share/doc/${PF} )
+					conf_args+=( --docdir="${EPREFIX}/usr/share/doc/${PF}" )
 				fi
 
 				if [[ ${conf_help} == *--htmldir* ]]; then
-					conf_args+=( --htmldir="${EPREFIX}"/usr/share/doc/${PF}/html )
+					conf_args+=( --htmldir="${EPREFIX}/usr/share/doc/${PF}/html" )
 				fi
 			fi
 
