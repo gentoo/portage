@@ -991,6 +991,16 @@ if ___eapi_has_eapply; then
 		# for bsd userland support, use gpatch if available
 		type -P gpatch > /dev/null && patch_cmd=gpatch
 
+		_eapply_get_files() {
+			local LC_ALL=POSIX
+			local f
+			for f in "${1}"/*; do
+				if [[ ${f} == *.@(diff|patch) ]]; then
+					files+=( "${f}" )
+				fi
+			done
+		}
+
 		_eapply_patch() {
 			local f=${1}
 			local prefix=${2}
@@ -1056,16 +1066,6 @@ if ___eapi_has_eapply; then
 		local f
 		for f in "${files[@]}"; do
 			if [[ -d ${f} ]]; then
-				_eapply_get_files() {
-					local LC_ALL=POSIX
-					local f
-					for f in "${1}"/*; do
-						if [[ ${f} == *.@(diff|patch) ]]; then
-							files+=( "${f}" )
-						fi
-					done
-				}
-
 				local files=()
 				_eapply_get_files "${f}"
 				[[ ${#files[@]} -eq 0 ]] && die "No *.{patch,diff} files in directory ${f}"
