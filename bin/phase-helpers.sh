@@ -326,12 +326,13 @@ use_enable() {
 }
 
 unpack() {
+	local created_symlink
 	local suffix_known
 	local basename
-	local myfail
 	local srcdir
 	local suffix
 	local f
+	local -
 
 	if (( $# == 0 )); then
 		die "unpack: too few arguments (got 0; expected at least 1)"
@@ -346,11 +347,12 @@ unpack() {
 		fi
 		if [[ ${inner_suffix} == tar ]]; then
 			$1 -c -- "${srcdir}${f}" | tar xof -
-			__assert_sigpipe_ok "${myfail}"
 		else
-			$1 -c -- "${srcdir}${f}" > "${basename%.*}" || die "${myfail}"
+			$1 -c -- "${srcdir}${f}" > "${basename%.*}"
 		fi
 	}
+
+	shopt -o -s pipefail
 
 	for f in "$@"; do
 		basename=${f##*/}
@@ -400,23 +402,21 @@ unpack() {
 			continue
 		fi
 
-		myfail="unpack: failure unpacking ${f@Q}"
 		case ${suffix,,} in
 			tar)
-				tar xof "${srcdir}${f}" || die "${myfail}"
+				tar xof "${srcdir}${f}"
 				;;
 			tgz)
-				tar xozf "${srcdir}${f}" || die "${myfail}"
+				tar xozf "${srcdir}${f}"
 				;;
 			tbz|tbz2)
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${f}" | tar xof -
-				__assert_sigpipe_ok "${myfail}"
 				;;
 			zip|jar)
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285. Inducing EOF on STDIN makes for
 				# an adequate countermeasure.
-				unzip -qo "${srcdir}${f}" </dev/null || die "${myfail}"
+				unzip -qo "${srcdir}${f}" </dev/null
 				;;
 			gz|z)
 				__unpack_tar "gzip -d"
@@ -428,17 +428,17 @@ unpack() {
 				local my_output
 				if ! my_output=$(7z x -y "${srcdir}${f}"); then
 					printf '%s\n' "${my_output}" >&2
-					die "${myfail}"
+					false
 				fi
 				;;
 			rar)
-				unrar x -idq -o+ "${srcdir}${f}" || die "${myfail}"
+				unrar x -idq -o+ "${srcdir}${f}"
 				;;
 			lha|lzh)
-				lha xfq "${srcdir}${f}" || die "${myfail}"
+				lha xfq "${srcdir}${f}"
 				;;
 			a)
-				ar x "${srcdir}${f}" || die "${myfail}"
+				ar x "${srcdir}${f}"
 				;;
 			deb)
 				# Unpacking .deb archives can not always be done with
@@ -449,28 +449,19 @@ unpack() {
 				# installed.
 				if [[ $(ar --version 2>/dev/null) != "GNU ar"* ]] && \
 					type -P deb2targz > /dev/null; then
-					local created_symlink=0
-
 					if [[ ! "${srcdir}${f}" -ef "${basename}" ]]; then
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
-						ln -sf "${srcdir}${f}" "${basename}" || die "${myfail}"
 						created_symlink=1
-					fi
-
-					deb2targz "${basename}" || die "${myfail}"
-
-					if [[ ${created_symlink} = 1 ]]; then
-						# Clean up the symlink so the ebuild
-						# doesn't inadvertently install it.
-						rm -f "${basename}"
-					fi
-					mv -f "${basename%.deb}".tar.gz data.tar.gz \
-						|| mv -f "${basename%.deb}".tar.xz data.tar.xz \
-						|| die "${myfail}"
+						ln -sf "${srcdir}${f}" "${basename}"
+					fi \
+					&& deb2targz "${basename}" \
+					&& { (( ! created_symlink )) || rm -f "${basename}"; } \
+					&& set -- "${basename%.deb}".tar.* \
+					&& mv -f "$1" "data.tar.${1##*.}"
 				else
-					ar x "${srcdir}${f}" || die "${myfail}"
+					ar x "${srcdir}${f}"
 				fi
 				;;
 			lzma)
@@ -480,9 +471,9 @@ unpack() {
 				__unpack_tar "xz -T$(___makeopts_jobs) -d"
 				;;
 			txz)
-				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${f}" || die "${myfail}"
+				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${f}"
 				;;
-		esac
+		esac || die "unpack: failure unpacking ${f@Q}"
 	done
 
 	# Do not chmod '.' since it's probably ${WORKDIR} and PORTAGE_WORKDIR_MODE
