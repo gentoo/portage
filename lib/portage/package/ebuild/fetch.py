@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["fetch"]
@@ -73,6 +73,7 @@ from portage.util import (
     writemsg_level,
     writemsg_stdout,
 )
+from portage.util.futures import asyncio
 from portage.process import spawn
 
 _download_suffix = ".__download__"
@@ -111,7 +112,7 @@ def _drop_privs_userfetch(settings):
     """
     spawn_kwargs = dict(_userpriv_spawn_kwargs)
     try:
-        _ensure_distdir(settings, settings["DISTDIR"])
+        asyncio.run(_ensure_distdir(settings, settings["DISTDIR"]))
     except PortageException:
         if not os.path.isdir(settings["DISTDIR"]):
             raise
@@ -179,13 +180,37 @@ def _spawn_fetch(settings, args, **kwargs):
     return rval
 
 
+# Instrumentation hooks for use by unit tests.
+_async_spawn_fetch_pre_wait = None
+_async_spawn_fetch_post_terminate = None
+
+
+async def _async_spawn_fetch(settings, args, **kwargs):
+    kwargs["returnproc"] = True
+    proc = _spawn_fetch(settings, args, **kwargs)
+    try:
+        if _async_spawn_fetch_pre_wait is not None:
+            _async_spawn_fetch_pre_wait(proc)
+        return await proc.wait()
+    except asyncio.CancelledError:
+        proc.terminate()
+        if _async_spawn_fetch_post_terminate is not None:
+            _async_spawn_fetch_post_terminate(proc)
+        raise
+
+
+_async_spawn_fetch.__doc__ = _spawn_fetch.__doc__
+_async_spawn_fetch.__doc__ += """
+    This function is a coroutine.
+"""
+
 _userpriv_test_write_file_cache = {}
 _userpriv_test_write_cmd_script = (
     ">> %(file_path)s 2>/dev/null ; rval=$? ; " + "rm -f  %(file_path)s ; exit $rval"
 )
 
 
-def _userpriv_test_write_file(settings, file_path):
+async def _userpriv_test_write_file(settings, file_path):
     """
     Drop privileges and try to open a file for writing. The file may or
     may not exist, and the parent directory is assumed to exist. The file
@@ -201,20 +226,26 @@ def _userpriv_test_write_file(settings, file_path):
     if rval is not None:
         return rval
 
+    # Optimize away the spawn when privileges do not need to be dropped.
+    if not _want_userfetch(settings):
+        rval = os.access(os.path.dirname(file_path), os.W_OK)
+        _userpriv_test_write_file_cache[file_path] = rval
+        return rval
+
     args = [
         BASH_BINARY,
         "-c",
         _userpriv_test_write_cmd_script % {"file_path": _shell_quote(file_path)},
     ]
 
-    returncode = _spawn_fetch(settings, args)
+    returncode = await _async_spawn_fetch(settings, args)
 
     rval = returncode == os.EX_OK
     _userpriv_test_write_file_cache[file_path] = rval
     return rval
 
 
-def _ensure_distdir(settings, distdir):
+async def _ensure_distdir(settings, distdir):
     """
     Ensure that DISTDIR exists with appropriate permissions.
 
@@ -240,7 +271,7 @@ def _ensure_distdir(settings, distdir):
     userpriv = portage.data.secpass >= 2 and "userpriv" in settings.features
     write_test_file = os.path.join(distdir, ".__portage_test_write__")
 
-    if _userpriv_test_write_file(settings, write_test_file):
+    if await _userpriv_test_write_file(settings, write_test_file):
         return
 
     _userpriv_test_write_file_cache.pop(write_test_file, None)
@@ -687,7 +718,12 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
     @param cache_path: Path for mirror metadata cache
     @return: Full URL to fetch
     """
+    return asyncio.run(
+        async_mirror_url(mirror_url, filename, mysettings, cache_path=cache_path)
+    )
 
+
+async def async_mirror_url(mirror_url, filename, mysettings, cache_path=None):
     mirror_conf = MirrorLayoutConfig()
 
     cache = {}
@@ -708,7 +744,7 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
             if mirror_url[:1] == "/":
                 tmpfile = os.path.join(mirror_url, "layout.conf")
                 mirror_conf.read_from_file(tmpfile)
-            elif fetch(
+            elif await async_fetch(
                 {tmpfile: (mirror_url + "/distfiles/layout.conf",)},
                 mysettings,
                 force=1,
@@ -736,6 +772,12 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
         return os.path.join(mirror_url, path)
     else:
         return mirror_url + "/distfiles/" + path
+
+
+async_mirror_url.__doc__ = get_mirror_url.__doc__
+async_mirror_url.__doc__ += """
+    This function is a coroutine.
+"""
 
 
 def fetch(
@@ -783,6 +825,34 @@ def fetch(
     @rtype: int
     @return: 1 if successful, 0 otherwise.
     """
+    return asyncio.run(
+        async_fetch(
+            myuris,
+            mysettings,
+            listonly=listonly,
+            fetchonly=fetchonly,
+            locks_in_subdir=locks_in_subdir,
+            use_locks=use_locks,
+            try_mirrors=try_mirrors,
+            digests=digests,
+            allow_missing_digests=allow_missing_digests,
+            force=force,
+        )
+    )
+
+
+async def async_fetch(
+    myuris,
+    mysettings,
+    listonly=0,
+    fetchonly=0,
+    locks_in_subdir=".locks",
+    use_locks=1,
+    try_mirrors=1,
+    digests=None,
+    allow_missing_digests=True,
+    force=False,
+):
 
     if force and digests:
         # Since the force parameter can trigger unnecessary fetch when the
@@ -1050,7 +1120,7 @@ def fetch(
             for l in itertools.chain(*location_lists):
                 filedict[myfile].append(
                     functools.partial(
-                        get_mirror_url, l, myfile, mysettings, mirror_cache
+                        async_mirror_url, l, myfile, mysettings, mirror_cache
                     )
                 )
         if myuri is None:
@@ -1119,7 +1189,7 @@ def fetch(
 
     if can_fetch and not fetch_to_ro:
         try:
-            _ensure_distdir(mysettings, mysettings["DISTDIR"])
+            await _ensure_distdir(mysettings, mysettings["DISTDIR"])
         except PortageException as e:
             if not os.path.isdir(mysettings["DISTDIR"]):
                 writemsg(f"!!! {str(e)}\n", noiselevel=-1)
@@ -1381,7 +1451,7 @@ def fetch(
                 if distdir_writable and ro_distdirs:
                     readonly_file = None
                     for x in ro_distdirs:
-                        filename = get_mirror_url(x, myfile, mysettings)
+                        filename = await async_mirror_url(x, myfile, mysettings)
                         match, mystat = _check_distfile(
                             filename, pruned_digests, eout, hash_filter=hash_filter
                         )
@@ -1427,7 +1497,7 @@ def fetch(
 
                 if fsmirrors and not os.path.exists(myfile_path) and has_space:
                     for mydir in fsmirrors:
-                        mirror_file = get_mirror_url(mydir, myfile, mysettings)
+                        mirror_file = await async_mirror_url(mydir, myfile, mysettings)
                         try:
                             shutil.copyfile(mirror_file, download_path)
                             writemsg(_("Local mirror has file: %s\n") % myfile)
@@ -1554,7 +1624,7 @@ def fetch(
             while uri_list:
                 loc = uri_list.pop()
                 if isinstance(loc, functools.partial):
-                    loc = loc()
+                    loc = await loc()
                 # Eliminate duplicates here in case we've switched to
                 # "primaryuri" mode on the fly due to a checksum failure.
                 if loc in tried_locations:
@@ -1740,7 +1810,7 @@ def fetch(
 
                     myret = -1
                     try:
-                        myret = _spawn_fetch(mysettings, myfetch)
+                        myret = await _async_spawn_fetch(mysettings, myfetch)
 
                     finally:
                         try:
@@ -1992,3 +2062,9 @@ def fetch(
     if failed_files:
         return 0
     return 1
+
+
+async_fetch.__doc__ = fetch.__doc__
+async_fetch.__doc__ += """
+    This function is a coroutine.
+"""

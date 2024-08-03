@@ -58,19 +58,27 @@ class AsyncHTTPServer:
         self.server_port = None
         self._httpd = None
 
+    def pause(self):
+        """Pause responses (useful for testing timeouts)."""
+        self._loop.remove_reader(self._httpd.socket.fileno())
+
+    def resume(self):
+        """Resume responses following a previous call to pause."""
+        self._loop.add_reader(
+            self._httpd.socket.fileno(), self._httpd._handle_request_noblock
+        )
+
     def __enter__(self):
         httpd = self._httpd = HTTPServer(
             (self._host, 0), functools.partial(_Handler, self._content)
         )
         self.server_port = httpd.server_port
-        self._loop.add_reader(
-            httpd.socket.fileno(), self._httpd._handle_request_noblock
-        )
+        self.resume()
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if self._httpd is not None:
-            self._loop.remove_reader(self._httpd.socket.fileno())
+            self.pause()
             self._httpd.socket.close()
             self._httpd = None
 
