@@ -321,7 +321,7 @@ class UseManager:
                 allow_use=False,
             )
             for k, v in pusedict.items():
-                l = []
+                items = []
                 use_expand_prefix = ""
                 for flag in v:
                     if flag == "\n":
@@ -334,8 +334,8 @@ class UseManager:
                         nv = "-" + use_expand_prefix + flag[1:]
                     else:
                         nv = use_expand_prefix + flag
-                    l.append(nv)
-                ret.setdefault(k.cp, {})[k] = tuple(l)
+                    items.append(nv)
+                ret.setdefault(k.cp, {})[k] = tuple(items)
 
         return ret
 

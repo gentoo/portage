@@ -1128,10 +1128,10 @@ class portdbapi(dbapi):
                     if atom != atom.cp:
                         continue
                     d[atom.cp] = None
-        l = list(d)
+        result = list(d)
         if sort:
-            l.sort(reverse=reverse)
-        return l
+            result.sort(reverse=reverse)
+        return result
 
     def cp_list(self, mycp, use_cache=1, mytree=None):
         # NOTE: Cache can be safely shared with the match cache, since the

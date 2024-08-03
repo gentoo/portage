@@ -2077,7 +2077,7 @@ class depgraph:
         )
         self._dynamic_config._need_restart = True
         if debug:
-            msg = [
+            msgs = [
                 "",
                 "",
                 "backtracking due to slot conflict:",
@@ -2090,7 +2090,7 @@ class depgraph:
                 "",
             ]
             writemsg_level(
-                "".join(f"{l}\n" for l in msg), noiselevel=-1, level=logging.DEBUG
+                "".join(f"{msg}\n" for msg in msgs), noiselevel=-1, level=logging.DEBUG
             )
 
     def _slot_conflict_backtrack_abi(self, pkg, slot_nodes, conflict_atoms):
@@ -3320,17 +3320,17 @@ class depgraph:
                     self._dynamic_config._backtrack_infos["missing dependency"] = dep
                     self._dynamic_config._need_restart = True
                     if debug:
-                        msg = []
-                        msg.append("")
-                        msg.append("")
+                        msgs = []
+                        msgs.append("")
+                        msgs.append("")
                         msg.append("backtracking due to unsatisfied dep:")
-                        msg.append(f"    parent: {dep.parent}")
-                        msg.append(f"  priority: {dep.priority}")
-                        msg.append(f"      root: {dep.root}")
-                        msg.append(f"      atom: {dep.atom}")
-                        msg.append("")
+                        msgs.append(f"    parent: {dep.parent}")
+                        msgs.append(f"  priority: {dep.priority}")
+                        msgs.append(f"      root: {dep.root}")
+                        msgs.append(f"      atom: {dep.atom}")
+                        msgs.append("")
                         writemsg_level(
-                            "".join(f"{l}\n" for l in msg),
+                            "".join(f"{msg}\n" for msg in msgs),
                             noiselevel=-1,
                             level=logging.DEBUG,
                         )
@@ -12149,15 +12149,15 @@ def show_masked_packages(masked_packages):
             writemsg(filename + ":\n" + comment + "\n", noiselevel=-1)
             shown_comments.add(comment)
         portdb = root_config.trees["porttree"].dbapi
-        for l in missing_licenses:
-            if l in shown_licenses:
+        for lic in missing_licenses:
+            if lic in shown_licenses:
                 continue
-            l_path = portdb.findLicensePath(l)
+            l_path = portdb.findLicensePath(lic)
             if l_path is None:
                 continue
-            msg = f"A copy of the '{l}' license is located at '{l_path}'.\n\n"
+            msg = f"A copy of the '{lic}' license is located at '{l_path}'.\n\n"
             writemsg(msg, noiselevel=-1)
-            shown_licenses.add(l)
+            shown_licenses.add(lic)
     return have_eapi_mask
 
 

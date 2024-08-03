@@ -41,7 +41,7 @@ def ExtractKernelVersion(base_dir):
     finally:
         f.close()
 
-    lines = [l.strip() for l in lines]
+    lines = [line.strip() for line in lines]
 
     version = ""
 

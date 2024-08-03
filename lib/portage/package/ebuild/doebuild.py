@@ -583,8 +583,8 @@ def doebuild_environment(
                 masquerades.append(("ccache", "ccache"))
 
             for feature, m in masquerades:
-                for l in possible_libexecdirs:
-                    p = os.path.join(os.sep, eprefix_lstrip, "usr", l, m, "bin")
+                for directory in possible_libexecdirs:
+                    p = os.path.join(os.sep, eprefix_lstrip, "usr", directory, m, "bin")
                     if os.path.isdir(p):
                         mysettings["PATH"] = p + ":" + mysettings["PATH"]
                         break
@@ -2850,13 +2850,13 @@ def _post_src_install_uid_fix(mysettings, out):
             break
 
     if desktopfile_errors:
-        for l in _merge_desktopfile_error(desktopfile_errors):
-            l = l.replace(mysettings["ED"], "/")
-            eqawarn(l, phase="install", key=mysettings.mycpv, out=out)
+        for error in _merge_desktopfile_error(desktopfile_errors):
+            error = error.replace(mysettings["ED"], "/")
+            eqawarn(error, phase="install", key=mysettings.mycpv, out=out)
 
     if unicode_errors:
-        for l in _merge_unicode_error(unicode_errors):
-            eqawarn(l, phase="install", key=mysettings.mycpv, out=out)
+        for error in _merge_unicode_error(unicode_errors):
+            eqawarn(error, phase="install", key=mysettings.mycpv, out=out)
 
     build_info_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info")
 
@@ -3081,12 +3081,12 @@ def _post_src_install_soname_symlinks(mysettings, out):
         needed_filename, encoding=_encodings["repo.content"], errors="strict"
     )
 
-    for l in lines:
-        l = l.rstrip("\n")
-        if not l:
+    for line in lines:
+        line = line.rstrip("\n")
+        if not line:
             continue
         try:
-            entry = NeededEntry.parse(needed_filename, l)
+            entry = NeededEntry.parse(needed_filename, line)
         except InvalidData as e:
             portage.util.writemsg_level(
                 f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1

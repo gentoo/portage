@@ -450,8 +450,8 @@ def emirrordist_main(args):
     portage.util.initialize_logger()
 
     if options.verbose > 0:
-        l = logging.getLogger()
-        l.setLevel(l.getEffectiveLevel() - 10 * options.verbose)
+        logger = logging.getLogger()
+        logger.setLevel(logger.getEffectiveLevel() - 10 * options.verbose)
 
     with Config(options, portdb, SchedulerInterface(global_event_loop())) as config:
         if not options.mirror:

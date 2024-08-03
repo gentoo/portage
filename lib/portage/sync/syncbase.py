@@ -61,12 +61,12 @@ class SyncBase:
         MUST only be called after _kwargs() has set the logger
         """
         if self.bin_command is None:
-            msg = [
+            msgs = [
                 f"Command not found: {self._bin_command}",
                 f'Type "emerge {self.bin_pkg}" to enable {self._bin_command} support.',
             ]
-            for l in msg:
-                writemsg_level(f"!!! {l}\n", level=logging.ERROR, noiselevel=-1)
+            for msg in msgs:
+                writemsg_level(f"!!! {msg}\n", level=logging.ERROR, noiselevel=-1)
             return False
 
         try:

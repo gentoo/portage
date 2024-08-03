@@ -88,11 +88,11 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
         needed = f.readlines()
 
     unresolved_by_file = []
-    for l in needed:
-        l = l.rstrip("\n")
-        if not l:
+    for line in needed:
+        line = line.rstrip("\n")
+        if not line:
             continue
-        entry = NeededEntry.parse(needed_filename, l)
+        entry = NeededEntry.parse(needed_filename, line)
         missing = unresolved_by_category.get(entry.multilib_category)
         if not missing:
             continue

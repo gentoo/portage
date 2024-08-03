@@ -108,14 +108,14 @@ class EbuildBuild(CompositeTask):
                 fetch_log = os.path.join(
                     _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
                 )
-                msg = (
+                msgs = (
                     "Fetching files in the background.",
                     "To view fetch progress, run in another terminal:",
                     f"tail -f {fetch_log}",
                 )
                 out = portage.output.EOutput()
-                for l in msg:
-                    out.einfo(l)
+                for msg in msgs:
+                    out.einfo(msg)
 
             self._current_task = prefetcher
             prefetcher.addExitListener(self._prefetch_exit)

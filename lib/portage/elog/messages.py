@@ -63,16 +63,17 @@ def collect_ebuild_messages(path):
         )
         # Use split('\n') since normal line iteration or readlines() will
         # split on \r characters as shown in bug #390833.
-        for l in f.read().split("\n"):
-            if not l:
+        for line in f.read().split("\n"):
+            if not line:
                 continue
             try:
-                msgtype, msg = l.split(" ", 1)
+                msgtype, msg = line.split(" ", 1)
                 if msgtype not in _log_levels:
                     raise ValueError(msgtype)
             except ValueError:
                 writemsg(
-                    _("!!! malformed entry in " "log file: '%s': %s\n") % (filename, l),
+                    _("!!! malformed entry in " "log file: '%s': %s\n")
+                    % (filename, line),
                     noiselevel=-1,
                 )
                 continue

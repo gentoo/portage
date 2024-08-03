@@ -1157,7 +1157,7 @@ def profile_check(trees, myaction):
             "--help, --info, --search, --sync, and --version."
         )
         writemsg_level(
-            "".join(f"!!! {l}\n" for l in textwrap.wrap(msg, 70)),
+            "".join(f"!!! {line}\n" for line in textwrap.wrap(msg, 70)),
             level=logging.ERROR,
             noiselevel=-1,
         )

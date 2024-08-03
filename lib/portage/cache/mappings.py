@@ -307,10 +307,10 @@ class _SlotDict:
             yield k
 
     def __len__(self):
-        l = 0
+        result = 0
         for i in self.iteritems():
-            l += 1
-        return l
+            result += 1
+        return result
 
     def iteritems(self):
         prefix = self._prefix

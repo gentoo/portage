@@ -324,9 +324,9 @@ def paren_reduce(mystr, _deprecation_warn=True):
                 raise InvalidDependString(_("malformed syntax: '%s'") % mystr)
             if level > 0:
                 level -= 1
-                l = stack.pop()
-                is_single = len(l) == 1 or (
-                    len(l) == 2 and (l[0] == "||" or l[0][-1] == "?")
+                item = stack.pop()
+                is_single = len(item) == 1 or (
+                    len(item) == 2 and (item[0] == "||" or item[0][-1] == "?")
                 )
 
                 def ends_in_any_of_dep(k):
@@ -346,31 +346,31 @@ def paren_reduce(mystr, _deprecation_warn=True):
                     if is_single and (
                         not stack[level] or not stack[level][-1][-1] == "?"
                     ):
-                        if len(l) == 1 and isinstance(l[0], list):
-                            # l = [[...]]
-                            stack[level].extend(l[0])
+                        if len(item) == 1 and isinstance(item[0], list):
+                            # item = [[...]]
+                            stack[level].extend(item[0])
                         else:
-                            stack[level].extend(l)
+                            stack[level].extend(item)
                     else:
-                        stack[level].append(l)
+                        stack[level].append(item)
 
-                if l:
+                if item:
                     if not ends_in_any_of_dep(level - 1) and not ends_in_operator(
                         level
                     ):
                         # Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
-                        stack[level].extend(l)
+                        stack[level].extend(item)
                     elif not stack[level]:
                         # An '||' in the level above forces us to keep to brackets.
                         special_append()
-                    elif len(l) == 1 and ends_in_any_of_dep(level):
+                    elif len(item) == 1 and ends_in_any_of_dep(level):
                         # Optimize: || ( A ) -> A
                         stack[level].pop()
                         special_append()
                     elif (
-                        len(l) == 2
-                        and (l[0] == "||" or l[0][-1] == "?")
-                        and stack[level][-1] in (l[0], "||")
+                        len(item) == 2
+                        and (item[0] == "||" or item[0][-1] == "?")
+                        and stack[level][-1] in (item[0], "||")
                     ):
                         # Optimize: 	|| ( || ( ... ) ) -> || ( ... )
                         # 			foo? ( foo? ( ... ) ) -> foo? ( ... )
@@ -647,12 +647,12 @@ def _use_reduce_cached(
                 )
             if level > 0:
                 level -= 1
-                l = stack.pop()
+                item = stack.pop()
 
                 is_single = (
-                    len(l) == 1
-                    or (opconvert and l and l[0] == "||")
-                    or (not opconvert and len(l) == 2 and l[0] == "||")
+                    len(item) == 1
+                    or (opconvert and item and item[0] == "||")
+                    or (not opconvert and len(item) == 2 and item[0] == "||")
                 )
                 ignore = False
 
@@ -664,19 +664,19 @@ def _use_reduce_cached(
                         # Merge the current list if needed.
                         if is_active(stack[level][-1]):
                             stack[level].pop()
-                            stack[level].extend(l)
+                            stack[level].extend(item)
                         else:
                             stack[level].pop()
                     else:
-                        stack[level].extend(l)
+                        stack[level].extend(item)
                     continue
 
                 if stack[level] and isinstance(stack[level][-1], str):
-                    if stack[level][-1] == "||" and not l:
+                    if stack[level][-1] == "||" and not item:
                         # Optimize: || ( ) -> .
                         if not eapi_attrs.empty_groups_always_true:
                             # in EAPI 7+, we need to fail here
-                            l.append((token_class or str)("__const__/empty-any-of"))
+                            item.append((token_class or str)("__const__/empty-any-of"))
                         stack[level].pop()
                     elif stack[level][-1][-1] == "?":
                         # The last token before the '(' that matches the current ')'
@@ -713,45 +713,45 @@ def _use_reduce_cached(
                     """
                     if is_single:
                         # Either [A], [[...]] or [|| [...]]
-                        if l[0] == "||" and ends_in_any_of_dep(level - 1):
+                        if item[0] == "||" and ends_in_any_of_dep(level - 1):
                             if opconvert:
-                                stack[level].extend(l[1:])
+                                stack[level].extend(item[1:])
                             else:
-                                stack[level].extend(l[1])
-                        elif len(l) == 1 and isinstance(l[0], list):
-                            # l = [[...]]
+                                stack[level].extend(item[1])
+                        elif len(item) == 1 and isinstance(item[0], list):
+                            # item = [[...]]
                             last = last_any_of_operator_level(level - 1)
                             if last == -1:
                                 if (
                                     opconvert
-                                    and isinstance(l[0], list)
-                                    and l[0]
-                                    and l[0][0] == "||"
+                                    and isinstance(item[0], list)
+                                    and item[0]
+                                    and item[0][0] == "||"
                                 ):
-                                    stack[level].append(l[0])
+                                    stack[level].append(item[0])
                                 else:
-                                    stack[level].extend(l[0])
+                                    stack[level].extend(item[0])
                             else:
-                                if opconvert and l[0] and l[0][0] == "||":
-                                    stack[level].extend(l[0][1:])
+                                if opconvert and item[0] and item[0][0] == "||":
+                                    stack[level].extend(item[0][1:])
                                 else:
-                                    stack[level].append(l[0])
+                                    stack[level].append(item[0])
                         else:
-                            stack[level].extend(l)
+                            stack[level].extend(item)
                     else:
                         if opconvert and stack[level] and stack[level][-1] == "||":
-                            stack[level][-1] = ["||"] + l
+                            stack[level][-1] = ["||"] + item
                         else:
-                            stack[level].append(l)
+                            stack[level].append(item)
 
-                if l and not ignore:
+                if item and not ignore:
                     # The current list is not empty and we don't want to ignore it because
                     # of an inactive use conditional.
                     if not ends_in_any_of_dep(level - 1) and not ends_in_any_of_dep(
                         level
                     ):
                         # Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
-                        stack[level].extend(l)
+                        stack[level].extend(item)
                     elif not stack[level]:
                         # An '||' in the level above forces us to keep to brackets.
                         special_append()
@@ -762,13 +762,13 @@ def _use_reduce_cached(
                     elif ends_in_any_of_dep(level) and ends_in_any_of_dep(level - 1):
                         # Optimize: || ( A || ( B C ) ) -> || ( A B C )
                         stack[level].pop()
-                        stack[level].extend(l)
+                        stack[level].extend(item)
                     else:
                         if opconvert and ends_in_any_of_dep(level):
                             # In opconvert mode, we have to move the operator from the level
                             # above into the current list.
                             stack[level].pop()
-                            stack[level].append(["||"] + l)
+                            stack[level].append(["||"] + item)
                         else:
                             special_append()
 
@@ -2786,7 +2786,7 @@ def get_required_use_flags(required_use, eapi=None):
                 raise InvalidDependString(_("malformed syntax: '%s'") % required_use)
             if level > 0:
                 level -= 1
-                l = stack.pop()
+                item = stack.pop()
                 ignore = False
                 if stack[level]:
                     if stack[level][-1] in valid_operators or (
@@ -2797,8 +2797,8 @@ def get_required_use_flags(required_use, eapi=None):
                         stack[level].pop()
                         stack[level].append(True)
 
-                if l and not ignore:
-                    stack[level].append(all(x for x in l))
+                if item and not ignore:
+                    stack[level].append(all(x for x in item))
             else:
                 raise InvalidDependString(_("malformed syntax: '%s'") % required_use)
         elif token in valid_operators:
@@ -2955,12 +2955,12 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
                 raise InvalidDependString(_("malformed syntax: '%s'") % required_use)
             if level > 0:
                 level -= 1
-                l = stack.pop()
+                item = stack.pop()
                 op = None
                 if stack[level]:
                     if stack[level][-1] in valid_operators:
                         op = stack[level].pop()
-                        satisfied = is_satisfied(op, l)
+                        satisfied = is_satisfied(op, item)
                         stack[level].append(satisfied)
                         node._satisfied = satisfied
 
@@ -2970,7 +2970,7 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
                     ):
                         op = stack[level].pop()
                         if is_active(op[:-1]):
-                            satisfied = is_satisfied(op, l)
+                            satisfied = is_satisfied(op, item)
                             stack[level].append(satisfied)
                             node._satisfied = satisfied
                         else:
@@ -2982,9 +2982,9 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
                             continue
 
                 if op is None:
-                    satisfied = False not in l
+                    satisfied = False not in item
                     node._satisfied = satisfied
-                    if l:
+                    if item:
                         stack[level].append(satisfied)
 
                     if (
@@ -3104,9 +3104,9 @@ def extract_affecting_use(mystr, atom, eapi=None):
                 raise InvalidDependString(_("malformed syntax: '%s'") % mystr)
             if level > 0:
                 level -= 1
-                l = stack.pop()
-                is_single = len(l) == 1 or (
-                    len(l) == 2 and (l[0] == "||" or l[0][-1] == "?")
+                item = stack.pop()
+                is_single = len(item) == 1 or (
+                    len(item) == 2 and (item[0] == "||" or item[0][-1] == "?")
                 )
 
                 def ends_in_any_of_dep(k):
@@ -3126,39 +3126,39 @@ def extract_affecting_use(mystr, atom, eapi=None):
                     if is_single and (
                         not stack[level] or not stack[level][-1][-1] == "?"
                     ):
-                        if len(l) == 1 and isinstance(l[0], list):
-                            # l = [[...]]
-                            stack[level].extend(l[0])
+                        if len(item) == 1 and isinstance(item[0], list):
+                            # item = [[...]]
+                            stack[level].extend(item[0])
                         else:
-                            stack[level].extend(l)
+                            stack[level].extend(item)
                     else:
-                        stack[level].append(l)
+                        stack[level].append(item)
 
-                if l:
+                if item:
                     if not ends_in_any_of_dep(level - 1) and not ends_in_operator(
                         level
                     ):
                         # Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
-                        stack[level].extend(l)
+                        stack[level].extend(item)
                     elif not stack[level]:
                         # An '||' in the level above forces us to keep to brackets.
                         special_append()
-                    elif len(l) == 1 and ends_in_any_of_dep(level):
+                    elif len(item) == 1 and ends_in_any_of_dep(level):
                         # Optimize: || ( A ) -> A
                         stack[level].pop()
                         special_append()
                     elif (
-                        len(l) == 2
-                        and (l[0] == "||" or l[0][-1] == "?")
-                        and stack[level][-1] in (l[0], "||")
+                        len(item) == 2
+                        and (item[0] == "||" or item[0][-1] == "?")
+                        and stack[level][-1] in (item[0], "||")
                     ):
                         # Optimize: 	|| ( || ( ... ) ) -> || ( ... )
                         # 			foo? ( foo? ( ... ) ) -> foo? ( ... )
                         # 			|| ( foo? ( ... ) ) -> foo? ( ... )
                         stack[level].pop()
                         special_append()
-                        if l[0][-1] == "?":
-                            affecting_use.add(flag(l[0]))
+                        if item[0][-1] == "?":
+                            affecting_use.add(flag(item[0]))
                     else:
                         if stack[level] and stack[level][-1][-1] == "?":
                             affecting_use.add(flag(stack[level][-1]))
