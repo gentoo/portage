@@ -28,7 +28,7 @@ Bug fixes:
 * repository: config: Allow a repository to be configured using one of its
   aliases rather than its primary name (bug #935830).
 
-* emerge: Fix parallel-fetch to properly terminate FETCOMMAND processes when
+* emerge: Fix parallel-fetch to properly terminate FETCHCOMMAND processes when
   needed, using a SIGTERM handler (bug #936273).
 
 portage-3.0.65 (2024-06-04)
