@@ -1,4 +1,4 @@
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -657,6 +657,7 @@ def create_trees(
         # environment to apply to the config that's associated
         # with ROOT != "/", so pass a nearly empty dict for the env parameter.
         env_sequence = (
+            "MAKEFLAGS",
             "PATH",
             "PORTAGE_GRPNAME",
             "PORTAGE_REPOSITORIES",

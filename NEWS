@@ -29,6 +29,8 @@ Bug fixes:
 
 * Scheduler: Handle SIGWINCH for JobStatusDisplay (bug #945382).
 
+* Pass through MAKEFLAGS and exclude from environment.bz2 (bug #692576).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
