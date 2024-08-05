@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jan 2024" "Portage @VERSION@" "Portage"
+.TH "MAKE.CONF" "5" "Aug 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -947,6 +947,14 @@ which only the linker understands (see \fBgcc\fR(1)).
 Setting this and other *FLAGS variables arbitrarily may cause compile or
 runtime failures. Bug reports submitted when nonstandard values are
 enabled for these flags may be closed as INVALID.
+.TP
+.B MAKEFLAGS
+Use this variable instead of \fBMAKEOPTS\fR if you want to inject a
+centralized job server for make. In this case \fBMAKEOPTS\fR should be
+unset or else it can cause the make jobserver mode to reset. Include
+a \fB--jobserver-auth=fifo:PATH\fR flag to specify the path of the
+centralized jobserver fifo, which needs to be readable and writable by
+the portage group when userpriv is enabled.
 .TP
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
