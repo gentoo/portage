@@ -2009,7 +2009,7 @@ def spawn(
 
         if (
             not networked
-            and mysettings.get("EBUILD_PHASE") != "nofetch"
+            and mysettings.get("EBUILD_PHASE") not in ("depend", "nofetch")
             and ("network-sandbox-proxy" in features or "distcc" in features)
         ):
             # Provide a SOCKS5-over-UNIX-socket proxy to escape sandbox
