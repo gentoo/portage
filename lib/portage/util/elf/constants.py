@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Gentoo Authors
+# Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # These constants are available from elfutils:
@@ -40,6 +40,7 @@ EM_AARCH64 = 183
 EM_ARC_COMPACT2 = 195
 EM_AMDGPU = 224
 EM_RISCV = 243
+EM_BPF = 247
 EM_ARC_COMPACT3_64 = 253
 EM_ARC_COMPACT3 = 255
 EM_LOONGARCH = 258
