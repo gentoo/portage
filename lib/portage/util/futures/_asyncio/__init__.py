@@ -346,15 +346,21 @@ def _get_running_loop():
 
 
 def _thread_weakrefs_atexit():
-    with _thread_weakrefs.lock:
-        if _thread_weakrefs.pid == portage.getpid():
-            while True:
-                try:
-                    thread_key, loop = _thread_weakrefs.loops.popitem()
-                except KeyError:
-                    break
-                else:
-                    loop.close()
+    while True:
+        loop = None
+        with _thread_weakrefs.lock:
+            if _thread_weakrefs.pid != portage.getpid():
+                return
+
+            try:
+                thread_key, loop = _thread_weakrefs.loops.popitem()
+            except KeyError:
+                return
+
+        # Release the lock while closing the loop, since it may call
+        # run_coroutine_exitfuncs interally.
+        if loop is not None:
+            loop.close()
 
 
 _thread_weakrefs = types.SimpleNamespace(

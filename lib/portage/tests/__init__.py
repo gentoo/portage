@@ -16,6 +16,7 @@ from portage import os
 from portage.util import no_color
 from portage import _encodings
 from portage import _unicode_decode
+from portage.const import PORTAGE_PYM_PATH
 from portage.output import colorize
 from portage.proxy.objectproxy import ObjectProxy
 
@@ -63,6 +64,24 @@ def cnf_sbindir():
     if portage._not_installed:
         return str(cnf_bindir)
     return os.path.join(portage.const.EPREFIX or "/", "usr", "sbin")
+
+
+def get_pythonpath():
+    """
+    Prefix current PYTHONPATH with PORTAGE_PYM_PATH, and normalize.
+    """
+    pythonpath = os.environ.get("PYTHONPATH")
+    if pythonpath is not None and not pythonpath.strip():
+        pythonpath = None
+    if pythonpath is not None and pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
+        pass
+    else:
+        if pythonpath is None:
+            pythonpath = ""
+        else:
+            pythonpath = ":" + pythonpath
+        pythonpath = PORTAGE_PYM_PATH + pythonpath
+    return pythonpath
 
 
 class TestCase(unittest.TestCase):
