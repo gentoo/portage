@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 
+import asyncio as _asyncio
 import atexit
 import errno
 import fcntl
@@ -193,6 +194,7 @@ def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
 
 
 _exithandlers = []
+_coroutine_exithandlers = []
 
 
 def atexit_register(func, *args, **kargs):
@@ -200,7 +202,12 @@ def atexit_register(func, *args, **kargs):
     what is registered.  For example, when portage restarts itself via
     os.execv, the atexit module does not work so we have to do it
     manually by calling the run_exitfuncs() function in this module."""
-    _exithandlers.append((func, args, kargs))
+    # The internal asyncio wrapper module would trigger a circular import
+    # if used here.
+    if _asyncio.iscoroutinefunction(func):
+        _coroutine_exithandlers.append((func, args, kargs))
+    else:
+        _exithandlers.append((func, args, kargs))
 
 
 def run_exitfuncs():
@@ -232,12 +239,16 @@ async def run_coroutine_exitfuncs():
     This is the same as run_exitfuncs but it uses asyncio.iscoroutinefunction
     to check which functions to run. It is called by the AsyncioEventLoop
     _close_main method just before the loop is closed.
+
+    If the loop is explicitly closed before exit, then that will cause
+    run_coroutine_exitfuncs to run before run_exitfuncs. Otherwise, a
+    run_exitfuncs hook will close it, causing run_coroutine_exitfuncs to be
+    called via run_exitfuncs.
     """
     tasks = []
-    for index, (func, targs, kargs) in reversed(list(enumerate(_exithandlers))):
-        if asyncio.iscoroutinefunction(func):
-            del _exithandlers[index]
-            tasks.append(asyncio.ensure_future(func(*targs, **kargs)))
+    while _coroutine_exithandlers:
+        func, targs, kargs = _coroutine_exithandlers.pop()
+        tasks.append(asyncio.ensure_future(func(*targs, **kargs)))
     tracebacks = []
     exc_info = None
     for task in tasks:
@@ -255,7 +266,21 @@ async def run_coroutine_exitfuncs():
         raise exc_info[1].with_traceback(exc_info[2])
 
 
-atexit.register(run_exitfuncs)
+def _atexit_register_run_exitfuncs():
+    """
+    Register the run_exitfuncs atexit hook. If this hook is not called
+    before the multiprocessing module's _exit_function, then there will
+    be a deadlock. In order to prevent the deadlock, this function must
+    be called in order to re-order the hooks after the first process has
+    been started via the multiprocessing module. The natural place to
+    call this is in the ForkProcess class, though it should also be
+    called once before, in case the ForkProcess class is never called.
+    """
+    atexit.unregister(run_exitfuncs)
+    atexit.register(run_exitfuncs)
+
+
+_atexit_register_run_exitfuncs()
 
 # It used to be necessary for API consumers to remove pids from spawned_pids,
 # since otherwise it would accumulate a pids endlessly. Now, spawned_pids is
