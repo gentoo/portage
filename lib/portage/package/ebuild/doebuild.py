@@ -2131,9 +2131,40 @@ def spawn(
         logname_backup = mysettings.configdict["env"].get("LOGNAME")
         mysettings.configdict["env"]["LOGNAME"] = logname
 
+    eapi = mysettings["EAPI"]
+
+    # TODO: Move into eapi.py
+    def eapi_does_not_export_a(eapi):
+        return eapi == "9"
+
+    dont_export_a = "dont-export-a" in mysettings.features or eapi_does_not_export_a(
+        eapi
+    )
+
+    if dont_export_a:
+        orig_env = mysettings.environ()
+        # Copy since we are potentially removing keys from the dict.
+        env = orig_env.copy()
+
+        t = env["T"]
+        if not os.path.isdir(t):
+            os.makedirs(t)
+
+        ebuildExtraSource = os.path.join(t, "portage-ebuild-extra-source")
+        with open(ebuildExtraSource, mode="w") as f:
+            for name, value in orig_env.items():
+                if name != "A":
+                    continue
+                f.write(f"{name}='{value}'\n")
+                del env[name]
+
+        env["PORTAGE_EBUILD_EXTRA_SOURCE"] = str(ebuildExtraSource)
+    else:
+        env = mysettings.environ()
+
     try:
         if keywords.get("returnpid") or keywords.get("returnproc"):
-            return spawn_func(mystring, env=mysettings.environ(), **keywords)
+            return spawn_func(mystring, env=env, **keywords)
 
         proc = EbuildSpawnProcess(
             background=False,
