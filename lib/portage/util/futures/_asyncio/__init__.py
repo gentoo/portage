@@ -339,15 +339,30 @@ def _get_running_loop():
                 elif _loop is None:
                     return loop if loop.is_running() else None
 
-    # If _loop it not None here it means it was probably a temporary
-    # loop created by asyncio.run, so we don't try to cache it, and
-    # just return a temporary wrapper.
-    return None if _loop is None else _AsyncioEventLoop(loop=_loop)
+        if _loop is None:
+            return None
+
+        # If _loop it not None here it means it was probably a temporary
+        # loop created by asyncio.run. Still keep a weak reference in case
+        # we need to lookup this _AsyncioEventLoop instance later to add
+        # _coroutine_exithandlers in the atexit_register function.
+        if _thread_weakrefs.pid != portage.getpid():
+            _thread_weakrefs.pid = portage.getpid()
+            _thread_weakrefs.mainloop = None
+            _thread_weakrefs.loops = weakref.WeakValueDictionary()
+
+        loop = _thread_weakrefs.loops[threading.get_ident()] = _AsyncioEventLoop(
+            loop=_loop
+        )
+
+        return loop
 
 
 def _thread_weakrefs_atexit():
     while True:
         loop = None
+        thread_key = None
+        restore_loop = None
         with _thread_weakrefs.lock:
             if _thread_weakrefs.pid != portage.getpid():
                 return
@@ -356,11 +371,29 @@ def _thread_weakrefs_atexit():
                 thread_key, loop = _thread_weakrefs.loops.popitem()
             except KeyError:
                 return
+            else:
+                # Temporarily associate it as the loop for the current thread so
+                # that it can be looked up during run_coroutine_exitfuncs calls.
+                # Also create a reference to a different loop if one is associated
+                # with this thread so we can restore it later.
+                try:
+                    restore_loop = _thread_weakrefs.loops[threading.get_ident()]
+                except KeyError:
+                    pass
+                _thread_weakrefs.loops[threading.get_ident()] = loop
 
         # Release the lock while closing the loop, since it may call
         # run_coroutine_exitfuncs interally.
         if loop is not None:
             loop.close()
+            with _thread_weakrefs.lock:
+                try:
+                    if _thread_weakrefs.loops[threading.get_ident()] is loop:
+                        del _thread_weakrefs.loops[threading.get_ident()]
+                except KeyError:
+                    pass
+                if restore_loop is not None:
+                    _thread_weakrefs.loops[threading.get_ident()] = restore_loop
 
 
 _thread_weakrefs = types.SimpleNamespace(

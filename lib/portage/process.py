@@ -194,7 +194,6 @@ def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
 
 
 _exithandlers = []
-_coroutine_exithandlers = []
 
 
 def atexit_register(func, *args, **kargs):
@@ -205,7 +204,9 @@ def atexit_register(func, *args, **kargs):
     # The internal asyncio wrapper module would trigger a circular import
     # if used here.
     if _asyncio.iscoroutinefunction(func):
-        _coroutine_exithandlers.append((func, args, kargs))
+        # Add this coroutine function to the exit handlers for the loop
+        # which is associated with the current thread.
+        global_event_loop()._coroutine_exithandlers.append((func, args, kargs))
     else:
         _exithandlers.append((func, args, kargs))
 
@@ -238,13 +239,17 @@ async def run_coroutine_exitfuncs():
     """
     This is the same as run_exitfuncs but it uses asyncio.iscoroutinefunction
     to check which functions to run. It is called by the AsyncioEventLoop
-    _close_main method just before the loop is closed.
+    _close method just before the loop is closed.
 
     If the loop is explicitly closed before exit, then that will cause
     run_coroutine_exitfuncs to run before run_exitfuncs. Otherwise, a
     run_exitfuncs hook will close it, causing run_coroutine_exitfuncs to be
     called via run_exitfuncs.
     """
+    # The _thread_weakrefs_atexit function makes an adjustment to ensure
+    # that global_event_loop() returns the correct loop when it is closing,
+    # regardless of which thread the loop was initially associated with.
+    _coroutine_exithandlers = global_event_loop()._coroutine_exithandlers
     tasks = []
     while _coroutine_exithandlers:
         func, targs, kargs = _coroutine_exithandlers.pop()

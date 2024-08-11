@@ -194,17 +194,17 @@ class Socks5ServerTestCase(TestCase):
         asyncio.run(self._test_socks5_proxy())
 
     async def _test_socks5_proxy(self):
-        loop = asyncio.get_running_loop()
+        loop = global_event_loop()
 
         host = "127.0.0.1"
         content = b"Hello World!"
         path = "/index.html"
         proxy = None
         tempdir = tempfile.mkdtemp()
-        previous_exithandlers = portage.process._coroutine_exithandlers
+        previous_exithandlers = loop._coroutine_exithandlers
 
         try:
-            portage.process._coroutine_exithandlers = []
+            loop._coroutine_exithandlers = []
             with AsyncHTTPServer(host, {path: content}, loop) as server:
                 settings = {
                     "PORTAGE_TMPDIR": tempdir,
@@ -227,11 +227,11 @@ class Socks5ServerTestCase(TestCase):
         finally:
             try:
                 # Also run_coroutine_exitfuncs to test atexit hook cleanup.
-                self.assertNotEqual(portage.process._coroutine_exithandlers, [])
+                self.assertNotEqual(loop._coroutine_exithandlers, [])
                 await portage.process.run_coroutine_exitfuncs()
-                self.assertEqual(portage.process._coroutine_exithandlers, [])
+                self.assertEqual(loop._coroutine_exithandlers, [])
             finally:
-                portage.process._coroutine_exithandlers = previous_exithandlers
+                loop._coroutine_exithandlers = previous_exithandlers
                 shutil.rmtree(tempdir)
 
 
@@ -284,6 +284,8 @@ class Socks5ServerAtExitTestCase(TestCase):
     so this test uses python -c to ensure that atexit hooks will work.
     """
 
+    _threaded = False
+
     def testSocks5ServerAtExit(self):
         tempdir = tempfile.mkdtemp()
         try:
@@ -295,24 +297,36 @@ class Socks5ServerAtExitTestCase(TestCase):
                     "-c",
                     """
 import sys
+import threading
 
 from portage.const import PORTAGE_BIN_PATH
 from portage.util import socks5
 from portage.util._eventloop.global_event_loop import global_event_loop
 
 tempdir = sys.argv[0]
-loop = global_event_loop()
+threaded = bool(sys.argv[1])
 
 settings = {
     "PORTAGE_TMPDIR": tempdir,
     "PORTAGE_BIN_PATH": PORTAGE_BIN_PATH,
 }
 
-socks5.get_socks5_proxy(settings)
-loop.run_until_complete(socks5.proxy.ready())
-print(socks5.proxy._proc.pid, flush=True)
+def main():
+    loop = global_event_loop()
+    socks5.get_socks5_proxy(settings)
+    loop.run_until_complete(socks5.proxy.ready())
+    print(socks5.proxy._proc.pid, flush=True)
+
+if __name__ == "__main__":
+    if threaded:
+        t = threading.Thread(target=main)
+        t.start()
+        t.join()
+    else:
+        main()
 """,
                     tempdir,
+                    str(self._threaded),
                 ],
                 env=env,
             )
@@ -323,3 +337,7 @@ print(socks5.proxy._proc.pid, flush=True)
                 os.kill(pid, 0)
         finally:
             shutil.rmtree(tempdir)
+
+
+class Socks5ServerAtExitThreadedTestCase(Socks5ServerAtExitTestCase):
+    _threaded = True
