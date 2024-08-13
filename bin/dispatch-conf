@@ -574,26 +574,18 @@ def clear_screen():
     os.system("clear 2>/dev/null")
 
 
-shell = os.environ.get("SHELL")
-if not shell or not os.access(shell, os.EX_OK):
-    shell = find_binary("sh")
-
-
 def spawn_shell(cmd):
-    if shell:
-        sys.__stdout__.flush()
-        sys.__stderr__.flush()
-        spawn(
-            [shell, "-c", cmd],
-            env=os.environ,
-            fd_pipes={
-                0: portage._get_stdin().fileno(),
-                1: sys.__stdout__.fileno(),
-                2: sys.__stderr__.fileno(),
-            },
-        )
-    else:
-        os.system(cmd)
+    sys.__stdout__.flush()
+    sys.__stderr__.flush()
+    spawn(
+        ["sh", "-c", cmd],
+        env=os.environ,
+        fd_pipes={
+            0: portage._get_stdin().fileno(),
+            1: sys.__stdout__.fileno(),
+            2: sys.__stderr__.fileno(),
+        },
+    )
 
 
 def usage(argv):
