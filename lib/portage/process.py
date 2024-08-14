@@ -208,7 +208,7 @@ def atexit_register(func, *args, **kargs):
         # which is associated with the current thread.
         global_event_loop()._coroutine_exithandlers.append((func, args, kargs))
     else:
-        _exithandlers.append((func, args, kargs))
+        _exithandlers.append((func, args, kargs, portage.getpid()))
 
 
 def run_exitfuncs():
@@ -222,7 +222,12 @@ def run_exitfuncs():
     # original function is in the output to stderr.
     exc_info = None
     while _exithandlers:
-        func, targs, kargs = _exithandlers.pop()
+        func, targs, kargs, pid = _exithandlers.pop()
+        if pid != portage.getpid():
+            # Drop hooks inherited via fork because they can trigger redundant
+            # actions as shown in bug 937891. Note that atexit hooks only work
+            # after fork since issue 83856 was fixed in Python 3.13.
+            continue
         try:
             func(*targs, **kargs)
         except SystemExit:
