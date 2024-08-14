@@ -373,7 +373,7 @@ class _EbuildFetcherProcess(ForkProcess):
         def cache_result(result):
             try:
                 self._uri_map = result.result()
-            except Exception:
+            except (CancelledError, Exception):
                 # The caller handles this when it retrieves the result.
                 pass
 
