@@ -19,7 +19,6 @@ __all__ = (
     "run",
     "shield",
     "sleep",
-    "Task",
     "wait",
     "wait_for",
 )
@@ -172,16 +171,6 @@ class Lock(_Lock):
         elif "loop" not in kwargs:
             kwargs["loop"] = _safe_loop()._loop
         super().__init__(**kwargs)
-
-
-class Task(Future):
-    """
-    Schedule the execution of a coroutine: wrap it in a future. A task
-    is a subclass of Future.
-    """
-
-    def __init__(self, coro, loop=None):
-        raise NotImplementedError
 
 
 def ensure_future(coro_or_future, loop=None):
