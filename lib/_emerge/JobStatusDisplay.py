@@ -71,8 +71,8 @@ class JobStatusDisplay:
     def _set_width(self, width):
         if width == getattr(self, "width", None):
             return
-        if width <= 0 or width > 80:
-            width = 80
+        if width <= 0 or width > 100:
+            width = 100
         object.__setattr__(self, "width", width)
         object.__setattr__(self, "_jobs_column_width", width - 32)
 
