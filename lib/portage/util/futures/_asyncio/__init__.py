@@ -119,7 +119,7 @@ def run(coro):
 run.__doc__ = _real_asyncio.run.__doc__
 
 
-def create_subprocess_exec(*args, **kwargs):
+def create_subprocess_exec(*args, loop=None, **kwargs):
     """
     Create a subprocess.
 
@@ -140,7 +140,6 @@ def create_subprocess_exec(*args, **kwargs):
     @rtype: asyncio.subprocess.Process (or compatible)
     @return: asyncio.subprocess.Process interface
     """
-    loop = _wrap_loop(kwargs.pop("loop", None))
     # Python 3.4 and later implement PEP 446, which makes newly
     # created file descriptors non-inheritable by default.
     kwargs.setdefault("close_fds", False)
