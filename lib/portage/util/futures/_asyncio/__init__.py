@@ -210,9 +210,12 @@ def sleep(delay, result=None, loop=None):
     @param result: result of the future
     @type loop: asyncio.AbstractEventLoop (or compatible)
     @param loop: event loop
-    @rtype: asyncio.Future (or compatible)
-    @return: an instance of Future
+    @rtype: collections.abc.Coroutine or asyncio.Future
+    @return: an instance of Coroutine or Future
     """
+    if loop is None:
+        return _real_asyncio.sleep(delay, result=result)
+
     loop = _wrap_loop(loop)
     future = loop.create_future()
     handle = loop.call_later(delay, future.set_result, result)
