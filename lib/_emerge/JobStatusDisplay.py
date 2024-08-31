@@ -16,6 +16,9 @@ from _emerge.getloadavg import getloadavg
 
 
 class JobStatusDisplay:
+    # Used as maximum display width and default fallback value.
+    max_display_width = 100
+
     _bound_properties = ("curval", "failed", "running")
 
     # Don't update the display unless at least this much
@@ -65,14 +68,14 @@ class JobStatusDisplay:
         if self._isatty:
             width = portage.output.get_term_size()[1]
         else:
-            width = 100
+            width = self.max_display_width
         self._set_width(width)
 
     def _set_width(self, width):
         if width == getattr(self, "width", None):
             return
-        if width <= 0 or width > 100:
-            width = 100
+        if width <= 0 or width > self.max_display_width:
+            width = self.max_display_width
         object.__setattr__(self, "width", width)
         object.__setattr__(self, "_jobs_column_width", width - 32)
 
