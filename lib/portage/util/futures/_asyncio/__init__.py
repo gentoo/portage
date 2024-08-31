@@ -186,6 +186,9 @@ def ensure_future(coro_or_future, loop=None):
     @rtype: asyncio.Future (or compatible)
     @return: an instance of Future
     """
+    if loop is None:
+        return _real_asyncio.ensure_future(coro_or_future)
+
     loop = _wrap_loop(loop)
     if isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
         # Use the real asyncio loop and ensure_future.
