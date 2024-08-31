@@ -311,6 +311,13 @@ def _safe_loop(create: Optional[bool] = True) -> Optional[_AsyncioEventLoop]:
             _thread_weakrefs.loops = weakref.WeakValueDictionary()
         try:
             loop = _thread_weakrefs.loops[thread_key]
+            if loop.is_closed():
+                # Discard wrapped asyncio.run loop that was closed.
+                del _thread_weakrefs.loops[thread_key]
+                if loop is _thread_weakrefs.mainloop:
+                    _thread_weakrefs.mainloop = None
+                loop = None
+                raise KeyError(thread_key)
         except KeyError:
             if not create:
                 return None
