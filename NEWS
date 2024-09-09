@@ -31,6 +31,9 @@ Bug fixes:
 * emerge: Fix parallel-fetch to properly terminate FETCHCOMMAND processes when
   needed, using a SIGTERM handler (bug #936273).
 
+* unpack: Don't display "Unpacking ..." message for skipped files.
+  Match file extensions case-sensitively in old EAPIs, fixes PMS compliance.
+
 portage-3.0.65 (2024-06-04)
 --------------
 
