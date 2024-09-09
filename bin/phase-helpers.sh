@@ -370,6 +370,12 @@ unpack() {
 			txz)     ___eapi_unpack_supports_txz && suffix_known=1 ;;
 		esac
 
+		if ___eapi_unpack_is_case_sensitive \
+				&& ! has "${suffix}" "${suffix_insensitive}" \
+					ZIP Z 7Z RAR LHA LHa; then
+			suffix_known=""
+		fi
+
 		if [[ -n ${suffix_known} ]]; then
 			__vecho ">>> Unpacking ${x} to ${PWD}"
 		else
@@ -378,13 +384,9 @@ unpack() {
 		fi
 
 		__unpack_tar() {
-			if [[ ${y_insensitive} == tar ]] ; then
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ tar != ${y} ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"secondary suffix '${y}' which is unofficially" \
-						"supported with EAPI '${EAPI}'. Instead use 'tar'."
-				fi
+			if [[ ${y_insensitive} == tar ]] \
+					&& ! ___eapi_unpack_is_case_sensitive \
+					|| [[ ${y} == tar ]]; then
 				$1 -c -- "${srcdir}${x}" | tar xof -
 				__assert_sigpipe_ok "${myfail}"
 			else
@@ -397,62 +399,25 @@ unpack() {
 		myfail="unpack: failure unpacking ${x}"
 		case "${suffix_insensitive}" in
 			tar)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ tar != ${suffix} ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'tar'."
-				fi
 				tar xof "${srcdir}${x}" || die "${myfail}"
 				;;
 			tgz)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ tgz != ${suffix} ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'tgz'."
-				fi
 				tar xozf "${srcdir}${x}" || die "${myfail}"
 				;;
 			tbz|tbz2)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " tbz tbz2 " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'tbz' or 'tbz2'."
-				fi
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${x}" | tar xof -
 				__assert_sigpipe_ok "${myfail}"
 				;;
 			zip|jar)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " ZIP zip jar " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'." \
-						"Instead use 'ZIP', 'zip', or 'jar'."
-				fi
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
 				( set +x ; while true ; do echo n || break ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "${myfail}"
 				;;
 			gz|z)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " gz z Z " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'gz', 'z', or 'Z'."
-				fi
 				__unpack_tar "gzip -d"
 				;;
 			bz2|bz)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " bz bz2 " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'bz' or 'bz2'."
-				fi
 				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
 			7z)
@@ -464,41 +429,15 @@ unpack() {
 				fi
 				;;
 			rar)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " rar RAR " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'rar' or 'RAR'."
-				fi
 				unrar x -idq -o+ "${srcdir}${x}" || die "${myfail}"
 				;;
 			lha|lzh)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " LHA LHa lha lzh " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'." \
-						"Instead use 'LHA', 'LHa', 'lha', or 'lzh'."
-				fi
 				lha xfq "${srcdir}${x}" || die "${myfail}"
 				;;
 			a)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " a " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'a'."
-				fi
 				ar x "${srcdir}${x}" || die "${myfail}"
 				;;
 			deb)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " deb " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'deb'."
-				fi
-
 				# Unpacking .deb archives can not always be done with
 				# `ar`.  For instance on AIX this doesn't work out.
 				# If `ar` is not the GNU binutils version and we have
@@ -533,30 +472,12 @@ unpack() {
 				fi
 				;;
 			lzma)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " lzma " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'lzma'."
-				fi
 				__unpack_tar "lzma -d"
 				;;
 			xz)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " xz " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'xz'."
-				fi
 				__unpack_tar "xz -T$(___makeopts_jobs) -d"
 				;;
 			txz)
-				if ___eapi_unpack_is_case_sensitive && \
-					[[ " txz " != *" ${suffix} "* ]] ; then
-					eqawarn "QA Notice: unpack called with" \
-						"suffix '${suffix}' which is unofficially supported" \
-						"with EAPI '${EAPI}'. Instead use 'txz'."
-				fi
 				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
 				;;
 		esac
