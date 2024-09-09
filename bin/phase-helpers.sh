@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
@@ -323,11 +323,11 @@ unpack() {
 	local suffix suffix_insensitive
 	local myfail
 	local eapi=${EAPI:-0}
+	local suffix_known
 
 	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		__vecho ">>> Unpacking ${x} to ${PWD}"
 		suffix=${x##*.}
 		suffix_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${suffix}")
 		y=${x%.*}
@@ -359,6 +359,23 @@ unpack() {
 			fi
 		fi
 		[[ ! -s ${srcdir}${x} ]] && die "unpack: ${x} does not exist"
+
+		suffix_known=""
+		case ${suffix_insensitive} in
+			tar|tgz|tbz|tbz2|zip|jar|gz|z|bz2|bz|a|deb|lzma) suffix_known=1 ;;
+			7z)      ___eapi_unpack_supports_7z  && suffix_known=1 ;;
+			rar)     ___eapi_unpack_supports_rar && suffix_known=1 ;;
+			lha|lzh) ___eapi_unpack_supports_lha && suffix_known=1 ;;
+			xz)      ___eapi_unpack_supports_xz  && suffix_known=1 ;;
+			txz)     ___eapi_unpack_supports_txz && suffix_known=1 ;;
+		esac
+
+		if [[ -n ${suffix_known} ]]; then
+			__vecho ">>> Unpacking ${x} to ${PWD}"
+		else
+			__vecho "=== Skipping unpack of ${x}"
+			continue
+		fi
 
 		__unpack_tar() {
 			if [[ ${y_insensitive} == tar ]] ; then
@@ -439,13 +456,11 @@ unpack() {
 				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
 			7z)
-				if ___eapi_unpack_supports_7z; then
-					local my_output
-					my_output="$(7z x -y "${srcdir}${x}")"
-					if [[ $? -ne 0 ]]; then
-						echo "${my_output}" >&2
-						die "${myfail}"
-					fi
+				local my_output
+				my_output="$(7z x -y "${srcdir}${x}")"
+				if [[ $? -ne 0 ]]; then
+					echo "${my_output}" >&2
+					die "${myfail}"
 				fi
 				;;
 			rar)
@@ -455,9 +470,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'rar' or 'RAR'."
 				fi
-				if ___eapi_unpack_supports_rar; then
-					unrar x -idq -o+ "${srcdir}${x}" || die "${myfail}"
-				fi
+				unrar x -idq -o+ "${srcdir}${x}" || die "${myfail}"
 				;;
 			lha|lzh)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -467,9 +480,7 @@ unpack() {
 						"with EAPI '${EAPI}'." \
 						"Instead use 'LHA', 'LHa', 'lha', or 'lzh'."
 				fi
-				if ___eapi_unpack_supports_lha; then
-					lha xfq "${srcdir}${x}" || die "${myfail}"
-				fi
+				lha xfq "${srcdir}${x}" || die "${myfail}"
 				;;
 			a)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -537,9 +548,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'xz'."
 				fi
-				if ___eapi_unpack_supports_xz; then
-					__unpack_tar "xz -T$(___makeopts_jobs) -d"
-				fi
+				__unpack_tar "xz -T$(___makeopts_jobs) -d"
 				;;
 			txz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -548,9 +557,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'txz'."
 				fi
-				if ___eapi_unpack_supports_txz; then
-					XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
-				fi
+				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
 				;;
 		esac
 	done
