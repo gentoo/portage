@@ -334,7 +334,7 @@ unpack() {
 		y=${y##*.}
 		y_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${y}")
 
-		# wrt PMS 11.3.3.13 Misc Commands
+		# wrt PMS 12.3.15 Misc Commands
 		if [[ ${x} != */* ]]; then
 			# filename without path of any kind
 			srcdir=${DISTDIR}/
