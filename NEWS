@@ -10,16 +10,32 @@ portage-3.0.66 (UNRELEASED)
 --------------
 
 Features:
+* binrepos.conf: Support custom download location (bug #934784).
+
+  In binrepos.conf, 'location' can now be set to choose the location
+  for fetched binpkgs from a particular remote repository.
+
 * emerge: Make bare --root-deps option install build-time dependencies to ROOT
   as well as / for all EAPIs rather than instead of / for EAPI 6 and below
   (bug #435066).
-* Show length of merge-wait queue as part of the status display
+
+* Show length of merge-wait queue as part of the status display.
+
+* src: Allow GIL to be disabled for Whirlpool C extension (bug #934220).
+
+* ELF: Recognise BPF (bug #937485).
+
+* portage.util.compression_probe: Handle lack of ctypes (libffi) for
+  bootstrapping purposes.
 
 Bug fixes:
 * ebuild: Handle Bash 5.2's change in behavior which enables the shopt
   'globskipdots' by default. This is needed to avoid breaking existing
   working ebuilds. Future EAPIs will need to adjust the logic
   added by this change. See bug #907061.
+
+* doebuild.spawn: Fix hang with FEATURES="network-sandbox-proxy" in consumers
+  like gentoolkit (bug #937384).
 
 * make.globals: add bcachefs_effective.* and bcachefs.* to PORTAGE_XATTR_EXCLUDE
 
@@ -33,6 +49,29 @@ Bug fixes:
 
 * unpack: Don't display "Unpacking ..." message for skipped files.
   Match file extensions case-sensitively in old EAPIs, fixes PMS compliance.
+
+* sync: zipflie: Fix installing module.
+
+* ebuild: Improve 'maintainer mode' QA check.
+
+* emerge-webrsync: Honour sync-webrsync-verify-signature attribute.
+
+* dispatch-conf: Don't use SHELL (bug #910560).
+
+* phase-functions: Fix QA_SONAME_NO_SYMLINK so it accepts regex (bug #924953).
+
+* ebuild.5: Improve QA_PREBUILT docs.
+
+* install-qa-check.d: 90gcc-warnings: Handle color in logs for build.log too.
+
+Cleanups:
+* tar_safe_extract: Port to Python 3.14 (bug #933433).
+
+* Drop unnecessary f-string use.
+
+* Improve detection of xtrace (debugging).
+
+* eapi.py: Use attrs rather than hardcoding / repeating EAPI properties.
 
 portage-3.0.65 (2024-06-04)
 --------------
