@@ -50,7 +50,7 @@ Bug fixes:
 * unpack: Don't display "Unpacking ..." message for skipped files.
   Match file extensions case-sensitively in old EAPIs, fixes PMS compliance.
 
-* sync: zipflie: Fix installing module.
+* sync: zipfile: Fix installing module.
 
 * ebuild: Improve 'maintainer mode' QA check.
 
