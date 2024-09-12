@@ -46,6 +46,7 @@ add_default_skips() {
 		acl
 		acl_get_perm_np
 		pthread_cond_timedwait_monotonic_np
+		pthread_get_name_np
 		pthread_set_name_np
 		pthread_threadid_np
 		res_getservers
