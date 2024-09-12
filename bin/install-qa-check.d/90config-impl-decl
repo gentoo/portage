@@ -45,6 +45,7 @@ add_default_skips() {
 	[[ ${CHOST} == *linux* ]] && QA_CONFIG_IMPL_DECL_SKIP+=(
 		acl
 		acl_get_perm_np
+		pthread_cond_timedwait_monotonic_np
 		res_getservers
 		res_ndestroy
 		statacl
