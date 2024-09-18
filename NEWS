@@ -6,6 +6,15 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.66.1 (2024-09-18)
+--------------
+
+Bug fixes:
+* JobStatusDisplay: Fix width of display. Notable with the new 'merge wait'
+  metric.
+
+* install-qa-check.d: 90config-impl-decl: Skip various false positives.
+
 portage-3.0.66 (2024-09-11)
 --------------
 
