@@ -9901,8 +9901,6 @@ class depgraph:
                     continue
 
             if not selected_nodes:
-                self._dynamic_config._circular_deps_for_display = mygraph
-
                 unsolved_cycle = False
                 if self._dynamic_config._allow_backtracking:
                     backtrack_infos = self._dynamic_config._backtrack_infos
@@ -9927,11 +9925,33 @@ class depgraph:
                             )
 
                 if unsolved_cycle or not self._dynamic_config._allow_backtracking:
+                    self._dynamic_config._circular_deps_for_display = mygraph
                     self._dynamic_config._skip_restart = True
+                    raise self._unknown_internal_error()
                 else:
-                    self._dynamic_config._need_restart = True
+                    handler = circular_dependency_handler(self, mygraph)
 
-                raise self._unknown_internal_error()
+                    if handler.solutions and len(handler.cycles) == 2:
+                        pkg = list(handler.solutions.keys())[0]
+                        parent, solution = list(handler.solutions[pkg])[0]
+                        solution = list(solution)[0]
+                        enabled = set(parent.use.enabled)
+
+                        if solution[1]:
+                            enabled.add(solution[0])
+                        else:
+                            enabled.remove(solution[0])
+
+                        selected_nodes = [parent.with_use(enabled), pkg, parent]
+                        ignored_uninstall_tasks = set(
+                            uninst_task
+                            for uninst_task in ignored_uninstall_tasks
+                            if uninst_task.cp != pkg.cp or uninst_task.slot != pkg.slot
+                        )
+                    else:
+                        self._dynamic_config._circular_deps_for_display = mygraph
+                        self._dynamic_config._need_restart = True
+                        raise self._unknown_internal_error()
 
             # At this point, we've succeeded in selecting one or more nodes, so
             # reset state variables for leaf node selection.
