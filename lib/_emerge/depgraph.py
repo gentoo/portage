@@ -9224,6 +9224,7 @@ class depgraph:
         complete = "complete" in self._dynamic_config.myparams
         ignore_world = self._dynamic_config.myparams.get("ignore_world", False)
         asap_nodes = []
+        changed_pkgs = {}
 
         def get_nodes(**kwargs):
             """
@@ -9929,29 +9930,38 @@ class depgraph:
                     self._dynamic_config._skip_restart = True
                     raise self._unknown_internal_error()
                 else:
-                    handler = circular_dependency_handler(self, mygraph)
+                    uniq_selected_nodes = set()
+                    while True:
+                        handler = circular_dependency_handler(self, mygraph)
 
-                    if handler.solutions and len(handler.cycles) == 2:
-                        pkg = list(handler.solutions.keys())[0]
-                        parent, solution = list(handler.solutions[pkg])[0]
-                        solution = list(solution)[0]
-                        enabled = set(parent.use.enabled)
+                        if handler.solutions:
+                            pkg = list(handler.solutions.keys())[0]
+                            parent, solution = list(handler.solutions[pkg])[0]
+                            solution = list(solution)[0]
+                            changed_pkg = changed_pkgs.get(parent, parent)
+                            enabled = set(changed_pkg.use.enabled)
 
-                        if solution[1]:
-                            enabled.add(solution[0])
+                            if solution[1]:
+                                enabled.add(solution[0])
+                            else:
+                                enabled.remove(solution[0])
+
+                            changed_pkgs[parent] = changed_pkg.with_use(enabled)
+                            uniq_selected_nodes.update((pkg, parent))
+                            mygraph.remove_edge(pkg, parent)
+                            ignored_uninstall_tasks = set(
+                                uninst_task
+                                for uninst_task in ignored_uninstall_tasks
+                                if uninst_task.cp != pkg.cp or uninst_task.slot != pkg.slot
+                            )
+                        elif uniq_selected_nodes:
+                            break
                         else:
-                            enabled.remove(solution[0])
+                            self._dynamic_config._circular_deps_for_display = mygraph
+                            self._dynamic_config._need_restart = True
+                            raise self._unknown_internal_error()
 
-                        selected_nodes = [parent.with_use(enabled), pkg, parent]
-                        ignored_uninstall_tasks = set(
-                            uninst_task
-                            for uninst_task in ignored_uninstall_tasks
-                            if uninst_task.cp != pkg.cp or uninst_task.slot != pkg.slot
-                        )
-                    else:
-                        self._dynamic_config._circular_deps_for_display = mygraph
-                        self._dynamic_config._need_restart = True
-                        raise self._unknown_internal_error()
+                    selected_nodes = list(changed_pkgs.values()) + list(uniq_selected_nodes)
 
             # At this point, we've succeeded in selecting one or more nodes, so
             # reset state variables for leaf node selection.
