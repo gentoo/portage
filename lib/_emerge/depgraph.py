@@ -8936,15 +8936,7 @@ class depgraph:
 
                 if not unresolved_blocks and depends_on_order:
                     for inst_pkg, inst_task in depends_on_order:
-                        uninst_task = Package(
-                            built=inst_pkg.built,
-                            cpv=inst_pkg.cpv,
-                            installed=inst_pkg.installed,
-                            metadata=inst_pkg._metadata,
-                            operation="uninstall",
-                            root_config=inst_pkg.root_config,
-                            type_name=inst_pkg.type_name,
-                        )
+                        uninst_task = inst_pkg.copy(operation="uninstall")
                         # Enforce correct merge order with a hard dep.
                         self._dynamic_config.digraph.addnode(
                             uninst_task, inst_task, priority=BlockerDepPriority.instance
@@ -9965,20 +9957,8 @@ class depgraph:
                     if inst_pkg:
                         # The package will be replaced by this one, so remove
                         # the corresponding Uninstall task if necessary.
-                        inst_pkg = inst_pkg[0]
-                        uninst_task = Package(
-                            built=inst_pkg.built,
-                            cpv=inst_pkg.cpv,
-                            installed=inst_pkg.installed,
-                            metadata=inst_pkg._metadata,
-                            operation="uninstall",
-                            root_config=inst_pkg.root_config,
-                            type_name=inst_pkg.type_name,
-                        )
-                        try:
-                            mygraph.remove(uninst_task)
-                        except KeyError:
-                            pass
+                        uninst_task = inst_pkg[0].copy(operation="uninstall")
+                        mygraph.discard(uninst_task)
 
                 if (
                     uninst_task is not None
