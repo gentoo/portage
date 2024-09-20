@@ -5753,8 +5753,8 @@ class dblink:
 
                         if bsd_chflags:
                             bsd_chflags.lchflags(mydest, dflags)
-                        os.chmod(mydest, mystat[0])
-                        os.chown(mydest, mystat[4], mystat[5])
+                        os.chmod(mydest, mymode)
+                        os.chown(mydest, mystat[stat.ST_UID], mystat[stat.ST_GID])
                         showMessage(f">>> {mydest}/\n")
                 else:
                     try:
@@ -5774,8 +5774,8 @@ class dblink:
                         else:
                             raise
                         del e
-                    os.chmod(mydest, mystat[0])
-                    os.chown(mydest, mystat[4], mystat[5])
+                    os.chmod(mydest, mymode)
+                    os.chown(mydest, mystat[stat.ST_UID], mystat[stat.ST_GID])
                     showMessage(f">>> {mydest}/\n")
 
                 try:
