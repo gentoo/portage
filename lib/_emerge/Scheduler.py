@@ -12,6 +12,7 @@ import time
 import warnings
 import weakref
 import zlib
+import os
 
 import portage
 from portage import os
@@ -50,7 +51,6 @@ from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.FakeVartree import FakeVartree
-from _emerge.getloadavg import getloadavg
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
@@ -1962,7 +1962,7 @@ class Scheduler(PollScheduler):
                 self._sigcont_time = None
 
             try:
-                avg1, avg5, avg15 = getloadavg()
+                avg1, avg5, avg15 = os.getloadavg()
             except OSError:
                 return False
 

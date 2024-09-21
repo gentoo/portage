@@ -4,6 +4,7 @@
 import io
 import sys
 import time
+import os
 
 import portage
 import portage.util.formatter as formatter
@@ -11,8 +12,6 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage.output import xtermTitle
-
-from _emerge.getloadavg import getloadavg
 
 
 class JobStatusDisplay:
@@ -192,7 +191,7 @@ class JobStatusDisplay:
 
     def _load_avg_str(self):
         try:
-            avg = getloadavg()
+            avg = os.getloadavg()
         except OSError:
             return "unknown"
 

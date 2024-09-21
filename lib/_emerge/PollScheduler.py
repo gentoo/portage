@@ -2,12 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import threading
+import os
 
 from portage.util.futures import asyncio
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
-
-from _emerge.getloadavg import getloadavg
 
 
 class PollScheduler:
@@ -182,7 +181,7 @@ class PollScheduler:
             and self._running_job_count() >= 1
         ):
             try:
-                avg1, avg5, avg15 = getloadavg()
+                avg1, avg5, avg15 = os.getloadavg()
             except OSError:
                 return False
 
