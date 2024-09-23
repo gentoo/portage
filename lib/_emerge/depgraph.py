@@ -9932,6 +9932,7 @@ class depgraph:
                 else:
                     uniq_selected_nodes = set()
                     while True:
+                        changed_pkg = None
                         handler = circular_dependency_handler(self, mygraph)
 
                         if handler.solutions:
@@ -9946,14 +9947,26 @@ class depgraph:
                             else:
                                 enabled.remove(solution[0])
 
-                            changed_pkgs[parent] = changed_pkg.with_use(enabled)
-                            uniq_selected_nodes.update((pkg, parent))
-                            mygraph.remove_edge(pkg, parent)
-                            ignored_uninstall_tasks = set(
-                                uninst_task
-                                for uninst_task in ignored_uninstall_tasks
-                                if uninst_task.cp != pkg.cp or uninst_task.slot != pkg.slot
-                            )
+                            # To avoid unnecessarily complexity, only try to
+                            # automatically resolve the conflict if the solution
+                            # does not pull in additional dependencies.
+                            before = self._flatten_atoms(parent, parent.use.enabled)
+                            after  = self._flatten_atoms(changed_pkg, frozenset(enabled))
+
+                            if before.issuperset(after):
+                                changed_pkgs[parent] = changed_pkg.with_use(enabled)
+                                uniq_selected_nodes.update((pkg, parent))
+                                mygraph.remove_edge(pkg, parent)
+                                ignored_uninstall_tasks = set(
+                                    uninst_task
+                                    for uninst_task in ignored_uninstall_tasks
+                                    if uninst_task.cp != pkg.cp or uninst_task.slot != pkg.slot
+                                )
+                            else:
+                                changed_pkg = None
+
+                        if changed_pkg is not None:
+                            pass
                         elif uniq_selected_nodes:
                             break
                         else:
