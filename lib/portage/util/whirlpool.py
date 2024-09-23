@@ -28,8 +28,6 @@
 ##
 # This Python implementation is therefore also placed in the public domain.
 
-# pylint: disable=mixed-indentation
-
 import warnings
 
 from portage.localization import _
