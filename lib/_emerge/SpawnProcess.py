@@ -51,10 +51,6 @@ class SpawnProcess(SubProcess):
         )
     )
 
-    # Max number of attempts to kill the processes listed in cgroup.procs,
-    # given that processes may fork before they can be killed.
-    _CGROUP_CLEANUP_RETRY_MAX = 8
-
     def _start(self):
         if self.fd_pipes is None:
             self.fd_pipes = {}
