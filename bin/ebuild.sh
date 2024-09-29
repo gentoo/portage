@@ -96,6 +96,8 @@ else
 	# note: we can't use empty because it implies current directory
 	_PORTAGE_ORIG_PATH=${PATH}
 	export PATH=/dev/null
+	# invoked internally by bash on PATH search failure, see the bash man
+	# page section on command execution for details
 	command_not_found_handle() {
 		die "External commands disallowed while sourcing ebuild: ${*}"
 	}
@@ -495,59 +497,6 @@ __try_source() {
 
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
-
-# Turn off extended glob matching so that g++ doesn't get incorrectly matched.
-shopt -u extglob
-
-if [[ ${EBUILD_PHASE} == depend ]] ; then
-	QA_INTERCEPTORS="awk bash cc egrep equery fgrep g++
-		gawk gcc grep javac java-config nawk perl
-		pkg-config python python-config sed"
-elif [[ ${EBUILD_PHASE} == clean* ]] ; then
-	unset QA_INTERCEPTORS
-else
-	QA_INTERCEPTORS="autoconf automake aclocal libtoolize"
-fi
-
-# Level the QA interceptors if we're in depend
-if [[ -n ${QA_INTERCEPTORS} ]] ; then
-	for BIN in ${QA_INTERCEPTORS}; do
-		BIN_PATH=$(type -Pf ${BIN})
-		if [[ "$?" != "0" ]]; then
-			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
-		else
-			BODY="${BIN_PATH} \"\$@\"; return \$?"
-		fi
-		if [[ ${EBUILD_PHASE} == depend ]] ; then
-			FUNC_SRC="${BIN}() {
-				if [[ \${ECLASS_DEPTH} -gt 0 ]]; then
-					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
-				else
-					eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
-				fi
-			${BODY}
-			}"
-		elif has ${BIN} autoconf automake aclocal libtoolize ; then
-			FUNC_SRC="${BIN}() {
-				if ! has \${FUNCNAME[1]} eautoreconf eaclocal _elibtoolize \\
-					eautoheader eautoconf eautomake autotools_run_tool \\
-					autotools_check_macro autotools_get_subdirs \\
-					autotools_get_auxdir ; then
-					eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
-					eqawarn \"Use autotools.eclass instead of calling '${BIN}' directly.\"
-				fi
-			${BODY}
-			}"
-		else
-			FUNC_SRC="${BIN}() {
-				eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
-			${BODY}
-			}"
-		fi
-		eval "${FUNC_SRC}" || echo "error creating QA interceptor ${BIN}" >&2
-	done
-	unset BIN_PATH BIN BODY FUNC_SRC
-fi
 
 # Subshell/helper die support (must export for the die helper).
 export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
