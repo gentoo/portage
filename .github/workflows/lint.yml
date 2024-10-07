@@ -13,7 +13,7 @@ jobs:
           echo "missed=$(
           find bin -type f -not -name '*.py' -not -name '*.sh' | \
           xargs grep -l '#!/usr/bin/env python' | tr $'\n' ' ')" >> $GITHUB_OUTPUT
-      - uses: psf/black@24.1.1
+      - uses: psf/black@24.8.0
         with:
             src: . ${{ steps.stragglers.outputs.missed }}
 
