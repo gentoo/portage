@@ -17,8 +17,19 @@ from portage.update import (
 )
 from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
 
+# Type annotation imports
+from typing import Dict, List, Any, TYPE_CHECKING
 
-def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
+if TYPE_CHECKING:
+    from portage import _trees_dict
+
+
+def _global_updates(
+    trees: "_trees_dict",
+    prev_mtimes: Dict[str, str],
+    quiet: bool = False,
+    if_mtime_changed: bool = True,
+) -> bool:
     """
     Perform new global updates if they exist in 'profiles/updates/'
     subdirectories of all active repositories (PORTDIR + PORTDIR_OVERLAY).
@@ -48,7 +59,12 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
         vardb.unlock()
 
 
-def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
+def _do_global_updates(
+    trees: "_trees_dict",
+    prev_mtimes: Dict[str, str],
+    quiet: bool = False,
+    if_mtime_changed: bool = True,
+) -> bool:
     root = trees._running_eroot
     mysettings = trees[root]["vartree"].settings
     portdb = trees[root]["porttree"].dbapi
@@ -59,7 +75,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     world_list = grabfile(world_file)
     world_modified = False
     world_warnings = set()
-    updpath_map = {}
+    updpath_map: Dict[Any, Any] = {}
     # Maps repo_name to list of updates. If a given repo has no updates
     # directory, it will be omitted. If a repo has an updates directory
     # but none need to be applied (according to timestamp logic), the
@@ -86,7 +102,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                 update_data = grab_updates(updpath)
         except DirectoryNotFound:
             continue
-        myupd = []
+        myupd: List[str] = []
         updpath_map[updpath] = myupd
         repo_map[repo_name] = myupd
         if len(update_data) > 0:
@@ -151,12 +167,12 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
         if not myupd:
             continue
 
-        def repo_match(repository):
+        def repo_match(repository: str) -> bool:
             return repository == repo_name or (
                 repo_name == master_repo and repository not in repo_map
             )
 
-        def _world_repo_match(atoma, atomb):
+        def _world_repo_match(atoma: str, atomb: str) -> bool:
             """
             Check whether to perform a world change from atoma to atomb.
             If best vardb match for atoma comes from the same repository
@@ -208,7 +224,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 
     if retupd:
 
-        def _config_repo_match(repo_name, atoma, atomb):
+        def _config_repo_match(repo_name: str, atoma: str, atomb: str) -> bool:
             """
             Check whether to perform a world change from atoma to atomb.
             If best vardb match for atoma comes from the same repository
