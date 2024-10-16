@@ -71,7 +71,13 @@ class VirtualSlotResolverTestCase(TestCase):
             },
             "virtual/jdk-1.7.0": {
                 "SLOT": "1.7",
-                "RDEPEND": "|| ( =dev-java/icedtea-7* =dev-java/oracle-jdk-bin-1.7.0* )",
+                "RDEPEND": """
+                    || (
+                        =dev-java/icedtea-7*
+                        =dev-java/oracle-jdk-bin-1.7.0*
+                    )
+                    !virtual/jdk-does-not-exist
+                """,
             },
         }
 
