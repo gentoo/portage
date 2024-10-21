@@ -28,7 +28,7 @@ jobs:
             start-method: 'spawn'
           - python-version: '3.11'
             start-method: 'spawn'
-          - python-version: '3.13-dev'
+          - python-version: '3.12'
             start-method: 'spawn'
           - python-version: 'pypy-3.10'
             start-method: 'spawn'
