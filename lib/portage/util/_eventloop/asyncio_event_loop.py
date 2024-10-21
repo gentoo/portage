@@ -6,12 +6,22 @@ import signal
 
 import asyncio as _real_asyncio
 from asyncio.events import AbstractEventLoop as _AbstractEventLoop
-from asyncio.unix_events import ThreadedChildWatcher
 
 try:
-    from asyncio.unix_events import PidfdChildWatcher
+    from asyncio.unix_events import _ThreadedChildWatcher as ThreadedChildWatcher
 except ImportError:
-    PidfdChildWatcher = None
+    try:
+        from asyncio.unix_events import ThreadedChildWatcher
+    except ImportError:
+        ThreadedChildWatcher = None
+
+try:
+    from asyncio.unix_events import _PidfdChildWatcher as PidfdChildWatcher
+except ImportError:
+    try:
+        from asyncio.unix_events import PidfdChildWatcher
+    except ImportError:
+        PidfdChildWatcher = None
 
 import portage
 
@@ -123,7 +133,8 @@ class AsyncioEventLoop(_AbstractEventLoop):
             else:
                 watcher = ThreadedChildWatcher()
 
-            watcher.attach_loop(self._loop)
+            if hasattr(watcher, "attach_loop"):
+                watcher.attach_loop(self._loop)
             self._child_watcher = _ChildWatcherThreadSafetyWrapper(self, watcher)
 
         return self._child_watcher

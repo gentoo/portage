@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import asyncio
@@ -17,7 +17,8 @@ class PolicyWrapperRecursionTestCase(TestCase):
             with self.assertRaises(NotImplementedError):
                 asyncio.get_event_loop()
 
-            with self.assertRaises(NotImplementedError):
-                asyncio.get_child_watcher()
+            if hasattr(asyncio, "get_child_watcher"):
+                with self.assertRaises(NotImplementedError):
+                    asyncio.get_child_watcher()
         finally:
             asyncio.set_event_loop_policy(initial_policy)
