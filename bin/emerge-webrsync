@@ -698,7 +698,7 @@ main() {
 	handle_pgp_setup
 
 	if [[ ! -d ${repo_location} ]]; then
-		mkdir -p "${repo_location}"
+		mkdir -p "${repo_location}" || die
 
 		if has usersync ${FEATURES} ; then
 			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || die
