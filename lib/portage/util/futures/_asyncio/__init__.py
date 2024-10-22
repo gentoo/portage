@@ -38,12 +38,16 @@ from asyncio import (
     FIRST_EXCEPTION,
     Future,
     InvalidStateError,
-    iscoroutinefunction,
     Lock as _Lock,
     shield,
     TimeoutError,
     wait_for,
 )
+
+try:
+    from inspect import iscoroutinefunction
+except ImportError:
+    iscoroutinefunction = _asyncio.iscoroutinefunction
 
 import threading
 from typing import Optional

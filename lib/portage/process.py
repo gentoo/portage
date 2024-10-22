@@ -23,6 +23,11 @@ from dataclasses import dataclass
 from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
 
+try:
+    from inspect import iscoroutinefunction
+except ImportError:
+    iscoroutinefunction = _asyncio.iscoroutinefunction
+
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -203,7 +208,7 @@ def atexit_register(func, *args, **kargs):
     manually by calling the run_exitfuncs() function in this module."""
     # The internal asyncio wrapper module would trigger a circular import
     # if used here.
-    if _asyncio.iscoroutinefunction(func):
+    if iscoroutinefunction(func):
         # Add this coroutine function to the exit handlers for the loop
         # which is associated with the current thread.
         global_event_loop()._coroutine_exithandlers.append((func, args, kargs))
