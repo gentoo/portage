@@ -698,7 +698,10 @@ main() {
 
 	if [[ ! -d ${repo_location} ]]; then
 		mkdir -p "${repo_location}"
-		chown portage:portage "${repo_location}"
+
+		if has usersync ${FEATURES} ; then
+			chown portage:portage "${repo_location}"
+		fi
 	fi
 
 	if [[ ! -w ${repo_location} ]] ; then
