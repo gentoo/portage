@@ -411,7 +411,7 @@ sync_local() {
 
 	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Syncing local repository ..."
 
-	local ownership="portage:portage"
+	local ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
 	if has usersync ${FEATURES} ; then
 		case "${USERLAND}" in
 			BSD)
