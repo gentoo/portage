@@ -701,7 +701,7 @@ main() {
 		mkdir -p "${repo_location}"
 
 		if has usersync ${FEATURES} ; then
-			chown "${PORTAGE_USERNAME:-portage}":"${PORTAGE_GRPNAME:-portage}" "${repo_location}"
+			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || die
 		fi
 	fi
 
