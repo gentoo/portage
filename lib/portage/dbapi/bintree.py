@@ -1948,9 +1948,16 @@ class binarytree:
         package was not built locally, and in this case its
         REPO_REVISIONS are not intended to be exposed.
         """
+        try:
+            repos = [
+                self.settings.repositories[repo_name] for repo_name in repo_revisions
+            ]
+        except KeyError:
+            # Missing repo implies package was not built locally from source.
+            return
         synced_repo_revisions = get_repo_revision_history(
             self.settings["EROOT"],
-            [self.settings.repositories[repo_name] for repo_name in repo_revisions],
+            repos,
         )
         header_repo_revisions = (
             json.loads(header["REPO_REVISIONS"]) if header.get("REPO_REVISIONS") else {}
