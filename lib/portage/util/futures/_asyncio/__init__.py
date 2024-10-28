@@ -44,11 +44,7 @@ from asyncio import (
     wait_for,
 )
 
-try:
-    from inspect import iscoroutinefunction
-except ImportError:
-    iscoroutinefunction = _asyncio.iscoroutinefunction
-
+from inspect import iscoroutinefunction
 import threading
 from typing import Optional
 

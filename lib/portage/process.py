@@ -22,11 +22,7 @@ import warnings
 from dataclasses import dataclass
 from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
-
-try:
-    from inspect import iscoroutinefunction
-except ImportError:
-    iscoroutinefunction = _asyncio.iscoroutinefunction
+from inspect import iscoroutinefunction
 
 from portage import os
 from portage import _encodings
