@@ -17,6 +17,7 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import installation
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, red
@@ -339,6 +340,9 @@ class Scheduler(PollScheduler):
             )
 
     def _handle_self_update(self):
+        if installation.TYPE != installation.TYPES.SYSTEM:
+            return os.EX_OK
+
         if self._opts_no_self_update.intersection(self.myopts):
             return os.EX_OK
 

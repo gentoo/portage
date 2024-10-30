@@ -50,6 +50,7 @@ portage.proxy.lazyimport.lazyimport(
 from portage import (
     bsd_chflags,
     eapi_is_supported,
+    installation,
     merge,
     os,
     selinux,
@@ -3280,10 +3281,13 @@ def _prepare_self_update(settings):
 
 
 def _handle_self_update(settings, vardb):
-    cpv = settings.mycpv
-    if settings["ROOT"] == "/" and portage.dep.match_from_list(
-        portage.const.PORTAGE_PACKAGE_ATOM, [cpv]
+    if installation.TYPE != installation.TYPES.SYSTEM:
+        return False
+    if settings["ROOT"] != "/":
+        return False
+    if not portage.dep.match_from_list(
+        portage.const.PORTAGE_PACKAGE_ATOM, [settings.mycpv]
     ):
-        _prepare_self_update(settings)
-        return True
-    return False
+        return False
+    _prepare_self_update(settings)
+    return True
