@@ -1960,14 +1960,10 @@ class gpkg:
 
                 image_max_link_length = max(image_max_link_length, path_link_length)
 
-                try:
-                    file_size = os.path.getsize(f)
-                except FileNotFoundError:
-                    # Ignore file not found if symlink to non-existing file
-                    if os.path.islink(f):
-                        continue
-                    else:
-                        raise
+                if stat.S_ISLNK(file_stat.st_mode):
+                    continue
+
+                file_size = os.path.getsize(f)
                 image_total_size += file_size
                 image_max_file_size = max(image_max_file_size, file_size)
 
@@ -2055,14 +2051,10 @@ class gpkg:
             image_max_link_length = max(image_max_link_length, path_link_length)
 
             if os.path.isfile(path):
-                try:
-                    file_size = os.path.getsize(path)
-                except FileNotFoundError:
-                    # Ignore file not found if symlink to non-existing file
-                    if os.path.islink(path):
-                        continue
-                    else:
-                        raise
+                if stat.S_ISLNK(file_stat.st_mode):
+                    continue
+
+                file_size = os.path.getsize(path)
                 image_total_size += file_size
                 if file_size > image_max_file_size:
                     image_max_file_size = file_size

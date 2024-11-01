@@ -12,6 +12,8 @@ Bug fixes:
 * binarytree: Fix _inject_repo_revisions to ignore remote packages for which
   source repostories are missing, triggering KeyError (PR #1391).
 
+* gpkg: do not consider symlinks targets for size estimation (bug #942512).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
