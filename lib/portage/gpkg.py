@@ -1963,7 +1963,7 @@ class gpkg:
                 if stat.S_ISLNK(file_stat.st_mode):
                     continue
 
-                file_size = os.path.getsize(f)
+                file_size = file_stat.st_size
                 image_total_size += file_size
                 image_max_file_size = max(image_max_file_size, file_size)
 
@@ -2054,7 +2054,7 @@ class gpkg:
                 if stat.S_ISLNK(file_stat.st_mode):
                     continue
 
-                file_size = os.path.getsize(path)
+                file_size = file_stat.st_size
                 image_total_size += file_size
                 if file_size > image_max_file_size:
                     image_max_file_size = file_size
