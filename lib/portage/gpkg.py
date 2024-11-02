@@ -1943,7 +1943,7 @@ class gpkg:
 
                 file_stat = os.lstat(f)
 
-                if stat.S_ISLNK(file_stat):
+                if stat.S_ISLNK(file_stat.st_mode):
                     path_link = os.readlink(f)
                     path_link_length = len(
                         os.fsencode(path_link)
@@ -2035,7 +2035,7 @@ class gpkg:
 
             file_stat = os.lstat(path)
 
-            if stat.S_ISLNK(file_stat):
+            if stat.S_ISLNK(file_stat.st_mode):
                 path_link = os.readlink(path)
                 path_link_length = len(
                     _unicode_encode(
