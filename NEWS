@@ -14,6 +14,8 @@ Bug fixes:
 
 * gpkg: do not consider symlinks targets for size estimation (bug #942512).
 
+* install_qa_check: Fix noclean interaction with merge-wait (bug #942760).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
