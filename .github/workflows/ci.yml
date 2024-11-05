@@ -96,4 +96,7 @@ jobs:
           export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
           # Use pytest-rerunfailures to workaround pytest-xdist worker crashes with spawn start-method (bug 924416).
           [[ "${{ matrix.start-method }}" == "spawn" ]] && PYTEST_ADDOPTS+=" --reruns 5 --only-rerun 'worker .* crashed while running'"
+          [[ "${{ matrix.start-method }}" == "fork" ]] &&
+              [[ "${{ matrix.python-version }}" == "3.14-dev" ]] &&
+              PYTEST_ADDOPTS+=" --reruns 5 --only-rerun 'node down: Not properly terminated'"
           meson test -C /tmp/build --verbose
