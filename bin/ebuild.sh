@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -9,6 +9,11 @@ unalias -a
 # Make sure this isn't exported to scripts we execute.
 unset BASH_COMPAT
 declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
+
+if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
+	source "${PORTAGE_EBUILD_EXTRA_SOURCE}" || exit 1
+	unset PORTAGE_EBUILD_EXTRA_SOURCE
+fi
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 
@@ -114,7 +119,7 @@ export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
-# with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
+# with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them
 # when they are done.
 
 __qa_source() {
