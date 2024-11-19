@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -24,6 +24,9 @@ __save_ebuild_env() {
 				unset PYTHONPATH
 			fi
 		fi
+
+		# Discard stale GNU Make POSIX Jobserver flags.
+		unset MAKEFLAGS
 	fi
 
 	# misc variables inherited from the calling environment
