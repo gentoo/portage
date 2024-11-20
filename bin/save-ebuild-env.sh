@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -43,7 +43,7 @@ __save_ebuild_env() {
 	for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 		src_compile src_test src_install pkg_preinst pkg_postinst \
 		pkg_prerm pkg_postrm pkg_config pkg_info pkg_pretend ; do
-		unset -f default_${x} __eapi{0,1,2,3,4}_${x}
+		unset -f default_${x} __eapi{0,1,2,4,6,8}_${x}
 	done
 	unset x
 
@@ -78,9 +78,16 @@ __save_ebuild_env() {
 		__source_env_files __try_source __check_bash_version \
 		__bashpid __start_distcc \
 		__eqaquote __eqatag \
+		__eapi7_ver_parse_range __eapi7_ver_split \
+		__eapi7_ver_compare_int __eapi7_ver_compare \
 		${QA_INTERCEPTORS}
 
 	___eapi_has_usex && unset -f usex
+	___eapi_has_get_libdir && unset -f get_libdir
+	___eapi_has_einstalldocs && unset -f einstalldocs
+	___eapi_has_eapply && unset -f eapply eapply_user
+	___eapi_has_in_iuse && unset -f in_iuse
+	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do

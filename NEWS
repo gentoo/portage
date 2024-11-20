@@ -19,6 +19,8 @@ Bug fixes:
 
 * install_qa_check: Fix noclean interaction with merge-wait (bug #942760).
 
+* save-ebuild-env.sh: Add functions from newer EAPIs to filter list
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
