@@ -509,7 +509,7 @@ class StyleWriter(formatter.DumbWriter):
             self.style_listener(styles)
 
 
-def get_term_size(fd=None):
+def get_term_size(fd=None, cached=False):
     """
     Get the number of lines and columns of the tty that is connected to
     fd.  Returns a tuple of (lines, columns) or (0, 0) if an error
@@ -522,16 +522,19 @@ def get_term_size(fd=None):
         fd = sys.stdout
     if not hasattr(fd, "isatty") or not fd.isatty():
         return (0, 0)
-    try:
-        import curses
 
+    # Do not use curses by default because it returns stale values after terminal resize.
+    if cached:
         try:
-            curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
-            return curses.tigetnum("lines"), curses.tigetnum("cols")
-        except curses.error:
+            import curses
+
+            try:
+                curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
+                return curses.tigetnum("lines"), curses.tigetnum("cols")
+            except curses.error:
+                pass
+        except ImportError:
             pass
-    except ImportError:
-        pass
 
     try:
         proc = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, stderr=fd)
