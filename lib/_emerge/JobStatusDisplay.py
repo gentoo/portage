@@ -65,11 +65,9 @@ class JobStatusDisplay:
             if not isinstance(v, str):
                 self._term_codes[k] = v.decode(encoding, "replace")
 
-        if self._isatty:
-            width = portage.output.get_term_size()[1]
-        else:
-            width = self.max_display_width
-        self._set_width(width)
+        if not self._isatty:
+            self._set_width(self.max_display_width)
+        self.sigwinch()
 
     def _set_width(self, width):
         if width == getattr(self, "width", None):
@@ -78,6 +76,12 @@ class JobStatusDisplay:
             width = self.max_display_width
         object.__setattr__(self, "width", width)
         object.__setattr__(self, "_jobs_column_width", width - 32)
+
+    def sigwinch(self):
+        if not self._isatty:
+            return
+        width = portage.output.get_term_size()[1]
+        self._set_width(width)
 
     @property
     def out(self):

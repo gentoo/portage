@@ -522,16 +522,11 @@ def get_term_size(fd=None):
         fd = sys.stdout
     if not hasattr(fd, "isatty") or not fd.isatty():
         return (0, 0)
-    try:
-        import curses
 
-        try:
-            curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
-            return curses.tigetnum("lines"), curses.tigetnum("cols")
-        except curses.error:
-            pass
-    except ImportError:
-        pass
+    # Do not use curses.tigetnum("lines") or curses.tigetnum("cols") because it
+    # returns stale values after terminal resize. Do not use curses.initscr().getmaxyx()
+    # since that has unwanted side-effects, requiring a call to `stty sane` to restore a
+    # sane state.
 
     try:
         proc = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, stderr=fd)

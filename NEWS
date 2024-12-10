@@ -27,6 +27,8 @@ Bug fixes:
 
 * Process elog messages for emerge --config (bug #904702).
 
+* Scheduler: Handle SIGWINCH for JobStatusDisplay (bug #945382).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
