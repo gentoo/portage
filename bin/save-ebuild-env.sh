@@ -24,6 +24,16 @@ __save_ebuild_env() {
 				unset PYTHONPATH
 			fi
 		fi
+
+		# These variables contains build host specific configuration. We
+		# want binpkgs generated on different sized hosts to be
+		# identical, so strip them from the binpkg. It's also not needed
+		# for installing / removing a package.
+		unset MAKEOPTS NINJAOPTS
+
+		# These variables are constantly changing. Strip them so we
+		# don't introduce non-reproducible data into the binpkg.
+		unset EPOCHREALTIME EPOCHSECONDS SRANDOM
 	fi
 
 	# misc variables inherited from the calling environment
