@@ -21,6 +21,8 @@ Bug fixes:
 
 * save-ebuild-env.sh: Add functions from newer EAPIs to filter list
 
+* eend: Missing argument is now an error (bug #703520).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
