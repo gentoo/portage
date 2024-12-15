@@ -1260,7 +1260,7 @@ Bug fixes:
   and it's a no-op in older xz.
 
 * emerge(1), make.conf(5), xpak(5): document BINPKG_FORMAT and the gpkg binary
-  packate format further.
+  package format further.
 
 * sync: git: Fix sync printing local repo path (bug #875812)
 
