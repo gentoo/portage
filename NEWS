@@ -23,6 +23,8 @@ Bug fixes:
 
 * eend: Missing argument is now an error (bug #703520).
 
+* Support cross-root package moves (bug #946326).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 

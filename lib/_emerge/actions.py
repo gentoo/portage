@@ -2956,6 +2956,12 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
     emerge_config.running_config = emerge_config.trees[
         emerge_config.trees._running_eroot
     ]["root_config"]
+    if target_eroot != emerge_config.trees._running_eroot:
+        emerge_config.running_config.mtimedb = portage.MtimeDB(
+            os.path.join(
+                emerge_config.trees._running_eroot, portage.CACHE_PATH, "mtimedb"
+            )
+        )
     QueryCommand._db = emerge_config.trees
 
     return emerge_config
@@ -3433,25 +3439,30 @@ def repo_name_duplicate_check(trees):
 
 def run_action(emerge_config):
     # skip global updates prior to sync, since it's called after sync
-    if (
-        emerge_config.action not in ("help", "info", "sync", "version")
-        and emerge_config.opts.get("--package-moves") != "n"
-        and _global_updates(
-            emerge_config.trees,
-            emerge_config.target_config.mtimedb["updates"],
-            quiet=("--quiet" in emerge_config.opts),
-        )
-    ):
-        emerge_config.target_config.mtimedb.commit()
-        # Reload the whole config from scratch.
-        load_emerge_config(emerge_config=emerge_config)
+    configs = [emerge_config.target_config]
+    if emerge_config.target_config.root != emerge_config.running_config.root:
+        configs.append(emerge_config.running_config)
+    for root_config in configs:
+        if (
+            emerge_config.action not in ("help", "info", "sync", "version")
+            and emerge_config.opts.get("--package-moves") != "n"
+            and _global_updates(
+                root_config.root,
+                emerge_config.trees,
+                root_config.mtimedb["updates"],
+                quiet=("--quiet" in emerge_config.opts),
+            )
+        ):
+            root_config.mtimedb.commit()
+            # Reload the whole config from scratch.
+            load_emerge_config(emerge_config=emerge_config)
 
-        # Let's autoclean if we applied updates, rather than always doing it
-        # bug #792195
-        emerge_config.target_config.settings.unlock()
-        emerge_config.target_config.settings["AUTOCLEAN"] = "yes"
-        emerge_config.target_config.settings.backup_changes("AUTOCLEAN")
-        emerge_config.target_config.settings.lock()
+            # Let's autoclean if we applied updates, rather than always doing it
+            # bug #792195
+            root_config.settings.unlock()
+            root_config.settings["AUTOCLEAN"] = "yes"
+            root_config.settings.backup_changes("AUTOCLEAN")
+            root_config.settings.lock()
 
     xterm_titles = "notitles" not in emerge_config.target_config.settings.features
     if xterm_titles:

@@ -121,7 +121,7 @@ class MoveSlotEntTestCase(TestCase):
                     global_noiselimit = portage.util.noiselimit
                     portage.util.noiselimit = -2
                     try:
-                        _do_global_updates(trees, {})
+                        _do_global_updates(trees._running_eroot, trees, {})
                     finally:
                         portage.util.noiselimit = global_noiselimit
 
@@ -264,7 +264,7 @@ class MoveSlotEntTestCase(TestCase):
                     global_noiselimit = portage.util.noiselimit
                     portage.util.noiselimit = -2
                     try:
-                        _do_global_updates(trees, {})
+                        _do_global_updates(trees._running_eroot, trees, {})
                     finally:
                         portage.util.noiselimit = global_noiselimit
 
