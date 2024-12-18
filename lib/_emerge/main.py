@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -165,6 +165,7 @@ def insert_optional_args(args):
         "--getbinpkgonly": y_or_n,
         "--ignore-world": y_or_n,
         "--jobs": valid_integers,
+        "--jobs-merge-wait-threshold": valid_integers,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
         "--onlydeps-with-ideps": y_or_n,
@@ -521,6 +522,10 @@ def parse_opts(tmpcmdline, silent=False):
         "--jobs": {
             "shortopt": "-j",
             "help": "Specifies the number of packages to build " + "simultaneously.",
+            "action": "store",
+        },
+        "--jobs-merge-wait-threshold": {
+            "help": "Specifies the maximum number of queued merges that can exist when starting a new job.",
             "action": "store",
         },
         "--keep-going": {
@@ -1032,6 +1037,24 @@ def parse_opts(tmpcmdline, silent=False):
                 parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
 
         myoptions.jobs = jobs
+
+    if myoptions.jobs_merge_wait_threshold == "True":
+        myoptions.jobs_merge_wait_threshold = None
+
+    if myoptions.jobs_merge_wait_threshold:
+        try:
+            jobs_merge_wait_threshold = int(myoptions.jobs_merge_wait_threshold)
+        except ValueError:
+            jobs_merge_wait_threshold = 0
+
+        if jobs_merge_wait_threshold <= 0:
+            jobs_merge_wait_threshold = None
+            if not silent:
+                parser.error(
+                    f"Invalid --jobs-merge-wait-threshold: '{myoptions.jobs_merge_wait_threshold}'\n"
+                )
+
+        myoptions.jobs_merge_wait_threshold = jobs_merge_wait_threshold
 
     if myoptions.load_average == "True":
         myoptions.load_average = None
