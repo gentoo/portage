@@ -772,6 +772,7 @@ def action_config(settings, trees, myopts, myfiles):
         mydbapi=trees[settings["EROOT"]]["vartree"].dbapi,
         tree="vartree",
     )
+    portage.elog.elog_process(mysettings.mycpv, mysettings)
     if retval == os.EX_OK:
         portage.doebuild(
             ebuildpath,

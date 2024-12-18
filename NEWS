@@ -25,6 +25,8 @@ Bug fixes:
 
 * Support cross-root package moves (bug #946326).
 
+* Process elog messages for emerge --config (bug #904702).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
