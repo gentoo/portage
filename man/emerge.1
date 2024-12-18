@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "May 2024" "Portage @VERSION@" "Portage"
+.TH "EMERGE" "1" "Jun 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -692,6 +692,32 @@ build output to be redirected to logs.
 Note that interactive packages currently force a setting
 of \fI\-\-jobs=1\fR. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
+.TP
+.BR \-\-jobs\-tmpdir\-blocks\-threshold[=RATIO]
+Specifies the maximum ratio of used blocks allowed (a floating\-point
+number between \fI0.0\fR and \fI1.0\fR) in \fBPORTAGE_TMPDIR\fR when
+starting a new job. With noargument, removes a previous blocks ratio
+threshold. For example, use a ratio of \fI0.50\fR to stop starting new
+jobs when the blocks usage in \fBPORTAGE_TMPDIR\fR exceeds \fI50%\fR.
+This option conflicts with \fBFEATURES="keepwork"\fR.
+\fBWARNING:\fR Since the job scheduler is unable to predict the future
+consumption of jobs that it has scheduled, users are advised to set a
+threshold that provides a significant amount of headroom, in order to
+decrease the probability that jobs will fail due to \fIENOSPC\fR
+errors.
+.TP
+.BR \-\-jobs\-tmpdir\-files\-threshold[=RATIO]
+Specifies the maximum ratio of used files (inodes) allowed (a
+floating\-point number between \fI0.0\fR and \fI1.0\fR) in
+\fBPORTAGE_TMPDIR\fR when starting a new job. With no argument, removes
+a previous files ratio threshold. For example, use a ratio of \fI0.85\fR
+to stop starting new jobs when the files usage in \fBPORTAGE_TMPDIR\fR
+exceeds \fI85%\fR. This option conflicts with \fBFEATURES="keepwork"\fR.
+\fBWARNING:\fR Since the job scheduler is unable to predict the future
+consumption of jobs that it has scheduled, users are advised to set a
+threshold that provides a significant amount of headroom, in order to
+decrease the probability that jobs will fail due to \fIENOSPC\fR
+errors.
 .TP
 .BR "\-\-keep\-going [ y | n ]"
 Continue as much as possible after an error. When an error occurs,
