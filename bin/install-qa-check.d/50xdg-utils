@@ -1,0 +1,107 @@
+# Check for missing calls to xdg-utils regen functions
+
+xdg_desktop_database_check() {
+	local d f all_files=() missing
+	for d in usr/share/applications; do
+		[[ -d ${d} ]] || continue
+
+		# Look for any .desktop files that have any mime types defined
+		while read -r -d $'\0' f; do
+			all_files+=( "${f}" )
+		done < <(find "${d}" -name '*.desktop' \
+			-exec grep -lZi '^MimeType=' {} +)
+	done
+
+	if [[ -z ${all_files[@]} ]]; then
+		:
+	elif ! has xdg-utils ${INHERITED}; then
+		missing='xdg-utils was not inherited'
+	elif ! declare -f pkg_postinst | grep -q -E '(xdg_desktop_database_update|(ecm|gnome|java-vm-2|xdg)_pkg_postinst)'; then
+		missing='xdg-utils was not used'
+	elif ! declare -f pkg_postrm | grep -q -E '(xdg_desktop_database_update|(ecm|gnome|java-vm-2|xdg)_pkg_postrm)'; then
+		missing='xdg-utils was not used'
+	fi
+
+	if [[ ${missing} && ${all_files[@]} ]]; then
+		eqawarn "QA Notice: .desktop files with MimeType= were found installed"
+		eqawarn "but ${missing}:"
+		eqatag -v xdg-utils.desktop "${all_files[@]/#//}"
+		eqawarn "Please make sure to call xdg_desktop_database_update()"
+		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
+	fi
+}
+
+xdg_icon_cache_check() {
+	local d f all_files=() missing
+	for d in usr/share/icons/*/; do
+		local find_args=(
+			# gtk-update-icon-cache supports only specific file
+			# suffixes; match that to avoid false positives
+			'(' -name '*.png' -o -name '*.svg'
+				-o -name '*.xpm' -o -name '*.icon' ')'
+		)
+
+		# (use -mindepth 2 to easily skip the cache files)
+		while read -r -d $'\0' f; do
+			all_files+=( "${f}" )
+		done < <(find "${d}" -mindepth 2 -type f "${find_args[@]}" -print0)
+	done
+
+	if [[ -z ${all_files[@]} ]]; then
+		:
+	elif ! has xdg-utils ${INHERITED}; then
+		missing='xdg-utils was not inherited'
+	elif ! declare -f pkg_postinst | grep -q -E '(xdg_icon_cache_update|(ecm|gnome|xdg)_pkg_postinst)'; then
+		missing='xdg-utils was not used'
+	elif ! declare -f pkg_postrm | grep -q -E '(xdg_icon_cache_update|(ecm|gnome|xdg)_pkg_postrm)'; then
+		missing='xdg-utils was not used'
+	fi
+
+	if [[ ${missing} ]]; then
+		eqawarn "QA Notice: new icons were found installed but ${missing}:"
+		eqatag -v xdg-utils.icon-cache "${all_files[@]/#//}"
+		eqawarn "Please make sure to call xdg_icon_cache_update()"
+		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
+	fi
+}
+
+xdg_mimeinfo_database_check() {
+	local d f all_files=() missing
+	for d in usr/share/mime; do
+		[[ -d ${d} ]] || continue
+
+		while read -r -d $'\0' f; do
+			all_files+=( "${f}" )
+		done < <(find "${d}" -name '*.xml' -print0)
+	done
+
+	if [[ -z ${all_files[@]} ]]; then
+		:
+	elif ! has xdg-utils ${INHERITED}; then
+		missing='xdg-utils was not inherited'
+	elif ! declare -f pkg_postinst | grep -q -E '(xdg_mimeinfo_database_update|(ecm|gnome|xdg)_pkg_postinst)'; then
+		missing='xdg-utils was not used'
+	elif ! declare -f pkg_postrm | grep -q -E '(xdg_mimeinfo_database_update|(ecm|gnome|xdg)_pkg_postrm)'; then
+		missing='xdg-utils was not used'
+	fi
+
+	if [[ ${missing} && ${all_files[@]} ]]; then
+		eqawarn "QA Notice: mime-info files were found installed but"
+		eqawarn "${missing}:"
+		eqatag -v xdg-utils.mime-info "${all_files[@]/#//}"
+		eqawarn "Please make sure to call xdg_mimeinfo_database_update()"
+		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
+	fi
+}
+
+xdg_utils_postinst_check() {
+	cd "${D}" || die
+	xdg_desktop_database_check
+	xdg_icon_cache_check
+	xdg_mimeinfo_database_check
+}
+
+xdg_utils_postinst_check
+: # guarantee successful exit
+
+# vim:ft=sh
