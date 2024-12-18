@@ -599,11 +599,12 @@ def doebuild_environment(
                     )
                     mysettings.features.remove(feature)
 
-        if "MAKEOPTS" not in mysettings:
+        # MAKEOPTS conflicts with MAKEFLAGS, so skip this if MAKEFLAGS exists.
+        if "MAKEOPTS" not in mysettings and "MAKEFLAGS" not in mysettings:
             nproc = get_cpu_count()
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
-            if "GNUMAKEFLAGS" not in mysettings and "MAKEFLAGS" not in mysettings:
+            if "GNUMAKEFLAGS" not in mysettings:
                 mysettings["GNUMAKEFLAGS"] = (
                     f"--load-average {nproc} --output-sync=line"
                 )

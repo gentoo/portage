@@ -24,6 +24,9 @@ __save_ebuild_env() {
 				unset PYTHONPATH
 			fi
 		fi
+
+		# Discard stale GNU Make POSIX Jobserver flags.
+		unset MAKEFLAGS
 	fi
 
 	# misc variables inherited from the calling environment
