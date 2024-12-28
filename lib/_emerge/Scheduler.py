@@ -230,6 +230,7 @@ class Scheduler(PollScheduler):
         if max_jobs is None:
             max_jobs = 1
         self._set_max_jobs(max_jobs)
+        self._jobs_merge_wait_threshold = myopts.get("--jobs-merge-wait-threshold")
         self._running_root = trees[trees._running_eroot]["root_config"]
         self.edebug = 0
         if settings.get("PORTAGE_DEBUG", "") == "1":
@@ -1806,6 +1807,18 @@ class Scheduler(PollScheduler):
 
     def _running_job_count(self):
         return self._jobs
+
+    def _can_add_job(self):
+        if not super()._can_add_job():
+            return False
+
+        if (
+            self._jobs_merge_wait_threshold is not None
+            and len(self._merge_wait_queue) >= self._jobs_merge_wait_threshold
+        ):
+            return False
+
+        return True
 
     def _schedule_tasks(self):
         while True:
