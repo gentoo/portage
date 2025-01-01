@@ -210,6 +210,8 @@ class Scheduler(PollScheduler):
         # empty.
         self._merge_wait_scheduled = []
 
+        self._flush_merge_wait_queue = False
+
         # Holds system packages and their deep runtime dependencies. Before
         # being merged, these packages go to merge_wait_queue, to be merged
         # when no other packages are building.
@@ -1170,12 +1172,16 @@ class Scheduler(PollScheduler):
                 self.terminate()
                 received_signal.append(128 + signum)
 
+            def sigusr2handler(signum, frame):
+                self._flush_merge_wait_queue = True
+
             earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
             earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
             earlier_sigcont_handler = signal.signal(
                 signal.SIGCONT, self._sigcont_handler
             )
             signal.siginterrupt(signal.SIGCONT, False)
+            earlier_sigusr2_handler = signal.signal(signal.SIGUSR2, sigusr2handler)
 
             earlier_sigwinch_handler = signal.signal(
                 signal.SIGWINCH, self._sigwinch_handler
@@ -1196,6 +1202,10 @@ class Scheduler(PollScheduler):
                     signal.signal(signal.SIGCONT, earlier_sigcont_handler)
                 else:
                     signal.signal(signal.SIGCONT, signal.SIG_DFL)
+                if earlier_sigusr2_handler is not None:
+                    signal.signal(signal.SIGUSR2, earlier_sigusr2_handler)
+                else:
+                    signal.signal(signal.SIGUSR2, signal.SIG_DFL)
 
                 if earlier_sigwinch_handler is not None:
                     signal.signal(signal.SIGWINCH, earlier_sigwinch_handler)
@@ -1817,11 +1827,16 @@ class Scheduler(PollScheduler):
             # special packages and we want to ensure that
             # parallel-install does not cause more than one of
             # them to install at the same time.
-            if (
-                self._merge_wait_queue
-                and not self._jobs
-                and not self._task_queues.merge
+            if self._merge_wait_queue and (
+                (not self._jobs and not self._task_queues.merge)
+                or self._flush_merge_wait_queue
             ):
+                if self._flush_merge_wait_queue:
+                    self._status_msg(
+                        "Manual flush of the merge-wait queue requested (e.g., via SIGUSR2)"
+                    )
+                    self._flush_merge_wait_queue = False
+
                 while self._merge_wait_queue:
                     # If we added non-system packages to the merge queue in a
                     # previous iteration of this loop, then for system packages we
