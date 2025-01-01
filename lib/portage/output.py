@@ -527,6 +527,18 @@ def get_term_size(fd=None):
     # returns stale values after terminal resize. Do not use curses.initscr().getmaxyx()
     # since that has unwanted side-effects, requiring a call to `stty sane` to restore a
     # sane state.
+    if not sys.stdin.isatty():
+        # Use curses if stdin is not a tty since stty fails in that case.
+        try:
+            import curses
+
+            try:
+                curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
+                return curses.tigetnum("lines"), curses.tigetnum("cols")
+            except curses.error:
+                pass
+        except ImportError:
+            pass
 
     try:
         proc = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, stderr=fd)
