@@ -84,6 +84,7 @@ from portage.dep.libc import find_libc_deps
 from portage.eapi import (
     eapi_exports_KV,
     eapi_exports_merge_type,
+    eapi_exports_pms_vars,
     eapi_exports_replace_vars,
     eapi_has_required_use,
     eapi_has_src_prepare_and_src_configure,
@@ -187,6 +188,57 @@ _vdb_use_conditional_keys = Package._dep_keys + (
     "LICENSE",
     "PROPERTIES",
     "RESTRICT",
+)
+
+# The following is a set of PMS § 11.1 and § 7.4 without
+# - TMPDIR
+# - HOME
+# because these variables are often assumed to be exported and
+# therefore consumed by child processes.
+_unexported_pms_vars = frozenset(
+    # fmt: off
+    [
+        # PMS § 11.1 Defined Variables
+        "P",               # NOT-EXPORTED: tendency to break Makefiles when exported
+        "PF",
+        "PN",
+        "CATEGORY",
+        "PV",
+        "PR",
+        "PVR",
+        "A",               # NOT-EXPORTED: largest contributor to process environment when exported
+        "AA",              # NOT-EXPORTED: unused after EAPI 4
+        "FILESDIR",
+        "DISTDIR",
+        "WORKDIR",
+        "S",
+        "PORTDIR",
+        "ECLASSDIR",
+        "ROOT",
+        "EROOT",
+        "SYSROOT",
+        "ESYSROOT",
+        "BROOT",
+        "T",
+#        "TMPDIR",        # EXPORTED: often assumed to be exported and available to child processes
+#        "HOME",          # EXPORTED: often assumed to be exported and available to child processes
+        "EPREFIX",
+        "D",              # NOT-EXPORTED: tendency to break Makefiles when exported
+        "ED",
+        "DESTTREE",
+        "INSDESTTREE",
+        "EBUILD_PHASE",
+        "EBUILD_PHASE_FUNC",
+        "KV",
+        "MERGE_TYPE",
+        "REPLACING_VERSIONS",
+        "REPLACED_BY_VERSION",
+        # PMS 7.4 Magic Ebuild-defined Variables
+        "ECLASS",
+        "INHERITED",
+        "DEFINED_PHASES",
+    ]
+    # fmt: on
 )
 
 
@@ -2133,9 +2185,38 @@ def spawn(
         logname_backup = mysettings.configdict["env"].get("LOGNAME")
         mysettings.configdict["env"]["LOGNAME"] = logname
 
+    eapi = mysettings["EAPI"]
+
+    unexported_env_vars = None
+    if "export-pms-vars" not in mysettings.features or not eapi_exports_pms_vars(eapi):
+        unexported_env_vars = _unexported_pms_vars
+
+    if unexported_env_vars:
+        orig_env = mysettings.environ()
+        # Copy since we are potentially removing keys from the dict.
+        env = orig_env.copy()
+
+        t = env["T"]
+        if not os.path.isdir(t):
+            os.makedirs(t)
+
+        ebuildExtraSource = os.path.join(t, ".portage-ebuild-extra-source")
+        with open(ebuildExtraSource, mode="w") as f:
+            for var_name in unexported_env_vars:
+                var_value = orig_env.get(var_name)
+                if var_value is None:
+                    continue
+                quoted_var_value = shlex.quite(var_value)
+                f.write(f"{var_name}={quoted_var_value}\n")
+                del env[var_name]
+
+        env["PORTAGE_EBUILD_EXTRA_SOURCE"] = str(ebuildExtraSource)
+    else:
+        env = mysettings.environ()
+
     try:
         if keywords.get("returnpid") or keywords.get("returnproc"):
-            return spawn_func(mystring, env=mysettings.environ(), **keywords)
+            return spawn_func(mystring, env=env, **keywords)
 
         proc = EbuildSpawnProcess(
             background=False,
