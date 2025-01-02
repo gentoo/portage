@@ -31,6 +31,8 @@ Bug fixes:
 
 * Pass through MAKEFLAGS and exclude from environment.bz2 (bug #692576).
 
+* binarytree.move_ent: Allocate path with binpkg_format (bug #923530).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 

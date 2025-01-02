@@ -796,7 +796,9 @@ class binarytree:
             # assuming that it will be deleted by eclean-pkg when its
             # time comes.
             mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
-            allocated_pkg_path = self.getname(mynewcpv, allocate_new=True)
+            allocated_pkg_path = self.getname(
+                mynewcpv, allocate_new=True, remote_binpkg_format=binpkg_format
+            )
             update_path = allocated_pkg_path + ".partial"
             self._ensure_dir(os.path.dirname(update_path))
             update_path_lock = None
