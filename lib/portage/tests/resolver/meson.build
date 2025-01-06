@@ -16,6 +16,7 @@ py.install_sources(
         'test_binary_pkg_ebuild_visibility.py',
         'test_blocker.py',
         'test_broken_deps.py',
+        'test_bootstrap_deps.py',
         'test_changed_deps.py',
         'test_circular_choices.py',
         'test_circular_choices_rust.py',
