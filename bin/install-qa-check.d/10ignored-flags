@@ -20,8 +20,8 @@ ignored_flag_check() {
 	# Check for files built without respecting *FLAGS. Note that
 	# -frecord-gcc-switches must be in all *FLAGS variables, in
 	# order to avoid false positive results here.
-	# NOTE: This check must execute before prepall/prepstrip, since
-	# prepstrip strips the .GCC.command.line sections.
+	# NOTE: This check must execute before estrip --prepallstrip,
+	# since estrip strips the .GCC.command.line sections.
 	if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
 	[[ "${CXXFLAGS}" == *-frecord-gcc-switches* ]] && \
 	[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
@@ -30,7 +30,7 @@ ignored_flag_check() {
 		for x in $(scanelf -qyRF '#k%p' -k '!.GCC.command.line' "${ED%/}/") ; do
 			# Separate out file types that are known to support
 			# .GCC.command.line sections, using the `file` command
-			# similar to how prepstrip uses it.
+			# similar to how estrip uses it.
 			f=$(file -S "${x}") || continue
 			[[ -z ${f} ]] && continue
 			if [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
