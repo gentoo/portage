@@ -10,6 +10,11 @@ unalias -a
 unset BASH_COMPAT
 declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 
+if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
+	source "${PORTAGE_EBUILD_EXTRA_SOURCE}" || exit 1
+	unset PORTAGE_EBUILD_EXTRA_SOURCE
+fi
+
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 
 # Set up the bash version compatibility level.  This does not disable

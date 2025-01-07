@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -46,6 +46,10 @@ def eapi_has_src_prepare_and_src_configure(eapi: str) -> bool:
 
 def eapi_supports_prefix(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).prefix
+
+
+def eapi_exports_A(eapi: str) -> bool:
+    return _get_eapi_attrs(eapi).exports_A
 
 
 def eapi_exports_AA(eapi: str) -> bool:
@@ -152,6 +156,7 @@ _eapi_attrs = collections.namedtuple(
         "broot",
         "dosed_dohard",
         "empty_groups_always_true",
+        "exports_A",
         "exports_AA",
         "exports_EBUILD_PHASE_FUNC",
         "exports_ECLASSDIR",
@@ -198,6 +203,7 @@ class Eapi:
         "6",
         "7",
         "8",
+        "9",
     )
 
     _eapi_val: int = -1
@@ -231,6 +237,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             broot=True,
             dosed_dohard=False,
             empty_groups_always_true=False,
+            exports_A=True,
             exports_AA=False,
             exports_EBUILD_PHASE_FUNC=True,
             exports_ECLASSDIR=False,
@@ -270,6 +277,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             broot=eapi >= Eapi("7"),
             dosed_dohard=eapi <= Eapi("3"),
             empty_groups_always_true=eapi <= Eapi("6"),
+            exports_A=eapi <= Eapi("8"),
             exports_AA=eapi <= Eapi("3"),
             exports_EBUILD_PHASE_FUNC=eapi >= Eapi("5"),
             exports_ECLASSDIR=eapi <= Eapi("6"),
