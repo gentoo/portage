@@ -33,6 +33,8 @@ Bug fixes:
 
 * binarytree.move_ent: Allocate path with binpkg_format (bug #923530).
 
+* ebuild.sh: Allow CC and CXX to be changed in profile.bashrc.
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 

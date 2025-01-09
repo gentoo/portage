@@ -416,8 +416,6 @@ __source_all_bashrcs() {
 	PORTAGE_BASHRCS_SOURCED=1
 
 	local x
-	local OCC="${CC}" OCXX="${CXX}"
-
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		# Source the existing profile.bashrcs.
 		while read -r x; do
@@ -432,9 +430,6 @@ __source_all_bashrcs() {
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
-
-	[[ ! -z "${OCC}" ]] && export CC="${OCC}"
-	[[ ! -z "${OCXX}" ]] && export CXX="${OCXX}"
 }
 
 # @FUNCTION: __source_env_files
