@@ -717,24 +717,19 @@ if installation.TYPE == installation.TYPES.SOURCE:
                 return VERSION
             VERSION = "HEAD"
             if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
-                encoding = _encodings["fs"]
-                cmd = [
-                    BASH_BINARY,
-                    "-c",
-                    (
-                        f"cd {_shell_quote(PORTAGE_BASE_PATH)} ; git describe --dirty --match 'portage-*' || exit $? ; "
-                    ),
-                ]
-                cmd = [
-                    _unicode_encode(x, encoding=encoding, errors="strict") for x in cmd
-                ]
-                proc = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-                )
-                output = _unicode_decode(proc.communicate()[0], encoding=encoding)
-                status = proc.wait()
-                if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-                    VERSION = output.lstrip("portage-").strip().replace("-g", "+g")
+                try:
+                    result = subprocess.run(
+                        ["git", "describe", "--dirty", "--match", "portage-*"],
+                        capture_output=True,
+                        cwd=PORTAGE_BASE_PATH,
+                        encoding=_encodings["stdio"],
+                    )
+                    if result.returncode == 0:
+                        VERSION = (
+                            result.stdout.lstrip("portage-").strip().replace("-g", "+g")
+                        )
+                except OSError:
+                    pass
             return VERSION
 
     VERSION = _LazyVersion()
