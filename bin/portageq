@@ -33,6 +33,7 @@ try:
     signal.signal(signal.SIGUSR1, debug_signal)
 
     import argparse
+    import shlex
     import sys
     import types
 
@@ -882,7 +883,7 @@ try:
                 exit_status = 1
 
             if verbose:
-                print(arg + "=" + portage._shell_quote(value))
+                print(arg + "=" + shlex.quote(value))
             else:
                 print(value)
 
@@ -1441,7 +1442,7 @@ try:
         def elog(elog_funcname, lines):
             cmd = f"source '{os.environ['PORTAGE_BIN_PATH']}/isolated-functions.sh' ; "
             for line in lines:
-                cmd += f"{elog_funcname} {portage._shell_quote(line)} ; "
+                cmd += f"{elog_funcname} {shlex.quote(line)} ; "
             subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
 
     else:

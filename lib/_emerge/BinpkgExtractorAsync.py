@@ -45,7 +45,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             if b"--xattrs" in output:
                 tar_options = ["--xattrs", "--xattrs-include='*'"]
                 for x in shlex.split(self.env.get("PORTAGE_XATTR_EXCLUDE", "")):
-                    tar_options.append(portage._shell_quote(f"--xattrs-exclude={x}"))
+                    tar_options.append(shlex.quote(f"--xattrs-exclude={x}"))
                 tar_options = " ".join(tar_options)
 
         decomp = _compressors.get(compression_probe(self.pkg_path))
@@ -119,9 +119,9 @@ class BinpkgExtractorAsync(SpawnProcess):
             "-c",
             textwrap.dedent(
                 f"""
-                    cmd0=(head -c {pkg_xpak.filestat.st_size - pkg_xpak.xpaksize} -- {portage._shell_quote(self.pkg_path)})
+                    cmd0=(head -c {pkg_xpak.filestat.st_size - pkg_xpak.xpaksize} -- {shlex.quote(self.pkg_path)})
                     cmd1=({decomp_cmd})
-                    cmd2=(tar -xp {tar_options} -C {portage._shell_quote(self.image_dir)} -f -);
+                    cmd2=(tar -xp {tar_options} -C {shlex.quote(self.image_dir)} -f -);
                 """
                 """
                     "${cmd0[@]}" | "${cmd1[@]}" | "${cmd2[@]}";

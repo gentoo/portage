@@ -16,6 +16,7 @@ import re
 import shlex
 import signal
 import stat
+import subprocess
 import sys
 import tempfile
 from textwrap import wrap
@@ -58,7 +59,6 @@ from portage import (
     unmerge,
     _encodings,
     _os_merge,
-    _shell_quote,
     _unicode_decode,
     _unicode_encode,
 )
@@ -233,7 +233,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
             ebuild_sh_arg = phase
 
         cmd = "{} {}".format(
-            _shell_quote(
+            shlex.quote(
                 os.path.join(
                     settings["PORTAGE_BIN_PATH"], os.path.basename(EBUILD_SH_BINARY)
                 )
@@ -1722,8 +1722,8 @@ def _spawn_actionmap(settings):
         portage_bin_path, os.path.basename(EBUILD_SH_BINARY)
     )
     misc_sh_binary = os.path.join(portage_bin_path, os.path.basename(MISC_SH_BINARY))
-    ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
-    misc_sh = _shell_quote(misc_sh_binary) + " __dyn_%s"
+    ebuild_sh = shlex.quote(ebuild_sh_binary) + " %s"
+    misc_sh = shlex.quote(misc_sh_binary) + " __dyn_%s"
 
     # args are for the to spawn function
     actionmap = {
@@ -2613,35 +2613,38 @@ def _post_src_install_write_metadata(settings):
 
 def _preinst_bsdflags(mysettings):
     if bsd_chflags:
-        # Save all the file flags for restoration later.
-        os.system(
-            "mtree -c -p %s -k flags > %s"
-            % (
-                _shell_quote(mysettings["D"]),
-                _shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
-            )
-        )
+        try:
+            # Save all the file flags for restoration later.
+            with open(os.path.join(mysettings["T"], "bsdflags.mtree"), "wb") as outfile:
+                subprocess.run(
+                    ["mtree", "-c", "-p", mysettings["D"], "-k", "flags"],
+                    stdout=outfile,
+                )
 
-        # Remove all the file flags to avoid EPERM errors.
-        os.system(
-            "chflags -R noschg,nouchg,nosappnd,nouappnd %s"
-            % (_shell_quote(mysettings["D"]),)
-        )
-        os.system(
-            f"chflags -R nosunlnk,nouunlnk {_shell_quote(mysettings['D'])} 2>/dev/null"
-        )
+            # Remove all the file flags to avoid EPERM errors.
+            subprocess.run(
+                ["chflags", "-R", "noschg,nouchg,nosappnd,nouappnd", mysettings["D"]]
+            )
+            subprocess.run(
+                ["chflags", "-R", "nosunlnk,nouunlnk", mysettings["D"]],
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            pass
 
 
 def _postinst_bsdflags(mysettings):
     if bsd_chflags:
-        # Restore all of the flags saved above.
-        os.system(
-            "mtree -e -p %s -U -k flags < %s > /dev/null"
-            % (
-                _shell_quote(mysettings["ROOT"]),
-                _shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
-            )
-        )
+        try:
+            # Restore all of the flags saved above.
+            with open(os.path.join(mysettings["T"], "bsdflags.mtree"), "rb") as infile:
+                subprocess.run(
+                    ["mtree", "-e", "-p", mysettings["ROOT"], "-U", "-k", "flags"],
+                    stdin=infile,
+                    stdout=subprocess.DEVNULL,
+                )
+        except OSError:
+            pass
 
 
 def _post_src_install_uid_fix(mysettings, out):
@@ -2886,8 +2889,8 @@ def _reapply_bsdflags_to_image(mysettings):
         os.system(
             "mtree -e -p %s -U -k flags < %s > /dev/null"
             % (
-                _shell_quote(mysettings["D"]),
-                _shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
+                shlex.quote(mysettings["D"]),
+                shlex.quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
             )
         )
 

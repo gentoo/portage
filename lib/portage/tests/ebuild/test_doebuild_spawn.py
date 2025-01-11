@@ -1,11 +1,11 @@
 # Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
 import textwrap
 
 from portage import os
 from portage import _python_interpreter
-from portage import _shell_quote
 from portage.const import EBUILD_SH_BINARY
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import spawn as doebuild_spawn
@@ -95,7 +95,7 @@ class DoebuildSpawnTestCase(TestCase):
                 rval = doebuild_spawn(
                     "%s %s"
                     % (
-                        _shell_quote(
+                        shlex.quote(
                             os.path.join(
                                 settings["PORTAGE_BIN_PATH"],
                                 os.path.basename(EBUILD_SH_BINARY),

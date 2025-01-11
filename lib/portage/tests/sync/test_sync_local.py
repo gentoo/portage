@@ -3,12 +3,13 @@
 
 import datetime
 import json
+import shlex
 import subprocess
 import sys
 import textwrap
 
 import portage
-from portage import os, shutil, _shell_quote
+from portage import os, shutil
 from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH, REPO_REVISIONS, TIMESTAMP_FORMAT
 from portage.process import find_binary
@@ -182,7 +183,7 @@ class SyncLocalTestCase(TestCase):
                     "rsync",
                     None,
                     "sync-rsync-extra-opts = --backup --backup-dir=%s"
-                    % _shell_quote(repo.location + "_back"),
+                    % shlex.quote(repo.location + "_back"),
                 ),
             ),
             (homedir, cmds["emerge"] + ("--sync",)),
@@ -198,7 +199,7 @@ class SyncLocalTestCase(TestCase):
                 lambda: repos_set_conf(
                     "rsync",
                     "sync-rsync-extra-opts = --backup --backup-dir=%s"
-                    % _shell_quote(repo.location + "_back"),
+                    % shlex.quote(repo.location + "_back"),
                 ),
             ),
             (homedir, cmds["emerge"] + ("--sync",)),
@@ -214,9 +215,9 @@ class SyncLocalTestCase(TestCase):
                 lambda: repos_set_conf(
                     "rsync",
                     "sync-rsync-extra-opts = --backup --backup-dir=%s"
-                    % _shell_quote(repo.location + "_back_nowhere"),
+                    % shlex.quote(repo.location + "_back_nowhere"),
                     "sync-rsync-extra-opts = --backup --backup-dir=%s"
-                    % _shell_quote(repo.location + "_back"),
+                    % shlex.quote(repo.location + "_back"),
                 ),
             ),
             (homedir, cmds["emerge"] + ("--sync",)),
@@ -232,7 +233,7 @@ class SyncLocalTestCase(TestCase):
                 lambda: repos_set_conf(
                     "rsync",
                     "sync-rsync-extra-opts = --backup --backup-dir=%s"
-                    % _shell_quote(repo.location + "_back_nowhere"),
+                    % shlex.quote(repo.location + "_back_nowhere"),
                     "sync-rsync-extra-opts = ",
                 ),
             ),

@@ -1,6 +1,7 @@
 # Copyright 2012-2019, 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
 import subprocess
 import sys
 
@@ -86,7 +87,7 @@ class SlotAbiEmergeTestCase(TestCase):
                 "echo %s >> %s"
                 % tuple(
                     map(
-                        portage._shell_quote,
+                        shlex.quote,
                         (
                             ">=dev-libs/glib-2.32",
                             package_mask_path,

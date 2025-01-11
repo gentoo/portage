@@ -669,7 +669,7 @@ class config:
                 for ov in portdir_overlay:
                     ov = normalize_path(ov)
                     if isdir_raise_eaccess(ov) or portage._sync_mode:
-                        new_ov.append(portage._shell_quote(ov))
+                        new_ov.append(shlex.quote(ov))
                     else:
                         writemsg(
                             _("!!! Invalid PORTDIR_OVERLAY" " (not a dir): '%s'\n")
