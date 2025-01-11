@@ -1,4 +1,4 @@
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -520,7 +520,6 @@ _deprecated_eapis = frozenset(
         "3_pre1",
         "3_pre2",
         "4_pre1",
-        "4-slot-abi",
         "5_pre1",
         "5_pre2",
         "6_pre1",

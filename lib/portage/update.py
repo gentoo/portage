@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -269,7 +269,7 @@ def parse_updates(mycontent):
                     invalid_slot = True
                     break
                 if "/" in slot:
-                    # EAPI 4-slot-abi style SLOT is currently not supported.
+                    # EAPI 5 style subslot is currently not supported.
                     invalid_slot = True
                     break
 

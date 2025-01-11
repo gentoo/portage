@@ -35,6 +35,8 @@ Bug fixes:
 
 * ebuild.sh: Allow CC and CXX to be changed in profile.bashrc.
 
+* eapi.sh: Remove support for unofficial 4-slot-abi EAPI.
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
