@@ -2,10 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import shlex
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
-from portage import os, _shell_quote, _unicode_encode
+from portage import os, _unicode_encode
 from portage.const import BASH_BINARY
 
 
@@ -31,7 +32,7 @@ class BinpkgEnvExtractor(CompositeTask):
     def _start(self):
         saved_env_path = self._get_saved_env_path()
         dest_env_path = self._get_dest_env_path()
-        shell_cmd = f"${{PORTAGE_BUNZIP2_COMMAND:-${{PORTAGE_BZIP2_COMMAND}} -d}} -c -- {_shell_quote(saved_env_path)} > {_shell_quote(dest_env_path)}"
+        shell_cmd = f"${{PORTAGE_BUNZIP2_COMMAND:-${{PORTAGE_BZIP2_COMMAND}} -d}} -c -- {shlex.quote(saved_env_path)} > {shlex.quote(dest_env_path)}"
 
         logfile = None
         if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":

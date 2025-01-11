@@ -1,6 +1,7 @@
 # Copyright 2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildProcess import EbuildProcess
@@ -60,7 +61,7 @@ class PackagePhase(CompositeTask):
                             "rm -rf {PROOT}; "
                             'cp -pPR $(cp --help | grep -q -- "^[[:space:]]*-l," && echo -l)'
                             ' "${{D}}" {PROOT}'
-                        ).format(PROOT=portage._shell_quote(self._proot)),
+                        ).format(PROOT=shlex.quote(self._proot)),
                     ],
                     background=self.background,
                     env=self.settings.environ(),

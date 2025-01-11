@@ -49,7 +49,6 @@ import portage
 portage._internal_caller = True
 from portage import os
 from portage import _encodings
-from portage import _shell_quote
 from portage import _unicode_encode
 from portage.const import VDB_PATH
 from portage.exception import (
@@ -165,7 +164,7 @@ def main():
     if ebuild_portdir != vdb_path and ebuild_portdir not in portage.portdb.porttrees:
         portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
         os.environ["PORTDIR_OVERLAY"] = (
-            portdir_overlay + " " + _shell_quote(ebuild_portdir)
+            portdir_overlay + " " + shlex.quote(ebuild_portdir)
         )
 
         print(f"Appending {ebuild_portdir} to PORTDIR_OVERLAY...")

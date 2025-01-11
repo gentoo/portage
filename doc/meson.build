@@ -24,7 +24,6 @@ docbook_src = [
     'package/ebuild/eapi/2.docbook',
     'package/ebuild/eapi/3.docbook',
     'package/ebuild/eapi/4.docbook',
-    'package/ebuild/eapi/4-slot-abi.docbook',
     'package/ebuild/eapi/5.docbook',
     'package/ebuild/helper_functions.docbook',
     'package/ebuild/phases.docbook',

@@ -6,7 +6,6 @@ py.install_sources(
         'test_doebuild_spawn.py',
         'test_fetch.py',
         'test_ipc_daemon.py',
-        'test_shell_quote.py',
         'test_spawn.py',
         'test_use_expand_incremental.py',
         '__init__.py',

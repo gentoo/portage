@@ -4,6 +4,7 @@
 
 import argparse
 import os
+import subprocess
 import sys
 import textwrap
 
@@ -107,20 +108,18 @@ def main(argv):
     if not os.path.isdir(binhost_dir):
         parser.error(f"binhost_dir could not be created: '{binhost_dir}'")
 
-    cp_opts = "RP"
+    cp_opts = "-RP"
     if options.hardlinks == "n":
         cp_opts += "p"
     else:
         cp_opts += "l"
 
-    cp_cmd = "cp -{} {} {}".format(
-        cp_opts,
-        portage._shell_quote(src_pkg_dir),
-        portage._shell_quote(snapshot_dir),
-    )
+    try:
+        result = subprocess.run(["cp", cp_opts, src_pkg_dir, snapshot_dir])
+    except OSError:
+        result = None
 
-    ret = os.system(cp_cmd)
-    if not (os.WIFEXITED(ret) and os.WEXITSTATUS(ret) == os.EX_OK):
+    if result is None or result.returncode != 0:
         return 1
 
     infile = open(

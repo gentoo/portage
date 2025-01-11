@@ -40,7 +40,6 @@ from portage import (
     shutil,
     _encodings,
     _movefile,
-    _shell_quote,
     _unicode_encode,
 )
 from portage.checksum import (
@@ -235,7 +234,7 @@ async def _userpriv_test_write_file(settings, file_path):
     args = [
         BASH_BINARY,
         "-c",
-        _userpriv_test_write_cmd_script % {"file_path": _shell_quote(file_path)},
+        _userpriv_test_write_cmd_script % {"file_path": shlex.quote(file_path)},
     ]
 
     returncode = await _async_spawn_fetch(settings, args)

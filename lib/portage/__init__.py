@@ -1,4 +1,4 @@
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -445,23 +445,6 @@ def _get_stdin():
     return sys.stdin
 
 
-_shell_quote_re = re.compile(r"[\s><=*\\\"'$`;&|(){}\[\]#!~?]")
-
-
-def _shell_quote(s):
-    """
-    Quote a string in double-quotes and use backslashes to
-    escape any backslashes, double-quotes, dollar signs, or
-    backquotes in the string.
-    """
-    if _shell_quote_re.search(s) is None:
-        return s
-    for letter in r"\"$`":
-        if letter in s:
-            s = s.replace(letter, rf"\{letter}")
-    return f'"{s}"'
-
-
 bsd_chflags = None
 
 if platform.system() in ("FreeBSD",):
@@ -520,7 +503,6 @@ _deprecated_eapis = frozenset(
         "3_pre1",
         "3_pre2",
         "4_pre1",
-        "4-slot-abi",
         "5_pre1",
         "5_pre2",
         "6_pre1",
@@ -715,27 +697,21 @@ if installation.TYPE == installation.TYPES.SOURCE:
             global VERSION
             if VERSION is not self:
                 return VERSION
+            VERSION = "HEAD"
             if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
-                encoding = _encodings["fs"]
-                cmd = [
-                    BASH_BINARY,
-                    "-c",
-                    (
-                        f"cd {_shell_quote(PORTAGE_BASE_PATH)} ; git describe --dirty --match 'portage-*' || exit $? ; "
-                    ),
-                ]
-                cmd = [
-                    _unicode_encode(x, encoding=encoding, errors="strict") for x in cmd
-                ]
-                proc = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-                )
-                output = _unicode_decode(proc.communicate()[0], encoding=encoding)
-                status = proc.wait()
-                if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-                    VERSION = output.lstrip("portage-").strip().replace("-g", "+g")
-            else:
-                VERSION = "HEAD"
+                try:
+                    result = subprocess.run(
+                        ["git", "describe", "--dirty", "--match", "portage-*"],
+                        capture_output=True,
+                        cwd=PORTAGE_BASE_PATH,
+                        encoding=_encodings["stdio"],
+                    )
+                    if result.returncode == 0:
+                        VERSION = (
+                            result.stdout.lstrip("portage-").strip().replace("-g", "+g")
+                        )
+                except OSError:
+                    pass
             return VERSION
 
     VERSION = _LazyVersion()

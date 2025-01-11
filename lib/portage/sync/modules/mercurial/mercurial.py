@@ -75,11 +75,7 @@ class MercurialSync(NewBase):
                 " %s"
                 % self.repo.module_specific_options["sync-mercurial-clone-extra-opts"]
             )
-        hg_cmd = "{} clone{} {} .".format(
-            self.bin_command,
-            hg_cmd_opts,
-            portage._shell_quote(sync_uri),
-        )
+        hg_cmd = f"{self.bin_command} clone{hg_cmd_opts} {shlex.quote(sync_uri)} ."
         writemsg_level(hg_cmd + "\n")
 
         exitcode = portage.process.spawn(

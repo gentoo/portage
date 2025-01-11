@@ -1,6 +1,8 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
+
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 
@@ -22,7 +24,7 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
             portage_bin_path, os.path.basename(portage.const.MISC_SH_BINARY)
         )
 
-        self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
+        self.args = [shlex.quote(misc_sh_binary)] + self.commands
         if (
             self.logfile is None
             and self.settings.get("PORTAGE_BACKGROUND") != "subprocess"

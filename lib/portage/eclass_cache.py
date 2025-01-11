@@ -4,6 +4,7 @@
 
 __all__ = ["cache"]
 
+import shlex
 import stat
 import operator
 import warnings
@@ -12,7 +13,6 @@ import errno
 from portage.exception import FileNotFound, PermissionDenied
 from portage import os
 from portage import checksum
-from portage import _shell_quote
 
 
 class hashed_path:
@@ -175,7 +175,5 @@ class cache:
     @property
     def eclass_locations_string(self):
         if self._eclass_locations_str is None:
-            self._eclass_locations_str = " ".join(
-                _shell_quote(x) for x in reversed(self.porttrees)
-            )
+            self._eclass_locations_str = shlex.join(reversed(self.porttrees))
         return self._eclass_locations_str

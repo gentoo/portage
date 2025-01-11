@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -193,7 +193,6 @@ class Eapi:
         "2",
         "3",
         "4",
-        "4-slot-abi",
         "5",
         "6",
         "7",

@@ -95,15 +95,11 @@ class GitSync(NewBase):
             git_cmd_opts += (
                 f" {self.repo.module_specific_options['sync-git-clone-extra-opts']}"
             )
-        git_cmd = "{} clone{} {} .".format(
-            self.bin_command,
-            git_cmd_opts,
-            portage._shell_quote(sync_uri),
-        )
+        git_cmd = f"{self.bin_command} clone{git_cmd_opts} {shlex.quote(sync_uri)} ."
         writemsg_level(git_cmd + "\n")
 
         exitcode = portage.process.spawn_bash(
-            f"cd {portage._shell_quote(self.repo.location)} ; exec {git_cmd}",
+            f"cd {shlex.quote(self.repo.location)} ; exec {git_cmd}",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
@@ -345,7 +341,7 @@ class GitSync(NewBase):
         )
 
         exitcode = portage.process.spawn_bash(
-            f"cd {portage._shell_quote(self.repo.location)} ; exec {git_cmd}",
+            f"cd {shlex.quote(self.repo.location)} ; exec {git_cmd}",
             **self.spawn_kwargs,
         )
 
