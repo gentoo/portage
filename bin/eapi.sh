@@ -273,7 +273,7 @@ ___eapi_bash_4_2() {
 }
 
 ___eapi_bash_5_0() {
-	true
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|5|6|7)$ ]]
 }
 
 ___eapi_has_ENV_UNSET() {
