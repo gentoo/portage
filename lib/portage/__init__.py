@@ -715,6 +715,7 @@ if installation.TYPE == installation.TYPES.SOURCE:
             global VERSION
             if VERSION is not self:
                 return VERSION
+            VERSION = "HEAD"
             if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
                 encoding = _encodings["fs"]
                 cmd = [
@@ -734,8 +735,6 @@ if installation.TYPE == installation.TYPES.SOURCE:
                 status = proc.wait()
                 if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
                     VERSION = output.lstrip("portage-").strip().replace("-g", "+g")
-            else:
-                VERSION = "HEAD"
             return VERSION
 
     VERSION = _LazyVersion()
