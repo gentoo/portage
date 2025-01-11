@@ -17,6 +17,7 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import installation
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, red
@@ -339,6 +340,9 @@ class Scheduler(PollScheduler):
             )
 
     def _handle_self_update(self):
+        if installation.TYPE != installation.TYPES.SYSTEM:
+            return os.EX_OK
+
         if self._opts_no_self_update.intersection(self.myopts):
             return os.EX_OK
 
@@ -1173,6 +1177,9 @@ class Scheduler(PollScheduler):
             )
             signal.siginterrupt(signal.SIGCONT, False)
 
+            earlier_sigwinch_handler = signal.signal(
+                signal.SIGWINCH, self._sigwinch_handler
+            )
             try:
                 rval = self._merge()
             finally:
@@ -1189,6 +1196,11 @@ class Scheduler(PollScheduler):
                     signal.signal(signal.SIGCONT, earlier_sigcont_handler)
                 else:
                     signal.signal(signal.SIGCONT, signal.SIG_DFL)
+
+                if earlier_sigwinch_handler is not None:
+                    signal.signal(signal.SIGWINCH, earlier_sigwinch_handler)
+                else:
+                    signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
             self._termination_check()
             if received_signal:
@@ -1904,6 +1916,9 @@ class Scheduler(PollScheduler):
 
     def _sigcont_handler(self, signum, frame):
         self._sigcont_time = time.time()
+
+    def _sigwinch_handler(self, signum, frame):
+        self._status_display.sigwinch()
 
     def _job_delay(self):
         """

@@ -6,6 +6,35 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+Security:
+* make.globals: disable FEATURES="sfperms" by default (bug #938164).
+
+Bug fixes:
+* depgraph: Ignore blockers when computing virtual deps visibility (PR #1387).
+
+* binarytree: Fix _inject_repo_revisions to ignore remote packages for which
+  source repostories are missing, triggering KeyError (PR #1391).
+
+* gpkg: do not consider symlinks targets for size estimation (bug #942512).
+
+* install_qa_check: Fix noclean interaction with merge-wait (bug #942760).
+
+* save-ebuild-env.sh: Add functions from newer EAPIs to filter list
+
+* eend: Missing argument is now an error (bug #703520).
+
+* Support cross-root package moves (bug #946326).
+
+* Process elog messages for emerge --config (bug #904702).
+
+* Scheduler: Handle SIGWINCH for JobStatusDisplay (bug #945382).
+
+* Pass through MAKEFLAGS and exclude from environment.bz2 (bug #692576).
+
+* binarytree.move_ent: Allocate path with binpkg_format (bug #923530).
+
+* ebuild.sh: Allow CC and CXX to be changed in profile.bashrc.
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
@@ -1243,7 +1272,7 @@ Bug fixes:
   and it's a no-op in older xz.
 
 * emerge(1), make.conf(5), xpak(5): document BINPKG_FORMAT and the gpkg binary
-  packate format further.
+  package format further.
 
 * sync: git: Fix sync printing local repo path (bug #875812)
 

@@ -266,7 +266,11 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
                 st = os.stat(snap_path)
             except OSError:
                 continue
-            snap_timestamp = datetime.datetime.utcfromtimestamp(st.st_mtime)
-            if (datetime.datetime.utcnow() - snap_timestamp) < snap_ttl:
+            snap_timestamp = datetime.datetime.fromtimestamp(
+                st.st_mtime, tz=datetime.timezone.utc
+            )
+            if (
+                datetime.datetime.now(datetime.timezone.utc) - snap_timestamp
+            ) < snap_ttl:
                 continue
             await self._check_call(["rm", "-rf", snap_path])

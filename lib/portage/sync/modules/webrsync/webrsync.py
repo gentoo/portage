@@ -68,6 +68,7 @@ class WebRsync(SyncBase):
         verbose = "--verbose" in self.options["emerge_config"].opts
         quiet = "--quiet" in self.options["emerge_config"].opts
         openpgp_env = None
+        webrsync_cmd = [self.bin_command]
         try:
             if self.repo.module_specific_options.get(
                 "sync-webrsync-verify-signature", "false"
@@ -104,8 +105,9 @@ class WebRsync(SyncBase):
                 self.spawn_kwargs["env"][
                     "PORTAGE_GPG_KEY_SERVER"
                 ] = self.repo.sync_openpgp_keyserver
+            else:
+                webrsync_cmd.append("--no-pgp-verify")
 
-            webrsync_cmd = [self.bin_command]
             if verbose:
                 webrsync_cmd.append("-v")
             elif quiet:

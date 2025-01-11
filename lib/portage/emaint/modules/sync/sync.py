@@ -270,14 +270,24 @@ class SyncRepos:
         return (returncode, None)
 
     def _do_pkg_moves(self):
-        if self.emerge_config.opts.get("--package-moves") != "n" and _global_updates(
-            self.emerge_config.trees,
-            self.emerge_config.target_config.mtimedb["updates"],
-            quiet=("--quiet" in self.emerge_config.opts),
+        configs = [self.emerge_config.target_config]
+        if (
+            self.emerge_config.target_config.root
+            != self.emerge_config.running_config.root
         ):
-            self.emerge_config.target_config.mtimedb.commit()
-            # Reload the whole config.
-            self._reload_config()
+            configs.append(self.emerge_config.running_config)
+        for root_config in configs:
+            if self.emerge_config.opts.get(
+                "--package-moves"
+            ) != "n" and _global_updates(
+                root_config.root,
+                self.emerge_config.trees,
+                root_config.mtimedb["updates"],
+                quiet=("--quiet" in self.emerge_config.opts),
+            ):
+                root_config.mtimedb.commit()
+                # Reload the whole config.
+                self._reload_config()
 
     def _check_updates(self):
         mybestpv = self.emerge_config.target_config.trees["porttree"].dbapi.xmatch(

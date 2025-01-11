@@ -141,7 +141,7 @@ class SyncLocalTestCase(TestCase):
                     )
                 )
 
-        bump_timestamp.timestamp = datetime.datetime.utcnow()
+        bump_timestamp.timestamp = datetime.datetime.now(datetime.timezone.utc)
 
         bump_timestamp_cmds = ((homedir, bump_timestamp),)
 

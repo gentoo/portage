@@ -2,7 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
+import sys
 import time
+import pytest
 from portage import os
 from portage import shutil
 from portage import _python_interpreter
@@ -24,6 +26,9 @@ from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 class IpcDaemonTestCase(TestCase):
     _SCHEDULE_TIMEOUT = 40  # seconds
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
+    )
     def testIpcDaemon(self):
         event_loop = global_event_loop()
         tmpdir = tempfile.mkdtemp()

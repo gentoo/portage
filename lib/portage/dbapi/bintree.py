@@ -796,7 +796,9 @@ class binarytree:
             # assuming that it will be deleted by eclean-pkg when its
             # time comes.
             mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
-            allocated_pkg_path = self.getname(mynewcpv, allocate_new=True)
+            allocated_pkg_path = self.getname(
+                mynewcpv, allocate_new=True, remote_binpkg_format=binpkg_format
+            )
             update_path = allocated_pkg_path + ".partial"
             self._ensure_dir(os.path.dirname(update_path))
             update_path_lock = None
@@ -1948,9 +1950,16 @@ class binarytree:
         package was not built locally, and in this case its
         REPO_REVISIONS are not intended to be exposed.
         """
+        try:
+            repos = [
+                self.settings.repositories[repo_name] for repo_name in repo_revisions
+            ]
+        except KeyError:
+            # Missing repo implies package was not built locally from source.
+            return
         synced_repo_revisions = get_repo_revision_history(
             self.settings["EROOT"],
-            [self.settings.repositories[repo_name] for repo_name in repo_revisions],
+            repos,
         )
         header_repo_revisions = (
             json.loads(header["REPO_REVISIONS"]) if header.get("REPO_REVISIONS") else {}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
@@ -367,13 +367,13 @@ __eend() {
 }
 
 eend() {
-	[[ -n $1 ]] || eqawarn "QA Notice: eend called without first argument"
+	[[ -n ${1} ]] || die "${FUNCNAME}(): Missing argument"
+	local retval=${1}
+	shift
 	if (( --__EBEGIN_EEND_COUNT < 0 )); then
 		__EBEGIN_EEND_COUNT=0
 		eqawarn "QA Notice: eend called without preceding ebegin in ${FUNCNAME[1]}"
 	fi
-	local retval=${1:-0}
-	shift
 
 	__eend ${retval} eerror "$*"
 

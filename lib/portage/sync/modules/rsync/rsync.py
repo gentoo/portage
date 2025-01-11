@@ -437,7 +437,11 @@ class RsyncSync(NewBase):
                             raise RuntimeError("Timestamp not found in Manifest")
                         if (
                             self.max_age != 0
-                            and (datetime.datetime.utcnow() - ts.ts).days > self.max_age
+                            and (
+                                datetime.datetime.now(datetime.timezone.utc)
+                                - ts.ts.replace(tzinfo=datetime.timezone.utc)
+                            ).days
+                            > self.max_age
                         ):
                             out.quiet = False
                             out.ewarn(

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -163,9 +163,7 @@ __sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
 	[[ $# -eq 1 ]] || die "Usage: add${_v,,} <path>"
-	# Make this fatal after 2024-12-31
-	[[ ${1} == *:* ]] \
-		&& eqawarn "QA Notice: add${_v,,} called with colon-separated argument"
+	[[ ${1} == *:* ]] && die "add${_v,,} argument must not contain a colon"
 	export ${var}="${!var:+${!var}:}$1"
 }
 # bash-4 version:
@@ -418,8 +416,6 @@ __source_all_bashrcs() {
 	PORTAGE_BASHRCS_SOURCED=1
 
 	local x
-	local OCC="${CC}" OCXX="${CXX}"
-
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		# Source the existing profile.bashrcs.
 		while read -r x; do
@@ -434,9 +430,6 @@ __source_all_bashrcs() {
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
-
-	[[ ! -z "${OCC}" ]] && export CC="${OCC}"
-	[[ ! -z "${OCXX}" ]] && export CXX="${OCXX}"
 }
 
 # @FUNCTION: __source_env_files

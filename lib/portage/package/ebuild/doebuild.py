@@ -50,6 +50,7 @@ portage.proxy.lazyimport.lazyimport(
 from portage import (
     bsd_chflags,
     eapi_is_supported,
+    installation,
     merge,
     os,
     selinux,
@@ -598,11 +599,12 @@ def doebuild_environment(
                     )
                     mysettings.features.remove(feature)
 
-        if "MAKEOPTS" not in mysettings:
+        # MAKEOPTS conflicts with MAKEFLAGS, so skip this if MAKEFLAGS exists.
+        if "MAKEOPTS" not in mysettings and "MAKEFLAGS" not in mysettings:
             nproc = get_cpu_count()
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
-            if "GNUMAKEFLAGS" not in mysettings and "MAKEFLAGS" not in mysettings:
+            if "GNUMAKEFLAGS" not in mysettings:
                 mysettings["GNUMAKEFLAGS"] = (
                     f"--load-average {nproc} --output-sync=line"
                 )
@@ -3280,10 +3282,13 @@ def _prepare_self_update(settings):
 
 
 def _handle_self_update(settings, vardb):
-    cpv = settings.mycpv
-    if settings["ROOT"] == "/" and portage.dep.match_from_list(
-        portage.const.PORTAGE_PACKAGE_ATOM, [cpv]
+    if installation.TYPE != installation.TYPES.SYSTEM:
+        return False
+    if settings["ROOT"] != "/":
+        return False
+    if not portage.dep.match_from_list(
+        portage.const.PORTAGE_PACKAGE_ATOM, [settings.mycpv]
     ):
-        _prepare_self_update(settings)
-        return True
-    return False
+        return False
+    _prepare_self_update(settings)
+    return True

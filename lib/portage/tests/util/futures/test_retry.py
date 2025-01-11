@@ -3,11 +3,14 @@
 
 from concurrent.futures import Future, ThreadPoolExecutor
 import contextlib
+import sys
 
 import threading
 
 import weakref
 import time
+
+import pytest
 
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -112,6 +115,9 @@ class RetryTestCase(TestCase):
             self.assertEqual(len(done), 1)
             self.assertTrue(isinstance(done.pop().exception(), SucceedNeverException))
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
+    )
     def testHangForever(self):
         loop = global_event_loop()
         with self._wrap_coroutine_func(HangForever()) as func_coroutine:
@@ -129,6 +135,9 @@ class RetryTestCase(TestCase):
                 isinstance(done.pop().exception().__cause__, asyncio.TimeoutError)
             )
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
+    )
     def testHangForeverReraise(self):
         loop = global_event_loop()
         with self._wrap_coroutine_func(HangForever()) as func_coroutine:
@@ -145,6 +154,9 @@ class RetryTestCase(TestCase):
             self.assertEqual(len(done), 1)
             self.assertTrue(isinstance(done.pop().exception(), asyncio.TimeoutError))
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
+    )
     def testCancelRetry(self):
         loop = global_event_loop()
         with self._wrap_coroutine_func(SucceedNever()) as func_coroutine:
@@ -159,6 +171,9 @@ class RetryTestCase(TestCase):
             self.assertEqual(len(done), 1)
             self.assertTrue(done.pop().cancelled())
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
+    )
     def testOverallTimeoutWithException(self):
         loop = global_event_loop()
         with self._wrap_coroutine_func(SucceedNever()) as func_coroutine:
@@ -181,6 +196,9 @@ class RetryTestCase(TestCase):
                 msg=f"Cause was {cause.__class__.__name__}",
             )
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
+    )
     def testOverallTimeoutWithTimeoutError(self):
         loop = global_event_loop()
         # results in TimeoutError because it hangs forever
