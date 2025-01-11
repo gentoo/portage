@@ -55,10 +55,6 @@ BINPKG_GPG_VERIFY_BASE_COMMAND="/usr/bin/gpg --verify --batch --no-tty --no-auto
 # The binary package default GPG home directory for verify
 BINPKG_GPG_VERIFY_GPG_HOME="/etc/portage/gnupg"
 
-# The user and group will be used when drop root privileges
-PORTAGE_USERNAME="portage"
-PORTAGE_GRPNAME="portage"
-
 # The user and group will be used when drop root privileges during GPG verify
 GPG_VERIFY_USER_DROP="nobody"
 GPG_VERIFY_GROUP_DROP="nogroup"
