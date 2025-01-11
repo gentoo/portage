@@ -1125,6 +1125,15 @@ class config:
                             self["PORTAGE_GRPNAME"] = grp_struct.gr_name
                             self.backup_changes("PORTAGE_GRPNAME")
 
+                else:
+                    if "PORTAGE_USERNAME" not in self:
+                        self["PORTAGE_USERNAME"] = "portage"
+                        self.backup_changes("PORTAGE_USERNAME")
+
+                    if "PORTAGE_GRPNAME" not in self:
+                        self["PORTAGE_GRPNAME"] = "portage"
+                        self.backup_changes("PORTAGE_GRPNAME")
+
             for var, default_val in default_inst_ids.items():
                 try:
                     self[var] = str(int(self.get(var, default_val)))
