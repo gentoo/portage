@@ -596,10 +596,6 @@ __dyn_install() {
 	__vecho
 	__vecho ">>> Install ${CATEGORY}/${PF} into ${D}"
 
-	# Our custom version of libtool uses ${S} and ${D} to fix
-	# invalid paths in .la files
-	export S D
-
 	# Reset exeinto(), docinto(), insinto(), and into() state variables
 	# in case the user is running the install phase multiple times
 	# consecutively via the ebuild command.
