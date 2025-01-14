@@ -37,6 +37,8 @@ Bug fixes:
 
 * eapi.sh: Remove support for unofficial 4-slot-abi EAPI.
 
+* Preserve PORTAGE_BZIP2_COMMAND in environment.bz2 (bug #948067).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 
