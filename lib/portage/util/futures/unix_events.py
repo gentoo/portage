@@ -4,7 +4,6 @@
 __all__ = ("DefaultEventLoopPolicy",)
 
 import asyncio as _real_asyncio
-from asyncio import events
 
 import fcntl
 import os
@@ -27,7 +26,7 @@ else:
         fcntl.fcntl(fd, fcntl.F_SETFL, flags)
 
 
-class _PortageEventLoopPolicy(events.AbstractEventLoopPolicy):
+class _PortageEventLoopPolicy:
     """
     Implementation of asyncio.AbstractEventLoopPolicy based on portage's
     internal event loop. This supports running event loops in forks,
