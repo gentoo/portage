@@ -536,6 +536,23 @@ Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
 Run GPG unlock command every 5 mins to avoid the passphrase expired.
 If your GPG is auto unlocked on login, you do not need this.
 .TP
+.B home\-dir\-template\-copy
+As part of the ebuild environment setup, copy the PORTAGE_USERNAME (default
+"portage") home directory (currently /var/lib/portage/home) into the build environment
+HOME directory. By default, Portage uses an empty home directory for each new build. 
+
+This is useful, for example, if the git-r3 eclass is being used to access a repository
+via ssh where keys and known_hosts values need to be specified in the ~/.ssh
+directory.
+
+It's also useful for adressing git's "fatal: detected dubious ownership in
+repository at..." error, which can occur when the ebuild is fetching from a
+local filesystem-resident repo. Running git to create an "--add safe.directory"
+exception \fInarrowly\fR to apply only to the portage user can be done as follows:
+
+    sudo -u portage git config --global --add safe.directory ...
+
+.TP
 .B icecream
 Enable portage support for the icecream package.
 .TP

@@ -189,6 +189,7 @@ SUPPORTED_FEATURES = frozenset(
         "force-mirror",
         "getbinpkg",
         "gpg-keepalive",
+        "home-dir-template-copy",
         "icecream",
         "installsources",
         "ipc-sandbox",
