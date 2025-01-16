@@ -39,6 +39,8 @@ Bug fixes:
 
 * Preserve PORTAGE_BZIP2_COMMAND in environment.bz2 (bug #948067).
 
+* Support for new home-dir-template-copy FEATURE (bug #947822).
+
 portage-3.0.66.1 (2024-09-18)
 --------------
 

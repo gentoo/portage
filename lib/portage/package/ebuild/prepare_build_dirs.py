@@ -7,6 +7,7 @@ import errno
 import gzip
 import stat
 import time
+import pwd
 
 import portage
 from portage import os, shutil, _encodings, _unicode_encode, _unicode_decode
@@ -133,6 +134,27 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
         # Avoid spurious permissions adjustments when fetching with
         # a temporary PORTAGE_TMPDIR setting (for fetchonly).
         _prepare_features_dirs(mysettings)
+        # Support for home-dir-template-copy FEATURE:
+        if "home-dir-template-copy" in settings.features:
+            portage_username = mysettings.get("PORTAGE_USERNAME", "portage")
+            home_template_dir = pwd.getpwnam(portage_username).pw_dir
+            build_env_home_dir = mysettings["HOME"]
+            # Sanity checks on above values.
+            if not os.path.exists(home_template_dir):
+                writemsg(
+                    f"FEATURES home-dir-template-copy enabled but specified Linux home directory {home_template_dir} does not exist.",
+                    noiselevel=-1,
+                )
+                return 1
+            if not os.path.exists(build_env_home_dir):
+                writemsg(
+                    f"FEATURES home-dir-template-copy enabled but build HOME directory {build_env_home_dir} does not exist.",
+                    noiselevel=-1,
+                )
+                return 1
+            shutil.copytree(
+                home_template_dir, build_env_home_dir, symlinks=True, dirs_exist_ok=True
+            )
 
 
 def _adjust_perms_msg(settings, msg):
