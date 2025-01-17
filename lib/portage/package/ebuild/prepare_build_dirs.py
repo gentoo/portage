@@ -141,12 +141,20 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
             build_env_home_dir = mysettings["HOME"]
             # Sanity checks on above values.
             if not os.path.exists(home_template_dir):
-                writemsg(f"FEATURES home-dir-template-copy enabled but specified Linux home directory {home_template_dir} does not exist.", noiselevel=-1)
+                writemsg(
+                    f"FEATURES home-dir-template-copy enabled but specified Linux home directory {home_template_dir} does not exist.",
+                    noiselevel=-1,
+                )
                 return 1
             if not os.path.exists(build_env_home_dir):
-                writemsg(f"FEATURES home-dir-template-copy enabled but build HOME directory {build_env_home_dir} does not exist.", noiselevel=-1)
+                writemsg(
+                    f"FEATURES home-dir-template-copy enabled but build HOME directory {build_env_home_dir} does not exist.",
+                    noiselevel=-1,
+                )
                 return 1
-            shutil.copytree(home_template_dir, build_env_home_dir, symlinks=True, dirs_exist_ok=True)
+            shutil.copytree(
+                home_template_dir, build_env_home_dir, symlinks=True, dirs_exist_ok=True
+            )
 
 
 def _adjust_perms_msg(settings, msg):
