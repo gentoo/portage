@@ -84,6 +84,7 @@ from portage.dep.libc import find_libc_deps
 from portage.eapi import (
     eapi_exports_KV,
     eapi_exports_merge_type,
+    eapi_exports_pms_vars,
     eapi_exports_replace_vars,
     eapi_has_required_use,
     eapi_has_src_prepare_and_src_configure,
@@ -187,6 +188,57 @@ _vdb_use_conditional_keys = Package._dep_keys + (
     "LICENSE",
     "PROPERTIES",
     "RESTRICT",
+)
+
+# The following is a set of PMS § 11.1 and § 7.4 without
+# - TMPDIR
+# - HOME
+# because these variables are often assumed to be exported and
+# therefore consumed by child processes.
+_unexported_pms_vars = frozenset(
+    # fmt: off
+    [
+        # PMS § 11.1 Defined Variables
+        "P",
+        "PF",
+        "PN",
+        "CATEGORY",
+        "PV",
+        "PR",
+        "PVR",
+        "A",
+        "AA",
+        "FILESDIR",
+        "DISTDIR",
+        "WORKDIR",
+        "S",
+        "PORTDIR",
+        "ECLASSDIR",
+        "ROOT",
+        "EROOT",
+        "SYSROOT",
+        "ESYSROOT",
+        "BROOT",
+        "T",
+#        "TMPDIR",        # EXPORTED: often assumed to be exported and available to child processes
+#        "HOME",          # EXPORTED: often assumed to be exported and available to child processes
+        "EPREFIX",
+        "D",
+        "ED",
+        "DESTTREE",
+        "INSDESTTREE",
+        "EBUILD_PHASE",
+        "EBUILD_PHASE_FUNC",
+        "KV",
+        "MERGE_TYPE",
+        "REPLACING_VERSIONS",
+        "REPLACED_BY_VERSION",
+        # PMS § 7.4 Magic Ebuild-defined Variables
+        "ECLASS",
+        "INHERITED",
+        "DEFINED_PHASES",
+    ]
+    # fmt: on
 )
 
 
@@ -1922,6 +1974,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
 
+_emerge_tmpdir = None
+
 
 def spawn(
     mystring,
@@ -2133,9 +2187,85 @@ def spawn(
         logname_backup = mysettings.configdict["env"].get("LOGNAME")
         mysettings.configdict["env"]["LOGNAME"] = logname
 
+    eapi = mysettings["EAPI"]
+
+    unexported_env_vars = None
+    if "export-pms-vars" not in mysettings.features or not eapi_exports_pms_vars(eapi):
+        unexported_env_vars = _unexported_pms_vars
+
+    if unexported_env_vars:
+        # Starting with EAPI 9 (or if FEATURES="-export-pms-vars"),
+        # PMS variables should not longer be exported.
+
+        phase = mysettings.get("EBUILD_PHASE")
+        is_pms_ebuild_phase = phase in _phase_func_map.keys()
+        # 'None' phase is MiscFunctionsProcess, e.g., where the qa checks run
+        is_ebuild_phase_with_t = phase in [None, "package", "instprep"]
+        # Copy the environment since we are removing the PMS variables from it.
+        env = mysettings.environ().copy()
+
+        # There are three cases to consider when it comes to managing
+        # the life cycle of the PORTAGE_EBUILD_EXTRA_SOURCE file we
+        # are going to create now.
+        # A) phase function with T available (potentially unprivileged)
+        # B) privileged phase function
+        # C) phase=depend (potentially unprivileged with T unavailable and __ebuild_main not called)
+        #
+        # Case A is easy to solve, since we shove
+        # PORTAGE_EBUILD_EXTRA_SOURCE simply in T which will
+        # eventually get claned any way.
+        # Case B requires that we use an extra temp directory to store
+        # PORTAGE_EBUILD_EXTRA_SOURCE. We install an EXIT trap in
+        # __ebuild_main() that will remove PORTAGE_EBUILD_EXTRA_SOURCE
+        # once ebuild.sh finishes.
+        # Case C requires that delete PORTAGE_EBUILD_EXTRA_SOURCE once
+        # the depend phase for that ebuild finished. This is done in
+        # EbuildMetadataPhase._unregister().
+        if is_pms_ebuild_phase or is_ebuild_phase_with_t:  # case A
+            t = env["T"]
+            ebuild_extra_source_path = os.path.join(
+                t, f".portage-ebuild-extra-source-{phase}"
+            )
+        else:  # case B and C
+            global _emerge_tmpdir
+            if _emerge_tmpdir is None:
+                _emerge_tmpdir = tempfile.mkdtemp(
+                    prefix=f"portage-tmpdir-{portage.getpid()}-"
+                )
+                os.chmod(_emerge_tmpdir, 0o1775)
+                os.chown(_emerge_tmpdir, -1, int(portage_gid))
+                portage.process.atexit_register(shutil.rmtree, _emerge_tmpdir)
+            ebuild_extra_source_fd, ebuild_extra_source_path = tempfile.mkstemp(
+                prefix=f"portage-ebuild-extra-source-{phase}-",
+                dir=_emerge_tmpdir,
+            )
+            try:
+                # Make sure that the file can be writen by us (done below)
+                # and that it is world readable.
+                os.fchmod(ebuild_extra_source_fd, 0o644)
+            finally:
+                os.close(ebuild_extra_source_fd)
+            if phase == "depend":  # case C
+                # The file will be deleted by EbuildMetadataPhase._unregister()
+                mysettings["PORTAGE_EBUILD_EXTRA_SOURCE"] = ebuild_extra_source_path
+
+        with open(ebuild_extra_source_path, mode="w") as f:
+            for var_name in unexported_env_vars:
+                var_value = mysettings.environ().get(var_name)
+                if var_value is None:
+                    continue
+                quoted_var_value = shlex.quote(var_value)
+                f.write(f"{var_name}={quoted_var_value}\n")
+                del env[var_name]
+
+        env["PORTAGE_EBUILD_EXTRA_SOURCE"] = str(ebuild_extra_source_path)
+    else:
+        # Pre EAPI 9 behavior, all PMS variables are simply exported into the ebuild's environment.
+        env = mysettings.environ()
+
     try:
         if keywords.get("returnpid") or keywords.get("returnproc"):
-            return spawn_func(mystring, env=mysettings.environ(), **keywords)
+            return spawn_func(mystring, env=env, **keywords)
 
         proc = EbuildSpawnProcess(
             background=False,
