@@ -135,7 +135,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
         # a temporary PORTAGE_TMPDIR setting (for fetchonly).
         _prepare_features_dirs(mysettings)
         # Support for home-dir-template-copy FEATURE:
-        if not cleanup and "home-dir-template-copy" in settings.features:
+        if "home-dir-template-copy" in settings.features:
             portage_username = mysettings.get("PORTAGE_USERNAME", "portage")
             home_template_dir = pwd.getpwnam(portage_username).pw_dir
             build_env_home_dir = mysettings["HOME"]
