@@ -549,12 +549,6 @@ def unlockfile(mytuple):
         raise OSError(_("Failed to unlock file '%s'\n") % lockfilename)
 
     try:
-        # This sleep call was added to allow other processes that are
-        # waiting for a lock to be able to grab it before it is deleted.
-        # lockfile() already accounts for this situation, however, and
-        # the sleep here adds more time than is saved overall, so am
-        # commenting until it is proved necessary.
-        # time.sleep(0.0001)
         if unlinkfile:
             locking_method(myfd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             # We won the lock, so there isn't competition for it.
