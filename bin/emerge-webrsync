@@ -697,7 +697,14 @@ main() {
 
 	handle_pgp_setup
 
-	[[ -d ${repo_location} ]] || mkdir -p "${repo_location}"
+	if [[ ! -d ${repo_location} ]]; then
+		mkdir -p "${repo_location}" || die
+
+		if has usersync ${FEATURES} ; then
+			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || die
+		fi
+	fi
+
 	if [[ ! -w ${repo_location} ]] ; then
 		die "Repository '${repo_name}' is not writable: ${repo_location}"
 	fi
