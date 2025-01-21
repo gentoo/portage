@@ -6,8 +6,26 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.67 (UNRELEASED)
+--------------
+
+Breaking changes:
+* eend: Missing argument is now an error (bug #703520).
+
+* ebuild.sh: A colon in sandbox function args is now an error (bug #920654).
+
 Security:
 * make.globals: disable FEATURES="sfperms" by default (bug #938164).
+
+Features:
+* New 'home-dir-template-copy' FEATURE (bug #947822).
+
+  If enabled, as part of the ebuild environment setup, copies the PORTAGE_USERNAME
+  home directory into the build environment HOME directory. Useful predominantly
+  for ebuilds that use the git-r3 eclass, to give a place to put SSH keys and user-
+  specific git configuration files used during the build.
+
+* Flush the merge-wait queue on SIGUSR2.
 
 Bug fixes:
 * depgraph: Ignore blockers when computing virtual deps visibility (PR #1387).
@@ -21,8 +39,6 @@ Bug fixes:
 
 * save-ebuild-env.sh: Add functions from newer EAPIs to filter list
 
-* eend: Missing argument is now an error (bug #703520).
-
 * Support cross-root package moves (bug #946326).
 
 * Process elog messages for emerge --config (bug #904702).
@@ -35,11 +51,14 @@ Bug fixes:
 
 * ebuild.sh: Allow CC and CXX to be changed in profile.bashrc.
 
-* eapi.sh: Remove support for unofficial 4-slot-abi EAPI.
-
 * Preserve PORTAGE_BZIP2_COMMAND in environment.bz2 (bug #948067).
 
-* Support for new home-dir-template-copy FEATURE (bug #947822).
+* config: Initialize default PORTAGE_USERNAME and PORTAGE_GRPNAME (bug #941977).
+
+* rust-rebuild: Update for recent changes in ::gentoo (bug #906044).
+
+Cleanups:
+* eapi.sh: Remove support for unofficial 4-slot-abi EAPI.
 
 portage-3.0.66.1 (2024-09-18)
 --------------
