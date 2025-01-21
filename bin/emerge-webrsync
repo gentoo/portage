@@ -83,6 +83,7 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
+	PORTAGE_USERNAME PORTAGE_GRPNAME \
 	USERLAND http_proxy https_proxy ftp_proxy)"
 export http_proxy https_proxy ftp_proxy
 
@@ -410,7 +411,7 @@ sync_local() {
 
 	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Syncing local repository ..."
 
-	local ownership="portage:portage"
+	local ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
 	if has usersync ${FEATURES} ; then
 		case "${USERLAND}" in
 			BSD)
