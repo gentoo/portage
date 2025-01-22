@@ -1,0 +1,15 @@
+certificate version 0.1
+pusher Sam James <sam@gentoo.org> 1737505539 +0000
+pushee git+ssh://git.gentoo.org/proj/portage.git
+nonce 1737505539-c6a5012040dff71d8c5b2c383adaafd087abb17a
+
+0000000000000000000000000000000000000000 c9888ee3fd96827ffdf7254aa21eec4fe00b137a refs/tags/portage-3.0.67
+-----BEGIN PGP SIGNATURE-----
+
+iOUEABYKAI0WIQQlpruI3Zt2TGtVQcJzhAn1IN+RkAUCZ5A7A18UgAAAAAAuAChp
+c3N1ZXItZnByQG5vdGF0aW9ucy5vcGVucGdwLmZpZnRoaG9yc2VtYW4ubmV0MjVB
+NkJCODhERDlCNzY0QzZCNTU0MUMyNzM4NDA5RjUyMERGOTE5MA8cc2FtQGdlbnRv
+by5vcmcACgkQc4QJ9SDfkZAFVAEApthc8NjjZ6zAW+2HXnWyvu/cNecJ9tsOaBjb
+FRRD0mgBAP89QHLQbl/YACNui40Mfj/dCgPCNncLJhbdegtMJt0G
+=nj+g
+-----END PGP SIGNATURE-----
