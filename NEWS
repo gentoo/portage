@@ -17,6 +17,9 @@ Breaking changes:
 Security:
 * make.globals: disable FEATURES="sfperms" by default (bug #938164).
 
+* emerge-webrsync: Create /var/db/repos/gentoo with correct permissions to
+  facilitate FEATURES="usersync" (bug #707980).
+
 Features:
 * New 'home-dir-template-copy' FEATURE (bug #947822).
 
@@ -57,8 +60,12 @@ Bug fixes:
 
 * rust-rebuild: Update for recent changes in ::gentoo (bug #906044).
 
+* emerge-webrsync: Use variables PORTAGE_USERNAME and PORTAGE_GRPNAME (bug #707980).
+
 Cleanups:
 * eapi.sh: Remove support for unofficial 4-slot-abi EAPI.
+
+* locks: Drop comment regarding sleep() call.
 
 portage-3.0.66.1 (2024-09-18)
 --------------
