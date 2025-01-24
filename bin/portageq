@@ -877,15 +877,22 @@ try:
                     file=sys.stderr,
                 )
 
-            value = portage.settings.get(arg)
-            if value is None:
-                value = ""
-                exit_status = 1
-
-            if verbose:
-                print(arg + "=" + shlex.quote(value))
+            if arg.endswith("*"):
+                arg = arg[0:-1]
+                keys = [key for key in portage.settings.keys() if key.startswith(arg)]
             else:
-                print(value)
+                keys = (arg,)
+
+            for key in keys:
+                value = portage.settings.get(key)
+                if value is None:
+                    value = ""
+                    exit_status = 1
+
+                if verbose:
+                    print(key + "=" + shlex.quote(value))
+                else:
+                    print(value)
 
         return exit_status
 
@@ -893,6 +900,7 @@ try:
         "envvar"
     ] = """<variable>+
 		Returns a specific environment variable as exists prior to ebuild.sh.
+		Variable names can end with * to match multiple variables.
 		Similar to: emerge --verbose --info | grep -E '^<variable>='
 		"""
     envvar.__doc__ = docstrings["envvar"]

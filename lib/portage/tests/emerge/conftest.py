@@ -536,6 +536,7 @@ def _generate_all_baseline_commands(playground, binhost):
         "EROOT",
         "PORTAGE_CONFIGROOT",
         "PORTAGE_TMPDIR",
+        "CHOST*",
         "USERLAND",
     )
     test_commands["etc-update"] = EtcUpdate()

@@ -6,6 +6,13 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.68 (UNRELEASED)
+--------------
+
+Features:
+* Allow "portageq envvar" to treat a trailing * as a wildcard, matching multiple
+  variables. Useful for multilib.
+
 portage-3.0.67 (2025-01-22)
 --------------
 
