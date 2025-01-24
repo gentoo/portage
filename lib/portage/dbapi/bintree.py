@@ -2278,7 +2278,7 @@ class binarytree:
             path = self._pkg_paths.get(instance_key)
             if path is not None:
                 filename = os.path.join(self.pkgdir, path)
-            elif instance_key in self._remotepkgs:
+            elif self._remotepkgs and instance_key in self._remotepkgs:
                 remote_metadata = self._remotepkgs[instance_key]
                 location = self.get_local_repo_location(cpv)
                 if location:
