@@ -12,6 +12,13 @@ fi
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
 
+source "${PORTAGE_BIN_PATH}/eapi9-pipestatus.sh" || exit 1
+if ___eapi_has_pipestatus; then
+	pipestatus() {
+		__pipestatus "$@"
+	}
+fi
+
 if ___eapi_has_assert; then
 	assert() {
 		local x pipestatus=${PIPESTATUS[*]}

@@ -50,7 +50,7 @@ __save_ebuild_env() {
 	done
 	unset x
 
-	unset -f assert __assert_sigpipe_ok \
+	unset -f assert __assert_sigpipe_ok __pipestatus \
 		__dump_trace die \
 		__quiet_mode __vecho __elog_base eqawarn elog \
 		einfo einfon ewarn eerror ebegin __eend eend KV_major \
@@ -91,6 +91,7 @@ __save_ebuild_env() {
 	___eapi_has_eapply && unset -f eapply eapply_user
 	___eapi_has_in_iuse && unset -f in_iuse
 	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
+	___eapi_has_pipestatus && unset -f pipestatus
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do

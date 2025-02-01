@@ -144,6 +144,10 @@ ___eapi_has_assert() {
 	[[ ${1-${EAPI-0}} =~ (0|1|2|3|4|5|6|7|8)$ ]]
 }
 
+___eapi_has_pipestatus() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|5|6|7|8)$ ]]
+}
+
 # HELPERS BEHAVIOR
 
 ___eapi_best_version_and_has_version_support_--host-root() {
