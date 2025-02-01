@@ -1085,10 +1085,41 @@ default_src_test
 
 .SS "General:"
 .TP
+.B pipestatus\fR \fI[-v]
+Since \fBEAPI 9\fR: Checks the PIPESTATUS array, i.e., the exit status
+of the command(s) in the most recently executed foreground pipeline.
+Returns the last non-zero-element of PIPESTATUS, or zero if all are
+zero. If called with option -v, also outputs the PIPESTATUS array.
+In its simplest form it can be called like this:
+.RS
+.TP
+.I Example:
+.nf
+foo | bar
+pipestatus || die
+.fi
+.RE
+.IP
+Using the -v option allows to save the value of the PIPESTATUS array
+for later diagnostics:
+.RS
+.TP
+.I Example:
+.nf
+local status
+foo | bar
+status=$(pipestatus -v) || die "foo | bar failed, PIPESTATUS: ${status}"
+.fi
+.RE
+.IP
+Note that pipestatus must be the next command following the pipeline.
+In particular, the "local status" declaration must be before the
+pipeline, otherwise it would reset PIPESTATUS.
+.TP
 .B assert\fR \fI[reason]
-Checks the value of the shell's PIPESTATUS array variable, and if any
-component is non-zero (indicating failure), calls die with \fIreason\fR
-as a failure message.
+Until \fBEAPI 8\fR. Checks the value of the shell's PIPESTATUS array
+variable, and if any component is non-zero (indicating failure), calls
+die with \fIreason\fR as a failure message.
 .TP
 .B die\fR \fI[reason]
 Causes the current emerge process to be aborted. The final display will
