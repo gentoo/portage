@@ -12,12 +12,20 @@ fi
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
 
-assert() {
-	local x pipestatus=${PIPESTATUS[*]}
-	for x in ${pipestatus} ; do
-		[[ ${x} -eq 0 ]] || die "$@"
-	done
-}
+source "${PORTAGE_BIN_PATH}/eapi9-pipestatus.sh" || exit 1
+if ___eapi_has_pipestatus; then
+	assert() {
+		die "assert is banned since EAPI 9 (EAPI=${EAPI}), use pipestatus instead"
+	}
+else
+	unset -f pipestatus
+	assert() {
+		local x pipestatus=${PIPESTATUS[*]}
+		for x in ${pipestatus} ; do
+			[[ ${x} -eq 0 ]] || die "$@"
+		done
+	}
+fi
 
 __assert_sigpipe_ok() {
 	# When extracting a tar file like this:
