@@ -1441,6 +1441,16 @@ add this to \fBmake.conf\fR(5):
 Tools such as dispatch\-conf, cfg\-update, and etc\-update are also available
 to aid in the merging of these files. They provide interactive merging and can
 auto\-merge trivial changes.
+.SH "PORTAGE DEVELOPMENT FEATURES"
+This section describes features that are of interest when developing
+Portage.  They allow for introspection, debugging, and performance
+analysis.  Portage provides no stability guarantee; any feature may
+disappear in the future, and the output format may change without
+prior notice.
+.TP
+.BR PORTAGE_SHOW_LRU_CACHE_INFO
+If this environment variable is set, then Portage will display
+statistics about its internal LRU caches.
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP

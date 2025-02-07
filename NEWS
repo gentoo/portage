@@ -20,6 +20,11 @@ Security:
   achievable in the course of bash performing arithmetic operations on
   numbers representing unix time.
 
+Features:
+
+* Portage will now show statistics about its internal LRU caches if the
+  PORTAGE_SHOW_LRU_CACHE_INFO environment variable is set.
+
 Bug fixes:
 
 * The emerge-webrsync utility will now ensure that the temporary directory
