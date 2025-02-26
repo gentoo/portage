@@ -11,6 +11,64 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class BootstrapChainTestCase(TestCase):
+    @pytest.mark.xfail(reason="bug #950310")
+    def testBootstrapChain(self):
+        ebuilds = {
+            "dev-libs/A-1": {
+                "EAPI": "8",
+                "SLOT": "1",
+            },
+            "dev-libs/A-2": {
+                "EAPI": "8",
+                "SLOT": "2",
+                "IUSE": "B",
+                "BDEPEND": "B? ( || ( dev-libs/A:2[B(+)] <dev-libs/A-2[B(+)] <dev-libs/A-2[B(+)] ) )",
+            },
+            "dev-libs/A-3": {
+                "EAPI": "8",
+                "SLOT": "3",
+                "IUSE": "B",
+                "BDEPEND": "B? ( || ( dev-libs/A:3[B(+)] <dev-libs/A-3[B(+)] <dev-libs/A-2[B(+)] ) )",
+            },
+            "dev-libs/A-4": {
+                "EAPI": "8",
+                "SLOT": "4",
+                "IUSE": "B",
+                "BDEPEND": "B? ( || ( dev-libs/A:4[B(+)] <dev-libs/A-4[B(+)] <dev-libs/A-2[B(+)] ) )",
+            },
+        }
+
+        installed = {
+            "dev-libs/A-4": {
+                "SLOT": "4",
+                "IUSE": "B",
+                "USE": "",
+                "BDEPEND": "B? ( || ( dev-libs/A:4[B(+)] <dev-libs/A-4[B(+)] <dev-libs/A-2[B(+)] ) )",
+            },
+        }
+
+        user_config = {
+            "package.use": ("dev-libs/A B",),
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A:4"],
+                success=True,
+                mergelist=["dev-libs/A-1", "dev-libs/A-4"],
+            ),
+        )
+
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, installed=installed, user_config=user_config, debug=True
+        )
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
     @pytest.mark.xfail(reason="bug #947587")
     def testBootstrapChainWithShortcut(self):
         ebuilds = {
