@@ -736,6 +736,11 @@ dependencies.
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
 .TP
+.B selinux
+Enable SELinux awareness.  Portage will install objects to the filesystem with
+a SELinux context calculated from the current loaded policy.
+Do not toggle this \fBFEATURE\fR yourself.
+.TP
 .B sesandbox
 Enable SELinux sandbox\-ing.  Do not toggle this \fBFEATURE\fR yourself.
 .TP

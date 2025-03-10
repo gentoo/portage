@@ -3446,7 +3446,7 @@ class config:
     def selinux_enabled(self):
         if getattr(self, "_selinux_enabled", None) is None:
             self._selinux_enabled = 0
-            if "selinux" in self["USE"].split():
+            if "selinux" in self.features:
                 if selinux:
                     if selinux.is_selinux_enabled() == 1:
                         self._selinux_enabled = 1
