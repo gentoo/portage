@@ -4,7 +4,7 @@
  <title>QA Notices</title>
  <para>
   Here we'll go over each QA notice and what you (as a developer) can do to fix
-  the issue.  If you're a user, you should of course go 
+  the issue.  If you're a user, you should of course go
   <ulink url="https://bugs.gentoo.org/">file a bug</ulink>.  We'll only cover the
   non-obvious notices here.
  </para>
