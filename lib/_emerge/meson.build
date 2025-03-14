@@ -81,7 +81,6 @@ py.install_sources(
         'create_world_atom.py',
         'depgraph.py',
         'emergelog.py',
-        'getloadavg.py',
         'help.py',
         'is_valid_package_atom.py',
         'main.py',
