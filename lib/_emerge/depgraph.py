@@ -62,6 +62,7 @@ from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util._async.TaskScheduler import TaskScheduler
+from portage.util.portage_lru_cache import show_lru_cache_info
 from portage.versions import _pkg_str, catpkgsplit
 from portage.binpkg import get_binpkg_format
 
@@ -11800,6 +11801,7 @@ def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
     portage.writemsg_stdout(
         f"Dependency resolution took {darkgreen(time_fmt)} s{backtrack_info}.\n\n"
     )
+    show_lru_cache_info()
 
 
 def backtrack_depgraph(
