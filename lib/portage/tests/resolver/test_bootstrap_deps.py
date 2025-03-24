@@ -196,36 +196,25 @@ class BootstrapChainTestCase(TestCase):
         finally:
             playground.cleanup()
 
-    @pytest.mark.xfail(reason="bug #951296")
     def testBootstrapChainDisruptedShortcutWithShortcutLast(self):
+        self.__bootstrapChainDisruptedShortcutWithShortcutLastImpl(
+            "B? ( || ( dev-libs/A:4[B] =dev-libs/B-4 ) ) C? ( dev-libs/A:4[C] )",
+        )
+
+    @pytest.mark.xfail(reason="bug #951296")
+    def testBootstrapChainDisruptedShortcutWithShortcutLastAnyOf(self):
+        self.__bootstrapChainDisruptedShortcutWithShortcutLastImpl(
+            "B? ( || ( dev-libs/A:4[B] =dev-libs/B-4 ) ) C? ( || ( dev-libs/A:4[C] dev-libs/A:4[C] ) )",
+        )
+
+    def __bootstrapChainDisruptedShortcutWithShortcutLastImpl(self, bdepend):
         ebuilds = {
-            "dev-libs/A-1": {
-                "EAPI": "8",
-                "SLOT": "1",
-                "IUSE": "B",
-                "BDEPEND": "B? ( || ( dev-libs/A:1[B] <dev-libs/B-2 ) )",
-            },
-            "dev-libs/A-2": {
-                "EAPI": "8",
-                "SLOT": "2",
-                "IUSE": "B C ",
-                "BDEPEND": "B? ( || ( dev-libs/A:2[B] <dev-libs/A-2[B] <dev-libs/B-3 ) ) C? ( || ( dev-libs/A:2[C(+)] <dev-libs/A-2[C(+)] <dev-libs/A-2[C(+)] ) )",
-            },
-            "dev-libs/A-3": {
-                "EAPI": "8",
-                "SLOT": "3",
-                "IUSE": "B C",
-                "BDEPEND": "B? ( || ( dev-libs/A:3[B] <dev-libs/A-3[B] <dev-libs/B-4 ) ) C? ( || ( dev-libs/A:3[C(+)] <dev-libs/A-3[C(+)] <dev-libs/A-2[C(+)] ) )",
-            },
             "dev-libs/A-4": {
                 "EAPI": "8",
                 "SLOT": "4",
                 "IUSE": "B C",
-                "BDEPEND": "B? ( || ( dev-libs/A:4[B] <dev-libs/A-4[B] <dev-libs/B-5 ) ) C? ( || ( dev-libs/A:4[C(+)] <dev-libs/A-4[C(+)] <dev-libs/A-2[C(+)] ) )",
+                "BDEPEND": bdepend,
             },
-            "dev-libs/B-1": {},
-            "dev-libs/B-2": {},
-            "dev-libs/B-3": {},
             "dev-libs/B-4": {},
         }
 
@@ -234,7 +223,7 @@ class BootstrapChainTestCase(TestCase):
                 "SLOT": "4",
                 "IUSE": "B C",
                 "USE": "C",
-                "BDEPEND": "B? ( || ( dev-libs/A:4[B] <dev-libs/A-4[B] <dev-libs/B-5 ) ) C? ( || ( dev-libs/A:4[C(+)] <dev-libs/A-4[C(+)] <dev-libs/A-2[C(+)] ) )",
+                "BDEPEND": bdepend,
             },
         }
 
