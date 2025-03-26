@@ -44,6 +44,7 @@ class database(flat_hash.database):
         "EAPI",
         "PROPERTIES",
         "DEFINED_PHASES",
+        "_mtime_",
     )
 
     autocommits = True
