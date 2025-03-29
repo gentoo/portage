@@ -203,7 +203,7 @@ The GPG home where the trusted keys located. Please make sure the target \
 directory is globally readable, as the user will be dropped to \fBnobody\fR \
 during verification.
 .br
-Defaults to "/etc/portage/gnupg"
+Defaults to "/etc/portage/gnupg".
 .br
 .TP
 .B CBUILD
@@ -217,7 +217,7 @@ man page for more information.
 
 Only trusted users should be granted write access to this location.
 
-Defaults to /var/tmp/ccache
+Defaults to "/var/tmp/ccache".
 .TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
 This controls the space use limitations for ccache.  See the \fI\-M\fR flag in
@@ -1263,7 +1263,7 @@ Defines the location of the temporary build directories.
 
 Only trusted users should be granted write access to ${PORTAGE_TMPDIR}/portage.
 
-Defaults to /var/tmp.
+Defaults to "/var/tmp".
 
 This should not be set to point anywhere under location of any repository.
 .TP
@@ -1378,12 +1378,12 @@ images. Make sure you use an absolute path. Refer to the
 \fBCross-compilation\fR section of \fBebuild\fR(5) for information about
 how dependencies are handled for \fBROOT\fR.
 .br
-Defaults to /.
+Defaults to "/".
 .TP
 \fBRPMDIR\fR = \fI[path]\fR
 Defines the location where created RPM packages will be stored.
 .br
-Defaults to /var/cache/rpm.
+Defaults to "/var/cache/rpm".
 .TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server
@@ -1393,7 +1393,7 @@ Note that the \fBSYNC\fR variable is now deprecated, and instead the
 sync\-type and sync\-uri attributes in repos.conf should be used. See
 \fBportage\fR(5) for more information.
 
-Defaults to rsync://rsync.gentoo.org/gentoo\-portage
+Defaults to "rsync://rsync.gentoo.org/gentoo\-portage".
 .RS
 .TP
 .B Usage:
