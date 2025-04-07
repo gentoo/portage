@@ -6,9 +6,13 @@ repos:
       - id: check-added-large-files
       - id: check-ast
       - id: check-builtin-literals
+      - id: check-case-conflict
       - id: check-executables-have-shebangs
       - id: check-merge-conflict
       - id: check-shebang-scripts-are-executable
+      - id: check-toml
+      - id: check-xml
+      - id: check-yaml
       - id: end-of-file-fixer
         exclude: (lib/portage/tests/.gnupg/private-keys-v1.d/.*\.key)
       - id: mixed-line-ending
