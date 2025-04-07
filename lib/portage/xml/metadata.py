@@ -259,7 +259,7 @@ class MetaDataXML:
         """
         if self._herds is None:
             if self._xml_tree is None:
-                self._herds = tuple()
+                self._herds = ()
             else:
                 herds = []
                 for elem in self._xml_tree.findall("herd"):
@@ -284,7 +284,7 @@ class MetaDataXML:
         """
         if self._descriptions is None:
             if self._xml_tree is None:
-                self._descriptions = tuple()
+                self._descriptions = ()
             else:
                 self._descriptions = tuple(
                     e.text for e in self._xml_tree.findall("longdescription") if e.text
@@ -301,7 +301,7 @@ class MetaDataXML:
 
         if self._maintainers is None:
             if self._xml_tree is None:
-                self._maintainers = tuple()
+                self._maintainers = ()
             else:
                 self._maintainers = tuple(
                     _Maintainer(node) for node in self._xml_tree.findall("maintainer")
@@ -318,7 +318,7 @@ class MetaDataXML:
 
         if self._useflags is None:
             if self._xml_tree is None:
-                self._useflags = tuple()
+                self._useflags = ()
             else:
                 iterate = self._xml_tree.iter
                 self._useflags = tuple(_Useflag(node) for node in iterate("flag"))
@@ -334,7 +334,7 @@ class MetaDataXML:
 
         if self._upstream is None:
             if self._xml_tree is None:
-                self._upstream = tuple()
+                self._upstream = ()
             else:
                 self._upstream = tuple(
                     _Upstream(node) for node in self._xml_tree.findall("upstream")
