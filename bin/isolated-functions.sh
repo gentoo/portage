@@ -259,6 +259,13 @@ __vecho() {
 # Internal logging function, don't use this in ebuilds
 __elog_base() {
 	local messagetype
+	if [[ ${EBUILD_PHASE} == depend && -z ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
+		# in depend phase, we want to output a banner indicating which
+		# package emitted the message
+		echo >&2
+		echo "Messages for package ${PORTAGE_COLOR_INFO}${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}${PORTAGE_COLOR_NORMAL}:" >&2
+		__PORTAGE_ELOG_BANNER_OUTPUT=1
+	fi
 	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
 	case "${1}" in
 		INFO|WARN|ERROR|LOG|QA)
