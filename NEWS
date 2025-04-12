@@ -6,12 +6,23 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.68 (UNRELEASED)
+portage-3.0.68 (2025-04-12)
 --------------
 
 Features:
 * Allow "portageq envvar" to treat a trailing * as a wildcard, matching multiple
   variables. Useful for multilib.
+
+* Show package category, name, and repository before global-scope messages.
+
+* Add FEATURES=export-pms-vars (default-enabled for <= EAPI 8) (bug #721088).
+
+Bug fixes:
+* man: make.conf(5): Improve ccache documentation.
+
+* selinux: Use FEATURES=selinux rather than probing USE=selinux.
+
+* getname: Handle None remotepkgs (bug #948643).
 
 portage-3.0.67 (2025-01-22)
 --------------
