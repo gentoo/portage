@@ -12,7 +12,7 @@ from portage.const import BASH_BINARY
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="not Linux")
 def test_spawnE2big(capsys, tmp_path):
-    env = dict()
+    env = {}
     # Kernel MAX_ARG_STRLEN is defined as 32 * PAGE_SIZE
     max_arg_strlen_bytes = 32 * resource.getpagesize()
     env["VERY_LARGE_ENV_VAR"] = "X" * max_arg_strlen_bytes
