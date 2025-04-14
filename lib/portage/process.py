@@ -323,17 +323,19 @@ class EnvStats:
     env_largest_size: int
 
 
+@lru_cache(1024)
+def _encoded_length(s):
+    return len(os.fsencode(s))
+
+
 def calc_env_stats(env) -> EnvStats:
-    @lru_cache(1024)
-    def encoded_length(s):
-        return len(os.fsencode(s))
 
     env_size = 0
     env_largest_name = None
     env_largest_size = 0
     for env_name, env_value in env.items():
-        env_name_size = encoded_length(env_name)
-        env_value_size = encoded_length(env_value)
+        env_name_size = _encoded_length(env_name)
+        env_value_size = _encoded_length(env_value)
         # Add two for '=' and the terminating null byte.
         total_size = env_name_size + env_value_size + 2
         if total_size > env_largest_size:
