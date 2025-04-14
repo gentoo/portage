@@ -226,13 +226,15 @@ def _decode_argv(argv):
     return [_unicode_decode(x.encode(fs_encoding, "surrogateescape")) for x in argv]
 
 
-def _unicode_encode(s, encoding=_encodings["content"], errors="backslashreplace"):
+def _unicode_encode(
+    s, encoding=_encodings["content"], errors="backslashreplace"
+) -> bytes:
     if isinstance(s, str):
         s = s.encode(encoding, errors)
     return s
 
 
-def _unicode_decode(s, encoding=_encodings["content"], errors="replace"):
+def _unicode_decode(s, encoding=_encodings["content"], errors="replace") -> str:
     if isinstance(s, bytes):
         s = str(s, encoding=encoding, errors=errors)
     return s
