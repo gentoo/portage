@@ -1,4 +1,4 @@
-# Copyright 2007-2021 Gentoo Authors
+# Copyright 2007-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import glob
@@ -152,13 +152,20 @@ class VariableSet(EverythingSet):
     )
 
     def __init__(
-        self, vardb, metadatadb=None, variable=None, includes=None, excludes=None
+        self,
+        vardb,
+        metadatadb=None,
+        variable=None,
+        includes=None,
+        excludes=None,
+        excludes_output=None,
     ):
         super().__init__(vardb)
         self._metadatadb = metadatadb
         self._variable = variable
         self._includes = includes
         self._excludes = excludes
+        self._excludes_output = excludes_output
 
     def _filter(self, atom):
         ebuild = best(self._metadatadb.match(atom))
@@ -169,24 +176,46 @@ class VariableSet(EverythingSet):
 
         if "DEPEND" in self._variable:
             include_atoms = []
+            exclude_atoms = []
+            exclude_output_atoms = []
+
+            # 'exclude_output' here refers to filtering out any packages
+            # matching the 'includes' criteria
+            for exclude_output in self._excludes_output:
+                if Atom(exclude_output).match(atom):
+                    return False
+
             for include in self._includes:
                 include_atoms.append(Atom(include))
+            # 'exclude' here refers to the match within *DEPEND, not the
+            # reverse dependency / package that contains such a match.
+            for exclude in self._excludes:
+                exclude_atoms.append(Atom(exclude))
 
             for x in use_reduce(values, token_class=Atom, flat=True):
                 if not isinstance(x, Atom):
                     continue
 
-                for include_atom in include_atoms:
-                    if include_atom.match(x):
-                        return True
+                matches_any_exclude = any(
+                    exclude_atom.match(x) for exclude_atom in exclude_atoms
+                )
+                if matches_any_exclude:
+                    return False
+
+                matches_any_include = any(
+                    include_atom.match(x) for include_atom in include_atoms
+                )
+                if matches_any_include:
+                    return True
 
             return False
 
-        if self._includes and not self._includes.intersection(values_list):
-            return False
+        else:
+            if self._includes and not self._includes.intersection(values_list):
+                return False
 
-        if self._excludes and self._excludes.intersection(values_list):
-            return False
+            if self._excludes and self._excludes.intersection(values_list):
+                return False
 
         return True
 
@@ -197,9 +226,15 @@ class VariableSet(EverythingSet):
 
         includes = options.get("includes", "")
         excludes = options.get("excludes", "")
+        excludes_output = options.get("excludes_output", "")
 
         if not (includes or excludes):
             raise SetConfigError(_("no includes or excludes given"))
+
+        if excludes_output and "DEPEND" not in variable:
+            raise SetConfigError(
+                _("excludes_output has no meaning unless variable is *DEPEND")
+            )
 
         metadatadb = options.get("metadata-source", "vartree")
         if not metadatadb in trees:
@@ -211,6 +246,7 @@ class VariableSet(EverythingSet):
             trees["vartree"].dbapi,
             metadatadb=trees[metadatadb].dbapi,
             excludes=frozenset(excludes.split()),
+            excludes_output=frozenset(excludes_output.split()),
             includes=frozenset(includes.split()),
             variable=variable,
         )
