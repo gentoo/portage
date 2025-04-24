@@ -10,10 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class VariableSetTestCase(TestCase):
     def testVariableSetEmerge(self):
-
-        # Using local set definition because @golang-rebuild migrated to dev-lang/go since bug 919751.
-        golang_rebuild = "{class=portage.sets.dbapi.VariableSet,variable=BDEPEND,includes=dev-lang/go}"
-        #
         rust_with_rustc_rebuild = "{class=portage.sets.dbapi.VariableSet,variable=BDEPEND,includes=dev-lang/rust dev-lang/rust-bin}"
 
         ebuilds = {
@@ -31,7 +27,7 @@ class VariableSetTestCase(TestCase):
 
         test_cases = (
             ResolverPlaygroundTestCase(
-                [f"@golang-rebuild{golang_rebuild}"],
+                ["@golang-rebuild"],
                 mergelist=["dev-go/go-pkg-1"],
                 success=True,
             ),
