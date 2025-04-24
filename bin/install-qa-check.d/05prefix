@@ -81,7 +81,7 @@ install_qa_check_prefix() {
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because a
 				# prefixed variant exists
-				eqawarn "QA Notice:  prefixing shebang of ${fn#${D}}"
+				eqawarn "QA Notice: prefixing shebang of ${fn#${D}}"
 				# statement is made idempotent on purpose, because
 				# symlinks may point to the same target, and hence the
 				# same real file may be sedded multiple times since we
