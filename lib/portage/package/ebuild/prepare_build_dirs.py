@@ -411,23 +411,20 @@ def _prepare_workdir(mysettings):
             errors="replace",
         )
 
+        # The separator used between the individual name components of the log file.
+        sep = mysettings.get("PORTAGE_LOG_FILE_SEP", ":")
+
         if "split-log" in mysettings.features:
             log_subdir = os.path.join(logdir, "build", mysettings["CATEGORY"])
             mysettings["PORTAGE_LOG_FILE"] = os.path.join(
                 log_subdir,
-                f"{mysettings['PF']}:{logid_time}.log{compress_log_ext}",
+                f"{mysettings['PF']}{sep}{logid_time}.log{compress_log_ext}",
             )
         else:
             log_subdir = logdir
             mysettings["PORTAGE_LOG_FILE"] = os.path.join(
                 logdir,
-                "%s:%s:%s.log%s"
-                % (
-                    mysettings["CATEGORY"],
-                    mysettings["PF"],
-                    logid_time,
-                    compress_log_ext,
-                ),
+                f"{mysettings['CATEGORY']}{sep}{mysettings['PF']}{sep}{logid_time}.log{compress_log_ext}",
             )
 
         if log_subdir is logdir:
