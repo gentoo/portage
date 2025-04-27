@@ -90,7 +90,7 @@ class RsyncSync(NewBase):
             rsync_opts = self._validate_rsync_opts(rsync_opts, syncuri)
         self.rsync_opts = self._rsync_opts_extend(opts, rsync_opts)
 
-        self.extra_rsync_opts = list()
+        self.extra_rsync_opts = []
         if self.repo.module_specific_options.get("sync-rsync-extra-opts"):
             self.extra_rsync_opts.extend(
                 shlex.split(self.repo.module_specific_options["sync-rsync-extra-opts"])

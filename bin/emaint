@@ -2,8 +2,7 @@
 # Copyright 2005-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-"""System health checks and maintenance utilities.
-"""
+"""System health checks and maintenance utilities."""
 
 import os
 import signal
