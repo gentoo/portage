@@ -112,6 +112,7 @@ environ_whitelist = frozenset(
         "FEATURES",
         "FILESDIR",
         "HOME",
+        "LD_PRELOAD",
         "MAKEFLAGS",
         "MERGE_TYPE",
         "NOCOLOR",
