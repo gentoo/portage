@@ -231,6 +231,7 @@ save_elf_sources() {
 	# (the -i flag below).  save that output so we don't need to recompute
 	# it later on in the save_elf_debug step.
 	buildid=$("${path_of[debugedit]}" -i \
+		-s "${CATEGORY}/${PF}:${SLOT}" \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
 		-l "${tmpdir}/sources/${x##*/}.${BASHPID}" \
