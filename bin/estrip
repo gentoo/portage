@@ -200,6 +200,7 @@ if [[ -z ${debugedit} ]]; then
 fi
 [[ ${debugedit} ]] && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
+debugedit_buildid_warned=false
 
 dwz=$(type -P dwz)
 [[ ${dwz} ]] && dwz_found=true || dwz_found=false
@@ -336,9 +337,26 @@ save_elf_debug() {
 			# Symlink so we can read the name back.
 			__try_symlink "${dst}" "${inode_debug}"
 
-			# If we don't already have build-id from debugedit, look it up
+			# If we don't already have build-id from debugedit, look it up.
+			# This should only happen with FEATURES=-installsources, as
+			# it's done in save_elf_sources.
 			if [[ -z ${buildid} ]] ; then
-				# convert the readelf output to something useful
+				if ${debugedit_found} ; then
+					# Salt the build ID to avoid collisions on
+					# bundled libraries.
+					buildid=$("${debugedit}" -i \
+						-s "${CATEGORY}/${PF}:${SLOT}" \
+						"${x}")
+				elif ! ${debugedit_buildid_warned} ; then
+					debugedit_buildid_warned=true
+					ewarn "FEATURES=splitdebug is enabled but the debugedit binary could not be found"
+					ewarn "This feature will not work correctly with build IDs unless debugedit is installed!"
+				fi
+			fi
+
+			# If we (still) don't already have build-id from debugedit, look it up.
+			if [[ -z ${buildid} ]] ; then
+				# Convert the readelf output to something useful
 				buildid=$(${READELF} -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 			fi
 
