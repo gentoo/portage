@@ -96,7 +96,7 @@ class dbapi:
         return result
 
     @staticmethod
-    def _cpv_sort_ascending(cpv_list: Sequence[Any]) -> None:
+    def _cpv_sort_ascending(cpv_list: list[str]) -> None:
         """
         Use this to sort self.cp_list() results in ascending
         order. It sorts in place and returns None.
