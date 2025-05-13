@@ -3111,7 +3111,7 @@ class config:
         self.getvirtuals()
         return self._virtuals_manager.get_virts_p()
 
-    def getvirtuals(self) -> dict[str, Any]:
+    def getvirtuals(self) -> dict[str, list[Atom]]:
         if self._virtuals_manager._treeVirtuals is None:
             # Hack around the fact that VirtualsManager needs a vartree
             # and vartree needs a config instance.
