@@ -1193,10 +1193,15 @@ PORTAGE_LOG_FILTER_FILE_CMD="bash -c \\"ansifilter; exec cat\\""
 .B PORTAGE_LOGDIR
 This variable defines the directory in which per\-ebuild logs are kept.
 Logs are created only when this is set. They are stored as
-${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
-directory does not exist, it will be created automatically and group
+${CATEGORY}<sep>${PF}<sep>YYYYMMDD\-HHMMSS.log in the directory specified,
+where <sep> is specified via PORTAGE_LOG_FILE_SEP, which defaults to ':'.
+If the directory does not exist, it will be created automatically and group
 permissions will be applied to it.  If the directory already exists, portage
 will not modify its permissions.
+.TP
+.B PORTAGE_LOG_FILE_SEP
+This variable defines the separator used between the components of the log
+files in PORTAGE_LOGDIR. Defaults to ':'.
 .TP
 .B PORTAGE_LOGDIR_CLEAN
 This variable should contain a command for portage to call in order
