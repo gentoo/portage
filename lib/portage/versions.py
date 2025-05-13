@@ -338,10 +338,8 @@ def catpkgsplit(
     2.  If cat is not specificed in mydata, cat will be "null"
     3.  if rev does not exist it will be '-r0'
     """
-    try:
-        return mydata.cpv_split  # type: ignore[union-attr]
-    except AttributeError:
-        pass
+    if isinstance(mydata, _pkg_str):
+        return mydata.cpv_split
     mysplit = mydata.split("/", 1)
     p_split = None
     if len(mysplit) == 1:
@@ -373,6 +371,7 @@ class _pkg_str(str):
     is missing from the metadata dictionary.
     """
 
+    cp: str
     cpv_split: Optional[tuple[Optional[str], str, str, str]]
 
     def __new__(
