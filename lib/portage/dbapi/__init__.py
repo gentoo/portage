@@ -1,5 +1,6 @@
 # Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+from __future__ import annotations
 
 __all__ = ["dbapi"]
 
@@ -7,7 +8,7 @@ import functools
 import logging
 import re
 import sys
-from typing import Any, Optional, Literal
+from typing import TYPE_CHECKING, Any, Optional, Literal
 from collections.abc import Sequence
 
 import portage
@@ -35,27 +36,28 @@ from portage.localization import _
 from _emerge.Package import Package
 
 
-_AuxKeys = Literal[
-    "DEFINED_PHASES",
-    "DEPEND",
-    "EAPI",
-    "HDEPEND",
-    "HOMEPAGE",
-    "INHERITED",
-    "IUSE",
-    "KEYWORDS",
-    "LICENSE",
-    "PDEPEND",
-    "PROPERTIES",
-    "PROVIDE",
-    "RDEPEND",
-    "REQUIRED_USE",
-    "repository",
-    "RESTRICT",
-    "SRC_URI",
-    "SLOT",
-    "repository",
-]
+if TYPE_CHECKING:
+    _AuxKeys = Literal[
+        "DEFINED_PHASES",
+        "DEPEND",
+        "EAPI",
+        "HDEPEND",
+        "HOMEPAGE",
+        "INHERITED",
+        "IUSE",
+        "KEYWORDS",
+        "LICENSE",
+        "PDEPEND",
+        "PROPERTIES",
+        "PROVIDE",
+        "RDEPEND",
+        "REQUIRED_USE",
+        "repository",
+        "RESTRICT",
+        "SRC_URI",
+        "SLOT",
+        "repository",
+    ]
 
 
 class dbapi:
