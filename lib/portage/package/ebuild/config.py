@@ -19,7 +19,8 @@ import re
 import shlex
 import sys
 import traceback
-from typing import TYPE_CHECKING, Any, Iterator, Mapping, Optional
+from typing import TYPE_CHECKING, Any
+from collections.abc import Iterator, Mapping
 import warnings
 
 from _emerge.Package import Package
@@ -246,18 +247,18 @@ class config:
 
     def __init__(
         self,
-        clone: Optional[config] = None,
-        mycpv: Optional[str] = None,
-        config_profile_path: Optional[str] = None,
-        config_incrementals: Optional[Mapping[str, str]] = None,
-        config_root: Optional[str] = None,
-        target_root: Optional[str] = None,
-        sysroot: Optional[str] = None,
-        eprefix: Optional[str] = None,
+        clone: config | None = None,
+        mycpv: str | None = None,
+        config_profile_path: str | None = None,
+        config_incrementals: Mapping[str, str] | None = None,
+        config_root: str | None = None,
+        target_root: str | None = None,
+        sysroot: str | None = None,
+        eprefix: str | None = None,
         local_config: bool = True,
-        env: Optional[Mapping[str, str]] = None,
+        env: Mapping[str, str] | None = None,
         _unmatched_removal: bool = False,
-        repositories: Optional[RepoConfigLoader] = None,
+        repositories: RepoConfigLoader | None = None,
     ):
         """
         @param clone: If provided, init will use deepcopy to copy by value the instance.

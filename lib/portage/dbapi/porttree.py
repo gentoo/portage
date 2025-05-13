@@ -55,7 +55,7 @@ import shlex
 import collections
 from collections import OrderedDict
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
@@ -217,7 +217,7 @@ class portdbapi(dbapi):
         return main_repo.eclass_db
 
     def __init__(
-        self, _unused_param=DeprecationWarning, mysettings: Optional[config_type] = None
+        self, _unused_param=DeprecationWarning, mysettings: config_type | None = None
     ):
         """
         @param _unused_param: deprecated, use mysettings['PORTDIR'] instead
@@ -463,7 +463,7 @@ class portdbapi(dbapi):
         return None
 
     def findname(
-        self, mycpv: str, mytree: Optional[str] = None, myrepo: Optional[str] = None
+        self, mycpv: str, mytree: str | None = None, myrepo: str | None = None
     ) -> str:
         return self.findname2(mycpv, mytree, myrepo)[0]
 
@@ -526,8 +526,8 @@ class portdbapi(dbapi):
     def findname2(
         self,
         mycpv: str | _pkg_str,
-        mytree: Optional[str] = None,
-        myrepo: Optional[str] = None,
+        mytree: str | None = None,
+        myrepo: str | None = None,
     ) -> tuple[str, str]:
         """
         Returns the location of the CPV, and what overlay it was in.
@@ -682,8 +682,8 @@ class portdbapi(dbapi):
         self,
         mycpv: str,
         mylist: Sequence[_AuxKeys],
-        mytree: Optional[str] = None,
-        myrepo: Optional[str] = None,
+        mytree: str | None = None,
+        myrepo: str | None = None,
     ) -> list[str]:
         "stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
         'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
@@ -891,8 +891,8 @@ class portdbapi(dbapi):
     def getFetchMap(
         self,
         mypkg: str,
-        useflags: Optional[Sequence[str]] = None,
-        mytree: Optional[str] = None,
+        useflags: Sequence[str] | None = None,
+        mytree: str | None = None,
     ) -> dict[str, tuple[str, ...]]:
         """
         Get the SRC_URI metadata as a dict which maps each file name to a
@@ -918,8 +918,8 @@ class portdbapi(dbapi):
     def async_fetch_map(
         self,
         mypkg: str,
-        useflags: Optional[Sequence[str]] = None,
-        mytree: Optional[str] = None,
+        useflags: Sequence[str] | None = None,
+        mytree: str | None = None,
         loop: Any = None,
     ) -> dict[str, tuple[str, ...]]:
         """
@@ -994,9 +994,9 @@ class portdbapi(dbapi):
     def getfetchsizes(
         self,
         mypkg: str,
-        useflags: Optional[Sequence[str]] = None,
+        useflags: Sequence[str] | None = None,
         debug: int = 0,
-        myrepo: Optional[str] = None,
+        myrepo: str | None = None,
     ):
         # returns a filename:size dictionary of remaining downloads
         myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)  # type: ignore[assignment]
@@ -1073,7 +1073,7 @@ class portdbapi(dbapi):
     def fetch_check(
         self,
         mypkg: str,
-        useflags: Optional[Sequence[str]] = None,
+        useflags: Sequence[str] | None = None,
         mysettings=None,
         all=False,
         myrepo=None,
@@ -1123,7 +1123,7 @@ class portdbapi(dbapi):
             return False
         return True
 
-    def cpv_exists(self, mykey: str, myrepo: Optional[str] = None) -> Literal[0, 1]:
+    def cpv_exists(self, mykey: str, myrepo: str | None = None) -> Literal[0, 1]:
         "Tells us whether an actual ebuild exists on disk (no masking)"
         cps2 = mykey.split("/")
         cps = catpkgsplit(mykey, silent=0)
@@ -1137,7 +1137,7 @@ class portdbapi(dbapi):
 
     def cp_all(  # type: ignore[override]
         self,
-        categories: Optional[Iterable[str]] = None,
+        categories: Iterable[str] | None = None,
         trees=None,
         reverse: bool = False,
         sort: bool = True,
@@ -1306,7 +1306,7 @@ class portdbapi(dbapi):
         mydep: type[DeprecationWarning] = DeprecationWarning,
         mykey: type[DeprecationWarning] = DeprecationWarning,
         mylist: type[DeprecationWarning] = DeprecationWarning,
-    ) -> Union[Sequence[str], str]:
+    ) -> Sequence[str] | str:
         """
         Caching match function.
 
@@ -1482,7 +1482,7 @@ class portdbapi(dbapi):
 
         return myval
 
-    def match(self, mydep: str, use_cache: int = 1) -> Union[Sequence[str], str]:
+    def match(self, mydep: str, use_cache: int = 1) -> Sequence[str] | str:
         return self.xmatch("match-visible", mydep)
 
     def gvisible(self, mylist):

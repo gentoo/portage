@@ -62,7 +62,7 @@ if TYPE_CHECKING:
 
 class dbapi:
     _category_re = re.compile(r"^\w[-.+\w]*$", re.UNICODE)
-    _categories: Optional[tuple[str, ...]] = None
+    _categories: tuple[str, ...] | None = None
     _use_mutable = False
     _known_keys = frozenset(auxdbkeys)
     _pkg_str_aux_keys = ("EAPI", "KEYWORDS", "SLOT", "repository")
@@ -136,7 +136,7 @@ class dbapi:
         raise NotImplementedError
 
     def aux_get(
-        self, mycpv: str, mylist: Sequence[_AuxKeys], myrepo: Optional[str] = None
+        self, mycpv: str, mylist: Sequence[_AuxKeys], myrepo: str | None = None
     ) -> list[str]:
         """Return the metadata keys in mylist for mycpv
         Args:
