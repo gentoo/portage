@@ -3,7 +3,6 @@
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
-from typing import Never
 import portage
 
 portage.proxy.lazyimport.lazyimport(
@@ -1684,7 +1683,7 @@ class vartree:
     def inject(self, mycpv: str) -> None:
         return
 
-    def get_provide(self, mycpv: str) -> list[Never]:
+    def get_provide(self, mycpv: str) -> list[object]:
         return []
 
     def get_all_provides(self) -> dict[str, list[str]]:
