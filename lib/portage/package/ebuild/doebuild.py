@@ -2658,6 +2658,8 @@ def _post_src_install_write_metadata(settings):
     """
 
     eapi_attrs = _get_eapi_attrs(settings.configdict["pkg"]["EAPI"])
+    ebuild_mtime = settings.configdict["pkg"].get("_mtime_")
+    build_time = settings.configdict["env"].get("BUILD_TIME")
     build_info_dir = os.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
     metadata_buffer = {}
 
@@ -2675,6 +2677,15 @@ def _post_src_install_write_metadata(settings):
         if v is not None:
             metadata_buffer[k] = v
 
+    if build_time == "pkg" or not build_time:
+        build_time = time.time()
+    elif build_time == "ebuild":
+        build_time = ebuild_mtime
+    else:
+        try:
+            build_time = time(int(build_time))
+        except:
+            raise Exception("Invalid BUILD_TIME")
     with open(
         _unicode_encode(
             os.path.join(build_info_dir, "BUILD_TIME"),
@@ -2685,7 +2696,7 @@ def _post_src_install_write_metadata(settings):
         encoding=_encodings["repo.content"],
         errors="strict",
     ) as f:
-        f.write(f"{time.time():.0f}\n")
+        f.write(f"{build_time:.0f}\n")
 
     use = frozenset(settings["PORTAGE_USE"].split())
     for k in _vdb_use_conditional_keys:
