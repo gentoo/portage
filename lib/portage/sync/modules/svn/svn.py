@@ -41,7 +41,7 @@ class SVNSync(NewBase):
         )
         if exitcode != os.EX_OK:
             msg = "!!! svn checkout error; exiting."
-            selflogger(self.xterm_titles, msg)
+            self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
         return (exitcode, False)
 
