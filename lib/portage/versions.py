@@ -20,7 +20,7 @@ import typing
 import warnings
 from functools import lru_cache
 from typing import Any, Optional, Union
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 
 import portage
@@ -323,8 +323,8 @@ _missing_cat = "null"
 def catpkgsplit(
     mydata: Union[str, "_pkg_str"],
     silent: int = 1,
-    eapi: Any = None,
-) -> Optional[tuple[str, ...]]:
+    eapi: Optional[str] = None,
+) -> Optional[tuple[Optional[str], str, str, str]]:
     """
     Takes a Category/Package-Version-Rev and returns a list of each.
 
@@ -339,7 +339,7 @@ def catpkgsplit(
     3.  if rev does not exist it will be '-r0'
     """
     try:
-        return mydata.cpv_split
+        return mydata.cpv_split  # type: ignore[union-attr]
     except AttributeError:
         pass
     mysplit = mydata.split("/", 1)
@@ -373,6 +373,8 @@ class _pkg_str(str):
     is missing from the metadata dictionary.
     """
 
+    cpv_split: Optional[tuple[Optional[str], str, str, str]]
+
     def __new__(
         cls,
         cpv: str,
@@ -393,7 +395,7 @@ class _pkg_str(str):
     def __init__(
         self,
         cpv: str,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
         settings: Any = None,
         eapi: Any = None,
         repo: Optional[str] = None,

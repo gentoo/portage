@@ -7,7 +7,7 @@ import functools
 import logging
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional, Literal
 from collections.abc import Sequence
 
 import portage
@@ -33,6 +33,29 @@ from portage.exception import (
 )
 from portage.localization import _
 from _emerge.Package import Package
+
+
+_AuxKeys = Literal[
+    "DEFINED_PHASES",
+    "DEPEND",
+    "EAPI",
+    "HDEPEND",
+    "HOMEPAGE",
+    "INHERITED",
+    "IUSE",
+    "KEYWORDS",
+    "LICENSE",
+    "PDEPEND",
+    "PROPERTIES",
+    "PROVIDE",
+    "RDEPEND",
+    "REQUIRED_USE",
+    "repository",
+    "RESTRICT",
+    "SRC_URI",
+    "SLOT",
+    "repository",
+]
 
 
 class dbapi:
@@ -111,7 +134,7 @@ class dbapi:
         raise NotImplementedError
 
     def aux_get(
-        self, mycpv: str, mylist: str, myrepo: Optional[str] = None
+        self, mycpv: str, mylist: Sequence[_AuxKeys], myrepo: Optional[str] = None
     ) -> list[str]:
         """Return the metadata keys in mylist for mycpv
         Args:

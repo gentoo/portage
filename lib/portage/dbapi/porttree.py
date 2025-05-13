@@ -1,5 +1,7 @@
 # Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+from __future__ import annotations
+
 
 __all__ = ["close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"]
 
@@ -52,9 +54,22 @@ import shlex
 
 import collections
 from collections import OrderedDict
-from collections.abc import Sequence
-from typing import Optional, Union
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from portage.dbapi import _AuxKeys
+    from portage.dep import _match_slot, Atom, match_from_list, use_reduce
+    from portage.package.ebuild.config import config as config_type
+    from portage.package.ebuild.fetch import _download_suffix
+    from portage.util import ensure_dirs, writemsg
+    from portage.util.listdir import listdir
+    from portage.versions import _pkg_str, catpkgsplit, catsplit, pkgsplit, ver_regexp
+    import portage.data
+
+    portage_gid: int
+    secpass: int
 
 
 def close_portdbapi_caches():
@@ -177,6 +192,7 @@ class _better_cache:
 class portdbapi(dbapi):
     """this tree will scan a portage directory located at root (passed to init)"""
 
+    settings: config_type
     portdbapi_instances = _dummy_list()
     _use_mutable = True
 
@@ -207,7 +223,9 @@ class portdbapi(dbapi):
             return None
         return main_repo.eclass_db
 
-    def __init__(self, _unused_param=DeprecationWarning, mysettings=None):
+    def __init__(
+        self, _unused_param=DeprecationWarning, mysettings: Optional[config_type] = None
+    ):
         """
         @param _unused_param: deprecated, use mysettings['PORTDIR'] instead
         @type _unused_param: None
@@ -264,7 +282,7 @@ class portdbapi(dbapi):
         )
 
         # if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
-        self.xcache = {}
+        self.xcache: dict[str, Any] = {}
         self.frozen = 0
 
         # Keep a list of repo names, sorted by priority (highest priority first).
@@ -272,7 +290,7 @@ class portdbapi(dbapi):
 
         self.auxdbmodule = self.settings.load_best_module("portdbapi.auxdbmodule")
         self.auxdb = {}
-        self._pregen_auxdb = {}
+        self._pregen_auxdb: dict[str, Any] = {}
         # If the current user doesn't have depcachedir write permission,
         # then the depcachedir cache is kept here read-only access.
         self._ro_auxdb = {}
@@ -356,9 +374,9 @@ class portdbapi(dbapi):
             "REQUIRED_USE",
         }
 
-        self._aux_cache = {}
+        self._aux_cache: dict[str, Any] = {}
         self._better_cache = None
-        self._broken_ebuilds = set()
+        self._broken_ebuilds: set[Any] = set()
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -453,7 +471,7 @@ class portdbapi(dbapi):
 
     def findname(
         self, mycpv: str, mytree: Optional[str] = None, myrepo: Optional[str] = None
-    ) -> str:
+    ) -> Optional[str]:
         return self.findname2(mycpv, mytree, myrepo)[0]
 
     def getRepositoryPath(self, repository_id):
@@ -514,7 +532,7 @@ class portdbapi(dbapi):
 
     def findname2(
         self,
-        mycpv: str,
+        mycpv: str | _pkg_str,
         mytree: Optional[str] = None,
         myrepo: Optional[str] = None,
     ) -> Union[tuple[None, int], tuple[str, str], tuple[str, None]]:
@@ -543,15 +561,15 @@ class portdbapi(dbapi):
             raise InvalidPackageName(mycpv)
 
         try:
-            cp = mycpv.cp
+            cp = mycpv.cp  # type: ignore[attr-defined]
         except AttributeError:
             cp = mysplit[0] + "/" + psplit[0]
 
         if self._better_cache is None:
             if mytree:
-                mytrees = [mytree]
+                mytrees: list[str] = [mytree]
             else:
-                mytrees = reversed(self.porttrees)
+                mytrees = list(reversed(self.porttrees))
         else:
             try:
                 repos = self._better_cache[cp]
@@ -582,6 +600,7 @@ class portdbapi(dbapi):
             and myrepo == getattr(mycpv, "repo", None)
             and self is getattr(mycpv, "_db", None)
         ):
+            assert isinstance(mytree, str)
             return (mytree + _os.sep + relative_path, mytree)
 
         for x in mytrees:
@@ -666,10 +685,10 @@ class portdbapi(dbapi):
 
         return (metadata, ebuild_hash)
 
-    def aux_get(
+    def aux_get(  # type: ignore[override]
         self,
         mycpv: str,
-        mylist: Sequence[str],
+        mylist: Sequence[_AuxKeys],
         mytree: Optional[str] = None,
         myrepo: Optional[str] = None,
     ) -> list[str]:
@@ -876,7 +895,12 @@ class portdbapi(dbapi):
 
         future.set_result(returnme)
 
-    def getFetchMap(self, mypkg, useflags=None, mytree=None):
+    def getFetchMap(
+        self,
+        mypkg: str,
+        useflags: Optional[Sequence[str]] = None,
+        mytree: Optional[str] = None,
+    ) -> dict[str, tuple[str, ...]]:
         """
         Get the SRC_URI metadata as a dict which maps each file name to a
         set of alternative URIs.
@@ -898,7 +922,13 @@ class portdbapi(dbapi):
             self.async_fetch_map(mypkg, useflags=useflags, mytree=mytree, loop=loop)
         )
 
-    def async_fetch_map(self, mypkg, useflags=None, mytree=None, loop=None):
+    def async_fetch_map(
+        self,
+        mypkg: str,
+        useflags: Optional[Sequence[str]] = None,
+        mytree: Optional[str] = None,
+        loop: Any = None,
+    ) -> dict[str, tuple[str, ...]]:
         """
         Asynchronous form of getFetchMap.
 
@@ -968,9 +998,16 @@ class portdbapi(dbapi):
         aux_get_future.add_done_callback(aux_get_done)
         return result
 
-    def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
+    def getfetchsizes(
+        self,
+        mypkg: str,
+        useflags: Optional[Sequence[str]] = None,
+        debug: int = 0,
+        myrepo: Optional[str] = None,
+    ):
         # returns a filename:size dictionary of remaining downloads
-        myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
+        mytree: str
+        myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)  # type: ignore[assignment]
         if myebuild is None:
             raise AssertionError(_("ebuild not found for '%s'") % mypkg)
         pkgdir = os.path.dirname(myebuild)
@@ -1042,7 +1079,12 @@ class portdbapi(dbapi):
         return filesdict
 
     def fetch_check(
-        self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None
+        self,
+        mypkg: str,
+        useflags: Optional[Sequence[str]] = None,
+        mysettings=None,
+        all=False,
+        myrepo=None,
     ):  # pylint: disable=redefined-builtin
         """
         TODO: account for PORTAGE_RO_DISTDIRS
@@ -1089,18 +1131,25 @@ class portdbapi(dbapi):
             return False
         return True
 
-    def cpv_exists(self, mykey, myrepo=None):
+    def cpv_exists(self, mykey: str, myrepo: Optional[str] = None) -> Literal[0, 1]:
         "Tells us whether an actual ebuild exists on disk (no masking)"
         cps2 = mykey.split("/")
         cps = catpkgsplit(mykey, silent=0)
         if not cps:
             # invalid cat/pkg-v
             return 0
+        assert isinstance(cps[0], str)
         if self.findname(cps[0] + "/" + cps2[1], myrepo=myrepo):
             return 1
         return 0
 
-    def cp_all(self, categories=None, trees=None, reverse=False, sort=True):
+    def cp_all(  # type: ignore[override]
+        self,
+        categories: Optional[Iterable[str]] = None,
+        trees=None,
+        reverse: bool = False,
+        sort: bool = True,
+    ) -> list[str]:
         """
         This returns a list of all keys in our tree or trees
         @param categories: optional list of categories to search or
@@ -1111,7 +1160,7 @@ class portdbapi(dbapi):
         @param sort: return sorted results (default is True)
         @rtype list of [cat/pkg,...]
         """
-        d = {}
+        d: dict[str, Any] = {}
         if categories is None:
             categories = self.settings.categories
         if trees is None:
