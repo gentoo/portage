@@ -60,16 +60,10 @@ from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from portage.dbapi import _AuxKeys
-    from portage.dep import _match_slot, Atom, match_from_list, use_reduce
+    from portage.dep import Atom
     from portage.package.ebuild.config import config as config_type
-    from portage.package.ebuild.fetch import _download_suffix
-    from portage.util import ensure_dirs, writemsg
-    from portage.util.listdir import listdir
-    from portage.versions import _pkg_str, catpkgsplit, catsplit, pkgsplit, ver_regexp
-    import portage.data
+    from portage.versions import _pkg_str
 
-    portage_gid: int
-    secpass: int
 
 
 def close_portdbapi_caches():
