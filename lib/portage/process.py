@@ -19,6 +19,9 @@ import traceback
 import os as _os
 import warnings
 
+if multiprocessing.get_start_method() == "forkserver":
+    multiprocessing.set_start_method("spawn", force=True)
+
 from dataclasses import dataclass
 from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
