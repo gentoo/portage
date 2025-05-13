@@ -65,7 +65,6 @@ if TYPE_CHECKING:
     from portage.versions import _pkg_str
 
 
-
 def close_portdbapi_caches():
     # The python interpreter does _not_ guarantee that destructors are
     # called for objects that remain when the interpreter exits, so we

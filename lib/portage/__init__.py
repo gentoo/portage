@@ -20,6 +20,7 @@ try:
     import re
     import types
     import platform
+    from typing import TYPE_CHECKING
 
     # Temporarily delete these imports, to ensure that only the
     # wrapped versions are imported by portage internals.
@@ -50,6 +51,12 @@ except ImportError as e:
     )
     sys.stderr.write(f"    {e}\n\n")
     raise
+
+if TYPE_CHECKING:
+    from portage.package.ebuild.config import config as config_type
+
+    config: type[config_type]
+    settings: config_type
 
 try:
     import portage.proxy.lazyimport
@@ -771,12 +778,3 @@ def _disable_legacy_globals():
     for k in _legacy_global_var_names:
         globals().pop(k, None)
     portage.data._initialized_globals.clear()
-
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from portage.package.ebuild.config import config as config_type
-
-    config: type[config_type]
-    settings: config_type
