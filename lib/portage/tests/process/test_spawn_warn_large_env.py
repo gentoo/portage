@@ -17,7 +17,7 @@ class SpawnWarnLargeEnvTestCase(TestCase):
         if platform.system() != "Linux":
             self.skipTest("not Linux")
 
-        env = dict()
+        env = {}
         env["LARGE_ENV_VAR"] = "X" * 1024 * 96
 
         tmpdir = tempfile.mkdtemp()
