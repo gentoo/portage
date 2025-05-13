@@ -52,7 +52,6 @@ if TYPE_CHECKING:
         "PROVIDE",
         "RDEPEND",
         "REQUIRED_USE",
-        "repository",
         "RESTRICT",
         "SRC_URI",
         "SLOT",
