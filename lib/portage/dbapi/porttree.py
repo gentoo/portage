@@ -464,7 +464,7 @@ class portdbapi(dbapi):
 
     def findname(
         self, mycpv: str, mytree: Optional[str] = None, myrepo: Optional[str] = None
-    ) -> Optional[str]:
+    ) -> str:
         return self.findname2(mycpv, mytree, myrepo)[0]
 
     def getRepositoryPath(self, repository_id):
@@ -528,7 +528,7 @@ class portdbapi(dbapi):
         mycpv: str | _pkg_str,
         mytree: Optional[str] = None,
         myrepo: Optional[str] = None,
-    ) -> Union[tuple[None, int], tuple[str, str], tuple[str, None]]:
+    ) -> tuple[str, str]:
         """
         Returns the location of the CPV, and what overlay it was in.
         Searches overlays first, then PORTDIR; this allows us to return the first
@@ -538,12 +538,12 @@ class portdbapi(dbapi):
         If myrepo is not None it will find packages from this repository(overlay)
         """
         if not mycpv:
-            return (None, 0)
+            return ("", "")
 
         if myrepo is not None:
             mytree = self.treemap.get(myrepo)
             if mytree is None:
-                return (None, 0)
+                return ("", "")
         elif mytree is not None:
             # myrepo enables cached results when available
             myrepo = self.repositories.location_map.get(mytree)
@@ -999,9 +999,8 @@ class portdbapi(dbapi):
         myrepo: Optional[str] = None,
     ):
         # returns a filename:size dictionary of remaining downloads
-        mytree: str
         myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)  # type: ignore[assignment]
-        if myebuild is None:
+        if not myebuild:
             raise AssertionError(_("ebuild not found for '%s'") % mypkg)
         pkgdir = os.path.dirname(myebuild)
         mf = self.repositories.get_repo_for_location(

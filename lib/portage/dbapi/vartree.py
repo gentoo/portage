@@ -3,7 +3,7 @@
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
-from typing import Any, Never
+from typing import Never
 import portage
 
 portage.proxy.lazyimport.lazyimport(

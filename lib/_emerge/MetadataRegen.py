@@ -62,7 +62,7 @@ class MetadataRegen(AsyncScheduler):
                         break
                     valid_pkgs.add(cpv)
                     ebuild_path, repo_path = portdb.findname2(cpv, myrepo=repo.name)
-                    if ebuild_path is None:
+                    if not ebuild_path:
                         raise AssertionError(
                             f"ebuild not found for '{cpv}{_repo_separator}{repo.name}'"
                         )
