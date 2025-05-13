@@ -54,7 +54,7 @@ import shlex
 
 import collections
 from collections import OrderedDict
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union
 from urllib.parse import urlparse
 
@@ -560,9 +560,9 @@ class portdbapi(dbapi):
         if psplit is None or len(mysplit) != 2:
             raise InvalidPackageName(mycpv)
 
-        try:
-            cp = mycpv.cp  # type: ignore[attr-defined]
-        except AttributeError:
+        if isinstance(mycpv, _pkg_str):
+            cp = mycpv.cp
+        else:
             cp = mysplit[0] + "/" + psplit[0]
 
         if self._better_cache is None:
@@ -685,7 +685,7 @@ class portdbapi(dbapi):
 
         return (metadata, ebuild_hash)
 
-    def aux_get(  # type: ignore[override]
+    def aux_get(
         self,
         mycpv: str,
         mylist: Sequence[_AuxKeys],
