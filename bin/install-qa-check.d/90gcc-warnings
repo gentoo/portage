@@ -3,17 +3,14 @@
 # TODO: add -Wformat-security
 
 gcc_warn_check() {
-        local abort f grep_cmd joined_msgs reset_debug
+        local abort f grep_cmd joined_msgs reset_xtrace
         local -a msgs
 
 	# Evaluate misc gcc warnings
 	# In debug mode, this variable definition and corresponding grep calls
 	# will produce false positives if they're shown in the trace.
-	reset_debug=0
-	if [[ $- == *x* ]] ; then
-		set +x
-		reset_debug=1
-	fi
+	reset_xtrace=$(shopt -o -p xtrace)
+	shopt -o -u xtrace
 
 	msgs=(
 		# only will and does, no might :)
@@ -172,7 +169,7 @@ gcc_warn_check() {
 		__vecho -ne '\n'
 	fi
 
-	[[ ${reset_debug} = 1 ]] && set -x
+	eval "${reset_xtrace}"
 
 	if [[ ${abort} == "yes" ]] ; then
 		echo "Please do not file a Gentoo bug and instead" \
