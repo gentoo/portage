@@ -3,7 +3,7 @@
 # TODO: add -Wformat-security
 
 gcc_warn_check() {
-        local abort f reset_xtrace
+        local i reset_xtrace
         local -a msgs
 
 	# Evaluate misc gcc warnings
@@ -147,7 +147,14 @@ gcc_warn_check() {
 		#': warning: not enough variable arguments to fit a sentinel'
 	)
 
-	f=$(
+	while read -r; do
+		if (( i++ == 0 )); then
+			__vecho -ne '\n'
+			eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
+			eqawarn "           may exhibit random runtime failures."
+		fi
+		eqawarn "${REPLY}"
+	done < <(
 		# Coerce C as the character type for performance reasons, per
 		# bug #160234. Coerce C as the collation to guarantee that
 		# ranges are handled appropriately. Also, pass -a to GNU grep
@@ -164,26 +171,22 @@ gcc_warn_check() {
 		| grep -E -a "${msgs[*]}" \
 		| uniq
 	)
-	if [[ -n ${f} ]] ; then
-		abort=1
 
-		__vecho -ne '\n'
-		eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
-		eqawarn "           may exhibit random runtime failures."
-		eqawarn "${f}"
+	if (( i > 0 )); then
 		__vecho -ne '\n'
 	fi
 
 	eval "${reset_xtrace}"
 
-	if (( abort )) ; then
-		echo "Please do not file a Gentoo bug and instead" \
-		"report the above QA issues directly to the upstream" \
-		"developers of this software." | fmt -w 70 | \
-		while read -r line ; do eqawarn "${line}" ; done
-		eqawarn "Homepage: ${HOMEPAGE}"
-		has stricter ${FEATURES} && \
+	if (( i > 0 )); then
+		while read -r; do eqawarn "${REPLY}"; done <<-EOF
+		Please do not file a Gentoo bug and instead report the above QA issues directly
+		to the upstream developers of this software.
+		Homepage: ${HOMEPAGE}
+		EOF
+		if has stricter ${FEATURES}; then
 			die "install aborted due to severe warnings shown above"
+		fi
 	fi
 }
 
