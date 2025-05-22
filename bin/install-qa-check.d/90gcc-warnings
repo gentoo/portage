@@ -151,7 +151,6 @@ gcc_warn_check() {
 	printf -v joined_msgs '%s|' "${msgs[@]}"
 	joined_msgs=${joined_msgs%|}
 
-	abort="no"
 	grep_cmd=grep
 	[[ ${PORTAGE_LOG_FILE} = *.gz ]] && grep_cmd=zgrep
 
@@ -160,7 +159,7 @@ gcc_warn_check() {
 	# binary when we run in the C locale.
 	f=$(LC_ALL='C' sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' < "${PORTAGE_LOG_FILE}" | LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E -a "${joined_msgs}" | uniq)
 	if [[ -n ${f} ]] ; then
-		abort="yes"
+		abort=1
 
 		__vecho -ne '\n'
 		eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
@@ -171,7 +170,7 @@ gcc_warn_check() {
 
 	eval "${reset_xtrace}"
 
-	if [[ ${abort} == "yes" ]] ; then
+	if (( abort )) ; then
 		echo "Please do not file a Gentoo bug and instead" \
 		"report the above QA issues directly to the upstream" \
 		"developers of this software." | fmt -w 70 | \
