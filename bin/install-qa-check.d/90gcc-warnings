@@ -151,14 +151,15 @@ gcc_warn_check() {
 	# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
 	# binary when we run in the C locale.
 	f=$(
+		export LC_ALL= LC_COLLATE=C LC_CTYPE=C
 		IFS='|'
 		if [[ ${PORTAGE_LOG_FILE} == *.gz ]]; then
 			gzip -cd -- "${PORTAGE_LOG_FILE}"
 		else
 			cat -- "${PORTAGE_LOG_FILE}"
 		fi \
-		| LC_ALL=C sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' \
-		| LC_CTYPE=C LC_COLLATE=C grep -E -a "${msgs[*]}" \
+		| sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' \
+		| grep -E -a "${msgs[*]}" \
 		| uniq
 	)
 	if [[ -n ${f} ]] ; then
