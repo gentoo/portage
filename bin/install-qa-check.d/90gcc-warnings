@@ -3,18 +3,19 @@
 # TODO: add -Wformat-security
 
 gcc_warn_check() {
-	local f
+        local abort always_overflow f gentoo_bug grep_cmd implicit_func_decl joined_msgs reset_debug
+        local -a msgs
 
 	# Evaluate misc gcc warnings
 	# In debug mode, this variable definition and corresponding grep calls
 	# will produce false positives if they're shown in the trace.
-	local reset_debug=0
+	reset_debug=0
 	if [[ $- == *x* ]] ; then
 		set +x
 		reset_debug=1
 	fi
 
-	local m msgs=(
+	msgs=(
 		# only will and does, no might :)
 		'warning: .*will.*\[-Wstrict-aliasing\]'
 		'warning: .*does.*\[-Wstrict-aliasing\]'
@@ -150,12 +151,11 @@ gcc_warn_check() {
 	)
 
 	# join all messages into one grep-expression
-	local joined_msgs
 	printf -v joined_msgs '%s|' "${msgs[@]}"
 	joined_msgs=${joined_msgs%|}
 
-	local abort="no"
-	local grep_cmd=grep
+	abort="no"
+	grep_cmd=grep
 	[[ ${PORTAGE_LOG_FILE} = *.gz ]] && grep_cmd=zgrep
 
 	# Force C locale to work around slow multibyte locales, bug #160234
