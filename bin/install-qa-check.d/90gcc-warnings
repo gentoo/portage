@@ -3,7 +3,7 @@
 # TODO: add -Wformat-security
 
 gcc_warn_check() {
-        local abort f joined_msgs reset_xtrace
+        local abort f reset_xtrace
         local -a msgs
 
 	# Evaluate misc gcc warnings
@@ -147,21 +147,18 @@ gcc_warn_check() {
 		#': warning: not enough variable arguments to fit a sentinel'
 	)
 
-	# join all messages into one grep-expression
-	printf -v joined_msgs '%s|' "${msgs[@]}"
-	joined_msgs=${joined_msgs%|}
-
 	# Force C locale to work around slow multibyte locales, bug #160234
 	# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
 	# binary when we run in the C locale.
 	f=$(
+		IFS='|'
 		if [[ ${PORTAGE_LOG_FILE} == *.gz ]]; then
 			gzip -cd -- "${PORTAGE_LOG_FILE}"
 		else
 			cat -- "${PORTAGE_LOG_FILE}"
 		fi \
 		| LC_ALL=C sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' \
-		| LC_CTYPE=C LC_COLLATE=C grep -E -a "${joined_msgs}" \
+		| LC_CTYPE=C LC_COLLATE=C grep -E -a "${msgs[*]}" \
 		| uniq
 	)
 	if [[ -n ${f} ]] ; then
