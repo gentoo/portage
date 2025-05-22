@@ -147,10 +147,12 @@ gcc_warn_check() {
 		#': warning: not enough variable arguments to fit a sentinel'
 	)
 
-	# Force C locale to work around slow multibyte locales, bug #160234
-	# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
-	# binary when we run in the C locale.
 	f=$(
+		# Coerce C as the character type for performance reasons, per
+		# bug #160234. Coerce C as the collation to guarantee that
+		# ranges are handled appropriately. Also, pass -a to GNU grep
+		# to prevent binary data - that is, anything containing a NUL
+		# byte - from suppressing the printing of matching lines.
 		export LC_ALL= LC_COLLATE=C LC_CTYPE=C
 		IFS='|'
 		if [[ ${PORTAGE_LOG_FILE} == *.gz ]]; then
