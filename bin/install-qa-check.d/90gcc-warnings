@@ -4,7 +4,7 @@
 
 gcc_warn_check() {
         local i reset_xtrace
-        local -a msgs
+        local -a patterns
 
 	# Evaluate misc gcc warnings
 	# In debug mode, this variable definition and corresponding grep calls
@@ -12,7 +12,7 @@ gcc_warn_check() {
 	reset_xtrace=$(shopt -o -p xtrace)
 	shopt -o -u xtrace
 
-	msgs=(
+	patterns=(
 		# only will and does, no might :)
 		'.*(does|will).*\[-Wstrict-aliasing\]'
 		'.*\[-Wrestrict\]'
@@ -167,7 +167,7 @@ gcc_warn_check() {
 			cat -- "${PORTAGE_LOG_FILE}"
 		fi \
 		| sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' \
-		| grep -E -a "warning: (${msgs[*]})" \
+		| grep -E -a "warning: (${patterns[*]})" \
 		| uniq
 	)
 
