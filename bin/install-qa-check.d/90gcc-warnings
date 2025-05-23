@@ -14,137 +14,136 @@ gcc_warn_check() {
 
 	msgs=(
 		# only will and does, no might :)
-		'warning: .*will.*\[-Wstrict-aliasing\]'
-		'warning: .*does.*\[-Wstrict-aliasing\]'
-		'warning: .*\[-Wrestrict\]'
+		'.*(does|will).*\[-Wstrict-aliasing\]'
+		'.*\[-Wrestrict\]'
 		# strict aliasing violation in C++ (Clang)
-		'warning: .*\[-Wundefined-reinterpret-cast\]'
+		'.*\[-Wundefined-reinterpret-cast\]'
 
 		# implicit declaration of function ‘...’
-		'warning: .*\[-Wimplicit-function-declaration\]'
+		'.*\[-Wimplicit-function-declaration\]'
 		# with -Wall, goes in pair with -Wimplicit-function-declaration
 		# but without -Wall, we need to assert for it alone
-		'warning: .*incompatible implicit declaration of built-in function'
-		'warning: .*\[-Wbuiltin-declaration-mismatch\]'
+		'.*incompatible implicit declaration of built-in function'
+		'.*\[-Wbuiltin-declaration-mismatch\]'
 
 		# 'is used uninitialized in this function' and some more
-		'warning: .*\[-Wuninitialized\]'
+		'.*\[-Wuninitialized\]'
 		# comparisons like ‘X<=Y<=Z’ do not have their mathematical meaning
-		'warning: .*mathematical meaning*\[-Wparentheses\]'
+		'.*mathematical meaning*\[-Wparentheses\]'
 		# null argument where non-null required
-		'warning: .*\[-Wnonnull\]'
+		'.*\[-Wnonnull\]'
 
 		# array subscript is above/below/outside array bounds (FORTIFY_SOURCE)
-		'warning: .*\[-Warray-bounds\]'
+		'.*\[-Warray-bounds\]'
 		# attempt to free a non-heap object
-		'warning: .*\[-Wfree-nonheap-object\]'
+		'.*\[-Wfree-nonheap-object\]'
 		# those three do not have matching -W flags, it seems
-		'warning: .*will always overflow destination buffer'
+		'.*will always overflow destination buffer'
 		# compile-time part of FORTIFY_SOURCE
 		# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR88443)
-		#'warning: .*\[-Wstringop-overflow\]'
+		#'.*\[-Wstringop-overflow\]'
 		# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR97048)
-		#'warning: .*\[-Wstringop-overread\]'
+		#'.*\[-Wstringop-overread\]'
 		# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR88781)
-		#'warning: .*\[-Wstringop-truncation\]'
+		#'.*\[-Wstringop-truncation\]'
 		# clang-only, equivalent of -Wstringop-overflow
-		'warning: .*\[-Wfortify-source\]'
-		'warning: .*assuming pointer wraparound does not occur'
-		'warning: .*escape sequence out of range'
+		'.*\[-Wfortify-source\]'
+		'.*assuming pointer wraparound does not occur'
+		'.*escape sequence out of range'
 
 		# all clang
-		'warning: .*\[-Wstrlcpy-strlcat-size\]'
-		'warning: .*\[-Wstrncat-size\]'
-		'warning: .*\[-Wsuspicious-bzero\]'
-		'warning: .*\[-Wvarargs\]'
+		'.*\[-Wstrlcpy-strlcat-size\]'
+		'.*\[-Wstrncat-size\]'
+		'.*\[-Wsuspicious-bzero\]'
+		'.*\[-Wvarargs\]'
 
 		# left-hand operand of comma expression has no effect
-		'warning: .*left.*comma.*\[-Wunused-value\]'
+		'.*left.*comma.*\[-Wunused-value\]'
 		# converting to non-pointer type ... from NULL and likes
-		'warning: .*\[-Wconversion-null\]'
+		'.*\[-Wconversion-null\]'
 		# NULL used in arithmetic
-		'warning: .*NULL.*\[-Wpointer-arith\]'
+		'.*NULL.*\[-Wpointer-arith\]'
 		# pointer to a function used in arithmetic and likes
-		'warning: .*function.*\[-Wpointer-arith\]'
+		'.*function.*\[-Wpointer-arith\]'
 		# the address of ... will never be NULL and likes
 		# (uses of function refs & string constants in conditionals)
 		# XXX: Commented out because of gcc FPs (https://gcc.gnu.org/PR103360)
-		#'warning: .*\[-Waddress\]'
+		#'.*\[-Waddress\]'
 
 		# TODO: we want to enable these but bash currently triggers
 		# them with a trick in random.c where it intentionally wants
 		# some truncation :(
 		#
 		# warning: assignment/initialization to ... from ... makes integer from pointer without cast
-		#'warning: .*\[-Wint-conversion\]'
+		#'.*\[-Wint-conversion\]'
 		# warning: cast to ... from integer of different size (or smaller size)
-		#'warning: .*\[-Wint-to-pointer-cast\]'
+		#'.*\[-Wint-to-pointer-cast\]'
 		# warning: cast to ... from (smaller) integer type
-		#'warning: .*\[-Wint-to-void-pointer-cast\]'
+		#'.*\[-Wint-to-void-pointer-cast\]'
 		# warning: cast from ... to integer of different size
-		#'warning: .*\[-Wpointer-to-int-cast\]'
+		#'.*\[-Wpointer-to-int-cast\]'
 
 		# -Wformat
 		# TODO: comment out some time in future for time_t & LFS preparedness
 		#'warning: .*\[-Wformat=\]'
 		# -Wformat variants
-		'warning: .*too few arguments for format'
-		'warning: .*missing sentinel in function call.*\[-Wformat=\]'
-		'warning: .*\[-Wformat-truncation\]'
+		'.*too few arguments for format'
+		'.*missing sentinel in function call.*\[-Wformat=\]'
+		'.*\[-Wformat-truncation\]'
 		# format ... expects a matching ... argument
 		# (iow, too few arguments for format in new wording :))
-		'warning: .*matching.*\[-Wformat=\]'
+		'.*matching.*\[-Wformat=\]'
 
 		# function returns address of local variable
 		# XXX: Commented out for bug #925460 (https://gcc.gnu.org/PR93644)
-		#'warning: .*\[-Wreturn-local-addr\]'
+		#'.*\[-Wreturn-local-addr\]'
 		# missing return at end of function, or non-void return in a void function
 		# (clang at least aggressively optimises on this)
-		'warning: .*\[-Wreturn-type\]'
+		'.*\[-Wreturn-type\]'
 		# argument to sizeof ... is the same expression as the source
-		'warning: .*\[-Wsizeof-pointer-memaccess\]'
+		'.*\[-Wsizeof-pointer-memaccess\]'
 		# iteration invokes undefined behavior
-		'warning: .*\[-Waggressive-loop-optimizations\]'
+		'.*\[-Waggressive-loop-optimizations\]'
 		# conversion between pointers that have incompatible types
-		'warning: .*\[-Wincompatible-pointer-types\]'
+		'.*\[-Wincompatible-pointer-types\]'
 		# more specific form of -Wincompatible-pointer-types (Clang)
-		'warning: .*\[-Wincompatible-function-pointer-types\]'
+		'.*\[-Wincompatible-function-pointer-types\]'
 		# these will fail with CFI (https://reviews.llvm.org/D134831)
 		# (gcc lacks -strict)
-		#'warning: .*\[-Wcast-function-type\]'
-		'warning: .*\[-Wcast-function-type-strict\]'
+		#'.*\[-Wcast-function-type\]'
+		'.*\[-Wcast-function-type-strict\]'
 		# using wrong deallocator, e.g. using free() on object allocated using my_malloc()
 		# when my_malloc() is annotated as needing my_free().
-		'warning: .*\[-Wmismatched-dealloc\]'
+		'.*\[-Wmismatched-dealloc\]'
 		# clobbered: Warn for variables that might be changed by longjmp or vfork
 		# (This warning is also enabled by -Wextra.)
-		'warning: .*\[-Wclobbered\]'
+		'.*\[-Wclobbered\]'
 		# LTO type mismatch (https://wiki.gentoo.org/wiki/Project:Toolchain/LTO)
-		'warning: .*\[-Wlto-type-mismatch\]'
+		'.*\[-Wlto-type-mismatch\]'
 		# ODR (https://wiki.gentoo.org/wiki/Project:Toolchain/LTO)
-		'warning: .*\[-Wodr\]'
+		'.*\[-Wodr\]'
 		# warning: argument value A will result in undefined behaviour (Clang)
-		'warning: .*\[-Wargument-undefined-behaviour\]'
+		'.*\[-Wargument-undefined-behaviour\]'
 		# XXX: Commented out because of GCC FPs (https://gcc.gnu.org/PR86172)
-		#'warning: .*\[-Wnull-dereference\]'
+		#'.*\[-Wnull-dereference\]'
 
 		# general sensible warnings (will be rejected by modern compilers soon)
-		'warning: .*\[-Wmain\]'
-		'warning: .*\[-Wimplicit-int\]'
-		'warning: .*\[-Wstring-compare\]'
+		'.*\[-Wmain\]'
+		'.*\[-Wimplicit-int\]'
+		'.*\[-Wstring-compare\]'
 
 		# this may be valid code :/
-		#': warning: multi-character character constant'
+		#' multi-character character constant'
 		# need to check these two ...
-		#': warning: assuming signed overflow does not occur when'
-		#': warning: comparison with string literal results in unspecified behav'
+		#' assuming signed overflow does not occur when'
+		#' comparison with string literal results in unspecified behav'
 		# yacc/lex likes to trigger this one
-		#': warning: extra tokens at end of .* directive'
+		#' extra tokens at end of .* directive'
 		# only gcc itself triggers this ?
-		#': warning: .*noreturn.* function does return'
+		#' .*noreturn.* function does return'
 		# these throw false positives when 0 is used instead of NULL
-		#': warning: missing sentinel in function call'
-		#': warning: not enough variable arguments to fit a sentinel'
+		#' missing sentinel in function call'
+		#' not enough variable arguments to fit a sentinel'
 	)
 
 	while read -r; do
@@ -168,7 +167,7 @@ gcc_warn_check() {
 			cat -- "${PORTAGE_LOG_FILE}"
 		fi \
 		| sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' \
-		| grep -E -a "${msgs[*]}" \
+		| grep -E -a "warning: (${msgs[*]})" \
 		| uniq
 	)
 
