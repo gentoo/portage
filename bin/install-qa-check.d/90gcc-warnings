@@ -29,7 +29,7 @@ gcc_warn_check() {
 		# 'is used uninitialized in this function' and some more
 		'.*\[-Wuninitialized\]'
 		# comparisons like ‘X<=Y<=Z’ do not have their mathematical meaning
-		'.*mathematical meaning*\[-Wparentheses\]'
+		'.*mathematical meaning.*\[-Wparentheses\]'
 		# null argument where non-null required
 		'.*\[-Wnonnull\]'
 
