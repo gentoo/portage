@@ -401,22 +401,22 @@ unpack() {
 			die "unpack: ${f@Q} cannot be unpacked because it is an empty file"
 		fi
 
-		suffix_known=""
 		case ${suffix,,} in
-			tar|tgz|tbz2|tbz|zip|jar|gz|z|bz2|bz|a|deb|lzma) suffix_known=1 ;;
-			7z)      ___eapi_unpack_supports_7z  && suffix_known=1 ;;
-			rar)     ___eapi_unpack_supports_rar && suffix_known=1 ;;
-			lha|lzh) ___eapi_unpack_supports_lha && suffix_known=1 ;;
-			xz)      ___eapi_unpack_supports_xz  && suffix_known=1 ;;
-			txz)     ___eapi_unpack_supports_txz && suffix_known=1 ;;
-		esac
+			tar|tgz|tbz2|tbz|zip|jar|gz|z|bz2|bz|a|deb|lzma) ;;
+			7z)      ___eapi_unpack_supports_7z  ;;
+			rar)     ___eapi_unpack_supports_rar ;;
+			lha|lzh) ___eapi_unpack_supports_lha ;;
+			xz)      ___eapi_unpack_supports_xz  ;;
+			txz)     ___eapi_unpack_supports_txz ;;
+			*)       false                       ;;
+		esac \
+		&& suffix_known=1
 
-		if ___eapi_unpack_is_case_sensitive \
-				&& [[ ${suffix} != @("${suffix,,}"|ZIP|Z|7Z|RAR|LH[Aa]) ]]; then
-			suffix_known=""
-		fi
+		___eapi_unpack_is_case_sensitive \
+		&& [[ ${suffix} != @("${suffix,,}"|ZIP|Z|7Z|RAR|LH[Aa]) ]] \
+		&& suffix_known=0
 
-		if [[ -n ${suffix_known} ]]; then
+		if (( suffix_known )); then
 			__vecho ">>> Unpacking ${f@Q} to ${PWD}"
 		else
 			__vecho "=== Skipping unpack of ${f@Q}"
