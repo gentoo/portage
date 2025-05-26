@@ -46,4 +46,4 @@ multilib_strict_check() {
 multilib_strict_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

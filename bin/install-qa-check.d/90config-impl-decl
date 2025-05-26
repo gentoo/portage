@@ -163,4 +163,4 @@ config_impl_decl_check() {
 config_impl_decl_check
 : # guarantee successful exit
 
-# vim:ft=sh noexpandtab:
+# vim:ft=bash noexpandtab:

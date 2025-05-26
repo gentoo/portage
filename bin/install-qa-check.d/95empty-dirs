@@ -41,4 +41,4 @@ find_empty_dirs() {
 find_empty_dirs
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

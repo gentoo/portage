@@ -19,4 +19,4 @@ udev_check() {
 udev_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

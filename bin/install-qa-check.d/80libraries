@@ -182,4 +182,4 @@ lib_check() {
 lib_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash
