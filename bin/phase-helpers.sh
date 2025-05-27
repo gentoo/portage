@@ -233,13 +233,12 @@ if ___eapi_has_usex; then
 fi
 
 use() {
-	local u=$1
-	local found=0
+	local - IFS invert u=$1
 
 	# If we got something like '!flag', then invert the return value
-	if [[ ${u:0:1} == "!" ]] ; then
+	if [[ ${u} == !* ]] ; then
 		u=${u:1}
-		found=1
+		invert=1
 	fi
 
 	if [[ ${EBUILD_PHASE} = depend ]] ; then
@@ -255,7 +254,7 @@ use() {
 	# Make sure we have this USE flag in IUSE, but exempt binary
 	# packages for API consumers like Entropy which do not require
 	# a full profile with IUSE_IMPLICIT and stuff (see bug #456830).
-	elif declare -f ___in_portage_iuse >/dev/null &&
+	elif declare -F ___in_portage_iuse >/dev/null &&
 		[[ -n ${EBUILD_PHASE} && -n ${PORTAGE_INTERNAL_CALLER} ]] ; then
 		if ! ___in_portage_iuse "${u}"; then
 			if [[ ${EMERGE_FROM} != binary &&
@@ -270,15 +269,9 @@ use() {
 		fi
 	fi
 
-	local IFS=$' \t\n' prev_shopts=$- ret
 	set -f
-	if has ${u} ${USE} ; then
-		ret=${found}
-	else
-		ret=$((!found))
-	fi
-	[[ ${prev_shopts} == *f* ]] || set +f
-	return ${ret}
+	has ${u} ${USE}
+	(( $? == invert ? 1 : 0 ))
 }
 
 use_with() {
