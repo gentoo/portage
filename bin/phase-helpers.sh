@@ -449,10 +449,10 @@ unpack() {
 				# installed.
 				if [[ $(ar --version 2>/dev/null) != "GNU ar"* ]] && \
 					type -P deb2targz > /dev/null; then
+					# deb2targz always extracts into the same directory as
+					# the source file, so create a symlink in the current
+					# working directory if necessary.
 					if [[ ! "${srcdir}${f}" -ef "${basename}" ]]; then
-						# deb2targz always extracts into the same directory as
-						# the source file, so create a symlink in the current
-						# working directory if necessary.
 						created_symlink=1
 						ln -sf "${srcdir}${f}" "${basename}"
 					fi \
