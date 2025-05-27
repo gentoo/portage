@@ -326,38 +326,39 @@ use_enable() {
 }
 
 unpack() {
-	local srcdir
-	local x
-	local y
-	local suffix
 	local suffix_known
+	local basename
 	local myfail
+	local srcdir
+	local suffix
+	local f
 
 	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
 	__unpack_tar() {
-		if [[ ${y,,} == tar ]] \
-				&& ! ___eapi_unpack_is_case_sensitive \
-				|| [[ ${y} == tar ]]; then
-			$1 -c -- "${srcdir}${x}" | tar xof -
+		local inner_suffix
+
+		inner_suffix=${basename%.*} inner_suffix=${inner_suffix##*.}
+		if ! ___eapi_unpack_is_case_sensitive; then
+			inner_suffix=${inner_suffix,,}
+		fi
+		if [[ ${inner_suffix} == tar ]]; then
+			$1 -c -- "${srcdir}${f}" | tar xof -
 			__assert_sigpipe_ok "${myfail}"
 		else
-			local cwd_dest=${x##*/}
-			cwd_dest=${cwd_dest%.*}
-			$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "${myfail}"
+			$1 -c -- "${srcdir}${f}" > "${basename%.*}" || die "${myfail}"
 		fi
 	}
 
-	for x in "$@"; do
-		suffix=${x##*.}
-		y=${x%.*}
-		y=${y##*.}
+	for f in "$@"; do
+		basename=${f##*/}
+		suffix=${basename##*.}
 
 		# wrt PMS 12.3.15 Misc Commands
-		if [[ ${x} != */* ]]; then
+		if [[ ${f} != */* ]]; then
 			# filename without path of any kind
 			srcdir=${DISTDIR}/
-		elif [[ ${x} == ./* ]]; then
+		elif [[ ${f} == ./* ]]; then
 			# relative path starting with './'
 			srcdir=
 		else
@@ -366,18 +367,18 @@ unpack() {
 				# EAPI 6 allows absolute and deep relative paths
 				srcdir=
 
-				if [[ ${x} == ${DISTDIR%/}/* ]]; then
+				if [[ ${f} == ${DISTDIR%/}/* ]]; then
 					eqawarn "QA Notice: unpack called with redundant \${DISTDIR} in path"
 				fi
-			elif [[ ${x} == ${DISTDIR%/}/* ]]; then
+			elif [[ ${f} == ${DISTDIR%/}/* ]]; then
 				die "Arguments to unpack() cannot begin with \${DISTDIR} in EAPI ${EAPI}"
-			elif [[ ${x} == /* ]] ; then
+			elif [[ ${f} == /* ]] ; then
 				die "Arguments to unpack() cannot be absolute in EAPI ${EAPI}"
 			else
 				die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
 			fi
 		fi
-		[[ ! -s ${srcdir}${x} ]] && die "unpack: ${x} does not exist"
+		[[ ! -s ${srcdir}${f} ]] && die "unpack: ${f} does not exist"
 
 		suffix_known=""
 		case ${suffix,,} in
@@ -395,29 +396,29 @@ unpack() {
 		fi
 
 		if [[ -n ${suffix_known} ]]; then
-			__vecho ">>> Unpacking ${x} to ${PWD}"
+			__vecho ">>> Unpacking ${f} to ${PWD}"
 		else
-			__vecho "=== Skipping unpack of ${x}"
+			__vecho "=== Skipping unpack of ${f}"
 			continue
 		fi
 
-		myfail="unpack: failure unpacking ${x}"
+		myfail="unpack: failure unpacking ${f}"
 		case ${suffix,,} in
 			tar)
-				tar xof "${srcdir}${x}" || die "${myfail}"
+				tar xof "${srcdir}${f}" || die "${myfail}"
 				;;
 			tgz)
-				tar xozf "${srcdir}${x}" || die "${myfail}"
+				tar xozf "${srcdir}${f}" || die "${myfail}"
 				;;
 			tbz|tbz2)
-				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${x}" | tar xof -
+				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "${srcdir}${f}" | tar xof -
 				__assert_sigpipe_ok "${myfail}"
 				;;
 			zip|jar)
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
 				( set +x ; while true ; do echo n || break ; done ) | \
-				unzip -qo "${srcdir}${x}" || die "${myfail}"
+				unzip -qo "${srcdir}${f}" || die "${myfail}"
 				;;
 			gz|z)
 				__unpack_tar "gzip -d"
@@ -427,20 +428,20 @@ unpack() {
 				;;
 			7z)
 				local my_output
-				my_output="$(7z x -y "${srcdir}${x}")"
+				my_output="$(7z x -y "${srcdir}${f}")"
 				if [[ $? -ne 0 ]]; then
 					echo "${my_output}" >&2
 					die "${myfail}"
 				fi
 				;;
 			rar)
-				unrar x -idq -o+ "${srcdir}${x}" || die "${myfail}"
+				unrar x -idq -o+ "${srcdir}${f}" || die "${myfail}"
 				;;
 			lha|lzh)
-				lha xfq "${srcdir}${x}" || die "${myfail}"
+				lha xfq "${srcdir}${f}" || die "${myfail}"
 				;;
 			a)
-				ar x "${srcdir}${x}" || die "${myfail}"
+				ar x "${srcdir}${f}" || die "${myfail}"
 				;;
 			deb)
 				# Unpacking .deb archives can not always be done with
@@ -451,29 +452,28 @@ unpack() {
 				# installed.
 				if [[ $(ar --version 2>/dev/null) != "GNU ar"* ]] && \
 					type -P deb2targz > /dev/null; then
-					y=${x##*/}
 					local created_symlink=0
 
-					if [[ ! "${srcdir}${x}" -ef "${y}" ]]; then
+					if [[ ! "${srcdir}${f}" -ef "${basename}" ]]; then
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
-						ln -sf "${srcdir}${x}" "${y}" || die "${myfail}"
+						ln -sf "${srcdir}${f}" "${basename}" || die "${myfail}"
 						created_symlink=1
 					fi
 
-					deb2targz "${y}" || die "${myfail}"
+					deb2targz "${basename}" || die "${myfail}"
 
 					if [[ ${created_symlink} = 1 ]]; then
 						# Clean up the symlink so the ebuild
 						# doesn't inadvertently install it.
-						rm -f "${y}"
+						rm -f "${basename}"
 					fi
-					mv -f "${y%.deb}".tar.gz data.tar.gz \
-						|| mv -f "${y%.deb}".tar.xz data.tar.xz \
+					mv -f "${basename%.deb}".tar.gz data.tar.gz \
+						|| mv -f "${basename%.deb}".tar.xz data.tar.xz \
 						|| die "${myfail}"
 				else
-					ar x "${srcdir}${x}" || die "${myfail}"
+					ar x "${srcdir}${f}" || die "${myfail}"
 				fi
 				;;
 			lzma)
@@ -483,7 +483,7 @@ unpack() {
 				__unpack_tar "xz -T$(___makeopts_jobs) -d"
 				;;
 			txz)
-				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
+				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${f}" || die "${myfail}"
 				;;
 		esac
 	done
