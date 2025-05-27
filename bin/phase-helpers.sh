@@ -363,22 +363,18 @@ unpack() {
 		elif [[ ${f} == ./* ]]; then
 			# relative path starting with './'
 			srcdir=
-		else
-			# non-'./' filename with path of some kind
-			if ___eapi_unpack_supports_absolute_paths; then
-				# EAPI 6 allows absolute and deep relative paths
-				srcdir=
-
-				if [[ ${f} == ${DISTDIR%/}/* ]]; then
-					eqawarn "QA Notice: unpack called with redundant \${DISTDIR} in path"
-				fi
-			elif [[ ${f} == ${DISTDIR%/}/* ]]; then
-				die "Arguments to unpack() cannot begin with \${DISTDIR} in EAPI ${EAPI}"
-			elif [[ ${f} == /* ]] ; then
-				die "Arguments to unpack() cannot be absolute in EAPI ${EAPI}"
-			else
-				die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
+		elif ___eapi_unpack_supports_absolute_paths; then
+			# EAPI 6 allows absolute and deep relative paths
+			srcdir=
+			if [[ ${f} == ${DISTDIR%/}/* ]]; then
+				eqawarn "QA Notice: unpack called with redundant \${DISTDIR} in path"
 			fi
+		elif [[ ${f} == ${DISTDIR%/}/* ]]; then
+			die "Arguments to unpack() cannot begin with \${DISTDIR} in EAPI ${EAPI}"
+		elif [[ ${f} == /* ]]; then
+			die "Arguments to unpack() cannot be absolute in EAPI ${EAPI}"
+		else
+			die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
 		fi
 		[[ ! -s ${srcdir}${f} ]] && die "unpack: ${f} does not exist"
 
