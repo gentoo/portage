@@ -356,10 +356,16 @@ class EbuildBuild(CompositeTask):
         live_ebuild = "live" in self.settings.get("PROPERTIES", "").split()
         buildpkg_live_disabled = live_ebuild and not buildpkg_live
 
+        # Check if binary package creation should be suppressed for RESTRICT=bindist packages
+        suppress_bindist = (
+            "suppress-bindist-buildpkg" in features and "bindist" in self.pkg.restrict
+        )
+
         if (
             ("buildpkg" in features or self._issyspkg)
             and not buildpkg_live_disabled
             and not self.opts.buildpkg_exclude.findAtomForPackage(pkg)
+            and not suppress_bindist
         ):
             self._buildpkg = True
 

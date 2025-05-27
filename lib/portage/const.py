@@ -234,6 +234,7 @@ SUPPORTED_FEATURES = frozenset(
         "strict",
         "strict-keepdir",
         "stricter",
+        "suppress-bindist-buildpkg",
         "suidctl",
         "test",
         "test-fail-continue",
