@@ -659,14 +659,12 @@ install_hooks() {
 	local fp
 	local ret=0
 
-	shopt -s nullglob
 	for fp in "${hooks_dir}"/*; do
 		if [[ -x "${fp}" ]]; then
 			"${fp}"
 			ret=$(( ${ret} | $? ))
 		fi
 	done
-	shopt -u nullglob
 
 	return ${ret}
 }
