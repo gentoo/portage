@@ -88,7 +88,7 @@ else
 	# are considered to be severe QA violations.
 	funcs+=" best_version has_version portageq"
 	for x in ${funcs} ; do
-		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
+		eval "${x} () { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
 	unset funcs x
 
@@ -489,9 +489,6 @@ __try_source() {
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-# Turn off extended glob matching so that g++ doesn't get incorrectly matched.
-shopt -u extglob
-
 if [[ ${EBUILD_PHASE} == depend ]] ; then
 	QA_INTERCEPTORS="awk bash cc egrep equery fgrep g++
 		gawk gcc grep javac java-config nawk perl
@@ -512,7 +509,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
 		if [[ ${EBUILD_PHASE} == depend ]] ; then
-			FUNC_SRC="${BIN}() {
+			FUNC_SRC="${BIN} () {
 				if [[ \${ECLASS_DEPTH} -gt 0 ]]; then
 					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
 				else
@@ -521,7 +518,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 			${BODY}
 			}"
 		elif [[ ${BIN} == @(autoconf|automake|aclocal|libtoolize) ]]; then
-			FUNC_SRC="${BIN}() {
+			FUNC_SRC="${BIN} () {
 				case \${FUNCNAME[1]} in
 					eautoreconf           |\\
 					eaclocal              |\\
@@ -541,7 +538,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 			${BODY}
 			}"
 		else
-			FUNC_SRC="${BIN}() {
+			FUNC_SRC="${BIN} () {
 				eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
 			${BODY}
 			}"
