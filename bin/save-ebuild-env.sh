@@ -79,7 +79,7 @@ __save_ebuild_env() {
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
 		__unpack_tar __unset_colors \
 		__source_env_files __try_source __check_bash_version \
-		__bashpid __start_distcc \
+		__start_distcc \
 		__eqaquote __eqatag \
 		__eapi7_ver_parse_range __eapi7_ver_split \
 		__eapi7_ver_compare_int __eapi7_ver_compare \

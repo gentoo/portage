@@ -549,7 +549,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 fi
 
 # Subshell/helper die support (must export for the die helper).
-export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
+export EBUILD_MASTER_PID=${BASHPID}
 trap 'exit 1' SIGTERM
 
 if [[ ${EBUILD_PHASE} != @(clean|cleanrm|depend) ]] && ! [[ ${EBUILD_PHASE} == setup && ${EMERGE_FROM} == ebuild ]] && [[ -f ${T}/environment ]]

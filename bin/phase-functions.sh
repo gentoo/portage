@@ -963,7 +963,7 @@ __ebuild_main() {
 	# setup EBUILD_MASTER_PID to refer to the current ${BASHPID},
 	# which seems to give the best results when further
 	# nested subshells call die.
-	export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
+	export EBUILD_MASTER_PID=${BASHPID}
 	trap 'exit 1' SIGTERM
 
 	if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE &&

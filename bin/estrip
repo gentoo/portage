@@ -234,7 +234,7 @@ save_elf_sources() {
 	buildid=$("${debugedit}" -i \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
-		-l "${tmpdir}/sources/${x##*/}.${BASHPID:-$(__bashpid)}" \
+		-l "${tmpdir}/sources/${x##*/}.${BASHPID}" \
 		"${x}")
 }
 
@@ -389,7 +389,7 @@ process_elf() {
 		# See if we can split & strip at the same time
 		if ${splitdebug} && [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
 			local shortname="${x##*/}.debug"
-			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID:-$(__bashpid)}"
+			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
 
 			${already_stripped} || \
 			${STRIP} ${strip_flags} \

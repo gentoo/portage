@@ -109,13 +109,6 @@ nonfatal() {
 	PORTAGE_NONFATAL=1 "$@"
 }
 
-__bashpid() {
-	# The BASHPID variable is new to bash-4.0, so add a hack for older
-	# versions.  This must be used like so:
-	# ${BASHPID:-$(__bashpid)}
-	sh -c 'echo ${PPID}'
-}
-
 __helpers_die() {
 	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
 		die "$@"
@@ -242,8 +235,8 @@ die() {
 	[[ -n ${PORTAGE_IPC_DAEMON} ]] && "${PORTAGE_BIN_PATH}"/ebuild-ipc exit 1
 
 	# subshell die support
-	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID:-$(__bashpid)} != ${EBUILD_MASTER_PID} ]] ; then
-		kill -s SIGTERM ${EBUILD_MASTER_PID}
+	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID} != "${EBUILD_MASTER_PID}" ]] ; then
+		kill -s SIGTERM "${EBUILD_MASTER_PID}"
 	fi
 	exit 1
 }
