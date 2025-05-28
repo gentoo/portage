@@ -270,7 +270,7 @@ use() {
 	fi
 
 	set -f
-	has ${u} ${USE}
+	has "${u}" ${USE}
 	(( $? == invert ? 1 : 0 ))
 }
 
