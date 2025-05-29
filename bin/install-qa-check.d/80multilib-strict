@@ -1,11 +1,12 @@
 # Strict multilib directory checks
 multilib_strict_check() {
+	local IFS abort dir file
+
 	if has multilib-strict ${FEATURES} && \
 	   type find &>/dev/null && type file &>/dev/null && \
 	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
 	then
 		rm -f "${T}/multilib-strict.log"
-		local abort=no dir file
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
 			[[ -d ${ED}/${dir} ]] || continue
 			while read -r -d '' file; do
@@ -24,14 +25,13 @@ multilib_strict_check() {
 				set -${shopts}
 			fi
 			if [ "${QA_STRICT_MULTILIB_PATHS-unset}" = unset ] ; then
-				local x
-				for x in "${QA_MULTILIB_PATHS[@]}" ; do
-					sed -e "s#^${x#/}\$##" -i "${T}/multilib-strict.log"
+				for dir in "${QA_MULTILIB_PATHS[@]}" ; do
+					sed -e "s#^${dir#/}\$##" -i "${T}/multilib-strict.log"
 				done
 				sed -e "/^\$/d" -i "${T}/multilib-strict.log"
 			fi
 			if [[ -s ${T}/multilib-strict.log ]] ; then
-				abort=yes
+				abort=1
 				echo "Files matching a file type that is not allowed:"
 				while read -r ; do
 					echo "   ${REPLY}"
@@ -39,7 +39,7 @@ multilib_strict_check() {
 			fi
 		fi
 
-		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
+		(( abort )) && die "multilib-strict check failed!"
 	fi
 }
 
