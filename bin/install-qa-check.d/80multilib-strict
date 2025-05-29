@@ -11,7 +11,7 @@ multilib_strict_check() {
 			[[ -d ${ED}/${dir} ]] || continue
 			while read -r -d '' file; do
 				if file "${file}" | grep -Eq "${MULTILIB_STRICT_DENY}" ; then
-					echo "${file#${ED}//}" >> "${T}/multilib-strict.log"
+					echo "${file#"${ED}"//}" >> "${T}/multilib-strict.log"
 				fi
 			done < <(find "${ED}/${dir}" -maxdepth 1 -type f -print0)
 		done
