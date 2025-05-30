@@ -137,7 +137,7 @@ install_qa_check() {
 		)
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 
-	if has chflags ${FEATURES} ; then
+	if contains_word chflags "${FEATURES}"; then
 		# Save all the file flags for restoration afterwards.
 		mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
 		# Remove all the file flags so that we can do anything necessary.
@@ -153,13 +153,13 @@ install_qa_check() {
 
 	# If binpkg-docompress is enabled, apply compression before creating
 	# the binary package.
-	if has binpkg-docompress ${FEATURES}; then
+	if contains_word binpkg-docompress "${FEATURES}"; then
 		"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
 	fi
 
-	if has chflags ${FEATURES} ; then
+	if contains_word chflags "${FEATURES}"; then
 		# Restore all the file flags that were saved earlier on.
 		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
 	fi
@@ -236,7 +236,7 @@ install_qa_check() {
 				eqawarn "QA Notice: <stabilize-allarches/> found on package installing ELF files"
 			fi
 
-			if has binchecks ${PORTAGE_RESTRICT}; then
+			if contains_word binchecks "${PORTAGE_RESTRICT}"; then
 				eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
 				eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
 			fi
@@ -247,7 +247,7 @@ install_qa_check() {
 	# the binary package.
 	# Note: disabling it won't help with packages calling prepstrip directly.
 	# We do this after the scanelf bits so that we can reuse the data. bug #749624.
-	if has binpkg-dostrip ${FEATURES}; then
+	if contains_word binpkg-dostrip "${FEATURES}"; then
 		export STRIP_MASK
 		if ___eapi_has_dostrip; then
 			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
@@ -261,9 +261,10 @@ install_qa_check() {
 	# Prematurely delete WORKDIR in case merge-wait is enabled to
 	# decrease the space used by portage build directories until the
 	# packages are merged and cleaned.
-	if has merge-wait ${FEATURES} &&
-		! has keepwork ${FEATURES} &&
-		! has noclean ${FEATURES} ; then
+	if contains_word merge-wait "${FEATURES}" \
+		&& ! contains_word keepwork "${FEATURES}" \
+		&& ! contains_word noclean "${FEATURES}"
+	then
 		rm -rf "${WORKDIR}"
 	fi
 }
@@ -275,7 +276,7 @@ __dyn_instprep() {
 		return 0
 	fi
 
-	if has chflags ${FEATURES}; then
+	if contains_word chflags "${FEATURES}"; then
 		# Save all the file flags for restoration afterwards.
 		mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
 		# Remove all the file flags so that we can do anything necessary.
@@ -285,7 +286,7 @@ __dyn_instprep() {
 
 	# If binpkg-docompress is disabled, we need to apply compression
 	# before installing.
-	if ! has binpkg-docompress ${FEATURES}; then
+	if ! contains_word binpkg-docompress "${FEATURES}"; then
 		"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
@@ -293,7 +294,7 @@ __dyn_instprep() {
 
 	# If binpkg-dostrip is disabled, apply stripping before creating
 	# the binary package.
-	if ! has binpkg-dostrip ${FEATURES}; then
+	if ! contains_word binpkg-dostrip "${FEATURES}"; then
 		export STRIP_MASK
 		if ___eapi_has_dostrip; then
 			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
@@ -304,7 +305,7 @@ __dyn_instprep() {
 		fi
 	fi
 
-	if has chflags ${FEATURES}; then
+	if contains_word chflags "${FEATURES}"; then
 		# Restore all the file flags that were saved earlier on.
 		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
 	fi
@@ -380,7 +381,7 @@ preinst_mask() {
 	# from bashrc.
 	local f x
 	for f in man info doc; do
-		if has no${f} ${FEATURES}; then
+		if contains_word "no${f}" "${FEATURES}"; then
 			INSTALL_MASK+=" ${EPREFIX}/usr/share/${f}"
 		fi
 	done
@@ -408,7 +409,7 @@ preinst_sfperms() {
 	fi
 
 	# Smart FileSystem Permissions
-	if has sfperms ${FEATURES}; then
+	if contains_word sfperms "${FEATURES}"; then
 		local i
 		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
@@ -448,7 +449,7 @@ preinst_suid_scan() {
 	fi
 
 	# Total suid control
-	if has suidctl ${FEATURES}; then
+	if contains_word suidctl "${FEATURES}"; then
 		local i sfconf x
 		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
 		# sandbox prevents us from writing directly
@@ -486,7 +487,7 @@ preinst_selinux_labels() {
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
-	if has selinux ${FEATURES}; then
+	if contains_word selinux "${FEATURES}"; then
 		# SELinux file labeling (needs to execute after preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
@@ -536,7 +537,11 @@ __dyn_package() {
 		local tar_options=""
 
 		[[ ${PORTAGE_VERBOSE} = 1 ]] && tar_options+=" -v"
-		has xattr ${FEATURES} && [[ $(tar --help 2> /dev/null) == *--xattrs* ]] && tar_options+=" --xattrs"
+		if contains_word xattr "${FEATURES}" \
+			&& [[ $(tar --help 2>/dev/null) == *--xattrs* ]]
+		then
+			tar_options+=" --xattrs"
+		fi
 
 		[[ -z "${PORTAGE_COMPRESSION_COMMAND}" ]] && die "PORTAGE_COMPRESSION_COMMAND is unset"
 

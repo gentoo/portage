@@ -85,7 +85,7 @@ if [[ "${DOINSSTRICTOPTION}" == 1 ]]; then
 	DOINS_ARGS+=( --strict_option )
 fi
 
-if has xattr ${FEATURES}; then
+if contains_word xattr "${FEATURES}"; then
 	DOINS_ARGS+=(
 		--enable_copy_xattr
 		"--xattr_exclude=${PORTAGE_XATTR_EXCLUDE}"

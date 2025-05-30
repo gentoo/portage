@@ -215,8 +215,9 @@ die() {
 
 	if [[ -n ${PORTAGE_LOG_FILE} ]] ; then
 		eerror "The complete build log is located at '${PORTAGE_LOG_FILE}'."
-		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] && \
-			! has fail-clean ${FEATURES} ; then
+		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] \
+			&& ! contains_word fail-clean "${FEATURES}"
+		then
 			# Display path to symlink in ${T}, as requested in bug #412865.
 			local log_ext=log
 			[[ ${PORTAGE_LOG_FILE} != *.log ]] && log_ext+=.${PORTAGE_LOG_FILE##*.}

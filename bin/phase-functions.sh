@@ -287,7 +287,7 @@ __dyn_clean() {
 		return 0
 	fi
 
-	if has chflags ${FEATURES} ; then
+	if contains_word chflags "${FEATURES}"; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
@@ -301,12 +301,14 @@ __dyn_clean() {
 		"${PORTAGE_BUILDDIR}/empty"
 	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
-	if [[ ${EMERGE_FROM} = binary ]] || \
-		! has keeptemp ${FEATURES} && ! has keepwork ${FEATURES} ; then
+	if [[ ${EMERGE_FROM} = binary ]] \
+		|| ! contains_word keeptemp "${FEATURES}" \
+		&& ! contains_word keepwork "${FEATURES}"
+	then
 		rm -rf "${T}"
 	fi
 
-	if [[ ${EMERGE_FROM} = binary ]] || ! has keepwork ${FEATURES} ; then
+	if [[ ${EMERGE_FROM} = binary ]] || ! contains_word keepwork "${FEATURES}"; then
 		rm -f "${PORTAGE_BUILDDIR}"/.{ebuild_changed,logid,pretended,setuped,unpacked,prepared} \
 			"${PORTAGE_BUILDDIR}"/.{configured,compiled,tested,packaged,instprepped} \
 			"${PORTAGE_BUILDDIR}"/.die_hooks \
@@ -380,7 +382,7 @@ __abort_install() {
 __has_phase_defined_up_to() {
 	local phase
 	for phase in unpack prepare configure compile test install; do
-		has ${phase} ${DEFINED_PHASES} && return 0
+		contains_word "${phase}" "${DEFINED_PHASES}" && return 0
 		[[ ${phase} == $1 ]] && return 1
 	done
 	# We shouldn't actually get here
@@ -507,16 +509,17 @@ __dyn_test() {
 		die "The source directory '${S}' doesn't exist"
 	fi
 
-	if has test ${PORTAGE_RESTRICT} && ! has all ${ALLOW_TEST} &&
-			! { has test_network ${PORTAGE_PROPERTIES} && has network ${ALLOW_TEST}; } &&
-			! { has test_privileged ${PORTAGE_PROPERTIES} && has privileged ${ALLOW_TEST}; }
+	if contains_word test "${PORTAGE_RESTRICT}" \
+		&& ! contains_word all "${ALLOW_TEST}" \
+		&& ! { contains_word test_network "${PORTAGE_PROPERTIES}" && contains_word network "${ALLOW_TEST}"; } \
+		&& ! { contains_word test_privileged "${PORTAGE_PROPERTIES}" && contains_word privileged "${ALLOW_TEST}"; }
 	then
 		einfo "Skipping make test/check due to ebuild restriction."
 		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
 
 	# If ${EBUILD_FORCE_TEST} == 1 and FEATURES came from ${T}/environment
 	# then it might not have FEATURES=test like it's supposed to here.
-	elif [[ ${EBUILD_FORCE_TEST} != 1 ]] && ! has test ${FEATURES} ; then
+	elif [[ ${EBUILD_FORCE_TEST} != 1 ]] && ! contains_word test "${FEATURES}"; then
 		__vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
 		local save_sp=${SANDBOX_PREDICT}
@@ -539,7 +542,7 @@ __dyn_test() {
 __dyn_install() {
 	[[ -z "${PORTAGE_BUILDDIR}" ]] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 
-	if has noauto ${FEATURES} ; then
+	if contains_word noauto "${FEATURES}"; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
 	elif [[ -e ${PORTAGE_BUILDDIR}/.installed ]] ; then
 		__vecho ">>> It appears that '${PF}' is already installed; skipping."
@@ -726,7 +729,7 @@ __dyn_install() {
 	cp "${EBUILD}" "${PF}.ebuild"
 	[[ -n "${PORTAGE_REPO_NAME}" ]]  && echo "${PORTAGE_REPO_NAME}" > repository
 	[[ -n ${PORTAGE_REPO_REVISIONS} ]] && echo "${PORTAGE_REPO_REVISIONS}" > REPO_REVISIONS
-	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}; then
+	if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word strip "${PORTAGE_RESTRICT}"; then
 		>> DEBUGBUILD
 	fi
 	trap - SIGINT SIGQUIT
@@ -780,7 +783,7 @@ __dyn_help() {
 	echo "  C++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}; then
+	if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word strip "${PORTAGE_RESTRICT}"; then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
@@ -1003,7 +1006,9 @@ __ebuild_main() {
 
 	# Force configure scripts that automatically detect ccache to
 	# respect FEATURES="-ccache".
-	has ccache ${FEATURES} || export CCACHE_DISABLE=1
+	if ! contains_word ccache "${FEATURES}"; then
+		export CCACHE_DISABLE=1
+	fi
 
 	local ___phase_func=$(__ebuild_arg_to_phase "${EBUILD_PHASE}")
 	[[ -n ${___phase_func} ]] && __ebuild_phase_funcs "${EAPI}" "${___phase_func}"
@@ -1055,12 +1060,14 @@ __ebuild_main() {
 			done
 			unset x
 
-			has distcc ${FEATURES} && [[ -n ${DISTCC_DIR} ]] && \
-				[[ ${SANDBOX_WRITE/${DISTCC_DIR}} = ${SANDBOX_WRITE} ]] && \
-				addwrite "${DISTCC_DIR}"
+			contains_word distcc "${FEATURES}" \
+			&& [[ ${DISTCC_DIR} ]] \
+			&& [[ ${SANDBOX_WRITE/${DISTCC_DIR}} == ${SANDBOX_WRITE} ]] \
+			&& addwrite "${DISTCC_DIR}"
 
-			if has noauto ${FEATURES} && \
-				[[ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]] ; then
+			if contains_word noauto "${FEATURES}" \
+				&& [[ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]]
+			then
 				echo
 				echo "!!! We apparently haven't unpacked..." \
 					"This is probably not what you"

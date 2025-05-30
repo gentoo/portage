@@ -7,7 +7,7 @@ cython_dep_check() {
 	[[ ${CATEGORY}/${PN} == dev-python/cython ]] && return
 	# grepping log files is expensive, so do it only for ebuilds using
 	# distutils-r1
-	has distutils-r1 ${INHERITED} || return
+	contains_word distutils-r1 "${INHERITED}" || return
 	[[ ${BDEPEND} == *dev-python/cython* ]] && return
 
 	# Evaluate misc gcc warnings

@@ -4,7 +4,7 @@
 # text relocations, executable stacks
 
 elf_check() {
-	if ! type -P scanelf >/dev/null || has binchecks ${PORTAGE_RESTRICT}; then
+	if ! type -P scanelf >/dev/null || contains_word binchecks "${PORTAGE_RESTRICT}"; then
 		return
 	fi
 
@@ -12,7 +12,7 @@ elf_check() {
 	local f x
 
 	# display warnings when using stricter because we die afterwards
-	if has stricter ${FEATURES} ; then
+	if contains_word stricter "${FEATURES}"; then
 		local PORTAGE_QUIET
 	fi
 
@@ -33,7 +33,7 @@ elf_check() {
 	for dir in "${forbidden_dirs[@]}"; do
 		while read l; do
 			f+="  ${l/:/\n    RPATH: }\n"
-			if ! has stricter ${FEATURES}; then
+			if ! contains_word stricter "${FEATURES}"; then
 				__vecho "Auto fixing rpaths for ${l%%:*}"
 				TMPDIR="${dir}" scanelf -BXr "${l%%:*}" -o /dev/null
 			fi
@@ -54,7 +54,7 @@ elf_check() {
 		eqawarn " with the maintainer of the package."
 		eqawarn "${f}${f:+${x:+\n}}${x}"
 		__vecho -ne '\n'
-		if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
+		if [[ -n ${x} ]] || contains_word stricter "${FEATURES}"; then
 			insecure_rpath=1
 		fi
 	fi
@@ -139,7 +139,7 @@ elf_check() {
 
 	if [[ ${insecure_rpath} -eq 1 ]] ; then
 		die "Aborting due to serious QA concerns with RUNPATH/RPATH"
-	elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
+	elif [[ -n ${die_msg} ]] && contains_word stricter "${FEATURES}"; then
 		die "Aborting due to QA concerns: ${die_msg}"
 	fi
 }

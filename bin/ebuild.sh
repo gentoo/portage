@@ -258,7 +258,7 @@ inherit() {
 			# disabled for nofetch, since that can be called by repoman and
 			# that triggers bug #407449 due to repoman not exporting
 			# non-essential variables such as INHERITED.
-			if ! has ${ECLASS} ${INHERITED} ${__INHERITED_QA_CACHE} ; then
+			if ! contains_word "${ECLASS}" "${INHERITED} ${__INHERITED_QA_CACHE}"; then
 				eqawarn "QA Notice: Eclass '${ECLASS}' inherited illegally in ${CATEGORY}/${PF} ${EBUILD_PHASE}"
 			fi
 		fi
@@ -374,7 +374,9 @@ inherit() {
 			fi
 			unset $__export_funcs_var
 
-			has $1 ${INHERITED} || export INHERITED="${INHERITED} $1"
+			if ! contains_word "$1" "${INHERITED}"; then
+				export INHERITED="${INHERITED} $1"
+			fi
 			if [[ ${ECLASS_DEPTH} -eq 1 ]]; then
 				export PORTAGE_EXPLICIT_INHERIT="${PORTAGE_EXPLICIT_INHERIT} $1"
 			fi
@@ -707,11 +709,11 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 
 		if [[ ${EBUILD_PHASE} != depend ]] ; then
 
-			if has distcc ${FEATURES} ; then
+			if contains_word distcc "${FEATURES}"; then
 				[[ -n ${DISTCC_LOG} ]] && addwrite "${DISTCC_LOG%/*}"
 			fi
 
-			if has ccache ${FEATURES} ; then
+			if contains_word ccache "${FEATURES}"; then
 				if [[ -n ${CCACHE_DIR} ]] ; then
 					addread "${CCACHE_DIR}"
 					addwrite "${CCACHE_DIR}"
@@ -723,7 +725,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 	fi
 fi
 
-if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT} ; then
+if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word strip "${PORTAGE_RESTRICT}"; then
 	export DEBUGBUILD=1
 fi
 

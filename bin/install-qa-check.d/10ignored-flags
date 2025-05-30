@@ -3,7 +3,7 @@
 # QA checks for ignored *FLAGS.
 
 ignored_flag_check() {
-	if ! type -P scanelf >/dev/null || has binchecks ${PORTAGE_RESTRICT}; then
+	if ! type -P scanelf >/dev/null || contains_word binchecks "${PORTAGE_RESTRICT}"; then
 		return
 	fi
 
@@ -67,8 +67,9 @@ ignored_flag_check() {
 	fi
 
 	# Check for files built without respecting LDFLAGS
-	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] && \
-		! has binchecks ${PORTAGE_RESTRICT} ; then
+	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] \
+		&& ! contains_word binchecks "${PORTAGE_RESTRICT}"
+	then
 		f=$(LC_ALL=C comm -2 -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED%/}/" | LC_ALL=C sort) \
 			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED%/}/" | LC_ALL=C sort))
 		if [[ -n ${f} ]] ; then

@@ -96,11 +96,10 @@ install_qa_check_prefix() {
 				echo "${fn#${D}}:${line[0]} (script ${fn##*/} installed in PATH but interpreter ${line[0]} not found)" \
 					>> "${T}"/non-prefix-shebangs-errs
 			fi
-		else
+		elif contains_word stricter "${FEATURES}"; then
 			# unprefixed/invalid shebang, but outside ${PATH}, this may be
 			# intended (e.g. config.guess) so remain silent by default
-			has stricter ${FEATURES} && \
-				eqawarn "QA Notice: invalid shebang in ${fn#${D}}: ${line[0]}"
+			eqawarn "QA Notice: invalid shebang in ${fn#${D}}: ${line[0]}"
 		fi
 	done
 	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then

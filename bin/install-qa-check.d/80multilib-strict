@@ -5,9 +5,9 @@
 multilib_strict_check() {
 	local IFS abort dir file
 
-	if has multilib-strict ${FEATURES} && \
-	   type find &>/dev/null && type file &>/dev/null && \
-	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
+	if contains_word multilib-strict "${FEATURES}" \
+		&& type find file &>/dev/null \
+		&& [[ ${MULTILIB_STRICT_DIRS} && ${MULTILIB_STRICT_DENY} ]]
 	then
 		rm -f "${T}/multilib-strict.log"
 		for dir in ${MULTILIB_STRICT_DIRS} ; do

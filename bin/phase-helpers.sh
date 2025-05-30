@@ -21,9 +21,12 @@ export MOPREFIX=${PN}
 export PORTAGE_DOCOMPRESS_SIZE_LIMIT="128"
 declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
 declare -a PORTAGE_DOCOMPRESS_SKIP=( "/usr/share/doc/${PF}/html" )
-declare -a PORTAGE_DOSTRIP=( / )
-has strip ${PORTAGE_RESTRICT} && PORTAGE_DOSTRIP=()
+declare -a PORTAGE_DOSTRIP=()
 declare -a PORTAGE_DOSTRIP_SKIP=()
+
+if ! contains_word strip "${PORTAGE_RESTRICT}"; then
+        PORTAGE_DOSTRIP+=( / )
+fi
 
 into() {
 	if [[ "$1" == "/" ]]; then

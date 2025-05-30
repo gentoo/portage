@@ -185,7 +185,7 @@ gcc_warn_check() {
 		to the upstream developers of this software.
 		Homepage: ${HOMEPAGE}
 		EOF
-		if has stricter ${FEATURES}; then
+		if contains_word stricter "${FEATURES}"; then
 			die "install aborted due to severe warnings shown above"
 		fi
 	fi

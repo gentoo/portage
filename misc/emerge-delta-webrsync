@@ -170,7 +170,8 @@ handle_pgp_setup() {
 	# WEBRSYNC_VERIFY_SIGNATURE=2: use legacy FEATURES="webrsync-gpg"
 	WEBRSYNC_VERIFY_SIGNATURE=1
 
-	has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
+	contains_word webrsync-gpg "${FEATURES}"
+	webrsync_gpg=$(( $? == 0 ))
 
 	repo_has_webrsync_verify=$(
 		has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature	| LC_ALL=C tr '[:upper:]' '[:lower:]') true yes
@@ -522,7 +523,7 @@ sync_local() {
 	__vecho "Syncing local tree ..."
 
 	local ownership="portage:portage"
-	if has usersync ${FEATURES} ; then
+	if contains_word usersync "${FEATURES}"; then
 		case "${USERLAND}" in
 			BSD)
 				ownership=$(stat -f '%Su:%Sg' "${repo_location}")
@@ -562,14 +563,16 @@ sync_local() {
 		rm -fr "${TMPDIR}"
 	fi
 
-	if has metadata-transfer ${FEATURES} ; then
+	if contains_word metadata-transfer "${FEATURES}"; then
 		__vecho "Updating cache ..."
 		emerge --metadata
 	fi
 	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
 	[ -x "${post_sync}" ] && "${post_sync}"
 	# --quiet suppresses output if there are no relevant news items
-	has news ${FEATURES} && emerge --check-news --quiet
+	if contains_word news "${FEATURES}"; then
+		emerge --check-news --quiet
+	fi
 	return 0
 }
 
