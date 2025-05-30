@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Warn about and/or remove empty directories installed by ebuild.
 
 # Rationale: PMS prohibits ebuilds from installing empty directories.

@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Prefix specific QA checks
 
 install_qa_check_prefix() {

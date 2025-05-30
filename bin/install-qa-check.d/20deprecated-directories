@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for deprecated directories
 
 deprecated_dir_check() {

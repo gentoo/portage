@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check udev rule installs
 
 udev_check() {

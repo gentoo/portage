@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for CMake invalid option warnings
 
 cmake_warn_check() {

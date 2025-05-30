@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # QA checks for bash-completion files
 
 bashcomp_check() {

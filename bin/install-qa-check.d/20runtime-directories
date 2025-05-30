@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for directories that need to be created at runtime
 
 runtime_dir_check() {

@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for accidental install into ${D}/${D}
 
 DD_check() {

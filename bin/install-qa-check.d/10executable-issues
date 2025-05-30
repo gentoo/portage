@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for major issues with built executables: insecure RPATHs,
 # text relocations, executable stacks
 

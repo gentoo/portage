@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for world-writable files
 
 world_writable_check() {

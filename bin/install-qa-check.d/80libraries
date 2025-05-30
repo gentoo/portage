@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for issues with installed libraries
 
 scanelf_lib_check() {

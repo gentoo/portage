@@ -1,4 +1,7 @@
+# shellcheck shell=bash
+
 # Strict multilib directory checks
+
 multilib_strict_check() {
 	local IFS abort dir file
 

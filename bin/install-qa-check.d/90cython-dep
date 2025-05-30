@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for missing dev-python/cython dep based on output
 # from setuptools cythonize() support
 

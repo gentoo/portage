@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for important gcc warnings
 # TODO: adapt for clang?
 # TODO: add -Wformat-security

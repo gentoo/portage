@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # QA checks for ignored *FLAGS.
 
 ignored_flag_check() {

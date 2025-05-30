@@ -1,5 +1,6 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck shell=bash
 
 bad_bin_group_write_check() {
 	# Warn about globally-installed executables (in /bin, /usr/bin, /sbin,

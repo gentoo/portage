@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for implicit function declaration warnings in configure logs
 #
 # ebuilds should set the QA_CONFIG_IMPL_DECL_SKIP array to skip known false

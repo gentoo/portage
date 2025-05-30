@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for missing calls to xdg-utils regen functions
 
 xdg_desktop_database_check() {

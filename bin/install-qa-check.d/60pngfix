@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for issues with PNG files
 
 pngfix_check() {
