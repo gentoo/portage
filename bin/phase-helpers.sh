@@ -977,9 +977,8 @@ if ___eapi_has_einstalldocs; then
 fi
 
 if ___eapi_has_eapply; then
-	# shellcheck disable=2199
 	eapply() {
-		local f failed found_doublehyphen i patch_cmd path
+		local f failed patch_cmd path
 		local -a files operands options
 
 		# for bsd userland support, use gpatch if available
@@ -1024,36 +1023,28 @@ if ___eapi_has_eapply; then
 			fi
 		}
 
-		# First, try to split on --
-		for (( i = 1; i <= ${#@}; ++i )); do
-			if [[ ${@:i:1} == -- ]]; then
-				options=( "${@:1:i-1}" )
-				operands=( "${@:i+1}" )
-				found_doublehyphen=1
-				break
-			fi
+		while (( $# )); do
+			case $1 in
+				--)
+					shift
+					operands+=("$@")
+					break
+					;;
+				-*)
+					if (( ! ${#operands[@]} )); then
+						options+=("$1")
+					else
+						die "eapply: options must precede non-option arguments"
+					fi
+					;;
+				*)
+					operands+=("$1")
+			esac
+			shift
 		done
 
-		# Then, try to split on first non-option
-		if [[ -z ${found_doublehyphen} ]]; then
-			for (( i = 1; i <= ${#@}; ++i )); do
-				if [[ ${@:i:1} != -* ]]; then
-					options=( "${@:1:i-1}" )
-					operands=( "${@:i}" )
-					break
-				fi
-			done
-
-			# Ensure that no options were interspersed with operands
-			for path in "${operands[@]}"; do
-				if [[ ${path} == -* ]]; then
-					die "eapply: all options must be passed before non-options"
-				fi
-			done
-		fi
-
-		if [[ ${#operands[@]} -eq 0 ]]; then
-			die "eapply: no operands specified"
+		if (( ! ${#operands[@]} )); then
+			die "eapply: no operands were specified"
 		fi
 
 		for path in "${operands[@]}"; do
