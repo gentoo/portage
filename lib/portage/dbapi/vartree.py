@@ -5703,6 +5703,15 @@ class dblink:
                     ):
                         # a symlink to an existing directory will work for us; keep it:
                         showMessage(f"--- {mydest}/\n")
+                        # update owner and mode on existing directories
+                        if stat.S_ISDIR(mydmode):
+                            if (
+                                mydstat.st_uid != mystat.st_uid
+                                or mydstat.st_gid != mystat.st_gid
+                            ):
+                                os.chown(mydest, mystat[4], mystat[5])
+                            if mydmode != mymode:
+                                os.chmod(mydest, mystat[0])
                         if bsd_chflags:
                             bsd_chflags.lchflags(mydest, dflags)
                     else:
