@@ -977,15 +977,21 @@ if ___eapi_has_einstalldocs; then
 fi
 
 if ___eapi_has_eapply; then
+	# shellcheck disable=2199
 	eapply() {
-		local failed patch_cmd=patch
+		local f failed found_doublehyphen i patch_cmd path
+		local -a files operands options
 
 		# for bsd userland support, use gpatch if available
-		type -P gpatch > /dev/null && patch_cmd=gpatch
+		if type -P gpatch >/dev/null; then
+			patch_cmd=gpatch
+		else
+			patch_cmd=patch
+		fi
 
 		_eapply_get_files() {
-			local LC_ALL=POSIX
-			local f
+			local LC_ALL=POSIX f
+
 			for f in "${1}"/*; do
 				if [[ ${f} == *.@(diff|patch) ]]; then
 					files+=( "${f}" )
@@ -994,40 +1000,35 @@ if ___eapi_has_eapply; then
 		}
 
 		_eapply_patch() {
-			local f=${1}
-			local prefix=${2}
+			local patch=$1 prefix=$2
+			local -a patch_opts
+			shift 2
 
-			ebegin "${prefix:-Applying }${f##*/}"
+			ebegin "${prefix:-Applying }${patch##*/}"
 			# -p1 as a sane default
 			# -f to avoid interactivity
 			# -g0 to guarantee no VCS interaction
 			# --no-backup-if-mismatch not to pollute the sources
-			local all_opts=(
-				-p1 -f -g0 --no-backup-if-mismatch
-				"${patch_options[@]}"
-			)
+			patch_opts=( -p1 -f -g0 --no-backup-if-mismatch "$@" )
 
 			# Try applying with -F0 first, output a verbose warning
 			# if fuzz factor is necessary
-			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
-					< "${f}" &>/dev/null; then
-				all_opts+=( -s -F0 )
+			if "${patch_cmd}" "${patch_opts[@]}" --dry-run -s -F0 < "${patch}" &>/dev/null; then
+				patch_opts+=( -s -F0 )
 			fi
 
-			${patch_cmd} "${all_opts[@]}" < "${f}"
+			"${patch_cmd}" "${patch_opts[@]}" < "${patch}"
 			failed=${?}
 			if ! eend "${failed}"; then
-				__helpers_die "patch -p1 ${patch_options[*]} failed with ${f}"
+				__helpers_die "patch -p1 $* failed with ${patch}"
 			fi
 		}
 
-		local patch_options=() files=()
-		local i found_doublehyphen
 		# First, try to split on --
 		for (( i = 1; i <= ${#@}; ++i )); do
 			if [[ ${@:i:1} == -- ]]; then
-				patch_options=( "${@:1:i-1}" )
-				files=( "${@:i+1}" )
+				options=( "${@:1:i-1}" )
+				operands=( "${@:i+1}" )
 				found_doublehyphen=1
 				break
 			fi
@@ -1037,41 +1038,41 @@ if ___eapi_has_eapply; then
 		if [[ -z ${found_doublehyphen} ]]; then
 			for (( i = 1; i <= ${#@}; ++i )); do
 				if [[ ${@:i:1} != -* ]]; then
-					patch_options=( "${@:1:i-1}" )
-					files=( "${@:i}" )
+					options=( "${@:1:i-1}" )
+					operands=( "${@:i}" )
 					break
 				fi
 			done
 
-			# Ensure that no options were interspersed with files
-			for i in "${files[@]}"; do
-				if [[ ${i} == -* ]]; then
+			# Ensure that no options were interspersed with operands
+			for path in "${operands[@]}"; do
+				if [[ ${path} == -* ]]; then
 					die "eapply: all options must be passed before non-options"
 				fi
 			done
 		fi
 
-		if [[ ${#files[@]} -eq 0 ]]; then
-			die "eapply: no files specified"
+		if [[ ${#operands[@]} -eq 0 ]]; then
+			die "eapply: no operands specified"
 		fi
 
-		local f
-		for f in "${files[@]}"; do
-			if [[ -d ${f} ]]; then
-				local files=()
-				_eapply_get_files "${f}"
-				[[ ${#files[@]} -eq 0 ]] && die "No *.{patch,diff} files in directory ${f}"
+		for path in "${operands[@]}"; do
+			if [[ -d ${path} ]]; then
+				files=()
+				_eapply_get_files "${path}"
+				if [[ ${#files[@]} -eq 0 ]]; then
+					die "No *.{patch,diff} files in directory ${path}"
+				fi
 
-				einfo "Applying patches from ${f} ..."
-				local f2
-				for f2 in "${files[@]}"; do
-					_eapply_patch "${f2}" '  '
+				einfo "Applying patches from ${path} ..."
+				for f in "${files[@]}"; do
+					_eapply_patch "${f}" '  ' "${options[@]}"
 
 					# in case of nonfatal
 					[[ ${failed} -ne 0 ]] && return "${failed}"
 				done
 			else
-				_eapply_patch "${f}"
+				_eapply_patch "${path}" '' "${options[@]}"
 
 				# In case of nonfatal
 				[[ ${failed} -ne 0 ]] && return "${failed}"
