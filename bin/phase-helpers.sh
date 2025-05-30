@@ -978,7 +978,7 @@ fi
 
 if ___eapi_has_eapply; then
 	eapply() {
-		local f failed patch_cmd path
+		local f patch_cmd path
 		local -a files operands options
 
 		_eapply_get_files() {
@@ -1010,8 +1010,7 @@ if ___eapi_has_eapply; then
 			fi
 
 			"${patch_cmd}" "${patch_opts[@]}" < "${patch}"
-			failed=${?}
-			if ! eend "${failed}"; then
+			if ! eend "$?"; then
 				__helpers_die "patch -p1 $* failed with ${patch}"
 			fi
 		}
@@ -1055,20 +1054,12 @@ if ___eapi_has_eapply; then
 
 				einfo "Applying patches from ${path} ..."
 				for f in "${files[@]}"; do
-					_eapply_patch "${f}" '  ' "${options[@]}"
-
-					# in case of nonfatal
-					[[ ${failed} -ne 0 ]] && return "${failed}"
+					_eapply_patch "${f}" '  ' "${options[@]}" || return
 				done
 			else
-				_eapply_patch "${path}" '' "${options[@]}"
-
-				# In case of nonfatal
-				[[ ${failed} -ne 0 ]] && return "${failed}"
+				_eapply_patch "${path}" '' "${options[@]}" || return
 			fi
 		done
-
-		return 0
 	}
 fi
 
