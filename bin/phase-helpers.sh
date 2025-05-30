@@ -234,7 +234,7 @@ if ___eapi_has_usex; then
 fi
 
 use() {
-	local - IFS invert u=$1
+	local invert u=$1
 
 	# If we got something like '!flag', then invert the return value
 	if [[ ${u} == !* ]] ; then
@@ -270,8 +270,7 @@ use() {
 		fi
 	fi
 
-	set -f
-	has "${u}" ${USE}
+	contains_word "${u}" "${USE}"
 	(( $? == invert ? 1 : 0 ))
 }
 
