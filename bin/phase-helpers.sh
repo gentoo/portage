@@ -981,13 +981,6 @@ if ___eapi_has_eapply; then
 		local f failed patch_cmd path
 		local -a files operands options
 
-		# for bsd userland support, use gpatch if available
-		if type -P gpatch >/dev/null; then
-			patch_cmd=gpatch
-		else
-			patch_cmd=patch
-		fi
-
 		_eapply_get_files() {
 			local LC_ALL=POSIX f
 
@@ -1045,6 +1038,11 @@ if ___eapi_has_eapply; then
 
 		if (( ! ${#operands[@]} )); then
 			die "eapply: no operands were specified"
+		elif hash gpatch 2>/dev/null; then
+			# for bsd userland support, use gpatch if available
+			patch_cmd=gpatch
+		else
+			patch_cmd=patch
 		fi
 
 		for path in "${operands[@]}"; do
