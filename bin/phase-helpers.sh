@@ -1118,16 +1118,13 @@ fi
 
 if ___eapi_has_in_iuse; then
 	in_iuse() {
-		local use=${1}
-
-		if [[ -z "${use}" ]]; then
-			echo "!!! in_iuse() called without a parameter." >&2
-			echo "!!! in_iuse <USEFLAG>" >&2
+		if [[ ! $1 ]]; then
+			printf >&2 '!!! %s\n' \
+				"in_iuse() called without a parameter." \
+				"in_iuse <USEFLAG>"
 			die "in_iuse() called without a parameter"
 		fi
 
-		local liuse=( ${IUSE_EFFECTIVE} )
-
-		has "${use}" "${liuse[@]#[+-]}"
+		contains_word "$1" "${IUSE_EFFECTIVE}"
 	}
 fi
