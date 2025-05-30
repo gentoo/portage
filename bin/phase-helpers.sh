@@ -982,8 +982,7 @@ if ___eapi_has_eapply; then
 		local -a operands options
 
 		_eapply_patch() {
-			local prefix=$1 patch=$2
-			local -a patch_opts
+			local prefix=$1 patch=$2 output IFS
 			shift 2
 
 			ebegin "${prefix:-Applying }${patch##*/}"
@@ -991,16 +990,17 @@ if ___eapi_has_eapply; then
 			# -f to avoid interactivity
 			# -g0 to guarantee no VCS interaction
 			# --no-backup-if-mismatch not to pollute the sources
-			patch_opts=( -p1 -f -g0 --no-backup-if-mismatch "$@" )
-
-			# Try applying with -F0 first, output a verbose warning
-			# if fuzz factor is necessary
-			if "${patch_cmd}" "${patch_opts[@]}" --dry-run -s -F0 < "${patch}" &>/dev/null; then
-				patch_opts+=( -s -F0 )
-			fi
-
-			"${patch_cmd}" "${patch_opts[@]}" < "${patch}"
-			if ! eend "$?"; then
+			set -- -p1 -f -g0 --no-backup-if-mismatch "$@"
+			if output=$(LC_ALL= LC_MESSAGES=C "${patch_cmd}" "$@" < "${patch}" 2>&1); then
+				# The patch was successfully applied. Maintain
+				# silence unless applied with fuzz.
+				if [[ ${output} == *[0-9]' with fuzz '[0-9]* ]]; then
+					printf '%s\n' "${output}"
+				fi
+				eend 0
+			else
+				printf '%s\n' "${output}" >&2
+				eend 1
 				__helpers_die "patch -p1 $* failed with ${patch}"
 			fi
 		}
