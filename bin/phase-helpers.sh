@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=2128,2188
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
 	export DESTTREE=/usr
