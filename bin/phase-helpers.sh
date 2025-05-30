@@ -978,18 +978,8 @@ fi
 
 if ___eapi_has_eapply; then
 	eapply() {
-		local f patch_cmd path
-		local -a files operands options
-
-		_eapply_get_files() {
-			local LC_ALL=POSIX f
-
-			for f in "${1}"/*; do
-				if [[ ${f} == *.@(diff|patch) ]]; then
-					files+=( "${f}" )
-				fi
-			done
-		}
+		local LC_ALL LC_COLLATE=C f i patch_cmd path
+		local -a operands options
 
 		_eapply_patch() {
 			local patch=$1 prefix=$2
@@ -1046,16 +1036,18 @@ if ___eapi_has_eapply; then
 
 		for path in "${operands[@]}"; do
 			if [[ -d ${path} ]]; then
-				files=()
-				_eapply_get_files "${path}"
-				if [[ ${#files[@]} -eq 0 ]]; then
+				i=0
+				for f in "${path}"/*; do
+					if [[ ${f} == *.@(diff|patch) ]]; then
+						if (( i++ == 0 )); then
+							einfo "Applying patches from ${path} ..."
+						fi
+						_eapply_patch "${f}" '  ' "${options[@]}" || return
+					fi
+				done
+				if (( i == 0 )); then
 					die "No *.{patch,diff} files in directory ${path}"
 				fi
-
-				einfo "Applying patches from ${path} ..."
-				for f in "${files[@]}"; do
-					_eapply_patch "${f}" '  ' "${options[@]}" || return
-				done
 			else
 				_eapply_patch "${path}" '' "${options[@]}" || return
 			fi
