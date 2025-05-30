@@ -218,6 +218,7 @@ class config:
         "repository",
         "RESTRICT",
         "LICENSE",
+        "_mtime_",
     )
 
     _module_aliases = {
