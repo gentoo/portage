@@ -221,6 +221,13 @@ __ebuild_phase() {
 	if (( __EBEGIN_EEND_COUNT > 0 )); then
 		eqawarn "QA Notice: ebegin called without eend in $1"
 	fi
+
+	if [[ -f ${T}/._portage_nonfatal_died ]]; then
+		eqawarn "QA Notice: nonfatal call failed but phase did not die."
+		eqawarn "The purpose of nonfatal is to customize error messages and/or provide"
+		eqawarn "custom cleanup but the phase function should die after the failure."
+		rm -f "${T}"/._portage_nonfatal_died
+	fi
 }
 
 __ebuild_phase_with_hooks() {
