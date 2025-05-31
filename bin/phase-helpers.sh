@@ -1106,7 +1106,7 @@ if ___eapi_has_eapply_user; then
 			einfo "${PORTAGE_COLOR_INFO}${hr}${PORTAGE_COLOR_NORMAL}"
 			einfo "Applying user patches from ${basedir} ..."
 			while IFS= read -rd '' basename; do
-				eapply "${patch_by[$basename]}"
+				eapply -- "${patch_by[$basename]}"
 			done < <(printf '%s\0' "${!patch_by[@]}" | LC_ALL=C sort -z)
 			einfo "User patches applied."
 			einfo "${PORTAGE_COLOR_INFO}${hr}${PORTAGE_COLOR_NORMAL}"
