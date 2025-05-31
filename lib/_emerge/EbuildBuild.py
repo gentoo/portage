@@ -358,8 +358,7 @@ class EbuildBuild(CompositeTask):
 
         # Check if binary package creation should be suppressed for RESTRICT=bindist packages
         suppress_bindist = (
-            "suppress-bindist-buildpkg" in features
-            and "bindist" in self.pkg.restrict
+            "suppress-bindist-buildpkg" in features and "bindist" in self.pkg.restrict
         )
 
         if (

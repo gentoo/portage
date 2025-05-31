@@ -88,7 +88,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_minus_bindist, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_minus_bindist, debug=False
+        )
         try:
             for test_case in test_cases_minus_bindist:
                 playground.run_TestCase(test_case)
@@ -105,7 +107,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_only_minus, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_only_minus, debug=False
+        )
         try:
             for test_case in test_cases_only_minus:
                 playground.run_TestCase(test_case)
@@ -123,7 +127,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_only_bindist, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_only_bindist, debug=False
+        )
         try:
             for test_case in test_cases_only_bindist:
                 playground.run_TestCase(test_case)
@@ -146,7 +152,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_empty, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_empty, debug=False
+        )
         try:
             for test_case in test_cases_empty:
                 playground.run_TestCase(test_case)
@@ -173,7 +181,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_with_features, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_with_features, debug=False
+        )
         try:
             for test_case in test_cases_with_features:
                 playground.run_TestCase(test_case)
@@ -195,10 +205,12 @@ class AcceptRestrictBindistTestCase(TestCase):
         }
 
         # Test with various FEATURES settings - should all behave the same
-        user_config_with_sandbox = {"make.conf": (
-            'ACCEPT_RESTRICT="* -bindist"',
-            'FEATURES="sandbox"',
-        )}
+        user_config_with_sandbox = {
+            "make.conf": (
+                'ACCEPT_RESTRICT="* -bindist"',
+                'FEATURES="sandbox"',
+            )
+        }
         test_cases_sandbox = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/bindist-restricted"],
@@ -206,7 +218,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_with_sandbox, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_with_sandbox, debug=False
+        )
         try:
             for test_case in test_cases_sandbox:
                 playground.run_TestCase(test_case)
@@ -214,10 +228,12 @@ class AcceptRestrictBindistTestCase(TestCase):
         finally:
             playground.cleanup()
 
-        user_config_with_multiple_features = {"make.conf": (
-            'ACCEPT_RESTRICT="* -bindist"',
-            'FEATURES="sandbox userpriv usersandbox"',
-        )}
+        user_config_with_multiple_features = {
+            "make.conf": (
+                'ACCEPT_RESTRICT="* -bindist"',
+                'FEATURES="sandbox userpriv usersandbox"',
+            )
+        }
         test_cases_multi_features = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/bindist-restricted"],
@@ -225,7 +241,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_with_multiple_features, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_with_multiple_features, debug=False
+        )
         try:
             for test_case in test_cases_multi_features:
                 playground.run_TestCase(test_case)
@@ -233,10 +251,12 @@ class AcceptRestrictBindistTestCase(TestCase):
         finally:
             playground.cleanup()
 
-        user_config_no_features = {"make.conf": (
-            'ACCEPT_RESTRICT="* -bindist"',
-            'FEATURES=""',
-        )}
+        user_config_no_features = {
+            "make.conf": (
+                'ACCEPT_RESTRICT="* -bindist"',
+                'FEATURES=""',
+            )
+        }
         test_cases_no_features = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/bindist-restricted"],
@@ -244,7 +264,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_no_features, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_no_features, debug=False
+        )
         try:
             for test_case in test_cases_no_features:
                 playground.run_TestCase(test_case)
@@ -253,10 +275,12 @@ class AcceptRestrictBindistTestCase(TestCase):
             playground.cleanup()
 
         # Verify that with ACCEPT_RESTRICT="*", FEATURES don't matter
-        user_config_accept_all = {"make.conf": (
-            'ACCEPT_RESTRICT="*"',
-            'FEATURES="sandbox userpriv"',
-        )}
+        user_config_accept_all = {
+            "make.conf": (
+                'ACCEPT_RESTRICT="*"',
+                'FEATURES="sandbox userpriv"',
+            )
+        }
         test_cases_accept_all = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/bindist-restricted"],
@@ -265,7 +289,9 @@ class AcceptRestrictBindistTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config_accept_all, debug=False)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config_accept_all, debug=False
+        )
         try:
             for test_case in test_cases_accept_all:
                 playground.run_TestCase(test_case)

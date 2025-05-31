@@ -20,6 +20,7 @@ from portage.output import colorize
 # We test the buildpkg functionality at a basic level with both xpak and gpkg formats,
 # but xpak is the default (and is much faster to test with), so avoid redundancy
 
+
 class BuildpkgTestCase(TestCase):
     """
     Test suite for binary package creation using the 'buildpkg' feature in Portage.
@@ -37,7 +38,6 @@ class BuildpkgTestCase(TestCase):
     assert that binary packages are created or not created as expected based
     on the configuration and package restrictions.
     """
-
 
     def testBasicBuildpkg(self):
         """
@@ -59,7 +59,10 @@ class BuildpkgTestCase(TestCase):
 
         for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
             with self.subTest(binpkg_format=binpkg_format):
-                print(colorize("HILITE", f"Testing basic buildpkg with {binpkg_format}"), end=" ... ")
+                print(
+                    colorize("HILITE", f"Testing basic buildpkg with {binpkg_format}"),
+                    end=" ... ",
+                )
                 sys.stdout.flush()
 
                 user_config = {
@@ -70,16 +73,14 @@ class BuildpkgTestCase(TestCase):
                 }
 
                 playground = ResolverPlayground(
-                    ebuilds=ebuilds,
-                    user_config=user_config,
-                    debug=debug
+                    ebuilds=ebuilds, user_config=user_config, debug=debug
                 )
                 try:
                     self._run_buildpkg_test(
                         playground,
                         "dev-libs/test-basic",
                         expected_binpkg=True,
-                        binpkg_format=binpkg_format
+                        binpkg_format=binpkg_format,
                     )
 
                 finally:
@@ -107,7 +108,10 @@ class BuildpkgTestCase(TestCase):
 
         binpkg_format = "xpak"
         with self.subTest(binpkg_format=binpkg_format):
-            print(colorize("HILITE", f"Testing RESTRICT=bindist with {binpkg_format}"), end=" ... ")
+            print(
+                colorize("HILITE", f"Testing RESTRICT=bindist with {binpkg_format}"),
+                end=" ... ",
+            )
             sys.stdout.flush()
 
             user_config = {
@@ -118,16 +122,14 @@ class BuildpkgTestCase(TestCase):
             }
 
             playground = ResolverPlayground(
-                ebuilds=ebuilds,
-                user_config=user_config,
-                debug=debug
+                ebuilds=ebuilds, user_config=user_config, debug=debug
             )
             try:
                 self._run_buildpkg_test(
                     playground,
                     "dev-libs/test-bindist",
                     expected_binpkg=True,  # Should create binpkg
-                    binpkg_format=binpkg_format
+                    binpkg_format=binpkg_format,
                 )
 
             finally:
@@ -160,7 +162,12 @@ class BuildpkgTestCase(TestCase):
 
         binpkg_format = "xpak"
         with self.subTest(binpkg_format=binpkg_format):
-            print(colorize("HILITE", f"Testing suppress-bindist-buildpkg with {binpkg_format}"), end=" ... ")
+            print(
+                colorize(
+                    "HILITE", f"Testing suppress-bindist-buildpkg with {binpkg_format}"
+                ),
+                end=" ... ",
+            )
             sys.stdout.flush()
 
             user_config = {
@@ -171,28 +178,29 @@ class BuildpkgTestCase(TestCase):
             }
 
             playground = ResolverPlayground(
-                ebuilds=ebuilds,
-                user_config=user_config,
-                debug=debug
+                ebuilds=ebuilds, user_config=user_config, debug=debug
             )
             try:
                 settings = playground.settings
 
-                self.assertIn("suppress-bindist-buildpkg", settings.features,
-                            "suppress-bindist-buildpkg feature should be enabled")
+                self.assertIn(
+                    "suppress-bindist-buildpkg",
+                    settings.features,
+                    "suppress-bindist-buildpkg feature should be enabled",
+                )
 
                 self._run_buildpkg_test(
                     playground,
                     "dev-libs/test-suppress",
                     expected_binpkg=False,  # Should NOT create binpkg due to suppress-bindist-buildpkg feature
-                    binpkg_format=binpkg_format
+                    binpkg_format=binpkg_format,
                 )
 
                 self._run_buildpkg_test(
                     playground,
                     "dev-libs/test-normal",
                     expected_binpkg=True,  # Should create binpkg normally, feature has no effect
-                    binpkg_format=binpkg_format
+                    binpkg_format=binpkg_format,
                 )
 
             finally:
@@ -223,9 +231,7 @@ class BuildpkgTestCase(TestCase):
         }
 
         playground = ResolverPlayground(
-            ebuilds=ebuilds,
-            user_config=user_config,
-            debug=debug
+            ebuilds=ebuilds, user_config=user_config, debug=debug
         )
         try:
             settings = playground.settings
@@ -233,18 +239,24 @@ class BuildpkgTestCase(TestCase):
 
             emerge_cmd = self._get_emerge_cmd(playground)
             test_commands = (
-                emerge_cmd + (
+                emerge_cmd
+                + (
                     "--oneshot",
                     "dev-libs/test-integration",
                 ),
             )
 
             success = self._run_commands(playground, test_commands, debug)
-            self.assertTrue(success, "Package with RESTRICT=bindist should be installable with suppress-bindist-buildpkg feature")
+            self.assertTrue(
+                success,
+                "Package with RESTRICT=bindist should be installable with suppress-bindist-buildpkg feature",
+            )
 
             vardb = playground.trees[eroot]["vartree"].dbapi
-            self.assertTrue(vardb.match("dev-libs/test-integration"),
-                          "Package should be installed in vardb")
+            self.assertTrue(
+                vardb.match("dev-libs/test-integration"),
+                "Package should be installed in vardb",
+            )
 
         finally:
             playground.cleanup()
@@ -254,10 +266,16 @@ class BuildpkgTestCase(TestCase):
         Test that suppress-bindist-buildpkg is properly defined in SUPPORTED_FEATURES.
         """
         from portage.const import SUPPORTED_FEATURES
-        self.assertIn("suppress-bindist-buildpkg", SUPPORTED_FEATURES,
-                      "suppress-bindist-buildpkg should be in SUPPORTED_FEATURES")
 
-    def _run_buildpkg_test(self, playground, package_atom, expected_binpkg, binpkg_format):
+        self.assertIn(
+            "suppress-bindist-buildpkg",
+            SUPPORTED_FEATURES,
+            "suppress-bindist-buildpkg should be in SUPPORTED_FEATURES",
+        )
+
+    def _run_buildpkg_test(
+        self, playground, package_atom, expected_binpkg, binpkg_format
+    ):
         """
         Helper method to run a buildpkg test and verify the results.
 
@@ -270,7 +288,8 @@ class BuildpkgTestCase(TestCase):
         emerge_cmd = self._get_emerge_cmd(playground)
 
         test_commands = (
-            emerge_cmd + (
+            emerge_cmd
+            + (
                 "--oneshot",
                 package_atom,
             ),
@@ -279,14 +298,19 @@ class BuildpkgTestCase(TestCase):
         success = self._run_commands(playground, test_commands, False)
         self.assertTrue(success, f"Emerge command should succeed for {package_atom}")
 
-        binpkg_created = self._check_binpkg_exists(playground, package_atom, binpkg_format)
+        binpkg_created = self._check_binpkg_exists(
+            playground, package_atom, binpkg_format
+        )
 
         if expected_binpkg:
-            self.assertTrue(binpkg_created,
-                          f"Binary package should be created for {package_atom}")
+            self.assertTrue(
+                binpkg_created, f"Binary package should be created for {package_atom}"
+            )
         else:
-            self.assertFalse(binpkg_created,
-                           f"Binary package should NOT be created for {package_atom}")
+            self.assertFalse(
+                binpkg_created,
+                f"Binary package should NOT be created for {package_atom}",
+            )
 
     def _check_binpkg_exists(self, playground, package_atom, binpkg_format):
         """
