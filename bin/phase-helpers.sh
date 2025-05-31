@@ -949,31 +949,31 @@ if ___eapi_has_get_libdir; then
 fi
 
 if ___eapi_has_einstalldocs; then
-	einstalldocs() {
-		(
-			if [[ $(declare -p DOCS 2>/dev/null) != *=* ]]; then
-				local d
-				for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
-						THANKS BUGS FAQ CREDITS CHANGELOG ; do
-					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
-				done
-			elif ___is_indexed_array_var DOCS ; then
-				[[ ${#DOCS[@]} -gt 0 ]] && docinto / && dodoc -r "${DOCS[@]}"
-			else
-				[[ ${DOCS} ]] && docinto / && dodoc -r ${DOCS}
-			fi
-		)
+	einstalldocs() (
+		local f
 
-		(
-			if ___is_indexed_array_var HTML_DOCS ; then
-				[[ ${#HTML_DOCS[@]} -gt 0 ]] && \
-					docinto html && dodoc -r "${HTML_DOCS[@]}"
-			else
-				[[ ${HTML_DOCS} ]] && \
-					docinto html && dodoc -r ${HTML_DOCS}
-			fi
-		)
-	}
+		if [[ ! -v DOCS ]]; then
+			for f in README* ChangeLog AUTHORS NEWS TODO CHANGES \
+				THANKS BUGS FAQ CREDITS CHANGELOG
+			do
+				if [[ -f ${f} && -s ${f} ]]; then
+					docinto / && dodoc "${f}"
+				fi
+			done
+		elif [[ ${DOCS@a} == *a* ]] && (( ${#DOCS[@]} )); then
+			docinto / && dodoc -r "${DOCS[@]}"
+		elif [[ ${DOCS@a} != *[aA]* && ${DOCS} ]]; then
+			# shellcheck disable=2086
+			docinto / && dodoc -r ${DOCS}
+		fi
+
+		if [[ ${HTML_DOCS@a} == *a* ]] && (( ${#HTML_DOCS[@]} )); then
+			docinto html && dodoc -r "${HTML_DOCS[@]}"
+		elif [[ ${HTML_DOCS@a} != *[aA]* && ${HTML_DOCS} ]]; then
+			# shellcheck disable=2086
+			docinto html && dodoc -r ${HTML_DOCS}
+		fi
+	)
 fi
 
 if ___eapi_has_eapply; then
