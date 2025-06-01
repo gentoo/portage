@@ -636,16 +636,6 @@ __eqatag() {
 	) >> "${T}"/qa.log
 }
 
-if [[ BASH_VERSINFO -gt 4 || (BASH_VERSINFO -eq 4 && BASH_VERSINFO[1] -ge 4) ]] ; then
-	___is_indexed_array_var() {
-		[[ ${!1@a} == *a* ]]
-	}
-else
-	___is_indexed_array_var() {
-		[[ $(declare -p "$1" 2>/dev/null) == 'declare -a'* ]]
-	}
-fi
-
 # debug-print() gets called from many places with verbose status information useful
 # for tracking down problems. The output is in ${T}/eclass-debug.log.
 # You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.
