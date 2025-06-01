@@ -792,7 +792,7 @@ __eapi4_src_install() {
 				THANKS BUGS FAQ CREDITS CHANGELOG ; do
 			[[ -s "${d}" ]] && dodoc "${d}"
 		done
-	elif ___is_indexed_array_var DOCS ; then
+	elif [[ ${DOCS@a} == *a* ]] ; then
 		dodoc "${DOCS[@]}"
 	else
 		dodoc ${DOCS}
@@ -800,7 +800,7 @@ __eapi4_src_install() {
 }
 
 __eapi6_src_prepare() {
-	if ___is_indexed_array_var PATCHES ; then
+	if [[ ${PATCHES@a} == *a* ]] ; then
 		[[ ${#PATCHES[@]} -gt 0 ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
@@ -819,7 +819,7 @@ __eapi6_src_install() {
 
 __eapi8_src_prepare() {
 	local f
-	if ___is_indexed_array_var PATCHES ; then
+	if [[ ${PATCHES@a} == *a* ]] ; then
 		[[ ${#PATCHES[@]} -gt 0 ]] && eapply -- "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply -- ${PATCHES}
