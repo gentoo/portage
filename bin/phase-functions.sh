@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=SC2128
 
 # Hardcoded bash lists are needed for backward compatibility with
 # <portage-2.1.4 since they assume that a newly installed version

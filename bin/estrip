@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=SC2128
 
 source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
 
