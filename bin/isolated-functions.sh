@@ -496,11 +496,8 @@ fi
 ___makeopts_jobs() {
 	local jobs
 
-	# Copied from multiprocessing.eclass:makeopts_jobs
-	# This assumes the first .* will be more greedy than the second .*
-	# since POSIX doesn't specify a non-greedy match (i.e. ".*?").
-	if [[ " ${MAKEOPTS} " =~ .*[[:space:]](-[a-z]*j|--jobs[=[:space:]])[[:space:]]*([0-9]+).* ]]; then
-		jobs=${BASH_REMATCH[2]}
+	if [[ " ${MAKEOPTS} " =~ .*[[:space:]](-[^j]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]] ]]; then
+		jobs=${BASH_REMATCH[3]}
 	elif jobs=$({ getconf _NPROCESSORS_ONLN || sysctl -n hw.ncpu; } 2>/dev/null); then
 		:
 	else
