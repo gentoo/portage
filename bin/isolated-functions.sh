@@ -499,7 +499,7 @@ ___makeopts_jobs() {
 	ere='.*[[:space:]](-[^j]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]]'
 
 	if [[ " ${MAKEOPTS} " =~ $ere ]]; then
-		jobs=${BASH_REMATCH[3]}
+		jobs=$(( 10#${BASH_REMATCH[3]} ))
 	elif jobs=$({ getconf _NPROCESSORS_ONLN || sysctl -n hw.ncpu; } 2>/dev/null); then
 		:
 	else
