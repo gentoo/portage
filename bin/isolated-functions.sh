@@ -494,9 +494,11 @@ if [[ -z ${XARGS} ]] ; then
 fi
 
 ___makeopts_jobs() {
-	local jobs
+	local ere jobs
 
-	if [[ " ${MAKEOPTS} " =~ .*[[:space:]](-[^j]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]] ]]; then
+	ere='.*[[:space:]](-[^j]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]]'
+
+	if [[ " ${MAKEOPTS} " =~ $ere ]]; then
 		jobs=${BASH_REMATCH[3]}
 	elif jobs=$({ getconf _NPROCESSORS_ONLN || sysctl -n hw.ncpu; } 2>/dev/null); then
 		:
