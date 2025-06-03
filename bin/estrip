@@ -159,11 +159,10 @@ fi
 
 # Look up the tools we might be using
 declare -A path_of
-for bin in strip objcopy readelf ranlib; do
-        if [[ $CHOST ]] && path_of[$bin]=$(type -P -- "${CHOST}-${bin}" 2>/dev/null); then
-                continue
-        fi
-        path_of[$bin]=$bin
+for bin in {"${CHOST}-",}{'strip','objcopy','readelf','ranlib'}; do
+	if [[ ! ${path_of[$bin]} ]]; then
+		path_of[$bin]=$(type -P -- "${bin}" 2>/dev/null)
+	fi
 done
 
 # Declare a map to keep track of whether warnings in certain categories have
