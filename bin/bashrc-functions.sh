@@ -3,18 +3,22 @@
 # Distributed under the terms of the GNU General Public License v2
 
 register_die_hook() {
-	local x
-	for x in $* ; do
-		has ${x} ${EBUILD_DEATH_HOOKS} || \
-			export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} ${x}"
+	local hook
+
+	for hook; do
+		if ! has "${hook}" ${EBUILD_DEATH_HOOKS}; then
+			export EBUILD_DEATH_HOOKS+=" ${hook}"
+		fi
 	done
 }
 
 register_success_hook() {
-	local x
-	for x in $* ; do
-		has ${x} ${EBUILD_SUCCESS_HOOKS} || \
-			export EBUILD_SUCCESS_HOOKS="${EBUILD_SUCCESS_HOOKS} ${x}"
+	local hook
+
+	for hook; do
+		if ! has "${hook}" ${EBUILD_SUCCESS_HOOKS}; then
+			export EBUILD_SUCCESS_HOOKS+=" ${hook}"
+		fi
 	done
 }
 
