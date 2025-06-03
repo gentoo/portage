@@ -5,11 +5,14 @@
 import os
 import sys
 
-sys.path.insert(0, os.environ["PORTAGE_PYM_PATH"])
-import portage
-
 
 def main(args):
+    sys.path.insert(0, os.environ["PORTAGE_PYM_PATH"])
+    import portage
+
+    portage._internal_caller = True
+    portage._disable_legacy_globals()
+
     if args and isinstance(args[0], bytes):
         for i, x in enumerate(args):
             args[i] = portage._unicode_decode(x, errors="strict")
@@ -26,8 +29,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    portage._internal_caller = True
-    portage._disable_legacy_globals()
-
     rval = main(sys.argv[1:])
     sys.exit(rval)
