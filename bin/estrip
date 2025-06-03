@@ -169,20 +169,19 @@ done
 # Figure out what tool set we're using to strip stuff
 unset SAFE_STRIP_FLAGS DEF_STRIP_FLAGS SPLIT_STRIP_FLAGS
 case $("${path_of[strip]}" --version 2>/dev/null) in
-*elfutils*) # dev-libs/elfutils
-	# elfutils default behavior is always safe, so don't need to specify
-	# any flags at all
-	SAFE_STRIP_FLAGS=""
-	DEF_STRIP_FLAGS="--remove-comment"
-	SPLIT_STRIP_FLAGS="-f"
-	;;
-*GNU*) # sys-devel/binutils
-	# We'll leave out -R .note for now until we can check out the relevance
-	# of the section when it has the ALLOC flag set on it ...
-	SAFE_STRIP_FLAGS="--strip-unneeded -N __gentoo_check_ldflags__"
-	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
-	SPLIT_STRIP_FLAGS=
-	;;
+	*elfutils*) # dev-libs/elfutils
+		# elfutils default behavior is always safe, so don't need to specify
+		# any flags at all
+		SAFE_STRIP_FLAGS=""
+		DEF_STRIP_FLAGS="--remove-comment"
+		SPLIT_STRIP_FLAGS="-f"
+		;;
+	*GNU*) # sys-devel/binutils
+		# We'll leave out -R .note for now until we can check out the relevance
+		# of the section when it has the ALLOC flag set on it ...
+		SAFE_STRIP_FLAGS="--strip-unneeded -N __gentoo_check_ldflags__"
+		DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
+		SPLIT_STRIP_FLAGS=
 esac
 
 read -rd '' -a portage_strip_flags <<<"${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}"
