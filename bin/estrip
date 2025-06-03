@@ -23,15 +23,17 @@ if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
 fi
 
-banner=false
-SKIP_STRIP=false
-if ${PORTAGE_RESTRICT_strip} || ${FEATURES_nostrip} ; then
-	SKIP_STRIP=true
-	banner=true
-	${FEATURES_installsources} || exit 0
+if ! ${PORTAGE_RESTRICT_strip} && ! ${FEATURES_nostrip}; then
+	do_banner=1
+	do_skip=0
+elif ! ${FEATURES_installsources}; then
+	exit 0
+else
+	do_banner=0
+	do_skip=1
 fi
 
-prepstrip=false
+do_prepstrip=0
 
 while [[ $# -gt 0 ]] ; do
 	case $1 in
@@ -119,7 +121,7 @@ while [[ $# -gt 0 ]] ; do
 		;;
 	--prepallstrip)
 		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
-		prepstrip=true
+		do_prepstrip=1
 		break
 		;;
 	*)
@@ -131,9 +133,9 @@ while [[ $# -gt 0 ]] ; do
 done
 set -- "${ED}"
 
-PRESERVE_XATTR=false
+do_preserve_xattr=0
 if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
-	PRESERVE_XATTR=true
+	do_preserve_xattr=1
 	if type -P getfattr >/dev/null && type -P setfattr >/dev/null ; then
 		dump_xattrs() {
 			getfattr -d -m - --absolute-names "$1"
@@ -370,37 +372,38 @@ process_elf() {
 		sleep 1
 	done
 
-	[ -f "${inode_link}_stripped" ] && already_stripped=true || already_stripped=false
-
-	if ! ${already_stripped} ; then
-		if ${PRESERVE_XATTR} ; then
+	if [[ -f ${inode_link}_stripped ]]; then
+		already_stripped=1
+	else
+		already_stripped=0
+		if (( do_preserve_xattr )); then
 			xt_data=$(dump_xattrs "${x}")
 		fi
 		save_elf_sources "${x}"
 		dedup_elf_debug "${x}" "${inode_link}_dedupdebug"
 	fi
 
-	if ${strip_this} ; then
+	if (( do_strip )); then
 		# See if we can split & strip at the same time
-		if ${splitdebug} && [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
+		if (( do_splitdebug )) && [[ ${SPLIT_STRIP_FLAGS} ]]; then
 			local shortname="${x##*/}.debug"
 			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
 
-			${already_stripped} || \
-			${STRIP} "${strip_flags[@]}" \
-				-f "${splitdebug}" \
-				-F "${shortname}" \
-				"${x}"
+			if (( ! already_stripped )); then
+				${STRIP} "${strip_flags[@]}" -f "${splitdebug}" -F "${shortname}" "${x}"
+			fi
 			save_elf_debug "${x}" "${inode_link}_debug" "${splitdebug}"
 		else
-			if ${splitdebug} ; then
+			if (( do_splitdebug )); then
 				save_elf_debug "${x}" "${inode_link}_debug"
 			fi
-			${already_stripped} || ${STRIP} "${strip_flags[@]}" "${x}"
+			if (( ! already_stripped )); then
+				${STRIP} "${strip_flags[@]}" "${x}"
+			fi
 		fi
 	fi
 
-	if ${already_stripped} ; then
+	if (( already_stripped )); then
 		rm -f "${x}" || die "rm failed unexpectedly"
 		ln "${inode_link}_stripped" "${x}" || die "ln failed unexpectedly"
 	else
@@ -420,12 +423,12 @@ process_ar() {
 
 	__vecho "   ${x:${#ed_noslash}}"
 
-	if ${strip_this} ; then
+	if (( do_strip )); then
 		# If we have split debug enabled, then do not strip this.
 		# There is no concept of splitdebug for objects not yet
 		# linked in (only for finally linked ELFs), so we have to
 		# retain the debug info in the archive itself.
-		if ! ${splitdebug} ; then
+		if (( ! do_splitdebug )); then
 			${STRIP} -g "${x}" && ${RANLIB} "${x}"
 		fi
 	fi
@@ -479,7 +482,7 @@ fi
 
 cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 
-if ${prepstrip}; then
+if (( do_prepstrip )); then
 	while read -r x ; do
 		inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
 		echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
@@ -513,9 +516,9 @@ for inode_link in *; do
 	while read -r x
 	do
 
-		if ! ${banner} ; then
+		if (( do_banner )); then
 			__vecho "strip: ${STRIP} ${portage_strip_flags[*]}"
-			banner=true
+			do_banner=0
 		fi
 
 		(
@@ -523,34 +526,37 @@ for inode_link in *; do
 		f=$(file -S "${x}") || exit 0
 		[[ -z ${f} ]] && exit 0
 
-		if ${SKIP_STRIP} ; then
-			strip_this=false
-		elif ! ${prepstrip}; then
-			strip_this=true
+		if (( do_skip )); then
+			do_strip=0
+		elif (( ! do_prepstrip )); then
+			do_strip=1
 		else
 			# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
 			# the for loop from expanding the globs.
 			# The eval echo is to support STRIP_MASK="/*/{booga,bar}".
 			set -o noglob
-			strip_this=true
+			do_strip=1
 			for m in $(eval echo ${STRIP_MASK}) ; do
-				[[ ${x#"${ED%/}"} == ${m} ]] && strip_this=false && break
+				if [[ ${x#"${ED%/}"} == ${m} ]]; then
+					do_strip=0
+					break
+				fi
 			done
 			set +o noglob
 		fi
 
 		if ${FEATURES_splitdebug} && ! ${PORTAGE_RESTRICT_splitdebug} ; then
-			splitdebug=true
+			do_splitdebug=1
 		else
-			splitdebug=false
+			do_splitdebug=0
 		fi
 
 		# In Prefix we are usually an unprivileged user, so we can't strip
 		# unwritable objects.  Make them temporarily writable for the
 		# stripping.
-		was_not_writable=false
+		was_writable=1
 		if [[ ! -w ${x} ]] ; then
-			was_not_writable=true
+			was_writable=0
 			chmod u+w "${x}"
 		fi
 
@@ -567,12 +573,12 @@ for inode_link in *; do
 			${f} == *"SB shared object"* ]] ; then
 			process_elf "${x}" "${inode_link}" "${portage_strip_flags[@]}"
 		elif [[ ${f} == *"SB relocatable"* ]] ; then
-			[[ ${x} == *.ko ]] || splitdebug=false
+			[[ ${x} == *.ko ]] || do_splitdebug=0
 			read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
 			process_elf "${x}" "${inode_link}" "${safe_strip_flags[@]}"
 		fi
 
-		if ${was_not_writable} ; then
+		if (( ! was_writable )); then
 			chmod u-w "${x}"
 		fi
 		) &
