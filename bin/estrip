@@ -187,25 +187,19 @@ read -rd '' -a portage_strip_flags <<<"${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS}
 
 prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
-debugedit=$(type -P debugedit)
-if [[ -z ${debugedit} ]]; then
+if ! debugedit_bin=$(type -P debugedit); then
 	debugedit_paths=(
 		"${EPREFIX}/usr/libexec/rpm/debugedit"
 	)
-
 	for x in "${debugedit_paths[@]}"; do
 		if [[ -x ${x} ]]; then
-			debugedit=${x}
+			debugedit_bin=${x}
 			break
 		fi
 	done
 fi
-[[ ${debugedit} ]] && debugedit_found=true || debugedit_found=false
-debugedit_warned=false
 
-dwz=$(type -P dwz)
-[[ ${dwz} ]] && dwz_found=true || dwz_found=false
-dwz_warned=false
+dwz_bin=$(type -P dwz)
 
 __multijob_init
 
@@ -216,12 +210,11 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
-	${FEATURES_installsources} || return 0
-	${PORTAGE_RESTRICT_installsources} && return 0
-
-	if ! ${debugedit_found} ; then
-		if ! ${debugedit_warned} ; then
-			debugedit_warned=true
+	if ! ${FEATURES_installsources} || ${PORTAGE_RESTRICT_installsources}; then
+		return
+	elif [[ ! ${debugedit_bin} ]]; then
+		if [[ -v debugedit_bin ]]; then
+			unset -v debugedit_bin
 			ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
 			ewarn "found. This feature will not work unless debugedit is installed!"
 		fi
@@ -233,7 +226,7 @@ save_elf_sources() {
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
 	# it later on in the save_elf_debug step.
-	buildid=$("${debugedit}" -i \
+	buildid=$("${debugedit_bin}" -i \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
 		-l "${tmpdir}/sources/${x##*/}.${BASHPID}" \
@@ -261,9 +254,9 @@ dedup_elf_debug() {
 
 	debug-print-function "${FUNCNAME}" "$@"
 
-	if ! ${dwz_found} ; then
-		if ! ${dwz_warned} ; then
-			dwz_warned=true
+	if [[ ! ${dwz_bin} ]]; then
+		if [[ -v dwz_bin ]]; then
+			unset -v dwz_bin
 			ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
 			ewarn "found. This feature will not work unless dwz is installed!"
 		fi
@@ -276,7 +269,7 @@ dedup_elf_debug() {
 	# We already dedupdebug-ed this inode.
 	[[ -L ${inode_dedupdebug} ]] && return 0
 
-	"${dwz}" -- "${src}"
+	"${dwz_bin}" -- "${src}"
 	touch "${inode_dedupdebug}"
 }
 
@@ -593,10 +586,10 @@ done
 __multijob_finish
 
 cd "${tmpdir}"/sources/ && cat -- * > "${tmpdir}/debug.sources" 2>/dev/null
-if [[ -s ${tmpdir}/debug.sources ]] && \
-   ${FEATURES_installsources} && \
-   ! ${PORTAGE_RESTRICT_installsources} && \
-   ${debugedit_found}
+if [[ -s ${tmpdir}/debug.sources ]] \
+	&& ${FEATURES_installsources} \
+	&& ! ${PORTAGE_RESTRICT_installsources} \
+	&& [[ ${debugedit_bin} ]]
 then
 	__vecho "installsources: rsyncing source files"
 	[[ -d ${D%/}/${prepstrip_sources_dir#/} ]] || mkdir -p "${D%/}/${prepstrip_sources_dir#/}"
