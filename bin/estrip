@@ -486,102 +486,102 @@ fi
 cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 
 if ${prepstrip}; then
-while read -r x ; do
-	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
-	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
-done < <(
-	# NEEDED may not exist for some packages (bug #862606)
-	if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
-		while IFS= read -r needed_entry ; do
-			needed_entry="${needed_entry% *}"
-			needed_contents+=( "${D%/}${needed_entry}" )
-		done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-	fi
+	while read -r x ; do
+		inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
+		echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
+	done < <(
+		# NEEDED may not exist for some packages (bug #862606)
+		if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
+			while IFS= read -r needed_entry ; do
+				needed_entry="${needed_entry% *}"
+				needed_contents+=( "${D%/}${needed_entry}" )
+			done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		fi
 
-	# Use sort -u to eliminate duplicates (bug #445336).
-	(
-		[[ -n ${needed_contents[@]} ]] && printf "%s\n" "${needed_contents[@]}"
-		find "$@" -type f ! -type l -name '*.a'
-	) | LC_ALL=C sort -u
-)
+		# Use sort -u to eliminate duplicates (bug #445336).
+		(
+			[[ -n ${needed_contents[@]} ]] && printf "%s\n" "${needed_contents[@]}"
+			find "$@" -type f ! -type l -name '*.a'
+		) | LC_ALL=C sort -u
+	)
 else
-while IFS= read -d '' -r x ; do
-	inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
-	echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
-done < <(find "${ED}" -name '*.estrip' -delete -print0)
+	while IFS= read -d '' -r x ; do
+		inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
+		echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
+	done < <(find "${ED}" -name '*.estrip' -delete -print0)
 fi
 
 # Now we look for unstripped binaries.
 for inode_link in *; do
-test -e "${inode_link}" || continue
-while read -r x
-do
+	test -e "${inode_link}" || continue
+	while read -r x
+	do
 
-	if ! ${banner} ; then
-		__vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
-		banner=true
-	fi
+		if ! ${banner} ; then
+			__vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+			banner=true
+		fi
 
-	(
-	__multijob_child_init
-	f=$(file -S "${x}") || exit 0
-	[[ -z ${f} ]] && exit 0
+		(
+		__multijob_child_init
+		f=$(file -S "${x}") || exit 0
+		[[ -z ${f} ]] && exit 0
 
-	if ${SKIP_STRIP} ; then
-		strip_this=false
-	elif ! ${prepstrip}; then
-		strip_this=true
-	else
-		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
-		# the for loop from expanding the globs.
-		# The eval echo is to support STRIP_MASK="/*/{booga,bar}".
-		set -o noglob
-		strip_this=true
-		for m in $(eval echo ${STRIP_MASK}) ; do
-			[[ ${x#${ED%/}} == ${m} ]] && strip_this=false && break
-		done
-		set +o noglob
-	fi
+		if ${SKIP_STRIP} ; then
+			strip_this=false
+		elif ! ${prepstrip}; then
+			strip_this=true
+		else
+			# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
+			# the for loop from expanding the globs.
+			# The eval echo is to support STRIP_MASK="/*/{booga,bar}".
+			set -o noglob
+			strip_this=true
+			for m in $(eval echo ${STRIP_MASK}) ; do
+				[[ ${x#${ED%/}} == ${m} ]] && strip_this=false && break
+			done
+			set +o noglob
+		fi
 
-	if ${FEATURES_splitdebug} && ! ${PORTAGE_RESTRICT_splitdebug} ; then
-		splitdebug=true
-	else
-		splitdebug=false
-	fi
+		if ${FEATURES_splitdebug} && ! ${PORTAGE_RESTRICT_splitdebug} ; then
+			splitdebug=true
+		else
+			splitdebug=false
+		fi
 
-	# In Prefix we are usually an unprivileged user, so we can't strip
-	# unwritable objects.  Make them temporarily writable for the
-	# stripping.
-	was_not_writable=false
-	if [[ ! -w ${x} ]] ; then
-		was_not_writable=true
-		chmod u+w "${x}"
-	fi
+		# In Prefix we are usually an unprivileged user, so we can't strip
+		# unwritable objects.  Make them temporarily writable for the
+		# stripping.
+		was_not_writable=false
+		if [[ ! -w ${x} ]] ; then
+			was_not_writable=true
+			chmod u+w "${x}"
+		fi
 
-	# only split debug info for final linked objects
-	# or kernel modules as debuginfo for intermediatary
-	# files (think crt*.o from gcc/glibc) is useless and
-	# actually causes problems.  install sources for all
-	# elf types though because that stuff is good.
+		# only split debug info for final linked objects
+		# or kernel modules as debuginfo for intermediatary
+		# files (think crt*.o from gcc/glibc) is useless and
+		# actually causes problems.  install sources for all
+		# elf types though because that stuff is good.
 
-	buildid=
-	if [[ ${f} == *"current ar archive"* ]] ; then
-		process_ar "${x}"
-	elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
-		${f} == *"SB shared object"* ]] ; then
-		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
-	elif [[ ${f} == *"SB relocatable"* ]] ; then
-		[[ ${x} == *.ko ]] || splitdebug=false
-		process_elf "${x}" "${inode_link}" ${SAFE_STRIP_FLAGS}
-	fi
+		buildid=
+		if [[ ${f} == *"current ar archive"* ]] ; then
+			process_ar "${x}"
+		elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
+			${f} == *"SB shared object"* ]] ; then
+			process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
+		elif [[ ${f} == *"SB relocatable"* ]] ; then
+			[[ ${x} == *.ko ]] || splitdebug=false
+			process_elf "${x}" "${inode_link}" ${SAFE_STRIP_FLAGS}
+		fi
 
-	if ${was_not_writable} ; then
-		chmod u-w "${x}"
-	fi
-	) &
-	__multijob_post_fork
+		if ${was_not_writable} ; then
+			chmod u-w "${x}"
+		fi
+		) &
+		__multijob_post_fork
 
-done < "${inode_link}"
+	done < "${inode_link}"
 done
 
 # With a bit more work, we could run the rsync processes below in
