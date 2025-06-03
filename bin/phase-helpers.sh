@@ -1003,7 +1003,7 @@ if ___eapi_has_eapply; then
 			else
 				printf '%s\n' "${output}" >&2
 				eend 1
-				__helpers_die "patch -p1 $* failed with ${patch}"
+				__helpers_die "patch ${*@Q} failed with ${patch@Q}"
 			fi
 		}
 
