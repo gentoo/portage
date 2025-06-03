@@ -188,7 +188,7 @@ read -rd '' -a portage_strip_flags <<<"${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS}
 
 prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
-if ! debugedit_bin=$(type -P debugedit); then
+if ! debugedit_bin=$(type -P debugedit 2>/dev/null); then
 	debugedit_paths=(
 		"${EPREFIX}/usr/libexec/rpm/debugedit"
 	)
@@ -200,7 +200,7 @@ if ! debugedit_bin=$(type -P debugedit); then
 	done
 fi
 
-dwz_bin=$(type -P dwz)
+dwz_bin=$(type -P dwz 2>/dev/null)
 
 __multijob_init
 
