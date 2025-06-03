@@ -8,9 +8,6 @@ import sys
 sys.path.insert(0, os.environ["PORTAGE_PYM_PATH"])
 import portage
 
-portage._internal_caller = True
-portage._disable_legacy_globals()
-
 
 def main(args):
     if args and isinstance(args[0], bytes):
@@ -29,5 +26,8 @@ def main(args):
 
 
 if __name__ == "__main__":
+    portage._internal_caller = True
+    portage._disable_legacy_globals()
+
     rval = main(sys.argv[1:])
     sys.exit(rval)
