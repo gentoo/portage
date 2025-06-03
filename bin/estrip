@@ -5,28 +5,27 @@
 
 source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
 
-# avoid multiple calls to `has`.  this creates things like:
-#   FEATURES_foo=false
-# if "foo" is not in ${FEATURES}
-tf() { "$@" && echo true || echo false ; }
-exp_tf() {
-	local flag var=$1
-	shift
-	for flag in "$@" ; do
-		eval ${var}_${flag}=$(tf has ${flag} ${!var})
-	done
-}
-exp_tf FEATURES compressdebug dedupdebug installsources nostrip splitdebug xattr
-exp_tf PORTAGE_RESTRICT binchecks dedupdebug installsources splitdebug strip
+declare -A has_feature
+declare -A has_restriction
+
+for key in compressdebug dedupdebug installsources nostrip splitdebug xattr; do
+	contains_word "$key" "${FEATURES}"
+	has_feature[$key]=$(( $? == 0 ))
+done
+
+for key in binchecks dedupdebug installsources splitdebug strip; do
+	contains_word "$key" "${PORTAGE_RESTRICT}"
+	has_restriction[$key]=$(( $? == 0 ))
+done
 
 if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
 fi
 
-if ! ${PORTAGE_RESTRICT_strip} && ! ${FEATURES_nostrip}; then
+if (( ! has_restriction[strip] && ! has_feature[nostrip] )); then
 	do_banner=1
 	do_skip=0
-elif ! ${FEATURES_installsources}; then
+elif (( ! has_feature[installsources] )); then
 	exit 0
 else
 	do_banner=0
@@ -134,7 +133,7 @@ done
 set -- "${ED}"
 
 do_preserve_xattr=0
-if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
+if [[ ${KERNEL} == linux ]] && (( has_feature[xattr] )); then
 	do_preserve_xattr=1
 	if type -P getfattr >/dev/null && type -P setfattr >/dev/null ; then
 		dump_xattrs() {
@@ -212,7 +211,7 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
-	if ! ${FEATURES_installsources} || ${PORTAGE_RESTRICT_installsources}; then
+	if (( ! has_feature[installsources] || has_restriction[installsources] )); then
 		return
 	elif [[ ! ${debugedit_bin} ]]; then
 		if [[ -v debugedit_bin ]]; then
@@ -251,8 +250,9 @@ __try_symlink() {
 
 # Usage: dedup_elf_debug <src> <inode_dedupdebug>
 dedup_elf_debug() {
-	${FEATURES_dedupdebug} || return 0
-	${PORTAGE_RESTRICT_dedupdebug} && return 0
+	if (( ! has_feature[dedupdebug] || has_restriction[dedupdebug] )); then
+		return
+	fi
 
 	debug-print-function "${FUNCNAME}" "$@"
 
@@ -317,9 +317,11 @@ save_elf_debug() {
 			mv "${splitdebug}" "${dst}"
 		else
 			local -a objcopy_flags=( --only-keep-debug )
-			${FEATURES_compressdebug} && objcopy_flags+=( --compress-debug-sections )
-			${OBJCOPY} "${objcopy_flags[@]}" "${src}" "${dst}" &&
-			${OBJCOPY} --add-gnu-debuglink="${dst}" "${src}"
+			if (( has_feature[compressdebug] )); then
+				objcopy_flags+=( --compress-debug-sections )
+			fi
+			${OBJCOPY} "${objcopy_flags[@]}" "${src}" "${dst}" \
+			&& ${OBJCOPY} --add-gnu-debuglink="${dst}" "${src}"
 		fi
 
 		# Only do the following if the debug file was
@@ -437,7 +439,7 @@ process_ar() {
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-if ! ${PORTAGE_RESTRICT_binchecks} ; then
+if (( ! has_restriction[binchecks] )); then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
@@ -545,7 +547,7 @@ for inode_link in *; do
 			set +o noglob
 		fi
 
-		if ${FEATURES_splitdebug} && ! ${PORTAGE_RESTRICT_splitdebug} ; then
+		if (( has_feature[splitdebug] && ! has_restriction[splitdebug] )); then
 			do_splitdebug=1
 		else
 			do_splitdebug=0
@@ -593,8 +595,7 @@ __multijob_finish
 
 cd "${tmpdir}"/sources/ && cat -- * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] \
-	&& ${FEATURES_installsources} \
-	&& ! ${PORTAGE_RESTRICT_installsources} \
+	&& (( has_feature[installsources] && ! has_restriction[installsources] )) \
 	&& [[ ${debugedit_bin} ]]
 then
 	__vecho "installsources: rsyncing source files"
