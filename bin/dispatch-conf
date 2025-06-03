@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -595,18 +595,19 @@ def usage(argv):
     sys.exit(os.EX_OK)
 
 
-for x in sys.argv:
-    if x in ("-h", "--help"):
-        usage(sys.argv)
-    elif x in ("--version",):
-        print("Portage", portage.VERSION)
-        sys.exit(os.EX_OK)
+if __name__ == "__main__":
+    for x in sys.argv:
+        if x in ("-h", "--help"):
+            usage(sys.argv)
+        elif x in ("--version",):
+            print("Portage", portage.VERSION)
+            sys.exit(os.EX_OK)
 
-# run
-d = dispatch()
+    # run
+    d = dispatch()
 
-if len(sys.argv) > 1:
-    # for testing
-    d.grind(sys.argv[1:])
-else:
-    d.grind(portage.settings.get("CONFIG_PROTECT", "").split())
+    if len(sys.argv) > 1:
+        # for testing
+        d.grind(sys.argv[1:])
+    else:
+        d.grind(portage.settings.get("CONFIG_PROTECT", "").split())
