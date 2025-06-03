@@ -21,7 +21,7 @@ jobs:
           - '3.12'
           - '3.13'
           - '3.14-dev'
-          - 'pypy-3.10'
+          - 'pypy-3.11'
         exclude:
           - python-version: '3.9'
             start-method: 'spawn'
@@ -35,7 +35,7 @@ jobs:
             start-method: 'spawn'
           - python-version: '3.14-dev'
             start-method: 'fork'
-          - python-version: 'pypy-3.10'
+          - python-version: 'pypy-3.11'
             start-method: 'spawn'
       fail-fast: false
     steps:
