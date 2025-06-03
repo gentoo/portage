@@ -166,6 +166,10 @@ for bin in strip objcopy readelf ranlib; do
         path_of[$bin]=$bin
 done
 
+# Declare a map to keep track of whether warnings in certain categories have
+# been issued for a missing tool.
+declare -A warned_for
+
 # Figure out what tool set we're using to strip stuff
 unset SAFE_STRIP_FLAGS DEF_STRIP_FLAGS SPLIT_STRIP_FLAGS
 case $("${path_of[strip]}" --version 2>/dev/null) in
@@ -214,8 +218,8 @@ save_elf_sources() {
 	if (( ! has_feature[installsources] || has_restriction[installsources] )); then
 		return
 	elif [[ ! ${path_of[debugedit]} ]]; then
-		if [[ -v 'path_of[debugedit]' ]]; then
-			unset -v 'path_of[debugedit]'
+		if ! contains_word installsources "${warned_for[debugedit]}"; then
+			warned_for[debugedit]+=" installsources"
 			ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
 			ewarn "found. This feature will not work unless debugedit is installed!"
 		fi
@@ -257,8 +261,8 @@ dedup_elf_debug() {
 	debug-print-function "${FUNCNAME}" "$@"
 
 	if [[ ! ${path_of[dwz]} ]]; then
-		if [[ -v 'path_of[dwz]' ]]; then
-			unset -v 'path_of[dwz]'
+		if ! contains_word dedupdebug "${warned_for[dwz]}"; then
+			warned_for[dwz]+=" dedupdebug"
 			ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
 			ewarn "found. This feature will not work unless dwz is installed!"
 		fi
