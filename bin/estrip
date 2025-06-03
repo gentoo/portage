@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]] ; do
 			fi
 		done
 
-		if [[ ${skip_dirs[@]} ]]; then
+		if (( ${#skip_dirs[@]} )); then
 			find "${skip_dirs[@]}" -name '*.estrip' -delete || die
 		fi
 
@@ -92,7 +92,7 @@ while [[ $# -gt 0 ]] ; do
 						# matches the path given
 						# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
 						needed_entry_file="${needed_entry% *}"
-						if [[ "${needed_entry_file}" =~ ^${find_path##${D}} ]] ; then
+						if [[ "${needed_entry_file}" =~ ^${find_path##"${D}"} ]] ; then
 							scanelf_results+=( "${D}${needed_entry_file}" )
 						fi
 					done
@@ -182,7 +182,8 @@ case $(${STRIP} --version 2>/dev/null) in
 	SPLIT_STRIP_FLAGS=
 	;;
 esac
-: ${PORTAGE_STRIP_FLAGS=${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}
+
+read -rd '' -a portage_strip_flags <<<"${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}"
 
 prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
@@ -296,7 +297,7 @@ save_elf_debug() {
 	local src_dirname=${src%/*}
 
 	# Destination paths
-	local dst_dirname=${ED%/}/usr/lib/debug/${src_dirname#${D%/}/}
+	local dst_dirname=${ED%/}/usr/lib/debug/${src_dirname#"${D%/}"/}
 	local dst_basename dst
 
 	# dont save debug info twice
@@ -320,18 +321,18 @@ save_elf_debug() {
 		if [[ -n ${splitdebug} ]] ; then
 			mv "${splitdebug}" "${dst}"
 		else
-			local objcopy_flags="--only-keep-debug"
-			${FEATURES_compressdebug} && objcopy_flags+=" --compress-debug-sections"
-			${OBJCOPY} ${objcopy_flags} "${src}" "${dst}" &&
+			local -a objcopy_flags=( --only-keep-debug )
+			${FEATURES_compressdebug} && objcopy_flags+=( --compress-debug-sections )
+			${OBJCOPY} "${objcopy_flags[@]}" "${src}" "${dst}" &&
 			${OBJCOPY} --add-gnu-debuglink="${dst}" "${src}"
 		fi
 
 		# Only do the following if the debug file was
 		# successfully created (see bug #446774).
 		if [[ $? -eq 0 ]] ; then
-			local args="a-x,o-w"
-			[[ -g ${src} || -u ${src} ]] && args+=",go-r"
-			chmod ${args} "${dst}"
+			local arg="a-x,o-w"
+			[[ -g ${src} || -u ${src} ]] && arg+=",go-r"
+			chmod "${arg}" "${dst}"
 
 			# Symlink so we can read the name back.
 			__try_symlink "${dst}" "${inode_debug}"
@@ -345,8 +346,8 @@ save_elf_debug() {
 			if [[ -n ${buildid} ]] ; then
 				local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
 				local buildid_file="${buildid_dir}/${buildid:2}"
-				local src_buildid_rel="../../../../../${src#${ED%/}/}"
-				local dst_buildid_rel="../../${dst#${ED%/}/usr/lib/debug/}"
+				local src_buildid_rel="../../../../../${src#"${ED%/}"/}"
+				local dst_buildid_rel="../../${dst#"${ED%/}"/usr/lib/debug/}"
 				mkdir -p "${buildid_dir}" || die
 				__try_symlink "${dst_buildid_rel}" "${buildid_file}.debug"
 				__try_symlink "${src_buildid_rel}" "${buildid_file}"
@@ -358,7 +359,7 @@ save_elf_debug() {
 
 # Usage: process_elf <elf>
 process_elf() {
-	local x=$1 inode_link=$2 strip_flags=${*:3}
+	local x=$1 inode_link=$2 strip_flags=("${@:3}")
 	local ed_noslash=${ED%/}
 	local already_stripped xt_data
 	local lockfile=${inode_link}_lockfile
@@ -393,7 +394,7 @@ process_elf() {
 			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
 
 			${already_stripped} || \
-			${STRIP} ${strip_flags} \
+			${STRIP} "${strip_flags[@]}" \
 				-f "${splitdebug}" \
 				-F "${shortname}" \
 				"${x}"
@@ -402,7 +403,7 @@ process_elf() {
 			if ${splitdebug} ; then
 				save_elf_debug "${x}" "${inode_link}_debug"
 			fi
-			${already_stripped} || ${STRIP} ${strip_flags} "${x}"
+			${already_stripped} || ${STRIP} "${strip_flags[@]}" "${x}"
 		fi
 	fi
 
@@ -500,7 +501,9 @@ if ${prepstrip}; then
 
 		# Use sort -u to eliminate duplicates (bug #445336).
 		(
-			[[ -n ${needed_contents[@]} ]] && printf "%s\n" "${needed_contents[@]}"
+			if (( ${#needed_contents[@]} )); then
+				printf "%s\n" "${needed_contents[@]}"
+			fi
 			find "$@" -type f ! -type l -name '*.a'
 		) | LC_ALL=C sort -u
 	)
@@ -518,7 +521,7 @@ for inode_link in *; do
 	do
 
 		if ! ${banner} ; then
-			__vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+			__vecho "strip: ${STRIP} ${portage_strip_flags[*]}"
 			banner=true
 		fi
 
@@ -538,7 +541,7 @@ for inode_link in *; do
 			set -o noglob
 			strip_this=true
 			for m in $(eval echo ${STRIP_MASK}) ; do
-				[[ ${x#${ED%/}} == ${m} ]] && strip_this=false && break
+				[[ ${x#"${ED%/}"} == ${m} ]] && strip_this=false && break
 			done
 			set +o noglob
 		fi
@@ -569,10 +572,11 @@ for inode_link in *; do
 			process_ar "${x}"
 		elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
 			${f} == *"SB shared object"* ]] ; then
-			process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
+			process_elf "${x}" "${inode_link}" "${portage_strip_flags[@]}"
 		elif [[ ${f} == *"SB relocatable"* ]] ; then
 			[[ ${x} == *.ko ]] || splitdebug=false
-			process_elf "${x}" "${inode_link}" ${SAFE_STRIP_FLAGS}
+			read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
+			process_elf "${x}" "${inode_link}" "${safe_strip_flags[@]}"
 		fi
 
 		if ${was_not_writable} ; then
@@ -588,7 +592,7 @@ done
 # parallel, but not sure that'd be an overall improvement.
 __multijob_finish
 
-cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
+cd "${tmpdir}"/sources/ && cat -- * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] && \
    ${FEATURES_installsources} && \
    ! ${PORTAGE_RESTRICT_installsources} && \
@@ -599,9 +603,11 @@ then
 
 	# Skip installation of ".../<foo>" (system headers? why inner slashes are forbidden?)
 	# Skip syncing of ".../foo/" (complete directories)
-	grep -zv -e '/<[^/>]*>$' -e '/$' "${tmpdir}"/debug.sources | \
-		(cd "${WORKDIR}"; LANG=C sort -z -u | \
-		rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D%/}/${prepstrip_sources_dir#/}/" )
+	grep -zv -e '/<[^/>]*>$' -e '/$' "${tmpdir}"/debug.sources | {
+		cd "${WORKDIR}" || exit
+		LANG=C sort -z -u \
+		| rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D%/}/${prepstrip_sources_dir#/}/"
+	}
 
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
@@ -611,5 +617,4 @@ then
 	done < <(find "${D%/}/${prepstrip_sources_dir#/}/" -type d -empty -print0)
 fi
 
-cd "${T}"
 rm -rf "${tmpdir}"
