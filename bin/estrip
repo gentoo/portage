@@ -213,6 +213,30 @@ tmpdir="${T}/prepstrip"
 rm -rf "${tmpdir}"
 mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
+# Atomically writes the standard input to a file whose name is formatted as
+# "estrip-%u.warning", <checksum of input>. The existing contents of the file,
+# if any, shall not be preserved.
+stash_warning() {
+	local tempfile crc
+
+	tempfile=$(mktemp -p "${T:?}" -- estrip.XXXXXXXXXX) \
+	&& crc=$(set -o pipefail; tee -- "${tempfile}" | cksum) \
+	&& mv -- "${tempfile}" "${T}/estrip-${crc% *}.warning"
+}
+
+# Iterates over any files previously created by the stash_warning() function,
+# conveying their respective lines through the invocation of ewarn.
+raise_warnings() {
+	local logfile
+
+	for logfile in "${T:?}"/estrip-*.warning; do
+		test -f "${logfile}" || continue
+		while read -r; do
+			ewarn "${REPLY}"
+		done < "${logfile}"
+	done
+}
+
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
 	# shellcheck disable=2317
@@ -220,8 +244,10 @@ save_elf_sources() {
 		save_elf_sources() { :; }
 		return
 	elif ! hash "${name_of[debugedit]}" 2>/dev/null; then
-		ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
-		ewarn "found. This feature will not work unless debugedit is installed!"
+		stash_warning <<-'EOF'
+		FEATURES=installsources is enabled but the debugedit binary could not be
+		found. This feature will not work unless debugedit is installed!
+		EOF
 		save_elf_sources() { :; }
 		return
 	fi
@@ -262,8 +288,11 @@ dedup_elf_debug() {
 		dedup_elf_debug() { :; }
 		return
 	elif ! hash "${name_of[dwz]}" 2>/dev/null; then
-		ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
-		ewarn "found. This feature will not work unless dwz is installed!"
+		# Write out a warning to a function-scoped log file, atomically.
+		stash_warning <<-'EOF'
+		FEATURES=dedupdebug is enabled but the dwz binary could not be
+		found. This feature will not work unless dwz is installed!
+		EOF
 		dedup_elf_debug() { :; }
 		return
 	fi
@@ -349,8 +378,10 @@ save_elf_debug() {
 						"${x}")
 				elif ! contains_word buildid "${warned_for[debugedit]}"; then
 					warned_for[debugedit]+=" buildid"
-					ewarn "FEATURES=splitdebug is enabled but the debugedit binary could not be found"
-					ewarn "This feature will not work correctly with build IDs unless debugedit is installed!"
+					stash_warning <<-'EOF'
+					FEATURES=splitdebug is enabled but the debugedit binary could not be found
+					This feature will not work correctly with build IDs unless debugedit is installed!
+					EOF
 				fi
 			fi
 
@@ -636,5 +667,8 @@ then
 		>> "${emptydir}"/.keepdir
 	done < <(find "${D%/}/${prepstrip_sources_dir#/}/" -type d -empty -print0)
 fi
+
+# Collect any outstanding warnings and convey them through ewarn.
+raise_warnings
 
 rm -rf "${tmpdir}"
