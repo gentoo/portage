@@ -245,8 +245,7 @@ save_elf_sources() {
 		return
 	elif ! hash "${name_of[debugedit]}" 2>/dev/null; then
 		stash_warning <<-'EOF'
-		FEATURES=installsources is enabled but the debugedit binary could not be
-		found. This feature will not work unless debugedit is installed!
+		FEATURES=installsources requires the debugedit binary, which was not found!
 		EOF
 		save_elf_sources() { :; }
 		return
@@ -290,8 +289,7 @@ dedup_elf_debug() {
 	elif ! hash "${name_of[dwz]}" 2>/dev/null; then
 		# Write out a warning to a function-scoped log file, atomically.
 		stash_warning <<-'EOF'
-		FEATURES=dedupdebug is enabled but the dwz binary could not be
-		found. This feature will not work unless dwz is installed!
+		FEATURES=dedupdebug requires the dwz binary, which was not found!
 		EOF
 		dedup_elf_debug() { :; }
 		return
@@ -379,8 +377,8 @@ save_elf_debug() {
 				elif ! contains_word buildid "${warned_for[debugedit]}"; then
 					warned_for[debugedit]+=" buildid"
 					stash_warning <<-'EOF'
-					FEATURES=splitdebug is enabled but the debugedit binary could not be found
-					This feature will not work correctly with build IDs unless debugedit is installed!
+					FEATURES=splitdebug requires the debugedit binary, which was not found!
+					This feature won't work properly with build IDs until debugedit is installed.
 					EOF
 				fi
 			fi
