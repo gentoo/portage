@@ -213,15 +213,15 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
+	# shellcheck disable=2317
 	if (( ! has_feature[installsources] || has_restriction[installsources] )); then
+		save_elf_sources() { :; }
 		return
 	elif [[ ! ${name_of[debugedit]} ]]; then
-		if ! contains_word installsources "${warned_for[debugedit]}"; then
-			warned_for[debugedit]+=" installsources"
-			ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
-			ewarn "found. This feature will not work unless debugedit is installed!"
-		fi
-		return 0
+		ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
+		ewarn "found. This feature will not work unless debugedit is installed!"
+		save_elf_sources() { :; }
+		return
 	fi
 
 	local x=$1
@@ -253,19 +253,17 @@ __try_symlink() {
 
 # Usage: dedup_elf_debug <src> <inode_dedupdebug>
 dedup_elf_debug() {
-	if (( ! has_feature[dedupdebug] || has_restriction[dedupdebug] )); then
-		return
-	fi
-
 	debug-print-function "${FUNCNAME}" "$@"
 
-	if [[ ! ${name_of[dwz]} ]]; then
-		if ! contains_word dedupdebug "${warned_for[dwz]}"; then
-			warned_for[dwz]+=" dedupdebug"
-			ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
-			ewarn "found. This feature will not work unless dwz is installed!"
-		fi
-		return 0
+	# shellcheck disable=2317
+	if (( ! has_feature[dedupdebug] || has_restriction[dedupdebug] )); then
+		dedup_elf_debug() { :; }
+		return
+	elif [[ ! ${name_of[dwz]} ]]; then
+		ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
+		ewarn "found. This feature will not work unless dwz is installed!"
+		dedup_elf_debug() { :; }
+		return
 	fi
 
 	local src=$1              # File to dedup debug symbols
