@@ -157,16 +157,18 @@ if [[ ${KERNEL} == linux ]] && (( has_feature[xattr] )); then
 	fi
 fi
 
-# Look up the tools we might be using
+# Determine the names of the tools that might subsequently be used. For several
+# of these, their ${CHOST}-prefixed variants are preferred, if found to exist.
 declare -A name_of
-for bin in debugedit dwz {"${CHOST}-",}{'objcopy','ranlib','readelf','strip'}; do
-	if [[ ! ${name_of[$bin]} ]]; then
-		name_of[$bin]=$(type -P -- "${bin}" 2>/dev/null)
+for bin in debugedit dwz {,"${CHOST}-"}{'objcopy','ranlib','readelf','strip'}; do
+	key=${bin#"${CHOST}-"}
+	if [[ ! ${name_of[$key]} ]] || hash "${bin}" 2>/dev/null; then
+		name_of[$key]=${bin}
 	fi
 done
 
 # If debugedit does not exist, consider some alternative locations for it.
-if [[ ! ${name_of[debugedit]} ]]; then
+if ! hash "${name_of[debugedit]}" 2>/dev/null; then
 	debugedit_paths=(
 		"${EPREFIX}/usr/libexec/rpm/debugedit"
 	)
@@ -217,7 +219,7 @@ save_elf_sources() {
 	if (( ! has_feature[installsources] || has_restriction[installsources] )); then
 		save_elf_sources() { :; }
 		return
-	elif [[ ! ${name_of[debugedit]} ]]; then
+	elif ! hash "${name_of[debugedit]}" 2>/dev/null; then
 		ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
 		ewarn "found. This feature will not work unless debugedit is installed!"
 		save_elf_sources() { :; }
@@ -259,7 +261,7 @@ dedup_elf_debug() {
 	if (( ! has_feature[dedupdebug] || has_restriction[dedupdebug] )); then
 		dedup_elf_debug() { :; }
 		return
-	elif [[ ! ${name_of[dwz]} ]]; then
+	elif ! hash "${name_of[dwz]}" 2>/dev/null; then
 		ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
 		ewarn "found. This feature will not work unless dwz is installed!"
 		dedup_elf_debug() { :; }
@@ -339,7 +341,7 @@ save_elf_debug() {
 			# This should only happen with FEATURES=-installsources, as
 			# it's done in save_elf_sources.
 			if [[ -z ${buildid} ]] ; then
-				if [[ ${name_of[debugedit]} ]]; then
+				if hash "${name_of[debugedit]}" 2>/dev/null; then
 					# Salt the build ID to avoid collisions on
 					# bundled libraries.
 					buildid=$("${name_of[debugedit]}" -i \
@@ -614,7 +616,7 @@ __multijob_finish
 cd "${tmpdir}"/sources/ && cat -- * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] \
 	&& (( has_feature[installsources] && ! has_restriction[installsources] )) \
-	&& [[ ${name_of[debugedit]} ]]
+	&& hash "${name_of[debugedit]}" 2>/dev/null
 then
 	__vecho "installsources: rsyncing source files"
 	[[ -d ${D%/}/${prepstrip_sources_dir#/} ]] || mkdir -p "${D%/}/${prepstrip_sources_dir#/}"
