@@ -158,12 +158,25 @@ if [[ ${KERNEL} == linux ]] && (( has_feature[xattr] )); then
 fi
 
 # Look up the tools we might be using
-declare -A path_of
-for bin in {"${CHOST}-",}{'strip','objcopy','readelf','ranlib'}; do
-	if [[ ! ${path_of[$bin]} ]]; then
-		path_of[$bin]=$(type -P -- "${bin}" 2>/dev/null)
+declare -A name_of
+for bin in debugedit dwz {"${CHOST}-",}{'objcopy','ranlib','readelf','strip'}; do
+	if [[ ! ${name_of[$bin]} ]]; then
+		name_of[$bin]=$(type -P -- "${bin}" 2>/dev/null)
 	fi
 done
+
+# If debugedit does not exist, consider some alternative locations for it.
+if [[ ! ${name_of[debugedit]} ]]; then
+	debugedit_paths=(
+		"${EPREFIX}/usr/libexec/rpm/debugedit"
+	)
+	for x in "${debugedit_paths[@]}"; do
+		if [[ -x ${x} ]]; then
+			name_of[debugedit]=${x}
+			break
+		fi
+	done
+fi
 
 # Declare a map to keep track of whether warnings in certain categories have
 # been issued for a missing tool.
@@ -171,7 +184,7 @@ declare -A warned_for
 
 # Figure out what tool set we're using to strip stuff
 unset SAFE_STRIP_FLAGS DEF_STRIP_FLAGS SPLIT_STRIP_FLAGS
-case $("${path_of[strip]}" --version 2>/dev/null) in
+case $("${name_of[strip]}" --version 2>/dev/null) in
 	*elfutils*) # dev-libs/elfutils
 		# elfutils default behavior is always safe, so don't need to specify
 		# any flags at all
@@ -191,20 +204,6 @@ read -rd '' -a portage_strip_flags <<<"${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS}
 
 prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
-if ! path_of[debugedit]=$(type -P debugedit 2>/dev/null); then
-	debugedit_paths=(
-		"${EPREFIX}/usr/libexec/rpm/debugedit"
-	)
-	for x in "${debugedit_paths[@]}"; do
-		if [[ -x ${x} ]]; then
-			path_of[debugedit]=${x}
-			break
-		fi
-	done
-fi
-
-path_of[dwz]=$(type -P dwz 2>/dev/null)
-
 __multijob_init
 
 # Setup ${T} filesystem layout that we care about.
@@ -216,7 +215,7 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 save_elf_sources() {
 	if (( ! has_feature[installsources] || has_restriction[installsources] )); then
 		return
-	elif [[ ! ${path_of[debugedit]} ]]; then
+	elif [[ ! ${name_of[debugedit]} ]]; then
 		if ! contains_word installsources "${warned_for[debugedit]}"; then
 			warned_for[debugedit]+=" installsources"
 			ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
@@ -230,7 +229,7 @@ save_elf_sources() {
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
 	# it later on in the save_elf_debug step.
-	buildid=$("${path_of[debugedit]}" -i \
+	buildid=$("${name_of[debugedit]}" -i \
 		-s "${CATEGORY}/${PF}:${SLOT}" \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
@@ -260,7 +259,7 @@ dedup_elf_debug() {
 
 	debug-print-function "${FUNCNAME}" "$@"
 
-	if [[ ! ${path_of[dwz]} ]]; then
+	if [[ ! ${name_of[dwz]} ]]; then
 		if ! contains_word dedupdebug "${warned_for[dwz]}"; then
 			warned_for[dwz]+=" dedupdebug"
 			ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
@@ -275,7 +274,7 @@ dedup_elf_debug() {
 	# We already dedupdebug-ed this inode.
 	[[ -L ${inode_dedupdebug} ]] && return 0
 
-	"${path_of[dwz]}" -- "${src}"
+	"${name_of[dwz]}" -- "${src}"
 	touch "${inode_dedupdebug}"
 }
 
@@ -324,8 +323,8 @@ save_elf_debug() {
 			if (( has_feature[compressdebug] )); then
 				objcopy_flags+=( --compress-debug-sections )
 			fi
-			"${path_of[objcopy]}" "${objcopy_flags[@]}" "${src}" "${dst}" \
-			&& "${path_of[objcopy]}" --add-gnu-debuglink="${dst}" "${src}"
+			"${name_of[objcopy]}" "${objcopy_flags[@]}" "${src}" "${dst}" \
+			&& "${name_of[objcopy]}" --add-gnu-debuglink="${dst}" "${src}"
 		fi
 
 		# Only do the following if the debug file was
@@ -342,10 +341,10 @@ save_elf_debug() {
 			# This should only happen with FEATURES=-installsources, as
 			# it's done in save_elf_sources.
 			if [[ -z ${buildid} ]] ; then
-				if [[ ${path_of[debugedit]} ]]; then
+				if [[ ${name_of[debugedit]} ]]; then
 					# Salt the build ID to avoid collisions on
 					# bundled libraries.
-					buildid=$("${path_of[debugedit]}" -i \
+					buildid=$("${name_of[debugedit]}" -i \
 						-s "${CATEGORY}/${PF}:${SLOT}" \
 						"${x}")
 				elif ! contains_word buildid "${warned_for[debugedit]}"; then
@@ -358,7 +357,7 @@ save_elf_debug() {
 			# If we (still) don't already have build-id from debugedit, look it up.
 			if [[ -z ${buildid} ]] ; then
 				# Convert the readelf output to something useful
-				buildid=$("${path_of[readelf]}" -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
+				buildid=$("${name_of[readelf]}" -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 			fi
 
 			if [[ -n ${buildid} ]] ; then
@@ -413,7 +412,7 @@ process_elf() {
 			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
 
 			if (( ! already_stripped )); then
-				"${path_of[strip]}" "${strip_flags[@]}" -f "${splitdebug}" -F "${shortname}" "${x}"
+				"${name_of[strip]}" "${strip_flags[@]}" -f "${splitdebug}" -F "${shortname}" "${x}"
 			fi
 			save_elf_debug "${x}" "${inode_link}_debug" "${splitdebug}"
 		else
@@ -421,7 +420,7 @@ process_elf() {
 				save_elf_debug "${x}" "${inode_link}_debug"
 			fi
 			if (( ! already_stripped )); then
-				"${path_of[strip]}" "${strip_flags[@]}" "${x}"
+				"${name_of[strip]}" "${strip_flags[@]}" "${x}"
 			fi
 		fi
 	fi
@@ -452,7 +451,7 @@ process_ar() {
 		# linked in (only for finally linked ELFs), so we have to
 		# retain the debug info in the archive itself.
 		if (( ! do_splitdebug )); then
-			"${path_of[strip]}" -g "${x}" && "${path_of[ranlib]}" "${x}"
+			"${name_of[strip]}" -g "${x}" && "${name_of[ranlib]}" "${x}"
 		fi
 	fi
 }
@@ -540,7 +539,7 @@ for inode_link in *; do
 	do
 
 		if (( do_banner )); then
-			__vecho "strip: ${path_of[strip]} ${portage_strip_flags[*]}"
+			__vecho "strip: ${name_of[strip]} ${portage_strip_flags[*]}"
 			do_banner=0
 		fi
 
@@ -617,7 +616,7 @@ __multijob_finish
 cd "${tmpdir}"/sources/ && cat -- * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] \
 	&& (( has_feature[installsources] && ! has_restriction[installsources] )) \
-	&& [[ ${path_of[debugedit]} ]]
+	&& [[ ${name_of[debugedit]} ]]
 then
 	__vecho "installsources: rsyncing source files"
 	[[ -d ${D%/}/${prepstrip_sources_dir#/} ]] || mkdir -p "${D%/}/${prepstrip_sources_dir#/}"
