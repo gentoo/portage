@@ -170,7 +170,7 @@ gcc_warn_check() {
 		fi \
 		| sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g' \
 		| grep -E -a "warning: (${patterns[*]})" \
-		| uniq
+		| awk '!seen[$0]++'
 	)
 
 	if (( i > 0 )); then
