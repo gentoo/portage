@@ -123,8 +123,7 @@ guess_suffix() {
 }
 
 fix_symlinks() {
-	local something_changed brokenlink newdest olddest ret
-	local -i indirection=0
+	local something_changed brokenlink newdest olddest ret i
 
 	# Repeat until nothing changes, in order to handle multiple
 	# levels of indirection (see bug #470916).
@@ -149,7 +148,7 @@ fix_symlinks() {
 
 		if (( ! something_changed )); then
 			break
-		elif (( ++indirection >= 100 )); then
+		elif (( ++i >= 100 )); then
 			# Protect against possibility of a bug triggering an endless loop.
 			eerror "ecompress: too many levels of indirection for" \
 				"'${something_changed#${ED%/}}'"
