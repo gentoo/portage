@@ -5,8 +5,8 @@
 # TODO: add -Wformat-security
 
 gcc_warn_check() {
-        local i reset_xtrace
-        local -a patterns
+	local i reset_xtrace
+	local -a patterns
 
 	# Evaluate misc gcc warnings
 	# In debug mode, this variable definition and corresponding grep calls
