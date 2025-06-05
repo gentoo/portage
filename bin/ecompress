@@ -5,88 +5,88 @@
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 do_ignore() {
-		local -a skip_dirs
-		local skip
+	local -a skip_dirs
+	local skip
 
-		> "${T}/.ecompress_skip_files" || die
-		for skip; do
-			if [[ -d ${ED%/}/${skip#/} ]]; then
-				skip_dirs+=( "${ED%/}/${skip#/}" )
-			else
-				rm -f "${ED%/}/${skip#/}.ecompress" || die
-				printf -- '%s\n' "${EPREFIX}/${skip#/}" >> "${T}/.ecompress_skip_files" || die
-			fi
-		done
-
-		if [[ ${#skip_dirs[@]} -gt 0 ]]; then
-			while read -r -d '' skip; do
-				skip=${skip%.ecompress}
-				printf -- '%s\n' "${skip#${D%/}}" >> "${T}/.ecompress_skip_files" || die
-			done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
+	> "${T}/.ecompress_skip_files" || die
+	for skip; do
+		if [[ -d ${ED%/}/${skip#/} ]]; then
+			skip_dirs+=( "${ED%/}/${skip#/}" )
+		else
+			rm -f "${ED%/}/${skip#/}.ecompress" || die
+			printf -- '%s\n' "${EPREFIX}/${skip#/}" >> "${T}/.ecompress_skip_files" || die
 		fi
+	done
 
-		if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
-			# Filter skipped files from ${T}/.ecompress_had_precompressed,
-			# using temporary files since these lists can be extremely large.
-			LC_COLLATE=C sort -u "${T}/.ecompress_skip_files" > "${T}/.ecompress_skip_files_sorted" || die
-			LC_COLLATE=C sort -u "${T}/.ecompress_had_precompressed" > "${T}/.ecompress_had_precompressed_sorted" || die
-			LC_COLLATE=C comm -13 "${T}/.ecompress_skip_files_sorted" "${T}/.ecompress_had_precompressed_sorted" > "${T}/.ecompress_had_precompressed" || die
-			rm -f "${T}/.ecompress_had_precompressed_sorted" "${T}/.ecompress_skip_files"{,_sorted}
-		fi
+	if [[ ${#skip_dirs[@]} -gt 0 ]]; then
+		while read -r -d '' skip; do
+			skip=${skip%.ecompress}
+			printf -- '%s\n' "${skip#${D%/}}" >> "${T}/.ecompress_skip_files" || die
+		done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
+	fi
+
+	if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
+		# Filter skipped files from ${T}/.ecompress_had_precompressed,
+		# using temporary files since these lists can be extremely large.
+		LC_COLLATE=C sort -u "${T}/.ecompress_skip_files" > "${T}/.ecompress_skip_files_sorted" || die
+		LC_COLLATE=C sort -u "${T}/.ecompress_had_precompressed" > "${T}/.ecompress_had_precompressed_sorted" || die
+		LC_COLLATE=C comm -13 "${T}/.ecompress_skip_files_sorted" "${T}/.ecompress_had_precompressed_sorted" > "${T}/.ecompress_had_precompressed" || die
+		rm -f "${T}/.ecompress_had_precompressed_sorted" "${T}/.ecompress_skip_files"{,_sorted}
+	fi
 }
 
 do_queue() {
-		local vpath comp path x
-		local -A collisions
-		local -a find_args
+	local vpath comp path x
+	local -A collisions
+	local -a find_args
 
-		for path; do
-			if [[ -e ${ED%/}/${path#/} ]]; then
-				find_args+=( "${ED%/}/${path#/}" )
-			fi
-		done
-
-		if [[ ${#find_args[@]} -gt 0 ]]; then
-			find_args+=( -type f )
-			[[ -n ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]] &&
-				find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
-
-			while IFS= read -d '' -r path; do
-				# detect the horrible posibility of the ebuild installing
-				# colliding compressed and/or uncompressed variants
-				# and fail hard (bug #667072)
-				#
-				# note: to save time, we need to do this only if there's
-				# at least one compressed file
-				case ${path} in
-					*.Z|*.gz|*.bz2|*.lzma|.lz|.lzo|.lz4|*.xz|*.zst)
-						vpath=${path%.*}
-						for comp in '' .Z .gz .bz2 .lzma .lz .lzo .lz4 .xz .zst; do
-							if [[ ${vpath}${comp} != ${path} && \
-									-e ${vpath}${comp} ]]; then
-								collisions[${path}]=1
-								collisions[${vpath}]=1
-								# ignore compressed variants in that case
-								continue 2
-							fi
-						done
-						printf -- '%s\n' "${path#${D%/}}" >> "${T}"/.ecompress_had_precompressed || die
-						;;
-				esac
-
-				>> "${path}.ecompress" || die
-			done < <(find "${find_args[@]}" -print0 || die)
-
-			if [[ ${#collisions[@]} -gt 0 ]]; then
-				eqawarn "QA Notice: Colliding files found by ecompress:"
-				eqawarn
-				for x in "${!collisions[@]}"; do
-					eqawarn "  ${x}"
-				done
-				eqawarn
-				eqawarn "Please remove the extraneous compressed variants."
-			fi
+	for path; do
+		if [[ -e ${ED%/}/${path#/} ]]; then
+			find_args+=( "${ED%/}/${path#/}" )
 		fi
+	done
+
+	if [[ ${#find_args[@]} -gt 0 ]]; then
+		find_args+=( -type f )
+		[[ -n ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]] &&
+			find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
+
+		while IFS= read -d '' -r path; do
+			# detect the horrible posibility of the ebuild installing
+			# colliding compressed and/or uncompressed variants
+			# and fail hard (bug #667072)
+			#
+			# note: to save time, we need to do this only if there's
+			# at least one compressed file
+			case ${path} in
+				*.Z|*.gz|*.bz2|*.lzma|.lz|.lzo|.lz4|*.xz|*.zst)
+					vpath=${path%.*}
+					for comp in '' .Z .gz .bz2 .lzma .lz .lzo .lz4 .xz .zst; do
+						if [[ ${vpath}${comp} != ${path} && \
+								-e ${vpath}${comp} ]]; then
+							collisions[${path}]=1
+							collisions[${vpath}]=1
+							# ignore compressed variants in that case
+							continue 2
+						fi
+					done
+					printf -- '%s\n' "${path#${D%/}}" >> "${T}"/.ecompress_had_precompressed || die
+					;;
+			esac
+
+			>> "${path}.ecompress" || die
+		done < <(find "${find_args[@]}" -print0 || die)
+
+		if [[ ${#collisions[@]} -gt 0 ]]; then
+			eqawarn "QA Notice: Colliding files found by ecompress:"
+			eqawarn
+			for x in "${!collisions[@]}"; do
+				eqawarn "  ${x}"
+			done
+			eqawarn
+			eqawarn "Please remove the extraneous compressed variants."
+		fi
+	fi
 }
 
 guess_suffix() {
