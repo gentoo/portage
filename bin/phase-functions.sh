@@ -638,8 +638,8 @@ __dyn_install() {
 
 		nsz=$(du -ks "${WORKDIR}")
 		isz=$(du -ks "${D}")
-		nsz=${nsz%% *}
-		isz=${isz%% *}
+		nsz=${nsz%%[[:blank:]]*}
+		isz=${isz%%[[:blank:]]*}
 
 		# align $1 to the right to the width of the widest of $1 and $2
 		padl() {
