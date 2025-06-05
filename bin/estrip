@@ -287,7 +287,6 @@ dedup_elf_debug() {
 		dedup_elf_debug() { :; }
 		return
 	elif ! hash "${name_of[dwz]}" 2>/dev/null; then
-		# Write out a warning to a function-scoped log file, atomically.
 		stash_warning <<-'EOF'
 		FEATURES=dedupdebug requires the dwz binary, which was not found!
 		EOF
