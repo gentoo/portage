@@ -6,7 +6,9 @@ register_die_hook() {
 	local hook
 
 	for hook; do
-		if ! contains_word "${hook}" "${EBUILD_DEATH_HOOKS}"; then
+		if [[ ${hook} != +([![:space:]]) ]]; then
+			:
+		elif ! contains_word "${hook}" "${EBUILD_DEATH_HOOKS}"; then
 			export EBUILD_DEATH_HOOKS+=" ${hook}"
 		fi
 	done
@@ -16,7 +18,9 @@ register_success_hook() {
 	local hook
 
 	for hook; do
-		if ! contains_word "${hook}" "${EBUILD_SUCCESS_HOOKS}"; then
+		if [[ ${hook} != +([![:space:]]) ]]; then
+			:
+		elif ! contains_word "${hook}" "${EBUILD_SUCCESS_HOOKS}"; then
 			export EBUILD_SUCCESS_HOOKS+=" ${hook}"
 		fi
 	done
