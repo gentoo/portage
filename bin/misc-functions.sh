@@ -644,20 +644,26 @@ __dyn_rpm() {
 }
 
 die_hooks() {
+	local -a hooks
+	local IFS cmd
+
 	[[ -f ${PORTAGE_BUILDDIR}/.die_hooks ]] && return
 
-	local x
-	for x in ${EBUILD_DEATH_HOOKS} ; do
-		${x} >&2
+	read -rd '' -a hooks <<<"${EBUILD_DEATH_HOOKS}"
+	for cmd in "${hooks[@]}"; do
+		"${cmd}" >&2
 	done
 
 	> "${PORTAGE_BUILDDIR}/.die_hooks"
 }
 
 success_hooks() {
-	local x
-	for x in ${EBUILD_SUCCESS_HOOKS} ; do
-		${x}
+	local -a hooks
+	local IFS cmd
+
+	read -rd '' -a hooks <<<"${EBUILD_SUCCESS_HOOKS}"
+	for cmd in "${hooks[@]}"; do
+		"${cmd}"
 	done
 }
 
