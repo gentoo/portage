@@ -494,9 +494,9 @@ if [[ -z ${XARGS} ]] ; then
 fi
 
 ___makeopts_jobs() {
-	local ere jobs
+	local LC_ALL LC_COLLATE=C ere jobs
 
-	ere='.*[[:space:]](-[^j]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]]'
+	ere='.*[[:space:]](-[A-Ia-iK-Zk-z]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]]'
 
 	if [[ " ${MAKEOPTS} " =~ $ere ]]; then
 		jobs=$(( 10#${BASH_REMATCH[3]} ))
