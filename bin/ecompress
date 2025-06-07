@@ -31,8 +31,11 @@ do_ignore() {
 			skip=${skip%.ecompress}
 			printf '%s\n' "${skip#"${D%/}"}" || ! break
 		done \
-		< <(printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.ecompress' -print0 -delete || die) \
+		< <(printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.ecompress' -print0 -delete) \
 		>> "${T}/.ecompress_skip_files" || die
+
+		# Check whether the invocation of find(1) succeeded.
+		wait "$!" || die
 	fi
 
 	if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
@@ -86,8 +89,11 @@ do_queue() {
 
 			: >> "${path}.ecompress" || die
 		done \
-		< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" -print0 || die) \
+		< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" -print0) \
 		> "${T}"/.ecompress_had_precompressed || die
+
+		# Check whether the invocation of find(1) succeeded.
+		wait "$!" || die
 
 		if (( ${#collisions[@]} )); then
 			eqawarn "QA Notice: Colliding files found by ecompress:"
