@@ -796,6 +796,14 @@ Have portage react strongly to conditions that may conflict with system
 security provisions (for example textrels, executable stack).  Read about
 the \fIQA_STRICT_*\fR variables in \fBmake.conf\fR(5).
 .TP
+.B suppress\-bindist\-binpkg
+When enabled, this feature prevents the creation of binary packages for
+ebuilds that have the \fIbindist\fR restriction. This allows users to
+install such packages normally while ensuring that no binary packages
+are created for them, avoiding potential licensing or redistribution issues.
+The package will be built and installed as usual; only the binary package
+creation step is skipped.
+.TP
 .B suidctl
 Before merging packages to the live filesystem, automatically strip setuid
 bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
