@@ -102,7 +102,7 @@ do_queue() {
 }
 
 guess_suffix() {
-	local IFS f i suffix tmpdir
+	local IFS f i tmpdir
 	local -a cmd
 
 	trap 'rm -rf -- "${tmpdir}"' RETURN
@@ -125,13 +125,10 @@ guess_suffix() {
 	# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
 	# having our glob match the uncompressed file here.
 	for f in compressme?*; do
-		if [[ -e ${f} ]]; then
-			suffix=${f#compressme}
-			break
-		fi
+		test -e "${f}" \
+		&& printf '%s\n' "${f#compressme}" \
+		&& return
 	done
-
-	[[ ${suffix} ]] && printf '%s\n' "${suffix}"
 }
 
 fix_symlinks() {
