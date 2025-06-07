@@ -132,7 +132,7 @@ guess_suffix() {
 }
 
 fix_symlinks() {
-	local something_changed brokenlink newdest olddest ret i
+	local something_changed brokenlink newdest olddest i
 
 	# Repeat until nothing changes, in order to handle multiple
 	# levels of indirection (see bug #470916).
@@ -151,9 +151,12 @@ fix_symlinks() {
 
 			something_changed=1
 			rm -f -- "${brokenlink}" \
-			&& ln -snf -- "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
-			((ret|=$?))
-		done < <(printf '%s\0' "${ED}" | find0 -type l -print0 || die)
+			&& ln -snf -- "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}" \
+			|| return
+		done < <(printf '%s\0' "${ED}" | find0 -type l -print0)
+
+		# Check whether the invocation of find(1) succeeded.
+		wait "$!" || return
 
 		if (( ! something_changed )); then
 			break
@@ -164,8 +167,6 @@ fix_symlinks() {
 			break
 		fi
 	done
-
-	return ${ret}
 }
 
 if [[ -z $1 ]] ; then
