@@ -235,7 +235,7 @@ export PORTAGE_COMPRESS_SUFFIX PORTAGE_COMPRESS_FLAGS PORTAGE_COMPRESS
 printf '%s\0' "${ED}" \
 | find0 -name '*.ecompress' -delete -print0 \
 | ___parallel_xargs -0 "${PORTAGE_BIN_PATH}"/ecompress-file
-ret=$?
+all_compressed=$(( $? == 0 ))
 
 if [[ -s ${T}/.ecompress_had_precompressed ]]; then
 	eqawarn "QA Notice: One or more compressed files were found in docompress-ed"
@@ -252,8 +252,8 @@ if [[ -s ${T}/.ecompress_had_precompressed ]]; then
 	done <"${T}"/.ecompress_had_precompressed
 fi
 
-fix_symlinks
-: $(( ret |= ${?} ))
-[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
-
-exit ${ret}
+if (( ! all_compressed )); then
+	__helpers_die "${0##*/}: one or more files coudn't be compressed"
+elif ! fix_symlinks; then
+	__helpers_die "${0##*/}: one or more symlinks couldn't be repaired"
+fi
