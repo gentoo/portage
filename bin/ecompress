@@ -102,7 +102,8 @@ do_queue() {
 }
 
 guess_suffix() {
-	local f i suffix tmpdir
+	local IFS f i suffix tmpdir
+	local -a cmd
 
 	trap 'rm -rf -- "${tmpdir}"' RETURN
 
@@ -118,7 +119,8 @@ guess_suffix() {
 		printf '%s ' "${i}" || ! break
 	done > compressme || return
 
-	${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null || return
+	read -rd '' -a cmd <<<"${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS}"
+	"${cmd[@]}" compressme > /dev/null || return
 
 	# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
 	# having our glob match the uncompressed file here.
