@@ -102,21 +102,21 @@ do_queue() {
 }
 
 guess_suffix() {
-	local - f i suffix
+	local f i suffix
 
-	set -e
-
-	tmpdir="${T}"/.ecompress$$.${RANDOM}
-	mkdir -- "${tmpdir}"
-	cd -- "${tmpdir}"
+	tmpdir=${T}/.ecompress$$.${RANDOM}
+	mkdir -- "${tmpdir}" \
+	&& cd -- "${tmpdir}" \
+	|| return
 
 	# We have to fill the file enough so that there is something
 	# to compress as some programs will refuse to do compression
 	# if it cannot actually compress the file
 	for (( i = 0; i <= 1000; i++ )); do
-		printf '%s ' "${i}"
-	done > compressme
-	${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
+		printf '%s ' "${i}" || ! break
+	done > compressme || return
+
+	${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null || return
 
 	# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
 	# having our glob match the uncompressed file here.
@@ -127,10 +127,10 @@ guess_suffix() {
 		fi
 	done
 
-	cd /
-	rm -rf -- "${tmpdir}"
+	cd / \
+	&& rm -rf -- "${tmpdir}" \
+	|| return
 
-	set +e
 	[[ ${suffix} ]] && printf '%s\n' "${suffix}"
 }
 
