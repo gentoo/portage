@@ -7,7 +7,7 @@ register_die_hook() {
 
 	for hook; do
 		if [[ ${hook} != +([![:space:]]) ]]; then
-			:
+			continue
 		elif ! contains_word "${hook}" "${EBUILD_DEATH_HOOKS}"; then
 			export EBUILD_DEATH_HOOKS+=" ${hook}"
 		fi
@@ -19,7 +19,7 @@ register_success_hook() {
 
 	for hook; do
 		if [[ ${hook} != +([![:space:]]) ]]; then
-			:
+			continue
 		elif ! contains_word "${hook}" "${EBUILD_SUCCESS_HOOKS}"; then
 			export EBUILD_SUCCESS_HOOKS+=" ${hook}"
 		fi
