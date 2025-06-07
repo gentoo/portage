@@ -208,13 +208,20 @@ fi
 
 if [[ ! -v PORTAGE_COMPRESS_FLAGS ]] ; then
 	case ${PORTAGE_COMPRESS} in
-		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
-		# Without setting '-m' lz4 will not compress multiple files at once.
-		# See: https://bugs.gentoo.org/672916
-		# Setting '--rm' will remove the source files after a successful compression.
-		lz4)  PORTAGE_COMPRESS_FLAGS="-m --rm";;
-		xz)   PORTAGE_COMPRESS_FLAGS="-q -T$(___makeopts_jobs) --memlimit-compress=50%";;
-		zstd) PORTAGE_COMPRESS_FLAGS="-q --rm -T$(___makeopts_jobs)";;
+		bzip2|gzip)
+			PORTAGE_COMPRESS_FLAGS="-9"
+			;;
+		lz4)
+			# Without the -m option, lz4 will not compress multiple
+			# files at once, per bug 672916. Passing --rm removes
+			# the source files upon successfuly compressing.
+			PORTAGE_COMPRESS_FLAGS="-m --rm"
+			;;
+		xz)
+			PORTAGE_COMPRESS_FLAGS="-q -T$(___makeopts_jobs) --memlimit-compress=50%"
+			;;
+		zstd)
+			PORTAGE_COMPRESS_FLAGS="-q --rm -T$(___makeopts_jobs)";;
 	esac
 fi
 
