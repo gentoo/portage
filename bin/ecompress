@@ -143,10 +143,12 @@ fix_symlinks() {
 
 			target1=$(readlink -- "${link}")
 			target2=${target1}${PORTAGE_COMPRESS_SUFFIX}
-			if [[ "${target2}" == /* ]] ; then
-				[[ -f "${D%/}${target2}" ]] || continue
-			else
-				[[ -f "${link%/*}/${target2}" ]] || continue
+			if [[ ${target2} == /* ]]; then
+				if [[ ! -f ${D%/}${target2} ]]; then
+					continue
+				fi
+			elif [[ ! -f ${link%/*}/${target2} ]]; then
+				continue
 			fi
 
 			something_changed=1
