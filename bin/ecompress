@@ -102,7 +102,9 @@ do_queue() {
 }
 
 guess_suffix() {
-	local f i suffix
+	local f i suffix tmpdir
+
+	trap 'rm -rf -- "${tmpdir}"' RETURN
 
 	tmpdir=${T}/.ecompress$$.${RANDOM}
 	mkdir -- "${tmpdir}" \
@@ -126,10 +128,6 @@ guess_suffix() {
 			break
 		fi
 	done
-
-	cd / \
-	&& rm -rf -- "${tmpdir}" \
-	|| return
 
 	[[ ${suffix} ]] && printf '%s\n' "${suffix}"
 }
