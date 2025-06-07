@@ -15,7 +15,7 @@ do_ignore() {
 	local -a skip_dirs
 	local skip
 
-	> "${T}/.ecompress_skip_files" || die
+	: > "${T}/.ecompress_skip_files" || die
 	for skip; do
 		if [[ -d ${ED%/}/${skip#/} ]]; then
 			skip_dirs+=( "${ED%/}/${skip#/}" )
@@ -84,7 +84,7 @@ do_queue() {
 					;;
 			esac
 
-			>> "${path}.ecompress" || die
+			: >> "${path}.ecompress" || die
 		done \
 		< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" -print0 || die) \
 		> "${T}"/.ecompress_had_precompressed || die
