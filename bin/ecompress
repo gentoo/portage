@@ -138,11 +138,9 @@ fix_symlinks() {
 	# levels of indirection (see bug #470916).
 	while true ; do
 		something_changed=0
-		while IFS= read -rd '' link; do
-			[[ -e ${link} ]] && continue
-
-			target1=$(readlink -- "${link}")
+		while IFS= read -rd '' link && IFS= read -rd '' target1; do
 			target2=${target1}${PORTAGE_COMPRESS_SUFFIX}
+
 			if [[ ${target2} == /* ]]; then
 				if [[ ! -f ${D%/}${target2} ]]; then
 					continue
@@ -155,7 +153,7 @@ fix_symlinks() {
 			rm -f -- "${link}" \
 			&& ln -snf -- "${target2}" "${link}${PORTAGE_COMPRESS_SUFFIX}" \
 			|| return
-		done < <(printf '%s\0' "${ED}" | find0 -type l -print0)
+		done < <(printf '%s\0' "${ED}" | find0 -type l -xtype l -printf '%p\0%l\0')
 
 		# Check whether the invocation of find(1) succeeded.
 		wait "$!" || return
