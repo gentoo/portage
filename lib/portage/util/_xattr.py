@@ -8,7 +8,7 @@ We do not include the functions that Python 3.3+ provides in the os module as
 the signature there is different compared to xattr.
 
 See the standard xattr module for more documentation:
-	https://pypi.python.org/pypi/pyxattr
+        https://pypi.python.org/pypi/pyxattr
 """
 
 import contextlib
