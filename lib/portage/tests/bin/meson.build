@@ -5,6 +5,7 @@ py.install_sources(
         'test_dodir.py',
         'test_doins.py',
         'test_eapi7_ver_funcs.py',
+        'test_eapi9_pipestatus.py',
         'test_filter_bash_env.py',
         '__init__.py',
         '__test__.py',
