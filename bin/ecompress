@@ -132,26 +132,26 @@ guess_suffix() {
 }
 
 fix_symlinks() {
-	local something_changed brokenlink newdest olddest i
+	local something_changed link target1 target2 i
 
 	# Repeat until nothing changes, in order to handle multiple
 	# levels of indirection (see bug #470916).
 	while true ; do
 		something_changed=0
-		while IFS= read -rd '' brokenlink; do
-			[[ -e ${brokenlink} ]] && continue
+		while IFS= read -rd '' link; do
+			[[ -e ${link} ]] && continue
 
-			olddest=$(readlink -- "${brokenlink}")
-			newdest=${olddest}${PORTAGE_COMPRESS_SUFFIX}
-			if [[ "${newdest}" == /* ]] ; then
-				[[ -f "${D%/}${newdest}" ]] || continue
+			target1=$(readlink -- "${link}")
+			target2=${target1}${PORTAGE_COMPRESS_SUFFIX}
+			if [[ "${target2}" == /* ]] ; then
+				[[ -f "${D%/}${target2}" ]] || continue
 			else
-				[[ -f "${brokenlink%/*}/${newdest}" ]] || continue
+				[[ -f "${link%/*}/${target2}" ]] || continue
 			fi
 
 			something_changed=1
-			rm -f -- "${brokenlink}" \
-			&& ln -snf -- "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}" \
+			rm -f -- "${link}" \
+			&& ln -snf -- "${target2}" "${link}${PORTAGE_COMPRESS_SUFFIX}" \
 			|| return
 		done < <(printf '%s\0' "${ED}" | find0 -type l -print0)
 
