@@ -27,12 +27,15 @@ register_success_hook() {
 }
 
 __strip_duplicate_slashes() {
-	if [[ -n ${1} ]] ; then
-		local removed=${1}
-		while [[ ${removed} == *//* ]] ; do
-			removed=${removed//\/\///}
-		done
-		echo "${removed}"
+	local str=$1 reset_extglob
+
+	if [[ ${str} ]]; then
+		# The extglob option affects the behaviour of the parser and
+		# must thus be treated with caution. Given that extglob is not
+		# normally enabled by portage, use eval to conceal the pattern.
+		reset_extglob=$(shopt -p extglob)
+		eval "shopt -s extglob; str=\${str//+(\/)/\/}; ${reset_extglob}"
+		printf '%s\n' "${str}"
 	fi
 }
 
