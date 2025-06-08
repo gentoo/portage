@@ -54,7 +54,7 @@ do_ignore() {
 }
 
 do_queue() {
-	local vpath comp path x
+	local vpath comp path
 	local -a find_args paths
 	local -A collisions
 
@@ -108,8 +108,8 @@ do_queue() {
 	if (( ${#collisions[@]} )); then
 		eqawarn "QA Notice: Colliding files found by ecompress:"
 		eqawarn
-		for x in "${!collisions[@]}"; do
-			eqawarn "  ${x}"
+		for path in "${!collisions[@]}"; do
+			eqawarn "  ${path}"
 		done
 		eqawarn
 		eqawarn "Please remove the extraneous compressed variants."
