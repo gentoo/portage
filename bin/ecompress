@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=SC1007
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
@@ -12,6 +13,7 @@ else
 fi
 
 do_ignore() {
+	local -x LC_ALL= LC_COLLATE=C
 	local -a skip_dirs
 	local skip
 
@@ -42,9 +44,9 @@ do_ignore() {
 	if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
 		# Filter skipped files from ${T}/.ecompress_had_precompressed,
 		# using temporary files since these lists can be extremely large.
-		LC_COLLATE=C sort -u -- "${T}"/.ecompress_skip_files > "${T}"/.ecompress_skip_files_sorted \
-		&& LC_COLLATE=C sort -u -- "${T}"/.ecompress_had_precompressed > "${T}"/.ecompress_had_precompressed_sorted \
-		&& LC_COLLATE=C comm -13 -- "${T}"/.ecompress_{skip_files,had_precompressed}_sorted > "${T}"/.ecompress_had_precompressed || die
+		sort -u -- "${T}"/.ecompress_skip_files > "${T}"/.ecompress_skip_files_sorted \
+		&& sort -u -- "${T}"/.ecompress_had_precompressed > "${T}"/.ecompress_had_precompressed_sorted \
+		&& comm -13 -- "${T}"/.ecompress_{skip_files,had_precompressed}_sorted > "${T}"/.ecompress_had_precompressed || die
 		rm -f -- "${T}"/.ecompress_{had_precompressed_sorted,skip_files{,_sorted}}
 	fi
 }
