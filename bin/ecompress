@@ -68,24 +68,23 @@ do_queue() {
 		fi
 	done
 
-	if (( ${#paths[@]} )); then
-		find_args+=( -type f )
-		if [[ ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]]; then
-			find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
-		fi
-		# Note that the find(1) command that feeds this loop is made to
-		# ignore pathnames containing <newline>. It must do so because
-		# the temporary files comprise <newline>-terminated pathnames.
-		while IFS= read -rd '' path; do
-			# detect the horrible posibility of the ebuild installing
-			# colliding compressed and/or uncompressed variants
-			# and fail hard (bug #667072)
-			#
-			# note: to save time, we need to do this only if there's
-			# at least one compressed file
-			if [[ ${path} != *.@(Z|gz|bz2|lzma|lz|lzo|lz4|xz|zst) ]]; then
-				continue
-			fi
+	(( ${#paths[@]} )) || return 0
+
+	find_args+=( -type f )
+	if [[ ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]]; then
+		find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
+	fi
+	# Note that the find(1) command that feeds this loop is made to
+	# ignore pathnames containing <newline>. It must do so because
+	# the temporary files comprise <newline>-terminated pathnames.
+	while IFS= read -rd '' path; do
+		# detect the horrible posibility of the ebuild installing
+		# colliding compressed and/or uncompressed variants
+		# and fail hard (bug #667072)
+		#
+		# note: to save time, we need to do this only if there's
+		# at least one compressed file
+		if [[ ${path} == *.@(Z|gz|bz2|lzma|lz|lzo|lz4|xz|zst) ]]; then
 			vpath=${path%.*}
 			for comp in '' .{Z,gz,bz2,lzma,lz,lzo,lz4,xz,zst}; do
 				if [[ ${vpath}${comp} != "${path}" && -e ${vpath}${comp} ]]; then
@@ -98,22 +97,22 @@ do_queue() {
 			printf '%s\n' "${path#"${D%/}"}" || ! break
 
 			: >> "${path}.ecompress" || die
-		done \
-		< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" ! -path $'*\n*' -print0) \
-		> "${T}"/.ecompress_had_precompressed || die
-
-		# Check whether the invocation of find(1) succeeded.
-		wait "$!" || die
-
-		if (( ${#collisions[@]} )); then
-			eqawarn "QA Notice: Colliding files found by ecompress:"
-			eqawarn
-			for x in "${!collisions[@]}"; do
-				eqawarn "  ${x}"
-			done
-			eqawarn
-			eqawarn "Please remove the extraneous compressed variants."
 		fi
+	done \
+	< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" ! -path $'*\n*' -print0) \
+	> "${T}"/.ecompress_had_precompressed || die
+
+	# Check whether the invocation of find(1) succeeded.
+	wait "$!" || die
+
+	if (( ${#collisions[@]} )); then
+		eqawarn "QA Notice: Colliding files found by ecompress:"
+		eqawarn
+		for x in "${!collisions[@]}"; do
+			eqawarn "  ${x}"
+		done
+		eqawarn
+		eqawarn "Please remove the extraneous compressed variants."
 	fi
 }
 
