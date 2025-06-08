@@ -8,7 +8,10 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 do_ignore() {
 	local -x LC_ALL= LC_COLLATE=C
 	local -a skip_dirs
-	local skip
+	local fileno skip
+
+	# Open the file in which the skippable paths will be recorded.
+	exec {fileno}>"${T}/.ecompress_skip_files" || die
 
 	for skip; do
 		if [[ ${skip} == *$'\n'* ]]; then
@@ -22,7 +25,7 @@ do_ignore() {
 			&& printf '%s\n' "${EPREFIX}/${skip#/}" \
 			|| ! break
 		fi
-	done > "${T}/.ecompress_skip_files" || die
+	done >&"${fileno}" || die
 
 	if (( ${#skip_dirs[@]} )); then
 		while IFS= read -rd '' skip; do
@@ -30,11 +33,14 @@ do_ignore() {
 			printf '%s\n' "${skip#"${D%/}"}" || ! break
 		done \
 		< <(printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.ecompress' ! -path $'*\n*' -print0 -delete) \
-		>> "${T}/.ecompress_skip_files" || die
+		>&"${fileno}" || die
 
 		# Check whether the invocation of find(1) succeeded.
 		wait "$!" || die
 	fi
+
+	# Close the file in which the skippable paths have been recorded.
+	exec {fileno}>&- || die
 
 	# shellcheck disable=2015
 	if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
