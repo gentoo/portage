@@ -38,13 +38,14 @@ do_ignore() {
 		wait "$!" || die
 	fi
 
+	# shellcheck disable=2015
 	if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
 		# Filter skipped files from ${T}/.ecompress_had_precompressed,
 		# using temporary files since these lists can be extremely large.
-		LC_COLLATE=C sort -u -- "${T}/.ecompress_skip_files" > "${T}/.ecompress_skip_files_sorted" || die
-		LC_COLLATE=C sort -u -- "${T}/.ecompress_had_precompressed" > "${T}/.ecompress_had_precompressed_sorted" || die
-		LC_COLLATE=C comm -13 -- "${T}/.ecompress_skip_files_sorted" "${T}/.ecompress_had_precompressed_sorted" > "${T}/.ecompress_had_precompressed" || die
-		rm -f -- "${T}/.ecompress_had_precompressed_sorted" "${T}/.ecompress_skip_files"{,_sorted}
+		LC_COLLATE=C sort -u -- "${T}"/.ecompress_skip_files > "${T}"/.ecompress_skip_files_sorted \
+		&& LC_COLLATE=C sort -u -- "${T}"/.ecompress_had_precompressed > "${T}"/.ecompress_had_precompressed_sorted \
+		&& LC_COLLATE=C comm -13 -- "${T}"/.ecompress_{skip_files,had_precompressed}_sorted > "${T}"/.ecompress_had_precompressed || die
+		rm -f -- "${T}"/.ecompress_{had_precompressed_sorted,skip_files{,_sorted}}
 	fi
 }
 
