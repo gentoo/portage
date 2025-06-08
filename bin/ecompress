@@ -122,8 +122,7 @@ guess_suffix() {
 
 	trap 'rm -rf -- "${tmpdir}"' RETURN
 
-	tmpdir=${T}/.ecompress$$.${RANDOM}
-	mkdir -- "${tmpdir}" \
+	tmpdir=$(mktemp -d -p "${T:-/tmp}") \
 	&& cd -- "${tmpdir}" \
 	|| return
 
