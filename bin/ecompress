@@ -10,7 +10,6 @@ do_ignore() {
 	local -a skip_dirs
 	local skip
 
-	: > "${T}/.ecompress_skip_files" || die
 	for skip; do
 		if [[ ${skip} == *$'\n'* ]]; then
 			# The operand must be disregarded because the temporary
