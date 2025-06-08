@@ -704,10 +704,16 @@ find0() {
 		# This is a temporary workaround for the GitHub CI runner, which
 		# suffers from an outdated version of findutils, per bug 957550.
 		find0() {
-			local -a paths
+			local -a opts paths
 
+			# All of -H, -L and -P are options. If specified, they
+			# must precede pathnames and primaries alike.
+			while [[ $1 == -[HLP] ]]; do
+				opts+=("$1")
+				shift
+			done
 			mapfile -td '' paths
-			find "${paths[@]}" "$@"
+			find "${opts[@]}" "${paths[@]}" "$@"
 		}
 	fi
 
