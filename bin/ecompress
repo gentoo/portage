@@ -54,9 +54,9 @@ do_ignore() {
 }
 
 do_queue() {
-	local vpath comp path
+	local uncompressed_path suffix path
 	local -a find_args paths
-	local -A collisions
+	local -A collision_by
 
 	for path; do
 		if [[ ${path} == *$'\n'* ]]; then
@@ -85,11 +85,11 @@ do_queue() {
 		# note: to save time, we need to do this only if there's
 		# at least one compressed file
 		if [[ ${path} == *.@(Z|gz|bz2|lzma|lz|lzo|lz4|xz|zst) ]]; then
-			vpath=${path%.*}
-			for comp in '' .{Z,gz,bz2,lzma,lz,lzo,lz4,xz,zst}; do
-				if [[ ${vpath}${comp} != "${path}" && -e ${vpath}${comp} ]]; then
-					collisions[$path]=1
-					collisions[$vpath]=1
+			uncompressed_path=${path%.*}
+			for suffix in '' .{Z,gz,bz2,lzma,lz,lzo,lz4,xz,zst}; do
+				if [[ ${uncompressed_path}${suffix} != "${path}" && -e ${uncompressed_path}${suffix} ]]; then
+					collision_by[$path]=
+					collision_by[$uncompressed_path]=
 					# ignore compressed variants in that case
 					continue 2
 				fi
@@ -105,10 +105,10 @@ do_queue() {
 	# Check whether the invocation of find(1) succeeded.
 	wait "$!" || die
 
-	if (( ${#collisions[@]} )); then
+	if (( ${#collision_by[@]} )); then
 		eqawarn "QA Notice: Colliding files found by ecompress:"
 		eqawarn
-		for path in "${!collisions[@]}"; do
+		for path in "${!collision_by[@]}"; do
 			eqawarn "  ${path}"
 		done
 		eqawarn
