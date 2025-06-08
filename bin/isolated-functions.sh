@@ -692,4 +692,26 @@ contains_word() {
 	[[ $1 == +([![:space:]]) && " ${*:2} " == *[[:space:]]"$1"[[:space:]]* ]]
 }
 
+# Invoke GNU find(1) in such a way that the paths to be searched are consumed
+# as a null-terminated list from STDIN. The positional parameters shall be
+# conveyed verbatim and treated as options and/or primaries.
+find0() {
+	if printf '/\0' | find -files0-from - -maxdepth 0 &>/dev/null; then
+		find0() {
+			find -files0-from - "$@"
+		}
+	else
+		# This is a temporary workaround for the GitHub CI runner, which
+		# suffers from an outdated version of findutils, per bug 957550.
+		find0() {
+			local -a paths
+
+			mapfile -td '' paths
+			find "${paths[@]}" "$@"
+		}
+	fi
+
+	find0 "$@"
+}
+
 true

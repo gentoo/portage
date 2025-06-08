@@ -5,13 +5,6 @@
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-# shellcheck disable=2185
-if hash gfind 2>/dev/null; then
-	find0() { gfind -files0-from - "$@"; }
-else
-	find0() { find -files0-from - "$@"; }
-fi
-
 do_ignore() {
 	local -x LC_ALL= LC_COLLATE=C
 	local -a skip_dirs
