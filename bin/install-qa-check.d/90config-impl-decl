@@ -93,8 +93,7 @@ find_log_targets() {
 		find_args+=( '-name' "${log}" '-o' )
 	done
 	unset -v 'find_args[-1]'
-	printf '%s\0' "${WORKDIR}" |
-		find -files0-from - -type f \( "${find_args[@]}" \) -print0
+	printf '%s\0' "${WORKDIR}" | find0 -type f \( "${find_args[@]}" \) -print0
 }
 
 has_utf8_ctype() {
