@@ -19,7 +19,11 @@ do_ignore() {
 
 	: > "${T}/.ecompress_skip_files" || die
 	for skip; do
-		if [[ -d ${ED%/}/${skip#/} ]]; then
+		if [[ ${skip} == *$'\n'* ]]; then
+			# The operand must be disregarded because the temporary
+			# files comprise <newline>-terminated pathnames.
+			continue
+		elif [[ -d ${ED%/}/${skip#/} ]]; then
 			skip_dirs+=( "${ED%/}/${skip#/}" )
 		else
 			rm -f -- "${ED%/}/${skip#/}.ecompress" \
@@ -33,7 +37,7 @@ do_ignore() {
 			skip=${skip%.ecompress}
 			printf '%s\n' "${skip#"${D%/}"}" || ! break
 		done \
-		< <(printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.ecompress' -print0 -delete) \
+		< <(printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.ecompress' ! -path $'*\n*' -print0 -delete) \
 		>> "${T}/.ecompress_skip_files" || die
 
 		# Check whether the invocation of find(1) succeeded.
@@ -57,7 +61,11 @@ do_queue() {
 	local -A collisions
 
 	for path; do
-		if [[ -e ${ED%/}/${path#/} ]]; then
+		if [[ ${path} == *$'\n'* ]]; then
+			# The operand must be disregarded because the temporary
+			# files comprise <newline>-terminated pathnames.
+			continue
+		elif [[ -e ${ED%/}/${path#/} ]]; then
 			paths+=( "${ED%/}/${path#/}" )
 		fi
 	done
@@ -67,6 +75,9 @@ do_queue() {
 		if [[ ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]]; then
 			find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
 		fi
+		# Note that the find(1) command that feeds this loop is made to
+		# ignore pathnames containing <newline>. It must do so because
+		# the temporary files comprise <newline>-terminated pathnames.
 		while IFS= read -rd '' path; do
 			# detect the horrible posibility of the ebuild installing
 			# colliding compressed and/or uncompressed variants
@@ -92,7 +103,7 @@ do_queue() {
 
 			: >> "${path}.ecompress" || die
 		done \
-		< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" -print0) \
+		< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" ! -path $'*\n*' -print0) \
 		> "${T}"/.ecompress_had_precompressed || die
 
 		# Check whether the invocation of find(1) succeeded.
@@ -212,7 +223,7 @@ done
 # setup compression stuff
 PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
 if [[ -z ${PORTAGE_COMPRESS} ]]; then
-	printf '%s\0' "${ED}" | find0 -name '*.ecompress' -delete
+	printf '%s\0' "${ED}" | find0 -name '*.ecompress' ! -path $'*\n*' -delete
 	exit 0
 fi
 
@@ -243,7 +254,7 @@ fi
 export PORTAGE_COMPRESS_SUFFIX PORTAGE_COMPRESS_FLAGS PORTAGE_COMPRESS
 
 printf '%s\0' "${ED}" \
-| find0 -name '*.ecompress' -delete -print0 \
+| find0 -name '*.ecompress' ! -path $'*\n*' -delete -print0 \
 | ___parallel_xargs -0 "${PORTAGE_BIN_PATH}"/ecompress-file
 all_compressed=$(( $? == 0 ))
 
