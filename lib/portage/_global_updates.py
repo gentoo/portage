@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import stat
@@ -6,7 +6,7 @@ import stat
 from portage import best, os
 from portage.const import WORLD_FILE
 from portage.data import secpass
-from portage.exception import DirectoryNotFound
+from portage.exception import DirectoryNotFound, PermissionDenied
 from portage.localization import _
 from portage.output import bold, colorize
 from portage.update import (
@@ -39,7 +39,10 @@ def _global_updates(root, trees, prev_mtimes, quiet=False, if_mtime_changed=True
         return False
 
     vardb = trees[root]["vartree"].dbapi
-    vardb.lock()
+    try:
+        vardb.lock()
+    except PermissionDenied:
+        return False
     try:
         return _do_global_updates(
             root,

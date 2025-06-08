@@ -9,7 +9,8 @@ Release notes take the form of the following optional categories:
 portage-3.0.69 (UNRELEASED)
 --------------
 
-TODO
+Bug fixes:
+* _global_updates: Skip if vardb lock raises PermissionDenied (bug #953449).
 
 portage-3.0.68 (2025-04-12)
 --------------
