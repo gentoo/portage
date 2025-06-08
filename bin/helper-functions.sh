@@ -53,7 +53,7 @@ __multijob_finish_one() {
 }
 
 __multijob_finish() {
-	local ret
+	local ret=0
 
 	while (( mj_num_jobs > 0 )); do
 		__multijob_finish_one
