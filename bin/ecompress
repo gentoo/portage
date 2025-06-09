@@ -108,9 +108,9 @@ do_queue() {
 	if (( ${#collision_by[@]} )); then
 		eqawarn "QA Notice: Colliding files found by ecompress:"
 		eqawarn
-		for path in "${!collision_by[@]}"; do
-			eqawarn "  ${path}"
-		done
+		while IFS= read -r path; do
+			eqawarn "  ${path@Q}"
+		done < <(printf '%s\n' "${!collision_by[@]}" | sort)
 		eqawarn
 		eqawarn "Please remove the extraneous compressed variants."
 	fi
