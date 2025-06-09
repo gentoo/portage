@@ -9,7 +9,6 @@ repositories:
   # pypy: https://ppa.launchpadcontent.net/pypy/ppa/ubuntu jammy main "251104D968854915"
 environment:
   PYTHON_VERSIONS:
-    - '3.9'
     - '3.10'
     - '3.11'
     # Python 3.12 seems to (at least sometimes) timeout

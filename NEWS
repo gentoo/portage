@@ -12,6 +12,9 @@ portage-3.0.69 (UNRELEASED)
 Bug fixes:
 * _global_updates: Skip if vardb lock raises PermissionDenied (bug #953449).
 
+Breaking changes:
+* The minimum supported Python version is now >= Python 3.10.
+
 portage-3.0.68 (2025-04-12)
 --------------
 
