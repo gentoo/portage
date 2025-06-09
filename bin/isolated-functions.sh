@@ -693,8 +693,10 @@ contains_word() {
 }
 
 # Invoke GNU find(1) in such a way that the paths to be searched are consumed
-# as a null-terminated list from STDIN. The positional parameters shall be
-# conveyed verbatim and treated as options and/or primaries.
+# as a list of one or more null-terminated records from STDIN. The positional
+# parameters shall be conveyed verbatim and are guaranteed to be treated as
+# options and/or primaries, provided that the version of GNU findutils is 4.9.0
+# or greater. For older versions, no such guarantee is made.
 find0() {
 	if printf '/\0' | find -files0-from - -maxdepth 0 &>/dev/null; then
 		find0() {
