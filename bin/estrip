@@ -431,12 +431,12 @@ while [[ $# -gt 0 ]] ; do
 	--ignore)
 		shift
 		do_ignore "$@"
-		exit 0
+		exit
 		;;
 	--queue)
 		shift
 		do_queue "$@"
-		exit 0
+		exit
 		;;
 	--dequeue)
 		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
