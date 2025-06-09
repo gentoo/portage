@@ -90,6 +90,7 @@ __save_ebuild_env() (
 	___eapi_has_in_iuse && unset -f in_iuse
 	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
 	___eapi_has_pipestatus && unset -f pipestatus
+	___eapi_has_ver_replacing && unset -f ver_replacing
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do

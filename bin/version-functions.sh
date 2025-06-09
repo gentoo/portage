@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=SC2128
 
@@ -190,3 +190,22 @@ ver_test() {
 	__ver_compare "${va}" "${vb}"
 	test $? "${op}" 2
 }
+
+if ___eapi_has_ver_replacing; then
+	ver_replacing() {
+		case ${EBUILD_PHASE} in
+			pretend|setup|preinst|postinst) ;;
+			*)
+				die "ver_replacing is meaningless in the ${EBUILD_PHASE} phase"
+				;;
+		esac
+
+		[[ $# -eq 2 ]] || die "Usage: ver_replacing <op> <ver>"
+
+		local v
+		for v in ${REPLACING_VERSIONS}; do
+			ver_test "${v}" "$@" && return 0
+		done
+		return 1
+	}
+fi

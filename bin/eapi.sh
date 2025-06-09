@@ -45,6 +45,7 @@ ___eapi_has_nonfatal()           [[ ${1-${EAPI-0}} != [0-3] ]]
 ___eapi_has_pipestatus()         [[ ${1-${EAPI-0}} != [0-8] ]]
 ___eapi_has_useq()               [[ ${1-${EAPI-0}} == [0-7] ]]
 ___eapi_has_usex()               [[ ${1-${EAPI-0}} != [0-4] ]]
+___eapi_has_ver_replacing()      [[ ${1-${EAPI-0}} != [0-8] ]]
 ___eapi_has_version_functions()  [[ ${1-${EAPI-0}} != [0-6] ]]
 
 # HELPERS BEHAVIOR
