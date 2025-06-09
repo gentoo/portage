@@ -131,6 +131,7 @@ __save_ebuild_env() (
 	___eapi_has_usex && REPLY+=( usex )
 	___eapi_has_pipestatus && REPLY+=( pipestatus )
 	___eapi_has_ver_replacing && REPLY+=( ver_replacing )
+	___eapi_has_edo && REPLY+=( edo )
 
 	# Destroy the collected functions.
 	unset -f "${REPLY[@]}"

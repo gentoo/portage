@@ -1179,3 +1179,23 @@ if ___eapi_has_pipestatus; then
 		return "${ret}"
 	}
 fi
+
+if ___eapi_has_edo; then
+	edo() {
+		# list of special characters taken from sh_contains_shell_metas
+		# in shquote.c (bash-5.2)
+		local a out regex='[] '\''"\|&;()<>!{}*[?^$`]|^[#~]|[=:]~'
+
+		[[ $# -ge 1 ]] || die "edo: at least one argument needed"
+
+		for a; do
+			# quote if (and only if) necessary
+			[[ ${a} =~ ${regex} || ! ${a} =~ ^[[:print:]]+$ ]] && a=${a@Q}
+			out+=" ${a}"
+		done
+
+		einfon
+		printf '%s\n' "${out:1}" >&2
+		"$@" || __helpers_die "edo: failed to run command: ${1}"
+	}
+fi
