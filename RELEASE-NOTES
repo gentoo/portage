@@ -1982,4 +1982,3 @@ portage-2.1
   in make.conf.  Interested in figuring out what use flags were turned off?  Check out
   /usr/portage/profiles/base/use.defaults and other use.defaults files that correspond
   to your profile.
-

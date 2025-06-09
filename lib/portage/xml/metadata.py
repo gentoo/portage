@@ -3,29 +3,29 @@
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
 
-	Example usage:
-		>>> from portage.xml.metadata import MetaDataXML
-		>>> pkg_md = MetaDataXML('/var/db/repos/gentoo/app-misc/gourmet/metadata.xml')
-		>>> pkg_md
-		<MetaDataXML '/var/db/repos/gentoo/app-misc/gourmet/metadata.xml'>
-		>>> pkg_md.herds()
-		['no-herd']
-		>>> for maint in pkg_md.maintainers():
-		...     print "{0} ({1})".format(maint.email, maint.name)
-		...
-		nixphoeni@gentoo.org (Joe Sapp)
-		>>> for flag in pkg_md.use():
-		...     print flag.name, "->", flag.description
-		...
-		rtf -> Enable export to RTF
-		gnome-print -> Enable printing support using gnome-print
-		>>> upstream = pkg_md.upstream()
-		>>> upstream
-		[<_Upstream {'docs': [], 'remoteid': [], 'maintainer':
-		 [<_Maintainer 'Thomas_Hinkle@alumni.brown.edu'>], 'bugtracker': [],
-		 'changelog': []}>]
-		>>> upstream[0].maintainer[0].name
-		'Thomas Mills Hinkle'
+Example usage:
+        >>> from portage.xml.metadata import MetaDataXML
+        >>> pkg_md = MetaDataXML('/var/db/repos/gentoo/app-misc/gourmet/metadata.xml')
+        >>> pkg_md
+        <MetaDataXML '/var/db/repos/gentoo/app-misc/gourmet/metadata.xml'>
+        >>> pkg_md.herds()
+        ['no-herd']
+        >>> for maint in pkg_md.maintainers():
+        ...     print "{0} ({1})".format(maint.email, maint.name)
+        ...
+        nixphoeni@gentoo.org (Joe Sapp)
+        >>> for flag in pkg_md.use():
+        ...     print flag.name, "->", flag.description
+        ...
+        rtf -> Enable export to RTF
+        gnome-print -> Enable printing support using gnome-print
+        >>> upstream = pkg_md.upstream()
+        >>> upstream
+        [<_Upstream {'docs': [], 'remoteid': [], 'maintainer':
+         [<_Maintainer 'Thomas_Hinkle@alumni.brown.edu'>], 'bugtracker': [],
+         'changelog': []}>]
+        >>> upstream[0].maintainer[0].name
+        'Thomas Mills Hinkle'
 """
 
 __all__ = ("MetaDataXML", "parse_metadata_use")
@@ -268,7 +268,7 @@ class MetaDataXML:
         """
         if self._herds is None:
             if self._xml_tree is None:
-                self._herds = tuple()
+                self._herds = ()
             else:
                 herds = []
                 for elem in self._xml_tree.findall("herd"):
@@ -293,7 +293,7 @@ class MetaDataXML:
         """
         if self._descriptions is None:
             if self._xml_tree is None:
-                self._descriptions = tuple()
+                self._descriptions = ()
             else:
                 self._descriptions = tuple(
                     e.text for e in self._xml_tree.findall("longdescription") if e.text
@@ -310,7 +310,7 @@ class MetaDataXML:
 
         if self._maintainers is None:
             if self._xml_tree is None:
-                self._maintainers = tuple()
+                self._maintainers = ()
             else:
                 self._maintainers = tuple(
                     _Maintainer(node) for node in self._xml_tree.findall("maintainer")
@@ -327,7 +327,7 @@ class MetaDataXML:
 
         if self._useflags is None:
             if self._xml_tree is None:
-                self._useflags = tuple()
+                self._useflags = ()
             else:
                 try:
                     # Python 2.7 or >=3.2
@@ -347,7 +347,7 @@ class MetaDataXML:
 
         if self._upstream is None:
             if self._xml_tree is None:
-                self._upstream = tuple()
+                self._upstream = ()
             else:
                 self._upstream = tuple(
                     _Upstream(node) for node in self._xml_tree.findall("upstream")

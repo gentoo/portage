@@ -114,7 +114,7 @@ export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
-# with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
+# with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them
 # when they are done.
 
 __qa_source() {
