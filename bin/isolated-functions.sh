@@ -715,7 +715,9 @@ find0() {
 				shift
 			done
 			mapfile -td '' paths
-			find "${opts[@]}" "${paths[@]}" "$@"
+			if (( ${#paths[@]} )); then
+				find "${opts[@]}" "${paths[@]}" "$@"
+			fi
 		}
 	fi
 
