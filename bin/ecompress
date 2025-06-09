@@ -214,9 +214,9 @@ while (( $# )); do
 	esac
 done
 
-# setup compression stuff
-PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
-if [[ -z ${PORTAGE_COMPRESS} ]]; then
+# Default to bzip2 if unset.
+if [[ ! ${PORTAGE_COMPRESS=bzip2} ]]; then
+	# It was set as the null string. Take it that no compression is desired.
 	printf '%s\0' "${ED}" | find0 -name '*.ecompress' ! -path $'*\n*' -delete
 	exit 0
 fi
