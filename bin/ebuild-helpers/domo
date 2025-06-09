@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
+
+if ! ___eapi_has_domo; then
+	die "'${0##*/}' has been banned for EAPI '${EAPI}'"
+	exit 1
+fi
 
 mynum=${#}
 if [ ${mynum} -lt 1 ] ; then
