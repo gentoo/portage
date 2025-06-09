@@ -390,7 +390,7 @@ do_queue() {
 	fi
 
 	while IFS= read -r path; do
-		>> "${path}.estrip" || die
+		: >> "${path}.estrip" || die
 	done < <(
 		(( ${#scanelf_results[@]} )) && printf "%s\n" "${scanelf_results[@]}"
 		find "${find_paths[@]}" -type f ! -type l -name '*.a'
@@ -681,7 +681,7 @@ then
 	# Needed after running save_elf_sources.
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
 	while read -r -d $'\0' emptydir; do
-		>> "${emptydir}"/.keepdir
+		: >> "${emptydir}"/.keepdir
 	done < <(find "${D%/}/${prepstrip_sources_dir#/}/" -type d -empty -print0)
 fi
 
