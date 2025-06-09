@@ -1162,3 +1162,20 @@ if ___eapi_has_in_iuse; then
 		contains_word "$1" "${IUSE_EFFECTIVE}"
 	}
 fi
+
+if ___eapi_has_pipestatus; then
+	pipestatus() {
+		local status=( "${PIPESTATUS[@]}" )
+		local s ret=0 verbose=""
+
+		[[ ${1} == -v ]] && { verbose=1; shift; }
+		[[ $# -ne 0 ]] && die "usage: pipestatus [-v]"
+
+		for s in "${status[@]}"; do
+			[[ ${s} -ne 0 ]] && ret=${s}
+		done
+
+		[[ ${verbose} ]] && echo "${status[@]}"
+		return "${ret}"
+	}
+fi

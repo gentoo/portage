@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -130,6 +130,7 @@ __save_ebuild_env() (
 	___eapi_has_in_iuse && REPLY+=( in_iuse )
 	___eapi_has_eapply && REPLY+=( __eapply_patch eapply patch )
 	___eapi_has_usex && REPLY+=( usex )
+	___eapi_has_pipestatus && REPLY+=( pipestatus )
 
 	# Destroy the collected functions.
 	unset -f "${REPLY[@]}"
