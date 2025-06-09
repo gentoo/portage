@@ -582,6 +582,7 @@ else
 fi
 
 # Now we look for unstripped binaries.
+read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
 for inode_link in *; do
 	test -e "${inode_link}" || continue
 	# shellcheck disable=2094
@@ -644,7 +645,6 @@ for inode_link in *; do
 			process_elf "${x}" "${inode_link}" "${portage_strip_flags[@]}"
 		elif [[ ${f} == *"SB relocatable"* ]] ; then
 			[[ ${x} == *.ko ]] || do_splitdebug=0
-			read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
 			process_elf "${x}" "${inode_link}" "${safe_strip_flags[@]}"
 		fi
 
