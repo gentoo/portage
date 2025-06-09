@@ -6,6 +6,7 @@ import grp
 import os
 import platform
 import pwd
+from typing import TYPE_CHECKING
 
 import portage
 from portage.localization import _
@@ -351,3 +352,9 @@ def _init(settings):
             v = 1
         globals()["secpass"] = v
         _initialized_globals.add("secpass")
+
+
+if TYPE_CHECKING:
+    portage_gid: int
+    portage_uid: int
+    secpass: int
