@@ -24,6 +24,7 @@ ___eapi_has_prefix_variables()         [[ ${1-${EAPI-0}} != [0-2] ]]
 
 # HELPERS PRESENCE
 
+___eapi_has_assert()             [[ ${1-${EAPI-0}} == [0-8] ]]
 ___eapi_has_docompress()         [[ ${1-${EAPI-0}} != [0-3] ]]
 ___eapi_has_dohard()             [[ ${1-${EAPI-0}} == [0-3] ]]
 ___eapi_has_doheader()           [[ ${1-${EAPI-0}} != [0-4] ]]
