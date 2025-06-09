@@ -602,18 +602,21 @@ for inode_link in *; do
 		elif (( ! do_prepstrip )); then
 			do_strip=1
 		else
-			# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
-			# the for loop from expanding the globs.
-			# The eval echo is to support STRIP_MASK="/*/{booga,bar}".
-			set -o noglob
 			do_strip=1
-			for m in $(eval echo ${STRIP_MASK}) ; do
-				if [[ ${x#"${ED%/}"} == ${m} ]]; then
+			while IFS= read -rd '' glob; do
+				# shellcheck disable=2053
+				if [[ ${x#"${ED%/}"} == ${glob} ]]; then
 					do_strip=0
 					break
 				fi
-			done
-			set +o noglob
+			done < <(
+				# FIXME: This facilitates code injection, just
+				# for the sake of supporting brace-expansion.
+				# To support it amounts to a grave anti-feature.
+				# It really ought to be dropped.
+				shopt -o -s noglob
+				eval "printf '%s\\0' ${STRIP_MASK}"
+			)
 		fi
 
 		if (( has_feature[splitdebug] && ! has_restriction[splitdebug] )); then
