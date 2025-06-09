@@ -584,9 +584,8 @@ fi
 # Now we look for unstripped binaries.
 for inode_link in *; do
 	test -e "${inode_link}" || continue
-	while read -r x
-	do
-
+	# shellcheck disable=2094
+	while read -r x; do
 		if (( do_banner )); then
 			__vecho "strip: ${name_of[strip]} ${portage_strip_flags[*]}"
 			do_banner=0
