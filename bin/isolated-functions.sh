@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=2128,2185,2219
 
@@ -23,7 +23,11 @@ fi
 shopt -s expand_aliases
 
 assert() {
-	IFS='|' expression=${PIPESTATUS[*]} let '! expression' || die "$@"
+	local x pipestatus=( "${PIPESTATUS[@]}" )
+	___eapi_has_assert || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
+	for x in "${pipestatus[@]}"; do
+		[[ ${x} -eq 0 ]] || die "$@"
+	done
 }
 
 shopt -s extdebug
