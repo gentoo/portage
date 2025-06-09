@@ -80,7 +80,8 @@ ___eapi_usev_has_second_arg()                                   [[ ${1-${EAPI-0}
 
 ___eapi_bash_3_2()                          [[ ${1-${EAPI-0}} == [0-5] ]]
 ___eapi_bash_4_2()                          [[ ${1-${EAPI-0}} == [67]  ]]
-___eapi_bash_5_0()                          [[ ${1-${EAPI-0}} != [0-7] ]]
+___eapi_bash_5_0()                          [[ ${1-${EAPI-0}} == 8     ]]
+___eapi_bash_5_2()                          [[ ${1-${EAPI-0}} != [0-8] ]]
 ___eapi_enables_failglob_in_global_scope()  [[ ${1-${EAPI-0}} != [0-5] ]]
 ___eapi_has_ENV_UNSET()                     [[ ${1-${EAPI-0}} != [0-6] ]]
 ___eapi_has_strict_keepdir()                [[ ${1-${EAPI-0}} != [0-7] ]]
