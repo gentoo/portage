@@ -95,9 +95,9 @@ do_queue() {
 				fi
 			done
 			printf '%s\n' "${path#"${D%/}"}" || ! break
-
-			: >> "${path}.ecompress" || die
 		fi
+
+		: >> "${path}.ecompress" || die
 	done \
 	< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" ! -path $'*\n*' -print0) \
 	> "${T}"/.ecompress_had_precompressed || die
