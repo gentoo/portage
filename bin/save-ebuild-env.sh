@@ -80,8 +80,7 @@ __save_ebuild_env() (
 		__source_env_files __try_source __check_bash_version \
 		__start_distcc \
 		__eqaquote __eqatag \
-		__eapi7_ver_parse_range __eapi7_ver_split \
-		__eapi7_ver_compare_int __eapi7_ver_compare \
+		__ver_parse_range __ver_split __ver_compare_int __ver_compare \
 		${QA_INTERCEPTORS}
 
 	___eapi_has_usex && unset -f usex

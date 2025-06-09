@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -14,7 +14,7 @@ class TestEAPI7VerFuncs(TestCase):
         Test that commands in test_cases produce expected output.
         """
         with tempfile.NamedTemporaryFile("w") as test_script:
-            test_script.write(f'source "{PORTAGE_BIN_PATH}"/eapi7-ver-funcs.sh\n')
+            test_script.write(f'source "{PORTAGE_BIN_PATH}"/version-functions.sh\n')
             for cmd, exp in test_cases:
                 test_script.write(f"{cmd}\n")
             test_script.flush()
@@ -36,7 +36,7 @@ class TestEAPI7VerFuncs(TestCase):
         Test that commands in test_cases give appropriate exit codes.
         """
         with tempfile.NamedTemporaryFile("w+") as test_script:
-            test_script.write(f'source "{PORTAGE_BIN_PATH}"/eapi7-ver-funcs.sh\n')
+            test_script.write(f'source "{PORTAGE_BIN_PATH}"/version-functions.sh\n')
             for cmd, exp in test_cases:
                 test_script.write(f"{cmd}; echo $?\n")
             test_script.flush()
@@ -60,7 +60,7 @@ class TestEAPI7VerFuncs(TestCase):
 
         for cmd in test_cases:
             test = f"""
-source "{PORTAGE_BIN_PATH}"/eapi7-ver-funcs.sh
+source "{PORTAGE_BIN_PATH}"/version-functions.sh
 die() {{ exit 1; }}
 {cmd}"""
 
