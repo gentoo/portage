@@ -275,10 +275,6 @@ process_ar() {
 }
 
 get_inode_number() {
-	# Since strip creates a new inode, we need to know the initial set of
-	# inodes in advance, so that we can avoid interference due to trying
-	# to strip the same (hardlinked) file multiple times in parallel.
-	# See bug #421099.
 	if  [[ ${USERLAND} == BSD ]]; then
 		get_inode_number() {
 			stat -f '%i' "$1"
@@ -553,6 +549,9 @@ fi
 
 cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 
+# Since strip creates a new inode, we need to know the initial set of inodes in
+# advance, so that we can avoid interference due to trying to strip the same
+# (hardlinked) file multiple times in parallel. See bug #421099.
 if (( do_prepstrip )); then
 	while read -r x ; do
 		inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
