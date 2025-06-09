@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -90,6 +90,7 @@ __save_ebuild_env() (
 	___eapi_has_eapply && unset -f eapply eapply_user
 	___eapi_has_in_iuse && unset -f in_iuse
 	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
+	___eapi_has_pipestatus && unset -f pipestatus
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do
