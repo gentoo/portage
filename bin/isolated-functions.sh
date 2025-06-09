@@ -6,7 +6,7 @@
 source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
 if ___eapi_has_version_functions; then
-	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+	source "${PORTAGE_BIN_PATH}/version-functions.sh" || exit 1
 fi
 
 if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then

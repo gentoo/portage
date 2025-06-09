@@ -91,17 +91,16 @@ __save_ebuild_env() (
 		__check_bash_version __compose_bzip2_cmd __dyn_configure
 		__dyn_compile __dyn_install __dyn_prepare __dyn_pretend
 		__dump_trace __dyn_unpack __dyn_clean __dyn_setup __dyn_help
-		__dyn_test __ebuild_phase_with_hooks __eapi7_ver_compare_int
-		__eapi7_ver_parse_range __ebuild_arg_to_phase
-		__ebuild_phase_funcs __eapi7_ver_compare __eapi7_ver_split
-		__ebuild_phase __ebuild_main __elog_base __eqaquote __eqatag
-		__eend __filter_readonly_variables __has_phase_defined_up_to
-		__helpers_die __hasgq __hasg __preprocess_ebuild_env
-		__quiet_mode __qa_source __qa_call __repo_attr
-		__strip_duplicate_slashes __source_all_bashrcs
+		__dyn_test __ebuild_phase_with_hooks __ebuild_arg_to_phase
+		__ebuild_phase_funcs __ebuild_phase __ebuild_main __elog_base
+		__eqaquote __eqatag __eend __filter_readonly_variables
+		__has_phase_defined_up_to __helpers_die __hasgq __hasg
+		__preprocess_ebuild_env __quiet_mode __qa_source __qa_call
+		__repo_attr __strip_duplicate_slashes __source_all_bashrcs
 		__source_env_files __save_ebuild_env __sb_append_var
 		__start_distcc __set_colors __try_source __unset_colors
-		__unpack_tar __vecho
+		__unpack_tar __vecho __ver_compare __ver_compare_int
+		__ver_parse_range __ver_split
 
 		addpredict addwrite adddeny addread assert best_version
 		contains_word configparser debug-print-function
