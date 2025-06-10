@@ -333,7 +333,7 @@ do_ignore() {
 	done
 
 	if (( ${#skip_dirs[@]} )); then
-		find "${skip_dirs[@]}" -name '*.estrip' -delete || die
+		printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.estrip' -delete || die
 	fi
 }
 
@@ -389,7 +389,7 @@ do_queue() {
 		: >> "${path}.estrip" || die
 	done < <(
 		(( ${#scanelf_results[@]} )) && printf "%s\n" "${scanelf_results[@]}"
-		find "${find_paths[@]}" -type f ! -type l -name '*.a'
+		printf '%s\0' "${find_paths[@]}" | find0 -type f ! -type l -name '*.a'
 	)
 }
 
@@ -570,14 +570,14 @@ if (( do_prepstrip )); then
 			if (( ${#needed_contents[@]} )); then
 				printf "%s\n" "${needed_contents[@]}"
 			fi
-			find "$@" -type f ! -type l -name '*.a'
+			printf '%s\0' "$@" | find0 -type f ! -type l -name '*.a'
 		) | LC_ALL=C sort -u
 	)
 else
 	while IFS= read -d '' -r x ; do
 		inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
 		echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
-	done < <(find "${ED}" -name '*.estrip' -delete -print0)
+	done < <(printf '%s\0' "${ED}" | find0 -name '*.estrip' -delete -print0)
 fi
 
 # Now we look for unstripped binaries.
@@ -684,7 +684,7 @@ then
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
 	while read -r -d $'\0' emptydir; do
 		: >> "${emptydir}"/.keepdir
-	done < <(find "${D%/}/${prepstrip_sources_dir#/}/" -type d -empty -print0)
+	done < <(printf '%s\0' "${D%/}/${prepstrip_sources_dir#/}/" | find0 -type d -empty -print0)
 fi
 
 # Collect any outstanding warnings and convey them through ewarn.
