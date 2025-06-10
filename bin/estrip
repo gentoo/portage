@@ -645,8 +645,7 @@ for inode_link in *; do
 		buildid=
 		if [[ ${f} == *"current ar archive"* ]] ; then
 			process_ar "${x}"
-		elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
-			${f} == *"SB shared object"* ]] ; then
+		elif [[ ${f} == *SB\ @(?(pie )executable|shared object)* ]] ; then
 			process_elf "${x}" "${inode_link}" "${portage_strip_flags[@]}"
 		elif [[ ${f} == *"SB relocatable"* ]] ; then
 			[[ ${x} == *.ko ]] || do_splitdebug=0
