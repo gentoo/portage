@@ -378,7 +378,7 @@ do_queue() {
 				# matches the path given
 				# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
 				needed_entry_file="${needed_entry% *}"
-				if [[ "${needed_entry_file}" =~ ^${find_path##"${D}"} ]] ; then
+				if [[ ${needed_entry_file} == "${find_path#"${D}"}"* ]]; then
 					scanelf_results+=( "${D}${needed_entry_file}" )
 				fi
 			done
