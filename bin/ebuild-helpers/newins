@@ -19,15 +19,17 @@ if ___eapi_newins_supports_reading_from_standard_input && [[ ${1} == "-" ]]; the
 	stdin=yes
 fi
 
-TMP=$(mktemp -d "${T}/.newins_tmp_XXXXXX")
-trap 'rm -rf "${TMP}"' EXIT
+# Create a temporary directory whose subsequent removal is guaranteed.
+tmpdir=
+trap 'rm -rf -- "${tmpdir}"' EXIT
+tmpdir=$(mktemp -d -- "${T:-/tmp}/newins.XXXXXX") || exit
 
 if [[ ${stdin} ]] ; then
 	if [[ -t 0 ]] ; then
 		__helpers_die "!!! ${helper}: Input is from a terminal"
 		exit 1
 	fi
-	cat > "${TMP}/${2}"
+	cat > "${tmpdir}/${2}"
 	ret=$?
 else
 	if [[ ! -e $1 ]] ; then
@@ -42,7 +44,7 @@ else
 		fi
 	fi
 
-	cp ${cp_args} "${1}" "${TMP}/$2"
+	cp ${cp_args} "${1}" "${tmpdir}/$2"
 	ret=$?
 fi
 
@@ -51,7 +53,7 @@ if [[ ${ret} -ne 0 ]] ; then
 	exit ${ret}
 fi
 
-do${helper#new} "${TMP}/${2}"
+do${helper#new} "${tmpdir}/${2}"
 ret=$?
 [[ ${ret} -ne 0 ]] && __helpers_die "${helper} failed"
 exit ${ret}

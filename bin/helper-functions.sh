@@ -21,8 +21,7 @@ __multijob_init() {
 	# read and write to not block ourselve, but use it for reading only.
 	# The second fd really is opened for write only, as Cygwin supports
 	# just one single read fd per FIFO. #583962
-	pipe=$(mktemp -t multijob.XXXXXX) \
-	&& rm -f -- "${pipe}" \
+	pipe=$(mktemp -u -- "${TMPDIR:-/tmp}/multijob.XXXXXX") \
 	&& mkfifo -m 600 -- "${pipe}" \
 	&& exec {mj_read_fd}<>"${pipe}" \
 	&& exec {mj_write_fd}>"${pipe}" \

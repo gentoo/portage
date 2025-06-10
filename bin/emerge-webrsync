@@ -331,15 +331,14 @@ check_file_signature_gpg_unwrapped() {
 
 		local gpgdir="${PORTAGE_GPG_DIR}"
 		if [[ -z ${gpgdir} ]] ; then
-			gpgdir=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
-			if [[ ! -w ${gpgdir} ]] ; then
-				die "gpgdir is not writable: ${gpgdir}"
-			fi
+			gpgdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") || exit
 
 			# If we're created our own temporary directory, it's okay for us
 			# to import the keyring by ourselves. But we'll avoid doing it
 			# if the user has set PORTAGE_GPG_DIR by themselves.
 			gpg --no-default-keyring --homedir "${gpgdir}" --batch --import "${key}"
+		elif [[ ! -w ${gpgdir} ]] ; then
+			die "gpgdir is not writable: ${gpgdir}"
 		fi
 
 		if gnupg_status=$(gpg --no-default-keyring --homedir "${gpgdir}" --batch \
@@ -713,14 +712,15 @@ main() {
 	fi
 
 	[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
-	TMPDIR=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
-	if [[ ! -w ${TMPDIR} ]] ; then
-		die "TMPDIR is not writable: ${TMPDIR}"
-	fi
-	trap 'set -u ; cd / ; rm -rf "${TMPDIR}"' EXIT
-	cd "${TMPDIR}" || exit 1
 
-	${keep} || DISTDIR=${TMPDIR}
+	# Create a temporary directory whose subsequent removal is guaranteed.
+	tmpdir=
+	trap 'rm -rf -- "${tmpdir}"' EXIT
+	tmpdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
+	&& cd -- "${tmpdir}" \
+	|| exit
+
+	${keep} || DISTDIR=${tmpdir}
 	[[ ! -d "${DISTDIR}" ]] && mkdir -p "${DISTDIR}"
 
 	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then

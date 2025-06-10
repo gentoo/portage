@@ -469,6 +469,8 @@ show_diff() {
 	local file1=$1 file2=$2 files=("$1" "$2") \
 		diff_files=() file i tmpdir
 
+	trap '[[ ${tmpdir} ]] && rm -r -- "${tmpdir}"' RETURN
+
 	if [[ -L ${file1} && ! -L ${file2} &&
 		-f ${file1} && -f ${file2} ]] ; then
 		# If a regular file replaces a symlink to a regular file, then
@@ -480,8 +482,9 @@ show_diff() {
 				diff_files[$i]=${files[$i]}
 				continue
 			fi
-			[[ -n ${tmpdir} ]] || \
-				tmpdir=$(mktemp -d "${TMP}/symdiff-XXX")
+			if [[ ! ${tmpdir} ]]; then
+				tmpdir=$(mktemp -d -- "${TMP}/symdiff.XXXXXX") || exit
+			fi
 			diff_files[$i]=${tmpdir}/${i}
 			if [[ ! -L ${files[$i]} && ! -e ${files[$i]} ]] ; then
 				echo "/dev/null" > "${diff_files[$i]}"
@@ -508,8 +511,6 @@ show_diff() {
 		diff_command "${diff_files[0]}" "${diff_files[1]}"
 		echo "End of differences between ${file1} and ${file2}"
 	fi
-
-	[[ -n ${tmpdir} ]] && rm -rf "${tmpdir}"
 }
 
 do_cfg() {
@@ -819,16 +820,15 @@ SCAN_PATHS=${*:-${CONFIG_PROTECT}}
 [[ " ${FEATURES} " == *" selinux "* ]] && \
 	selinux=true || selinux=false
 
-TMP="${PORTAGE_TMPDIR}/etc-update-$$"
+# Create a temporary directory whose subsequent removal is guaranteed.
+TMP=
+trap 'rm -rf -- "${TMP}"' EXIT
+TMP=$(mktemp -d -- "${PORTAGE_TMPDIR}/etc-update.XXXXXX") \
+&& chown "${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0}" -- "${TMP}" \
+|| exit
+
 trap "die terminated" SIGTERM
 trap "die interrupted" SIGINT
-
-rm -rf "${TMP}" 2>/dev/null
-mkdir "${TMP}" || die "failed to create temp dir"
-# make sure we have a secure directory to work in
-chmod 0700 "${TMP}" || die "failed to set perms on temp dir"
-chown ${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0} "${TMP}" || \
-	die "failed to set ownership on temp dir"
 
 # Get all the user settings from etc-update.conf
 cfg_vars=(

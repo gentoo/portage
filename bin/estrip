@@ -11,7 +11,7 @@ source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
 stash_warning() {
 	local tempfile crc
 
-	tempfile=$(mktemp -p "${T:?}" -- estrip.XXXXXXXXXX) \
+	tempfile=$(mktemp -- "${T:-/tmp}/estrip.XXXXXX") \
 	&& crc=$(set -o pipefail; tee -- "${tempfile}" | cksum) \
 	&& mv -- "${tempfile}" "${T}/estrip-${crc% *}.warning"
 }
@@ -509,9 +509,12 @@ prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
 __multijob_init
 
-# Setup ${T} filesystem layout that we care about.
-tmpdir="${T}/prepstrip"
-rm -rf "${tmpdir}"
+# Create a temporary directory whose subsequent removal is guaranteed.
+tmpdir=
+trap 'rm -rf -- "${tmpdir}"' EXIT
+tmpdir=$(mktemp -d -- "${T:-/tmp}/prepstrip.XXXXXX") || exit
+
+# Set up a temporary directory structure that we care about.
 mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # The existance of the section .symtab tells us that a binary is stripped.
@@ -691,5 +694,3 @@ fi
 
 # Collect any outstanding warnings and convey them through ewarn.
 raise_warnings
-
-rm -rf "${tmpdir}"

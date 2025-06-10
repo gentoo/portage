@@ -17,14 +17,16 @@ if [[ ! -d ${ED%/}/${__E_EXEDESTTREE#/} ]] ; then
 	install -d "${ED%/}/${__E_EXEDESTTREE#/}"
 fi
 
-TMP=$(mktemp -d "${T}/.doexe_tmp_XXXXXX")
+# Create a temporary directory whose subsequent removal is guaranteed.
+tmpdir=
+tmpdir=$(mktemp -d -- "${T:-/tmp}/doexe.XXXXXX") || exit
+trap 'rm -rf -- "${tmpdir}"' EXIT
 
 ret=0
-
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
-		cp "${x}" "${TMP}"
-		mysrc=${TMP}/${x##*/}
+		cp "${x}" "${tmpdir}"
+		mysrc=${tmpdir}/${x##*/}
 	elif [ -d "${x}" ] ; then
 		__vecho "doexe: warning, skipping directory ${x}"
 		continue
@@ -40,8 +42,6 @@ for x in "$@" ; do
 	fi
 	((ret|=$?))
 done
-
-rm -rf "${TMP}"
 
 [[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}
