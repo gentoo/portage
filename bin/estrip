@@ -196,12 +196,11 @@ save_elf_debug() {
 process_elf() {
 	local x=$1 inode_link=$2
 	shift 2
-	local ed_noslash=${ED%/}
 	local already_stripped xt_data
 	local lockfile=${inode_link}_lockfile
 	local locktries=100
 
-	__vecho "   ${x:${#ed_noslash}}"
+	__vecho "   ${x#"${ED%/}"}"
 
 	# If two processes try to debugedit or strip the same hardlink at the
 	# same time, it may corrupt files or cause loss of splitdebug info.
@@ -260,9 +259,8 @@ process_elf() {
 # Usage: process_ar <ar archive>
 process_ar() {
 	local x=$1
-	local ed_noslash=${ED%/}
 
-	__vecho "   ${x:${#ed_noslash}}"
+	__vecho "   ${x#"${ED%/}"}"
 
 	if (( do_strip )); then
 		# If we have split debug enabled, then do not strip this.
