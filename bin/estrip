@@ -149,6 +149,7 @@ save_elf_debug() {
 
 		# Only do the following if the debug file was
 		# successfully created (see bug #446774).
+		# shellcheck disable=2181
 		if [[ $? -eq 0 ]] ; then
 			arg="a-x,o-w"
 			[[ -g ${src} || -u ${src} ]] && arg+=",go-r"
