@@ -194,7 +194,8 @@ save_elf_debug() {
 
 # Usage: process_elf <elf>
 process_elf() {
-	local x=$1 inode_link=$2 strip_flags=("${@:3}")
+	local x=$1 inode_link=$2
+	shift 2
 	local ed_noslash=${ED%/}
 	local already_stripped xt_data
 	local lockfile=${inode_link}_lockfile
@@ -230,7 +231,7 @@ process_elf() {
 			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
 
 			if (( ! already_stripped )); then
-				"${name_of[strip]}" "${strip_flags[@]}" -f "${splitdebug}" -F "${shortname}" "${x}"
+				"${name_of[strip]}" "$@" -f "${splitdebug}" -F "${shortname}" "${x}"
 			fi
 			save_elf_debug "${x}" "${inode_link}_debug" "${splitdebug}"
 		else
@@ -238,7 +239,7 @@ process_elf() {
 				save_elf_debug "${x}" "${inode_link}_debug"
 			fi
 			if (( ! already_stripped )); then
-				"${name_of[strip]}" "${strip_flags[@]}" "${x}"
+				"${name_of[strip]}" "$@" "${x}"
 			fi
 		fi
 	fi
