@@ -553,7 +553,7 @@ cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 # advance, so that we can avoid interference due to trying to strip the same
 # (hardlinked) file multiple times in parallel. See bug #421099.
 if (( do_prepstrip )); then
-	while read -r x ; do
+	while IFS= read -r x; do
 		inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
 		echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
 	done < <(
@@ -585,7 +585,7 @@ read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
 for inode_link in *; do
 	test -e "${inode_link}" || continue
 	# shellcheck disable=2094
-	while read -r x; do
+	while IFS= read -r x; do
 		if (( do_banner )); then
 			__vecho "strip: ${name_of[strip]} ${portage_strip_flags[*]}"
 			do_banner=0
@@ -682,7 +682,7 @@ then
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
-	while read -r -d $'\0' emptydir; do
+	while IFS= read -rd '' emptydir; do
 		: >> "${emptydir}"/.keepdir
 	done < <(printf '%s\0' "${D%/}/${prepstrip_sources_dir#/}/" | find0 -type d -empty -print0)
 fi
