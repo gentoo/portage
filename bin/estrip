@@ -31,6 +31,8 @@ raise_warnings() {
 
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
+	local x=$1
+
 	# shellcheck disable=2317
 	if (( ! has_feature[installsources] || has_restriction[installsources] )); then
 		save_elf_sources() { :; }
@@ -42,8 +44,6 @@ save_elf_sources() {
 		save_elf_sources() { :; }
 		return
 	fi
-
-	local x=$1
 
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
@@ -58,8 +58,7 @@ save_elf_sources() {
 
 # Try to create a symlink. Return success if it already exists.
 __try_symlink() {
-	local target=$1
-	local name=$2
+	local target=$1 name=$2
 
 	# Check for an existing link before and after in case we are racing against
 	# another process.
@@ -71,6 +70,10 @@ __try_symlink() {
 
 # Usage: dedup_elf_debug <src> <inode_dedupdebug>
 dedup_elf_debug() {
+	# 1. File to dedup debug symbols
+	# 2. Temp path for hard link tracking
+	local src=$1 inode_dedupdebug=$2
+
 	debug-print-function "${FUNCNAME}" "$@"
 
 	# shellcheck disable=2317
@@ -85,9 +88,6 @@ dedup_elf_debug() {
 		return
 	fi
 
-	local src=$1              # File to dedup debug symbols
-	local inode_dedupdebug=$2 # Temp path for hard link tracking
-
 	# We already dedupdebug-ed this inode.
 	[[ -L ${inode_dedupdebug} ]] && return 0
 
@@ -97,23 +97,26 @@ dedup_elf_debug() {
 
 # Usage: save_elf_debug <src> <inode_debug> [splitdebug]
 save_elf_debug() {
+	# 1. File from which we extract symbols.
+	# 2. Temp path for hard link tracking
+	# 3. Existing debug file optionally created by eu-strip in parent function
+	local src=$1 inode_debug=$2 splitdebug=$3
+	local {src,dst}_{buildid_rel,basename,dir} buildid_{file,dir} arg dst
+	local -a objcopy_flags
+
 	debug-print-function "${FUNCNAME}" "$@"
 
 	# NOTE: Debug files must be installed in
 	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
 	# twice in this path) in order for gdb's debug-file-directory
 	# lookup to work correctly.
-	local src=$1         # File from which we extract symbols.
-	local inode_debug=$2 # Temp path for hard link tracking
-	local splitdebug=$3  # Existing debug file optionally created by eu-strip in parent function
 
 	# Source paths
-	local src_basename=${src##*/}
-	local src_dirname=${src%/*}
+	src_basename=${src##*/}
+	src_dirname=${src%/*}
 
 	# Destination paths
-	local dst_dirname=${ED%/}/usr/lib/debug/${src_dirname#"${D%/}"/}
-	local dst_basename dst
+	dst_dirname=${ED%/}/usr/lib/debug/${src_dirname#"${D%/}"/}
 
 	# dont save debug info twice
 	[[ ${src} == *".debug" ]] && return 0
@@ -136,7 +139,7 @@ save_elf_debug() {
 		if [[ -n ${splitdebug} ]] ; then
 			mv "${splitdebug}" "${dst}"
 		else
-			local -a objcopy_flags=( --only-keep-debug )
+			objcopy_flags=( --only-keep-debug )
 			if (( has_feature[compressdebug] )); then
 				objcopy_flags+=( --compress-debug-sections )
 			fi
@@ -147,7 +150,7 @@ save_elf_debug() {
 		# Only do the following if the debug file was
 		# successfully created (see bug #446774).
 		if [[ $? -eq 0 ]] ; then
-			local arg="a-x,o-w"
+			arg="a-x,o-w"
 			[[ -g ${src} || -u ${src} ]] && arg+=",go-r"
 			chmod "${arg}" "${dst}"
 
@@ -180,10 +183,10 @@ save_elf_debug() {
 			fi
 
 			if [[ -n ${buildid} ]] ; then
-				local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
-				local buildid_file="${buildid_dir}/${buildid:2}"
-				local src_buildid_rel="../../../../../${src#"${ED%/}"/}"
-				local dst_buildid_rel="../../${dst#"${ED%/}"/usr/lib/debug/}"
+				buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
+				buildid_file="${buildid_dir}/${buildid:2}"
+				src_buildid_rel="../../../../../${src#"${ED%/}"/}"
+				dst_buildid_rel="../../${dst#"${ED%/}"/usr/lib/debug/}"
 				mkdir -p "${buildid_dir}" || die
 				__try_symlink "${dst_buildid_rel}" "${buildid_file}.debug"
 				__try_symlink "${src_buildid_rel}" "${buildid_file}"
@@ -195,10 +198,8 @@ save_elf_debug() {
 # Usage: process_elf <elf>
 process_elf() {
 	local x=$1 inode_link=$2
+	local already_stripped lock{tries,file} splitdebug shortname xt_data
 	shift 2
-	local already_stripped xt_data
-	local lockfile=${inode_link}_lockfile
-	local locktries=100
 
 	__vecho "   ${x#"${ED%/}"}"
 
@@ -207,6 +208,8 @@ process_elf() {
 	# So, use a lockfile to prevent interference (easily observed with
 	# dev-vcs/git which creates ~111 hardlinks to one file in
 	# /usr/libexec/git-core).
+	lockfile=${inode_link}_lockfile
+	locktries=100
 	while ! ln "${inode_link}" "${lockfile}" 2>/dev/null; do
 		(( --locktries > 0 )) || die "failed to acquire lock '${lockfile}'"
 		sleep 1
@@ -226,8 +229,8 @@ process_elf() {
 	if (( do_strip )); then
 		# See if we can split & strip at the same time
 		if (( do_splitdebug )) && [[ ${SPLIT_STRIP_FLAGS} ]]; then
-			local shortname="${x##*/}.debug"
-			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
+			shortname=${x##*/}.debug
+			splitdebug=${tmpdir}/splitdebug/${shortname}.${BASHPID}
 
 			if (( ! already_stripped )); then
 				"${name_of[strip]}" "$@" -f "${splitdebug}" -F "${shortname}" "${x}"
@@ -337,7 +340,7 @@ do_ignore() {
 }
 
 do_queue() {
-	local needed_entry_file needed_entry find_path path
+	local needed_entry{,_file} {,find_}path
 	local -a find_paths scanelf_results
 
 	for path; do
