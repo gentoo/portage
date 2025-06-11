@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=SC2128
 
-__eapi7_ver_parse_range() {
+__ver_parse_range() {
 	local range=${1}
 	local max=${2}
 
@@ -20,7 +20,7 @@ __eapi7_ver_parse_range() {
 	fi
 }
 
-__eapi7_ver_split() {
+__ver_split() {
 	local v=${1} LC_ALL=C
 
 	comp=()
@@ -45,9 +45,9 @@ ver_cut() {
 	local start end
 	local -a comp
 
-	__eapi7_ver_split "${v}"
+	__ver_split "${v}"
 	local max=$((${#comp[@]}/2))
-	__eapi7_ver_parse_range "${range}" "${max}"
+	__ver_parse_range "${range}" "${max}"
 
 	local IFS=
 	if [[ ${start} -gt 0 ]]; then
@@ -62,11 +62,11 @@ ver_rs() {
 	local start end i
 	local -a comp
 
-	__eapi7_ver_split "${v}"
+	__ver_split "${v}"
 	local max=$((${#comp[@]}/2 - 1))
 
 	while [[ ${#} -ge 2 ]]; do
-		__eapi7_ver_parse_range "${1}" "${max}"
+		__ver_parse_range "${1}" "${max}"
 		for (( i = start*2; i <= end*2; i+=2 )); do
 			[[ ${i} -eq 0 && -z ${comp[i]} ]] && continue
 			comp[i]=${2}
@@ -78,7 +78,7 @@ ver_rs() {
 	echo "${comp[*]}"
 }
 
-__eapi7_ver_compare_int() {
+__ver_compare_int() {
 	local a=$1 b=$2 d=$(( ${#1}-${#2} ))
 
 	# Zero-pad to equal length if necessary.
@@ -92,7 +92,7 @@ __eapi7_ver_compare_int() {
 	[[ ${a} == "${b}" ]]
 }
 
-__eapi7_ver_compare() {
+__ver_compare() {
 	local va=${1} vb=${2} a an al as ar b bn bl bs br re LC_ALL=C
 
 	re="^([0-9]+(\.[0-9]+)*)([a-z]?)((_(alpha|beta|pre|rc|p)[0-9]*)*)(-r[0-9]+)?$"
@@ -111,7 +111,7 @@ __eapi7_ver_compare() {
 
 	# Compare numeric components (PMS algorithm 3.2)
 	# First component
-	__eapi7_ver_compare_int "${an%%.*}" "${bn%%.*}" || return
+	__ver_compare_int "${an%%.*}" "${bn%%.*}" || return
 
 	while [[ ${an} == *.* && ${bn} == *.* ]]; do
 		# Other components (PMS algorithm 3.3)
@@ -126,7 +126,7 @@ __eapi7_ver_compare() {
 			[[ ${a} > ${b} ]] && return 3
 			[[ ${a} < ${b} ]] && return 1
 		else
-			__eapi7_ver_compare_int "${a}" "${b}" || return
+			__ver_compare_int "${a}" "${b}" || return
 		fi
 	done
 	[[ ${an} == *.* ]] && return 3
@@ -144,7 +144,7 @@ __eapi7_ver_compare() {
 		a=${as%%_*}
 		b=${bs%%_*}
 		if [[ ${a%%[0-9]*} == "${b%%[0-9]*}" ]]; then
-			__eapi7_ver_compare_int "${a##*[a-z]}" "${b##*[a-z]}" || return
+			__ver_compare_int "${a##*[a-z]}" "${b##*[a-z]}" || return
 		else
 			# Check for p first
 			[[ ${a%%[0-9]*} == p ]] && return 3
@@ -162,7 +162,7 @@ __eapi7_ver_compare() {
 	fi
 
 	# Compare revision components (PMS algorithm 3.7)
-	__eapi7_ver_compare_int "${ar#-r}" "${br#-r}" || return
+	__ver_compare_int "${ar#-r}" "${br#-r}" || return
 
 	return 2
 }
@@ -187,6 +187,25 @@ ver_test() {
 		*) die "${FUNCNAME}: invalid operator: ${op}" ;;
 	esac
 
-	__eapi7_ver_compare "${va}" "${vb}"
+	__ver_compare "${va}" "${vb}"
 	test $? "${op}" 2
 }
+
+if ___eapi_has_ver_replacing; then
+	ver_replacing() {
+		case ${EBUILD_PHASE} in
+			pretend|setup|preinst|postinst) ;;
+			*)
+				die "ver_replacing is meaningless in the ${EBUILD_PHASE} phase"
+				;;
+		esac
+
+		[[ $# -eq 2 ]] || die "Usage: ver_replacing <op> <ver>"
+
+		local v
+		for v in ${REPLACING_VERSIONS}; do
+			ver_test "${v}" "$@" && return 0
+		done
+		return 1
+	}
+fi
