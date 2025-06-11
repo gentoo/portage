@@ -18,6 +18,8 @@ portage-3.0.68 (2025-04-12)
 Features:
 * Allow "portageq envvar" to treat a trailing * as a wildcard, matching multiple
   variables. Useful for multilib.
+* Introduce PORTAGE_LOG_FILE_SEP, allowing to configure the separator between
+  the components of the log files produced by portage.
 
 * Show package category, name, and repository before global-scope messages.
 
