@@ -75,7 +75,7 @@ _op = r"([=~]|[><]=?)"
 
 _repo_separator = "::"
 _repo_name = r"[\w][\w-]*"
-_repo_name_re = re.compile("^" + _repo_name + "$", re.UNICODE)
+_repo_name_re = re.compile("^" + _repo_name + "$", re.ASCII)
 _repo = r"(?:" + _repo_separator + "(" + _repo_name + ")" + ")?"
 
 _extended_cat = r"[\w+*][\w+.*-]*"
@@ -94,7 +94,7 @@ def _get_slot_dep_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
     else:
         slot_re = _slot
 
-    slot_re = re.compile("^" + slot_re + "$", re.VERBOSE | re.UNICODE)
+    slot_re = re.compile("^" + slot_re + "$", re.VERBOSE | re.ASCII)
 
     _slot_dep_re_cache[cache_key] = slot_re
     return slot_re
@@ -144,7 +144,7 @@ def _get_atom_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
         + ")("
         + _use
         + ")?\\Z",
-        re.VERBOSE | re.UNICODE,
+        re.VERBOSE | re.ASCII,
     )
     return _atom_re
 
@@ -179,7 +179,7 @@ def _get_atom_wildcard_re(eapi_attrs):
         + r"(?P<repo>"
         + _repo_name
         + r"))?\Z",
-        re.UNICODE,
+        re.ASCII,
     )
     return _atom_wildcard_re
 
@@ -1929,7 +1929,7 @@ def extended_cp_match(extended_cp, other_cp):
     extended_cp_re = _extended_cp_re_cache.get(extended_cp)
     if extended_cp_re is None:
         extended_cp_re = re.compile(
-            "^" + re.escape(extended_cp).replace(r"\*", "[^/]*") + "$", re.UNICODE
+            "^" + re.escape(extended_cp).replace(r"\*", "[^/]*") + "$", re.ASCII
         )
         _extended_cp_re_cache[extended_cp] = extended_cp_re
     return extended_cp_re.match(other_cp) is not None
