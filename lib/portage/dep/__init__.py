@@ -25,6 +25,7 @@ __all__ = [
     "remove_slot",
     "strip_empty",
     "use_reduce",
+    "_repo_name_re",
     "_repo_separator",
     "_slot_separator",
 ]
@@ -75,8 +76,7 @@ _op = r"([=~]|[><]=?)"
 
 _repo_separator = "::"
 _repo_name = r"[\w][\w-]*"
-_repo_name_re = re.compile("^" + _repo_name + "$", re.ASCII)
-_repo = r"(?:" + _repo_separator + "(" + _repo_name + ")" + ")?"
+_repo_name_re = re.compile(rf"^{_repo_name}\Z", re.ASCII)
 
 _extended_cat = r"[\w+*][\w+.*-]*"
 
@@ -136,9 +136,13 @@ def _get_atom_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
                 (?P<simple>{cp_re})
             )
             (?:
-                {_slot_separator}{_slot_loose}
+                {_slot_separator}
+                (?P<slot>{_slot_loose})
             )?
-            {_repo}
+            (?:
+                {_repo_separator}
+                (?P<repo>{_repo_name})
+            )?
         )
         (?P<usedeps>{_use})?
         \Z
@@ -180,7 +184,7 @@ def _get_atom_wildcard_re(eapi_attrs):
             )
         )
         (?:
-            :
+            {_slot_separator}
             (?P<slot>{_slot_loose})
         )?
         (?:
@@ -1563,8 +1567,8 @@ class Atom(str):
             op = m_group(base + 1)
             cpv = m_group(base + 2)
             cp = m_group(base + 3)
-            slot = m_group(atom_re.groups - 2)
-            repo = m_group(atom_re.groups - 1)
+            slot = m_group("slot")
+            repo = m_group("repo")
             use_str = m_group("usedeps")
             version = m_group(base + 4)
             if version is not None:
@@ -1588,8 +1592,8 @@ class Atom(str):
             m_group = m.group
             cpv = m_group(base + 1)
             cp = m_group(base + 2)
-            slot = m_group(atom_re.groups - 2)
-            repo = m_group(atom_re.groups - 1)
+            slot = m_group("slot")
+            repo = m_group("repo")
             use_str = m_group("usedeps")
             if m_group(base + 3) is not None:
                 raise InvalidAtom(self)
@@ -1597,8 +1601,8 @@ class Atom(str):
             op = None
             m_group = m.group
             cpv = cp = m_group(atom_re.groupindex["simple"] + 1)
-            slot = m_group(atom_re.groups - 2)
-            repo = m_group(atom_re.groups - 1)
+            slot = m_group("slot")
+            repo = m_group("repo")
             use_str = m_group("usedeps")
             if m_group(atom_re.groupindex["simple"] + 2) is not None:
                 raise InvalidAtom(self)
