@@ -125,25 +125,24 @@ def _get_atom_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
     cpv_re = _cpv
 
     _atom_re = re.compile(
-        "^(?P<without_use>(?:"
-        + "(?P<op>"
-        + _op
-        + cpv_re
-        + ")|"
-        + "(?P<star>="
-        + cpv_re
-        + r"\*)|"
-        + "(?P<simple>"
-        + cp_re
-        + "))"
-        + "("
-        + _slot_separator
-        + _slot_loose
-        + ")?"
-        + _repo
-        + ")("
-        + _use
-        + ")?\\Z",
+        rf"""
+        ^
+        (?P<without_use>
+            (?:
+                (?P<op>{_op}{cpv_re})
+                |
+                (?P<star>={cpv_re}\*)
+                |
+                (?P<simple>{cp_re})
+            )
+            (?:
+                {_slot_separator}{_slot_loose}
+            )?
+            {_repo}
+        )
+        (?P<usedeps>{_use})?
+        \Z
+        """,
         re.VERBOSE | re.ASCII,
     )
     return _atom_re
@@ -160,26 +159,37 @@ def _get_atom_wildcard_re(eapi_attrs):
     pkg_re = r"[\w+*][\w+*-]*?"
 
     _atom_wildcard_re = re.compile(
-        r"((?P<simple>("
-        + _extended_cat
-        + r")/("
-        + pkg_re
-        + r"(-"
-        + _vr
-        + ")?))"
-        + "|(?P<star>=(("
-        + _extended_cat
-        + r")/("
-        + pkg_re
-        + r"))-(?P<version>\*\w+\*)))"
-        + "(:(?P<slot>"
-        + _slot_loose
-        + r"))?("
-        + _repo_separator
-        + r"(?P<repo>"
-        + _repo_name
-        + r"))?\Z",
-        re.ASCII,
+        rf"""
+        ^
+        (?:
+            (?P<simple>
+                {_extended_cat}
+                /
+                {pkg_re}
+                (?:
+                    -{_vr}
+                )?
+            )
+            |
+            (?P<star>=
+                {_extended_cat}
+                /
+                {pkg_re}
+                -
+                (?P<version>\*\w+\*)
+            )
+        )
+        (?:
+            :
+            (?P<slot>{_slot_loose})
+        )?
+        (?:
+            {_repo_separator}
+            (?P<repo>{_repo_name})
+        )?
+        \Z
+        """,
+        re.VERBOSE | re.ASCII,
     )
     return _atom_wildcard_re
 
@@ -1530,10 +1540,10 @@ class Atom(str):
                 m_group = m.group
                 if m_group("star") is not None:
                     op = "=*"
-                    base = atom_re.groupindex["star"]
-                    cp = m_group(base + 1)
                     cpv = m_group("star")[1:]
-                    extended_version = m_group(base + 4)
+                    extended_version = m_group("version")
+                    # Drop trailing "-{version}" from the cpv to get cp.
+                    cp = cpv[: -(len(extended_version) + 1)]
                 else:
                     op = None
                     cpv = cp = m_group("simple")
@@ -1555,7 +1565,7 @@ class Atom(str):
             cp = m_group(base + 3)
             slot = m_group(atom_re.groups - 2)
             repo = m_group(atom_re.groups - 1)
-            use_str = m_group(atom_re.groups)
+            use_str = m_group("usedeps")
             version = m_group(base + 4)
             if version is not None:
                 if allow_build_id:
@@ -1580,7 +1590,7 @@ class Atom(str):
             cp = m_group(base + 2)
             slot = m_group(atom_re.groups - 2)
             repo = m_group(atom_re.groups - 1)
-            use_str = m_group(atom_re.groups)
+            use_str = m_group("usedeps")
             if m_group(base + 3) is not None:
                 raise InvalidAtom(self)
         elif m.group("simple") is not None:
@@ -1589,7 +1599,7 @@ class Atom(str):
             cpv = cp = m_group(atom_re.groupindex["simple"] + 1)
             slot = m_group(atom_re.groups - 2)
             repo = m_group(atom_re.groups - 1)
-            use_str = m_group(atom_re.groups)
+            use_str = m_group("usedeps")
             if m_group(atom_re.groupindex["simple"] + 2) is not None:
                 raise InvalidAtom(self)
 
