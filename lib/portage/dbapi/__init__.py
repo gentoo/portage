@@ -36,7 +36,7 @@ from _emerge.Package import Package
 
 
 class dbapi:
-    _category_re = re.compile(r"^\w[-.+\w]*$", re.UNICODE)
+    _category_re = re.compile(r"^\w[-.+\w]*$", re.ASCII)
     _categories: Optional[tuple[str, ...]] = None
     _use_mutable = False
     _known_keys = frozenset(auxdbkeys)

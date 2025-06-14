@@ -90,7 +90,7 @@ def _get_slot_re(eapi_attrs: _eapi_attrs) -> typing.Pattern:
     else:
         slot_re = _slot
 
-    slot_re = re.compile("^" + slot_re + "$", re.VERBOSE | re.UNICODE)
+    slot_re = re.compile("^" + slot_re + "$", re.VERBOSE | re.ASCII)
 
     _slot_re_cache[cache_key] = slot_re
     return slot_re
@@ -104,7 +104,7 @@ def _get_pv_re(eapi_attrs: _eapi_attrs) -> typing.Pattern:
     if _pv_re is not None:
         return _pv_re
 
-    _pv_re = re.compile(r"^" + _pv + r"$", re.VERBOSE | re.UNICODE)
+    _pv_re = re.compile(r"^" + _pv + r"$", re.VERBOSE | re.ASCII)
 
     return _pv_re
 
@@ -315,7 +315,7 @@ def _pkgsplit(mypkg: str, eapi: Any = None) -> Optional[tuple[str, str, str]]:
     return (m.group("pn"), m.group("ver"), rev)
 
 
-_cat_re = re.compile(f"^{_cat}$", re.UNICODE)
+_cat_re = re.compile(f"^{_cat}$", re.ASCII)
 _missing_cat = "null"
 
 
