@@ -143,7 +143,7 @@ def _get_atom_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
         + _repo
         + ")("
         + _use
-        + ")?$",
+        + ")?\\Z",
         re.VERBOSE | re.UNICODE,
     )
     return _atom_re
@@ -178,7 +178,7 @@ def _get_atom_wildcard_re(eapi_attrs):
         + _repo_separator
         + r"(?P<repo>"
         + _repo_name
-        + r"))?$",
+        + r"))?\Z",
         re.UNICODE,
     )
     return _atom_wildcard_re
