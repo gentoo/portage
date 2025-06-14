@@ -40,17 +40,17 @@ _unknown_repo = "__unknown__"
 # \w is [a-zA-Z0-9_]
 
 # PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
-# It must not begin with a hyphen or a dot.
-_slot = r"([\w+][\w+.-]*)"
+# It must not begin with a hyphen, a dot or a plus sign.
+_slot = r"([\w][\w+.-]*)"
 
 # 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
-# It must not begin with a hyphen or a dot.
-_cat = r"[\w+][\w+.-]*"
+# It must not begin with a hyphen, a dot or a plus sign.
+_cat = r"[\w][\w+.-]*"
 
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
-# It must not begin with a hyphen,
+# It must not begin with a hyphen or a plus sign,
 # and must not end in a hyphen followed by one or more digits.
-_pkg = r"[\w+][\w+-]*?"
+_pkg = r"[\w][\w+-]*?"
 
 _v = r"(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)"
 _rev = r"\d+"
