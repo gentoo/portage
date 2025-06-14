@@ -90,11 +90,18 @@ def _get_slot_dep_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
         return slot_re
 
     if eapi_attrs.slot_operator:
-        slot_re = _slot + r"?(\*|=|/" + _slot + r"=?)?"
+        slot_re = (
+            "("
+            # we don't want to name this group "slot",
+            # as that group name is already used in _get_atom_re()
+            + f"(?P<main_slot>{_slot})"
+            + ("(/" + f"(?P<sub_slot>{_slot})" + ")?")
+            + ")?"
+        ) + "(?P<slot_operator>[*=])?"
     else:
         slot_re = _slot
 
-    slot_re = re.compile("^" + slot_re + "$", re.VERBOSE | re.ASCII)
+    slot_re = re.compile(rf"^{slot_re}\Z", re.VERBOSE | re.ASCII)
 
     _slot_dep_re_cache[cache_key] = slot_re
     return slot_re
@@ -1628,21 +1635,13 @@ class Atom(str):
             if slot_match is None:
                 raise InvalidAtom(self)
             if eapi_attrs.slot_operator:
-                self.__dict__["slot"] = slot_match.group(1)
-                sub_slot = slot_match.group(2)
-                if sub_slot is not None:
-                    sub_slot = sub_slot.lstrip("/")
-                if sub_slot in ("*", "="):
-                    self.__dict__["sub_slot"] = None
-                    self.__dict__["slot_operator"] = sub_slot
-                else:
-                    slot_operator = None
-                    if sub_slot is not None and sub_slot[-1:] == "=":
-                        slot_operator = sub_slot[-1:]
-                        sub_slot = sub_slot[:-1]
-                    self.__dict__["sub_slot"] = sub_slot
-                    self.__dict__["slot_operator"] = slot_operator
+                self.__dict__["slot"] = slot_match.group("main_slot")
+                self.__dict__["sub_slot"] = slot_match.group("sub_slot")
+                self.__dict__["slot_operator"] = slot_match.group("slot_operator")
                 if self.slot is not None and self.slot_operator == "*":
+                    raise InvalidAtom(self)
+                # since both parts are optional, we could theoretically match on nothing
+                if self.slot is None and self.slot_operator is None:
                     raise InvalidAtom(self)
             else:
                 self.__dict__["slot"] = slot
