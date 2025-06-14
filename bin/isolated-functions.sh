@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=SC2128
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
 
 if ___eapi_has_version_functions; then
-	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+	source "${PORTAGE_BIN_PATH}/version-functions.sh" || exit 1
 fi
 
 if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
@@ -24,6 +24,7 @@ shopt -s expand_aliases
 
 assert() {
 	local x pipestatus=${PIPESTATUS[*]}
+	___eapi_has_assert || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
 	for x in ${pipestatus} ; do
 		[[ ${x} -eq 0 ]] || die "$@"
 	done
