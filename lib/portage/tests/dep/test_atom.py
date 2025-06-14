@@ -153,6 +153,7 @@ class TestAtom(TestCase):
         tests_xfail = (
             (Atom("sys-apps/portage"), False, False),
             ("cat/pkg\n", False, False),
+            ("cat/Ҙ", False, False),
             ("+cat/pkg", False, False),
             ("-cat/pkg", False, False),
             (".cat/pkg", False, False),
