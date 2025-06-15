@@ -515,14 +515,12 @@ do_snapshot() {
 			fi
 
 			if (( have_files )); then
-				break
+				break 2
 			else
 				# Remove files and use a different mirror
 				rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
 			fi
 		done
-
-		(( have_files )) && break
 	done
 
 	if (( have_files )); then
