@@ -106,41 +106,22 @@ do_debug=0
 keep=false
 
 handle_pgp_setup() {
-	# WEBRSYNC_VERIFY_SIGNATURE=0: disable PGP verification
-	# WEBRSYNC_VERIFY_SIGNATURE=1: use gemato for verification, fallback to regular gpg
-	# WEBRSYNC_VERIFY_SIGNATURE=2: use legacy FEATURES="webrsync-gpg"
-	WEBRSYNC_VERIFY_SIGNATURE=1
-
-	contains_word webrsync-gpg "${FEATURES}"
-	webrsync_gpg=$(( $? == 0 ))
-
-	repo_has_webrsync_verify=$(
-		has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature	| LC_ALL=C tr '[:upper:]' '[:lower:]') true yes
-	)
-
-	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] || [[ ${repo_has_webrsync_verify} -eq 1 ]]; then
-		# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
-		# calls for backward compatibility (this triggers a deprecation warning
-		# above). Since direct emerge-webrsync calls do not use gemato for secure
-		# key refresh, this behavior will not be supported in a future release.
-		if [[ ! ( -d ${PORTAGE_GPG_DIR} && ${webrsync_gpg} -eq 1 ) && -z ${PORTAGE_TEMP_GPG_DIR} ]]; then
-			die "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
-		fi
-
-		# Use gemato for the standard Portage-calling-us case w/ sync-type='webrsync'.
-		WEBRSYNC_VERIFY_SIGNATURE=1
-	elif [[ ${webrsync_gpg} -eq 1 ]]; then
-		# We only warn if FEATURES="webrsync-gpg" is in make.conf, not if
-		# Portage is calling us for 'sync-type=webrsync' with verification, because
-		# that path uses gemato now (plus the user can't help it, obviously).
+	if [[ ${no_pgp_verify} ]]; then
+		# Disable PGP verification. The webrsync module specifies this
+		# option if the "sync-webrsync-verify-signature" repo attribute
+		# is explicitly defined with a value of "false".
+		WEBRSYNC_VERIFY_SIGNATURE=0
+	elif contains_word webrsync-gpg "${FEATURES}"; then
+		# Discourage the use of the deprecated "webrsync-gpg" feature
+		# because it prevents the use of gemato for verification.
 		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
 		WEBRSYNC_VERIFY_SIGNATURE=2
-	elif [[ -n ${no_pgp_verify} ]]; then
-		WEBRSYNC_VERIFY_SIGNATURE=0
 	else
-		# The default at the beginning of handle_pgp_setup is WEBRSYNC_VERIFY_SIGNATURE=1
-		# i.e. gemato.
-		:;
+		# Try to use gemato for PGP verification. If missing, fall
+		# back to conventional verification with gpg(1). The former
+		# approach is preferred because it handles key refresh and
+		# revocation, and guarantees a clean operating environment.
+		WEBRSYNC_VERIFY_SIGNATURE=1
 	fi
 
 	case "${WEBRSYNC_VERIFY_SIGNATURE}" in
@@ -152,9 +133,6 @@ handle_pgp_setup() {
 			;;
 		2)
 			ewarn "PGP verification method: legacy gpg path"
-			;;
-		*)
-			die "Unknown WEBRSYNC_VERIFY_SIGNATURE state: \${WEBRSYNC_VERIFY_SIGNATURE}=${WEBRSYNC_VERIFY_SIGNATURE}"
 			;;
 	esac
 
