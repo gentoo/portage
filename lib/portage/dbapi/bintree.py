@@ -1558,7 +1558,9 @@ class binarytree:
                                 noiselevel=-1,
                             )
                             pkgindex = None
-                        elif local_timestamp != remote_timestamp:
+                        elif not local_timestamp or int(local_timestamp) < int(
+                            remote_timestamp
+                        ):
                             rmt_idx.readBody(f_dec)
                             pkgindex = rmt_idx
                 finally:
