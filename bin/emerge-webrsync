@@ -291,7 +291,7 @@ check_file_signature_gemato() {
 
 check_file_signature_gpg_unwrapped() {
 	local signature=$1 file=$2
-	local gpgdir key
+	local gnupg_status gpgdir line key
 
 	if type -P gpg > /dev/null; then
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
@@ -340,7 +340,7 @@ check_file_signature_gpg_unwrapped() {
 
 check_file_signature() {
 	local signature=$1 file=$2
-	local gnupg_status line r=1
+	local r=1
 
 	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} != 0 ]]; then
 		[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Checking signature ..."
