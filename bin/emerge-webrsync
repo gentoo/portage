@@ -334,38 +334,32 @@ gpg_verify() {
 
 check_file_signature() {
 	local signature=$1 file=$2
-	local r=1
+	local r
 
-	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} != 0 ]]; then
-		[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Checking signature ..."
-
-		case ${WEBRSYNC_VERIFY_SIGNATURE} in
-			1)
-				check_file_signature_gemato "${signature}" "${file}"
-				r=$?
-
-				if [[ ${r} -eq 127 ]] ; then
-					ewarn "Falling back to gpg as gemato is not installed"
-					check_file_signature_gpg_unwrapped "${signature}" "${file}"
-					r=$?
-				fi
-
-				;;
-			2)
+	case ${WEBRSYNC_VERIFY_SIGNATURE} in
+		[12])
+			if [[ ${PORTAGE_QUIET} -ne 1 ]]; then
+				einfo "Checking signature ..."
+			fi
+			;;&
+		1)
+			check_file_signature_gemato "${signature}" "${file}"
+			r=$?
+			if [[ ${r} -eq 127 ]] ; then
+				ewarn "Falling back to gpg as gemato is not installed"
 				check_file_signature_gpg_unwrapped "${signature}" "${file}"
 				r=$?
-				;;
-		esac
+			fi
+			;;
+		2)
+			check_file_signature_gpg_unwrapped "${signature}" "${file}"
+			r=$?
+	esac
 
-		if [[ ${r} != 0 ]] ; then
-			eerror "Error occurred in check_file_signature: ${r}. Aborting."
-			die "Verification error occured."
-		fi
-	else
-		r=0
+	if [[ ${r} != 0 ]] ; then
+		eerror "Error occurred in check_file_signature: ${r}. Aborting."
+		die "Verification error occured."
 	fi
-
-	return "${r}"
 }
 
 get_snapshot_timestamp() {
