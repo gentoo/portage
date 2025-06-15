@@ -477,7 +477,7 @@ do_snapshot() {
 				&& have_files=1
 			fi
 
-			if [[ ${have_files} -eq 0 ]] ; then
+			if (( ! have_files )); then
 				fetch_file "${mirror}/snapshots/${digest}" "${digest}" \
 				&& fetch_file "${mirror}/snapshots/${signature}" "${signature}" \
 				&& fetch_file "${mirror}/snapshots/${file}" "${file}" \
@@ -491,7 +491,7 @@ do_snapshot() {
 			# we want to try and retrieve
 			# from a different mirror
 			#
-			if [[ ${have_files} -eq 1 ]]; then
+			if (( have_files )); then
 				[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Getting snapshot timestamp ..."
 
 				snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
@@ -514,7 +514,7 @@ do_snapshot() {
 				fi
 			fi
 
-			if [[ ${have_files} -eq 1 ]]; then
+			if (( have_files )); then
 				break
 			else
 				# Remove files and use a different mirror
@@ -522,10 +522,10 @@ do_snapshot() {
 			fi
 		done
 
-		[[ ${have_files} -eq 1 ]] && break
+		(( have_files )) && break
 	done
 
-	if [[ ${have_files} -eq 1 ]]; then
+	if (( have_files )); then
 		sync_local "${DISTDIR}/${file}" && r=0
 	else
 		ewarn "${date} snapshot was not found"
