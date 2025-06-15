@@ -344,8 +344,7 @@ check_file_signature() {
 			;;&
 		1)
 			check_file_signature_gemato "${signature}" "${file}"
-			r=$?
-			if [[ ${r} -eq 127 ]] ; then
+			if [[ ${r=$?} -eq 127 ]] ; then
 				ewarn "Falling back to gpg as gemato is not installed"
 				check_file_signature_gpg_unwrapped "${signature}" "${file}"
 				r=$?
@@ -353,10 +352,9 @@ check_file_signature() {
 			;;
 		2)
 			check_file_signature_gpg_unwrapped "${signature}" "${file}"
-			r=$?
 	esac
 
-	if [[ ${r} != 0 ]] ; then
+	if [[ ${r=$?} != 0 ]] ; then
 		eerror "Error occurred in check_file_signature: ${r}. Aborting."
 		die "Verification error occured."
 	fi
