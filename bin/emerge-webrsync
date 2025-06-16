@@ -199,6 +199,7 @@ get_repository_timestamp() {
 }
 
 fetch_file() {
+	# shellcheck disable=2034
 	local URI=$1 FILE=$2
 	local opts
 
@@ -368,7 +369,8 @@ get_snapshot_timestamp() {
 
 sync_local() {
 	local file=$1
-	local chown_opts rsync_opts ownership post_sync
+	local ownership post_sync
+	local -a chown_opts rsync_opts
 
 	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Syncing local repository ..."
 
@@ -385,12 +387,14 @@ sync_local() {
 	fi
 
 	if type -P tarsync > /dev/null ; then
-		chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
-		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
+		chown_opts=( -o "${ownership%:*}" -g "${ownership#*:}" )
+		if ! chown "${ownership}" "${repo_location}" 2>/dev/null; then
+			chown_opts=()
+		fi
 
-		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
-			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
-
+		if ! tarsync $(vvecho -v) -s 1 "${chown_opts[@]}" \
+			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"
+		then
 			eerror "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -403,14 +407,14 @@ sync_local() {
 		# Free disk space
 		${keep} || rm -f "${file}"
 
-		rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} $(nvecho -q)"
-		if chown ${ownership} . > /dev/null 2>&1; then
-			chown -R ${ownership} .
-			rsync_opts+=" --owner --group"
+		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} $(nvecho -q)"
+		if chown "${ownership}" . 2>/dev/null; then
+			chown -R "${ownership}" .
+			rsync_opts+=( --owner --group )
 		fi
 
 		chmod 755 .
-		rsync ${rsync_opts} . "${repo_location%%/}" || {
+		rsync "${rsync_opts[@]}" . "${repo_location%%/}" || {
 			eerror "rsync failed: $?"
 			die "Aborting because of rsync failure"
 		}
@@ -494,7 +498,7 @@ do_snapshot() {
 
 					# Check that this snapshot is what the age it claims to be
 					if [[ ${snapshot_timestamp} -lt ${utc_seconds} || \
-						${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]]; then
+						${snapshot_timestamp} -gt $(( utc_seconds + 2 * 86400 )) ]]; then
 
 						ewarn "Snapshot timestamp is not within acceptable period!"
 						have_files=0
@@ -549,8 +553,7 @@ do_latest_snapshot() {
 	snapshot_date=$(get_date_part "${start_time}" "%Y%m%d")
 	snapshot_date_seconds=$(get_utc_second_from_string "${snapshot_date}")
 
-	while (( ${attempts} < 40 )) ; do
-		(( attempts++ ))
+	while (( attempts++ < 40 )); do
 		(( snapshot_date_seconds -= 86400 ))
 		# snapshots are created at 00:45
 		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 2700 ))
