@@ -224,7 +224,7 @@ fetch_file() {
 
 check_file_digest() {
 	local digest=$1 file=$2
-	local r=1
+	local digest_content md5sum_output r=1
 
 	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Checking digest ..."
 
