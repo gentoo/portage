@@ -291,7 +291,7 @@ check_file_signature_gemato() {
 
 check_file_signature_gpg_unwrapped() {
 	local signature=$1 file=$2
-	local gnupg_status gpgdir line key
+	local gpgdir key
 
 	if type -P gpg > /dev/null; then
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
@@ -317,21 +317,26 @@ check_file_signature_gpg_unwrapped() {
 			die "gpgdir is not writable: ${gpgdir}"
 		fi
 
-		if gnupg_status=$(gpg --no-default-keyring --homedir "${gpgdir}" --batch \
-			--status-fd 1 --verify "${signature}" "${file}"); then
-			while read -r line; do
-				if [[ ${line} == "[GNUPG:] GOODSIG"* ]]; then
-					return
-				fi
-			done <<< "${gnupg_status}"
+		if ! gpg_verify "${gpgdir}" "${signature}" "${file}"; then
+			# Exit early since it's typically inappropriate to try
+			# other mirrors in this case (it may indicate a keyring
+			# problem).
+			die "signature verification failed"
 		fi
-
-		# Exit early since it's typically inappropriate to try other
-		# mirrors in this case (it may indicate a keyring problem).
-		die "signature verification failed"
 	else
 		die "cannot check signature: gpg binary not found"
 	fi
+}
+
+gpg_verify() {
+	local gpgdir=$1 signature=$2 file=$3
+	local output token
+
+	# https://www.gnupg.org/documentation/manuals/gnupg/Automated-signature-checking.html
+	output=$(gpg --no-default-keyring --homedir "${gpgdir}" --batch --status-fd 1 --verify "${signature}" "${file}") || return
+	for token in GOODSIG VALIDSIG TRUST_ULTIMATE; do
+		[[ $'\n'${output} == *$'\n[GNUPG:] '"${token} "* ]] || return
+	done
 }
 
 check_file_signature() {
