@@ -435,25 +435,27 @@ sync_local() {
 
 do_snapshot() {
 	local ignore_timestamp=$1 date=$2
-	local snapshot_timestamp compression{,s} utc_seconds have_files signature digest mirror file name
+	local snapshot_timestamp utc_seconds have_files signature digest mirror file
+	local -A suffix_by
+	local -a tarballs
 
-	type -P xzcat > /dev/null && compressions="${compressions} ${repo_name}:xz portage:xz"
-	type -P bzcat > /dev/null && compressions="${compressions} ${repo_name}:bz2 portage:bz2"
-	type -P zcat > /dev/null && compressions="${compressions} ${repo_name}:gz portage:gz"
-	if [[ -z ${compressions} ]] ; then
-		die "unable to locate any decompressors (xzcat or bzcat or zcat)"
+	suffix_by=([xzcat]=xz [bzcat]=bz2 [zcat]=gz)
+
+	for file in xzcat bzcat zcat; do
+		if type -P "${file}"; then
+			tarballs+=( {"$repo_name","portage"}-"${date}.tar.${suffix_by[$file]}" )
+		fi
+	done >/dev/null
+
+	if (( ! ${#tarballs[@]} )); then
+		die "unable to locate any decompressors (xzcat, bzcat or zcat)"
 	fi
 
 	for mirror in ${GENTOO_MIRRORS} ; do
 		mirror=${mirror%/}
 		[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
-		for compression in ${compressions} ; do
-			name=${compression%%:*}
-
-			compression=${compression#*:}
-
-			file="${name}-${date}.tar.${compression}"
+		for file in "${tarballs[@]}"; do
 			digest="${file}.md5sum"
 			signature="${file}.gpgsig"
 
