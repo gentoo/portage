@@ -288,7 +288,9 @@ check_file_signature_gpg_unwrapped() {
 	local -x GNUPGHOME
 	local key
 
-	if type -P gpg > /dev/null; then
+	if ! type -P gpg > /dev/null; then
+		die "cannot check signature: gpg binary not found"
+	else
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
 			key="${PORTAGE_GPG_KEY}"
 		else
@@ -318,8 +320,6 @@ check_file_signature_gpg_unwrapped() {
 			# problem).
 			die "signature verification failed"
 		fi
-	else
-		die "cannot check signature: gpg binary not found"
 	fi
 }
 
