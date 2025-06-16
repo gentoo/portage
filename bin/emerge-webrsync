@@ -306,7 +306,7 @@ check_file_signature_gpg_unwrapped() {
 			# ephemeral keyring into which Gentoo's distributed
 			# public key block shall be imported.
 			GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
-			&& gpg --no-default-keyring --batch --import "${key}" \
+			&& gpg --batch --import "${key}" \
 			|| exit
 		elif [[ ! -w ${GNUPGHOME} ]]; then
 			die "gpgdir is not writable: ${GNUPGHOME}"
@@ -328,7 +328,7 @@ gpg_verify() {
 	local output token
 
 	# https://www.gnupg.org/documentation/manuals/gnupg/Automated-signature-checking.html
-	output=$(gpg --no-default-keyring --batch --status-fd 1 --verify "${signature}" "${file}") || return
+	output=$(gpg --batch --status-fd 1 --verify "${signature}" "${file}") || return
 	for token in GOODSIG VALIDSIG TRUST_ULTIMATE; do
 		[[ $'\n'${output} == *$'\n[GNUPG:] '"${token} "* ]] || return
 	done
