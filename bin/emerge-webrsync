@@ -300,12 +300,13 @@ check_file_signature_gpg_unwrapped() {
 		fi
 
 		gpgdir="${PORTAGE_GPG_DIR}"
-		if [[ -z ${gpgdir} ]] ; then
+		if [[ ! ${gpgdir} ]]; then
+			# The PORTAGE_GPG_DIR variable is either unset or
+			# empty. Create a temporary directory to contain an
+			# ephemeral keyring into which Gentoo's distributed
+			# public key block shall be imported.
 			gpgdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") || exit
 
-			# If we're created our own temporary directory, it's okay for us
-			# to import the keyring by ourselves. But we'll avoid doing it
-			# if the user has set PORTAGE_GPG_DIR by themselves.
 			gpg --no-default-keyring --homedir "${gpgdir}" --batch --import "${key}"
 		elif [[ ! -w ${gpgdir} ]] ; then
 			die "gpgdir is not writable: ${gpgdir}"
