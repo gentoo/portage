@@ -285,8 +285,8 @@ check_file_signature_gemato() {
 
 check_file_signature_gpg_unwrapped() {
 	local signature=$1 file=$2
+	local fingerprint key
 	local -x GNUPGHOME
-	local key
 
 	if ! type -P gpg > /dev/null; then
 		die "cannot check signature: gpg binary not found"
@@ -309,6 +309,8 @@ check_file_signature_gpg_unwrapped() {
 			# public key block shall be imported.
 			GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
 			&& gpg --batch --import "${key}" \
+			&& fingerprint=$(gpg_fingerprint '<infrastructure@gentoo.org>') \
+			&& gpg --batch --import-ownertrust <<<"${fingerprint}:6:" \
 			|| exit
 		elif [[ ! -w ${GNUPGHOME} ]]; then
 			die "gpgdir is not writable: ${GNUPGHOME}"
@@ -321,6 +323,17 @@ check_file_signature_gpg_unwrapped() {
 			die "signature verification failed"
 		fi
 	fi
+}
+
+gpg_fingerprint() {
+	local -a fields
+
+	# https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob_plain;f=doc/DETAILS
+	while IFS=: read -ra fields; do
+		[[ ${fields[0]} == fpr && ${fields[9]} =~ ^[[:xdigit:]]{40}$ ]] \
+		&& printf '%s\n' "${fields[9]}" \
+		&& return
+	done < <(gpg --with-colons --list-keys "$@")
 }
 
 gpg_verify() {
