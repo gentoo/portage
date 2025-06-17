@@ -218,10 +218,16 @@ fetch_file() {
 
 	case ${FETCHCOMMAND} in
 		*wget*)
-			opts="--continue $(nvecho -q)"
+			opts="--continue"
+			if (( opt[quiet] )); then
+				opts+=" -q"
+			fi
 			;;
 		*curl*)
-			opts="--continue-at - $(nvecho -s -f)"
+			opts="--continue-at"
+			if (( opt[quiet] )); then
+				opts+=" -s -f"
+			fi
 			;;
 		*)
 			rm -f "${DISTDIR}/${FILE}"
@@ -399,7 +405,7 @@ get_snapshot_timestamp() {
 sync_local() {
 	local file=$1
 	local ownership post_sync
-	local -a chown_opts rsync_opts
+	local -a tarsync_opts rsync_opts
 
 	einfo "Syncing local repository ..."
 
@@ -416,14 +422,14 @@ sync_local() {
 	fi
 
 	if type -P tarsync > /dev/null ; then
-		chown_opts=( -o "${ownership%:*}" -g "${ownership#*:}" )
-		if ! chown "${ownership}" "${repo_location}" 2>/dev/null; then
-			chown_opts=()
+		tarsync_opts=( -s 1 -e /distfiles -e /packages -e /local )
+		if chown "${ownership}" "${repo_location}" 2>/dev/null; then
+			tarsync_opts+=( -o "${ownership%:*}" -g "${ownership#*:}" )
 		fi
-
-		if ! tarsync $(vvecho -v) -s 1 "${chown_opts[@]}" \
-			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"
-		then
+		if (( ! opt[quiet] )); then
+			tarsync_opts+=( -v )
+		fi
+		if ! tarsync "${tarsync_opts[@]}" "${file}" "${repo_location}"; then
 			eerror "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -436,7 +442,10 @@ sync_local() {
 		# Free disk space
 		(( opt[keep] )) || rm -f "${file}"
 
-		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} $(nvecho -q)"
+		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
+		if (( opt[quiet] )); then
+			rsync_opts+=( -q )
+		fi
 		if chown "${ownership}" . 2>/dev/null; then
 			chown -R "${ownership}" .
 			rsync_opts+=( --owner --group )
@@ -621,11 +630,6 @@ do_latest_snapshot() {
 		do_snapshot 0 "${snapshot_date}" && break
 	done
 }
-
-# Only echo if in normal mode
-vvecho() { (( opt[quiet] )) || echo "$@"; }
-# Only echo if in quiet mode
-nvecho() { (( ! opt[quiet] )) || echo "$@"; }
 
 # Use emerge and portageq from the same directory/prefix as the current script,
 # so that we don't have to rely on PATH including the current EPREFIX.
