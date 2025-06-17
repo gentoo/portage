@@ -217,13 +217,16 @@ fetch_file() {
 	local URI=$1 FILE=$2
 	local opts
 
-	if [[ "${FETCHCOMMAND/wget/}" != "${FETCHCOMMAND}" ]]; then
-		opts="--continue $(nvecho -q)"
-	elif [[ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]]; then
-		opts="--continue-at - $(nvecho -s -f)"
-	else
-		rm -f "${DISTDIR}/${FILE}"
-	fi
+	case ${FETCHCOMMAND} in
+		*wget*)
+			opts="--continue $(nvecho -q)"
+			;;
+		*curl*)
+			opts="--continue-at - $(nvecho -s -f)"
+			;;
+		*)
+			rm -f "${DISTDIR}/${FILE}"
+	esac
 
 	einfo "Fetching file ${FILE} ..."
 
