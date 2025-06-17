@@ -621,24 +621,6 @@ do_latest_snapshot() {
 	done
 }
 
-# Opportunistically use gentoo-functions for nicer output
-functions_script="${EPREFIX}/lib/gentoo/functions.sh"
-source "${functions_script}" || {
-	echo "$0: Could not source ${functions_script}!" 1>&2
-
-	einfo() {
-		echo "${0##*/}: $*"
-	}
-
-	ewarn() {
-		echo "${0##*/}: warning: $*" 1>&2
-	}
-
-	eerror() {
-		echo "${0##*/}: error: $*" 1>&2
-	}
-}
-
 # Only echo if in normal mode
 vvecho() { (( opt[quiet] )) || echo "$@"; }
 # Only echo if in quiet mode
@@ -667,6 +649,13 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 export http_proxy https_proxy ftp_proxy
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+# Opportunistically use gentoo-functions for its implementations of einfo(),
+# ewarn() and eerror(). As of late, these are better maintained.
+functions_script="${EPREFIX}/lib/gentoo/functions.sh"
+if [[ -f ${functions_script} ]]; then
+	source "${functions_script}" || exit
+fi
 
 repo_name=gentoo
 repo_location=$(__repo_attr "${repo_name}" location)
