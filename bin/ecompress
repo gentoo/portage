@@ -116,12 +116,11 @@ do_queue() {
 	fi
 }
 
-guess_suffix() {
+guess_suffix() (
 	local IFS f i tmpdir
 	local -a args
 
-	trap 'rm -rf -- "${tmpdir}"' RETURN
-
+	trap 'rm -rf -- "${tmpdir}"' EXIT
 	tmpdir=$(mktemp -d -- "${T:-/tmp}/tmp.XXXXXX") \
 	&& cd -- "${tmpdir}" \
 	|| return
@@ -143,7 +142,7 @@ guess_suffix() {
 		&& printf '%s\n' "${f#compressme}" \
 		&& return
 	done
-}
+)
 
 fix_symlinks() {
 	local something_changed link target1 target2 i

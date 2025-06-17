@@ -469,8 +469,6 @@ show_diff() {
 	local file1=$1 file2=$2 files=("$1" "$2") \
 		diff_files=() file i tmpdir
 
-	trap '[[ ${tmpdir} ]] && rm -r -- "${tmpdir}"' RETURN
-
 	if [[ -L ${file1} && ! -L ${file2} &&
 		-f ${file1} && -f ${file2} ]] ; then
 		# If a regular file replaces a symlink to a regular file, then
