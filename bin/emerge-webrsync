@@ -224,9 +224,9 @@ fetch_file() {
 			fi
 			;;
 		*curl*)
-			opts="--continue-at"
+			opts="--continue-at -f -S"
 			if (( opt[quiet] )); then
-				opts+=" -s -f"
+				opts+=" -s"
 			fi
 			;;
 		*)
