@@ -41,6 +41,10 @@ main() {
 		esac
 	done
 
+	if (( opt[quiet] )); then
+		einfo() { :; }
+	fi
+
 	handle_pgp_setup
 
 	if [[ ! -d ${repo_location} ]]; then
@@ -141,9 +145,7 @@ handle_pgp_setup() {
 			fi
 			;;
 		1)
-			if (( ! opt[quiet] )); then
-				einfo "PGP verification method: gemato"
-			fi
+			einfo "PGP verification method: gemato"
 			;;
 		2)
 			ewarn "PGP verification method: legacy gpg path"
@@ -224,9 +226,8 @@ fetch_file() {
 		rm -f "${DISTDIR}/${FILE}"
 	fi
 
-	if (( ! opt[quiet] )); then
-		einfo "Fetching file ${FILE} ..."
-	fi
+	einfo "Fetching file ${FILE} ..."
+
 	# Already set DISTDIR=
 	eval "${FETCHCOMMAND} ${opts}"
 
@@ -242,9 +243,7 @@ check_file_digest() {
 	local digest=$1 file=$2
 	local digest_content md5sum_output
 
-	if (( ! opt[quiet] )); then
-		einfo "Checking digest ..."
-	fi
+	einfo "Checking digest ..."
 
 	if type -P md5sum > /dev/null; then
 		md5sum_output=$(md5sum "${file}")
@@ -370,9 +369,7 @@ check_file_signature() {
 
 	case ${WEBRSYNC_VERIFY_SIGNATURE} in
 		[12])
-			if (( ! opt[quiet] )); then
-				einfo "Checking signature ..."
-			fi
+			einfo "Checking signature ..."
 			;;&
 		1)
 			check_file_signature_gemato "${signature}" "${file}"
@@ -403,9 +400,7 @@ sync_local() {
 	local ownership post_sync
 	local -a chown_opts rsync_opts
 
-	if (( ! opt[quiet] )); then
-		einfo "Syncing local repository ..."
-	fi
+	einfo "Syncing local repository ..."
 
 	ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
 	if contains_word usersync "${FEATURES}"; then
@@ -452,9 +447,7 @@ sync_local() {
 			die "Aborting because of rsync failure"
 		}
 
-		if (( ! opt[quiet] )); then
-			einfo "Cleaning up ..."
-		fi
+		einfo "Cleaning up ..."
 	fi
 
 	if contains_word metadata-transfer "${FEATURES}"; then
@@ -492,9 +485,7 @@ do_snapshot() {
 
 	for mirror in ${GENTOO_MIRRORS} ; do
 		mirror=${mirror%/}
-		if (( ! opt[quiet] )); then
-			einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
-		fi
+		einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 		for file in "${tarballs[@]}"; do
 			digest="${file}.md5sum"
 			signature="${file}.gpgsig"
@@ -520,9 +511,7 @@ do_snapshot() {
 			# from a different mirror
 			#
 			if (( have_files )); then
-				if (( ! opt[quiet] )); then
-					einfo "Getting snapshot timestamp ..."
-				fi
+				einfo "Getting snapshot timestamp ..."
 
 				snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 
@@ -566,9 +555,7 @@ do_latest_snapshot() {
 	local timestamp_{difference,problem} snapshot_date{,_seconds} approx_snapshot_time existing_timestamp start_{hour,time}
 	local min_time_diff attempts=0
 
-	if (( ! opt[quiet] )); then
-		einfo "Fetching most recent snapshot ..."
-	fi
+	einfo "Fetching most recent snapshot ..."
 
 	# The snapshot for a given day is generated at 00:45 UTC on the following
 	# day, so the current day's snapshot (going by UTC time) hasn't been
