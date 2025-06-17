@@ -76,7 +76,7 @@ main() {
 
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
-	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync && ${repo_sync_type} != webrsync ]] ; then
+	if [[ ${repo_sync_type} != @(''|rsync|webrsync) ]]; then
 		eerror "The current sync-type attribute of repository 'gentoo' is not set to 'rsync' or 'webrsync':"
 		eerror
 		eerror "  sync-type=${repo_sync_type}"
