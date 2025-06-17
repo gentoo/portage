@@ -24,87 +24,96 @@
 # gpg --homedir /etc/portage/gnupg --edit-key ${KEY_ID} trust
 #
 
-# Opportunistically use gentoo-functions for nicer output
-functions_script="${EPREFIX}/lib/gentoo/functions.sh"
-source "${functions_script}" || {
-	echo "${argv0}: Could not source ${functions_script}!" 1>&2
+main() {
+	local revert_date arg v
 
-	ebegin() {
-		printf '%s*%s %s ... ' "${GOOD}" "${NORMAL}" "$*"
-	}
+	for arg in "$@" ; do
+		v=${arg#*=}
+		case ${arg} in
+			-h|--help)    usage ;;
+			-k|--keep)    keep=true ;;
+			-q|--quiet)   PORTAGE_QUIET=1 ;;
+			-v|--verbose) unset PORTAGE_QUIET ;;
+			-x|--debug)   do_debug=1 ;;
+			--revert=*)   revert_date=${v} ;;
+			--no-pgp-verify) no_pgp_verify=1 ;;
+			*)            usage "Invalid option '${arg}'" ;;
+		esac
+	done
 
-	eend() {
-		local r=${1:-0}
-		shift
+	handle_pgp_setup
 
-		if [[ $r -eq 0 ]] ; then
-			printf '[ %sok%s ]\n' "${GOOD}" "${NORMAL}"
-		else
-			printf '%s [ %s!!%s ]\n' "$*" "${BAD}" "${NORMAL}"
+	if [[ ! -d ${repo_location} ]]; then
+		mkdir -p "${repo_location}" || die
+
+		if contains_word usersync "${FEATURES}"; then
+			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || die
 		fi
-		return "${r}"
-	}
+	fi
 
-	einfo() {
-		echo "${argv0##*/}: $*"
-	}
+	if [[ ! -w ${repo_location} ]] ; then
+		die "Repository '${repo_name}' is not writable: ${repo_location}"
+	fi
 
-	ewarn() {
-		echo "${argv0##*/}: warning: $*" 1>&2
-	}
+	[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
 
-	eerror() {
-		echo "${argv0##*/}: error: $*" 1>&2
-	}
+	# Create a temporary directory whose subsequent removal is guaranteed.
+	tmpdir=
+	trap 'rm -rf -- "${tmpdir}"' EXIT
+	tmpdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
+	&& cd -- "${tmpdir}" \
+	|| exit
 
+	${keep} || DISTDIR=${tmpdir}
+	[[ ! -d "${DISTDIR}" ]] && mkdir -p "${DISTDIR}"
+
+	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
+		die "DISTDIR is not writable: ${DISTDIR}"
+	fi
+
+	# This is a sanity check to help prevent people like funtoo users
+	# from accidentally wiping out their git tree.
+	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync && ${repo_sync_type} != webrsync ]] ; then
+		eerror "The current sync-type attribute of repository 'gentoo' is not set to 'rsync' or 'webrsync':"
+		eerror
+		eerror "  sync-type=${repo_sync_type}"
+		eerror
+		eerror "If you intend to use emerge-webrsync then please"
+		eerror "adjust sync-type and sync-uri attributes to refer to rsync."
+		eerror "emerge-webrsync exiting due to abnormal sync-type setting."
+		die
+	fi
+
+	[[ ${do_debug} -eq 1 ]] && set -x
+
+	if [[ -n ${revert_date} ]] ; then
+		emaint revisions --purgerepos="${repo_name}"
+		do_snapshot 1 "${revert_date}"
+	else
+		do_latest_snapshot
+	fi
 }
 
-# Only echo if in normal mode
-vvecho() { [[ ${PORTAGE_QUIET} != 1 ]] && echo "$@" ; }
-# Only echo if in quiet mode
-nvecho() { [[ ${PORTAGE_QUIET} == 1 ]] && echo "$@" ; }
+usage() {
+	cat <<-EOF
+	Usage: $0 [options]
 
-# Unfortunately, gentoo-functions doesn't yet have a die() (bug #878505)
-die() {
-	eerror "$@"
-	exit 1
+	Options:
+	  --revert=yyyymmdd   Revert to snapshot
+	  --no-pgp-verify     Disable PGP verification of snapshot
+	  -k, --keep          Keep snapshots in DISTDIR (don't delete)
+	  -q, --quiet         Only output errors
+	  -v, --verbose       Enable verbose output (no-op)
+	  -x, --debug         Enable debug output
+	  -h, --help          This help screen (duh!)
+	EOF
+	if [[ -n $* ]] ; then
+		printf "\nError: %s\n" "$*" 1>&2
+		exit 1
+	else
+		exit 0
+	fi
 }
-
-argv0=$0
-
-# Use emerge and portageq from the same directory/prefix as the current script,
-# so that we don't have to rely on PATH including the current EPREFIX.
-emerge=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P emerge)
-[[ -n ${emerge} ]] || die "could not find 'emerge'; aborting"
-portageq=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P portageq)
-[[ -n ${portageq} ]] || die "could not find 'portageq'; aborting"
-
-eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
-	FETCHCOMMAND GENTOO_MIRRORS \
-	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
-	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
-	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
-	PORTAGE_USERNAME PORTAGE_GRPNAME \
-	USERLAND http_proxy https_proxy ftp_proxy)"
-export http_proxy https_proxy ftp_proxy
-
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
-
-repo_name=gentoo
-repo_location=$(__repo_attr "${repo_name}" location)
-if [[ -z ${repo_location} ]]; then
-	die "Repository '${repo_name}' not found"
-fi
-repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
-
-# If PORTAGE_NICENESS is overriden via the env then it will
-# still pass through the portageq call and override properly.
-if [[ -n "${PORTAGE_NICENESS}" ]]; then
-	renice "${PORTAGE_NICENESS}" $$ > /dev/null
-fi
-
-do_debug=0
-keep=false
 
 handle_pgp_setup() {
 	if [[ ${no_pgp_verify} ]]; then
@@ -608,95 +617,86 @@ do_latest_snapshot() {
 	done
 }
 
-usage() {
-	cat <<-EOF
-	Usage: $0 [options]
+# Opportunistically use gentoo-functions for nicer output
+functions_script="${EPREFIX}/lib/gentoo/functions.sh"
+source "${functions_script}" || {
+	echo "${argv0}: Could not source ${functions_script}!" 1>&2
 
-	Options:
-	  --revert=yyyymmdd   Revert to snapshot
-	  --no-pgp-verify     Disable PGP verification of snapshot
-	  -k, --keep          Keep snapshots in DISTDIR (don't delete)
-	  -q, --quiet         Only output errors
-	  -v, --verbose       Enable verbose output (no-op)
-	  -x, --debug         Enable debug output
-	  -h, --help          This help screen (duh!)
-	EOF
-	if [[ -n $* ]] ; then
-		printf "\nError: %s\n" "$*" 1>&2
-		exit 1
-	else
-		exit 0
-	fi
-}
+	ebegin() {
+		printf '%s*%s %s ... ' "${GOOD}" "${NORMAL}" "$*"
+	}
 
-main() {
-	local revert_date arg v
+	eend() {
+		local r=${1:-0}
+		shift
 
-	for arg in "$@" ; do
-		v=${arg#*=}
-		case ${arg} in
-			-h|--help)    usage ;;
-			-k|--keep)    keep=true ;;
-			-q|--quiet)   PORTAGE_QUIET=1 ;;
-			-v|--verbose) unset PORTAGE_QUIET ;;
-			-x|--debug)   do_debug=1 ;;
-			--revert=*)   revert_date=${v} ;;
-			--no-pgp-verify) no_pgp_verify=1 ;;
-			*)            usage "Invalid option '${arg}'" ;;
-		esac
-	done
-
-	handle_pgp_setup
-
-	if [[ ! -d ${repo_location} ]]; then
-		mkdir -p "${repo_location}" || die
-
-		if contains_word usersync "${FEATURES}"; then
-			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || die
+		if [[ $r -eq 0 ]] ; then
+			printf '[ %sok%s ]\n' "${GOOD}" "${NORMAL}"
+		else
+			printf '%s [ %s!!%s ]\n' "$*" "${BAD}" "${NORMAL}"
 		fi
-	fi
+		return "${r}"
+	}
 
-	if [[ ! -w ${repo_location} ]] ; then
-		die "Repository '${repo_name}' is not writable: ${repo_location}"
-	fi
+	einfo() {
+		echo "${argv0##*/}: $*"
+	}
 
-	[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
+	ewarn() {
+		echo "${argv0##*/}: warning: $*" 1>&2
+	}
 
-	# Create a temporary directory whose subsequent removal is guaranteed.
-	tmpdir=
-	trap 'rm -rf -- "${tmpdir}"' EXIT
-	tmpdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
-	&& cd -- "${tmpdir}" \
-	|| exit
+	eerror() {
+		echo "${argv0##*/}: error: $*" 1>&2
+	}
 
-	${keep} || DISTDIR=${tmpdir}
-	[[ ! -d "${DISTDIR}" ]] && mkdir -p "${DISTDIR}"
-
-	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
-		die "DISTDIR is not writable: ${DISTDIR}"
-	fi
-
-	# This is a sanity check to help prevent people like funtoo users
-	# from accidentally wiping out their git tree.
-	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync && ${repo_sync_type} != webrsync ]] ; then
-		eerror "The current sync-type attribute of repository 'gentoo' is not set to 'rsync' or 'webrsync':"
-		eerror
-		eerror "  sync-type=${repo_sync_type}"
-		eerror
-		eerror "If you intend to use emerge-webrsync then please"
-		eerror "adjust sync-type and sync-uri attributes to refer to rsync."
-		eerror "emerge-webrsync exiting due to abnormal sync-type setting."
-		die
-	fi
-
-	[[ ${do_debug} -eq 1 ]] && set -x
-
-	if [[ -n ${revert_date} ]] ; then
-		emaint revisions --purgerepos="${repo_name}"
-		do_snapshot 1 "${revert_date}"
-	else
-		do_latest_snapshot
-	fi
 }
+
+# Only echo if in normal mode
+vvecho() { [[ ${PORTAGE_QUIET} != 1 ]] && echo "$@" ; }
+# Only echo if in quiet mode
+nvecho() { [[ ${PORTAGE_QUIET} == 1 ]] && echo "$@" ; }
+
+# Unfortunately, gentoo-functions doesn't yet have a die() (bug #878505)
+die() {
+	eerror "$@"
+	exit 1
+}
+
+argv0=$0
+
+# Use emerge and portageq from the same directory/prefix as the current script,
+# so that we don't have to rely on PATH including the current EPREFIX.
+emerge=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P emerge)
+[[ -n ${emerge} ]] || die "could not find 'emerge'; aborting"
+portageq=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P portageq)
+[[ -n ${portageq} ]] || die "could not find 'portageq'; aborting"
+
+eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
+	FETCHCOMMAND GENTOO_MIRRORS \
+	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
+	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
+	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
+	PORTAGE_USERNAME PORTAGE_GRPNAME \
+	USERLAND http_proxy https_proxy ftp_proxy)"
+export http_proxy https_proxy ftp_proxy
+
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+repo_name=gentoo
+repo_location=$(__repo_attr "${repo_name}" location)
+if [[ -z ${repo_location} ]]; then
+	die "Repository '${repo_name}' not found"
+fi
+repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
+
+# If PORTAGE_NICENESS is overriden via the env then it will
+# still pass through the portageq call and override properly.
+if [[ -n "${PORTAGE_NICENESS}" ]]; then
+	renice "${PORTAGE_NICENESS}" $$ > /dev/null
+fi
+
+do_debug=0
+keep=false
 
 main "$@"
