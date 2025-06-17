@@ -626,12 +626,6 @@ vvecho() { (( opt[quiet] )) || echo "$@"; }
 # Only echo if in quiet mode
 nvecho() { (( ! opt[quiet] )) || echo "$@"; }
 
-# Unfortunately, gentoo-functions doesn't yet have a die() (bug #878505)
-die() {
-	eerror "$@"
-	exit 1
-}
-
 # Use emerge and portageq from the same directory/prefix as the current script,
 # so that we don't have to rely on PATH including the current EPREFIX.
 emerge=$(PATH="${BASH_SOURCE[0]%/*}:${PATH}" type -P emerge)
@@ -649,6 +643,20 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 export http_proxy https_proxy ftp_proxy
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+# The implementation of die() from isolated-functions.sh is over-engineered and
+# unsuitable for standalone scripts. This one mimics gentoo-functions.
+die() {
+	case $? in
+		0)
+			local exitval=1
+			;;
+		*)
+			local exitval=$?
+	esac
+	printf '%s: %s\n' "${0##*/}" "$*" >&2
+	exit "${exitval}"
+}
 
 # Opportunistically use gentoo-functions for its implementations of einfo(),
 # ewarn() and eerror(). As of late, these are better maintained.
