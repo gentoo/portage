@@ -624,18 +624,18 @@ do_latest_snapshot() {
 # Opportunistically use gentoo-functions for nicer output
 functions_script="${EPREFIX}/lib/gentoo/functions.sh"
 source "${functions_script}" || {
-	echo "${argv0}: Could not source ${functions_script}!" 1>&2
+	echo "$0: Could not source ${functions_script}!" 1>&2
 
 	einfo() {
-		echo "${argv0##*/}: $*"
+		echo "${0##*/}: $*"
 	}
 
 	ewarn() {
-		echo "${argv0##*/}: warning: $*" 1>&2
+		echo "${0##*/}: warning: $*" 1>&2
 	}
 
 	eerror() {
-		echo "${argv0##*/}: error: $*" 1>&2
+		echo "${0##*/}: error: $*" 1>&2
 	}
 }
 
@@ -649,8 +649,6 @@ die() {
 	eerror "$@"
 	exit 1
 }
-
-argv0=$0
 
 # Use emerge and portageq from the same directory/prefix as the current script,
 # so that we don't have to rely on PATH including the current EPREFIX.
