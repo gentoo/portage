@@ -7,7 +7,6 @@
 # Major rewrite from Karl's scripts.
 
 # TODO:
-#  - all output should prob be converted to e* funcs
 #  - add support for ROOT
 
 # repos.conf configuration for use with emerge --sync and emaint sync
