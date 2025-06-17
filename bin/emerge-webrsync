@@ -161,19 +161,18 @@ handle_pgp_setup() {
 }
 
 do_tar() {
-	local file=$1
-	local decompressor
-	shift
+	local -
 
-	case ${file} in
-		*.xz)   decompressor="xzcat" ;;
-		*.bz2)  decompressor="bzcat" ;;
-		*.gz)   decompressor="zcat"  ;;
-		*)      decompressor="cat"   ;;
-	esac
-	${decompressor} "${file}" | tar "$@"
-	_pipestatus=${PIPESTATUS[*]}
-	[[ ${_pipestatus// /} -eq 0 ]]
+	shopt -o -s pipefail
+	case $1 in
+		*.xz)   xzcat "$1" ;;
+		*.bz2)  bzcat "$1" ;;
+		*.gz)   zcat  "$1" ;;
+		*)      cat   "$1" ;;
+	esac | {
+		shift
+		tar "$@"
+	}
 }
 
 get_utc_date_in_seconds() {
