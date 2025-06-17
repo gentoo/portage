@@ -25,18 +25,18 @@
 #
 
 main() {
-	local revert_date arg v
+	local arg v
 
 	for arg in "$@" ; do
 		v=${arg#*=}
 		case ${arg} in
 			-h|--help)    usage ;;
-			-k|--keep)    keep=true ;;
-			-q|--quiet)   PORTAGE_QUIET=1 ;;
-			-v|--verbose) unset PORTAGE_QUIET ;;
-			-x|--debug)   do_debug=1 ;;
-			--revert=*)   revert_date=${v} ;;
-			--no-pgp-verify) no_pgp_verify=1 ;;
+			-k|--keep)    opt[keep]=1 ;;
+			-q|--quiet)   opt[quiet]=1 ;;
+			-v|--verbose) opt[quiet]=0 ;;
+			-x|--debug)   opt[debug]=1 ;;
+			--revert=*)   opt[revert]=${v} ;;
+			--no-pgp-verify) opt[no-pgp-verify]=1 ;;
 			*)            usage "Invalid option '${arg}'" ;;
 		esac
 	done
@@ -64,10 +64,10 @@ main() {
 	&& cd -- "${tmpdir}" \
 	|| exit
 
-	${keep} || DISTDIR=${tmpdir}
+	(( opt[keep] )) || DISTDIR=${tmpdir}
 	[[ ! -d "${DISTDIR}" ]] && mkdir -p "${DISTDIR}"
 
-	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
+	if (( opt[keep] )) && [[ ! -w ${DISTDIR} ]] ; then
 		die "DISTDIR is not writable: ${DISTDIR}"
 	fi
 
@@ -84,11 +84,11 @@ main() {
 		die
 	fi
 
-	[[ ${do_debug} -eq 1 ]] && set -x
+	(( opt[debug] )) && set -x
 
-	if [[ -n ${revert_date} ]] ; then
+	if [[ -v 'opt[revert]' ]]; then
 		emaint revisions --purgerepos="${repo_name}"
-		do_snapshot 1 "${revert_date}"
+		do_snapshot 1 "${opt[revert]}"
 	else
 		do_latest_snapshot
 	fi
@@ -116,7 +116,7 @@ usage() {
 }
 
 handle_pgp_setup() {
-	if [[ ${no_pgp_verify} ]]; then
+	if (( opt[no-pgp-verify] )); then
 		# Disable PGP verification. The webrsync module specifies this
 		# option if the "sync-webrsync-verify-signature" repo attribute
 		# is explicitly defined with a value of "false".
@@ -136,10 +136,14 @@ handle_pgp_setup() {
 
 	case "${WEBRSYNC_VERIFY_SIGNATURE}" in
 		0)
-			[[ ${PORTAGE_QUIET} -eq 1 ]] || ewarn "PGP verification method: disabled"
+			if (( ! opt[quiet] )); then
+				ewarn "PGP verification method: disabled"
+			fi
 			;;
 		1)
-			[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "PGP verification method: gemato"
+			if (( ! opt[quiet] )); then
+				einfo "PGP verification method: gemato"
+			fi
 			;;
 		2)
 			ewarn "PGP verification method: legacy gpg path"
@@ -220,7 +224,9 @@ fetch_file() {
 		rm -f "${DISTDIR}/${FILE}"
 	fi
 
-	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Fetching file ${FILE} ..."
+	if (( ! opt[quiet] )); then
+		einfo "Fetching file ${FILE} ..."
+	fi
 	# Already set DISTDIR=
 	eval "${FETCHCOMMAND} ${opts}"
 
@@ -236,7 +242,9 @@ check_file_digest() {
 	local digest=$1 file=$2
 	local digest_content md5sum_output
 
-	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Checking digest ..."
+	if (( ! opt[quiet] )); then
+		einfo "Checking digest ..."
+	fi
 
 	if type -P md5sum > /dev/null; then
 		md5sum_output=$(md5sum "${file}")
@@ -278,8 +286,8 @@ check_file_signature_gemato() {
 		fi
 
 		[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
-		[[ ${PORTAGE_QUIET} == 1 ]] && gemato_args+=( --quiet )
-		[[ ${do_debug} == 1 ]] && gemato_args+=( --debug )
+		(( opt[quiet] )) && gemato_args+=( --quiet )
+		(( opt[debug] )) && gemato_args+=( --debug )
 
 		if ! gemato "${gemato_args[@]}" -- "${signature}" "${file}"; then
 			# Exit early since it's typically inappropriate to try
@@ -362,7 +370,7 @@ check_file_signature() {
 
 	case ${WEBRSYNC_VERIFY_SIGNATURE} in
 		[12])
-			if [[ ${PORTAGE_QUIET} -ne 1 ]]; then
+			if (( ! opt[quiet] )); then
 				einfo "Checking signature ..."
 			fi
 			;;&
@@ -395,7 +403,9 @@ sync_local() {
 	local ownership post_sync
 	local -a chown_opts rsync_opts
 
-	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Syncing local repository ..."
+	if (( ! opt[quiet] )); then
+		einfo "Syncing local repository ..."
+	fi
 
 	ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
 	if contains_word usersync "${FEATURES}"; then
@@ -428,7 +438,7 @@ sync_local() {
 		fi
 
 		# Free disk space
-		${keep} || rm -f "${file}"
+		(( opt[keep] )) || rm -f "${file}"
 
 		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} $(nvecho -q)"
 		if chown "${ownership}" . 2>/dev/null; then
@@ -442,7 +452,9 @@ sync_local() {
 			die "Aborting because of rsync failure"
 		}
 
-		[[ ${PORTAGE_QUIET} == 1 ]] || einfo "Cleaning up ..."
+		if (( ! opt[quiet] )); then
+			einfo "Cleaning up ..."
+		fi
 	fi
 
 	if contains_word metadata-transfer "${FEATURES}"; then
@@ -480,8 +492,9 @@ do_snapshot() {
 
 	for mirror in ${GENTOO_MIRRORS} ; do
 		mirror=${mirror%/}
-		[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
-
+		if (( ! opt[quiet] )); then
+			einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
+		fi
 		for file in "${tarballs[@]}"; do
 			digest="${file}.md5sum"
 			signature="${file}.gpgsig"
@@ -507,7 +520,9 @@ do_snapshot() {
 			# from a different mirror
 			#
 			if (( have_files )); then
-				[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Getting snapshot timestamp ..."
+				if (( ! opt[quiet] )); then
+					einfo "Getting snapshot timestamp ..."
+				fi
 
 				snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 
@@ -540,7 +555,7 @@ do_snapshot() {
 
 	if (( have_files )); then
 		sync_local "${DISTDIR}/${file}" \
-		&& { ${keep} || rm -f "${DISTDIR}"/{"$file","$digest","$signature"}; }
+		&& { (( opt[keep] )) || rm -f "${DISTDIR}"/{"$file","$digest","$signature"}; }
 	else
 		ewarn "${date} snapshot was not found"
 		false
@@ -551,7 +566,9 @@ do_latest_snapshot() {
 	local timestamp_{difference,problem} snapshot_date{,_seconds} approx_snapshot_time existing_timestamp start_{hour,time}
 	local min_time_diff attempts=0
 
-	[[ ${PORTAGE_QUIET} -eq 1 ]] || einfo "Fetching most recent snapshot ..."
+	if (( ! opt[quiet] )); then
+		einfo "Fetching most recent snapshot ..."
+	fi
 
 	# The snapshot for a given day is generated at 00:45 UTC on the following
 	# day, so the current day's snapshot (going by UTC time) hasn't been
@@ -653,9 +670,9 @@ source "${functions_script}" || {
 }
 
 # Only echo if in normal mode
-vvecho() { [[ ${PORTAGE_QUIET} != 1 ]] && echo "$@" ; }
+vvecho() { (( opt[quiet] )) || echo "$@"; }
 # Only echo if in quiet mode
-nvecho() { [[ ${PORTAGE_QUIET} == 1 ]] && echo "$@" ; }
+nvecho() { (( ! opt[quiet] )) || echo "$@"; }
 
 # Unfortunately, gentoo-functions doesn't yet have a die() (bug #878505)
 die() {
@@ -696,7 +713,5 @@ if [[ -n "${PORTAGE_NICENESS}" ]]; then
 	renice "${PORTAGE_NICENESS}" $$ > /dev/null
 fi
 
-do_debug=0
-keep=false
-
+declare -A opt
 main "$@"
