@@ -278,7 +278,7 @@ check_file_signature_gemato() {
 	fi
 }
 
-check_file_signature_gpg() {
+check_file_signature_gpg() (
 	local signature=$1 file=$2
 	local fingerprint key
 	local -x GNUPGHOME
@@ -304,6 +304,7 @@ check_file_signature_gpg() {
 		# ephemeral keyring into which Gentoo's distributed
 		# public key block shall be imported.
 		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
+		&& trap 'gpgconf -K pgp-agent' EXIT \
 		&& gpg --batch --import "${key}" \
 		&& fingerprint=$(gpg_fingerprint '<infrastructure@gentoo.org>') \
 		&& gpg --batch --import-ownertrust <<<"${fingerprint}:6:" \
@@ -313,7 +314,7 @@ check_file_signature_gpg() {
 	fi
 
 	gpg_verify "${signature}" "${file}"
-}
+)
 
 gpg_fingerprint() {
 	local -a fields
