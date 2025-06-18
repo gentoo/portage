@@ -274,12 +274,7 @@ check_file_signature_gemato() {
 		(( opt[quiet] )) && gemato_args+=( --quiet )
 		(( opt[debug] )) && gemato_args+=( --debug )
 
-		if ! gemato "${gemato_args[@]}" -- "${signature}" "${file}"; then
-			# Exit early since it's typically inappropriate to try
-			# other mirrors in this case (it may indicate a keyring
-			# problem).
-			die "signature verification failed"
-		fi
+		gemato "${gemato_args[@]}" -- "${signature}" "${file}"
 	fi
 }
 
@@ -313,12 +308,7 @@ check_file_signature_gpg_unwrapped() {
 		die "gpgdir is not writable: ${GNUPGHOME}"
 	fi
 
-	if ! gpg_verify "${signature}" "${file}"; then
-		# Exit early since it's typically inappropriate to try
-		# other mirrors in this case (it may indicate a keyring
-		# problem).
-		die "signature verification failed"
-	fi
+	gpg_verify "${signature}" "${file}"
 }
 
 gpg_fingerprint() {
@@ -364,8 +354,10 @@ check_file_signature() {
 	esac
 
 	if (( ${r=$?} != 0 )); then
-		eerror "Error occurred in check_file_signature: ${r}. Aborting."
-		die "Verification error occured."
+		# Exit early since it's typically inappropriate to try other
+		# mirrors in this case (it may indicate a keyring problem).
+		file=${file##*/}
+		die "signature verification failed for ${file@Q}"
 	fi
 }
 
