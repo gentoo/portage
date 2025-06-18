@@ -389,17 +389,13 @@ sync_local() {
 
 	einfo "Syncing local repository ..."
 
-	ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
-	if contains_word usersync "${FEATURES}"; then
-		case "${USERLAND}" in
-			BSD)
-				ownership=$(stat -f '%Su:%Sg' "${repo_location}")
-				;;
-			*)
-				ownership=$(stat -c '%U:%G' "${repo_location}")
-				;;
-		esac
-	fi
+	if ! contains_word usersync "${FEATURES}"; then
+		ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
+	elif [[ ${USERLAND} == BSD ]]; then
+		ownership=$(stat -f '%Su:%Sg' "${repo_location}")
+	else
+		ownership=$(stat -c '%U:%G' "${repo_location}")
+	fi || exit
 
 	if type -P tarsync > /dev/null ; then
 		tarsync_opts=( -s 1 -e /distfiles -e /packages -e /local )
