@@ -47,10 +47,10 @@ main() {
 	handle_pgp_setup
 
 	if [[ ! -d ${repo_location} ]]; then
-		mkdir -p "${repo_location}" || die
+		mkdir -p "${repo_location}" || exit
 
 		if contains_word usersync "${FEATURES}"; then
-			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || die
+			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || exit
 		fi
 	fi
 
@@ -77,14 +77,8 @@ main() {
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
 	if [[ ${repo_sync_type} != @(''|rsync|webrsync) ]]; then
-		eerror "The current sync-type attribute of repository 'gentoo' is not set to 'rsync' or 'webrsync':"
-		eerror
-		eerror "  sync-type=${repo_sync_type}"
-		eerror
-		eerror "If you intend to use emerge-webrsync then please"
-		eerror "adjust sync-type and sync-uri attributes to refer to rsync."
-		eerror "emerge-webrsync exiting due to abnormal sync-type setting."
-		die
+		eerror "Invalid sync-type attribute for ${repo_name@Q} repo: ${repo_sync_type@Q} (expected 'rsync' or 'webrsync')"
+		die "repos.conf validation failed"
 	fi
 
 	(( opt[debug] )) && set -x
