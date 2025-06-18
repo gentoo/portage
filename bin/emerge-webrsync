@@ -360,7 +360,7 @@ check_file_signature() {
 			;;&
 		1)
 			check_file_signature_gemato "${signature}" "${file}"
-			if [[ ${r=$?} -eq 127 ]] ; then
+			if (( ${r=$?} == 127 )); then
 				ewarn "Falling back to gpg as gemato is not installed"
 				check_file_signature_gpg_unwrapped "${signature}" "${file}"
 				r=$?
@@ -370,7 +370,7 @@ check_file_signature() {
 			check_file_signature_gpg_unwrapped "${signature}" "${file}"
 	esac
 
-	if [[ ${r=$?} != 0 ]] ; then
+	if (( ${r=$?} != 0 )); then
 		eerror "Error occurred in check_file_signature: ${r}. Aborting."
 		die "Verification error occured."
 	fi
@@ -506,7 +506,7 @@ do_snapshot() {
 				snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 
 				if [[ ${ignore_timestamp} == 0 ]]; then
-					if [[ ${snapshot_timestamp} -lt $(get_repository_timestamp) ]]; then
+					if (( snapshot_timestamp < $(get_repository_timestamp) )); then
 						ewarn "Repository (age) is newer than fetched snapshot"
 						have_files=0
 					fi
@@ -514,9 +514,9 @@ do_snapshot() {
 					unixtime=$(get_unixtime_by_date "${date}")
 
 					# Check that this snapshot is what the age it claims to be
-					if [[ ${snapshot_timestamp} -lt ${unixtime} || \
-						${snapshot_timestamp} -gt $(( unixtime + 2 * 86400 )) ]]; then
-
+					if (( snapshot_timestamp < unixtime
+						|| snapshot_timestamp > unixtime + 2 * 86400 ))
+					then
 						ewarn "Snapshot timestamp is not within acceptable period!"
 						have_files=0
 					fi
@@ -563,7 +563,7 @@ do_latest_snapshot() {
 	# Daily snapshots are created at 00:45 and are not
 	# available until after 01:00. Don't waste time trying
 	# to fetch a snapshot before it's been created.
-	if [[ ${start_hour#0} -lt 1 ]] ; then
+	if (( ${start_hour#0} < 1 )); then
 		(( start_time -= 86400 ))
 	fi
 
@@ -576,15 +576,17 @@ do_latest_snapshot() {
 		(( approx_snapshot_time = snapshot_unixtime + 86400 + 2700 ))
 		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
 
-		[[ ${timestamp_difference} -lt 0 ]] && (( timestamp_difference = -1 * timestamp_difference ))
+		if (( timestamp_difference < 0 )); then
+			(( timestamp_difference = -1 * timestamp_difference ))
+		fi
 		printf -v snapshot_date '%(%Y%m%d)T' "${snapshot_unixtime}"
 
 		timestamp_problem=""
-		if [[ ${timestamp_difference} -eq 0 ]]; then
+		if (( timestamp_difference == 0 )); then
 			timestamp_problem="is identical to"
-		elif [[ ${timestamp_difference} -lt ${min_time_diff} ]]; then
+		elif (( timestamp_difference < min_time_diff )); then
 			timestamp_problem="is possibly identical to"
-		elif [[ ${approx_snapshot_time} -lt ${existing_timestamp} ]] ; then
+		elif (( approx_snapshot_time < existing_timestamp )); then
 			timestamp_problem="is newer than"
 		fi
 
