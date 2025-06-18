@@ -120,11 +120,14 @@ handle_pgp_setup() {
 		# because it prevents the use of gemato for verification.
 		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
 		WEBRSYNC_VERIFY_SIGNATURE=2
+	elif ! type -P gemato > /dev/null; then
+		# Fall back to conventional verification with gpg(1).
+		ewarn "app-portage/gemato does not appear to be installed. Falling back to gpg."
+		WEBRSYNC_VERIFY_SIGNATURE=2
 	else
-		# Try to use gemato for PGP verification. If missing, fall
-		# back to conventional verification with gpg(1). The former
-		# approach is preferred because it handles key refresh and
-		# revocation, and guarantees a clean operating environment.
+		# Use gemato for PGP verification. It is the preferred method
+		# because it handles key refresh and revocation, and guarantees
+		# a clean operating environment.
 		WEBRSYNC_VERIFY_SIGNATURE=1
 	fi
 
@@ -138,7 +141,7 @@ handle_pgp_setup() {
 			einfo "PGP verification method: gemato"
 			;;
 		2)
-			ewarn "PGP verification method: legacy gpg path"
+			ewarn "PGP verification method: legacy gpg"
 			;;
 	esac
 
@@ -245,37 +248,33 @@ check_file_signature_gemato() {
 	local -a gemato_args
 	local key
 
-	if ! type -P gemato > /dev/null; then
-		return 127
+	if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
+		key="${PORTAGE_GPG_KEY}"
 	else
-		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
-			key="${PORTAGE_GPG_KEY}"
-		else
-			key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
-		fi
-
-		if [[ ! -f "${key}" ]] ; then
-			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
-			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
-		fi
-
-		gemato_args=(
-			openpgp-verify-detached
-			-K "${key}"
-		)
-
-		if [[ -n ${http_proxy} || -n ${https_proxy} ]] ; then
-			gemato_args+=(
-				--proxy "${http_proxy:-${https_proxy}}"
-			)
-		fi
-
-		[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
-		(( opt[quiet] )) && gemato_args+=( --quiet )
-		(( opt[debug] )) && gemato_args+=( --debug )
-
-		gemato "${gemato_args[@]}" -- "${signature}" "${file}"
+		key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
 	fi
+
+	if [[ ! -f "${key}" ]] ; then
+		eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+		die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+	fi
+
+	gemato_args=(
+		openpgp-verify-detached
+		-K "${key}"
+	)
+
+	if [[ -n ${http_proxy} || -n ${https_proxy} ]] ; then
+		gemato_args+=(
+			--proxy "${http_proxy:-${https_proxy}}"
+		)
+	fi
+
+	[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
+	(( opt[quiet] )) && gemato_args+=( --quiet )
+	(( opt[debug] )) && gemato_args+=( --debug )
+
+	gemato "${gemato_args[@]}" -- "${signature}" "${file}"
 }
 
 check_file_signature_gpg() (
@@ -340,7 +339,6 @@ gpg_verify() {
 
 check_file_signature() {
 	local signature=$1 file=$2
-	local r
 
 	case ${WEBRSYNC_VERIFY_SIGNATURE} in
 		[12])
@@ -348,22 +346,15 @@ check_file_signature() {
 			;;&
 		1)
 			check_file_signature_gemato "${signature}" "${file}"
-			if (( ${r=$?} == 127 )); then
-				ewarn "Falling back to gpg as gemato is not installed"
-				check_file_signature_gpg "${signature}" "${file}"
-				r=$?
-			fi
 			;;
 		2)
 			check_file_signature_gpg "${signature}" "${file}"
-	esac
-
-	if (( ${r=$?} != 0 )); then
+	esac || {
 		# Exit early since it's typically inappropriate to try other
 		# mirrors in this case (it may indicate a keyring problem).
 		file=${file##*/}
 		die "signature verification failed for ${file@Q}"
-	fi
+	}
 }
 
 get_snapshot_timestamp() {
