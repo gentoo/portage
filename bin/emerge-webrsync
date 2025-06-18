@@ -298,10 +298,9 @@ check_file_signature_gpg() (
 	fi
 
 	if [[ ! ${GNUPGHOME=${PORTAGE_GPG_DIR}} ]]; then
-		# The PORTAGE_GPG_DIR variable is either unset or
-		# empty. Create a temporary directory to contain an
-		# ephemeral keyring into which Gentoo's distributed
-		# public key block shall be imported.
+		# The PORTAGE_GPG_DIR variable is either unset or empty. Create
+		# a temporary directory to contain an ephemeral keyring into
+		# which Gentoo's distributed public key block shall be imported.
 		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
 		&& trap 'gpgconf -K pgp-agent' EXIT \
 		&& gpg --batch --import "${key}" \
