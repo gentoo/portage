@@ -169,15 +169,15 @@ do_tar() {
 	}
 }
 
-get_unixtime_from_string() {
-	local s=$1
+get_unixtime_by_date() {
+	local date=$1
 
 	if [[ ${USERLAND} == BSD ]] ; then
 		# Specify zeros for the least significant digits, or else those
 		# digits are inherited from the current system clock time.
-		date -juf "%Y%m%d%H%M.%S" "${s}0000.00" +"%s"
+		date -juf "%Y%m%d%H%M.%S" "${date}0000.00" +"%s"
 	else
-		date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s"
+		date -d "${date:0:4}-${date:4:2}-${date:6:2}" -u +"%s"
 	fi
 }
 
@@ -511,7 +511,7 @@ do_snapshot() {
 						have_files=0
 					fi
 				else
-					unixtime=$(get_unixtime_from_string "${date}")
+					unixtime=$(get_unixtime_by_date "${date}")
 
 					# Check that this snapshot is what the age it claims to be
 					if [[ ${snapshot_timestamp} -lt ${unixtime} || \
@@ -568,7 +568,7 @@ do_latest_snapshot() {
 	fi
 
 	printf -v snapshot_date '%(%Y%m%d)T' "${start_time}"
-	snapshot_unixtime=$(get_unixtime_from_string "${snapshot_date}")
+	snapshot_unixtime=$(get_unixtime_by_date "${snapshot_date}")
 
 	while (( attempts++ < 40 )); do
 		(( snapshot_unixtime -= 86400 ))
