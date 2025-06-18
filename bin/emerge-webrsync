@@ -289,9 +289,13 @@ check_file_signature_gpg() {
 		key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
 	fi
 
-	if [[ ! -f "${key}" ]] ; then
-		eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
-		die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+	if [[ ! -f "${key}" ]]; then
+		if [[ ${PORTAGE_GPG_KEY} ]]; then
+			eerror "PORTAGE_GPG_KEY does not appear to have been set correctly"
+		else
+			eerror "sec-keys/openpgp-keys-gentoo-release does not appear to be installed"
+		fi
+		die "${key@Q} does not exist (or is not a file)"
 	fi
 
 	if [[ ! ${GNUPGHOME=${PORTAGE_GPG_DIR}} ]]; then
