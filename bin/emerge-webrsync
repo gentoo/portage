@@ -169,21 +169,21 @@ do_tar() {
 	}
 }
 
-get_utc_date_in_seconds() {
+get_unixtime() {
 	date -u +"%s"
 }
 
 get_date_part() {
-	local utc_time_in_secs=$1 part=$2
+	local unixtime=$1 part=$2
 
 	if [[ ${USERLAND} == BSD ]] ; then
-		date -r "${utc_time_in_secs}" -u +"${part}"
+		date -r "${unixtime}" -u +"${part}"
 	else
-		date -d "@${utc_time_in_secs}" -u +"${part}"
+		date -d "@${unixtime}" -u +"${part}"
 	fi
 }
 
-get_utc_second_from_string() {
+get_unixtime_from_string() {
 	local s=$1
 
 	if [[ ${USERLAND} == BSD ]] ; then
@@ -471,7 +471,7 @@ sync_local() {
 
 do_snapshot() {
 	local ignore_timestamp=$1 date=$2
-	local snapshot_timestamp utc_seconds have_files signature digest mirror file
+	local snapshot_timestamp have_files signature unixtime digest mirror file
 	local -A suffix_by
 	local -a tarballs
 
@@ -525,11 +525,11 @@ do_snapshot() {
 						have_files=0
 					fi
 				else
-					utc_seconds=$(get_utc_second_from_string "${date}")
+					unixtime=$(get_unixtime_from_string "${date}")
 
 					# Check that this snapshot is what the age it claims to be
-					if [[ ${snapshot_timestamp} -lt ${utc_seconds} || \
-						${snapshot_timestamp} -gt $(( utc_seconds + 2 * 86400 )) ]]; then
+					if [[ ${snapshot_timestamp} -lt ${unixtime} || \
+						${snapshot_timestamp} -gt $(( unixtime + 2 * 86400 )) ]]; then
 
 						ewarn "Snapshot timestamp is not within acceptable period!"
 						have_files=0
@@ -556,7 +556,7 @@ do_snapshot() {
 }
 
 do_latest_snapshot() {
-	local timestamp_{difference,problem} snapshot_date{,_seconds} approx_snapshot_time existing_timestamp start_{hour,time}
+	local timestamp_{difference,problem} snapshot_{date,unixtime} approx_snapshot_time existing_timestamp start_{hour,time}
 	local min_time_diff attempts=0
 
 	einfo "Fetching most recent snapshot ..."
@@ -571,7 +571,7 @@ do_latest_snapshot() {
 	min_time_diff=$(( 2 * 60 * 60 ))
 
 	existing_timestamp=$(get_repository_timestamp)
-	start_time=$(get_utc_date_in_seconds)
+	start_time=$(get_unixtime)
 	start_hour=$(get_date_part "${start_time}" "%H")
 
 	# Daily snapshots are created at 00:45 and are not
@@ -582,16 +582,16 @@ do_latest_snapshot() {
 	fi
 
 	snapshot_date=$(get_date_part "${start_time}" "%Y%m%d")
-	snapshot_date_seconds=$(get_utc_second_from_string "${snapshot_date}")
+	snapshot_unixtime=$(get_unixtime_from_string "${snapshot_date}")
 
 	while (( attempts++ < 40 )); do
-		(( snapshot_date_seconds -= 86400 ))
+		(( snapshot_unixtime -= 86400 ))
 		# snapshots are created at 00:45
-		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 2700 ))
+		(( approx_snapshot_time = snapshot_unixtime + 86400 + 2700 ))
 		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
 
 		[[ ${timestamp_difference} -lt 0 ]] && (( timestamp_difference = -1 * timestamp_difference ))
-		snapshot_date=$(get_date_part "${snapshot_date_seconds}" "%Y%m%d")
+		snapshot_date=$(get_date_part "${snapshot_unixtime}" "%Y%m%d")
 
 		timestamp_problem=""
 		if [[ ${timestamp_difference} -eq 0 ]]; then
