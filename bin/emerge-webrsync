@@ -305,9 +305,14 @@ check_file_signature_gpg() (
 		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
 		&& trap 'gpgconf -K pgp-agent' EXIT \
 		&& gpg --batch --import "${key}" \
-		&& fingerprint=$(gpg_fingerprint '<infrastructure@gentoo.org>') \
-		&& gpg --batch --import-ownertrust <<<"${fingerprint}:6:" \
 		|| exit
+
+		# Obtain the fingerprint of the applicable signing key.
+		fingerprint=$(gpg_fingerprint '<infrastructure@gentoo.org>') \
+		|| die "couldn't find a fingerprint for the <infrastructure@gentoo.org> key"
+
+		# Designate the key as being ultimately trusted.
+		gpg --batch --import-ownertrust <<<"${fingerprint}:6:" || exit
 	elif [[ ! -w ${GNUPGHOME} ]]; then
 		die "gpgdir is not writable: ${GNUPGHOME}"
 	fi
