@@ -278,7 +278,7 @@ check_file_signature_gemato() {
 	fi
 }
 
-check_file_signature_gpg_unwrapped() {
+check_file_signature_gpg() {
 	local signature=$1 file=$2
 	local fingerprint key
 	local -x GNUPGHOME
@@ -345,12 +345,12 @@ check_file_signature() {
 			check_file_signature_gemato "${signature}" "${file}"
 			if (( ${r=$?} == 127 )); then
 				ewarn "Falling back to gpg as gemato is not installed"
-				check_file_signature_gpg_unwrapped "${signature}" "${file}"
+				check_file_signature_gpg "${signature}" "${file}"
 				r=$?
 			fi
 			;;
 		2)
-			check_file_signature_gpg_unwrapped "${signature}" "${file}"
+			check_file_signature_gpg "${signature}" "${file}"
 	esac
 
 	if (( ${r=$?} != 0 )); then
