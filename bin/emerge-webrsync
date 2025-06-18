@@ -46,19 +46,16 @@ main() {
 
 	handle_pgp_setup
 
-	if [[ ! -d ${repo_location} ]]; then
-		mkdir -p "${repo_location}" || exit
-
-		if contains_word usersync "${FEATURES}"; then
-			chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || exit
-		fi
+	mkdir -p "${repo_location}" || exit
+	if contains_word usersync "${FEATURES}"; then
+		chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || exit
 	fi
 
 	if [[ ! -w ${repo_location} ]] ; then
 		die "Repository '${repo_name}' is not writable: ${repo_location}"
 	fi
 
-	[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
+	mkdir -p "${PORTAGE_TMPDIR}/portage"
 
 	# Create a temporary directory whose subsequent removal is guaranteed.
 	tmpdir=
@@ -68,7 +65,7 @@ main() {
 	|| exit
 
 	(( opt[keep] )) || DISTDIR=${tmpdir}
-	[[ ! -d "${DISTDIR}" ]] && mkdir -p "${DISTDIR}"
+	mkdir -p "${DISTDIR}"
 
 	if (( opt[keep] )) && [[ ! -w ${DISTDIR} ]] ; then
 		die "DISTDIR is not writable: ${DISTDIR}"
