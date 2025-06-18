@@ -291,40 +291,36 @@ check_file_signature_gpg_unwrapped() {
 	local fingerprint key
 	local -x GNUPGHOME
 
-	if ! type -P gpg > /dev/null; then
-		die "cannot check signature: gpg binary not found"
+	if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
+		key="${PORTAGE_GPG_KEY}"
 	else
-		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
-			key="${PORTAGE_GPG_KEY}"
-		else
-			key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
-		fi
+		key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
+	fi
 
-		if [[ ! -f "${key}" ]] ; then
-			eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
-			die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
-		fi
+	if [[ ! -f "${key}" ]] ; then
+		eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
+		die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
+	fi
 
-		if [[ ! ${GNUPGHOME=${PORTAGE_GPG_DIR}} ]]; then
-			# The PORTAGE_GPG_DIR variable is either unset or
-			# empty. Create a temporary directory to contain an
-			# ephemeral keyring into which Gentoo's distributed
-			# public key block shall be imported.
-			GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
-			&& gpg --batch --import "${key}" \
-			&& fingerprint=$(gpg_fingerprint '<infrastructure@gentoo.org>') \
-			&& gpg --batch --import-ownertrust <<<"${fingerprint}:6:" \
-			|| exit
-		elif [[ ! -w ${GNUPGHOME} ]]; then
-			die "gpgdir is not writable: ${GNUPGHOME}"
-		fi
+	if [[ ! ${GNUPGHOME=${PORTAGE_GPG_DIR}} ]]; then
+		# The PORTAGE_GPG_DIR variable is either unset or
+		# empty. Create a temporary directory to contain an
+		# ephemeral keyring into which Gentoo's distributed
+		# public key block shall be imported.
+		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
+		&& gpg --batch --import "${key}" \
+		&& fingerprint=$(gpg_fingerprint '<infrastructure@gentoo.org>') \
+		&& gpg --batch --import-ownertrust <<<"${fingerprint}:6:" \
+		|| exit
+	elif [[ ! -w ${GNUPGHOME} ]]; then
+		die "gpgdir is not writable: ${GNUPGHOME}"
+	fi
 
-		if ! gpg_verify "${signature}" "${file}"; then
-			# Exit early since it's typically inappropriate to try
-			# other mirrors in this case (it may indicate a keyring
-			# problem).
-			die "signature verification failed"
-		fi
+	if ! gpg_verify "${signature}" "${file}"; then
+		# Exit early since it's typically inappropriate to try
+		# other mirrors in this case (it may indicate a keyring
+		# problem).
+		die "signature verification failed"
 	fi
 }
 
