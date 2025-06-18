@@ -245,7 +245,9 @@ check_file_signature_gemato() {
 	local -a gemato_args
 	local key
 
-	if type -P gemato > /dev/null; then
+	if ! type -P gemato > /dev/null; then
+		return 127
+	else
 		if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
 			key="${PORTAGE_GPG_KEY}"
 		else
@@ -278,8 +280,6 @@ check_file_signature_gemato() {
 			# problem).
 			die "signature verification failed"
 		fi
-	else
-		return 127
 	fi
 }
 
