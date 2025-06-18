@@ -169,20 +169,6 @@ do_tar() {
 	}
 }
 
-get_unixtime() {
-	date -u +"%s"
-}
-
-get_date_part() {
-	local unixtime=$1 part=$2
-
-	if [[ ${USERLAND} == BSD ]] ; then
-		date -r "${unixtime}" -u +"${part}"
-	else
-		date -d "@${unixtime}" -u +"${part}"
-	fi
-}
-
 get_unixtime_from_string() {
 	local s=$1
 
@@ -557,7 +543,7 @@ do_snapshot() {
 
 do_latest_snapshot() {
 	local timestamp_{difference,problem} snapshot_{date,unixtime} approx_snapshot_time existing_timestamp start_{hour,time}
-	local min_time_diff attempts=0
+	local min_time_diff attempts TZ=UTC
 
 	einfo "Fetching most recent snapshot ..."
 
@@ -571,8 +557,8 @@ do_latest_snapshot() {
 	min_time_diff=$(( 2 * 60 * 60 ))
 
 	existing_timestamp=$(get_repository_timestamp)
-	start_time=$(get_unixtime)
-	start_hour=$(get_date_part "${start_time}" "%H")
+	printf -v start_time '%(%s)T'
+	printf -v start_hour '%(%H)T' "${start_time}"
 
 	# Daily snapshots are created at 00:45 and are not
 	# available until after 01:00. Don't waste time trying
@@ -581,7 +567,7 @@ do_latest_snapshot() {
 		(( start_time -= 86400 ))
 	fi
 
-	snapshot_date=$(get_date_part "${start_time}" "%Y%m%d")
+	printf -v snapshot_date '%(%Y%m%d)T' "${start_time}"
 	snapshot_unixtime=$(get_unixtime_from_string "${snapshot_date}")
 
 	while (( attempts++ < 40 )); do
@@ -591,7 +577,7 @@ do_latest_snapshot() {
 		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
 
 		[[ ${timestamp_difference} -lt 0 ]] && (( timestamp_difference = -1 * timestamp_difference ))
-		snapshot_date=$(get_date_part "${snapshot_unixtime}" "%Y%m%d")
+		printf -v snapshot_date '%(%Y%m%d)T' "${snapshot_unixtime}"
 
 		timestamp_problem=""
 		if [[ ${timestamp_difference} -eq 0 ]]; then
