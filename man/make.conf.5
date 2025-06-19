@@ -1040,6 +1040,14 @@ use the URI header field as a base URI for fetching binary packages. If the URI
 header field is not defined then the client will use its ${PORTAGE_BINHOST}
 setting as the base URI.
 .TP
+\fBPORTAGE_BINHOST_TTL\fR = \
+\fI"3600"\fR
+If this is set, its value will be used to define the TTL header in package
+index.  The TTL header indicates to portage the duration in seconds after
+which the local package index should be considered potentially outdated.  It is
+recommended to set this value to the minimal duration between binary package
+builds to avoid unnecessary network requests on the package index.
+.TP
 .B PORTAGE_BINPKG_FORMAT
 This variable sets default format used for binary packages. Possible values
 are tar and rpm or both. It is very uncommon to set this and is likely
