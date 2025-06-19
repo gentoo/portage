@@ -119,6 +119,9 @@ handle_pgp_setup() {
 		# Discourage the use of the deprecated "webrsync-gpg" feature
 		# because it prevents the use of gemato for verification.
 		ewarn "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
+		if [[ ! ${PORTAGE_GPG_DIR} ]]; then
+			die "PORTAGE_GPG_DIR is unset or empty (the webrsync-gpg feature requires that it be set)"
+		fi
 		WEBRSYNC_VERIFY_SIGNATURE=2
 	elif ! type -P gemato > /dev/null; then
 		# Fall back to conventional verification with gpg(1).
@@ -149,9 +152,6 @@ handle_pgp_setup() {
 		PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
 	fi
 
-	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 2 && -z "${PORTAGE_GPG_DIR}" ]]; then
-		die "Please set PORTAGE_GPG_DIR in make.conf!"
-	fi
 }
 
 do_tar() {
