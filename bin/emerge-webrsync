@@ -260,16 +260,7 @@ check_file_signature_gemato() {
 	local -a gemato_args
 	local key
 
-	if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
-		key="${PORTAGE_GPG_KEY}"
-	else
-		key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
-	fi
-
-	if [[ ! -f "${key}" ]] ; then
-		eerror "${key} not available. Is sec-keys/openpgp-keys-gentoo-release installed?"
-		die "Needed keys unavailable! Install its package or set PORTAGE_GPG_KEY to the right path."
-	fi
+	assign_key
 
 	gemato_args=(
 		openpgp-verify-detached
@@ -293,21 +284,7 @@ check_file_signature_gpg() {
 	local signature=$1 file=$2
 	local fingerprint key
 
-	if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
-		key="${PORTAGE_GPG_KEY}"
-	else
-		key="${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc"
-	fi
-
-	if [[ ! -f "${key}" ]]; then
-		if [[ ${PORTAGE_GPG_KEY} ]]; then
-			eerror "PORTAGE_GPG_KEY does not appear to have been set correctly"
-		else
-			eerror "sec-keys/openpgp-keys-gentoo-release does not appear to be installed"
-		fi
-		die "${key@Q} does not exist (or is not a file)"
-	fi
-
+	assign_key
 	export GNUPGHOME
 
 	if [[ ! ${GNUPGHOME=${PORTAGE_GPG_DIR}} ]]; then
@@ -329,6 +306,23 @@ check_file_signature_gpg() {
 	fi
 
 	gpg_verify "${signature}" "${file}"
+}
+
+assign_key() {
+	if [[ ${PORTAGE_GPG_KEY} ]]; then
+		key=${PORTAGE_GPG_KEY}
+	else
+		key=${EPREFIX}/usr/share/openpgp-keys/gentoo-release.asc
+	fi
+
+	if [[ ! -f ${key} ]]; then
+		if [[ ${PORTAGE_GPG_KEY} ]]; then
+			eerror "PORTAGE_GPG_KEY does not appear to have been set correctly"
+		else
+			eerror "sec-keys/openpgp-keys-gentoo-release does not appear to be installed"
+		fi
+		die "${key@Q} does not exist (or is not a file)"
+	fi
 }
 
 gpg_fingerprint() {
