@@ -52,7 +52,7 @@ class OnlydepsIdepsTestCase(TestCase):
                     "--onlydeps-with-ideps": "y",
                 },
                 ambiguous_merge_order=True,
-                mergelist=[("dev-libs/B-1")],
+                mergelist=["dev-libs/B-1"],
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/F"],
@@ -64,7 +64,7 @@ class OnlydepsIdepsTestCase(TestCase):
                     "--onlydeps-with-ideps": True,
                 },
                 ambiguous_merge_order=True,
-                mergelist=[("dev-libs/B-1")],
+                mergelist=["dev-libs/B-1"],
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/F"],
