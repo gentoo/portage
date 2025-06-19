@@ -2685,7 +2685,7 @@ def _post_src_install_write_metadata(settings):
         encoding=_encodings["repo.content"],
         errors="strict",
     ) as f:
-        f.write(f"{time.time():.0f}\n")
+        f.write(f"{int(time.time())}\n")
 
     use = frozenset(settings["PORTAGE_USE"].split())
     for k in _vdb_use_conditional_keys:
