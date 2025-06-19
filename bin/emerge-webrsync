@@ -273,7 +273,10 @@ check_file_signature_gemato() {
 		)
 	fi
 
-	[[ -n ${PORTAGE_GPG_KEY_SERVER} ]] && gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
+	# PORTAGE_GPG_KEY_SERVER is directly exported by the webrsync module.
+	if [[ ${PORTAGE_GPG_KEY_SERVER} ]]; then
+		gemato_args+=( --keyserver "${PORTAGE_GPG_KEY_SERVER}" )
+	fi
 	(( opt[quiet] )) && gemato_args+=( --quiet )
 	(( opt[debug] )) && gemato_args+=( --debug )
 
@@ -309,6 +312,7 @@ check_file_signature_gpg() {
 }
 
 assign_key() {
+	# PORTAGE_GPG_KEY is directly exported by the webrsync module.
 	if [[ ${PORTAGE_GPG_KEY} ]]; then
 		key=${PORTAGE_GPG_KEY}
 	else
