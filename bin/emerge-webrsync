@@ -57,9 +57,12 @@ main() {
 
 	mkdir -p "${PORTAGE_TMPDIR}/portage"
 
-	# Create a temporary directory whose subsequent removal is guaranteed.
-	tmpdir=
-	trap 'rm -rf -- "${tmpdir}"' EXIT
+	# The cleanup function shall terminate defunct gpg-agent(1) processes
+	# and remove the destructable temporary directory.
+	unset -v GNUPGHOME tmpdir
+	trap cleanup EXIT
+
+	# Create a destructable temporary directory and switch to it.
 	tmpdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
 	&& cd -- "${tmpdir}" \
 	|| exit
@@ -86,6 +89,15 @@ main() {
 	else
 		do_latest_snapshot
 	fi
+}
+
+cleanup() {
+	# Prevent gpg-agent(1) from lingering for ephemeral keyrings.
+	if [[ ${GNUPGHOME} && ! ${PORTAGE_GPG_DIR} ]]; then
+		gpgconf -K gpg-agent
+	fi
+
+	rm -rf -- "${tmpdir}"
 }
 
 usage() {
@@ -277,10 +289,9 @@ check_file_signature_gemato() {
 	gemato "${gemato_args[@]}" -- "${signature}" "${file}"
 }
 
-check_file_signature_gpg() (
+check_file_signature_gpg() {
 	local signature=$1 file=$2
 	local fingerprint key
-	local -x GNUPGHOME
 
 	if [[ -n ${PORTAGE_GPG_KEY} ]] ; then
 		key="${PORTAGE_GPG_KEY}"
@@ -297,12 +308,13 @@ check_file_signature_gpg() (
 		die "${key@Q} does not exist (or is not a file)"
 	fi
 
+	export GNUPGHOME
+
 	if [[ ! ${GNUPGHOME=${PORTAGE_GPG_DIR}} ]]; then
 		# The PORTAGE_GPG_DIR variable is either unset or empty. Create
 		# a temporary directory to contain an ephemeral keyring into
 		# which Gentoo's distributed public key block shall be imported.
 		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
-		&& trap 'gpgconf -K gpg-agent' EXIT \
 		&& gpg --batch --import "${key}" \
 		|| exit
 
@@ -317,7 +329,7 @@ check_file_signature_gpg() (
 	fi
 
 	gpg_verify "${signature}" "${file}"
-)
+}
 
 gpg_fingerprint() {
 	local -a fields
