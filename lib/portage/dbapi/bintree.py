@@ -2177,6 +2177,11 @@ class binarytree:
             header["URI"] = base_uri
         else:
             header.pop("URI", None)
+        ttl = self.settings.get("PORTAGE_BINHOST_TTL")
+        if ttl:
+            header["TTL"] = ttl
+        else:
+            header.pop("TTL", None)
         for k in (
             list(self._pkgindex_header_keys)
             + self.settings.get("USE_EXPAND_IMPLICIT", "").split()
