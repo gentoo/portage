@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -80,8 +80,7 @@ __save_ebuild_env() (
 		__source_env_files __try_source __check_bash_version \
 		__start_distcc \
 		__eqaquote __eqatag \
-		__eapi7_ver_parse_range __eapi7_ver_split \
-		__eapi7_ver_compare_int __eapi7_ver_compare \
+		__ver_parse_range __ver_split __ver_compare_int __ver_compare \
 		${QA_INTERCEPTORS}
 
 	___eapi_has_usex && unset -f usex
@@ -90,6 +89,9 @@ __save_ebuild_env() (
 	___eapi_has_eapply && unset -f eapply eapply_user
 	___eapi_has_in_iuse && unset -f in_iuse
 	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
+	___eapi_has_pipestatus && unset -f pipestatus
+	___eapi_has_ver_replacing && unset -f ver_replacing
+	___eapi_has_edo && unset -f edo
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do

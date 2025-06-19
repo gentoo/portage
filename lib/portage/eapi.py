@@ -148,6 +148,10 @@ def eapi_has_sysroot(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).sysroot
 
 
+def eapi_rewrites_symlinks(eapi: str) -> bool:
+    return _get_eapi_attrs(eapi).symlink_rewrite
+
+
 _eapi_attrs = collections.namedtuple(
     "_eapi_attrs",
     (
@@ -184,6 +188,7 @@ _eapi_attrs = collections.namedtuple(
         "src_uri_arrows",
         "stablemask",
         "strong_blocks",
+        "symlink_rewrite",
         "sysroot",
         "use_deps",
         "use_dep_defaults",
@@ -264,6 +269,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             src_uri_arrows=True,
             stablemask=True,
             strong_blocks=True,
+            symlink_rewrite=False,
             sysroot=True,
             use_deps=True,
             use_dep_defaults=True,
@@ -304,6 +310,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             src_uri_arrows=eapi >= Eapi("2"),
             stablemask=eapi >= Eapi("5"),
             strong_blocks=eapi >= Eapi("2"),
+            symlink_rewrite=eapi <= Eapi("8"),
             sysroot=eapi >= Eapi("7"),
             use_deps=eapi >= Eapi("2"),
             use_dep_defaults=eapi >= Eapi("4"),
