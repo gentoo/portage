@@ -2427,6 +2427,29 @@ class binarytree:
                     continue
                 return (filename, build_id)
 
+    def _allocate_filename_hash(self, cpv, hash_src, remote_binpkg_format=None):
+        import hashlib
+        try:
+            binpkg_format = get_binpkg_format(cpv._metadata["PATH"])
+        except (AttributeError, KeyError):
+            binpkg_format = self.settings.get(
+                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+            )
+        if binpkg_format == "xpak":
+            binpkg_suffix = "xpak"
+        elif binpkg_format == "gpkg":
+            binpkg_suffix = "gpkg.tar"
+        else:
+            raise InvalidBinaryPackageFormat(binpkg_format)
+        pf = catsplit(cpv)[1]
+
+        with open(hash_src) as F:
+            build_id = hashlib.sha1(F.read().encode()).hexdigest()[:8]
+        filename = (
+            f"{os.path.join(self.pkgdir, cpv.cp, pf)}-{build_id}.{binpkg_suffix}"
+        )
+        return (filename, build_id)
+
     @staticmethod
     def _parse_build_id(filename):
         build_id = -1
