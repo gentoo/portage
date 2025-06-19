@@ -302,7 +302,7 @@ check_file_signature_gpg() (
 		# a temporary directory to contain an ephemeral keyring into
 		# which Gentoo's distributed public key block shall be imported.
 		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
-		&& trap 'gpgconf -K pgp-agent' EXIT \
+		&& trap 'gpgconf -K gpg-agent' EXIT \
 		&& gpg --batch --import "${key}" \
 		|| exit
 
