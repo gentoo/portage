@@ -194,13 +194,20 @@ get_unixtime_by_date() {
 }
 
 get_repository_timestamp() {
-	local portage_current_timestamp=0
+	local unixtime path
 
-	if [[ -f "${repo_location}/metadata/timestamp.x" ]]; then
-		portage_current_timestamp=$(cut -f 1 -d " " "${repo_location}/metadata/timestamp.x" )
+	path=${repo_location}/metadata/timestamp.x
+	if [[ ! -f ${path} ]]; then
+		unixtime=0
+	elif ! read -r unixtime _ < "${path}" || ! is_uint "${unixtime}"; then
+		return 1
 	fi
 
-	echo "${portage_current_timestamp}"
+	printf '%s\n' "${unixtime}"
+}
+
+is_uint() {
+	[[ $1 == @(0|[1-9]*([0-9])) ]]
 }
 
 fetch_file() {
@@ -373,8 +380,14 @@ check_file_signature() {
 
 get_snapshot_timestamp() {
 	local file=$1
+	local unixtime
 
-	do_tar "${file}" --to-stdout -f - --wildcards -x '*/metadata/timestamp.x' | cut -f 1 -d " "
+	do_tar "${file}" --to-stdout -f - --wildcards -x '*/metadata/timestamp.x' |
+	{
+		read -r unixtime _ \
+		&& is_uint "${unixtime}" \
+		&& printf '%s\n' "${unixtime}"
+	}
 }
 
 sync_local() {
@@ -448,7 +461,7 @@ sync_local() {
 
 do_snapshot() {
 	local ignore_timestamp=$1 date=$2
-	local snapshot_timestamp have_files signature unixtime digest mirror file
+	local {repo,snapshot}_timestamp have_files signature unixtime digest mirror file
 	local -A suffix_by
 	local -a tarballs
 
@@ -494,10 +507,14 @@ do_snapshot() {
 			if (( have_files )); then
 				einfo "Getting snapshot timestamp ..."
 
-				snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
-
+				if ! snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}"); then
+					die "couldn't determine the timestamp of snapshot ${file@Q}"
+				fi
 				if [[ ${ignore_timestamp} == 0 ]]; then
-					if (( snapshot_timestamp < $(get_repository_timestamp) )); then
+					if ! repo_timestamp=$(get_repository_timestamp); then
+						die "couldn't determine the timestamp of repo ${repo_location@Q}"
+					fi
+					if (( snapshot_timestamp < repo_timestamp )); then
 						ewarn "Repository (age) is newer than fetched snapshot"
 						have_files=0
 					fi
@@ -547,7 +564,9 @@ do_latest_snapshot() {
 	# are considered to be approximately equal.
 	min_time_diff=$(( 2 * 60 * 60 ))
 
-	existing_timestamp=$(get_repository_timestamp)
+	if ! existing_timestamp=$(get_repository_timestamp); then
+		die "couldn't determine the timestamp of repo ${repo_location@Q}"
+	fi
 	printf -v start_time '%(%s)T'
 	printf -v start_hour '%(%H)T' "${start_time}"
 
