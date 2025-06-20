@@ -46,16 +46,16 @@ main() {
 
 	handle_pgp_setup
 
-	mkdir -p "${repo_location}" || exit
+	mkdir -p -- "${repo_location}" || exit
 	if contains_word usersync "${FEATURES}"; then
-		chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || exit
+		chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" -- "${repo_location}" || exit
 	fi
 
 	if [[ ! -w ${repo_location} ]] ; then
 		die "Repository '${repo_name}' is not writable: ${repo_location}"
 	fi
 
-	mkdir -p "${PORTAGE_TMPDIR}/portage"
+	mkdir -p -- "${PORTAGE_TMPDIR}/portage"
 
 	# The cleanup function shall terminate defunct gpg-agent(1) processes
 	# and remove the destructable temporary directory.
@@ -68,7 +68,7 @@ main() {
 	|| exit
 
 	(( opt[keep] )) || DISTDIR=${tmpdir}
-	mkdir -p "${DISTDIR}"
+	mkdir -p -- "${DISTDIR}"
 
 	if (( opt[keep] )) && [[ ! -w ${DISTDIR} ]] ; then
 		die "DISTDIR is not writable: ${DISTDIR}"
@@ -171,10 +171,10 @@ do_tar() {
 
 	shopt -o -s pipefail
 	case $1 in
-		*.xz)   xzcat "$1" ;;
-		*.bz2)  bzcat "$1" ;;
-		*.gz)   zcat  "$1" ;;
-		*)      cat   "$1" ;;
+		*.xz)   xzcat -- "$1" ;;
+		*.bz2)  bzcat -- "$1" ;;
+		*.gz)   zcat  -- "$1" ;;
+		*)      cat   -- "$1" ;;
 	esac | {
 		shift
 		tar "$@"
@@ -229,14 +229,14 @@ fetch_file() {
 			fi
 			;;
 		*)
-			rm -f "${DISTDIR}/${FILE}"
+			rm -f -- "${DISTDIR}/${FILE}"
 	esac
 
 	einfo "Fetching file ${FILE} ..."
 
 	# Already set DISTDIR=
 	if ! eval "${FETCHCOMMAND} ${opts}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
-		rm -f "${DISTDIR}/${FILE}"
+		rm -f -- "${DISTDIR}/${FILE}"
 		return 1
 	fi
 }
@@ -248,11 +248,11 @@ check_file_digest() {
 	einfo "Checking digest ..."
 
 	if hash md5sum 2>/dev/null; then
-		md5sum_output=$(md5sum "${file}")
+		md5sum_output=$(md5sum -- "${file}")
 		digest_content=$(< "${digest}")
 		[[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ]]
 	elif hash md5 2>/dev/null; then
-		[[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ]]
+		[[ "$(md5 -q -- "${file}")" == "$(cut -d ' ' -f 1 -- "${digest}")" ]]
 	else
 		die "cannot check digest: no suitable md5/md5sum binaries found"
 	fi
@@ -298,7 +298,7 @@ check_file_signature_gpg() {
 		# a temporary directory to contain an ephemeral keyring into
 		# which Gentoo's distributed public key block shall be imported.
 		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
-		&& gpg --batch --import "${key}" \
+		&& gpg --batch --import -- "${key}" \
 		|| exit
 
 		# Obtain the fingerprint of the applicable signing key.
@@ -348,7 +348,7 @@ gpg_verify() {
 	local output token
 
 	# https://www.gnupg.org/documentation/manuals/gnupg/Automated-signature-checking.html
-	output=$(gpg --batch --status-fd 1 --verify "${signature}" "${file}") || return
+	output=$(gpg --batch --status-fd 1 --verify -- "${signature}" "${file}") || return
 	for token in GOODSIG VALIDSIG TRUST_ULTIMATE; do
 		[[ $'\n'${output} == *$'\n[GNUPG:] '"${token} "* ]] || return
 	done
@@ -396,20 +396,20 @@ sync_local() {
 	if ! contains_word usersync "${FEATURES}"; then
 		ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
 	elif [[ ${USERLAND} == BSD ]]; then
-		ownership=$(stat -f '%Su:%Sg' "${repo_location}")
+		ownership=$(stat -f '%Su:%Sg' -- "${repo_location}")
 	else
-		ownership=$(stat -c '%U:%G' "${repo_location}")
+		ownership=$(stat -c '%U:%G' -- "${repo_location}")
 	fi || exit
 
 	if hash tarsync 2>/dev/null; then
 		tarsync_opts=( -s 1 -e /distfiles -e /packages -e /local )
-		if chown "${ownership}" "${repo_location}" 2>/dev/null; then
+		if chown "${ownership}" -- "${repo_location}" 2>/dev/null; then
 			tarsync_opts+=( -o "${ownership%:*}" -g "${ownership#*:}" )
 		fi
 		if (( ! opt[quiet] )); then
 			tarsync_opts+=( -v )
 		fi
-		if ! tarsync "${tarsync_opts[@]}" "${file}" "${repo_location}"; then
+		if ! tarsync "${tarsync_opts[@]}" -- "${file}" "${repo_location}"; then
 			eerror "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -420,7 +420,7 @@ sync_local() {
 		fi
 
 		# Free disk space
-		(( opt[keep] )) || rm -f "${file}"
+		(( opt[keep] )) || rm -f -- "${file}"
 
 		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
 		if (( opt[quiet] )); then
@@ -432,7 +432,7 @@ sync_local() {
 		fi
 
 		chmod 755 .
-		rsync "${rsync_opts[@]}" . "${repo_location%%/}" || {
+		rsync "${rsync_opts[@]}" -- . "${repo_location%%/}" || {
 			eerror "rsync failed: $?"
 			die "Aborting because of rsync failure"
 		}
@@ -531,14 +531,14 @@ do_snapshot() {
 				break 2
 			else
 				# Remove files and use a different mirror
-				rm -f "${DISTDIR}"/{"$file","$digest","$signature"}
+				rm -f -- "${DISTDIR}"/{"$file","$digest","$signature"}
 			fi
 		done
 	done
 
 	if (( have_files )); then
 		sync_local "${DISTDIR}/${file}" \
-		&& { (( opt[keep] )) || rm -f "${DISTDIR}"/{"$file","$digest","$signature"}; }
+		&& { (( opt[keep] )) || rm -f -- "${DISTDIR}"/{"$file","$digest","$signature"}; }
 	else
 		ewarn "${date} snapshot was not found"
 		false
