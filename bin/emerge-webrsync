@@ -135,7 +135,7 @@ handle_pgp_setup() {
 			die "PORTAGE_GPG_DIR is unset or empty (the webrsync-gpg feature requires that it be set)"
 		fi
 		WEBRSYNC_VERIFY_SIGNATURE=2
-	elif ! type -P gemato > /dev/null; then
+	elif ! hash gemato 2>/dev/null; then
 		# Fall back to conventional verification with gpg(1).
 		ewarn "app-portage/gemato does not appear to be installed. Falling back to gpg."
 		WEBRSYNC_VERIFY_SIGNATURE=2
@@ -247,11 +247,11 @@ check_file_digest() {
 
 	einfo "Checking digest ..."
 
-	if type -P md5sum > /dev/null; then
+	if hash md5sum 2>/dev/null; then
 		md5sum_output=$(md5sum "${file}")
 		digest_content=$(< "${digest}")
 		[[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ]]
-	elif type -P md5 > /dev/null; then
+	elif hash md5 2>/dev/null; then
 		[[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ]]
 	else
 		die "cannot check digest: no suitable md5/md5sum binaries found"
@@ -401,7 +401,7 @@ sync_local() {
 		ownership=$(stat -c '%U:%G' "${repo_location}")
 	fi || exit
 
-	if type -P tarsync > /dev/null ; then
+	if hash tarsync 2>/dev/null; then
 		tarsync_opts=( -s 1 -e /distfiles -e /packages -e /local )
 		if chown "${ownership}" "${repo_location}" 2>/dev/null; then
 			tarsync_opts+=( -o "${ownership%:*}" -g "${ownership#*:}" )
@@ -464,10 +464,10 @@ do_snapshot() {
 	suffix_by=([xzcat]=xz [bzcat]=bz2 [zcat]=gz)
 
 	for file in xzcat bzcat zcat; do
-		if type -P "${file}"; then
+		if hash "${file}" 2>/dev/null; then
 			tarballs+=( {"$repo_name","portage"}-"${date}.tar.${suffix_by[$file]}" )
 		fi
-	done >/dev/null
+	done
 
 	if (( ! ${#tarballs[@]} )); then
 		die "unable to locate any decompressors (xzcat, bzcat or zcat)"
