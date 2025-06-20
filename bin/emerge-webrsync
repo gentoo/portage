@@ -235,12 +235,13 @@ check_file_digest() {
 
 	einfo "Checking digest ..."
 
+	read -r digest_content _ < "${digest}" || return
+
 	if hash md5sum 2>/dev/null; then
 		md5sum_output=$(md5sum -- "${file}")
-		digest_content=$(< "${digest}")
-		[[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ]]
+		[[ "${md5sum_output%%[[:space:]]*}" == "${digest_content}" ]]
 	elif hash md5 2>/dev/null; then
-		[[ "$(md5 -q -- "${file}")" == "$(cut -d ' ' -f 1 -- "${digest}")" ]]
+		[[ $(md5 -q -- "${file}") == "${digest_content}" ]]
 	else
 		die "cannot check digest: no suitable md5/md5sum binaries found"
 	fi
