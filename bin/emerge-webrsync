@@ -126,7 +126,7 @@ handle_pgp_setup() {
 		# Disable PGP verification. The webrsync module specifies this
 		# option if the "sync-webrsync-verify-signature" repo attribute
 		# is explicitly defined with a value of "false".
-		verification_method=0
+		verification_method=
 	elif contains_word webrsync-gpg "${FEATURES}"; then
 		# Discourage the use of the deprecated "webrsync-gpg" feature
 		# because it prevents the use of gemato for verification.
@@ -134,31 +134,19 @@ handle_pgp_setup() {
 		if [[ ! ${PORTAGE_GPG_DIR} ]]; then
 			die "PORTAGE_GPG_DIR is unset or empty (the webrsync-gpg feature requires that it be set)"
 		fi
-		verification_method=2
+		verification_method="gpg"
 	elif ! hash gemato 2>/dev/null; then
 		# Fall back to conventional verification with gpg(1).
 		ewarn "app-portage/gemato does not appear to be installed. Falling back to gpg."
-		verification_method=2
+		verification_method="gpg"
 	else
 		# Use gemato for PGP verification. It is the preferred method
 		# because it handles key refresh and revocation, and guarantees
 		# a clean operating environment.
-		verification_method=1
+		verification_method="gemato"
 	fi
 
-	case ${verification_method} in
-		0)
-			if (( ! opt[quiet] )); then
-				ewarn "PGP verification method: disabled"
-			fi
-			;;
-		1)
-			einfo "PGP verification method: gemato"
-			;;
-		2)
-			ewarn "PGP verification method: legacy gpg"
-			;;
-	esac
+	einfo "PGP verification method: ${verification_method:-disabled}"
 
 	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]]; then
 		PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
@@ -357,16 +345,10 @@ gpg_verify() {
 check_file_signature() {
 	local signature=$1 file=$2
 
-	case ${verification_method} in
-		[12])
-			einfo "Checking signature ..."
-			;;&
-		1)
-			check_file_signature_gemato "${signature}" "${file}"
-			;;
-		2)
-			check_file_signature_gpg "${signature}" "${file}"
-	esac || {
+	if [[ ${verification_method} ]]; then
+		einfo "Checking signature with ${verification_method} ..."
+		"check_file_signature_${verification_method}" "${signature}" "${file}"
+	fi || {
 		# Exit early since it's typically inappropriate to try other
 		# mirrors in this case (it may indicate a keyring problem).
 		file=${file##*/}
