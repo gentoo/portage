@@ -677,5 +677,5 @@ if [[ -n "${PORTAGE_NICENESS}" ]]; then
 	renice "${PORTAGE_NICENESS}" $$ > /dev/null
 fi
 
-declare -A opt
+declare -A opt=()
 main "$@"
