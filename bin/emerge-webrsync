@@ -235,11 +235,7 @@ fetch_file() {
 	einfo "Fetching file ${FILE} ..."
 
 	# Already set DISTDIR=
-	eval "${FETCHCOMMAND} ${opts}"
-
-	if [[ $? -eq 0 && -s ${DISTDIR}/${FILE} ]] ; then
-		return 0
-	else
+	if ! eval "${FETCHCOMMAND} ${opts}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
 		rm -f "${DISTDIR}/${FILE}"
 		return 1
 	fi
