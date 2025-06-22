@@ -431,8 +431,6 @@ sync_local() {
 			eerror "rsync failed: $?"
 			die "Aborting because of rsync failure"
 		fi
-
-		einfo "Cleaning up ..."
 	fi
 
 	if contains_word metadata-transfer "${FEATURES}"; then
