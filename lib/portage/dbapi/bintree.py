@@ -1370,6 +1370,7 @@ class binarytree:
 
         # Order by descending priority.
         for repo in reversed(list(self._binrepos_conf.values())):
+            binrepo_name = repo.name or repo.name_fallback
             base_url = repo.sync_uri
             parsed_url = urlparse(base_url)
             host = parsed_url.hostname or ""
@@ -1564,19 +1565,20 @@ class binarytree:
                             pkgindex = None
                             writemsg(
                                 _(
-                                    "\n\n!!! Binhost package index "
+                                    "\n\n!!! [%s] Binhost package index "
                                     " has no TIMESTAMP field.\n"
                                 ),
+                                binrepo_name,
                                 noiselevel=-1,
                             )
                         else:
                             if not self._pkgindex_version_supported(rmt_idx):
                                 writemsg(
                                     _(
-                                        "\n\n!!! Binhost package index version"
+                                        "\n\n!!! [%s] Binhost package index version"
                                         " is not supported: '%s'\n"
                                     )
-                                    % rmt_idx.header.get("VERSION"),
+                                    % (binrepo_name, rmt_idx.header.get("VERSION")),
                                     noiselevel=-1,
                                 )
                                 pkgindex = None
@@ -1596,8 +1598,11 @@ class binarytree:
                                 AlarmSignal.unregister()
                         except AlarmSignal:
                             writemsg(
-                                "\n\n!!! %s\n"
-                                % _("Timed out while closing connection to binhost"),
+                                "\n\n!!! [%s] %s\n"
+                                % (
+                                    binrepo_name,
+                                    _("Timed out while closing connection to binhost"),
+                                ),
                                 noiselevel=-1,
                             )
                     break
@@ -1610,8 +1615,10 @@ class binarytree:
                         writemsg_stdout(
                             colorize(
                                 "GOOD",
-                                _("Local copy of remote index is %s and will be used.")
-                                % desc,
+                                _(
+                                    " [%s] Local copy of remote index is %s and will be used."
+                                )
+                                % (binrepo_name, desc),
                             )
                             + "\n"
                         )
@@ -1628,8 +1635,11 @@ class binarytree:
                     # This includes URLError which is raised for SSL
                     # certificate errors when PEP 476 is supported.
                     writemsg(
-                        _("\n\n!!! Error fetching binhost package" " info from '%s'\n")
-                        % _hide_url_passwd(base_url)
+                        _(
+                            "\n\n!!! [%s] Error fetching binhost package"
+                            " info from '%s'\n"
+                        )
+                        % (binrepo_name, _hide_url_passwd(base_url))
                     )
                     # With Python 2, the EnvironmentError message may
                     # contain bytes or unicode, so use str to ensure
@@ -1640,7 +1650,7 @@ class binarytree:
                         error_msg = str(
                             uerror.object, encoding="utf_8", errors="replace"
                         )
-                    writemsg(f"!!! {error_msg}\n\n")
+                    writemsg(f"!!! [${binrepo_name}] {error_msg}\n\n")
                     del e
                     pkgindex = None
                 finally:
@@ -1702,7 +1712,7 @@ class binarytree:
                                 writemsg(
                                     colorize(
                                         "WARN",
-                                        f"Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
+                                        f"[{binrepo_name} Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
                                     ),
                                     noiselevel=-1,
                                 )
