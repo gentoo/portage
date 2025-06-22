@@ -611,6 +611,9 @@ if ! portageq=$(PATH=${BASH_SOURCE%/*}:${PATH} type -P portageq); then
 fi
 
 portage_vars=(
+	DISTDIR
+	EPREFIX
+	FEATURES
 	FETCHCOMMAND
 	GENTOO_MIRRORS
 	PORTAGE_BIN_PATH
