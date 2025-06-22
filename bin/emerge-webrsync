@@ -67,11 +67,10 @@ main() {
 	&& cd -- "${tmpdir}" \
 	|| exit
 
-	(( opt[keep] )) || DISTDIR=${tmpdir}
-	mkdir -p -- "${DISTDIR}"
-
-	if (( opt[keep] )) && [[ ! -w ${DISTDIR} ]] ; then
-		die "DISTDIR is not writable: ${DISTDIR}"
+	if (( ! opt[keep] )); then
+		DISTDIR=${tmpdir}
+	elif mkdir -p -- "${DISTDIR}" || exit; [[ ! -w ${DISTDIR} ]]; then
+		die "DISTDIR is not writable: ${DISTDIR@Q}"
 	fi
 
 	# This is a sanity check to help prevent people like funtoo users
