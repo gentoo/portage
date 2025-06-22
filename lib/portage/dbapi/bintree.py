@@ -1,4 +1,4 @@
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -20,7 +20,7 @@ portage.proxy.lazyimport.lazyimport(
     + "writemsg,writemsg_stdout",
     "portage.util.path:first_existing",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
-    "portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476",
+    "portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476,http_to_timestamp",
     "portage.versions:best,catpkgsplit,catsplit,_pkg_str",
 )
 
@@ -61,6 +61,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 
 import codecs
+import datetime
 import errno
 import io
 import json
@@ -884,6 +885,7 @@ class binarytree:
         self,
         getbinpkgs=False,
         getbinpkg_refresh=False,
+        verbose=False,
         add_repos=(),
         force_reindex=False,
         invalid_errors=True,
@@ -960,7 +962,9 @@ class binarytree:
                     )
                 else:
                     self._populate_remote(
-                        getbinpkg_refresh=getbinpkg_refresh, pretend=pretend
+                        getbinpkg_refresh=getbinpkg_refresh,
+                        pretend=pretend,
+                        verbose=verbose,
                     )
 
         finally:
@@ -1353,7 +1357,7 @@ class binarytree:
             return
         ret.check_returncode()
 
-    def _populate_remote(self, getbinpkg_refresh=True, pretend=False):
+    def _populate_remote(self, getbinpkg_refresh=True, pretend=False, verbose=False):
         self._remote_has_index = False
         self._remotepkgs = {}
 
@@ -1469,6 +1473,11 @@ class binarytree:
                             if (
                                 hasattr(err, "code") and err.code == 304
                             ):  # not modified (since local_timestamp)
+                                if hasattr(err, "headers") and err.headers.get(
+                                    "Last-Modified", ""
+                                ):
+                                    last_modified = err.headers.get("Last-Modified")
+                                    remote_timestamp = http_to_timestamp(last_modified)
                                 raise UseCachedCopyOfRemoteIndex()
 
                             if parsed_url.scheme in ("ftp", "http", "https"):
@@ -1610,15 +1619,29 @@ class binarytree:
                     changed = False
                     rmt_idx = pkgindex
                     if getbinpkg_refresh or repo.frozen:
-                        desc = "frozen" if repo.frozen else "up-to-date"
+                        extra_info = ""
+                        if repo.frozen:
+                            desc = "frozen"
+                        else:
+
+                            def convUnixTs(ts):
+                                dt = datetime.datetime.fromtimestamp(
+                                    int(ts), datetime.timezone.utc
+                                )
+                                return dt.isoformat()
+
+                            desc = "up-to-date"
+                            if remote_timestamp and verbose:
+                                extra_info = f" (local: {convUnixTs(local_timestamp)}, remote: {convUnixTs(remote_timestamp)})"
+
                         writemsg_stdout("\n")
                         writemsg_stdout(
                             colorize(
                                 "GOOD",
                                 _(
-                                    " [%s] Local copy of remote index is %s and will be used."
+                                    " [%s] Local copy of remote index is %s and will be used%s."
                                 )
-                                % (binrepo_name, desc),
+                                % (binrepo_name, desc, extra_info),
                             )
                             + "\n"
                         )
