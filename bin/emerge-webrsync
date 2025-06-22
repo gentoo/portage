@@ -230,9 +230,10 @@ fetch_file() {
 }
 
 check_file_digest() {
-	local digest=$1 file=$2
-	local expected_md5 md5
+	local file=$1
+	local expected_md5 digest md5
 
+	digest="${file}.md5sum"
 	einfo "Checking digest ..."
 
 	if ! read -r expected_md5 _ < "${digest}"; then
@@ -259,7 +260,7 @@ md5sum_hex() {
 }
 
 check_file_signature_gemato() {
-	local signature=$1 file=$2
+	local file=$1
 	local -a gemato_args
 	local key
 
@@ -283,11 +284,11 @@ check_file_signature_gemato() {
 	(( opt[quiet] )) && gemato_args+=( --quiet )
 	(( opt[debug] )) && gemato_args+=( --debug )
 
-	gemato "${gemato_args[@]}" -- "${signature}" "${file}"
+	gemato "${gemato_args[@]}" -- "${file}"{".gpgsig",}
 }
 
 check_file_signature_gpg() {
-	local signature=$1 file=$2
+	local file=$1
 	local fingerprint key
 
 	assign_key
@@ -311,7 +312,7 @@ check_file_signature_gpg() {
 		die "gpgdir is not writable: ${GNUPGHOME}"
 	fi
 
-	gpg_verify "${signature}" "${file}"
+	gpg_verify "${file}"
 }
 
 assign_key() {
@@ -344,22 +345,22 @@ gpg_fingerprint() {
 }
 
 gpg_verify() {
-	local signature=$1 file=$2
+	local file=$1
 	local output token
 
 	# https://www.gnupg.org/documentation/manuals/gnupg/Automated-signature-checking.html
-	output=$(gpg --batch --status-fd 1 --verify -- "${signature}" "${file}") || return
+	output=$(gpg --batch --status-fd 1 --verify -- "${file}"{".gpgsig",}) || return
 	for token in GOODSIG VALIDSIG TRUST_ULTIMATE; do
 		[[ $'\n'${output} == *$'\n[GNUPG:] '"${token} "* ]] || return
 	done
 }
 
 check_file_signature() {
-	local signature=$1 file=$2
+	local file=$1
 
 	if [[ ${verification_method} ]]; then
 		einfo "Checking signature with ${verification_method} ..."
-		"check_file_signature_${verification_method}" "${signature}" "${file}"
+		"check_file_signature_${verification_method}" "${file}"
 	fi || {
 		# Exit early since it's typically inappropriate to try other
 		# mirrors in this case (it may indicate a keyring problem).
@@ -475,8 +476,8 @@ do_snapshot() {
 			signature="${file}.gpgsig"
 
 			if [[ -s "${DISTDIR}/${file}" && -s "${DISTDIR}/${digest}" && -s "${DISTDIR}/${signature}" ]] ; then
-				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" \
-				&& check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" \
+				check_file_digest "${DISTDIR}/${file}" \
+				&& check_file_signature "${DISTDIR}/${file}" \
 				&& have_files=1
 			fi
 
@@ -484,8 +485,8 @@ do_snapshot() {
 				fetch_file "${mirror}/snapshots/${digest}" "${digest}" \
 				&& fetch_file "${mirror}/snapshots/${signature}" "${signature}" \
 				&& fetch_file "${mirror}/snapshots/${file}" "${file}" \
-				&& check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" \
-				&& check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" \
+				&& check_file_digest "${DISTDIR}/${file}" \
+				&& check_file_signature "${DISTDIR}/${file}" \
 				&& have_files=1
 			fi
 
