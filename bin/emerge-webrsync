@@ -427,10 +427,10 @@ sync_local() {
 		fi
 
 		chmod 755 .
-		rsync "${rsync_opts[@]}" -- . "${repo_location%%/}" || {
+		if ! rsync "${rsync_opts[@]}" -- . "${repo_location%/}"; then
 			eerror "rsync failed: $?"
 			die "Aborting because of rsync failure"
-		}
+		fi
 
 		einfo "Cleaning up ..."
 	fi
