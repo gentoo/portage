@@ -68,6 +68,8 @@ Features:
 
 * cnf: sets: bring back @golang-rebuild (bug 919751).
 
+* Portage will now show more details about binrepos if told to be verbose.
+
 Bug fixes:
 
 * Don't strip LD_PRELOAD.
