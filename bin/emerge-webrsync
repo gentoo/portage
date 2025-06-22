@@ -231,19 +231,19 @@ fetch_file() {
 
 check_file_digest() {
 	local digest=$1 file=$2
-	local digest_content md5sum_output
+	local expected_md5 md5
 
 	einfo "Checking digest ..."
 
-	if ! read -r digest_content _ < "${digest}"; then
+	if ! read -r expected_md5 _ < "${digest}"; then
 		digest=${digest##*/}
 		ewarn "Disregarding ${digest@Q} because it couldn't be parsed"
 		false
-	elif ! md5sum_output=$(md5sum_hex "${file}"); then
+	elif ! md5=$(md5sum_hex "${file}"); then
 		file=${file##*/}
 		die "couldn't calculate an MD5 checksum for ${file@Q}"
 	else
-		[[ ${md5sum_output} == "${digest_content}" ]]
+		[[ ${md5} == "${expected_md5}" ]]
 	fi
 }
 
