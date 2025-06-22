@@ -453,8 +453,8 @@ sync_local() {
 do_snapshot() {
 	local ignore_timestamp=$1 date=$2
 	local {repo,snapshot}_timestamp have_files signature unixtime digest mirror file
+	local -a tarballs mirrors
 	local -A suffix_by
-	local -a tarballs
 
 	suffix_by=([xzcat]=xz [bzcat]=bz2 [zcat]=gz)
 
@@ -468,7 +468,9 @@ do_snapshot() {
 		die "unable to locate any decompressors (xzcat, bzcat or zcat)"
 	fi
 
-	for mirror in ${GENTOO_MIRRORS} ; do
+	read -rd '' -a mirrors <<<"${GENTOO_MIRRORS}"
+
+	for mirror in "${mirrors[@]}"; do
 		mirror=${mirror%/}
 		einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 		for file in "${tarballs[@]}"; do
