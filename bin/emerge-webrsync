@@ -235,15 +235,26 @@ check_file_digest() {
 
 	einfo "Checking digest ..."
 
-	read -r digest_content _ < "${digest}" || return
-
-	if hash md5sum 2>/dev/null; then
-		md5sum_output=$(md5sum -- "${file}")
-		[[ "${md5sum_output%%[[:space:]]*}" == "${digest_content}" ]]
-	elif hash md5 2>/dev/null; then
-		[[ $(md5 -q -- "${file}") == "${digest_content}" ]]
+	if ! read -r digest_content _ < "${digest}"; then
+		digest=${digest##*/}
+		ewarn "Disregarding ${digest@Q} because it couldn't be parsed"
+		false
+	elif ! md5sum_output=$(md5sum_hex "${file}"); then
+		file=${file##*/}
+		die "couldn't calculate an MD5 checksum for ${file@Q}"
 	else
-		die "cannot check digest: no suitable md5/md5sum binaries found"
+		[[ ${md5sum_output} == "${digest_content}" ]]
+	fi
+}
+
+md5sum_hex() {
+	local output
+
+	if hash md5 2>/dev/null; then
+		md5 -q -- "$1"
+	else
+		output=$(md5sum -- "$1") \
+		&& printf '%s\n' "${output%%[[:blank:]]*}"
 	fi
 }
 
