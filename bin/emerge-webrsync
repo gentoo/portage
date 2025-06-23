@@ -423,10 +423,10 @@ sync_local() {
 		fi
 
 		chmod 755 .
-		if ! rsync "${rsync_opts[@]}" -- . "${repo_location%/}"; then
-			eerror "rsync failed: $?"
-			die "Aborting because of rsync failure"
-		fi
+		rsync "${rsync_opts[@]}" -- . "${repo_location%/}" || {
+			eerror "rsync unexpectedly exited with a status of $?"
+			die "couldn't sync ${repo_location@Q} with ${PWD@Q}"
+		}
 	fi
 
 	if (( ! from_portage )) && contains_word metadata-transfer "${FEATURES}"; then
