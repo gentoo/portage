@@ -429,7 +429,7 @@ sync_local() {
 		fi
 	fi
 
-	if contains_word metadata-transfer "${FEATURES}"; then
+	if (( ! from_portage )) && contains_word metadata-transfer "${FEATURES}"; then
 		einfo "Updating cache ..."
 		"${emerge}" --metadata
 	fi
