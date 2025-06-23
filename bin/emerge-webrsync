@@ -525,8 +525,7 @@ do_snapshot() {
 	done
 
 	if (( have_files )); then
-		sync_local "${DISTDIR}/${file}" \
-		&& { (( opt[keep] )) || rm -f -- "${DISTDIR}"/{"$file","$digest","$signature"}; }
+		sync_local "${DISTDIR}/${file}"
 	else
 		ewarn "${date} snapshot was not found"
 		false
