@@ -147,7 +147,6 @@ handle_pgp_setup() {
 	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]]; then
 		PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
 	fi
-
 }
 
 do_tar() {
