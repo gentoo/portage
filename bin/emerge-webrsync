@@ -108,7 +108,7 @@ usage() {
 	  -x, --debug         Enable debug output
 	  -h, --help          This help screen (duh!)
 	EOF
-	if [[ -n $* ]] ; then
+	if (( $# > 0 )); then
 		printf "\nError: %s\n" "$*" 1>&2
 		exit 1
 	else
