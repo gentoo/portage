@@ -379,7 +379,7 @@ get_snapshot_timestamp() {
 
 sync_local() {
 	local file=$1
-	local ownership snapshot_dir post_sync
+	local ownership snapshot_dir
 	local -a tarsync_opts rsync_opts
 
 	einfo "Syncing local repository ..."
@@ -433,9 +433,6 @@ sync_local() {
 		einfo "Updating cache ..."
 		"${emerge}" --metadata
 	fi
-
-	post_sync=${PORTAGE_CONFIGROOT%/}/etc/portage/bin/post_sync
-	[[ -x "${post_sync}" ]] && "${post_sync}"
 
 	# --quiet suppresses output if there are no relevant news items
 	if contains_word news "${FEATURES}"; then
@@ -626,7 +623,6 @@ portage_vars=(
 	FETCHCOMMAND
 	GENTOO_MIRRORS
 	PORTAGE_BIN_PATH
-	PORTAGE_CONFIGROOT
 	PORTAGE_GPG_DIR
 	PORTAGE_GRPNAME
 	PORTAGE_NICENESS
