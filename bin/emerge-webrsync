@@ -505,9 +505,8 @@ do_snapshot() {
 						have_files=0
 					fi
 				else
+					# Check that this snapshot is of the age it claims to be.
 					unixtime=$(get_unixtime_by_date "${date}")
-
-					# Check that this snapshot is what the age it claims to be
 					if (( snapshot_timestamp < unixtime
 						|| snapshot_timestamp > unixtime + 2 * 86400 ))
 					then
