@@ -435,9 +435,10 @@ sync_local() {
 	fi
 
 	# --quiet suppresses output if there are no relevant news items
-	if contains_word news "${FEATURES}"; then
+	if (( ! from_portage )) && contains_word news "${FEATURES}"; then
 		"${emerge}" --check-news --quiet
 	fi
+
 	return 0
 }
 
@@ -606,6 +607,9 @@ do_latest_snapshot() {
 		do_snapshot 0 "${snapshot_date}" && break
 	done
 }
+
+# Determine whether emerge-webrsync was executed by portage.
+from_portage=${PORTAGE_BIN_PATH:+1}
 
 # Use emerge and portageq from the same directory/prefix as the current script,
 # so that we don't have to rely on PATH including the current EPREFIX.
