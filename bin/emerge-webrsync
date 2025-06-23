@@ -55,17 +55,13 @@ main() {
 		die "Repository '${repo_name}' is not writable: ${repo_location}"
 	fi
 
-	mkdir -p -- "${PORTAGE_TMPDIR}/portage"
-
 	# The cleanup function shall terminate defunct gpg-agent(1) processes
 	# and remove the destructable temporary directory.
 	unset -v GNUPGHOME tmpdir
 	trap cleanup EXIT
 
-	# Create a destructable temporary directory and switch to it.
-	tmpdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
-	&& cd -- "${tmpdir}" \
-	|| exit
+	# Create a destructable temporary directory.
+	tmpdir=$(mktemp -d -- "${PORTAGE_TMPDIR}/emerge-webrsync.XXXXXX") || exit
 
 	if (( ! opt[keep] )); then
 		DISTDIR=${tmpdir}
@@ -297,7 +293,8 @@ check_file_signature_gpg() {
 		# The PORTAGE_GPG_DIR variable is either unset or empty. Create
 		# a temporary directory to contain an ephemeral keyring into
 		# which Gentoo's distributed public key block shall be imported.
-		GNUPGHOME=$(mktemp -d -- "${PORTAGE_TMPDIR}/portage/webrsync.XXXXXX") \
+		GNUPGHOME=${tmpdir:?}/keyring
+		( umask 0077 && mkdir -- "${GNUPGHOME}" ) \
 		&& gpg --batch --import -- "${key}" \
 		|| exit
 
@@ -382,7 +379,7 @@ get_snapshot_timestamp() {
 
 sync_local() {
 	local file=$1
-	local ownership post_sync
+	local ownership snapshot_dir post_sync
 	local -a tarsync_opts rsync_opts
 
 	einfo "Syncing local repository ..."
@@ -408,13 +405,13 @@ sync_local() {
 			return 1
 		fi
 	else
+		snapshot_dir=${tmpdir:?}/snapshot
+		mkdir -- "${snapshot_dir}" && cd -- "${snapshot_dir}" || exit
+
 		if ! do_tar "${file}" -x --strip-components=1 -f -; then
 			eerror "tar failed to extract the image. tarball is corrupt? (${file})"
 			return 1
 		fi
-
-		# Free disk space
-		(( opt[keep] )) || rm -f -- "${file}"
 
 		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
 		if (( opt[quiet] )); then
