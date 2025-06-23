@@ -143,6 +143,7 @@ handle_pgp_setup() {
 
 	einfo "PGP verification method: ${verification_method:-disabled}"
 
+	# This is an artefact of commit 829623eadbeda97d37c0ea50dc5f08f19bf4561b.
 	if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]]; then
 		PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
 	fi
