@@ -10,7 +10,7 @@ unalias -a
 unset BASH_COMPAT
 declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 
-source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
+source "${PORTAGE_BIN_PATH:?}/isolated-functions.sh" || exit
 
 # Set up the bash version compatibility level.  This does not disable
 # features when running with a newer version, but makes it so that when

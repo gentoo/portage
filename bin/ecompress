@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=SC1007
 
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 do_ignore() {
 	local -x LC_ALL= LC_COLLATE=C

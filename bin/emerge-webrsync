@@ -643,7 +643,7 @@ portage_vars=(
 eval "$("${portageq}" envvar -v "${portage_vars[@]}")"
 export http_proxy https_proxy ftp_proxy
 
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 # The implementation of die() from isolated-functions.sh is over-engineered and
 # unsuitable for standalone scripts. This one mimics gentoo-functions.

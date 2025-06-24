@@ -16,7 +16,7 @@
 MISC_FUNCTIONS_ARGS="$@"
 shift $#
 
-source "${PORTAGE_BIN_PATH}/ebuild.sh" || exit 1
+source "${PORTAGE_BIN_PATH:?}/ebuild.sh" || exit
 
 install_symlink_html_docs() {
 	if ! ___eapi_has_prefix_variables; then

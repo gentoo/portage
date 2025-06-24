@@ -97,7 +97,7 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	USERLAND http_proxy https_proxy ftp_proxy)"
 export http_proxy https_proxy ftp_proxy
 
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit
+source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 repo_name=gentoo
 repo_location=$(__repo_attr "${repo_name}" location)

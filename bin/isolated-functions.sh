@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=SC2128
 
-source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
+source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
 if ___eapi_has_version_functions; then
 	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1

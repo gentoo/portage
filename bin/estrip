@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=1007,2128
 
-source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH:?}"/helper-functions.sh || exit
 
 # Atomically writes the standard input to a file whose name is formatted as
 # "estrip-%u.warning", <checksum of input>. The existing contents of the file,
