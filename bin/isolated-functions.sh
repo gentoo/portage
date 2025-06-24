@@ -509,6 +509,55 @@ ___makeopts_jobs() {
 	printf '%s\n' "${jobs}"
 }
 
+# Considers the positional parameters as comprising a simple command, which
+# shall be executed for each null-terminated record read from the standard
+# input. For each record processed, its value shall be taken as an additional
+# parameter to append to the command. Commands shall be executed in parallel,
+# with the maximal degree of concurrency being determined by the output of the
+# ___makeopts_jobs function. Thus, the behaviour is quite similar to that of
+# xargs -0 -L1 -P"$(___makeopts_jobs)".
+#
+# If no records are read, or if all commands complete successfully, the return
+# value shall be 0. Otherwise, the return value shall be that of the failed
+# command that was last reaped by bash. Should any command fail, no further
+# records shall be consumed and the function shall attempt to return as soon as
+# possible. Hence, the caller should assume that not all records were processed
+# in the event of a non-zero return value. As a special case, the function shall
+# return 127 if the first parameter cannot be resolved as a valid command name.
+___parallel() (
+	local max_procs retval arg i
+
+	if ! hash "$1" 2>/dev/null; then
+		printf >&2 '%s: %q: command not found\n' "$0" "$1"
+		return 127
+	fi
+
+	max_procs=$(___makeopts_jobs)
+	retval=0
+
+	while IFS= read -rd '' arg; do
+		if (( ++i > max_procs )); then
+			wait -n
+			case $? in
+				0) ;;
+				*) retval=$?; break
+			esac
+		fi
+		"$@" "${arg}" &
+	done
+
+	while true; do
+		wait -n
+		case $? in
+			127) break ;; # no more unwaited-for children left
+			0)   ;;
+			*)   retval=$?
+		esac
+	done
+
+	return "${retval}"
+)
+
 # Run ${XARGS} in parallel for detected number of CPUs, if supported.
 # Passes all arguments to xargs, and returns its exit code
 ___parallel_xargs() {
