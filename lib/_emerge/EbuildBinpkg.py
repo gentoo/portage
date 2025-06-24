@@ -26,9 +26,19 @@ class EbuildBinpkg(CompositeTask):
         pkg = self.pkg
         root_config = pkg.root_config
         bintree = root_config.trees["bintree"]
-        pkg_allocated_path, build_id = bintree.getname_build_id(
-            pkg.cpv, allocate_new=True
-        )
+
+        BUILD_ID_TYPE = self.settings.configdict["env"].get("BUILD_ID_TYPE")
+        if BUILD_ID_TYPE == "int" or not BUILD_ID_TYPE:
+            pkg_allocated_path, build_id = bintree.getname_build_id(
+                pkg.cpv, allocate_new=True
+            )
+        elif BUILD_ID_TYPE == "hash":
+            pkg_allocated_path, build_id = bintree._allocate_filename_hash(
+                pkg.cpv, os.path.join(self.settings.get("T"), "environment")
+            )
+        else:
+            raise Exception("Invalid BUILD_ID_TYPE")
+
         bintree._ensure_dir(os.path.dirname(pkg_allocated_path))
 
         self.pkg_allocated_path = pkg_allocated_path

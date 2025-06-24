@@ -354,6 +354,7 @@ class portdbapi(dbapi):
             "SLOT",
             "DEFINED_PHASES",
             "REQUIRED_USE",
+            "_mtime_"
         }
 
         self._aux_cache = {}
