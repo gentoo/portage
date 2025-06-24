@@ -558,21 +558,6 @@ ___parallel() (
 	return "${retval}"
 )
 
-# Run ${XARGS} in parallel for detected number of CPUs, if supported.
-# Passes all arguments to xargs, and returns its exit code
-___parallel_xargs() {
-	local chunksize=1 jobs xargs=( ${XARGS} )
-
-	if "${xargs[@]}" --help | grep -q -- --max-procs=; then
-		jobs=$(___makeopts_jobs)
-		if [[ ${jobs} -gt 1 ]]; then
-			xargs+=("--max-procs=${jobs}" -L "${chunksize}")
-		fi
-	fi
-
-	"${xargs[@]}" "${@}"
-}
-
 hasq() {
 	___eapi_has_hasq || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
 
