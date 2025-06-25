@@ -11,6 +11,7 @@ from portage.news import count_unread_news, display_news_notifications
 from portage.output import colorize
 from portage.util._dyn_libs.display_preserved_libs import display_preserved_libs
 from portage.util._info_files import chk_updated_info_files
+from portage.util.portage_lru_cache import show_lru_cache_info
 
 from .chk_updated_cfg_files import chk_updated_cfg_files
 from .emergelog import emergelog
@@ -169,3 +170,5 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
 
     if "--quiet" not in myopts and myaction is None and "@world" in myfiles:
         show_depclean_suggestion()
+
+    show_lru_cache_info()
