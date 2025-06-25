@@ -44,8 +44,10 @@ compress_file() {
 	# If a compressed version of the file already exists, simply
 	# delete it so that the compressor doesn't whine (bzip2 will
 	# complain and skip, gzip will prompt for input)
-	[[ -n ${PORTAGE_COMPRESS_SUFFIX} ]] && echo -n "${@/%/${PORTAGE_COMPRESS_SUFFIX}$'\001'}" | \
-		tr '\001' '\000' | ${XARGS} -0 rm -f
+	if [[ ${PORTAGE_COMPRESS_SUFFIX} ]]; then
+		printf '%s\0' "${@/%/${PORTAGE_COMPRESS_SUFFIX}}" \
+		| ${XARGS} -0 rm -f --
+	fi
 
 	# forcibly break all hard links as some compressors whine about it
 	while IFS= read -d '' -r x ; do
