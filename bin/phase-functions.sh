@@ -321,7 +321,10 @@ __dyn_clean() {
 	fi
 
 	if [[ -f "${PORTAGE_BUILDDIR}/.unpacked" ]]; then
-		find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | ${XARGS} -0 rmdir &>/dev/null
+		printf '%s\0' "${PORTAGE_BUILDDIR}" \
+		| find0 -depth -type d -empty -print0 \
+		| while read -rd ''; do [[ ${REPLY} != "${WORKDIR}"?(/*) ]] && printf '%s\0' "${REPLY}"; done \
+		| ${XARGS} -0 rmdir --
 	fi
 
 	# Do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll
