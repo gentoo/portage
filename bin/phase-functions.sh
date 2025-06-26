@@ -324,7 +324,7 @@ __dyn_clean() {
 		printf '%s\0' "${PORTAGE_BUILDDIR}" \
 		| find0 -depth -type d -empty -print0 \
 		| while read -rd ''; do [[ ${REPLY} != "${WORKDIR}"?(/*) ]] && printf '%s\0' "${REPLY}"; done \
-		| ${XARGS} -0 rmdir --
+		| ${XARGS:?} -0 rmdir --
 	fi
 
 	# Do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll

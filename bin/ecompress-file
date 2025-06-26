@@ -46,7 +46,7 @@ compress_file() {
 	# complain and skip, gzip will prompt for input)
 	if [[ ${PORTAGE_COMPRESS_SUFFIX} ]]; then
 		printf '%s\0' "${@/%/${PORTAGE_COMPRESS_SUFFIX}}" \
-		| ${XARGS} -0 rm -f --
+		| ${XARGS:?} -0 rm -f --
 	fi
 
 	# forcibly break all hard links as some compressors whine about it
