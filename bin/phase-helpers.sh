@@ -466,7 +466,7 @@ unpack() {
 				# `deb2targz` installed, prefer it over `ar` for that
 				# reason.  We just make sure on AIX `deb2targz` is
 				# installed.
-				if { hash deb2targz && [[ $(ar --version) != "GNU ar"* ]]; } 2>/dev/null; then
+				if { hash deb2targz && ! ar --version | grep -q '^GNU ar'; } 2>/dev/null; then
 					# deb2targz always extracts into the same directory as
 					# the source file, so create a symlink in the current
 					# working directory if necessary.
