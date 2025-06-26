@@ -567,7 +567,7 @@ __dyn_install() {
 		# fnmatch patterns to regular expressions
 		for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED \
 			QA_SONAME QA_SONAME_NO_SYMLINK; do
-			if [[ $(declare -p ${x} 2>/dev/null) = declare\ -a* ]] ; then
+			if [[ ${!x@a} == *a* ]]; then
 				eval "${x}=(\"\${${x}[@]}\" ${QA_PREBUILT//\*/.*})"
 			else
 				eval "${x}+=\" ${QA_PREBUILT//\*/.*}\""
