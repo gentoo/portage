@@ -375,10 +375,10 @@ inherit() {
 			unset $__export_funcs_var
 
 			if ! contains_word "$1" "${INHERITED}"; then
-				export INHERITED="${INHERITED} $1"
+				export INHERITED+=" $1"
 			fi
 			if [[ ${ECLASS_DEPTH} -eq 1 ]]; then
-				export PORTAGE_EXPLICIT_INHERIT="${PORTAGE_EXPLICIT_INHERIT} $1"
+				export PORTAGE_EXPLICIT_INHERIT+=" $1"
 			fi
 		fi
 
@@ -771,7 +771,7 @@ else
 	if [[ ${EBUILD_PHASE} == test && ${EBUILD_FORCE_TEST} == 1 ]] &&
 		___in_portage_iuse test && ! has test ${USE} ; then
 
-		export USE="${USE} test"
+		export USE+=" test"
 	fi
 	declare -r USE
 
