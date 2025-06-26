@@ -538,7 +538,7 @@ __dyn_package() {
 
 		[[ ${PORTAGE_VERBOSE} = 1 ]] && tar_options+=" -v"
 		if contains_word xattr "${FEATURES}" \
-			&& [[ $(tar --help 2>/dev/null) == *--xattrs* ]]
+			&& tar --help 2>/dev/null | grep -q -- --xattrs
 		then
 			tar_options+=" --xattrs"
 		fi
