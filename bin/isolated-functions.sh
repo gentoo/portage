@@ -479,18 +479,13 @@ if [[ -z ${USERLAND} ]] ; then
 fi
 
 if [[ -z ${XARGS} ]] ; then
-	case ${USERLAND} in
-	BSD)
-		if type -P gxargs > /dev/null; then
-			export XARGS="gxargs -r"
-		else
-			export XARGS="xargs"
-		fi
-		;;
-	*)
+	if XARGS=$(type -P gxargs); then
+		export XARGS+=" -r"
+	elif : | xargs -r 2>/dev/null; then
 		export XARGS="xargs -r"
-		;;
-	esac
+	else
+		export XARGS="xargs"
+	fi
 fi
 
 ___makeopts_jobs() {
