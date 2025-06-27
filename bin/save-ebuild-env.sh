@@ -130,7 +130,4 @@ __save_ebuild_env() (
 
 	declare -p
 	declare -fp
-	if [[ ${BASH_VERSINFO[0]} == 3 ]]; then
-		export
-	fi
 )
