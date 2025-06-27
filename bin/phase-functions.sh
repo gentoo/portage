@@ -123,12 +123,12 @@ __filter_readonly_variables() {
 	fi
 
 	if has --filter-sandbox "$@"; then
-		filtered_vars="${filtered_vars} SANDBOX_.*"
+		filtered_vars+=" SANDBOX_.*"
 	else
-		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
+		filtered_vars+=" ${filtered_sandbox_vars}"
 	fi
 	if has --filter-features "$@"; then
-		filtered_vars="${filtered_vars} FEATURES PORTAGE_FEATURES"
+		filtered_vars+=" FEATURES PORTAGE_FEATURES"
 	fi
 	if has --filter-path "$@"; then
 		filtered_vars+=" PATH"
