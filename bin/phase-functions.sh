@@ -121,23 +121,23 @@ __filter_readonly_variables() {
 		filtered_vars+=" PORTDIR ECLASSDIR"
 	fi
 
-	if has --filter-sandbox $* ; then
+	if has --filter-sandbox "$@"; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
 	fi
-	if has --filter-features $* ; then
+	if has --filter-features "$@"; then
 		filtered_vars="${filtered_vars} FEATURES PORTAGE_FEATURES"
 	fi
-	if has --filter-path $* ; then
+	if has --filter-path "$@"; then
 		filtered_vars+=" PATH"
 	fi
-	if has --filter-locale $* ; then
+	if has --filter-locale "$@"; then
 		filtered_vars+=" LANG LC_ALL LC_COLLATE
 			LC_CTYPE LC_MESSAGES LC_MONETARY
 			LC_NUMERIC LC_PAPER LC_TIME"
 	fi
-	if ! has --allow-extra-vars $* ; then
+	if ! has --allow-extra-vars "$@"; then
 		if [[ "${EMERGE_FROM}" = binary ]]; then
 			# preserve additional variables from build time,
 			# while excluding untrusted variables
