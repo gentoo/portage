@@ -48,7 +48,7 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # Read an environment from stdin and echo to stdout while filtering variables
 # with names that are known to cause interference:
 #
-#   * some specific variables for which bash does not allow assignment
+#   * all variables that can be set by or that may affect bash (except PATH)
 #   * some specific variables that affect portage or sandbox behavior
 #   * variable names that begin with a digit or that contain any
 #     non-alphanumeric characters that are not be supported by bash
@@ -80,21 +80,33 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
 # This is enabled automatically if EMERGE_FROM=binary, since it preserves
 # variables from when the package was originally built.
-#
-# In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
-# readonly variable cause the shell to exit while executing the "source"
-# builtin command. To avoid this problem, this function filters those
-# variables out and discards them. See bug #190128.
 __filter_readonly_variables() {
 	local -a {binpkg_untrusted,filtered_sandbox,misc_garbage,bash}_vars words
 	local IFS
 
-	bash_vars=(
-		"BASH_.*" BASH BASHOPTS BASHPID COLUMNS COMP_WORDBREAKS
-		DIRSTACK EUID FUNCNAME GROUPS HISTCMD HISTFILE HOSTNAME
-		HOSTTYPE IFS LINENO MACHTYPE OLDPWD OPTERR OPTIND OSTYPE
-		PIPESTATUS POSIXLY_CORRECT PPID PS4 PWD RANDOM SECONDS
-		SHELLOPTS SHLVL UID _
+	# Collect an initial list of special bash variables by instructing a
+	# hygienic instance of bash(1) to report them.
+	mapfile -t bash_vars < <(
+		# Like compgen -A variable but doesn't require readline support.
+		env -i -- "${BASH}" -c "printf %s\\\n $(printf '${!%s*} ' {A..Z} {a..z} _)" \
+		| grep -vx PATH
+	)
+	# Incorporate other variables that are known to either be set by or be
+	# able to influence bash. This list was last updated for bash-5.3-rc2.
+	bash_vars+=(
+		BASH_COMPAT BASH_ENV BASH_LOADABLES_PATH BASH_REMATCH
+		BASH_XTRACEFD CDPATH CHILD_MAX COLUMNS COMPREPLY COMP_CWORD
+		COMP_KEY COMP_LINE COMP_POINT COMP_TYPE COMP_WORDS COPROC EMACS
+		ENV EXECIGNORE FCEDIT FIGNORE FUNCNAME FUNCNEST GLOBIGNORE
+		GLOBSORT HISTCONTROL HISTFILE HISTFILESIZE HISTIGNORE HISTSIZE
+		HISTTIMEFORMAT HOME HOSTFILE IGNOREEOF INPUTRC INSIDE_EMACS
+		LINES MAIL MAILCHECK MAILPATH MAPFILE OLDPWD OPTARG PIPESTATUS
+		POSIXLY_CORRECT PROMPT_COMMAND PROMPT_DIRTRIM PS0 PS1 PS2 PS3
+		READLINE_ARGUMENT READLINE_LINE READLINE_MARK READLINE_POINT
+		REPLY TIMEFORMAT TMOUT TMPDIR auto_resume histchars
+
+		# Exported functions bear this prefix.
+		"BASH_FUNC_.*"
 	)
 	filtered_sandbox_vars=(
 		SANDBOX_ACTIVE SANDBOX_BASHRC SANDBOX_DEBUG_LOG
