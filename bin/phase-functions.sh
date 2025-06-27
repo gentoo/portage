@@ -331,9 +331,8 @@ __dyn_clean() {
 	# result in it wiping the users distfiles directory (bad).
 	rm -rf "${PORTAGE_BUILDDIR}/distdir"
 
-	rmdir "${PORTAGE_BUILDDIR}" 2>/dev/null
-
-	true
+	printf '%s\0' "${PORTAGE_BUILDDIR}" \
+	| find0 -maxdepth 0 -type d -empty -exec rmdir -- {} \;
 }
 
 __abort_handler() {
