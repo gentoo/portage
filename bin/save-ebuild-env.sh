@@ -42,12 +42,11 @@ __save_ebuild_env() (
 	# There's no need to bloat environment.bz2 with internally defined
 	# functions and variables, so filter them out if possible.
 
-	for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
+	for _ in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 		src_compile src_test src_install pkg_preinst pkg_postinst \
 		pkg_prerm pkg_postrm pkg_config pkg_info pkg_pretend ; do
-		unset -f default_${x} __eapi{0,1,2,4,6,8}_${x}
+		unset -f default_${_} __eapi{0,1,2,4,6,8}_${_}
 	done
-	unset x
 
 	unset -f assert __assert_sigpipe_ok \
 		__dump_trace die \
