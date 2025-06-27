@@ -86,19 +86,20 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 __filter_readonly_variables() {
-	local x filtered_vars
-	local readonly_bash_vars="BASHOPTS BASHPID DIRSTACK EUID
+	local {binpkg_untrusted,filtered_sandbox,readonly_bash,misc_garbage,bash_misc}_vars
+
+	readonly_bash_vars="BASHOPTS BASHPID DIRSTACK EUID
 		FUNCNAME GROUPS PIPESTATUS PPID SHELLOPTS UID"
-	local bash_misc_vars="BASH BASH_.* COLUMNS COMP_WORDBREAKS HISTCMD
+	bash_misc_vars="BASH BASH_.* COLUMNS COMP_WORDBREAKS HISTCMD
 		HISTFILE HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD
 		OPTERR OPTIND OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM
 		SECONDS SHLVL _"
-	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
+	filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	# Untrusted due to possible application of package renames to binpkgs
-	local binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
-	local misc_garbage_vars="_portage_filter_opts"
+	binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
+	misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="___.* ${readonly_bash_vars} ${bash_misc_vars}
 		${PORTAGE_READONLY_VARS} ${misc_garbage_vars}"
 
