@@ -86,70 +86,87 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 __filter_readonly_variables() {
-	local {binpkg_untrusted,filtered_sandbox,readonly_bash,misc_garbage,bash_misc}_vars
+	local -a {binpkg_untrusted,filtered_sandbox,readonly_bash,misc_garbage,bash_misc}_vars words
+	local IFS
 
-	readonly_bash_vars="BASHOPTS BASHPID DIRSTACK EUID
-		FUNCNAME GROUPS PIPESTATUS PPID SHELLOPTS UID"
-	bash_misc_vars="BASH BASH_.* COLUMNS COMP_WORDBREAKS HISTCMD
-		HISTFILE HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD
-		OPTERR OPTIND OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM
-		SECONDS SHLVL _"
-	filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
-		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
-		SANDBOX_LOG SANDBOX_ON"
+	readonly_bash_vars=(
+		BASHOPTS BASHPID DIRSTACK EUID FUNCNAME GROUPS PIPESTATUS PPID
+		SHELLOPTS UID
+	)
+	bash_misc_vars=(
+		BASH "BASH_.*" COLUMNS COMP_WORDBREAKS HISTCMD HISTFILE
+		HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD OPTERR OPTIND
+		OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM SECONDS SHLVL _
+	)
+	filtered_sandbox_vars=(
+		SANDBOX_ACTIVE SANDBOX_BASHRC SANDBOX_DEBUG_LOG
+		SANDBOX_DISABLED SANDBOX_LIB SANDBOX_LOG SANDBOX_ON
+	)
 	# Untrusted due to possible application of package renames to binpkgs
-	binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
-	misc_garbage_vars="_portage_filter_opts"
-	filtered_vars="___.* ${readonly_bash_vars} ${bash_misc_vars}
-		${PORTAGE_READONLY_VARS} ${misc_garbage_vars}"
+	binpkg_untrusted_vars=(
+		CATEGORY P PF PN PR PV PVR
+	)
+	misc_garbage_vars=(
+		_portage_filter_opts
+	)
+	read -rd '' -a words <<<"${PORTAGE_READONLY_VARS}"
+	filtered_vars+=(
+		"${readonly_bash_vars[@]}"
+		"${misc_garbage_vars[@]}"
+		"${bash_misc_vars[@]}"
+		"${words[@]}"
+		"___.*"
+	)
 
 	# Filter SYSROOT unconditionally. It is propagated in every EAPI
 	# because it was used unofficially before EAPI 7. See bug #661006.
-	filtered_vars+=" SYSROOT"
+	filtered_vars+=( SYSROOT )
 
 	if ___eapi_has_BROOT; then
-		filtered_vars+=" BROOT"
+		filtered_vars+=( BROOT )
 	fi
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
 	if ___eapi_has_prefix_variables; then
-		filtered_vars+=" ED EPREFIX EROOT"
+		filtered_vars+=( ED EPREFIX EROOT )
 		if ___eapi_has_SYSROOT; then
-			filtered_vars+=" ESYSROOT"
+			filtered_vars+=( ESYSROOT )
 		fi
 	fi
 	if ___eapi_has_PORTDIR_ECLASSDIR; then
-		filtered_vars+=" PORTDIR ECLASSDIR"
+		filtered_vars+=( PORTDIR ECLASSDIR )
 	fi
 
 	if has --filter-sandbox "$@"; then
-		filtered_vars+=" SANDBOX_.*"
+		filtered_vars+=( "SANDBOX_.*" )
 	else
-		filtered_vars+=" ${filtered_sandbox_vars}"
+		filtered_vars+=( "${filtered_sandbox_vars[@]}" )
 	fi
 	if has --filter-features "$@"; then
-		filtered_vars+=" FEATURES PORTAGE_FEATURES"
+		filtered_vars+=( FEATURES PORTAGE_FEATURES )
 	fi
 	if has --filter-path "$@"; then
-		filtered_vars+=" PATH"
+		filtered_vars+=( PATH )
 	fi
 	if has --filter-locale "$@"; then
-		filtered_vars+=" LANG LC_ALL LC_COLLATE
-			LC_CTYPE LC_MESSAGES LC_MONETARY
-			LC_NUMERIC LC_PAPER LC_TIME"
+		filtered_vars+=(
+			LANG LC_ALL LC_COLLATE LC_CTYPE LC_MESSAGES LC_MONETARY
+			LC_NUMERIC LC_PAPER LC_TIME
+		)
 	fi
-	if ! has --allow-extra-vars "$@"; then
-		if [[ "${EMERGE_FROM}" = binary ]]; then
-			# preserve additional variables from build time,
-			# while excluding untrusted variables
-			filtered_vars+=" ${binpkg_untrusted_vars}"
-		else
-			filtered_vars+=" ${PORTAGE_SAVED_READONLY_VARS}"
-			filtered_vars+=" ${PORTAGE_MUTABLE_FILTERED_VARS}"
-		fi
+	if has --allow-extra-vars "$@"; then
+		:
+	elif [[ "${EMERGE_FROM}" = binary ]]; then
+		# Preserve additional variables from build time, while
+		# excluding untrusted variables.
+		filtered_vars+=( "${binpkg_untrusted_vars[@]}" )
+	else
+		read -rd '' -a words <<<"${PORTAGE_SAVED_READONLY_VARS} ${PORTAGE_MUTABLE_FILTERED_VARS}"
+		filtered_vars+=( "${words[@]}" )
 	fi
 
-	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars[*]}" \
+	|| die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: __preprocess_ebuild_env
