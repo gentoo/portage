@@ -86,17 +86,15 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 __filter_readonly_variables() {
-	local -a {binpkg_untrusted,filtered_sandbox,readonly_bash,misc_garbage,bash_misc}_vars words
+	local -a {binpkg_untrusted,filtered_sandbox,misc_garbage,bash}_vars words
 	local IFS
 
-	readonly_bash_vars=(
-		BASHOPTS BASHPID DIRSTACK EUID FUNCNAME GROUPS PIPESTATUS PPID
-		SHELLOPTS UID
-	)
-	bash_misc_vars=(
-		BASH "BASH_.*" COLUMNS COMP_WORDBREAKS HISTCMD HISTFILE
-		HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD OPTERR OPTIND
-		OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM SECONDS SHLVL _
+	bash_vars=(
+		"BASH_.*" BASH BASHOPTS BASHPID COLUMNS COMP_WORDBREAKS
+		DIRSTACK EUID FUNCNAME GROUPS HISTCMD HISTFILE HOSTNAME
+		HOSTTYPE IFS LINENO MACHTYPE OLDPWD OPTERR OPTIND OSTYPE
+		PIPESTATUS POSIXLY_CORRECT PPID PS4 PWD RANDOM SECONDS
+		SHELLOPTS SHLVL UID _
 	)
 	filtered_sandbox_vars=(
 		SANDBOX_ACTIVE SANDBOX_BASHRC SANDBOX_DEBUG_LOG
@@ -111,9 +109,8 @@ __filter_readonly_variables() {
 	)
 	read -rd '' -a words <<<"${PORTAGE_READONLY_VARS}"
 	filtered_vars+=(
-		"${readonly_bash_vars[@]}"
 		"${misc_garbage_vars[@]}"
-		"${bash_misc_vars[@]}"
+		"${bash_vars[@]}"
 		"${words[@]}"
 		"___.*"
 	)
