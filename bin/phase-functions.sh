@@ -199,7 +199,7 @@ __preprocess_ebuild_env() {
 		# Rely on __save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
 		__save_ebuild_env || exit $?
-		>> "${T}/environment.success" || exit $?
+		: >> "${T}/environment.success" || exit $?
 	) > "${T}/environment.filtered"
 
 	local retval
@@ -240,7 +240,7 @@ __dyn_pretend() {
 
 	__ebuild_phase pre_pkg_pretend
 	__ebuild_phase pkg_pretend
-	>> "${PORTAGE_BUILDDIR}/.pretended" || \
+	: >> "${PORTAGE_BUILDDIR}/.pretended" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.pretended"
 	__ebuild_phase post_pkg_pretend
 }
@@ -254,7 +254,7 @@ __dyn_setup() {
 
 	__ebuild_phase pre_pkg_setup
 	__ebuild_phase pkg_setup
-	>> "${PORTAGE_BUILDDIR}/.setuped" || \
+	: >> "${PORTAGE_BUILDDIR}/.setuped" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.setuped"
 	__ebuild_phase post_pkg_setup
 }
@@ -273,7 +273,7 @@ __dyn_unpack() {
 	__ebuild_phase pre_src_unpack
 	__vecho ">>> Unpacking source..."
 	__ebuild_phase src_unpack
-	>> "${PORTAGE_BUILDDIR}/.unpacked" || \
+	: >> "${PORTAGE_BUILDDIR}/.unpacked" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.unpacked"
 	__vecho ">>> Source unpacked in ${WORKDIR}"
 	__ebuild_phase post_src_unpack
@@ -420,7 +420,7 @@ __dyn_prepare() {
 		die "eapply_user (or default) must be called in src_prepare()!"
 	fi
 
-	>> "${PORTAGE_BUILDDIR}/.prepared" || \
+	: >> "${PORTAGE_BUILDDIR}/.prepared" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.prepared"
 	__vecho ">>> Source prepared."
 	__ebuild_phase post_src_prepare
@@ -451,7 +451,7 @@ __dyn_configure() {
 
 	__vecho ">>> Configuring source in ${PWD} ..."
 	__ebuild_phase src_configure
-	>> "${PORTAGE_BUILDDIR}/.configured" || \
+	: >> "${PORTAGE_BUILDDIR}/.configured" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.configured"
 	__vecho ">>> Source configured."
 
@@ -483,7 +483,7 @@ __dyn_compile() {
 
 	__vecho ">>> Compiling source in ${PWD} ..."
 	__ebuild_phase src_compile
-	>> "${PORTAGE_BUILDDIR}/.compiled" || \
+	: >> "${PORTAGE_BUILDDIR}/.compiled" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.compiled"
 	__vecho ">>> Source compiled."
 
@@ -532,7 +532,7 @@ __dyn_test() {
 		__ebuild_phase src_test
 		__vecho ">>> Completed testing ${CATEGORY}/${PF}"
 
-		>> "${PORTAGE_BUILDDIR}/.tested" || \
+		: >> "${PORTAGE_BUILDDIR}/.tested" || \
 			die "Failed to create ${PORTAGE_BUILDDIR}/.tested"
 		__ebuild_phase post_src_test
 		SANDBOX_PREDICT=${save_sp}
@@ -620,7 +620,7 @@ __dyn_install() {
 	export __E_DOCDESTTREE=""
 
 	__ebuild_phase src_install
-	>> "${PORTAGE_BUILDDIR}/.installed" || \
+	: >> "${PORTAGE_BUILDDIR}/.installed" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.installed"
 	__vecho ">>> Completed installing ${CATEGORY}/${PF} into ${D}"
 	__vecho
@@ -733,7 +733,7 @@ __dyn_install() {
 	[[ -n "${PORTAGE_REPO_NAME}" ]]  && echo "${PORTAGE_REPO_NAME}" > repository
 	[[ -n ${PORTAGE_REPO_REVISIONS} ]] && echo "${PORTAGE_REPO_REVISIONS}" > REPO_REVISIONS
 	if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word strip "${PORTAGE_RESTRICT}"; then
-		>> DEBUGBUILD
+		: >> DEBUGBUILD
 	fi
 	trap - SIGINT SIGQUIT
 }
@@ -1143,7 +1143,7 @@ __ebuild_main() {
 		chmod g+w "${T}/environment"
 	fi
 
-	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && > "${PORTAGE_EBUILD_EXIT_FILE}"
+	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && : > "${PORTAGE_EBUILD_EXIT_FILE}"
 	if [[ -n ${PORTAGE_IPC_DAEMON} ]] ; then
 		[[ ! -s ${SANDBOX_LOG} ]]
 
