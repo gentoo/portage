@@ -7,7 +7,7 @@ from portage.dep import isvalidatom
 
 def insert_category_into_atom(atom, category):
     # Handle '*' character for "extended syntax" wildcard support.
-    alphanum = re.search(r"[\*\w]", atom, re.UNICODE)
+    alphanum = re.search(r"[\*\w]", atom, re.ASCII)
     if alphanum:
         ret = atom[: alphanum.start()] + f"{category}/" + atom[alphanum.start() :]
     else:
