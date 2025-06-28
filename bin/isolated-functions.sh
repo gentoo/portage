@@ -513,40 +513,31 @@ ___makeopts_jobs() {
 # xargs -0 -L1 -P"$(___makeopts_jobs)".
 #
 # If no records are read, or if all commands complete successfully, the return
-# value shall be 0. Otherwise, the return value shall be that of the failed
-# command that was last reaped by bash. Should any command fail, no further
-# records shall be consumed and the function shall attempt to return as soon as
-# possible. Hence, the caller should assume that not all records were processed
-# in the event of a non-zero return value. As a special case, the function shall
-# return 127 if the first parameter cannot be resolved as a valid command name.
+# value shall be 0. Otherwise, the return value shall be that of the last
+# reaped command that produced a non-zero exit status. As soon as any command
+# fails, no further records shall be read, nor any further commands executed.
 ___parallel() (
 	local max_procs retval arg i
-
-	if ! hash "$1" 2>/dev/null; then
-		printf >&2 '%s: %q: command not found\n' "$0" "$1"
-		return 127
-	fi
 
 	max_procs=$(___makeopts_jobs)
 	retval=0
 
 	while IFS= read -rd '' arg; do
-		if (( ++i > max_procs )); then
+		if (( i >= max_procs )); then
 			wait -n
 			case $? in
-				0) ;;
-				*) retval=$?; break
+				0) (( i-- )) ;;
+				*) retval=$?; (( i-- )); break
 			esac
 		fi
-		"$@" "${arg}" &
+		"$@" "${arg}" & (( ++i ))
 	done
 
-	while true; do
+	while (( i-- )); do
 		wait -n
 		case $? in
-			127) break ;; # no more unwaited-for children left
-			0)   ;;
-			*)   retval=$?
+			0) ;;
+			*) retval=$?
 		esac
 	done
 
