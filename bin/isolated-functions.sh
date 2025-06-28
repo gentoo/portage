@@ -744,4 +744,7 @@ find0() {
 	find0 "$@"
 }
 
+# Initialise the function now because find0() is normally called after forking.
+find0 < /dev/null
+
 true
