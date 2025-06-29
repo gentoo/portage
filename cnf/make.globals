@@ -79,10 +79,9 @@ FEATURES="assume-digests binpkg-docompress binpkg-dostrip binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles ipc-sandbox merge-sync merge-wait multilib-strict
           network-sandbox news parallel-fetch pkgdir-index-trusted pid-sandbox
-          preserve-libs protect-owned qa-unresolved-soname-deps
-          sandbox sfperms strict
+          preserve-libs protect-owned qa-unresolved-soname-deps sandbox strict
           unknown-features-warn unmerge-logs unmerge-orphans userfetch
-          userpriv usersandbox usersync"
+          userpriv usersandbox usersync export-pms-vars"
 
 # Ignore file collisions in /lib/modules since files inside this directory
 # are never unmerged, and therefore collisions must be ignored in order for
@@ -171,7 +170,8 @@ PORTAGE_TRUST_HELPER="/usr/bin/getuto"
 # system.nfs4_acl attributes are irrelevant, see bug #475496.
 # user.* attributes are not supported on tmpfs (bug 640290), but
 # user.pax.* is supported with the patch from bug 470644.
-PORTAGE_XATTR_EXCLUDE="btrfs.* security.evm security.ima
+PORTAGE_XATTR_EXCLUDE="bcachefs.* bcachefs_effective.*
+	btrfs.* security.evm security.ima
 	security.selinux system.nfs4_acl user.apache_handler
 	user.Beagle.* user.dublincore.* user.mime_encoding user.xdg.*"
 

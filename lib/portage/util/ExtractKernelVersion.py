@@ -4,10 +4,11 @@
 __all__ = ["ExtractKernelVersion"]
 
 import logging
+import shlex
 
 from portage import os, _encodings, _unicode_encode
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.util import grabfile, shlex_split, writemsg_level
+from portage.util import grabfile, writemsg_level
 
 
 def ExtractKernelVersion(base_dir):
@@ -81,6 +82,6 @@ def ExtractKernelVersion(base_dir):
                 )
 
     if kernelconfig and "CONFIG_LOCALVERSION" in kernelconfig:
-        version += "".join(shlex_split(kernelconfig["CONFIG_LOCALVERSION"]))
+        version += "".join(shlex.split(kernelconfig["CONFIG_LOCALVERSION"]))
 
     return (version, None)

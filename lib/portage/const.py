@@ -58,6 +58,7 @@ PRIVATE_PATH = "var/lib/portage"
 WORLD_FILE = f"{PRIVATE_PATH}/world"
 WORLD_SETS_FILE = f"{PRIVATE_PATH}/world_sets"
 CONFIG_MEMORY_FILE = f"{PRIVATE_PATH}/config"
+REPO_REVISIONS = f"{PRIVATE_PATH}/repo_revisions"
 NEWS_LIB_PATH = "var/lib/gentoo"
 
 # these variables get EPREFIX prepended automagically when they are
@@ -203,12 +204,14 @@ SUPPORTED_FEATURES = frozenset(
         "distlocks",
         "downgrade-backup",
         "ebuild-locks",
+        "export-pms-vars",
         "fail-clean",
         "fakeroot",
         "fixlafiles",
         "force-mirror",
         "getbinpkg",
         "gpg-keepalive",
+        "home-dir-template-copy",
         "icecream",
         "installsources",
         "ipc-sandbox",

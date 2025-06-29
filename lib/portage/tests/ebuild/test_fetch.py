@@ -1,8 +1,11 @@
-# Copyright 2019-2023 Gentoo Authors
+# Copyright 2019-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
 import io
+import multiprocessing
+import shlex
+import signal
 import tempfile
 import types
 
@@ -35,6 +38,85 @@ from _emerge.Package import Package
 
 
 class EbuildFetchTestCase(TestCase):
+
+    async def _test_interrupt(self, loop, server, async_fetch, pkg, ebuild_path):
+        """Test interrupt, with server responses temporarily paused."""
+        server.pause()
+        pr, pw = multiprocessing.Pipe(duplex=False)
+        timeout = loop.create_future()
+        loop.add_reader(pr.fileno(), lambda: timeout.done() or timeout.set_result(None))
+        self.assertEqual(
+            await async_fetch(
+                pkg,
+                ebuild_path,
+                timeout=timeout,
+                pre_exec=functools.partial(self._pre_exec_interrupt_patch, pw),
+            ),
+            -signal.SIGTERM,
+        )
+        loop.remove_reader(pr.fileno())
+        pw.close()
+
+        # Read pid written by _async_spawn_fetch_pre_wait hook (the
+        # corresponding write served to trigger the timeout above).
+        pid = pr.recv()
+
+        # Read pid written by _async_spawn_fetch_post_terminate hook,
+        # in order to know when the ProcessLookupError test should
+        # succeed.
+        pid = pr.recv()
+        pr.close()
+
+        # Poll the process table until the pid has disappeared,
+        # and fail if a short timeout expires.
+        tries = 10
+        while tries:
+            tries -= 1
+
+            msg = None
+            if tries <= 0:
+                try:
+                    with open(f"/proc/{pid}/status") as f:
+                        for line in f:
+                            if line.startswith("State:"):
+                                msg = line
+                                break
+                except OSError:
+                    pass
+
+            try:
+                with self.assertRaises(ProcessLookupError, msg=msg):
+                    os.kill(pid, 0)
+            except Exception:
+                if tries <= 0:
+                    raise
+                await asyncio.sleep(0.1)
+            else:
+                break
+
+        server.resume()
+
+    @staticmethod
+    def _pre_exec_interrupt_patch(pw):
+        portage.package.ebuild.fetch._async_spawn_fetch_pre_wait = functools.partial(
+            EbuildFetchTestCase._fetch_pre_wait,
+            pw,
+        )
+        portage.package.ebuild.fetch._async_spawn_fetch_post_terminate = (
+            functools.partial(
+                EbuildFetchTestCase._fetch_post_terminate,
+                pw,
+            )
+        )
+
+    @staticmethod
+    def _fetch_pre_wait(pw, proc):
+        pw.send(proc.pid)
+
+    @staticmethod
+    def _fetch_post_terminate(pw, proc):
+        pw.send(proc.pid)
+
     def testEbuildFetch(self):
         user_config = {
             "make.conf": ('GENTOO_MIRRORS="{scheme}://{host}:{port}"',),
@@ -129,7 +211,7 @@ class EbuildFetchTestCase(TestCase):
             ),
         )
 
-        fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
+        fetchcommand = shlex.split(playground.settings["FETCHCOMMAND"])
         fetch_bin = portage.process.find_binary(fetchcommand[0])
         if fetch_bin is None:
             self.skipTest(
@@ -137,7 +219,7 @@ class EbuildFetchTestCase(TestCase):
             )
         eubin = os.path.join(playground.eprefix, "usr", "bin")
         os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
-        resumecommand = portage.util.shlex_split(playground.settings["RESUMECOMMAND"])
+        resumecommand = shlex.split(playground.settings["RESUMECOMMAND"])
         resume_bin = portage.process.find_binary(resumecommand[0])
         if resume_bin is None:
             self.skipTest(
@@ -337,7 +419,7 @@ class EbuildFetchTestCase(TestCase):
 
             config_pool = config_pool_cls(settings)
 
-            def async_fetch(pkg, ebuild_path):
+            def async_fetch(pkg, ebuild_path, pre_exec=None, timeout=None):
                 fetcher = EbuildFetcher(
                     config_pool=config_pool,
                     ebuild_path=ebuild_path,
@@ -345,9 +427,15 @@ class EbuildFetchTestCase(TestCase):
                     fetchall=True,
                     pkg=pkg,
                     scheduler=loop,
+                    pre_exec=pre_exec,
                 )
                 fetcher.start()
-                return fetcher.async_wait()
+                waiter = fetcher.async_wait()
+                if timeout is not None:
+                    timeout.add_done_callback(
+                        lambda timeout: waiter.done() or fetcher.cancel()
+                    )
+                return waiter
 
             for cpv in ebuilds:
                 metadata = dict(
@@ -412,6 +500,13 @@ class EbuildFetchTestCase(TestCase):
                 for k in settings["AA"].split():
                     with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
                         self.assertEqual(f.read(), distfiles[k])
+
+                # Test interrupt, with server responses temporarily paused.
+                for k in settings["AA"].split():
+                    os.unlink(os.path.join(settings["DISTDIR"], k))
+                loop.run_until_complete(
+                    self._test_interrupt(loop, server, async_fetch, pkg, ebuild_path)
+                )
 
                 # Test empty files in DISTDIR
                 for k in settings["AA"].split():

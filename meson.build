@@ -1,7 +1,7 @@
 project(
     'portage',
     'c',
-    version : '3.0.63',
+    version : '3.0.68',
     license : 'GPL-2.0-or-later',
     meson_version : '>=0.58.0'
 )
@@ -95,6 +95,20 @@ subdir('lib')
 
 if native_extensions
     subdir('src')
+endif
+
+if system_wide
+	METADATA = configure_file(
+		input : 'cnf/METADATA',
+		output : 'METADATA',
+		configuration : conf_data
+	)
+	install_data(
+		[
+			METADATA
+		],
+		install_dir : py.get_install_dir() / 'portage-@0@.dist-info'.format(conf_data.get('VERSION'))
+	)
 endif
 
 test(

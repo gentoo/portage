@@ -1,4 +1,4 @@
-# Copyright 2022 Gentoo Authors
+# Copyright 2022-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -10,10 +10,16 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class VariableSetTestCase(TestCase):
     def testVariableSetEmerge(self):
+        rust_with_rustc_rebuild = "{class=portage.sets.dbapi.VariableSet,variable=BDEPEND,includes=dev-lang/rust dev-lang/rust-bin}"
+
         ebuilds = {
             "dev-go/go-pkg-1": {"BDEPEND": "dev-lang/go"},
             "www-client/firefox-1": {
-                "BDEPEND": "|| ( virtual/rust:0/a virtual/rust:0/b )"
+                "BDEPEND": "|| ( dev-lang/rust dev-lang/rust-bin )"
+            },
+            "dev-lang/rust-1": {"BDEPEND": "|| ( dev-lang/rust dev-lang/rust-bin )"},
+            "dev-lang/rust-bin-1": {
+                "BDEPEND": "|| ( dev-lang/rust-bin dev-lang/rust )"
             },
         }
         installed = ebuilds
@@ -28,6 +34,16 @@ class VariableSetTestCase(TestCase):
             ResolverPlaygroundTestCase(
                 ["@rust-rebuild"],
                 mergelist=["www-client/firefox-1"],
+                success=True,
+            ),
+            ResolverPlaygroundTestCase(
+                [f"@rust-with-rustc-rebuild{rust_with_rustc_rebuild}"],
+                mergelist=[
+                    "www-client/firefox-1",
+                    "dev-lang/rust-1",
+                    "dev-lang/rust-bin-1",
+                ],
+                ignore_mergelist_order=True,
                 success=True,
             ),
         )

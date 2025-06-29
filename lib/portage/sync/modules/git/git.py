@@ -3,12 +3,13 @@
 
 import logging
 import re
+import shlex
 import subprocess
 import datetime
 
 import portage
 from portage import os
-from portage.util import writemsg_level, shlex_split
+from portage.util import writemsg_level
 from portage.util.futures import asyncio
 from portage.output import create_color_func, EOutput
 from portage.const import TIMESTAMP_FORMAT
@@ -62,7 +63,7 @@ class GitSync(NewBase):
 
         git_cmd_opts = ""
         if self.repo.module_specific_options.get("sync-git-env"):
-            shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
+            shlexed_env = shlex.split(self.repo.module_specific_options["sync-git-env"])
             env = {
                 k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
@@ -71,7 +72,7 @@ class GitSync(NewBase):
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-git-clone-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-git-clone-env"]
             )
             clone_env = {
@@ -94,15 +95,11 @@ class GitSync(NewBase):
             git_cmd_opts += (
                 f" {self.repo.module_specific_options['sync-git-clone-extra-opts']}"
             )
-        git_cmd = "{} clone{} {} .".format(
-            self.bin_command,
-            git_cmd_opts,
-            portage._shell_quote(sync_uri),
-        )
+        git_cmd = f"{self.bin_command} clone{git_cmd_opts} {shlex.quote(sync_uri)} ."
         writemsg_level(git_cmd + "\n")
 
         exitcode = portage.process.spawn_bash(
-            f"cd {portage._shell_quote(self.repo.location)} ; exec {git_cmd}",
+            f"cd {shlex.quote(self.repo.location)} ; exec {git_cmd}",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
@@ -157,7 +154,7 @@ class GitSync(NewBase):
         self.add_safe_directory()
 
         if self.repo.module_specific_options.get("sync-git-env"):
-            shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
+            shlexed_env = shlex.split(self.repo.module_specific_options["sync-git-env"])
             env = {
                 k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
@@ -166,7 +163,7 @@ class GitSync(NewBase):
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-git-pull-env"):
-            shlexed_env = shlex_split(
+            shlexed_env = shlex.split(
                 self.repo.module_specific_options["sync-git-pull-env"]
             )
             pull_env = {
@@ -344,7 +341,7 @@ class GitSync(NewBase):
         )
 
         exitcode = portage.process.spawn_bash(
-            f"cd {portage._shell_quote(self.repo.location)} ; exec {git_cmd}",
+            f"cd {shlex.quote(self.repo.location)} ; exec {git_cmd}",
             **self.spawn_kwargs,
         )
 
@@ -606,6 +603,7 @@ class GitSync(NewBase):
         if self.bin_command is None:
             # return quietly so that we don't pollute emerge --info output
             return (1, False)
+        self.add_safe_directory()
         rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
         try:
             ret = (

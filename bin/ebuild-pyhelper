@@ -11,7 +11,7 @@ fi
 
 # Use safe cwd, avoiding unsafe import for bug #469338.
 cd "${PORTAGE_PYM_PATH}" || exit 1
-for path in "${PORTAGE_BIN_PATH}/${0##*/}"{.py,}; do
+for path in "${PORTAGE_BIN_PATH:?}/${0##*/}"{.py,}; do
 	if [[ -x "${path}" ]]; then
 	    # BEGIN PREFIX LOCAL: use Prefix Python fallback
 		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \

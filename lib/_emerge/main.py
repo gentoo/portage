@@ -1,9 +1,10 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
 import locale
 import platform
+import shlex
 import sys
 
 import portage
@@ -495,8 +496,7 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "Ignore the slot/sub-slot := operator parts of dependencies that have "
             "been recorded when packages where built. This option is intended "
             "only for debugging purposes, and it only affects built packages "
-            "that specify slot/sub-slot := operator dependencies using the "
-            'experimental "4-slot-abi" EAPI.',
+            "that specify slot/sub-slot := operator dependencies.",
             "choices": y_or_n,
         },
         "--ignore-soname-deps": {
@@ -1295,7 +1295,7 @@ def emerge_main(args: Optional[list[str]] = None):
     tmpcmdline = []
     if "--ignore-default-opts" not in myopts:
         tmpcmdline.extend(
-            portage.util.shlex_split(
+            shlex.split(
                 emerge_config.target_config.settings.get("EMERGE_DEFAULT_OPTS", "")
             )
         )

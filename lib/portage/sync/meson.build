@@ -4,6 +4,7 @@ py.install_sources(
         'controller.py',
         'getaddrinfo_validate.py',
         'old_tree_timestamp.py',
+        'revision_history.py',
         'syncbase.py',
         '__init__.py',
     ],

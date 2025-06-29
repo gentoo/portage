@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -41,11 +41,15 @@ def eapi_has_strong_blocks(eapi: str) -> bool:
 
 
 def eapi_has_src_prepare_and_src_configure(eapi: str) -> bool:
-    return eapi not in ("0", "1")
+    return _get_eapi_attrs(eapi).src_prepare_src_configure
 
 
 def eapi_supports_prefix(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).prefix
+
+
+def eapi_exports_pms_vars(eapi: str) -> bool:
+    return _get_eapi_attrs(eapi).exports_pms_vars
 
 
 def eapi_exports_AA(eapi: str) -> bool:
@@ -77,15 +81,15 @@ def eapi_exports_ECLASSDIR(eapi: str) -> bool:
 
 
 def eapi_has_pkg_pretend(eapi: str) -> bool:
-    return eapi not in ("0", "1", "2", "3")
+    return _get_eapi_attrs(eapi).pkg_pretend
 
 
 def eapi_has_implicit_rdepend(eapi: str) -> bool:
-    return eapi in ("0", "1", "2", "3")
+    return _get_eapi_attrs(eapi).rdepend_depend
 
 
 def eapi_has_dosed_dohard(eapi: str) -> bool:
-    return eapi in ("0", "1", "2", "3")
+    return _get_eapi_attrs(eapi).dosed_dohard
 
 
 def eapi_has_required_use(eapi: str) -> bool:
@@ -109,11 +113,11 @@ def eapi_has_repo_deps(eapi: str) -> bool:
 
 
 def eapi_supports_stable_use_forcing_and_masking(eapi: str) -> bool:
-    return eapi not in ("0", "1", "2", "3", "4", "4-slot-abi")
+    return _get_eapi_attrs(eapi).stablemask
 
 
 def eapi_allows_directories_on_profile_level_and_repository_level(eapi: str) -> bool:
-    return eapi not in ("0", "1", "2", "3", "4", "4-slot-abi", "5", "6")
+    return _get_eapi_attrs(eapi).profile_file_dirs
 
 
 def eapi_allows_package_provided(eapi: str) -> bool:
@@ -150,11 +154,14 @@ _eapi_attrs = collections.namedtuple(
         "allows_package_provided",
         "bdepend",
         "broot",
+        "dosed_dohard",
+        "empty_groups_always_true",
         "exports_AA",
         "exports_EBUILD_PHASE_FUNC",
         "exports_ECLASSDIR",
         "exports_KV",
         "exports_merge_type",
+        "exports_pms_vars",
         "exports_PORTDIR",
         "exports_replace_vars",
         "feature_flag_test",
@@ -163,19 +170,23 @@ _eapi_attrs = collections.namedtuple(
         "iuse_effective",
         "posixish_locale",
         "path_variables_end_with_trailing_slash",
+        "pkg_pretend",
         "prefix",
+        "profile_file_dirs",
+        "rdepend_depend",
         "repo_deps",
         "required_use",
         "required_use_at_most_one_of",
         "selective_src_uri_restriction",
         "slot_operator",
         "slot_deps",
+        "src_prepare_src_configure",
         "src_uri_arrows",
+        "stablemask",
         "strong_blocks",
+        "sysroot",
         "use_deps",
         "use_dep_defaults",
-        "empty_groups_always_true",
-        "sysroot",
     ),
 )
 
@@ -187,11 +198,11 @@ class Eapi:
         "2",
         "3",
         "4",
-        "4-slot-abi",
         "5",
         "6",
         "7",
         "8",
+        "9",
     )
 
     _eapi_val: int = -1
@@ -223,12 +234,14 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             allows_package_provided=True,
             bdepend=False,
             broot=True,
+            dosed_dohard=False,
             empty_groups_always_true=False,
             exports_AA=False,
             exports_EBUILD_PHASE_FUNC=True,
             exports_ECLASSDIR=False,
             exports_KV=False,
             exports_merge_type=True,
+            exports_pms_vars=True,
             exports_PORTDIR=True,
             exports_replace_vars=True,
             feature_flag_test=False,
@@ -236,15 +249,20 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             iuse_defaults=True,
             iuse_effective=False,
             path_variables_end_with_trailing_slash=False,
+            pkg_pretend=True,
             posixish_locale=False,
             prefix=True,
+            profile_file_dirs=False,
+            rdepend_depend=False,
             repo_deps=True,
             required_use=True,
             required_use_at_most_one_of=True,
             selective_src_uri_restriction=True,
             slot_deps=True,
             slot_operator=True,
+            src_prepare_src_configure=True,
             src_uri_arrows=True,
+            stablemask=True,
             strong_blocks=True,
             sysroot=True,
             use_deps=True,
@@ -256,12 +274,14 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             allows_package_provided=eapi <= Eapi("6"),
             bdepend=eapi >= Eapi("7"),
             broot=eapi >= Eapi("7"),
+            dosed_dohard=eapi <= Eapi("3"),
             empty_groups_always_true=eapi <= Eapi("6"),
             exports_AA=eapi <= Eapi("3"),
             exports_EBUILD_PHASE_FUNC=eapi >= Eapi("5"),
             exports_ECLASSDIR=eapi <= Eapi("6"),
             exports_KV=eapi <= Eapi("3"),
             exports_merge_type=eapi >= Eapi("4"),
+            exports_pms_vars=eapi <= Eapi("8"),
             exports_PORTDIR=eapi <= Eapi("6"),
             exports_replace_vars=eapi >= Eapi("4"),
             feature_flag_test=False,
@@ -269,15 +289,20 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             iuse_defaults=eapi >= Eapi("1"),
             iuse_effective=eapi >= Eapi("5"),
             path_variables_end_with_trailing_slash=eapi <= Eapi("6"),
+            pkg_pretend=eapi >= Eapi("4"),
             posixish_locale=eapi >= Eapi("6"),
             prefix=eapi >= Eapi("3"),
+            profile_file_dirs=eapi >= Eapi("7"),
+            rdepend_depend=eapi <= Eapi("3"),
             repo_deps=False,
             required_use=eapi >= Eapi("4"),
             required_use_at_most_one_of=eapi >= Eapi("5"),
             selective_src_uri_restriction=eapi >= Eapi("8"),
             slot_deps=eapi >= Eapi("1"),
             slot_operator=eapi >= Eapi("5"),
+            src_prepare_src_configure=eapi >= Eapi("2"),
             src_uri_arrows=eapi >= Eapi("2"),
+            stablemask=eapi >= Eapi("5"),
             strong_blocks=eapi >= Eapi("2"),
             sysroot=eapi >= Eapi("7"),
             use_deps=eapi >= Eapi("2"),

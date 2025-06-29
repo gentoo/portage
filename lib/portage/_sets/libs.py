@@ -5,7 +5,7 @@ from portage.exception import InvalidData
 from portage.localization import _
 from portage._sets.base import PackageSet
 from portage._sets import get_boolean, SetConfigError
-import portage
+import shlex
 
 
 class LibraryConsumerSet(PackageSet):
@@ -57,7 +57,7 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
         self._setAtoms(self.mapPathsToAtoms(consumers))
 
     def singleBuilder(cls, options, settings, trees):
-        files = tuple(portage.util.shlex_split(options.get("files", "")))
+        files = tuple(shlex.split(options.get("files", "")))
         if not files:
             raise SetConfigError(_("no files given"))
         debug = get_boolean(options, "debug", False)

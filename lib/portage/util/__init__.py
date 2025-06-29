@@ -1,4 +1,4 @@
-# Copyright 2004-2023 Gentoo Authors
+# Copyright 2004-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.cache.mappings import UserDict
@@ -70,6 +70,7 @@ import shlex
 import stat
 import string
 import sys
+import tempfile
 import traceback
 import glob
 from typing import Optional, TextIO
@@ -717,15 +718,6 @@ def writedict(mydict, myfilename, writekey=True):
         for k, v in mydict.items():
             lines.append(f"{k} {' '.join(v)}\n")
     write_atomic(myfilename, "".join(lines))
-
-
-def shlex_split(s):
-    """
-    This is equivalent to shlex.split, but if the current interpreter is
-    python2, it temporarily encodes unicode strings to bytes since python2's
-    shlex.split() doesn't handle unicode strings.
-    """
-    return shlex.split(s)
 
 
 class _getconfig_shlex(shlex.shlex):
@@ -1444,7 +1436,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
     error occurs)."""
 
     def __init__(self, filename, mode="w", follow_links=True, **kargs):
-        """Opens a temporary filename.pid in the same directory as filename."""
+        """Opens a temporary file in the same directory as filename."""
         ObjectProxy.__init__(self)
         object.__setattr__(self, "_aborted", False)
         if "b" in mode:
@@ -1457,21 +1449,24 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
         if follow_links:
             canonical_path = os.path.realpath(filename)
             object.__setattr__(self, "_real_name", canonical_path)
-            tmp_name = "%s.%i" % (canonical_path, portage.getpid())
+            fd = None
             try:
+                parent, basename = os.path.split(canonical_path)
+                fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
+                object.__setattr__(self, "_tmp_name", tmp_name)
                 object.__setattr__(
                     self,
                     "_file",
                     open_func(
-                        _unicode_encode(
-                            tmp_name, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        fd,
                         mode=mode,
                         **kargs,
                     ),
                 )
                 return
-            except OSError as e:
+            except OSError:
+                if fd is not None:
+                    os.close(fd)
                 if canonical_path == filename:
                     raise
                 # Ignore this error, since it's irrelevant
@@ -1479,16 +1474,24 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                 # new error if necessary.
 
         object.__setattr__(self, "_real_name", filename)
-        tmp_name = "%s.%i" % (filename, portage.getpid())
-        object.__setattr__(
-            self,
-            "_file",
-            open_func(
-                _unicode_encode(tmp_name, encoding=_encodings["fs"], errors="strict"),
-                mode=mode,
-                **kargs,
-            ),
-        )
+        fd = None
+        try:
+            parent, basename = os.path.split(filename)
+            fd, tmp_name = tempfile.mkstemp(prefix=basename, dir=parent)
+            object.__setattr__(self, "_tmp_name", tmp_name)
+            object.__setattr__(
+                self,
+                "_file",
+                open_func(
+                    fd,
+                    mode=mode,
+                    **kargs,
+                ),
+            )
+        except OSError:
+            if fd is not None:
+                os.close(fd)
+            raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
@@ -1508,14 +1511,26 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
         """Closes the temporary file, copies permissions (if possible),
         and performs the atomic replacement via os.rename().  If the abort()
         method has been called, then the temp file is closed and removed."""
-        f = object.__getattribute__(self, "_file")
-        real_name = object.__getattribute__(self, "_real_name")
-        if not f.closed:
+        try:
+            f = object.__getattribute__(self, "_file")
+        except AttributeError:
+            f = None
+        if f is not None and not f.closed:
+            real_name = object.__getattribute__(self, "_real_name")
+            tmp_name = object.__getattribute__(self, "_tmp_name")
             try:
                 f.close()
                 if not object.__getattribute__(self, "_aborted"):
                     try:
-                        apply_stat_permissions(f.name, os.stat(real_name))
+                        try:
+                            st = os.stat(real_name)
+                        except FileNotFoundError:
+                            umask_test_file = f"{tmp_name}_umask_test"
+                            with open(umask_test_file, "w") as f:
+                                st = os.fstat(f.fileno())
+                                os.unlink(umask_test_file)
+
+                        apply_stat_permissions(tmp_name, st)
                     except OperationNotPermitted:
                         pass
                     except FileNotFound:
@@ -1525,13 +1540,13 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                             pass
                         else:
                             raise
-                    os.rename(f.name, real_name)
+                    os.rename(tmp_name, real_name)
             finally:
                 # Make sure we cleanup the temp file
                 # even if an exception is raised.
                 try:
-                    os.unlink(f.name)
-                except OSError as oe:
+                    os.unlink(tmp_name)
+                except OSError:
                     pass
 
     def abort(self):
@@ -1970,7 +1985,7 @@ def find_updated_config_files(target_root, config_protect):
                     % os.path.split(x.rstrip(os.path.sep))
                 )
             mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-            cmd = shlex_split(mycommand)
+            cmd = shlex.split(mycommand)
 
             cmd = [
                 _unicode_encode(arg, encoding=encoding, errors="strict") for arg in cmd

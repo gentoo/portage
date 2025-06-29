@@ -46,13 +46,10 @@ class SpawnProcess(SubProcess):
         + (
             "_main_task",
             "_main_task_cancel",
+            "_pty_ready",
             "_selinux_type",
         )
     )
-
-    # Max number of attempts to kill the processes listed in cgroup.procs,
-    # given that processes may fork before they can be killed.
-    _CGROUP_CLEANUP_RETRY_MAX = 8
 
     def _start(self):
         if self.fd_pipes is None:
@@ -78,10 +75,7 @@ class SpawnProcess(SubProcess):
                 # SpawnProcess will have created a pipe earlier, so it
                 # would be redundant to do it here (it could also trigger
                 # spawn recursion via set_term_size as in bug 923750).
-                # Use /dev/null for master_fd, triggering early return
-                # of _main, followed by _async_waitpid.
-                # TODO: Optimize away the need for master_fd here.
-                master_fd = os.open(os.devnull, os.O_RDONLY)
+                master_fd = None
                 slave_fd = None
                 can_log = False
 
@@ -165,23 +159,27 @@ class SpawnProcess(SubProcess):
         self._registered = True
 
     def _start_main_task(self, pr, log_file_path=None, stdout_fd=None):
-        build_logger = BuildLogger(
-            env=self.env,
-            log_path=log_file_path,
-            log_filter_file=self.log_filter_file,
-            scheduler=self.scheduler,
-        )
-        build_logger.start()
+        if pr is None:
+            build_logger = None
+            pipe_logger = None
+        else:
+            build_logger = BuildLogger(
+                env=self.env,
+                log_path=log_file_path,
+                log_filter_file=self.log_filter_file,
+                scheduler=self.scheduler,
+            )
+            build_logger.start()
 
-        pipe_logger = PipeLogger(
-            background=self.background,
-            scheduler=self.scheduler,
-            input_fd=pr,
-            log_file_path=build_logger.stdin,
-            stdout_fd=stdout_fd,
-        )
+            pipe_logger = PipeLogger(
+                background=self.background,
+                scheduler=self.scheduler,
+                input_fd=pr,
+                log_file_path=build_logger.stdin,
+                stdout_fd=stdout_fd,
+            )
 
-        pipe_logger.start()
+            pipe_logger.start()
 
         self._main_task_cancel = functools.partial(
             self._main_cancel, build_logger, pipe_logger
@@ -193,19 +191,22 @@ class SpawnProcess(SubProcess):
         self._main_task.add_done_callback(self._main_exit)
 
     async def _main(self, build_logger, pipe_logger, loop=None):
+        if isinstance(self._pty_ready, asyncio.Future):
+            await self._pty_ready
+            self._pty_ready = None
         try:
-            if pipe_logger.poll() is None:
+            if pipe_logger is not None and pipe_logger.poll() is None:
                 await pipe_logger.async_wait()
-            if build_logger.poll() is None:
+            if build_logger is not None and build_logger.poll() is None:
                 await build_logger.async_wait()
         except asyncio.CancelledError:
             self._main_cancel(build_logger, pipe_logger)
             raise
 
     def _main_cancel(self, build_logger, pipe_logger):
-        if pipe_logger.poll() is None:
+        if pipe_logger is not None and pipe_logger.poll() is None:
             pipe_logger.cancel()
-        if build_logger.poll() is None:
+        if build_logger is not None and build_logger.poll() is None:
             build_logger.cancel()
 
     def _main_exit(self, main_task):
@@ -238,7 +239,9 @@ class SpawnProcess(SubProcess):
         stdout_pipe = None
         if not self.background:
             stdout_pipe = fd_pipes.get(1)
-        got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
+        self._pty_ready, master_fd, slave_fd = _create_pty_or_pipe(
+            copy_term_size=stdout_pipe
+        )
         return (master_fd, slave_fd)
 
     def _spawn(
@@ -258,6 +261,12 @@ class SpawnProcess(SubProcess):
         SubProcess._unregister(self)
         if self._main_task is not None:
             self._main_task.done() or self._main_task.cancel()
+        if isinstance(self._pty_ready, asyncio.Future):
+            (
+                self._pty_ready.done()
+                and (self._pty_ready.cancelled() or self._pty_ready.result() or True)
+            ) or self._pty_ready.cancel()
+            self._pty_ready = None
 
     def _cancel(self):
         if self._main_task is not None:

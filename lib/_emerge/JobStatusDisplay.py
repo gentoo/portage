@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -16,6 +16,9 @@ from _emerge.getloadavg import getloadavg
 
 
 class JobStatusDisplay:
+    # Used as maximum display width and default fallback value.
+    max_display_width = 100
+
     _bound_properties = ("curval", "failed", "running")
 
     # Don't update the display unless at least this much
@@ -38,6 +41,7 @@ class JobStatusDisplay:
         object.__setattr__(self, "quiet", quiet)
         object.__setattr__(self, "xterm_titles", xterm_titles)
         object.__setattr__(self, "maxval", 0)
+        object.__setattr__(self, "merge_wait", 0)
         object.__setattr__(self, "merges", 0)
         object.__setattr__(self, "_changed", False)
         object.__setattr__(self, "_displayed", False)
@@ -61,19 +65,23 @@ class JobStatusDisplay:
             if not isinstance(v, str):
                 self._term_codes[k] = v.decode(encoding, "replace")
 
-        if self._isatty:
-            width = portage.output.get_term_size()[1]
-        else:
-            width = 80
-        self._set_width(width)
+        if not self._isatty:
+            self._set_width(self.max_display_width)
+        self.sigwinch()
 
     def _set_width(self, width):
         if width == getattr(self, "width", None):
             return
-        if width <= 0 or width > 80:
-            width = 80
+        if width <= 0 or width > self.max_display_width:
+            width = self.max_display_width
         object.__setattr__(self, "width", width)
         object.__setattr__(self, "_jobs_column_width", width - 32)
+
+    def sigwinch(self):
+        if not self._isatty:
+            return
+        width = portage.output.get_term_size()[1]
+        self._set_width(width)
 
     @property
     def out(self):
@@ -261,6 +269,13 @@ class JobStatusDisplay:
             f.add_literal_data(failed_str)
             f.pop_style()
             f.add_literal_data(" failed")
+
+        if self.merge_wait:
+            f.add_literal_data(", ")
+            f.push_style(number_style)
+            f.add_literal_data(f"{self.merge_wait}")
+            f.pop_style()
+            f.add_literal_data(" merge wait")
 
         padding = self._jobs_column_width - len(plain_output.getvalue())
         if padding > 0:

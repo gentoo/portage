@@ -33,6 +33,7 @@ try:
     signal.signal(signal.SIGUSR1, debug_signal)
 
     import argparse
+    import shlex
     import sys
     import types
 
@@ -410,8 +411,8 @@ try:
         from portage.util import ConfigProtect
 
         settings = portage.settings
-        protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
-        protect_mask = portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", ""))
+        protect = settings.get("CONFIG_PROTECT", "").split()
+        protect_mask = settings.get("CONFIG_PROTECT_MASK", "").split()
         protect_obj = ConfigProtect(
             root,
             protect,
@@ -449,8 +450,8 @@ try:
         from portage.util import ConfigProtect
 
         settings = portage.settings
-        protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
-        protect_mask = portage.util.shlex_split(settings.get("CONFIG_PROTECT_MASK", ""))
+        protect = settings.get("CONFIG_PROTECT", "").split()
+        protect_mask = settings.get("CONFIG_PROTECT_MASK", "").split()
         protect_obj = ConfigProtect(
             root,
             protect,
@@ -876,15 +877,22 @@ try:
                     file=sys.stderr,
                 )
 
-            value = portage.settings.get(arg)
-            if value is None:
-                value = ""
-                exit_status = 1
-
-            if verbose:
-                print(arg + "=" + portage._shell_quote(value))
+            if arg.endswith("*"):
+                arg = arg[0:-1]
+                keys = [key for key in portage.settings.keys() if key.startswith(arg)]
             else:
-                print(value)
+                keys = (arg,)
+
+            for key in keys:
+                value = portage.settings.get(key)
+                if value is None:
+                    value = ""
+                    exit_status = 1
+
+                if verbose:
+                    print(key + "=" + shlex.quote(value))
+                else:
+                    print(value)
 
         return exit_status
 
@@ -892,6 +900,7 @@ try:
         "envvar"
     ] = """<variable>+
 		Returns a specific environment variable as exists prior to ebuild.sh.
+		Variable names can end with * to match multiple variables.
 		Similar to: emerge --verbose --info | grep -E '^<variable>='
 		"""
     envvar.__doc__ = docstrings["envvar"]
@@ -1441,7 +1450,7 @@ try:
         def elog(elog_funcname, lines):
             cmd = f"source '{os.environ['PORTAGE_BIN_PATH']}/isolated-functions.sh' ; "
             for line in lines:
-                cmd += f"{elog_funcname} {portage._shell_quote(line)} ; "
+                cmd += f"{elog_funcname} {shlex.quote(line)} ; "
             subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
 
     else:

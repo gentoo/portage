@@ -15,6 +15,7 @@ import logging
 import platform
 import pwd
 import re
+import shlex
 import sys
 import traceback
 import warnings
@@ -80,7 +81,6 @@ from portage.util import (
     grabfile_package,
     LazyItemsDict,
     normalize_path,
-    shlex_split,
     stack_dictlist,
     stack_dicts,
     stack_lists,
@@ -630,7 +630,7 @@ class config:
                 v = confs.get("PORTDIR_OVERLAY")
                 if v is not None:
                     portdir_overlay = v
-                    known_repos.extend(shlex_split(v))
+                    known_repos.extend(shlex.split(v))
                 v = confs.get("SYNC")
                 if v is not None:
                     portdir_sync = v
@@ -671,7 +671,7 @@ class config:
                 for ov in portdir_overlay:
                     ov = normalize_path(ov)
                     if isdir_raise_eaccess(ov) or portage._sync_mode:
-                        new_ov.append(portage._shell_quote(ov))
+                        new_ov.append(shlex.quote(ov))
                     else:
                         writemsg(
                             _("!!! Invalid PORTDIR_OVERLAY" " (not a dir): '%s'\n")
@@ -1134,6 +1134,15 @@ class config:
                             self["PORTAGE_GRPNAME"] = grp_struct.gr_name
                             self.backup_changes("PORTAGE_GRPNAME")
 
+                else:
+                    if "PORTAGE_USERNAME" not in self:
+                        self["PORTAGE_USERNAME"] = "portage"
+                        self.backup_changes("PORTAGE_USERNAME")
+
+                    if "PORTAGE_GRPNAME" not in self:
+                        self["PORTAGE_GRPNAME"] = "portage"
+                        self.backup_changes("PORTAGE_GRPNAME")
+
             for var, default_val in default_inst_ids.items():
                 try:
                     self[var] = str(int(self.get(var, default_val)))
@@ -1589,7 +1598,7 @@ class config:
                     )
 
                 try:
-                    compression_binary = shlex_split(
+                    compression_binary = shlex.split(
                         portage.util.varexpand(compression["compress"], mydict=self)
                     )[0]
                 except IndexError as e:
@@ -2215,7 +2224,9 @@ class config:
                 # "test" is in IUSE and USE=test is masked, so execution
                 # of src_test() probably is not reliable. Therefore,
                 # temporarily disable FEATURES=test just for this package.
-                self["FEATURES"] = " ".join(x for x in self.features if x != "test")
+                self["FEATURES"] = " ".join(
+                    x for x in sorted(self.features) if x != "test"
+                )
 
         # Allow _* flags from USE_EXPAND wildcards to pass through here.
         use.difference_update(
@@ -3444,7 +3455,7 @@ class config:
     def selinux_enabled(self):
         if getattr(self, "_selinux_enabled", None) is None:
             self._selinux_enabled = 0
-            if "selinux" in self["USE"].split():
+            if "selinux" in self.features:
                 if selinux:
                     if selinux.is_selinux_enabled() == 1:
                         self._selinux_enabled = 1

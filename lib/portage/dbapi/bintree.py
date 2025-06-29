@@ -48,6 +48,7 @@ from portage.exception import (
 from portage.localization import _
 from portage.output import colorize
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.sync.revision_history import get_repo_revision_history
 from portage.util import ensure_dirs
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
@@ -62,7 +63,9 @@ from portage import _unicode_encode
 import codecs
 import errno
 import io
+import json
 import re
+import shlex
 import stat
 import subprocess
 import tempfile
@@ -72,6 +75,7 @@ import traceback
 import warnings
 from gzip import GzipFile
 from itertools import chain
+from pathlib import PurePath
 from urllib.parse import urlparse
 
 
@@ -135,13 +139,19 @@ class bindbapi(fakedbapi):
             # PREFIX LOCAL
             "EPREFIX",
         }
+        # Keys required only when initially adding a package.
+        self._init_aux_keys = {
+            "REPO_REVISIONS",
+        }
         self._aux_cache = {}
         self._aux_cache_slot_dict_cache = None
 
     @property
     def _aux_cache_slot_dict(self):
         if self._aux_cache_slot_dict_cache is None:
-            self._aux_cache_slot_dict_cache = slot_dict_class(self._aux_cache_keys)
+            self._aux_cache_slot_dict_cache = slot_dict_class(
+                chain(self._aux_cache_keys, self._init_aux_keys)
+            )
         return self._aux_cache_slot_dict_cache
 
     def __getstate__(self):
@@ -460,7 +470,7 @@ class bindbapi(fakedbapi):
         pkg = getattr(pkg, "cpv", pkg)
 
         filesdict = {}
-        if not self.bintree.isremote(pkg):
+        if not self.bintree.download_required(pkg):
             pass
         else:
             metadata = self.bintree._remotepkgs[self._instance_key(pkg)]
@@ -794,7 +804,9 @@ class binarytree:
             # assuming that it will be deleted by eclean-pkg when its
             # time comes.
             mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
-            allocated_pkg_path = self.getname(mynewcpv, allocate_new=True)
+            allocated_pkg_path = self.getname(
+                mynewcpv, allocate_new=True, remote_binpkg_format=binpkg_format
+            )
             update_path = allocated_pkg_path + ".partial"
             self._ensure_dir(os.path.dirname(update_path))
             update_path_lock = None
@@ -847,11 +859,18 @@ class binarytree:
             return
         pkgdir_gid = pkgdir_st.st_gid
         pkgdir_grp_mode = 0o2070 & pkgdir_st.st_mode
-        try:
-            ensure_dirs(path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0)
-        except PortageException:
-            if not os.path.isdir(path):
-                raise
+
+        components = []
+        for component in PurePath(path).relative_to(self.pkgdir).parts:
+            components.append(component)
+            component_path = os.path.join(self.pkgdir, *components)
+            try:
+                ensure_dirs(
+                    component_path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0
+                )
+            except PortageException:
+                if not os.path.isdir(component_path):
+                    raise
 
     def _file_permissions(self, path):
         try:
@@ -1391,6 +1410,7 @@ class binarytree:
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
+            changed = True
             local_timestamp = pkgindex.header.get("TIMESTAMP", None)
             try:
                 download_timestamp = float(pkgindex.header.get("DOWNLOAD_TIMESTAMP", 0))
@@ -1407,7 +1427,7 @@ class binarytree:
                 url = base_url.rstrip("/") + "/Packages"
                 f = None
 
-                if not getbinpkg_refresh and local_timestamp:
+                if local_timestamp and (repo.frozen or not getbinpkg_refresh):
                     raise UseCachedCopyOfRemoteIndex()
 
                 try:
@@ -1474,9 +1494,7 @@ class binarytree:
                             ssh_args.append(f"-p{port}")
                         # NOTE: shlex evaluates embedded quotes
                         ssh_args.extend(
-                            portage.util.shlex_split(
-                                self.settings.get("PORTAGE_SSH_OPTS", "")
-                            )
+                            shlex.split(self.settings.get("PORTAGE_SSH_OPTS", ""))
                         )
                         ssh_args.append(user_passwd + host)
                         ssh_args.append("--")
@@ -1548,7 +1566,9 @@ class binarytree:
                                 noiselevel=-1,
                             )
                             pkgindex = None
-                        elif local_timestamp != remote_timestamp:
+                        elif not local_timestamp or int(local_timestamp) < int(
+                            remote_timestamp
+                        ):
                             rmt_idx.readBody(f_dec)
                             pkgindex = rmt_idx
                 finally:
@@ -1567,11 +1587,13 @@ class binarytree:
                             noiselevel=-1,
                         )
             except UseCachedCopyOfRemoteIndex:
+                changed = False
+                desc = "frozen" if repo.frozen else "up-to-date"
                 writemsg_stdout("\n")
                 writemsg_stdout(
                     colorize(
                         "GOOD",
-                        _("Local copy of remote index is up-to-date and will be used."),
+                        _("Local copy of remote index is %s and will be used.") % desc,
                     )
                     + "\n"
                 )
@@ -1603,7 +1625,7 @@ class binarytree:
                     os.unlink(tmp_filename)
                 except OSError:
                     pass
-            if pkgindex is rmt_idx:
+            if pkgindex is rmt_idx and changed:
                 pkgindex.modified = False  # don't update the header
                 pkgindex.header["DOWNLOAD_TIMESTAMP"] = "%d" % time.time()
                 try:
@@ -1620,7 +1642,11 @@ class binarytree:
                 remote_base_uri = pkgindex.header.get("URI", base_url)
                 for d in pkgindex.packages:
                     cpv = _pkg_str(
-                        d["CPV"], metadata=d, settings=self.settings, db=self.dbapi
+                        d["CPV"],
+                        metadata=d,
+                        settings=self.settings,
+                        db=self.dbapi,
+                        repoconfig=repo,
                     )
                     # Local package instances override remote instances
                     # with the same instance_key.
@@ -1632,7 +1658,7 @@ class binarytree:
                             binpkg_format = get_binpkg_format(
                                 d.get("PATH"), remote=True
                             )
-                        except InvalidBinaryPackageFormat:
+                        except InvalidBinaryPackageFormat as e:
                             writemsg(
                                 colorize(
                                     "WARN",
@@ -1791,6 +1817,11 @@ class binarytree:
                 pkgindex = self._new_pkgindex()
 
             d = self._inject_file(pkgindex, cpv, full_path)
+            repo_revisions = (
+                json.loads(d["REPO_REVISIONS"]) if d.get("REPO_REVISIONS") else None
+            )
+            if repo_revisions:
+                self._inject_repo_revisions(pkgindex.header, repo_revisions)
             self._update_pkgindex_header(pkgindex.header)
             self._pkgindex_write(pkgindex)
 
@@ -1872,7 +1903,7 @@ class binarytree:
         @return: package metadata
         """
         if keys is None:
-            keys = self.dbapi._aux_cache_keys
+            keys = chain(self.dbapi._aux_cache_keys, self.dbapi._init_aux_keys)
             metadata = self.dbapi._aux_cache_slot_dict()
         else:
             metadata = {}
@@ -1915,6 +1946,63 @@ class binarytree:
                     metadata[k] = " ".join(v.split())
 
         return metadata
+
+    def _inject_repo_revisions(self, header, repo_revisions):
+        """
+        Inject REPO_REVISIONS from a package into the index header,
+        using a history of synced revisions to guarantee forward
+        progress. This queries the relevant repos to check if any
+        new revisions have appeared in the absence of a proper sync
+        operation.
+
+        This does not expose REPO_REVISIONS that do not appear in
+        the sync history, since such revisions suggest that the
+        package was not built locally, and in this case its
+        REPO_REVISIONS are not intended to be exposed.
+        """
+        try:
+            repos = [
+                self.settings.repositories[repo_name] for repo_name in repo_revisions
+            ]
+        except KeyError:
+            # Missing repo implies package was not built locally from source.
+            return
+        synced_repo_revisions = get_repo_revision_history(
+            self.settings["EROOT"],
+            repos,
+        )
+        header_repo_revisions = (
+            json.loads(header["REPO_REVISIONS"]) if header.get("REPO_REVISIONS") else {}
+        )
+        for repo_name, repo_revision in repo_revisions.items():
+            rev_list = synced_repo_revisions.get(repo_name, [])
+            header_rev = header_repo_revisions.get(repo_name)
+            if not rev_list or header_rev in (repo_revision, rev_list[0]):
+                continue
+            try:
+                header_rev_index = (
+                    None if header_rev is None else rev_list.index(header_rev)
+                )
+            except ValueError:
+                header_rev_index = None
+            try:
+                repo_revision_index = rev_list.index(repo_revision)
+            except ValueError:
+                repo_revision_index = None
+            if repo_revision_index is not None and (
+                header_rev_index is None or repo_revision_index < header_rev_index
+            ):
+                # There is forward progress when repo_revision is more recent
+                # than header_rev or header_rev was not found in the history.
+                # Do not expose repo_revision here if it does not appear in
+                # the history, since this suggests that the package was not
+                # built locally and in this case its REPO_REVISIONS are not
+                # intended to be exposed here.
+                header_repo_revisions[repo_name] = repo_revision
+        if header_repo_revisions:
+            header["REPO_REVISIONS"] = json.dumps(
+                header_repo_revisions, ensure_ascii=False, sort_keys=True
+            )
 
     def _inject_file(self, pkgindex, cpv, filename):
         """
@@ -2200,6 +2288,14 @@ class binarytree:
             path = self._pkg_paths.get(instance_key)
             if path is not None:
                 filename = os.path.join(self.pkgdir, path)
+            elif self._remotepkgs and instance_key in self._remotepkgs:
+                remote_metadata = self._remotepkgs[instance_key]
+                location = self.get_local_repo_location(cpv)
+                if location:
+                    return (
+                        os.path.join(location, remote_metadata["PATH"]),
+                        int(remote_metadata["BUILD_ID"]),
+                    )
 
         if filename is None and not allocate_new:
             try:
@@ -2357,7 +2453,10 @@ class binarytree:
 
     def isremote(self, pkgname):
         """Returns true if the package is kept remotely and it has not been
-        downloaded (or it is only partially downloaded)."""
+        downloaded (or it is only partially downloaded), or if the package
+        is cached in a binrepo location (use download_required to check if
+        cached file has correct size and mtime).
+        """
         if self._remotepkgs is None:
             return False
         instance_key = self.dbapi._instance_key(pkgname)
@@ -2368,6 +2467,55 @@ class binarytree:
         # Presence in self._remotepkgs implies that it's remote. When a
         # package is downloaded, state is updated by self.inject().
         return True
+
+    def download_required(self, pkgname):
+        """Returns True if package is remote and download is required."""
+        if not self._remotepkgs:
+            return False
+
+        instance_key = self.dbapi._instance_key(pkgname)
+        remote_metadata = self._remotepkgs.get(instance_key)
+        if remote_metadata is None:
+            return False
+
+        if not remote_metadata["CPV"]._repoconfig.location:
+            # In this case the package would have been removed from
+            # self._remotepkgs if it was already downloaded.
+            return True
+
+        pkg_path = self.getname(pkgname)
+        try:
+            st = os.stat(pkg_path)
+        except OSError:
+            return True
+
+        return (
+            int(remote_metadata["SIZE"]) != st.st_size
+            or int(remote_metadata["_mtime_"]) != st[stat.ST_MTIME]
+        )
+
+    def get_local_repo_location(self, pkgname):
+        """Returns local repo location associated with pkgname or None
+        if a location is not associated."""
+        # Since pkgname._repoconfig is not guaranteed to be present
+        # here, retrieve it from the remote metadata.
+        if not self._remotepkgs:
+            return None
+        instance_key = self.dbapi._instance_key(pkgname)
+        remote_metadata = self._remotepkgs.get(instance_key)
+        if remote_metadata is None:
+            return False
+        repoconfig = remote_metadata["CPV"]._repoconfig
+        if repoconfig is None:
+            return None
+        if repoconfig.location:
+            location = normalize_path(repoconfig.location)
+            if location == self.pkgdir:
+                # If the cache location is set to the same location as
+                # PKGDIR, then behave as though it is unset so that
+                # packages will be correctly injected into PKGDIR.
+                return None
+        return repoconfig.location
 
     def get_pkgindex_uri(self, cpv):
         """Returns the URI to the Packages file for a given package."""

@@ -1,4 +1,4 @@
-# Copyright 2022 Gentoo Authors
+# Copyright 2022-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from unittest.mock import MagicMock, patch, call
@@ -13,6 +13,26 @@ from portage.const import BINREPOS_CONF_FILE
 
 
 class BinarytreeTestCase(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """
+        Create a temporary TMPDIR which prevents test
+        methods of this class from leaving behind an empty
+        /tmp/Packages file if TMPDIR is initially unset.
+        """
+        cls._orig_tmpdir = os.environ.get("TMPDIR")
+        cls._tmpdir = tempfile.TemporaryDirectory()
+        os.environ["TMPDIR"] = cls._tmpdir.name
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmpdir.cleanup()
+        if cls._orig_tmpdir is None:
+            os.environ.pop("TMPDIR", None)
+        else:
+            os.environ["TMPDIR"] = cls._orig_tmpdir
+        del cls._orig_tmpdir, cls._tmpdir
+
     def test_required_init_params(self):
         with self.assertRaises(TypeError) as cm:
             binarytree()

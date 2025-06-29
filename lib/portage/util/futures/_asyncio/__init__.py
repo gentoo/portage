@@ -19,13 +19,13 @@ __all__ = (
     "run",
     "shield",
     "sleep",
-    "Task",
     "wait",
     "wait_for",
 )
 
 import sys
 import types
+import warnings
 import weakref
 
 import asyncio as _real_asyncio
@@ -44,14 +44,15 @@ from asyncio import (
     wait_for,
 )
 
+from inspect import iscoroutinefunction
 import threading
+from typing import Optional
 
 import portage
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
     "portage.util.futures.unix_events:_PortageEventLoopPolicy",
-    "portage.util.futures:compat_coroutine@_compat_coroutine",
 )
 from portage.util._eventloop.asyncio_event_loop import (
     AsyncioEventLoop as _AsyncioEventLoop,
@@ -118,7 +119,7 @@ def run(coro):
 run.__doc__ = _real_asyncio.run.__doc__
 
 
-def create_subprocess_exec(*args, **kwargs):
+def create_subprocess_exec(*args, loop=None, **kwargs):
     """
     Create a subprocess.
 
@@ -139,7 +140,6 @@ def create_subprocess_exec(*args, **kwargs):
     @rtype: asyncio.subprocess.Process (or compatible)
     @return: asyncio.subprocess.Process interface
     """
-    loop = _wrap_loop(kwargs.pop("loop", None))
     # Python 3.4 and later implement PEP 446, which makes newly
     # created file descriptors non-inheritable by default.
     kwargs.setdefault("close_fds", False)
@@ -158,19 +158,6 @@ def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
     return _real_asyncio.wait(futures, timeout=timeout, return_when=return_when)
 
 
-def iscoroutinefunction(func):
-    """
-    Return True if func is a decorated coroutine function,
-    supporting both asyncio.coroutine and compat_coroutine since
-    their behavior is identical for all practical purposes.
-    """
-    if _compat_coroutine._iscoroutinefunction(func):
-        return True
-    if _real_asyncio.iscoroutinefunction(func):
-        return True
-    return False
-
-
 class Lock(_Lock):
     """
     Inject loop parameter for python3.9 or less in order to avoid
@@ -183,16 +170,6 @@ class Lock(_Lock):
         elif "loop" not in kwargs:
             kwargs["loop"] = _safe_loop()._loop
         super().__init__(**kwargs)
-
-
-class Task(Future):
-    """
-    Schedule the execution of a coroutine: wrap it in a future. A task
-    is a subclass of Future.
-    """
-
-    def __init__(self, coro, loop=None):
-        raise NotImplementedError
 
 
 def ensure_future(coro_or_future, loop=None):
@@ -208,6 +185,9 @@ def ensure_future(coro_or_future, loop=None):
     @rtype: asyncio.Future (or compatible)
     @return: an instance of Future
     """
+    if loop is None:
+        return _real_asyncio.ensure_future(coro_or_future)
+
     loop = _wrap_loop(loop)
     if isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
         # Use the real asyncio loop and ensure_future.
@@ -232,9 +212,12 @@ def sleep(delay, result=None, loop=None):
     @param result: result of the future
     @type loop: asyncio.AbstractEventLoop (or compatible)
     @param loop: event loop
-    @rtype: asyncio.Future (or compatible)
-    @return: an instance of Future
+    @rtype: collections.abc.Coroutine or asyncio.Future
+    @return: an instance of Coroutine or Future
     """
+    if loop is None:
+        return _real_asyncio.sleep(delay, result=result)
+
     loop = _wrap_loop(loop)
     future = loop.create_future()
     handle = loop.call_later(delay, future.set_result, result)
@@ -264,11 +247,35 @@ def _wrap_loop(loop=None):
     # The default loop returned by _wrap_loop should be consistent
     # with global_event_loop, in order to avoid accidental registration
     # of callbacks with a loop that is not intended to run.
-    loop = loop or _safe_loop()
-    return loop if hasattr(loop, "_asyncio_wrapper") else _AsyncioEventLoop(loop=loop)
+    if hasattr(loop, "_asyncio_wrapper"):
+        return loop
+
+    # This returns a running loop if it exists, and otherwise returns
+    # a loop associated with the current thread.
+    safe_loop = _safe_loop(create=loop is None)
+    if safe_loop is not None and (loop is None or safe_loop._loop is loop):
+        return safe_loop
+
+    if safe_loop is None:
+        msg = f"_wrap_loop argument '{loop}' not associated with thread '{threading.get_ident()}'"
+    else:
+        msg = f"_wrap_loop argument '{loop}' different frome loop '{safe_loop._loop}' already associated with thread '{threading.get_ident()}'"
+
+    if portage._internal_caller:
+        raise AssertionError(msg)
+
+    # It's not known whether external API consumers will trigger this case,
+    # so if it happens then emit a UserWarning before returning a temporary
+    # AsyncioEventLoop instance.
+    warnings.warn(msg, UserWarning, stacklevel=2)
+
+    # We could possibly add a weak reference in _thread_weakrefs.loops when
+    # safe_loop is None, but if safe_loop is not None, then there is a
+    # collision in _thread_weakrefs.loops that would need to be resolved.
+    return _AsyncioEventLoop(loop=loop)
 
 
-def _safe_loop():
+def _safe_loop(create: Optional[bool] = True) -> Optional[_AsyncioEventLoop]:
     """
     Return an event loop that's safe to use within the current context.
     For portage internal callers or external API consumers calling from
@@ -289,8 +296,13 @@ def _safe_loop():
     are added to a WeakValueDictionary, and closed via an atexit hook
     if they still exist during exit for the current pid.
 
-    @rtype: asyncio.AbstractEventLoop (or compatible)
-    @return: event loop instance
+    @type create: bool
+    @param create: Create a loop by default if a loop is not already associated
+        with the current thread. If create is False, then return None if a loop
+        is not already associated with the current thread.
+    @rtype: AsyncioEventLoop or None
+    @return: event loop instance, or None if the create parameter is False and
+        a loop is not already associated with the current thread.
     """
     loop = _get_running_loop()
     if loop is not None:
@@ -304,7 +316,16 @@ def _safe_loop():
             _thread_weakrefs.loops = weakref.WeakValueDictionary()
         try:
             loop = _thread_weakrefs.loops[thread_key]
+            if loop.is_closed():
+                # Discard wrapped asyncio.run loop that was closed.
+                del _thread_weakrefs.loops[thread_key]
+                if loop is _thread_weakrefs.mainloop:
+                    _thread_weakrefs.mainloop = None
+                loop = None
+                raise KeyError(thread_key)
         except KeyError:
+            if not create:
+                return None
             try:
                 try:
                     _loop = _real_asyncio.get_running_loop()
@@ -352,22 +373,61 @@ def _get_running_loop():
                 elif _loop is None:
                     return loop if loop.is_running() else None
 
-    # If _loop it not None here it means it was probably a temporary
-    # loop created by asyncio.run, so we don't try to cache it, and
-    # just return a temporary wrapper.
-    return None if _loop is None else _AsyncioEventLoop(loop=_loop)
+        if _loop is None:
+            return None
+
+        # If _loop it not None here it means it was probably a temporary
+        # loop created by asyncio.run. Still keep a weak reference in case
+        # we need to lookup this _AsyncioEventLoop instance later to add
+        # _coroutine_exithandlers in the atexit_register function.
+        if _thread_weakrefs.pid != portage.getpid():
+            _thread_weakrefs.pid = portage.getpid()
+            _thread_weakrefs.mainloop = None
+            _thread_weakrefs.loops = weakref.WeakValueDictionary()
+
+        loop = _thread_weakrefs.loops[threading.get_ident()] = _AsyncioEventLoop(
+            loop=_loop
+        )
+
+        return loop
 
 
 def _thread_weakrefs_atexit():
-    with _thread_weakrefs.lock:
-        if _thread_weakrefs.pid == portage.getpid():
-            while True:
+    while True:
+        loop = None
+        thread_key = None
+        restore_loop = None
+        with _thread_weakrefs.lock:
+            if _thread_weakrefs.pid != portage.getpid():
+                return
+
+            try:
+                thread_key, loop = _thread_weakrefs.loops.popitem()
+            except KeyError:
+                return
+            else:
+                # Temporarily associate it as the loop for the current thread so
+                # that it can be looked up during run_coroutine_exitfuncs calls.
+                # Also create a reference to a different loop if one is associated
+                # with this thread so we can restore it later.
                 try:
-                    thread_key, loop = _thread_weakrefs.loops.popitem()
+                    restore_loop = _thread_weakrefs.loops[threading.get_ident()]
                 except KeyError:
-                    break
-                else:
-                    loop.close()
+                    pass
+                _thread_weakrefs.loops[threading.get_ident()] = loop
+
+        # Release the lock while closing the loop, since it may call
+        # run_coroutine_exitfuncs interally.
+        if loop is not None:
+            loop.close()
+            with _thread_weakrefs.lock:
+                try:
+                    if _thread_weakrefs.loops[threading.get_ident()] is loop:
+                        del _thread_weakrefs.loops[threading.get_ident()]
+                except KeyError:
+                    pass
+                if restore_loop is not None:
+                    _thread_weakrefs.loops[threading.get_ident()] = restore_loop
 
 
 _thread_weakrefs = types.SimpleNamespace(

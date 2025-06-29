@@ -1,248 +1,64 @@
 #!/usr/bin/env bash
 # Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=1007,2128
 
-source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH:?}"/helper-functions.sh || exit
 
-# avoid multiple calls to `has`.  this creates things like:
-#   FEATURES_foo=false
-# if "foo" is not in ${FEATURES}
-tf() { "$@" && echo true || echo false ; }
-exp_tf() {
-	local flag var=$1
-	shift
-	for flag in "$@" ; do
-		eval ${var}_${flag}=$(tf has ${flag} ${!var})
+# Atomically writes the standard input to a file whose name is formatted as
+# "estrip-%u.warning", <checksum of input>. The existing contents of the file,
+# if any, shall not be preserved.
+stash_warning() {
+	local tempfile crc
+
+	tempfile=$(mktemp -- "${T:-/tmp}/estrip.XXXXXX") \
+	&& crc=$(set -o pipefail; tee -- "${tempfile}" | cksum) \
+	&& mv -- "${tempfile}" "${T}/estrip-${crc% *}.warning"
+}
+
+# Iterates over any files previously created by the stash_warning() function,
+# conveying their respective lines through the invocation of ewarn.
+raise_warnings() {
+	local logfile
+
+	for logfile in "${T:?}"/estrip-*.warning; do
+		test -f "${logfile}" || continue
+		while read -r; do
+			ewarn "${REPLY}"
+		done < "${logfile}"
 	done
 }
-exp_tf FEATURES compressdebug dedupdebug installsources nostrip splitdebug xattr
-exp_tf PORTAGE_RESTRICT binchecks dedupdebug installsources splitdebug strip
-
-if ! ___eapi_has_prefix_variables; then
-	EPREFIX= ED=${D}
-fi
-
-banner=false
-SKIP_STRIP=false
-if ${PORTAGE_RESTRICT_strip} || ${FEATURES_nostrip} ; then
-	SKIP_STRIP=true
-	banner=true
-	${FEATURES_installsources} || exit 0
-fi
-
-prepstrip=false
-
-while [[ $# -gt 0 ]] ; do
-	case $1 in
-	--ignore)
-		shift
-
-		skip_dirs=()
-		for skip; do
-			if [[ -d ${ED%/}/${skip#/} ]]; then
-				skip_dirs+=( "${ED%/}/${skip#/}" )
-			else
-				rm -f "${ED%/}/${skip#/}.estrip" || die
-			fi
-		done
-
-		if [[ ${skip_dirs[@]} ]]; then
-			find "${skip_dirs[@]}" -name '*.estrip' -delete || die
-		fi
-
-		exit 0
-		;;
-	--queue)
-		shift
-
-		find_paths=()
-		for path; do
-			if [[ -e ${ED%/}/${path#/} ]]; then
-				find_paths+=( "${ED%/}/${path#/}" )
-			fi
-		done
-
-		if (( ${#find_paths[@]} )); then
-			# We can avoid scanelf calls for binaries we already
-			# checked in install_qa_check (where we generate
-			# NEEDED for everything installed).
-			#
-			# EAPI 7+ has controlled stripping (dostrip) though
-			# which is why estrip has the queue/dequeue logic,
-			# so we need to take the intersection of:
-			# 1. files scanned earlier (all ELF installed)
-			#    (note that this should be a superset of 2., so we don't
-			#    need to worry about unknown files appearing)
-			#
-			# 2. the files we're interested in right now
-			scanelf_results=()
-			if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
-				# The arguments may not be exact files (probably aren't), but search paths/directories
-				# which should then be searched recursively.
-				while IFS= read -r needed_entry ; do
-					for find_path in "${find_paths[@]}" ; do
-						# NEEDED has a bunch of entries like:
-						# /usr/lib64/libfoo.so libc.so
-						#
-						# find_path entries may be exact paths (like /usr/lib64/libfoo.so)
-						# or instead /usr/lib64, or ${ED}/usr, etc.
-						#
-						# We check if the beginning (i.e. first entry) of the NEEDED line
-						# matches the path given
-						# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
-						needed_entry_file="${needed_entry% *}"
-						if [[ "${needed_entry_file}" =~ ^${find_path##${D}} ]] ; then
-							scanelf_results+=( "${D}${needed_entry_file}" )
-						fi
-					done
-				done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-			else
-				mapfile -t scanelf_results < <(scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}")
-			fi
-
-			while IFS= read -r path; do
-				>> "${path}.estrip" || die
-			done < <(
-				(( ${#scanelf_results[@]} )) && printf "%s\n" "${scanelf_results[@]}"
-				find "${find_paths[@]}" -type f ! -type l -name '*.a'
-			)
-
-			unset scanelf_results needed_entry needed_entry_file find_path
-		fi
-
-		exit 0
-		;;
-	--dequeue)
-		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
-		break
-		;;
-	--prepallstrip)
-		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
-		prepstrip=true
-		break
-		;;
-	*)
-		die "${0##*/}: unknown arguments '$*'"
-		exit 1
-		;;
-	esac
-	shift
-done
-set -- "${ED}"
-
-PRESERVE_XATTR=false
-if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
-	PRESERVE_XATTR=true
-	if type -P getfattr >/dev/null && type -P setfattr >/dev/null ; then
-		dump_xattrs() {
-			getfattr -d -m - --absolute-names "$1"
-		}
-		restore_xattrs() {
-			setfattr --restore=-
-		}
-	else
-		dump_xattrs() {
-			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" \
-			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
-		}
-
-		restore_xattrs() {
-			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" \
-			"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
-		}
-	fi
-fi
-
-# Look up the tools we might be using
-for t in STRIP:strip OBJCOPY:objcopy READELF:readelf RANLIB:ranlib ; do
-	v=${t%:*} # STRIP
-	t=${t#*:} # strip
-	eval ${v}=\"${!v:-${CHOST}-${t}}\"
-	type -P -- ${!v} >/dev/null || eval ${v}=${t}
-done
-
-# Figure out what tool set we're using to strip stuff
-unset SAFE_STRIP_FLAGS DEF_STRIP_FLAGS SPLIT_STRIP_FLAGS
-case $(${STRIP} --version 2>/dev/null) in
-*elfutils*) # dev-libs/elfutils
-	# elfutils default behavior is always safe, so don't need to specify
-	# any flags at all
-	SAFE_STRIP_FLAGS=""
-	DEF_STRIP_FLAGS="--remove-comment"
-	SPLIT_STRIP_FLAGS="-f"
-	;;
-*GNU*) # sys-devel/binutils
-	# We'll leave out -R .note for now until we can check out the relevance
-	# of the section when it has the ALLOC flag set on it ...
-	SAFE_STRIP_FLAGS="--strip-unneeded -N __gentoo_check_ldflags__"
-	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
-	SPLIT_STRIP_FLAGS=
-	;;
-esac
-: ${PORTAGE_STRIP_FLAGS=${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}
-
-prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
-
-debugedit=$(type -P debugedit)
-if [[ -z ${debugedit} ]]; then
-	debugedit_paths=(
-		"${EPREFIX}/usr/libexec/rpm/debugedit"
-	)
-
-	for x in "${debugedit_paths[@]}"; do
-		if [[ -x ${x} ]]; then
-			debugedit=${x}
-			break
-		fi
-	done
-fi
-[[ ${debugedit} ]] && debugedit_found=true || debugedit_found=false
-debugedit_warned=false
-
-dwz=$(type -P dwz)
-[[ ${dwz} ]] && dwz_found=true || dwz_found=false
-dwz_warned=false
-
-__multijob_init
-
-# Setup ${T} filesystem layout that we care about.
-tmpdir="${T}/prepstrip"
-rm -rf "${tmpdir}"
-mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
-	${FEATURES_installsources} || return 0
-	${PORTAGE_RESTRICT_installsources} && return 0
-
-	if ! ${debugedit_found} ; then
-		if ! ${debugedit_warned} ; then
-			debugedit_warned=true
-			ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
-			ewarn "found. This feature will not work unless debugedit is installed!"
-		fi
-		return 0
-	fi
-
 	local x=$1
+
+	# shellcheck disable=2317
+	if (( ! has_feature[installsources] || has_restriction[installsources] )); then
+		save_elf_sources() { :; }
+		return
+	elif ! hash "${name_of[debugedit]}" 2>/dev/null; then
+		stash_warning <<-'EOF'
+		FEATURES=installsources requires the debugedit binary, which was not found!
+		EOF
+		save_elf_sources() { :; }
+		return
+	fi
 
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
 	# it later on in the save_elf_debug step.
-	buildid=$("${debugedit}" -i \
+	buildid=$("${name_of[debugedit]}" -i \
+		-s "${CATEGORY}/${PF}:${SLOT}" \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
-		-l "${tmpdir}/sources/${x##*/}.${BASHPID:-$(__bashpid)}" \
+		-l "${tmpdir}/sources/${x##*/}.${BASHPID}" \
 		"${x}")
 }
 
-# Try to create a symlink.
-# Return success if it already exists.
+# Try to create a symlink. Return success if it already exists.
 __try_symlink() {
-	local target=$1
-	local name=$2
+	local target=$1 name=$2
 
 	# Check for an existing link before and after in case we are racing against
 	# another process.
@@ -254,34 +70,39 @@ __try_symlink() {
 
 # Usage: dedup_elf_debug <src> <inode_dedupdebug>
 dedup_elf_debug() {
-	${FEATURES_dedupdebug} || return 0
-	${PORTAGE_RESTRICT_dedupdebug} && return 0
+	# 1. File to dedup debug symbols
+	# 2. Temp path for hard link tracking
+	local src=$1 inode_dedupdebug=$2
 
 	debug-print-function "${FUNCNAME}" "$@"
 
-	if ! ${dwz_found} ; then
-		if ! ${dwz_warned} ; then
-			dwz_warned=true
-			ewarn "FEATURES=dedupdebug is enabled but the dwz binary could not be"
-			ewarn "found. This feature will not work unless dwz is installed!"
-		fi
-		return 0
+	# shellcheck disable=2317
+	if (( ! has_feature[dedupdebug] || has_restriction[dedupdebug] )); then
+		dedup_elf_debug() { :; }
+		return
+	elif ! hash "${name_of[dwz]}" 2>/dev/null; then
+		stash_warning <<-'EOF'
+		FEATURES=dedupdebug requires the dwz binary, which was not found!
+		EOF
+		dedup_elf_debug() { :; }
+		return
 	fi
-
-	local src=$1              # File to dedup debug symbols
-	local inode_dedupdebug=$2 # Temp path for hard link tracking
 
 	# We already dedupdebug-ed this inode.
 	[[ -L ${inode_dedupdebug} ]] && return 0
 
-	"${dwz}" -- "${src}"
+	"${name_of[dwz]}" -- "${src}"
 	touch "${inode_dedupdebug}"
 }
 
 # Usage: save_elf_debug <src> <inode_debug> [splitdebug]
 save_elf_debug() {
-	${FEATURES_splitdebug} || return 0
-	${PORTAGE_RESTRICT_splitdebug} && return 0
+	# 1. File from which we extract symbols.
+	# 2. Temp path for hard link tracking
+	# 3. Existing debug file optionally created by eu-strip in parent function
+	local src=$1 inode_debug=$2 splitdebug=$3
+	local {src,dst}_{buildid_rel,basename,dir} buildid_{file,dir} arg dst
+	local -a objcopy_flags
 
 	debug-print-function "${FUNCNAME}" "$@"
 
@@ -289,17 +110,13 @@ save_elf_debug() {
 	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
 	# twice in this path) in order for gdb's debug-file-directory
 	# lookup to work correctly.
-	local src=$1         # File from which we extract symbols.
-	local inode_debug=$2 # Temp path for hard link tracking
-	local splitdebug=$3  # Existing debug file optionally created by eu-strip in parent function
 
 	# Source paths
-	local src_basename=${src##*/}
-	local src_dirname=${src%/*}
+	src_basename=${src##*/}
+	src_dirname=${src%/*}
 
 	# Destination paths
-	local dst_dirname=${ED%/}/usr/lib/debug/${src_dirname#${D%/}/}
-	local dst_basename dst
+	dst_dirname=${ED%/}/usr/lib/debug/${src_dirname#"${D%/}"/}
 
 	# dont save debug info twice
 	[[ ${src} == *".debug" ]] && return 0
@@ -322,91 +139,115 @@ save_elf_debug() {
 		if [[ -n ${splitdebug} ]] ; then
 			mv "${splitdebug}" "${dst}"
 		else
-			local objcopy_flags="--only-keep-debug"
-			${FEATURES_compressdebug} && objcopy_flags+=" --compress-debug-sections"
-			${OBJCOPY} ${objcopy_flags} "${src}" "${dst}" &&
-			${OBJCOPY} --add-gnu-debuglink="${dst}" "${src}"
+			objcopy_flags=( --only-keep-debug )
+			if (( has_feature[compressdebug] )); then
+				objcopy_flags+=( --compress-debug-sections )
+			fi
+			"${name_of[objcopy]}" "${objcopy_flags[@]}" "${src}" "${dst}" \
+			&& "${name_of[objcopy]}" --add-gnu-debuglink="${dst}" "${src}"
 		fi
 
 		# Only do the following if the debug file was
 		# successfully created (see bug #446774).
+		# shellcheck disable=2181
 		if [[ $? -eq 0 ]] ; then
-			local args="a-x,o-w"
-			[[ -g ${src} || -u ${src} ]] && args+=",go-r"
-			chmod ${args} "${dst}"
+			arg="a-x,o-w"
+			[[ -g ${src} || -u ${src} ]] && arg+=",go-r"
+			chmod "${arg}" "${dst}"
 
 			# Symlink so we can read the name back.
 			__try_symlink "${dst}" "${inode_debug}"
 
-			# If we don't already have build-id from debugedit, look it up
+			# If we don't already have build-id from debugedit, look it up.
+			# This should only happen with FEATURES=-installsources, as
+			# it's done in save_elf_sources.
 			if [[ -z ${buildid} ]] ; then
-				# convert the readelf output to something useful
-				buildid=$(${READELF} -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
+				if hash "${name_of[debugedit]}" 2>/dev/null; then
+					# Salt the build ID to avoid collisions on
+					# bundled libraries.
+					buildid=$("${name_of[debugedit]}" -i \
+						-s "${CATEGORY}/${PF}:${SLOT}" \
+						"${x}")
+				elif ! contains_word buildid "${warned_for[debugedit]}"; then
+					warned_for[debugedit]+=" buildid"
+					stash_warning <<-'EOF'
+					FEATURES=splitdebug requires the debugedit binary, which was not found!
+					This feature won't work properly with build IDs until debugedit is installed.
+					EOF
+				fi
+			fi
+
+			# If we (still) don't already have build-id from debugedit, look it up.
+			if [[ -z ${buildid} ]] ; then
+				# Convert the readelf output to something useful
+				buildid=$("${name_of[readelf]}" -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 			fi
 
 			if [[ -n ${buildid} ]] ; then
-				local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
-				local buildid_file="${buildid_dir}/${buildid:2}"
-				local src_buildid_rel="../../../../../${src#${ED%/}/}"
-				local dst_buildid_rel="../../${dst#${ED%/}/usr/lib/debug/}"
+				buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
+				buildid_file="${buildid_dir}/${buildid:2}"
+				src_buildid_rel="../../../../../${src#"${ED%/}"/}"
+				dst_buildid_rel="../../${dst#"${ED%/}"/usr/lib/debug/}"
 				mkdir -p "${buildid_dir}" || die
 				__try_symlink "${dst_buildid_rel}" "${buildid_file}.debug"
 				__try_symlink "${src_buildid_rel}" "${buildid_file}"
 			fi
 		fi
 	fi
-
 }
 
 # Usage: process_elf <elf>
 process_elf() {
-	local x=$1 inode_link=$2 strip_flags=${*:3}
-	local ed_noslash=${ED%/}
-	local already_stripped xt_data
-	local lockfile=${inode_link}_lockfile
-	local locktries=100
+	local x=$1 inode_link=$2
+	local already_stripped lock{tries,file} splitdebug shortname xt_data
+	shift 2
 
-	__vecho "   ${x:${#ed_noslash}}"
+	__vecho "   ${x#"${ED%/}"}"
 
 	# If two processes try to debugedit or strip the same hardlink at the
 	# same time, it may corrupt files or cause loss of splitdebug info.
 	# So, use a lockfile to prevent interference (easily observed with
 	# dev-vcs/git which creates ~111 hardlinks to one file in
 	# /usr/libexec/git-core).
+	lockfile=${inode_link}_lockfile
+	locktries=100
 	while ! ln "${inode_link}" "${lockfile}" 2>/dev/null; do
 		(( --locktries > 0 )) || die "failed to acquire lock '${lockfile}'"
 		sleep 1
 	done
 
-	[ -f "${inode_link}_stripped" ] && already_stripped=true || already_stripped=false
-
-	if ! ${already_stripped} ; then
-		if ${PRESERVE_XATTR} ; then
+	if [[ -f ${inode_link}_stripped ]]; then
+		already_stripped=1
+	else
+		already_stripped=0
+		if (( do_preserve_xattr )); then
 			xt_data=$(dump_xattrs "${x}")
 		fi
 		save_elf_sources "${x}"
 		dedup_elf_debug "${x}" "${inode_link}_dedupdebug"
 	fi
 
-	if ${strip_this} ; then
+	if (( do_strip )); then
 		# See if we can split & strip at the same time
-		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
-			local shortname="${x##*/}.debug"
-			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID:-$(__bashpid)}"
+		if (( do_splitdebug )) && [[ ${SPLIT_STRIP_FLAGS} ]]; then
+			shortname=${x##*/}.debug
+			splitdebug=${tmpdir}/splitdebug/${shortname}.${BASHPID}
 
-			${already_stripped} || \
-			${STRIP} ${strip_flags} \
-				-f "${splitdebug}" \
-				-F "${shortname}" \
-				"${x}"
+			if (( ! already_stripped )); then
+				"${name_of[strip]}" "$@" -f "${splitdebug}" -F "${shortname}" "${x}"
+			fi
 			save_elf_debug "${x}" "${inode_link}_debug" "${splitdebug}"
 		else
-			save_elf_debug "${x}" "${inode_link}_debug"
-			${already_stripped} || ${STRIP} ${strip_flags} "${x}"
+			if (( do_splitdebug )); then
+				save_elf_debug "${x}" "${inode_link}_debug"
+			fi
+			if (( ! already_stripped )); then
+				"${name_of[strip]}" "$@" "${x}"
+			fi
 		fi
 	fi
 
-	if ${already_stripped} ; then
+	if (( already_stripped )); then
 		rm -f "${x}" || die "rm failed unexpectedly"
 		ln "${inode_link}_stripped" "${x}" || die "ln failed unexpectedly"
 	else
@@ -422,25 +263,264 @@ process_elf() {
 # Usage: process_ar <ar archive>
 process_ar() {
 	local x=$1
-	local ed_noslash=${ED%/}
 
-	__vecho "   ${x:${#ed_noslash}}"
+	__vecho "   ${x#"${ED%/}"}"
 
-	if ${strip_this} ; then
+	if (( do_strip )); then
 		# If we have split debug enabled, then do not strip this.
 		# There is no concept of splitdebug for objects not yet
 		# linked in (only for finally linked ELFs), so we have to
 		# retain the debug info in the archive itself.
-		if ! ${FEATURES_splitdebug} || ${PORTAGE_RESTRICT_splitdebug} ; then
-			${STRIP} -g "${x}" && ${RANLIB} "${x}"
+		if (( ! do_splitdebug )); then
+			"${name_of[strip]}" -g "${x}" && "${name_of[ranlib]}" "${x}"
 		fi
 	fi
 }
 
+get_inode_number() {
+	if  [[ ${USERLAND} == BSD ]]; then
+		get_inode_number() {
+			stat -f '%i' "$1"
+		}
+	else
+		get_inode_number() {
+			stat -c '%i' "$1"
+		}
+	fi
+
+	get_inode_number "$@"
+}
+
+dump_xattrs() {
+	if hash getfattr 2>/dev/null; then
+		dump_xattrs() {
+			getfattr -d -m - --absolute-names "$1"
+		}
+	else
+		dump_xattrs() {
+			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
+		}
+	fi
+
+	dump_xattrs "$@"
+}
+
+restore_xattrs() {
+	if hash setfattr 2>/dev/null; then
+		restore_xattrs() {
+			setfattr --restore=-
+		}
+	else
+		restore_xattrs() {
+			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
+		}
+	fi
+
+	restore_xattrs "$@"
+}
+
+do_ignore() {
+	local -a skip_dirs
+	local skip
+
+	for skip; do
+		if [[ -d ${ED%/}/${skip#/} ]]; then
+			skip_dirs+=( "${ED%/}/${skip#/}" )
+		else
+			rm -f "${ED%/}/${skip#/}.estrip" || die
+		fi
+	done
+
+	if (( ${#skip_dirs[@]} )); then
+		printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.estrip' -delete || die
+	fi
+}
+
+do_queue() {
+	local needed_entry{,_file} {,find_}path
+	local -a find_paths scanelf_results
+
+	for path; do
+		if [[ -e ${ED%/}/${path#/} ]]; then
+			find_paths+=( "${ED%/}/${path#/}" )
+		fi
+	done
+
+	(( ${#find_paths[@]} )) || return 0
+
+	# We can avoid scanelf calls for binaries we already
+	# checked in install_qa_check (where we generate
+	# NEEDED for everything installed).
+	#
+	# EAPI 7+ has controlled stripping (dostrip) though
+	# which is why estrip has the queue/dequeue logic,
+	# so we need to take the intersection of:
+	# 1. files scanned earlier (all ELF installed)
+	#    (note that this should be a superset of 2., so we don't
+	#    need to worry about unknown files appearing)
+	#
+	# 2. the files we're interested in right now
+	if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
+		# The arguments may not be exact files (probably aren't), but search paths/directories
+		# which should then be searched recursively.
+		while IFS= read -r needed_entry ; do
+			for find_path in "${find_paths[@]}" ; do
+				# NEEDED has a bunch of entries like:
+				# /usr/lib64/libfoo.so libc.so
+				#
+				# find_path entries may be exact paths (like /usr/lib64/libfoo.so)
+				# or instead /usr/lib64, or ${ED}/usr, etc.
+				#
+				# We check if the beginning (i.e. first entry) of the NEEDED line
+				# matches the path given
+				# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
+				needed_entry_file="${needed_entry% *}"
+				if [[ ${needed_entry_file} == "${find_path#"${D}"}"* ]]; then
+					scanelf_results+=( "${D}${needed_entry_file}" )
+				fi
+			done
+		done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+	else
+		mapfile -t scanelf_results < <(scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}")
+	fi
+
+	while IFS= read -r path; do
+		: >> "${path}.estrip" || die
+	done < <(
+		(( ${#scanelf_results[@]} )) && printf "%s\n" "${scanelf_results[@]}"
+		printf '%s\0' "${find_paths[@]}" | find0 -type f ! -type l -name '*.a'
+	)
+}
+
+declare -A has_feature
+declare -A has_restriction
+
+for key in compressdebug dedupdebug installsources nostrip splitdebug xattr; do
+	contains_word "$key" "${FEATURES}"
+	has_feature[$key]=$(( $? == 0 ))
+done
+
+for key in binchecks dedupdebug installsources splitdebug strip; do
+	contains_word "$key" "${PORTAGE_RESTRICT}"
+	has_restriction[$key]=$(( $? == 0 ))
+done
+
+if ! ___eapi_has_prefix_variables; then
+	EPREFIX= ED=${D}
+fi
+
+if (( ! has_restriction[strip] && ! has_feature[nostrip] )); then
+	do_banner=1
+	do_skip=0
+elif (( ! has_feature[installsources] )); then
+	exit 0
+else
+	do_banner=0
+	do_skip=1
+fi
+
+do_prepstrip=0
+
+while [[ $# -gt 0 ]] ; do
+	case $1 in
+	--ignore)
+		shift
+		do_ignore "$@"
+		exit
+		;;
+	--queue)
+		shift
+		do_queue "$@"
+		exit
+		;;
+	--dequeue)
+		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
+		break
+		;;
+	--prepallstrip)
+		[[ $# -eq 1 ]] || die "${0##*/}: $1 takes no additional arguments"
+		do_prepstrip=1
+		break
+		;;
+	*)
+		die "${0##*/}: unknown arguments '$*'"
+		exit 1
+		;;
+	esac
+	shift
+done
+set -- "${ED}"
+
+[[ ${KERNEL} == linux ]] && (( has_feature[xattr] ))
+do_preserve_xattr=$(( $? == 0 ))
+
+# Determine the names of the tools that might subsequently be used. For several
+# of these, their ${CHOST}-prefixed variants are preferred, if found to exist.
+declare -A name_of
+for bin in debugedit dwz {,"${CHOST}-"}{'objcopy','ranlib','readelf','strip'}; do
+	key=${bin#"${CHOST}-"}
+	if [[ ! ${name_of[$key]} ]] || hash "${bin}" 2>/dev/null; then
+		name_of[$key]=${bin}
+	fi
+done
+
+# If debugedit does not exist, consider some alternative locations for it.
+if ! hash "${name_of[debugedit]}" 2>/dev/null; then
+	debugedit_paths=(
+		"${EPREFIX}/usr/libexec/rpm/debugedit"
+	)
+	for x in "${debugedit_paths[@]}"; do
+		if [[ -x ${x} ]]; then
+			name_of[debugedit]=${x}
+			break
+		fi
+	done
+fi
+
+# Declare a map to keep track of whether warnings in certain categories have
+# been issued for a missing tool.
+declare -A warned_for
+
+# Figure out what tool set we're using to strip stuff
+unset SAFE_STRIP_FLAGS DEF_STRIP_FLAGS SPLIT_STRIP_FLAGS
+case $("${name_of[strip]}" --version 2>/dev/null) in
+	*elfutils*) # dev-libs/elfutils
+		# elfutils default behavior is always safe, so don't need to specify
+		# any flags at all
+		SAFE_STRIP_FLAGS=""
+		DEF_STRIP_FLAGS="--remove-comment"
+		SPLIT_STRIP_FLAGS="-f"
+		;;
+	*GNU*) # sys-devel/binutils
+		# We'll leave out -R .note for now until we can check out the relevance
+		# of the section when it has the ALLOC flag set on it ...
+		SAFE_STRIP_FLAGS="--strip-unneeded -N __gentoo_check_ldflags__"
+		DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
+		SPLIT_STRIP_FLAGS=
+esac
+
+read -rd '' -a portage_strip_flags <<<"${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}"
+
+prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
+
+__multijob_init
+
+# Create a temporary directory whose subsequent removal is guaranteed.
+tmpdir=
+trap 'rm -rf -- "${tmpdir}"' EXIT
+tmpdir=$(mktemp -d -- "${T:-/tmp}/prepstrip.XXXXXX") || exit
+
+# Set up a temporary directory structure that we care about.
+mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
+
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-if ! ${PORTAGE_RESTRICT_binchecks} ; then
+if (( ! has_restriction[binchecks] )); then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
@@ -451,8 +531,8 @@ if ! ${PORTAGE_RESTRICT_binchecks} ; then
 	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
-	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
-		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
+	if [[ -n ${QA_PRESTRIPPED} && -s ${log} &&
+		! -v QA_STRICT_PRESTRIPPED ]] ; then
 		shopts=$-
 		set -o noglob
 		for x in ${QA_PRESTRIPPED} ; do
@@ -473,135 +553,144 @@ if ! ${PORTAGE_RESTRICT_binchecks} ; then
 	__multijob_post_fork
 fi
 
-# Since strip creates a new inode, we need to know the initial set of
-# inodes in advance, so that we can avoid interference due to trying
-# to strip the same (hardlinked) file multiple times in parallel.
-# See bug #421099.
-if  [[ ${USERLAND} == BSD ]] ; then
-	get_inode_number() { stat -f '%i' "$1"; }
-else
-	get_inode_number() { stat -c '%i' "$1"; }
-fi
-
 cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 
-if ${prepstrip}; then
-while read -r x ; do
-	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
-	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
-done < <(
-	# NEEDED may not exist for some packages (bug #862606)
-	if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
-		while IFS= read -r needed_entry ; do
-			needed_entry="${needed_entry% *}"
-			needed_contents+=( "${D%/}${needed_entry}" )
-		done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-	fi
+# Since strip creates a new inode, we need to know the initial set of inodes in
+# advance, so that we can avoid interference due to trying to strip the same
+# (hardlinked) file multiple times in parallel. See bug #421099.
+if (( do_prepstrip )); then
+	while IFS= read -r x; do
+		inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
+		echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
+	done < <(
+		# NEEDED may not exist for some packages (bug #862606)
+		if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
+			while IFS= read -r needed_entry ; do
+				needed_entry="${needed_entry% *}"
+				needed_contents+=( "${D%/}${needed_entry}" )
+			done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		fi
 
-	# Use sort -u to eliminate duplicates (bug #445336).
-	(
-		[[ -n ${needed_contents[@]} ]] && printf "%s\n" "${needed_contents[@]}"
-		find "$@" -type f ! -type l -name '*.a'
-	) | LC_ALL=C sort -u
-)
+		# Use sort -u to eliminate duplicates (bug #445336).
+		(
+			if (( ${#needed_contents[@]} )); then
+				printf "%s\n" "${needed_contents[@]}"
+			fi
+			printf '%s\0' "$@" | find0 -type f ! -type l -name '*.a'
+		) | LC_ALL=C sort -u
+	)
 else
-while IFS= read -d '' -r x ; do
-	inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
-	echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
-done < <(find "${ED}" -name '*.estrip' -delete -print0)
+	while IFS= read -d '' -r x ; do
+		inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
+		echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
+	done < <(printf '%s\0' "${ED}" | find0 -name '*.estrip' -delete -print0)
 fi
 
 # Now we look for unstripped binaries.
-for inode_link in $(shopt -s nullglob; echo *) ; do
-while read -r x
-do
+read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
+for inode_link in *; do
+	test -e "${inode_link}" || continue
+	# shellcheck disable=2094
+	while IFS= read -r x; do
+		if (( do_banner )); then
+			__vecho "strip: ${name_of[strip]} ${portage_strip_flags[*]}"
+			do_banner=0
+		fi
 
-	if ! ${banner} ; then
-		__vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
-		banner=true
-	fi
+		(
+		__multijob_child_init
+		f=$(file -S "${x}") || exit 0
+		[[ -z ${f} ]] && exit 0
 
-	(
-	__multijob_child_init
-	f=$(file -S "${x}") || exit 0
-	[[ -z ${f} ]] && exit 0
+		if (( do_skip )); then
+			do_strip=0
+		elif (( ! do_prepstrip )); then
+			do_strip=1
+		else
+			do_strip=1
+			while IFS= read -rd '' glob; do
+				# shellcheck disable=2053
+				if [[ ${x#"${ED%/}"} == ${glob} ]]; then
+					do_strip=0
+					break
+				fi
+			done < <(
+				# FIXME: This facilitates code injection, just
+				# for the sake of supporting brace-expansion.
+				# To support it amounts to a grave anti-feature.
+				# It really ought to be dropped.
+				shopt -o -s noglob
+				eval "printf '%s\\0' ${STRIP_MASK}"
+			)
+		fi
 
-	if ${SKIP_STRIP} ; then
-		strip_this=false
-	elif ! ${prepstrip}; then
-		strip_this=true
-	else
-		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
-		# the for loop from expanding the globs.
-		# The eval echo is to support STRIP_MASK="/*/{booga,bar}".
-		set -o noglob
-		strip_this=true
-		for m in $(eval echo ${STRIP_MASK}) ; do
-			[[ ${x#${ED%/}} == ${m} ]] && strip_this=false && break
-		done
-		set +o noglob
-	fi
+		if (( has_feature[splitdebug] && ! has_restriction[splitdebug] )); then
+			do_splitdebug=1
+		else
+			do_splitdebug=0
+		fi
 
-	# In Prefix we are usually an unprivileged user, so we can't strip
-	# unwritable objects.  Make them temporarily writable for the
-	# stripping.
-	was_not_writable=false
-	if [[ ! -w ${x} ]] ; then
-		was_not_writable=true
-		chmod u+w "${x}"
-	fi
+		# In Prefix we are usually an unprivileged user, so we can't strip
+		# unwritable objects.  Make them temporarily writable for the
+		# stripping.
+		was_writable=1
+		if [[ ! -w ${x} ]] ; then
+			was_writable=0
+			chmod u+w "${x}"
+		fi
 
-	# only split debug info for final linked objects
-	# or kernel modules as debuginfo for intermediatary
-	# files (think crt*.o from gcc/glibc) is useless and
-	# actually causes problems.  install sources for all
-	# elf types though because that stuff is good.
+		# only split debug info for final linked objects
+		# or kernel modules as debuginfo for intermediatary
+		# files (think crt*.o from gcc/glibc) is useless and
+		# actually causes problems.  install sources for all
+		# elf types though because that stuff is good.
 
-	buildid=
-	if [[ ${f} == *"current ar archive"* ]] ; then
-		process_ar "${x}"
-	elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
-		${f} == *"SB shared object"* ]] ; then
-		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
-	elif [[ ${f} == *"SB relocatable"* ]] ; then
-		process_elf "${x}" "${inode_link}" ${SAFE_STRIP_FLAGS}
-	fi
+		buildid=
+		if [[ ${f} == *"current ar archive"* ]] ; then
+			process_ar "${x}"
+		elif [[ ${f} == *SB\ @(?(pie )executable|shared object)* ]] ; then
+			process_elf "${x}" "${inode_link}" "${portage_strip_flags[@]}"
+		elif [[ ${f} == *"SB relocatable"* ]] ; then
+			[[ ${x} == *.ko ]] || do_splitdebug=0
+			process_elf "${x}" "${inode_link}" "${safe_strip_flags[@]}"
+		fi
 
-	if ${was_not_writable} ; then
-		chmod u-w "${x}"
-	fi
-	) &
-	__multijob_post_fork
+		if (( ! was_writable )); then
+			chmod u-w "${x}"
+		fi
+		) &
+		__multijob_post_fork
 
-done < "${inode_link}"
+	done < "${inode_link}"
 done
 
 # With a bit more work, we could run the rsync processes below in
 # parallel, but not sure that'd be an overall improvement.
 __multijob_finish
 
-cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
-if [[ -s ${tmpdir}/debug.sources ]] && \
-   ${FEATURES_installsources} && \
-   ! ${PORTAGE_RESTRICT_installsources} && \
-   ${debugedit_found}
+cd "${tmpdir}"/sources/ && cat -- * > "${tmpdir}/debug.sources" 2>/dev/null
+if [[ -s ${tmpdir}/debug.sources ]] \
+	&& (( has_feature[installsources] && ! has_restriction[installsources] )) \
+	&& hash "${name_of[debugedit]}" 2>/dev/null
 then
 	__vecho "installsources: rsyncing source files"
 	[[ -d ${D%/}/${prepstrip_sources_dir#/} ]] || mkdir -p "${D%/}/${prepstrip_sources_dir#/}"
 
 	# Skip installation of ".../<foo>" (system headers? why inner slashes are forbidden?)
 	# Skip syncing of ".../foo/" (complete directories)
-	grep -zv -e '/<[^/>]*>$' -e '/$' "${tmpdir}"/debug.sources | \
-		(cd "${WORKDIR}"; LANG=C sort -z -u | \
-		rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D%/}/${prepstrip_sources_dir#/}/" )
+	grep -zv -e '/<[^/>]*>$' -e '/$' "${tmpdir}"/debug.sources | {
+		cd "${WORKDIR}" || exit
+		LANG=C sort -z -u \
+		| rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D%/}/${prepstrip_sources_dir#/}/"
+	}
 
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
-	while read -r -d $'\0' emptydir; do
-		>> "${emptydir}"/.keepdir
-	done < <(find "${D%/}/${prepstrip_sources_dir#/}/" -type d -empty -print0)
+	while IFS= read -rd '' emptydir; do
+		: >> "${emptydir}"/.keepdir
+	done < <(printf '%s\0' "${D%/}/${prepstrip_sources_dir#/}/" | find0 -type d -empty -print0)
 fi
 
-cd "${T}"
-rm -rf "${tmpdir}"
+# Collect any outstanding warnings and convey them through ewarn.
+raise_warnings

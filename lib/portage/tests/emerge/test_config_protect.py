@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from functools import partial
+import shlex
 import shutil
 import stat
 import subprocess
@@ -15,7 +16,7 @@ from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.util import ensure_dirs, find_updated_config_files, shlex_split
+from portage.util import ensure_dirs, find_updated_config_files
 
 
 class ConfigProtectTestCase(TestCase):
@@ -146,7 +147,7 @@ src_install() {
                 sum(
                     len(x[1])
                     for x in find_updated_config_files(
-                        eroot, shlex_split(config_protect)
+                        eroot, shlex.split(config_protect)
                     )
                 ),
             )

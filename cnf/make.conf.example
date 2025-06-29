@@ -125,11 +125,16 @@
 #
 # PORTAGE_LOGDIR is the location where portage will store all the logs it
 #     creates from each individual merge. They are stored as
-#     ${CATEGORY}:${PF}:YYYYMMDD-HHMMSS.log in the directory specified.
+#     ${CATEGORY}<sep>${PF}<sep>YYYYMMDD-HHMMSS.log in the directory specified,
+#     where <sep> is specified via PORTAGE_LOG_FILE_SEP, which defaults to ':'.
 #     If the directory does not exist, it will be created automatically and
 #     group permissions will be applied to it.  If the directory already
 #     exists, portage will not modify its permissions.
 #PORTAGE_LOGDIR=""
+#
+# PORTAGE_LOG_FILE_SEP specifies the separator between the components of the
+# log files in PORTAGE_LOGDIR.
+#PORTAGE_LOG_FILE_SEP=":"
 #
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
 #     concern that they will be deleted by rsync updates. Default is not

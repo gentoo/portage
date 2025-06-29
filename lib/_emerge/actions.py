@@ -6,6 +6,7 @@ import logging
 import operator
 import platform
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -213,6 +214,13 @@ def action_build(
             continue
         favorites = resume_data.get("favorites")
         if not isinstance(favorites, list):
+            del mtimedb[k]
+            continue
+        binpkgs = resume_data.get("binpkgs")
+        if binpkgs and (
+            not isinstance(binpkgs, list)
+            or any(not isinstance(x, dict) for x in binpkgs)
+        ):
             del mtimedb[k]
             continue
 
@@ -764,6 +772,7 @@ def action_config(settings, trees, myopts, myfiles):
         mydbapi=trees[settings["EROOT"]]["vartree"].dbapi,
         tree="vartree",
     )
+    portage.elog.elog_process(mysettings.mycpv, mysettings)
     if retval == os.EX_OK:
         portage.doebuild(
             ebuildpath,
@@ -1874,7 +1883,7 @@ def action_info(settings, trees, myopts, myfiles):
             matches.reverse()
             for match in matches:
                 if pkg_type == "binary":
-                    if db.bintree.isremote(match):
+                    if db.bintree.download_required(match):
                         continue
                 auxkeys = ["EAPI", "DEFINED_PHASES"]
                 metadata = dict(zip(auxkeys, db.aux_get(match, auxkeys)))
@@ -2070,11 +2079,11 @@ def action_info(settings, trees, myopts, myfiles):
         append(ccache_str)
 
     myvars = [
-        "sys-devel/autoconf",
-        "sys-devel/automake",
+        "dev-build/autoconf",
+        "dev-build/automake",
         "virtual/os-headers",
         "sys-devel/binutils",
-        "sys-devel/libtool",
+        "dev-build/libtool",
         "dev-lang/python",
     ]
     myvars += portage.util.grabfile(settings["PORTDIR"] + "/profiles/info_pkgs")
@@ -2948,6 +2957,12 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
     emerge_config.running_config = emerge_config.trees[
         emerge_config.trees._running_eroot
     ]["root_config"]
+    if target_eroot != emerge_config.trees._running_eroot:
+        emerge_config.running_config.mtimedb = portage.MtimeDB(
+            os.path.join(
+                emerge_config.trees._running_eroot, portage.CACHE_PATH, "mtimedb"
+            )
+        )
     QueryCommand._db = emerge_config.trees
 
     return emerge_config
@@ -3083,7 +3098,7 @@ def nice(settings):
 def ionice(settings):
     ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
     if ionice_cmd:
-        ionice_cmd = portage.util.shlex_split(ionice_cmd)
+        ionice_cmd = shlex.split(ionice_cmd)
     if not ionice_cmd:
         return
 
@@ -3425,25 +3440,30 @@ def repo_name_duplicate_check(trees):
 
 def run_action(emerge_config):
     # skip global updates prior to sync, since it's called after sync
-    if (
-        emerge_config.action not in ("help", "info", "sync", "version")
-        and emerge_config.opts.get("--package-moves") != "n"
-        and _global_updates(
-            emerge_config.trees,
-            emerge_config.target_config.mtimedb["updates"],
-            quiet=("--quiet" in emerge_config.opts),
-        )
-    ):
-        emerge_config.target_config.mtimedb.commit()
-        # Reload the whole config from scratch.
-        load_emerge_config(emerge_config=emerge_config)
+    configs = [emerge_config.target_config]
+    if emerge_config.target_config.root != emerge_config.running_config.root:
+        configs.append(emerge_config.running_config)
+    for root_config in configs:
+        if (
+            emerge_config.action not in ("help", "info", "sync", "version")
+            and emerge_config.opts.get("--package-moves") != "n"
+            and _global_updates(
+                root_config.root,
+                emerge_config.trees,
+                root_config.mtimedb["updates"],
+                quiet=("--quiet" in emerge_config.opts),
+            )
+        ):
+            root_config.mtimedb.commit()
+            # Reload the whole config from scratch.
+            load_emerge_config(emerge_config=emerge_config)
 
-        # Let's autoclean if we applied updates, rather than always doing it
-        # bug #792195
-        emerge_config.target_config.settings.unlock()
-        emerge_config.target_config.settings["AUTOCLEAN"] = "yes"
-        emerge_config.target_config.settings.backup_changes("AUTOCLEAN")
-        emerge_config.target_config.settings.lock()
+            # Let's autoclean if we applied updates, rather than always doing it
+            # bug #792195
+            root_config.settings.unlock()
+            root_config.settings["AUTOCLEAN"] = "yes"
+            root_config.settings.backup_changes("AUTOCLEAN")
+            root_config.settings.lock()
 
     xterm_titles = "notitles" not in emerge_config.target_config.settings.features
     if xterm_titles:

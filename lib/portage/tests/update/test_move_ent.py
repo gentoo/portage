@@ -93,7 +93,7 @@ class MoveEntTestCase(TestCase):
                     global_noiselimit = portage.util.noiselimit
                     portage.util.noiselimit = -2
                     try:
-                        _do_global_updates(trees, {})
+                        _do_global_updates(trees._running_eroot, trees, {})
                     finally:
                         portage.util.noiselimit = global_noiselimit
 
@@ -198,7 +198,7 @@ class MoveEntTestCase(TestCase):
                     global_noiselimit = portage.util.noiselimit
                     portage.util.noiselimit = -2
                     try:
-                        _do_global_updates(trees, {})
+                        _do_global_updates(trees._running_eroot, trees, {})
                     finally:
                         portage.util.noiselimit = global_noiselimit
 
@@ -287,7 +287,7 @@ class MoveEntTestCase(TestCase):
                     user_config={
                         "make.conf": (
                             f'BINPKG_FORMAT="{binpkg_format}"',
-                            f'FEATURES="binpkg-multi-instance pkgdir-index-trusted"',
+                            'FEATURES="binpkg-multi-instance pkgdir-index-trusted"',
                         ),
                     },
                     debug=False,
@@ -318,7 +318,7 @@ class MoveEntTestCase(TestCase):
                     global_noiselimit = portage.util.noiselimit
                     portage.util.noiselimit = -2
                     try:
-                        _do_global_updates(trees, {})
+                        _do_global_updates(trees._running_eroot, trees, {})
                     finally:
                         portage.util.noiselimit = global_noiselimit
                 finally:

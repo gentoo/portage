@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import shlex
 
 import portage
 from portage import os
@@ -33,8 +34,8 @@ class SVNSync(NewBase):
         exitcode = portage.process.spawn_bash(
             "cd %s; exec svn co %s ."
             % (
-                portage._shell_quote(self.repo.location),
-                portage._shell_quote(svn_root),
+                shlex.quote(self.repo.location),
+                shlex.quote(svn_root),
             ),
             **self.spawn_kwargs,
         )
@@ -59,7 +60,7 @@ class SVNSync(NewBase):
 
         # svn update
         exitcode = portage.process.spawn_bash(
-            f"cd {portage._shell_quote(self.repo.location)}; exec svn update",
+            f"cd {shlex.quote(self.repo.location)}; exec svn update",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
@@ -77,7 +78,7 @@ class SVNSync(NewBase):
         @rtype: (int, bool)
         """
         exitcode = portage.process.spawn_bash(
-            f"cd {portage._shell_quote(self.repo.location)}; exec svn upgrade",
+            f"cd {shlex.quote(self.repo.location)}; exec svn upgrade",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:

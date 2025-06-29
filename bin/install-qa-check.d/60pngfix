@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for issues with PNG files
 
 pngfix_check() {
@@ -26,11 +28,11 @@ pngfix_check() {
 				fi
 				eqawarn "   ${pngout[@]:7}: ${error}"
 			fi
-		done < <(find "${ED}" -type f -name '*.png' -print0 | ___parallel_xargs -0 "${pngfix}")
+		done < <(find "${ED}" -type f -name '*.png' -print0 | ___parallel "${pngfix}")
 	fi
 }
 
 pngfix_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

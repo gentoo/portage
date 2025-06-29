@@ -9,6 +9,7 @@ import subprocess
 import errno
 import pwd
 import grp
+import shlex
 import stat
 import sys
 import tempfile
@@ -40,7 +41,7 @@ from portage.exception import (
 from portage.output import colorize, EOutput
 from portage.util._urlopen import urlopen
 from portage.util import writemsg
-from portage.util import shlex_split, varexpand
+from portage.util import varexpand
 from portage.util.compression_probe import _compressors
 from portage.util.cpuinfo import makeopts_to_job_count
 from portage.process import find_binary
@@ -99,6 +100,7 @@ class tar_stream_writer:
         self.closed = False
         self.container = container
         self.killed = False
+        self.error = False
         self.tar_format = tar_format
         self.tarinfo = tarinfo
         self.uid = uid
@@ -382,7 +384,7 @@ class tar_stream_reader:
             try:
                 if self.proc.wait() != os.EX_OK:
                     if not self.killed:
-                        writemsg(colorize("BAD", f"GPKG external program failed."))
+                        writemsg(colorize("BAD", "GPKG external program failed.\n"))
                         raise CompressorOperationFailed("decompression failed")
             finally:
                 self.proc.stdout.close()
@@ -418,7 +420,7 @@ class checksum_helper:
                 else:
                     self.uid = pwd.getpwnam(drop_user).pw_uid
             except KeyError:
-                writemsg(colorize("BAD", f"!!! Failed to find user {drop_user}."))
+                writemsg(colorize("BAD", f"!!! Failed to find user {drop_user}.\n"))
                 raise
 
             try:
@@ -428,7 +430,7 @@ class checksum_helper:
                 else:
                     self.gid = grp.getgrnam(drop_group).gr_gid
             except KeyError:
-                writemsg(colorize("BAD", f"!!! Failed to find group {drop_group}."))
+                writemsg(colorize("BAD", f"!!! Failed to find group {drop_group}.\n"))
                 raise
         else:
             self.uid = None
@@ -464,7 +466,7 @@ class checksum_helper:
                     "--batch --no-tty",
                 )
 
-                gpg_signing_command = shlex_split(
+                gpg_signing_command = shlex.split(
                     varexpand(gpg_signing_command, mydict=self.settings)
                 )
                 gpg_signing_command = [x for x in gpg_signing_command if x != ""]
@@ -517,7 +519,7 @@ class checksum_helper:
                     "[SIGNATURE]", "--output - -"
                 )
 
-            gpg_verify_command = shlex_split(
+            gpg_verify_command = shlex.split(
                 varexpand(gpg_verify_command, mydict=self.settings)
             )
             gpg_verify_command = [x for x in gpg_verify_command if x != ""]
@@ -626,6 +628,15 @@ class tar_safe_extract:
         if self.closed:
             raise OSError("Tar file is closed.")
         temp_dir = tempfile.TemporaryDirectory(dir=dest_dir)
+        # The below tar member security checks can be refactored as a filter function
+        # that raises an exception. Use tarfile.fully_trusted_filter for now, which
+        # is simply an identity function:
+        # def fully_trusted_filter(member, dest_path):
+        #     return member
+        try:
+            self.tar.extraction_filter = tarfile.fully_trusted_filter
+        except AttributeError:
+            pass
         try:
             while True:
                 member = self.tar.next()
@@ -636,33 +647,35 @@ class tar_safe_extract:
                 ):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: duplicate files detected: {member.name}"
+                            "BAD", f"Danger: duplicate files detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Duplicate files detected.")
                 if member.name.startswith("/"):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: absolute path detected: {member.name}"
+                            "BAD", f"Danger: absolute path detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Absolute path detected.")
                 if member.name.startswith("../") or ("/../" in member.name):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: path traversal detected: {member.name}"
+                            "BAD", f"Danger: path traversal detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Path traversal detected.")
                 if member.isdev():
                     writemsg(
-                        colorize("BAD", f"Danger: device file detected: {member.name}")
+                        colorize(
+                            "BAD", f"Danger: device file detected: {member.name}\n"
+                        )
                     )
                     raise ValueError("Device file detected.")
                 if member.islnk() and (member.linkname not in self.file_list):
                     writemsg(
                         colorize(
-                            "BAD", f"Danger: hardlink escape detected: {member.name}"
+                            "BAD", f"Danger: hardlink escape detected: {member.name}\n"
                         )
                     )
                     raise ValueError("Hardlink escape detected.")
@@ -995,7 +1008,7 @@ class gpkg:
                         image_safe.extractall(decompress_dir)
                         image_tar.close()
                     except Exception as ex:
-                        writemsg(colorize("BAD", "!!!Extract failed."))
+                        writemsg(colorize("BAD", "!!!Extract failed.\n"))
                         raise
                     finally:
                         if not image_tar.closed:
@@ -1754,13 +1767,13 @@ class gpkg:
         cmd = compressor[mode].replace(
             "{JOBS}", str(makeopts_to_job_count(self.settings.get("MAKEOPTS", "1")))
         )
-        cmd = shlex_split(varexpand(cmd, mydict=self.settings))
+        cmd = shlex.split(varexpand(cmd, mydict=self.settings))
 
         # Filter empty elements that make Popen fail
         cmd = [x for x in cmd if x != ""]
 
         if (not cmd) and ((mode + "_alt") in compressor):
-            cmd = shlex_split(
+            cmd = shlex.split(
                 varexpand(compressor[mode + "_alt"], mydict=self.settings)
             )
             cmd = [x for x in cmd if x != ""]
@@ -1930,7 +1943,7 @@ class gpkg:
 
                 file_stat = os.lstat(f)
 
-                if os.path.islink(f):
+                if stat.S_ISLNK(file_stat.st_mode):
                     path_link = os.readlink(f)
                     path_link_length = len(
                         os.fsencode(path_link)
@@ -1947,14 +1960,10 @@ class gpkg:
 
                 image_max_link_length = max(image_max_link_length, path_link_length)
 
-                try:
-                    file_size = os.path.getsize(f)
-                except FileNotFoundError:
-                    # Ignore file not found if symlink to non-existing file
-                    if os.path.islink(f):
-                        continue
-                    else:
-                        raise
+                if stat.S_ISLNK(file_stat.st_mode):
+                    continue
+
+                file_size = file_stat.st_size
                 image_total_size += file_size
                 image_max_file_size = max(image_max_file_size, file_size)
 
@@ -2026,7 +2035,7 @@ class gpkg:
 
             file_stat = os.lstat(path)
 
-            if os.path.islink(path):
+            if stat.S_ISLNK(file_stat.st_mode):
                 path_link = os.readlink(path)
                 path_link_length = len(
                     _unicode_encode(
@@ -2042,14 +2051,10 @@ class gpkg:
             image_max_link_length = max(image_max_link_length, path_link_length)
 
             if os.path.isfile(path):
-                try:
-                    file_size = os.path.getsize(path)
-                except FileNotFoundError:
-                    # Ignore file not found if symlink to non-existing file
-                    if os.path.islink(path):
-                        continue
-                    else:
-                        raise
+                if stat.S_ISLNK(file_stat.st_mode):
+                    continue
+
+                file_size = file_stat.st_size
                 image_total_size += file_size
                 if file_size > image_max_file_size:
                     image_max_file_size = file_size
@@ -2107,7 +2112,7 @@ class gpkg:
         return the first one.
         """
         if self.gpkg_version not in (os.path.basename(f) for f in tar.getnames()):
-            raise InvalidBinaryPackageFormat(f"Invalid gpkg file")
+            raise InvalidBinaryPackageFormat("Invalid gpkg file")
 
         if self.basename and self.prefix and not self.prefix.startswith(self.basename):
             writemsg(

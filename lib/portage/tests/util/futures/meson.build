@@ -1,6 +1,5 @@
 py.install_sources(
     [
-        'test_compat_coroutine.py',
         'test_done_callback.py',
         'test_done_callback_after_exit.py',
         'test_iter_completed.py',

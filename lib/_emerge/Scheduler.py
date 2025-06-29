@@ -17,6 +17,7 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import installation
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, red
@@ -209,6 +210,8 @@ class Scheduler(PollScheduler):
         # empty.
         self._merge_wait_scheduled = []
 
+        self._flush_merge_wait_queue = False
+
         # Holds system packages and their deep runtime dependencies. Before
         # being merged, these packages go to merge_wait_queue, to be merged
         # when no other packages are building.
@@ -339,6 +342,9 @@ class Scheduler(PollScheduler):
             )
 
     def _handle_self_update(self):
+        if installation.TYPE != installation.TYPES.SYSTEM:
+            return os.EX_OK
+
         if self._opts_no_self_update.intersection(self.myopts):
             return os.EX_OK
 
@@ -830,7 +836,7 @@ class Scheduler(PollScheduler):
         elif (
             pkg.type_name == "binary"
             and "--getbinpkg" in self.myopts
-            and pkg.root_config.trees["bintree"].isremote(pkg.cpv)
+            and pkg.root_config.trees["bintree"].download_required(pkg.cpv)
         ):
             prefetcher = BinpkgPrefetcher(
                 background=True, pkg=pkg, scheduler=self._sched_iface
@@ -939,7 +945,7 @@ class Scheduler(PollScheduler):
 
                     # Display fetch on stdout, so that it's always clear what
                     # is consuming time here.
-                    if bintree.isremote(x.cpv):
+                    if bintree.download_required(x.cpv):
                         fetcher = self._get_prefetcher(x)
                         if fetcher is not None and not fetcher.isAlive():
                             # Cancel it because it hasn't started yet.
@@ -983,7 +989,9 @@ class Scheduler(PollScheduler):
                         continue
 
                     current_task = None
-                    if fetched:
+                    if fetched and bintree.get_local_repo_location(x.cpv):
+                        os.rename(fetched, fetcher.pkg_allocated_path)
+                    elif fetched:
                         if not bintree.inject(
                             x.cpv,
                             current_pkg_path=fetched,
@@ -1164,13 +1172,20 @@ class Scheduler(PollScheduler):
                 self.terminate()
                 received_signal.append(128 + signum)
 
+            def sigusr2handler(signum, frame):
+                self._flush_merge_wait_queue = True
+
             earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
             earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
             earlier_sigcont_handler = signal.signal(
                 signal.SIGCONT, self._sigcont_handler
             )
             signal.siginterrupt(signal.SIGCONT, False)
+            earlier_sigusr2_handler = signal.signal(signal.SIGUSR2, sigusr2handler)
 
+            earlier_sigwinch_handler = signal.signal(
+                signal.SIGWINCH, self._sigwinch_handler
+            )
             try:
                 rval = self._merge()
             finally:
@@ -1187,6 +1202,15 @@ class Scheduler(PollScheduler):
                     signal.signal(signal.SIGCONT, earlier_sigcont_handler)
                 else:
                     signal.signal(signal.SIGCONT, signal.SIG_DFL)
+                if earlier_sigusr2_handler is not None:
+                    signal.signal(signal.SIGUSR2, earlier_sigusr2_handler)
+                else:
+                    signal.signal(signal.SIGUSR2, signal.SIG_DFL)
+
+                if earlier_sigwinch_handler is not None:
+                    signal.signal(signal.SIGWINCH, earlier_sigwinch_handler)
+                else:
+                    signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
             self._termination_check()
             if received_signal:
@@ -1519,17 +1543,20 @@ class Scheduler(PollScheduler):
             self._deallocate_config(build.settings)
         elif build.returncode == os.EX_OK:
             self.curval += 1
-            merge = PackageMerge(merge=build, scheduler=self._sched_iface)
+            merge = PackageMerge(
+                is_system_pkg=(build.pkg in self._deep_system_deps),
+                merge=build,
+                scheduler=self._sched_iface,
+            )
             self._running_tasks[id(merge)] = merge
             # By default, merge-wait only allows merge when no builds are executing.
             # As a special exception, dependencies on system packages are frequently
             # unspecified and will therefore force merge-wait.
-            is_system_pkg = build.pkg in self._deep_system_deps
             if not build.build_opts.buildpkgonly and (
-                "merge-wait" in build.settings.features or is_system_pkg
+                "merge-wait" in build.settings.features or merge.is_system_pkg
             ):
                 self._merge_wait_queue.append(merge)
-                if is_system_pkg:
+                if merge.is_system_pkg:
                     merge.addStartListener(self._system_merge_started)
             else:
                 self._task_queues.merge.add(merge)
@@ -1554,6 +1581,7 @@ class Scheduler(PollScheduler):
             self._deallocate_config(build.settings)
         self._jobs -= 1
         self._status_display.running = self._jobs
+        self._status_display.merge_wait = len(self._merge_wait_queue)
         self._schedule()
 
     def _extract_exit(self, build):
@@ -1799,18 +1827,44 @@ class Scheduler(PollScheduler):
             # special packages and we want to ensure that
             # parallel-install does not cause more than one of
             # them to install at the same time.
-            if (
-                self._merge_wait_queue
-                and not self._jobs
-                and not self._task_queues.merge
+            if self._merge_wait_queue and (
+                (not self._jobs and not self._task_queues.merge)
+                or self._flush_merge_wait_queue
             ):
-                task = self._merge_wait_queue.popleft()
-                task.scheduler = self._sched_iface
-                self._merge_wait_scheduled.append(task)
-                self._task_queues.merge.add(task)
-                task.addExitListener(self._merge_wait_exit_handler)
-                self._status_display.merges = len(self._task_queues.merge)
-                state_change += 1
+                if self._flush_merge_wait_queue:
+                    self._status_msg(
+                        "Manual flush of the merge-wait queue requested (e.g., via SIGUSR2)"
+                    )
+                    self._flush_merge_wait_queue = False
+
+                while self._merge_wait_queue:
+                    # If we added non-system packages to the merge queue in a
+                    # previous iteration of this loop, then for system packages we
+                    # need to come back later when the merge queue is empty.
+                    # TODO: Maybe promote non-system packages to the front of the
+                    # queue and process them within the current loop, though that
+                    # causes merge order to differ from the order builds finish.
+                    if (
+                        self._task_queues.merge
+                        and self._merge_wait_queue[0].is_system_pkg
+                    ):
+                        break
+                    task = self._merge_wait_queue.popleft()
+                    task.scheduler = self._sched_iface
+                    self._merge_wait_scheduled.append(task)
+                    self._task_queues.merge.add(task)
+                    task.addExitListener(self._merge_wait_exit_handler)
+                    self._status_display.merges = len(self._task_queues.merge)
+                    state_change += 1
+                    # For system packages, always serialize install regardless of
+                    # parallel-install, in order to mitigate failures triggered
+                    # by fragile states as in bug 256616. For other packages,
+                    # continue to populate self._task_queues.merge, which will
+                    # serialize install unless parallel-install is enabled.
+                    if task.is_system_pkg:
+                        break
+
+                self._status_display.merge_wait = len(self._merge_wait_queue)
 
             if self._schedule_tasks_imp():
                 state_change += 1
@@ -1878,6 +1932,9 @@ class Scheduler(PollScheduler):
     def _sigcont_handler(self, signum, frame):
         self._sigcont_time = time.time()
 
+    def _sigwinch_handler(self, signum, frame):
+        self._status_display.sigwinch()
+
     def _job_delay(self):
         """
         @rtype: bool
@@ -1931,11 +1988,11 @@ class Scheduler(PollScheduler):
         @return: True if state changed, False otherwise.
         """
 
-        state_change = 0
+        state_change = False
 
         while True:
             if not self._keep_scheduling():
-                return bool(state_change)
+                return state_change
 
             if (
                 self._choose_pkg_return_early
@@ -1944,13 +2001,13 @@ class Scheduler(PollScheduler):
                 or not self._can_add_job()
                 or self._job_delay()
             ):
-                return bool(state_change)
+                return state_change
 
             pkg = self._choose_pkg()
             if pkg is None:
-                return bool(state_change)
+                return state_change
 
-            state_change += 1
+            state_change = True
 
             if not pkg.installed:
                 self._pkg_count.curval += 1
@@ -1963,15 +2020,6 @@ class Scheduler(PollScheduler):
                 self._task_queues.merge.addFront(merge)
                 merge.addExitListener(self._merge_exit)
 
-            elif pkg.built:
-                self._jobs += 1
-                self._previous_job_start_time = time.time()
-                self._status_display.running = self._jobs
-                self._running_tasks[id(task)] = task
-                task.scheduler = self._sched_iface
-                self._task_queues.jobs.add(task)
-                task.addExitListener(self._extract_exit)
-
             else:
                 self._jobs += 1
                 self._previous_job_start_time = time.time()
@@ -1979,9 +2027,11 @@ class Scheduler(PollScheduler):
                 self._running_tasks[id(task)] = task
                 task.scheduler = self._sched_iface
                 self._task_queues.jobs.add(task)
-                task.addExitListener(self._build_exit)
 
-        return bool(state_change)
+                if pkg.built:
+                    task.addExitListener(self._extract_exit)
+                else:
+                    task.addExitListener(self._build_exit)
 
     def _get_prefetcher(self, pkg):
         try:
@@ -2100,6 +2150,19 @@ class Scheduler(PollScheduler):
             list(x)
             for x in self._mergelist
             if isinstance(x, Package) and x.operation == "merge"
+        ]
+        # Store binpkgs using the same keys as $PKGDIR/Packages plus EROOT.
+        mtimedb["resume"]["binpkgs"] = [
+            {
+                "CPV": str(x.cpv),
+                "BUILD_ID": x.cpv.build_id,
+                "BUILD_TIME": x.cpv.build_time,
+                "MTIME": x.cpv.mtime,
+                "SIZE": x.cpv.file_size,
+                "EROOT": x.root,
+            }
+            for x in self._mergelist
+            if isinstance(x, Package) and x.type_name == "binary"
         ]
 
         mtimedb.commit()

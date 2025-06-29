@@ -3,9 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 
+import asyncio as _asyncio
 import atexit
 import errno
 import fcntl
+import io
 import logging
 import multiprocessing
 import platform
@@ -20,6 +22,7 @@ import warnings
 from dataclasses import dataclass
 from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
+from inspect import iscoroutinefunction
 
 from portage import os
 from portage import _encodings
@@ -39,7 +42,7 @@ from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.const import MACOSSANDBOX_BINARY
 from portage.exception import CommandNotFound
 from portage.proxy.objectproxy import ObjectProxy
-from portage.util._ctypes import find_library, LoadLibrary, ctypes
+from portage.util._ctypes import load_libc, LoadLibrary, ctypes
 
 try:
     from portage.util.netlink import RtNetlink
@@ -219,7 +222,14 @@ def atexit_register(func, *args, **kargs):
     what is registered.  For example, when portage restarts itself via
     os.execv, the atexit module does not work so we have to do it
     manually by calling the run_exitfuncs() function in this module."""
-    _exithandlers.append((func, args, kargs))
+    # The internal asyncio wrapper module would trigger a circular import
+    # if used here.
+    if iscoroutinefunction(func):
+        # Add this coroutine function to the exit handlers for the loop
+        # which is associated with the current thread.
+        global_event_loop()._coroutine_exithandlers.append((func, args, kargs))
+    else:
+        _exithandlers.append((func, args, kargs, portage.getpid()))
 
 
 def run_exitfuncs():
@@ -233,7 +243,12 @@ def run_exitfuncs():
     # original function is in the output to stderr.
     exc_info = None
     while _exithandlers:
-        func, targs, kargs = _exithandlers.pop()
+        func, targs, kargs, pid = _exithandlers.pop()
+        if pid != portage.getpid():
+            # Drop hooks inherited via fork because they can trigger redundant
+            # actions as shown in bug 937891. Note that atexit hooks only work
+            # after fork since issue 83856 was fixed in Python 3.13.
+            continue
         try:
             func(*targs, **kargs)
         except SystemExit:
@@ -246,7 +261,57 @@ def run_exitfuncs():
         raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
 
-atexit.register(run_exitfuncs)
+async def run_coroutine_exitfuncs():
+    """
+    This is the same as run_exitfuncs but it uses asyncio.iscoroutinefunction
+    to check which functions to run. It is called by the AsyncioEventLoop
+    _close method just before the loop is closed.
+
+    If the loop is explicitly closed before exit, then that will cause
+    run_coroutine_exitfuncs to run before run_exitfuncs. Otherwise, a
+    run_exitfuncs hook will close it, causing run_coroutine_exitfuncs to be
+    called via run_exitfuncs.
+    """
+    # The _thread_weakrefs_atexit function makes an adjustment to ensure
+    # that global_event_loop() returns the correct loop when it is closing,
+    # regardless of which thread the loop was initially associated with.
+    _coroutine_exithandlers = global_event_loop()._coroutine_exithandlers
+    tasks = []
+    while _coroutine_exithandlers:
+        func, targs, kargs = _coroutine_exithandlers.pop()
+        tasks.append(asyncio.ensure_future(func(*targs, **kargs)))
+    tracebacks = []
+    exc_info = None
+    for task in tasks:
+        try:
+            await task
+        except Exception:
+            file = io.StringIO()
+            traceback.print_exc(file=file)
+            tracebacks.append(file.getvalue())
+            exc_info = sys.exc_info()
+    if len(tracebacks) > 1:
+        for tb in tracebacks[:-1]:
+            print(tb, file=sys.stderr, flush=True)
+    if exc_info is not None:
+        raise exc_info[1].with_traceback(exc_info[2])
+
+
+def _atexit_register_run_exitfuncs():
+    """
+    Register the run_exitfuncs atexit hook. If this hook is not called
+    before the multiprocessing module's _exit_function, then there will
+    be a deadlock. In order to prevent the deadlock, this function must
+    be called in order to re-order the hooks after the first process has
+    been started via the multiprocessing module. The natural place to
+    call this is in the ForkProcess class, though it should also be
+    called once before, in case the ForkProcess class is never called.
+    """
+    atexit.unregister(run_exitfuncs)
+    atexit.register(run_exitfuncs)
+
+
+_atexit_register_run_exitfuncs()
 
 # It used to be necessary for API consumers to remove pids from spawned_pids,
 # since otherwise it would accumulate a pids endlessly. Now, spawned_pids is
@@ -622,8 +687,8 @@ def spawn(
         fd_pipes[1] = pw
         fd_pipes[2] = pw
 
-    # Cache _has_ipv6() result for use in child processes.
-    _has_ipv6()
+    # Cache has_ipv6() result for use in child processes.
+    has_ipv6()
 
     # This caches the libc library lookup and _unshare_validator results
     # in the current process, so that results are cached for use in
@@ -742,7 +807,7 @@ def spawn(
 __has_ipv6 = None
 
 
-def _has_ipv6():
+def has_ipv6():
     """
     Test that both userland and kernel support IPv6, by attempting
     to create a socket and listen on any unused port of the IPv6
@@ -803,7 +868,7 @@ def _configure_loopback_interface():
             ifindex = rtnl.get_link_ifindex(b"lo")
             rtnl.set_link_up(ifindex)
             rtnl.add_address(ifindex, socket.AF_INET, "10.0.0.1", 8)
-            if _has_ipv6():
+            if has_ipv6():
                 rtnl.add_address(ifindex, socket.AF_INET6, "fd::1", 8)
     except OSError as e:
         writemsg(
@@ -980,11 +1045,9 @@ def _exec(
     have_unshare = False
     libc = None
     if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
-        filename = find_library("c")
-        if filename is not None:
-            libc = LoadLibrary(filename)
-            if libc is not None:
-                have_unshare = hasattr(libc, "unshare")
+        (libc, _) = load_libc()
+        if libc is not None:
+            have_unshare = hasattr(libc, "unshare")
 
     if not have_unshare:
         # unshare() may not be supported by libc
@@ -1232,11 +1295,7 @@ class _unshare_validator:
         """
         # This ctypes library lookup caches the result for use in the
         # subprocess when the multiprocessing start method is fork.
-        filename = find_library("c")
-        if filename is None:
-            return errno.ENOTSUP
-
-        libc = LoadLibrary(filename)
+        (libc, filename) = load_libc()
         if libc is None:
             return errno.ENOTSUP
 

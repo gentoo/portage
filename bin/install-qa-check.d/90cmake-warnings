@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for CMake invalid option warnings
 
 cmake_warn_check() {
@@ -25,4 +27,4 @@ cmake_warn_check() {
 cmake_warn_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

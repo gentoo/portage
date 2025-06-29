@@ -6,15 +6,8 @@ import asyncio
 import errno
 import os
 import socket
-from typing import Union
 
 import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util._eventloop.global_event_loop:global_event_loop",
-)
-
 import portage.data
 from portage import _python_interpreter
 from portage.data import portage_gid, portage_uid, userpriv_groups
@@ -65,41 +58,19 @@ class ProxyManager:
             **spawn_kwargs,
         )
 
-    def stop(self) -> Union[None, asyncio.Future]:
+    async def stop(self):
         """
-        Stop the SOCKSv5 server.
-
-        If there is a running asyncio event loop then asyncio.Future is
-        returned which should be used to wait for the server process
-        to exit.
+        Stop the SOCKSv5 server. This method is a coroutine.
         """
-        future = None
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
         if self._proc is not None:
             self._proc.terminate()
-            if loop is None:
-                # In this case spawn internals would have used
-                # portage's global loop when attaching a waiter to
-                # self._proc, so we are obligated to use that.
-                global_event_loop().run_until_complete(self._proc.wait())
-            else:
-                if self._proc_waiter is None:
-                    self._proc_waiter = asyncio.ensure_future(
-                        self._proc.wait(), loop=loop
-                    )
-                future = asyncio.shield(self._proc_waiter)
-
-        if loop is not None and future is None:
-            future = loop.create_future()
-            future.set_result(None)
+            if self._proc_waiter is None:
+                self._proc_waiter = asyncio.ensure_future(self._proc.wait())
+            await self._proc_waiter
 
         self.socket_path = None
         self._proc = None
         self._proc_waiter = None
-        return future
 
     def is_running(self):
         """

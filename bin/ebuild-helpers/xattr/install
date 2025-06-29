@@ -37,7 +37,7 @@ if [[ "${implementation}" == "c" ]]; then
 	exec "${INSTALL_XATTR}" "$@"
 elif [[ "${implementation}" == "python" ]]; then
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-		exec "${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/install.py" "$@"
+		exec "${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH:?}/install.py" "$@"
 else
 	echo "Unknown implementation for PORTAGE_INSTALL_XATTR_IMPLEMENTATION"
 	exit -1

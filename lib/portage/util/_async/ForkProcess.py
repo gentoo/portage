@@ -15,6 +15,8 @@ from portage.cache.mappings import slot_dict_class
 from portage.util.futures import asyncio
 from _emerge.SpawnProcess import SpawnProcess
 
+_registered_run_exitfuncs = None
+
 
 class ForkProcess(SpawnProcess):
     # NOTE: This class overrides the meaning of the SpawnProcess 'args'
@@ -91,11 +93,8 @@ class ForkProcess(SpawnProcess):
                     # When called via process.spawn, SpawnProcess
                     # will have created a pipe earlier, so it would be
                     # redundant to do it here (it could also trigger spawn
-                    # recursion via set_term_size as in bug 923750). Use
-                    # /dev/null for master_fd, triggering early return
-                    # of _main, followed by _async_waitpid.
-                    # TODO: Optimize away the need for master_fd here.
-                    master_fd = os.open(os.devnull, os.O_RDONLY)
+                    # recursion via set_term_size as in bug 923750).
+                    master_fd = None
                     slave_fd = None
 
                 self._files = self._files_dict(connection=connection, slave_fd=slave_fd)
@@ -209,6 +208,8 @@ class ForkProcess(SpawnProcess):
         promoting a healthy state for the forked interpreter.
         """
 
+        global _registered_run_exitfuncs
+
         if self.__class__._run is ForkProcess._run:
             # target replaces the deprecated self._run method
             target = self.target
@@ -254,6 +255,10 @@ class ForkProcess(SpawnProcess):
         finally:
             if stdin_dup is not None:
                 os.close(stdin_dup)
+
+        if _registered_run_exitfuncs != portage.getpid():
+            portage.process._atexit_register_run_exitfuncs()
+            _registered_run_exitfuncs = portage.getpid()
 
         return portage.process.MultiprocessingProcess(proc)
 

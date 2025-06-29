@@ -1,37 +1,36 @@
+# shellcheck shell=bash
+
 # Strict multilib directory checks
+
 multilib_strict_check() {
-	if has multilib-strict ${FEATURES} && \
-	   type find &>/dev/null && type file &>/dev/null && \
-	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
+	local IFS abort dir file
+
+	if contains_word multilib-strict "${FEATURES}" \
+		&& type find file &>/dev/null \
+		&& [[ ${MULTILIB_STRICT_DIRS} && ${MULTILIB_STRICT_DENY} ]]
 	then
 		rm -f "${T}/multilib-strict.log"
-		local abort=no dir file
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
 			[[ -d ${ED}/${dir} ]] || continue
 			while read -r -d '' file; do
 				if file "${file}" | grep -Eq "${MULTILIB_STRICT_DENY}" ; then
-					echo "${file#${ED}//}" >> "${T}/multilib-strict.log"
+					echo "${file#"${ED}"//}" >> "${T}/multilib-strict.log"
 				fi
 			done < <(find "${ED}/${dir}" -maxdepth 1 -type f -print0)
 		done
 
 		if [[ -s ${T}/multilib-strict.log ]] ; then
-			if [[ ${#QA_MULTILIB_PATHS[@]} -eq 1 ]] ; then
-				local shopts=$-
-				set -o noglob
-				QA_MULTILIB_PATHS=(${QA_MULTILIB_PATHS})
-				set +o noglob
-				set -${shopts}
+			if [[ ${QA_MULTILIB_PATHS@a} != *a* ]] ; then
+				read -rd '' -a QA_MULTILIB_PATHS <<<"${QA_MULTILIB_PATHS}"
 			fi
-			if [ "${QA_STRICT_MULTILIB_PATHS-unset}" = unset ] ; then
-				local x
-				for x in "${QA_MULTILIB_PATHS[@]}" ; do
-					sed -e "s#^${x#/}\$##" -i "${T}/multilib-strict.log"
+			if [[ ! -v QA_STRICT_MULTILIB_PATHS ]] ; then
+				for dir in "${QA_MULTILIB_PATHS[@]}" ; do
+					sed -e "s#^${dir#/}\$##" -i "${T}/multilib-strict.log"
 				done
 				sed -e "/^\$/d" -i "${T}/multilib-strict.log"
 			fi
 			if [[ -s ${T}/multilib-strict.log ]] ; then
-				abort=yes
+				abort=1
 				echo "Files matching a file type that is not allowed:"
 				while read -r ; do
 					echo "   ${REPLY}"
@@ -39,11 +38,11 @@ multilib_strict_check() {
 			fi
 		fi
 
-		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
+		(( abort )) && die "multilib-strict check failed!"
 	fi
 }
 
 multilib_strict_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

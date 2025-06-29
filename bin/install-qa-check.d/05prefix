@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Prefix specific QA checks
 
 install_qa_check_prefix() {
@@ -85,7 +87,7 @@ install_qa_check_prefix() {
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because a
 				# prefixed variant exists
-				eqawarn "QA Notice:  prefixing shebang of ${fn#${D}}"
+				eqawarn "QA Notice: prefixing shebang of ${fn#${D}}"
 				# statement is made idempotent on purpose, because
 				# symlinks may point to the same target, and hence the
 				# same real file may be sedded multiple times since we
@@ -98,11 +100,10 @@ install_qa_check_prefix() {
 				echo "${fn#${D}}:${line[0]} (script ${fn##*/} installed in PATH but interpreter ${line[0]} not found)" \
 					>> "${T}"/non-prefix-shebangs-errs
 			fi
-		else
+		elif contains_word stricter "${FEATURES}"; then
 			# unprefixed/invalid shebang, but outside ${PATH}, this may be
 			# intended (e.g. config.guess) so remain silent by default
-			has stricter ${FEATURES} && \
-				eqawarn "QA Notice: invalid shebang in ${fn#${D}}: ${line[0]}"
+			eqawarn "QA Notice: invalid shebang in ${fn#${D}}: ${line[0]}"
 		fi
 	done
 	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
@@ -118,4 +119,4 @@ install_qa_check_prefix() {
 install_qa_check_prefix
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

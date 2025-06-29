@@ -34,6 +34,7 @@ signal.signal(signal.SIGUSR1, debug_signal)
 
 import argparse
 from os import path as osp
+import shlex
 import sys
 import textwrap
 
@@ -48,7 +49,6 @@ import portage
 portage._internal_caller = True
 from portage import os
 from portage import _encodings
-from portage import _shell_quote
 from portage import _unicode_encode
 from portage.const import VDB_PATH
 from portage.exception import (
@@ -107,9 +107,7 @@ def main():
         parser.error("missing required args")
 
     if not opts.ignore_default_opts:
-        default_opts = portage.util.shlex_split(
-            portage.settings.get("EBUILD_DEFAULT_OPTS", "")
-        )
+        default_opts = shlex.split(portage.settings.get("EBUILD_DEFAULT_OPTS", ""))
         opts, pargs = parser.parse_known_args(default_opts + sys.argv[1:])
 
     debug = opts.debug
@@ -166,7 +164,7 @@ def main():
     if ebuild_portdir != vdb_path and ebuild_portdir not in portage.portdb.porttrees:
         portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
         os.environ["PORTDIR_OVERLAY"] = (
-            portdir_overlay + " " + _shell_quote(ebuild_portdir)
+            portdir_overlay + " " + shlex.quote(ebuild_portdir)
         )
 
         print(f"Appending {ebuild_portdir} to PORTDIR_OVERLAY...")
@@ -303,6 +301,10 @@ def main():
         portage.writemsg(_("Forcing test.\n"), noiselevel=-1)
 
     tmpsettings.features.discard("fail-clean")
+
+    # We don't implement merge-wait for the ebuild command, so discard
+    # it from FEATURES. This prevents premature WORKDIR removal.
+    tmpsettings.features.discard("merge-wait")
 
     if "merge" in pargs and "noauto" in tmpsettings.features:
         print("Disabling noauto in features... merge disables it. (qmerge doesn't)")

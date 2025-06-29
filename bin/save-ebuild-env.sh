@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -10,8 +10,7 @@
 # be excluded from the output. These function are not needed for installation
 # or removal of the packages, and can therefore be safely excluded.
 #
-__save_ebuild_env() {
-	(
+__save_ebuild_env() (
 	if has --exclude-init-phases $* ; then
 		unset S __E_DESTTREE __E_INSDESTTREE __E_DOCDESTTREE __E_EXEDESTTREE \
 			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
@@ -24,6 +23,9 @@ __save_ebuild_env() {
 				unset PYTHONPATH
 			fi
 		fi
+
+		# Discard stale GNU Make POSIX Jobserver flags.
+		unset MAKEFLAGS
 	fi
 
 	# misc variables inherited from the calling environment
@@ -35,17 +37,16 @@ __save_ebuild_env() {
 	SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
 
 	# CCACHE and DISTCC config
-	unset ${!CCACHE_*} ${!DISTCC_*}
+	unset "${!CCACHE_@}" "${!DISTCC_@}"
 
 	# There's no need to bloat environment.bz2 with internally defined
 	# functions and variables, so filter them out if possible.
 
-	for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
+	for _ in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 		src_compile src_test src_install pkg_preinst pkg_postinst \
 		pkg_prerm pkg_postrm pkg_config pkg_info pkg_pretend ; do
-		unset -f default_${x} __eapi{0,1,2,3,4}_${x}
+		unset -f default_${_} __eapi{0,1,2,4,6,8}_${_}
 	done
-	unset x
 
 	unset -f assert __assert_sigpipe_ok \
 		__dump_trace die \
@@ -76,11 +77,18 @@ __save_ebuild_env() {
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
 		__unpack_tar __unset_colors \
 		__source_env_files __try_source __check_bash_version \
-		__bashpid __start_distcc \
+		__start_distcc \
 		__eqaquote __eqatag \
+		__eapi7_ver_parse_range __eapi7_ver_split \
+		__eapi7_ver_compare_int __eapi7_ver_compare \
 		${QA_INTERCEPTORS}
 
 	___eapi_has_usex && unset -f usex
+	___eapi_has_get_libdir && unset -f get_libdir
+	___eapi_has_einstalldocs && unset -f einstalldocs
+	___eapi_has_eapply && unset -f eapply eapply_user
+	___eapi_has_in_iuse && unset -f in_iuse
+	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do
@@ -125,8 +133,4 @@ __save_ebuild_env() {
 
 	declare -p
 	declare -fp
-	if [[ ${BASH_VERSINFO[0]} == 3 ]]; then
-		export
-	fi
-	)
-}
+)

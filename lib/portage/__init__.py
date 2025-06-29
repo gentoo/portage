@@ -1,4 +1,4 @@
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -449,23 +449,6 @@ def _get_stdin():
     return sys.stdin
 
 
-_shell_quote_re = re.compile(r"[\s><=*\\\"'$`;&|(){}\[\]#!~?]")
-
-
-def _shell_quote(s):
-    """
-    Quote a string in double-quotes and use backslashes to
-    escape any backslashes, double-quotes, dollar signs, or
-    backquotes in the string.
-    """
-    if _shell_quote_re.search(s) is None:
-        return s
-    for letter in r"\"$`":
-        if letter in s:
-            s = s.replace(letter, rf"\{letter}")
-    return f'"{s}"'
-
-
 bsd_chflags = None
 
 if platform.system() in ("FreeBSD",):
@@ -524,7 +507,6 @@ _deprecated_eapis = frozenset(
         "3_pre1",
         "3_pre2",
         "4_pre1",
-        "4-slot-abi",
         "5_pre1",
         "5_pre2",
         "6_pre1",
@@ -661,6 +643,7 @@ def create_trees(
         # environment to apply to the config that's associated
         # with ROOT != "/", so pass a nearly empty dict for the env parameter.
         env_sequence = (
+            "MAKEFLAGS",
             "PATH",
             "PORTAGE_GRPNAME",
             "PORTAGE_REPOSITORIES",
@@ -718,54 +701,21 @@ if installation.TYPE == installation.TYPES.SOURCE:
             global VERSION
             if VERSION is not self:
                 return VERSION
-            if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
-                encoding = _encodings["fs"]
-                cmd = [
-                    BASH_BINARY,
-                    "-c",
-                    (
-                        f"cd {_shell_quote(PORTAGE_BASE_PATH)} ; git describe --match 'portage-*' || exit $? ; "
-                        'if [ -n "`git diff-index --name-only --diff-filter=M HEAD`" ] ; '
-                        "then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; "
-                        "exit 0"
-                    ),
-                ]
-                cmd = [
-                    _unicode_encode(x, encoding=encoding, errors="strict") for x in cmd
-                ]
-                proc = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-                )
-                output = _unicode_decode(proc.communicate()[0], encoding=encoding)
-                status = proc.wait()
-                if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-                    output_lines = output.splitlines()
-                    if output_lines:
-                        version_split = output_lines[0].split("-")
-                        if len(version_split) > 1:
-                            VERSION = version_split[1]
-                            patchlevel = False
-                            if len(version_split) > 2:
-                                patchlevel = True
-                                VERSION = f"{VERSION}_p{version_split[2]}"
-                            if len(output_lines) > 1 and output_lines[1] == "modified":
-                                head_timestamp = None
-                                if len(output_lines) > 3:
-                                    try:
-                                        head_timestamp = int(output_lines[3])
-                                    except ValueError:
-                                        pass
-                                timestamp = int(time.time())
-                                if (
-                                    head_timestamp is not None
-                                    and timestamp > head_timestamp
-                                ):
-                                    timestamp = timestamp - head_timestamp
-                                if not patchlevel:
-                                    VERSION = f"{VERSION}_p0"
-                                VERSION = f"{VERSION}_p{timestamp}"
-                            return VERSION
             VERSION = "HEAD"
+            if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
+                try:
+                    result = subprocess.run(
+                        ["git", "describe", "--dirty", "--match", "portage-*"],
+                        capture_output=True,
+                        cwd=PORTAGE_BASE_PATH,
+                        encoding=_encodings["stdio"],
+                    )
+                    if result.returncode == 0:
+                        VERSION = (
+                            result.stdout.lstrip("portage-").strip().replace("-g", "+g")
+                        )
+                except OSError:
+                    pass
             return VERSION
 
     VERSION = _LazyVersion()

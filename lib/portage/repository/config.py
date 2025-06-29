@@ -6,6 +6,7 @@ import io
 import logging
 import warnings
 import re
+import shlex
 import typing
 
 import portage
@@ -21,7 +22,6 @@ from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (
     normalize_path,
     read_corresponding_eapi_file,
-    shlex_split,
     stack_lists,
     writemsg,
     writemsg_level,
@@ -656,7 +656,7 @@ class RepoConfigLoader:
             portdir_orig = portdir
             overlays.append(portdir)
         try:
-            port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
+            port_ov = [normalize_path(i) for i in shlex.split(portdir_overlay)]
         except ValueError as e:
             # File "/usr/lib/python3.2/shlex.py", line 168, in read_token
             # 	raise ValueError("No closing quotation")
@@ -943,7 +943,9 @@ class RepoConfigLoader:
                         del prepos[repo_name]
                         continue
 
-                    if repo.name != repo_name:
+                    if repo.name != repo_name and (
+                        repo.aliases is None or repo_name not in repo.aliases
+                    ):
                         writemsg_level(
                             "!!! %s\n"
                             % _(
@@ -957,13 +959,13 @@ class RepoConfigLoader:
                         del prepos[repo_name]
                         continue
 
-                location_map[repo.location] = repo_name
-                treemap[repo_name] = repo.location
+                location_map[repo.location] = repo.name
+                treemap[repo.name] = repo.location
 
         # Add alias mappings, but never replace unaliased mappings.
         for repo_name, repo in list(prepos.items()):
             names = set()
-            names.add(repo_name)
+            names.add(repo.name)
             if repo.aliases:
                 aliases = stack_lists([repo.aliases], incremental=True)
                 names.update(aliases)

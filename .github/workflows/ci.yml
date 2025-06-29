@@ -18,9 +18,10 @@ jobs:
           - '3.9'
           - '3.10'
           - '3.11'
-          - '3.12-dev'
-          - '3.13-dev'
-          - 'pypy-3.10'
+          - '3.12'
+          - '3.13'
+          - '3.14-dev'
+          - 'pypy-3.11'
         exclude:
           - python-version: '3.9'
             start-method: 'spawn'
@@ -28,15 +29,19 @@ jobs:
             start-method: 'spawn'
           - python-version: '3.11'
             start-method: 'spawn'
-          - python-version: '3.13-dev'
+          - python-version: '3.12'
             start-method: 'spawn'
-          - python-version: 'pypy-3.10'
+          - python-version: '3.13'
+            start-method: 'spawn'
+          - python-version: '3.14-dev'
+            start-method: 'fork'
+          - python-version: 'pypy-3.11'
             start-method: 'spawn'
       fail-fast: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies

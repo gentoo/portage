@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Warn about and/or remove empty directories installed by ebuild.
 
 # Rationale: PMS prohibits ebuilds from installing empty directories.
@@ -41,4 +43,4 @@ find_empty_dirs() {
 find_empty_dirs
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

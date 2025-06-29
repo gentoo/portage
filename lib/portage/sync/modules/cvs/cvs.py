@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import shlex
 
 import portage
 from portage import os
@@ -34,12 +35,10 @@ class CVSSync(NewBase):
             portage.process.spawn_bash(
                 "cd %s; exec cvs -z0 -d %s co -P -d %s %s"
                 % (
-                    portage._shell_quote(os.path.dirname(self.repo.location)),
-                    portage._shell_quote(cvs_root),
-                    portage._shell_quote(os.path.basename(self.repo.location)),
-                    portage._shell_quote(
-                        self.repo.module_specific_options["sync-cvs-repo"]
-                    ),
+                    shlex.quote(os.path.dirname(self.repo.location)),
+                    shlex.quote(cvs_root),
+                    shlex.quote(os.path.basename(self.repo.location)),
+                    shlex.quote(self.repo.module_specific_options["sync-cvs-repo"]),
                 ),
                 **self.spawn_kwargs,
             )
@@ -62,8 +61,7 @@ class CVSSync(NewBase):
 
         # cvs update
         exitcode = portage.process.spawn_bash(
-            "cd %s; exec cvs -z0 -q update -dP"
-            % (portage._shell_quote(self.repo.location),),
+            f"cd {shlex.quote(self.repo.location)}; exec cvs -z0 -q update -dP",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:

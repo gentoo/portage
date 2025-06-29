@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for implicit function declaration warnings in configure logs
 #
 # ebuilds should set the QA_CONFIG_IMPL_DECL_SKIP array to skip known false
@@ -45,10 +47,35 @@ add_default_skips() {
 	[[ ${CHOST} == *linux* ]] && QA_CONFIG_IMPL_DECL_SKIP+=(
 		acl
 		acl_get_perm_np
+		pthread_cond_timedwait_monotonic_np
+		pthread_get_name_np
+		pthread_set_name_np
+		pthread_threadid_np
 		res_getservers
 		res_ndestroy
 		statacl
 	)
+
+	QA_CONFIG_IMPL_DECL_SKIP+=(
+		# Available in c23, these gnulib checks are expected to fail
+		alignof
+		static_assert
+		unreachable
+		# also gnulib, but checks both linux/non-linux headers
+		MIN
+	)
+	if [[ ${CHOST} = *musl* ]]; then
+		QA_CONFIG_IMPL_DECL_SKIP+=(
+			# gnulib checks for functions that aren't available on musl.
+
+			# regex.m4 always emits these warnings, but they are noisy to fix
+			# and the check will correctly fail due to missing macros anyway.
+			re_set_syntax
+			re_compile_pattern
+			re_search
+			re_match
+		)
+	fi
 }
 
 find_log_targets() {
@@ -66,8 +93,7 @@ find_log_targets() {
 		find_args+=( '-name' "${log}" '-o' )
 	done
 	unset -v 'find_args[-1]'
-	printf '%s\0' "${WORKDIR}" |
-		find -files0-from - -type f \( "${find_args[@]}" \) -print0
+	printf '%s\0' "${WORKDIR}" | find0 -type f \( "${find_args[@]}" \) -print0
 }
 
 has_utf8_ctype() {
@@ -138,4 +164,4 @@ config_impl_decl_check() {
 config_impl_decl_check
 : # guarantee successful exit
 
-# vim:ft=sh noexpandtab:
+# vim:ft=bash noexpandtab:

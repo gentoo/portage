@@ -4,6 +4,7 @@
 
 import argparse
 import os
+import shlex
 import stat
 import sys
 import subprocess
@@ -174,7 +175,7 @@ def main(args):
         if returncode != os.EX_OK:
             portage.util.writemsg(
                 "!!! install: copy_xattrs failed with the "
-                f"following arguments: {' '.join(portage._shell_quote(x) for x in args)}\n",
+                f"following arguments: {shlex.join(args)}\n",
                 noiselevel=-1,
             )
     return returncode

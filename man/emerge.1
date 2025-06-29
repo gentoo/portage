@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Jan 2024" "Portage @VERSION@" "Portage"
+.TH "EMERGE" "1" "May 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -30,7 +30,7 @@ distribution.
 .SH "EBUILDS, TBZ2S, SETS AND ATOMS"
 \fBemerge\fR primarily installs packages.  You can specify
 packages to install in five possible ways: an \fIatom\fR,
-a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR, a
+a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR,
 a \fItbz2\fR file, or a \fIgpkg\fR file.
 .LP
 .TP
@@ -447,15 +447,17 @@ Tells emerge to ignore binary packages for which the corresponding
 ebuild dependencies have changed since the packages were built.
 In order to help avoid issues with resolving inconsistent dependencies,
 this option is automatically enabled unless the \fB\-\-usepkgonly\fR
-option is enabled. Behavior with respect to changed build\-time
+(or \fB\-\-getbinpkgonly\fR) option is enabled.
+Behavior with respect to changed build\-time
 dependencies is controlled by the \fB\-\-with\-bdeps\fR option.
 .TP
 .BR "\-\-binpkg\-respect\-use [ y | n ]"
 Tells emerge to ignore binary packages if their USE flags
 don't match the current configuration. In order to help avoid issues
 with resolving inconsistent USE flag settings, this option is
-automatically enabled unless the \fB\-\-usepkgonly\fR option
-is enabled. If \fB\-\-binpkg\-respect\-use\fR is given explicitly,
+automatically enabled unless the \fB\-\-usepkgonly\fR
+(or \fB\-\-getbinpkgonly\fR) option is enabled.
+If \fB\-\-binpkg\-respect\-use\fR is given explicitly,
 then it implies \fB\-\-autounmask\-use=n\fR, because these options
 naturally oppose each other.
 .TP
@@ -979,21 +981,15 @@ Set the \fBROOT\fR environment variable.
 Set the \fBSYSROOT\fR environment variable.
 .TP
 .BR \-\-root\-deps[=rdeps]
-If no argument is given then build\-time dependencies of packages for
-\fBROOT\fR are installed to \fBROOT\fR instead of /.
-If the \fBrdeps\fR argument is given then discard all build\-time dependencies
-of packages for \fBROOT\fR.
-This option is only meaningful when used together with \fBROOT\fR and it should
-not be enabled under normal circumstances!
+This option is only meaningful when used together with \fBROOT\fR.
 
-Does not affect EAPIs that support \fBBDEPEND\fR.  \fBEAPI 7\fR introduces
-\fBBDEPEND\fR as a means to adjust installation into / and \fBROOT\fR.  Use
-the \fBSYSROOT\fR environment variable to control where \fBDEPEND\fR
-is installed to under \fBEAPI 7\fR.
+If no argument is given, then build\-time dependencies of packages for
+\fBROOT\fR are installed to \fBROOT\fR as well as /.
 
-When ebuilds with different EAPIs feature in the same emerge run, the
-appropriate behaviour for each EAPI is applied independently to each
-ebuild.
+If the \fBrdeps\fR argument is given, then all build\-time dependencies of
+packages for \fBROOT\fR are ignored entirely. This option should not be enabled
+under normal circumstances! It is not applied to ebuilds at \fBEAPI 7\fR or
+later.
 .TP
 .BR "\-\-search\-index < y | n >"
 Enable or disable indexed search for search actions. This option is
@@ -1525,8 +1521,8 @@ Contains the default variables for the build process.  \fBDo not edit
 this file\fR.
 .TP
 .B /var/log/emerge.log
-Contains a log of all emerge output. This file is always appended to, so if you
-want to clean it, you need to do so manually.
+Contains a log of merged packages and invocations of \fBemerge\fR.  This file
+is always appended to, so if you want to clean it, you need to do so manually.
 .TP
 .B /var/log/emerge-fetch.log
 Contains a log of all the fetches in the previous emerge invocation.

@@ -1,8 +1,10 @@
+# shellcheck shell=bash
+
 # Check for pkg-config file issues
 
 # Ensure that ver_test is available.
 if ! ___eapi_has_version_functions; then
-	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+	source "${PORTAGE_BIN_PATH:?}/eapi7-ver-funcs.sh" || exit
 fi
 
 pkgconfig_check() {
@@ -134,7 +136,7 @@ pkgconfig_check() {
 		# Skip result reporting if *_p* because for both _pN and _preN, we
 		# don't generally expect the versions to be exactly accurate, and
 		# we want to avoid false positives.
-		if [[ ${#bad_files[@]} -gt 0 && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
+		if [[ ${#bad_files[@]} -gt 0 && ${PV} != *_p* ]] && ! contains_word live "${PROPERTIES}"; then
 			eqawarn "QA Notice: pkg-config files with mismatched Version found!"
 			eqawarn "The Version field of the following files does not match ${QA_PKGCONFIG_VERSION}"
 			local bad_file
@@ -151,4 +153,4 @@ pkgconfig_check() {
 pkgconfig_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

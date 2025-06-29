@@ -4,7 +4,7 @@
 import functools
 
 from portage import os
-from portage.util._ctypes import find_library, LoadLibrary
+from portage.util._ctypes import load_libc
 from portage.util._async.ForkProcess import ForkProcess
 
 
@@ -24,15 +24,9 @@ class SyncfsProcess(ForkProcess):
 
     @staticmethod
     def _get_syncfs():
-        filename = find_library("c")
-        if filename is not None:
-            library = LoadLibrary(filename)
-            if library is not None:
-                try:
-                    return library.syncfs
-                except AttributeError:
-                    pass
-
+        (libc, _) = load_libc()
+        if libc is not None:
+            return getattr(libc, "syncfs", None)
         return None
 
     @staticmethod

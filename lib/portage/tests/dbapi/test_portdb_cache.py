@@ -1,6 +1,7 @@
 # Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
 import shutil
 import subprocess
 import sys
@@ -107,7 +108,7 @@ class PortdbCacheTestCase(TestCase):
                 "echo %s > %s"
                 % tuple(
                     map(
-                        portage._shell_quote,
+                        shlex.quote,
                         (
                             "cache-formats = md5-dict pms",
                             layout_conf_path,
@@ -146,7 +147,7 @@ class PortdbCacheTestCase(TestCase):
                 "echo %s > %s"
                 % tuple(
                     map(
-                        portage._shell_quote,
+                        shlex.quote,
                         (
                             "cache-formats = pms md5-dict",
                             layout_conf_path,
@@ -188,7 +189,7 @@ class PortdbCacheTestCase(TestCase):
             ),
             # Test auto-detection and preference for md5-cache when both
             # cache formats are available but layout.conf is absent.
-            (BASH_BINARY, "-c", f"rm {portage._shell_quote(layout_conf_path)}"),
+            (BASH_BINARY, "-c", f"rm {shlex.quote(layout_conf_path)}"),
             python_cmd
             + (
                 textwrap.dedent(

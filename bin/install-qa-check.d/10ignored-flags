@@ -1,7 +1,9 @@
+# shellcheck shell=bash
+
 # QA checks for ignored *FLAGS.
 
 ignored_flag_check() {
-	if ! type -P scanelf >/dev/null || has binchecks ${PORTAGE_RESTRICT}; then
+	if ! type -P scanelf >/dev/null || contains_word binchecks "${PORTAGE_RESTRICT}"; then
 		return
 	fi
 
@@ -20,8 +22,8 @@ ignored_flag_check() {
 	# Check for files built without respecting *FLAGS. Note that
 	# -frecord-gcc-switches must be in all *FLAGS variables, in
 	# order to avoid false positive results here.
-	# NOTE: This check must execute before prepall/prepstrip, since
-	# prepstrip strips the .GCC.command.line sections.
+	# NOTE: This check must execute before estrip --prepallstrip,
+	# since estrip strips the .GCC.command.line sections.
 	if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
 	[[ "${CXXFLAGS}" == *-frecord-gcc-switches* ]] && \
 	[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
@@ -30,7 +32,7 @@ ignored_flag_check() {
 		for x in $(scanelf -qyRF '#k%p' -k '!.GCC.command.line' "${ED%/}/") ; do
 			# Separate out file types that are known to support
 			# .GCC.command.line sections, using the `file` command
-			# similar to how prepstrip uses it.
+			# similar to how estrip uses it.
 			f=$(file -S "${x}") || continue
 			[[ -z ${f} ]] && continue
 			if [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
@@ -41,7 +43,7 @@ ignored_flag_check() {
 
 		if [[ -f "${T}"/scanelf-ignored-CFLAGS.log ]] ; then
 
-			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+			if [[ ! -v QA_STRICT_FLAGS_IGNORED ]] ; then
 				for x in "${QA_FLAGS_IGNORED[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
 				done
@@ -65,13 +67,14 @@ ignored_flag_check() {
 	fi
 
 	# Check for files built without respecting LDFLAGS
-	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] && \
-		! has binchecks ${PORTAGE_RESTRICT} ; then
+	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] \
+		&& ! contains_word binchecks "${PORTAGE_RESTRICT}"
+	then
 		f=$(LC_ALL=C comm -2 -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED%/}/" | LC_ALL=C sort) \
 			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED%/}/" | LC_ALL=C sort))
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
-			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+			if [[ ! -v QA_STRICT_FLAGS_IGNORED ]] ; then
 				for x in "${QA_FLAGS_IGNORED[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
 				done
@@ -98,4 +101,4 @@ ignored_flag_check() {
 ignored_flag_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

@@ -47,6 +47,7 @@ def linux_ro_checker(dir_list):
             "/proc/self/mountinfo",
             encoding=_encodings["content"],
             errors="replace",
+            newline="\n",
         ) as f:
             for line in f:
                 # we're interested in dir and both attr fields which always
@@ -58,7 +59,7 @@ def linux_ro_checker(dir_list):
                 # to the left of the ' - ', after the attr's, so split it there
                 mount = line.split(" - ", 1)
                 try:
-                    _dir, attr1 = mount[0].split()[4:6]
+                    _dir, attr1 = mount[0].split(" ")[4:6]
                 except ValueError:
                     # If it raises ValueError we can simply ignore the line.
                     invalids.append(line)
@@ -68,10 +69,10 @@ def linux_ro_checker(dir_list):
                 # for example: 16 1 0:16 / /root rw,noatime - lxfs  rw
                 if len(mount) > 1:
                     try:
-                        attr2 = mount[1].split()[2]
+                        attr2 = mount[1].split(" ")[2]
                     except IndexError:
                         try:
-                            attr2 = mount[1].split()[1]
+                            attr2 = mount[1].split(" ")[1]
                         except IndexError:
                             invalids.append(line)
                             continue

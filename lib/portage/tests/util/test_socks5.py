@@ -3,14 +3,16 @@
 
 import asyncio
 import functools
+import os
 import shutil
 import socket
 import struct
+import subprocess
 import tempfile
 import time
 
 import portage
-from portage.tests import TestCase
+from portage.tests import TestCase, get_pythonpath
 from portage.util import socks5
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -58,19 +60,27 @@ class AsyncHTTPServer:
         self.server_port = None
         self._httpd = None
 
+    def pause(self):
+        """Pause responses (useful for testing timeouts)."""
+        self._loop.remove_reader(self._httpd.socket.fileno())
+
+    def resume(self):
+        """Resume responses following a previous call to pause."""
+        self._loop.add_reader(
+            self._httpd.socket.fileno(), self._httpd._handle_request_noblock
+        )
+
     def __enter__(self):
         httpd = self._httpd = HTTPServer(
             (self._host, 0), functools.partial(_Handler, self._content)
         )
         self.server_port = httpd.server_port
-        self._loop.add_reader(
-            httpd.socket.fileno(), self._httpd._handle_request_noblock
-        )
+        self.resume()
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if self._httpd is not None:
-            self._loop.remove_reader(self._httpd.socket.fileno())
+            self.pause()
             self._httpd.socket.close()
             self._httpd = None
 
@@ -184,17 +194,17 @@ class Socks5ServerTestCase(TestCase):
         asyncio.run(self._test_socks5_proxy())
 
     async def _test_socks5_proxy(self):
-        loop = asyncio.get_running_loop()
+        loop = global_event_loop()
 
         host = "127.0.0.1"
         content = b"Hello World!"
         path = "/index.html"
         proxy = None
         tempdir = tempfile.mkdtemp()
-        previous_exithandlers = portage.process._exithandlers
+        previous_exithandlers = loop._coroutine_exithandlers
 
         try:
-            portage.process._exithandlers = []
+            loop._coroutine_exithandlers = []
             with AsyncHTTPServer(host, {path: content}, loop) as server:
                 settings = {
                     "PORTAGE_TMPDIR": tempdir,
@@ -216,13 +226,12 @@ class Socks5ServerTestCase(TestCase):
                 self.assertEqual(result, content)
         finally:
             try:
-                # Also run_exitfuncs to test atexit hook cleanup.
-                await socks5.proxy.stop()
-                self.assertNotEqual(portage.process._exithandlers, [])
-                portage.process.run_exitfuncs()
-                self.assertEqual(portage.process._exithandlers, [])
+                # Also run_coroutine_exitfuncs to test atexit hook cleanup.
+                self.assertNotEqual(loop._coroutine_exithandlers, [])
+                await portage.process.run_coroutine_exitfuncs()
+                self.assertEqual(loop._coroutine_exithandlers, [])
             finally:
-                portage.process._exithandlers = previous_exithandlers
+                loop._coroutine_exithandlers = previous_exithandlers
                 shutil.rmtree(tempdir)
 
 
@@ -262,3 +271,73 @@ class Socks5ServerLoopCloseTestCase(TestCase):
             shutil.rmtree(tempdir)
 
         return not socks5.proxy.is_running()
+
+
+class Socks5ServerAtExitTestCase(TestCase):
+    """
+    For bug 937384, test that the socks5 proxy is automatically
+    terminated by portage.process.run_exitfuncs(), using a subprocess
+    for isolation.
+
+    Note that if the subprocess is created via fork then it will be
+    vulnerable to python issue 83856 which is only fixed in python3.13,
+    so this test uses python -c to ensure that atexit hooks will work.
+    """
+
+    _threaded = False
+
+    def testSocks5ServerAtExit(self):
+        tempdir = tempfile.mkdtemp()
+        try:
+            env = os.environ.copy()
+            env["PYTHONPATH"] = get_pythonpath()
+            output = subprocess.check_output(
+                [
+                    portage._python_interpreter,
+                    "-c",
+                    """
+import sys
+import threading
+
+from portage.const import PORTAGE_BIN_PATH
+from portage.util import socks5
+from portage.util._eventloop.global_event_loop import global_event_loop
+
+tempdir = sys.argv[0]
+threaded = bool(sys.argv[1])
+
+settings = {
+    "PORTAGE_TMPDIR": tempdir,
+    "PORTAGE_BIN_PATH": PORTAGE_BIN_PATH,
+}
+
+def main():
+    loop = global_event_loop()
+    socks5.get_socks5_proxy(settings)
+    loop.run_until_complete(socks5.proxy.ready())
+    print(socks5.proxy._proc.pid, flush=True)
+
+if __name__ == "__main__":
+    if threaded:
+        t = threading.Thread(target=main)
+        t.start()
+        t.join()
+    else:
+        main()
+""",
+                    tempdir,
+                    str(self._threaded),
+                ],
+                env=env,
+            )
+
+            pid = int(output.strip())
+
+            with self.assertRaises(ProcessLookupError):
+                os.kill(pid, 0)
+        finally:
+            shutil.rmtree(tempdir)
+
+
+class Socks5ServerAtExitThreadedTestCase(Socks5ServerAtExitTestCase):
+    _threaded = True

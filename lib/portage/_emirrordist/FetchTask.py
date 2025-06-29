@@ -5,6 +5,7 @@ import collections
 import errno
 import logging
 import random
+import shlex
 import subprocess
 
 import portage
@@ -471,7 +472,7 @@ class FetchTask(CompositeTask):
         except OSError:
             pass
 
-        args = portage.util.shlex_split(default_fetchcommand)
+        args = shlex.split(default_fetchcommand)
         args = [portage.util.varexpand(x, mydict=variables) for x in args]
 
         args = [

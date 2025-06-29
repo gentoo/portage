@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check udev rule installs
 
 udev_check() {
@@ -19,4 +21,4 @@ udev_check() {
 udev_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

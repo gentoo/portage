@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -112,6 +112,8 @@ environ_whitelist = frozenset(
         "FEATURES",
         "FILESDIR",
         "HOME",
+        "LD_PRELOAD",
+        "MAKEFLAGS",
         "MERGE_TYPE",
         "NOCOLOR",
         "NO_COLOR",
@@ -165,6 +167,7 @@ environ_whitelist = frozenset(
         "PORTAGE_PYTHON",
         "PORTAGE_PYTHONPATH",
         "PORTAGE_QUIET",
+        "PORTAGE_REPO_REVISIONS",
         "PORTAGE_REPO_NAME",
         "PORTAGE_REPOSITORIES",
         "PORTAGE_RESTRICT",

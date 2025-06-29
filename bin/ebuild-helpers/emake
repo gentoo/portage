@@ -9,7 +9,7 @@
 #
 # With newer EAPIs, we also automatically fail the build if make itself fails.
 
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 cmd=(
     # PREFIX LOCAL: force SHELL to be set (don't use possibly ancient /bin/sh)

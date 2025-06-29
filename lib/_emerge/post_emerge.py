@@ -93,7 +93,7 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     settings.regenerate()
     settings.lock()
 
-    config_protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
+    config_protect = settings.get("CONFIG_PROTECT", "").split()
     infodirs = settings.get("INFOPATH", "").split(":") + settings.get(
         "INFODIR", ""
     ).split(":")

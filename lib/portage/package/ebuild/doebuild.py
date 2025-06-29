@@ -13,8 +13,10 @@ import os as _os
 import platform
 import pwd
 import re
+import shlex
 import signal
 import stat
+import subprocess
 import sys
 import tempfile
 from textwrap import wrap
@@ -45,11 +47,13 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util._async.SchedulerInterface:SchedulerInterface",
     "portage.util._eventloop.global_event_loop:global_event_loop",
     "portage.util.ExtractKernelVersion:ExtractKernelVersion",
+    "_emerge.EbuildPhase:_setup_locale",
 )
 
 from portage import (
     bsd_chflags,
     eapi_is_supported,
+    installation,
     merge,
     os,
     selinux,
@@ -57,7 +61,6 @@ from portage import (
     unmerge,
     _encodings,
     _os_merge,
-    _shell_quote,
     _unicode_decode,
     _unicode_encode,
 )
@@ -87,6 +90,7 @@ from portage.dep.libc import find_libc_deps
 from portage.eapi import (
     eapi_exports_KV,
     eapi_exports_merge_type,
+    eapi_exports_pms_vars,
     eapi_exports_replace_vars,
     eapi_has_required_use,
     eapi_has_src_prepare_and_src_configure,
@@ -112,7 +116,6 @@ from portage.util import (
     apply_recursive_permissions,
     apply_secpass_permissions,
     noiselimit,
-    shlex_split,
     varexpand,
     writemsg,
     writemsg_stdout,
@@ -193,6 +196,57 @@ _vdb_use_conditional_keys = Package._dep_keys + (
     "RESTRICT",
 )
 
+# The following is a set of PMS § 11.1 and § 7.4 without
+# - TMPDIR
+# - HOME
+# because these variables are often assumed to be exported and
+# therefore consumed by child processes.
+_unexported_pms_vars = frozenset(
+    # fmt: off
+    [
+        # PMS § 11.1 Defined Variables
+        "P",
+        "PF",
+        "PN",
+        "CATEGORY",
+        "PV",
+        "PR",
+        "PVR",
+        "A",
+        "AA",
+        "FILESDIR",
+        "DISTDIR",
+        "WORKDIR",
+        "S",
+        "PORTDIR",
+        "ECLASSDIR",
+        "ROOT",
+        "EROOT",
+        "SYSROOT",
+        "ESYSROOT",
+        "BROOT",
+        "T",
+#        "TMPDIR",        # EXPORTED: often assumed to be exported and available to child processes
+#        "HOME",          # EXPORTED: often assumed to be exported and available to child processes
+        "EPREFIX",
+        "D",
+        "ED",
+        "DESTTREE",
+        "INSDESTTREE",
+        "EBUILD_PHASE",
+        "EBUILD_PHASE_FUNC",
+        "KV",
+        "MERGE_TYPE",
+        "REPLACING_VERSIONS",
+        "REPLACED_BY_VERSION",
+        # PMS § 7.4 Magic Ebuild-defined Variables
+        "ECLASS",
+        "INHERITED",
+        "DEFINED_PHASES",
+    ]
+    # fmt: on
+)
+
 
 def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
     """
@@ -237,7 +291,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
             ebuild_sh_arg = phase
 
         cmd = "{} {}".format(
-            _shell_quote(
+            shlex.quote(
                 os.path.join(
                     settings["PORTAGE_BIN_PATH"], os.path.basename(EBUILD_SH_BINARY)
                 )
@@ -608,11 +662,12 @@ def doebuild_environment(
                     )
                     mysettings.features.remove(feature)
 
-        if "MAKEOPTS" not in mysettings:
+        # MAKEOPTS conflicts with MAKEFLAGS, so skip this if MAKEFLAGS exists.
+        if "MAKEOPTS" not in mysettings and "MAKEFLAGS" not in mysettings:
             nproc = get_cpu_count()
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
-            if "GNUMAKEFLAGS" not in mysettings and "MAKEFLAGS" not in mysettings:
+            if "GNUMAKEFLAGS" not in mysettings:
                 mysettings["GNUMAKEFLAGS"] = (
                     f"--load-average {nproc} --output-sync=line"
                 )
@@ -687,7 +742,7 @@ def doebuild_environment(
                     "{JOBS}",
                     str(makeopts_to_job_count(mysettings.get("MAKEOPTS", "1"))),
                 )
-                compression_binary = shlex_split(
+                compression_binary = shlex.split(
                     varexpand(compression_binary, mydict=settings)
                 )[0]
             except IndexError as e:
@@ -708,7 +763,7 @@ def doebuild_environment(
                     )
                     cmd = [
                         varexpand(x, mydict=settings)
-                        for x in shlex_split(compression_binary)
+                        for x in shlex.split(compression_binary)
                     ]
                     # Filter empty elements
                     cmd = [x for x in cmd if x != ""]
@@ -1044,6 +1099,13 @@ def doebuild(
         doebuild_environment(
             myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi
         )
+
+        # For returnproc or returnpid assume that the event loop is running
+        # so we can't run the event loop to call _setup_locale in this case
+        # and we have to assume the caller took care of it (otherwise
+        # config.environ() will raise AssertionError).
+        if not (returnproc or returnpid):
+            asyncio.run(_setup_locale(mysettings))
 
         if mydo in clean_phases:
             builddir_lock = None
@@ -1725,8 +1787,8 @@ def _spawn_actionmap(settings):
         portage_bin_path, os.path.basename(EBUILD_SH_BINARY)
     )
     misc_sh_binary = os.path.join(portage_bin_path, os.path.basename(MISC_SH_BINARY))
-    ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
-    misc_sh = _shell_quote(misc_sh_binary) + " __dyn_%s"
+    ebuild_sh = shlex.quote(ebuild_sh_binary) + " %s"
+    misc_sh = shlex.quote(misc_sh_binary) + " __dyn_%s"
 
     # args are for the to spawn function
     actionmap = {
@@ -1818,6 +1880,14 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
     invalid_dep_exempt_phases = {"clean", "cleanrm", "help", "prerm", "postrm"}
     all_keys = set(Package.metadata_keys)
     all_keys.add("SRC_URI")
+    # Since configdict["pkg"]["USE"] may contain package.use settings
+    # from config.setcpv, it is inappropriate to use here (bug 675748),
+    # so discard it. This is only an issue because configdict["pkg"] is
+    # a sub-optimal place to extract metadata from. This issue does not
+    # necessarily indicate a flaw in the Package constructor, since
+    # passing in precalculated USE can be valid for things like
+    # autounmask USE changes.
+    all_keys.discard("USE")
     all_keys = tuple(all_keys)
     metadata = mysettings.configdict["pkg"]
     if all(k in metadata for k in ("PORTAGE_REPO_NAME", "SRC_URI")):
@@ -1842,6 +1912,10 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
             self.dbapi = mydb
 
     root_config = RootConfig(mysettings, {"porttree": FakeTree(mydbapi)}, None)
+
+    # A USE calculation from setcpv should always be available here because
+    # mysettings.mycpv is not None, so use it to prevent redundant setcpv calls.
+    metadata["USE"] = mysettings["PORTAGE_USE"]
 
     pkg = Package(
         built=False,
@@ -1912,6 +1986,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
+
+_emerge_tmpdir = None
 
 
 def spawn(
@@ -2002,7 +2078,7 @@ def spawn(
 
         if (
             not networked
-            and mysettings.get("EBUILD_PHASE") != "nofetch"
+            and mysettings.get("EBUILD_PHASE") not in ("depend", "nofetch")
             and ("network-sandbox-proxy" in features or "distcc" in features)
         ):
             # Provide a SOCKS5-over-UNIX-socket proxy to escape sandbox
@@ -2207,9 +2283,85 @@ def spawn(
         logname_backup = mysettings.configdict["env"].get("LOGNAME")
         mysettings.configdict["env"]["LOGNAME"] = logname
 
+    eapi = mysettings["EAPI"]
+
+    unexported_env_vars = None
+    if "export-pms-vars" not in mysettings.features or not eapi_exports_pms_vars(eapi):
+        unexported_env_vars = _unexported_pms_vars
+
+    if unexported_env_vars:
+        # Starting with EAPI 9 (or if FEATURES="-export-pms-vars"),
+        # PMS variables should not longer be exported.
+
+        phase = mysettings.get("EBUILD_PHASE")
+        is_pms_ebuild_phase = phase in _phase_func_map.keys()
+        # 'None' phase is MiscFunctionsProcess, e.g., where the qa checks run
+        is_ebuild_phase_with_t = phase in [None, "package", "instprep"]
+        # Copy the environment since we are removing the PMS variables from it.
+        env = mysettings.environ().copy()
+
+        # There are three cases to consider when it comes to managing
+        # the life cycle of the PORTAGE_EBUILD_EXTRA_SOURCE file we
+        # are going to create now.
+        # A) phase function with T available (potentially unprivileged)
+        # B) privileged phase function
+        # C) phase=depend (potentially unprivileged with T unavailable and __ebuild_main not called)
+        #
+        # Case A is easy to solve, since we shove
+        # PORTAGE_EBUILD_EXTRA_SOURCE simply in T which will
+        # eventually get claned any way.
+        # Case B requires that we use an extra temp directory to store
+        # PORTAGE_EBUILD_EXTRA_SOURCE. We install an EXIT trap in
+        # __ebuild_main() that will remove PORTAGE_EBUILD_EXTRA_SOURCE
+        # once ebuild.sh finishes.
+        # Case C requires that delete PORTAGE_EBUILD_EXTRA_SOURCE once
+        # the depend phase for that ebuild finished. This is done in
+        # EbuildMetadataPhase._unregister().
+        if is_pms_ebuild_phase or is_ebuild_phase_with_t:  # case A
+            t = env["T"]
+            ebuild_extra_source_path = os.path.join(
+                t, f".portage-ebuild-extra-source-{phase}"
+            )
+        else:  # case B and C
+            global _emerge_tmpdir
+            if _emerge_tmpdir is None:
+                _emerge_tmpdir = tempfile.mkdtemp(
+                    prefix=f"portage-tmpdir-{portage.getpid()}-"
+                )
+                os.chmod(_emerge_tmpdir, 0o1775)
+                os.chown(_emerge_tmpdir, -1, int(portage_gid))
+                portage.process.atexit_register(shutil.rmtree, _emerge_tmpdir)
+            ebuild_extra_source_fd, ebuild_extra_source_path = tempfile.mkstemp(
+                prefix=f"portage-ebuild-extra-source-{phase}-",
+                dir=_emerge_tmpdir,
+            )
+            try:
+                # Make sure that the file can be writen by us (done below)
+                # and that it is world readable.
+                os.fchmod(ebuild_extra_source_fd, 0o644)
+            finally:
+                os.close(ebuild_extra_source_fd)
+            if phase == "depend":  # case C
+                # The file will be deleted by EbuildMetadataPhase._unregister()
+                mysettings["PORTAGE_EBUILD_EXTRA_SOURCE"] = ebuild_extra_source_path
+
+        with open(ebuild_extra_source_path, mode="w") as f:
+            for var_name in unexported_env_vars:
+                var_value = mysettings.environ().get(var_name)
+                if var_value is None:
+                    continue
+                quoted_var_value = shlex.quote(var_value)
+                f.write(f"{var_name}={quoted_var_value}\n")
+                del env[var_name]
+
+        env["PORTAGE_EBUILD_EXTRA_SOURCE"] = str(ebuild_extra_source_path)
+    else:
+        # Pre EAPI 9 behavior, all PMS variables are simply exported into the ebuild's environment.
+        env = mysettings.environ()
+
     try:
         if keywords.get("returnpid") or keywords.get("returnproc"):
-            return spawn_func(mystring, env=mysettings.environ(), **keywords)
+            return spawn_func(mystring, env=env, **keywords)
 
         proc = EbuildSpawnProcess(
             background=False,
@@ -2462,15 +2614,15 @@ def _check_build_log(mysettings, out=None):
     #
     # Configuration:
     #  Automake:                   ${SHELL} /var/tmp/portage/dev-libs/yaz-3.0.47/work/yaz-3.0.47/config/missing --run automake-1.10
-    am_maintainer_mode_re = re.compile(r"/missing --run ")
-    am_maintainer_mode_exclude_re = re.compile(
-        r"(/missing --run (autoheader|autotest|help2man|makeinfo)|^\s*Automake:\s)"
+    am_maintainer_mode_re = re.compile(
+        r"\bcd\b.*&&.*/missing( --run|'|) (automake|autoconf|autoheader|aclocal)"
     )
+    am_maintainer_mode_exclude_re = re.compile(r"^\s*Automake:\s")
 
     make_jobserver_re = re.compile(r"g?make\[\d+\]: warning: jobserver unavailable:")
     make_jobserver = []
 
-    # we deduplicate these since they is repeated for every setup.py call
+    # we deduplicate these since they are repeated for every setup.py call
     setuptools_warn = set()
     setuptools_warn_re = re.compile(r".*\/setuptools\/.*: .*Warning: (.*)")
     # skip useless version normalization warnings
@@ -2633,7 +2785,7 @@ def _post_src_install_write_metadata(settings):
         encoding=_encodings["repo.content"],
         errors="strict",
     ) as f:
-        f.write(f"{time.time():.0f}\n")
+        f.write(f"{int(time.time())}\n")
 
     use = frozenset(settings["PORTAGE_USE"].split())
     for k in _vdb_use_conditional_keys:
@@ -2691,35 +2843,38 @@ def _post_src_install_write_metadata(settings):
 
 def _preinst_bsdflags(mysettings):
     if bsd_chflags:
-        # Save all the file flags for restoration later.
-        os.system(
-            "mtree -c -p %s -k flags > %s"
-            % (
-                _shell_quote(mysettings["D"]),
-                _shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
-            )
-        )
+        try:
+            # Save all the file flags for restoration later.
+            with open(os.path.join(mysettings["T"], "bsdflags.mtree"), "wb") as outfile:
+                subprocess.run(
+                    ["mtree", "-c", "-p", mysettings["D"], "-k", "flags"],
+                    stdout=outfile,
+                )
 
-        # Remove all the file flags to avoid EPERM errors.
-        os.system(
-            "chflags -R noschg,nouchg,nosappnd,nouappnd %s"
-            % (_shell_quote(mysettings["D"]),)
-        )
-        os.system(
-            f"chflags -R nosunlnk,nouunlnk {_shell_quote(mysettings['D'])} 2>/dev/null"
-        )
+            # Remove all the file flags to avoid EPERM errors.
+            subprocess.run(
+                ["chflags", "-R", "noschg,nouchg,nosappnd,nouappnd", mysettings["D"]]
+            )
+            subprocess.run(
+                ["chflags", "-R", "nosunlnk,nouunlnk", mysettings["D"]],
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            pass
 
 
 def _postinst_bsdflags(mysettings):
     if bsd_chflags:
-        # Restore all of the flags saved above.
-        os.system(
-            "mtree -e -p %s -U -k flags < %s > /dev/null"
-            % (
-                _shell_quote(mysettings["ROOT"]),
-                _shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
-            )
-        )
+        try:
+            # Restore all of the flags saved above.
+            with open(os.path.join(mysettings["T"], "bsdflags.mtree"), "rb") as infile:
+                subprocess.run(
+                    ["mtree", "-e", "-p", mysettings["ROOT"], "-U", "-k", "flags"],
+                    stdin=infile,
+                    stdout=subprocess.DEVNULL,
+                )
+        except OSError:
+            pass
 
 
 def _post_src_install_uid_fix(mysettings, out):
@@ -2964,8 +3119,8 @@ def _reapply_bsdflags_to_image(mysettings):
         os.system(
             "mtree -e -p %s -U -k flags < %s > /dev/null"
             % (
-                _shell_quote(mysettings["D"]),
-                _shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
+                shlex.quote(mysettings["D"]),
+                shlex.quote(os.path.join(mysettings["T"], "bsdflags.mtree")),
             )
         )
 
@@ -3070,8 +3225,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
     if qa_prebuilt:
         qa_prebuilt = re.compile(
             "|".join(
-                fnmatch.translate(x.lstrip(os.sep))
-                for x in portage.util.shlex_split(qa_prebuilt)
+                fnmatch.translate(x.lstrip(os.sep)) for x in shlex.split(qa_prebuilt)
             )
         )
 
@@ -3361,10 +3515,13 @@ def _prepare_self_update(settings):
 
 
 def _handle_self_update(settings, vardb):
-    cpv = settings.mycpv
-    if settings["ROOT"] == "/" and portage.dep.match_from_list(
-        portage.const.PORTAGE_PACKAGE_ATOM, [cpv]
+    if installation.TYPE != installation.TYPES.SYSTEM:
+        return False
+    if settings["ROOT"] != "/":
+        return False
+    if not portage.dep.match_from_list(
+        portage.const.PORTAGE_PACKAGE_ATOM, [settings.mycpv]
     ):
-        _prepare_self_update(settings)
-        return True
-    return False
+        return False
+    _prepare_self_update(settings)
+    return True

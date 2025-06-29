@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # QA checks for systemd units.
 
 systemd_check() {
@@ -22,4 +24,4 @@ systemd_check() {
 systemd_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

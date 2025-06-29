@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Gentoo Authors
+# Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Compute a multilib category, as discussed here:
@@ -59,6 +59,7 @@ from portage.util.elf.constants import (
     EM_ARC_COMPACT3_64,
     EM_ARM,
     EM_ALTERA_NIOS2,
+    EM_BPF,
     EM_IA_64,
     EM_LOONGARCH,
     EM_MIPS,
@@ -91,6 +92,7 @@ _machine_prefix_map = {
     EM_ARC_COMPACT3: "arc",
     EM_ARC_COMPACT3_64: "arc",
     EM_ARM: "arm",
+    EM_BPF: "bpf",
     EM_IA_64: "ia64",
     EM_LOONGARCH: "loong",
     EM_MIPS: "mips",

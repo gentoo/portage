@@ -1,10 +1,11 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
 from urllib.parse import urlparse as urllib_parse_urlparse
+import shlex
 import stat
 import sys
 import portage
@@ -29,12 +30,18 @@ class BinpkgFetcher(CompositeTask):
         binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
         if not binpkg_path:
             raise FileNotFound(
-                f"PATH not found in the binpkg index, the binhost's portage is probably out of date."
+                "PATH not found in the binpkg index, the binhost's portage is probably out of date."
             )
         binpkg_format = get_binpkg_format(binpkg_path)
 
+        getname_kwargs = {}
+        if not bintree.get_local_repo_location(pkg.cpv):
+            getname_kwargs.update(
+                dict(allocate_new=True, remote_binpkg_format=binpkg_format)
+            )
+
         self.pkg_allocated_path = pkg.root_config.trees["bintree"].getname(
-            pkg.cpv, allocate_new=True, remote_binpkg_format=binpkg_format
+            pkg.cpv, **getname_kwargs
         )
         self.pkg_path = self.pkg_allocated_path + ".partial"
 
@@ -201,8 +208,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 
         fetch_env = dict(settings.items())
         fetch_args = [
-            portage.util.varexpand(x, mydict=fcmd_vars)
-            for x in portage.util.shlex_split(fcmd)
+            portage.util.varexpand(x, mydict=fcmd_vars) for x in shlex.split(fcmd)
         ]
 
         if self.fd_pipes is None:
@@ -233,7 +239,9 @@ class _BinpkgFetcherProcess(SpawnProcess):
         stdout_pipe = None
         if not self.background:
             stdout_pipe = fd_pipes.get(1)
-        got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
+        self._pty_ready, master_fd, slave_fd = _create_pty_or_pipe(
+            copy_term_size=stdout_pipe
+        )
         return (master_fd, slave_fd)
 
     def sync_timestamp(self):

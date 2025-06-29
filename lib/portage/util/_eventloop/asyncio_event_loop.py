@@ -3,19 +3,21 @@
 
 import os
 import signal
-import threading
 
 import asyncio as _real_asyncio
 from asyncio.events import AbstractEventLoop as _AbstractEventLoop
-from asyncio.unix_events import ThreadedChildWatcher
 
 try:
-    from asyncio.unix_events import PidfdChildWatcher
+    from asyncio.unix_events import _ThreadedChildWatcher as ThreadedChildWatcher
 except ImportError:
-    PidfdChildWatcher = None
+    from asyncio.unix_events import ThreadedChildWatcher
+
+try:
+    from asyncio.unix_events import _PidfdChildWatcher as PidfdChildWatcher
+except ImportError:
+    from asyncio.unix_events import PidfdChildWatcher
 
 import portage
-from portage.util import socks5
 
 
 class AsyncioEventLoop(_AbstractEventLoop):
@@ -55,8 +57,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
         self._child_watcher = None
         # Used to drop recursive calls to _close.
         self._closing = False
-        # Initialized in _run_until_complete.
-        self._is_main = None
+        self._coroutine_exithandlers = []
 
         if portage._internal_caller:
             loop.set_exception_handler(self._internal_caller_exception_handler)
@@ -69,19 +70,10 @@ class AsyncioEventLoop(_AbstractEventLoop):
         """
         if not (self._closing or self.is_closed()):
             self._closing = True
-            if self._is_main:
-                self.run_until_complete(self._close_main())
+            if self._coroutine_exithandlers:
+                self.run_until_complete(portage.process.run_coroutine_exitfuncs())
             self._loop.close()
             self._closing = False
-
-    async def _close_main(self):
-        # Even though this has an exit hook, invoke it here so that
-        # we can properly wait for it and avoid messages like this:
-        # [ERROR] Task was destroyed but it is pending!
-        if socks5.proxy.is_running():
-            await socks5.proxy.stop()
-
-        portage.process.run_exitfuncs()
 
     @staticmethod
     def _internal_caller_exception_handler(loop, context):
@@ -135,7 +127,8 @@ class AsyncioEventLoop(_AbstractEventLoop):
             else:
                 watcher = ThreadedChildWatcher()
 
-            watcher.attach_loop(self._loop)
+            if hasattr(watcher, "attach_loop"):
+                watcher.attach_loop(self._loop)
             self._child_watcher = _ChildWatcherThreadSafetyWrapper(self, watcher)
 
         return self._child_watcher
@@ -163,9 +156,6 @@ class AsyncioEventLoop(_AbstractEventLoop):
         In order to avoid potential interference with API consumers, this
         implementation is only used when portage._internal_caller is True.
         """
-        if self._is_main is None:
-            self._is_main = threading.current_thread() is threading.main_thread()
-
         if not portage._internal_caller:
             return self._loop.run_until_complete(future)
 

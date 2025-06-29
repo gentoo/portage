@@ -6,6 +6,337 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.69 (UNRELEASED)
+--------------
+
+Bug fixes:
+* _global_updates: Skip if vardb lock raises PermissionDenied (bug #953449).
+
+portage-3.0.68 (2025-04-12)
+--------------
+
+Features:
+* Allow "portageq envvar" to treat a trailing * as a wildcard, matching multiple
+  variables. Useful for multilib.
+* Introduce PORTAGE_LOG_FILE_SEP, allowing to configure the separator between
+  the components of the log files produced by portage.
+
+* Show package category, name, and repository before global-scope messages.
+
+* Add FEATURES=export-pms-vars (default-enabled for <= EAPI 8) (bug #721088).
+
+Bug fixes:
+* man: make.conf(5): Improve ccache documentation.
+
+* selinux: Use FEATURES=selinux rather than probing USE=selinux.
+
+* getname: Handle None remotepkgs (bug #948643).
+
+portage-3.0.67 (2025-01-22)
+--------------
+
+Breaking changes:
+* eend: Missing argument is now an error (bug #703520).
+
+* ebuild.sh: A colon in sandbox function args is now an error (bug #920654).
+
+Security:
+* make.globals: disable FEATURES="sfperms" by default (bug #938164).
+
+* emerge-webrsync: Create /var/db/repos/gentoo with correct permissions to
+  facilitate FEATURES="usersync" (bug #707980).
+
+Features:
+* New 'home-dir-template-copy' FEATURE (bug #947822).
+
+  If enabled, as part of the ebuild environment setup, copies the PORTAGE_USERNAME
+  home directory into the build environment HOME directory. Useful predominantly
+  for ebuilds that use the git-r3 eclass, to give a place to put SSH keys and user-
+  specific git configuration files used during the build.
+
+* Flush the merge-wait queue on SIGUSR2.
+
+Bug fixes:
+* depgraph: Ignore blockers when computing virtual deps visibility (PR #1387).
+
+* binarytree: Fix _inject_repo_revisions to ignore remote packages for which
+  source repostories are missing, triggering KeyError (PR #1391).
+
+* gpkg: do not consider symlinks targets for size estimation (bug #942512).
+
+* install_qa_check: Fix noclean interaction with merge-wait (bug #942760).
+
+* save-ebuild-env.sh: Add functions from newer EAPIs to filter list
+
+* Support cross-root package moves (bug #946326).
+
+* Process elog messages for emerge --config (bug #904702).
+
+* Scheduler: Handle SIGWINCH for JobStatusDisplay (bug #945382).
+
+* Pass through MAKEFLAGS and exclude from environment.bz2 (bug #692576).
+
+* binarytree.move_ent: Allocate path with binpkg_format (bug #923530).
+
+* ebuild.sh: Allow CC and CXX to be changed in profile.bashrc.
+
+* Preserve PORTAGE_BZIP2_COMMAND in environment.bz2 (bug #948067).
+
+* config: Initialize default PORTAGE_USERNAME and PORTAGE_GRPNAME (bug #941977).
+
+* rust-rebuild: Update for recent changes in ::gentoo (bug #906044).
+
+* emerge-webrsync: Use variables PORTAGE_USERNAME and PORTAGE_GRPNAME (bug #707980).
+
+Cleanups:
+* eapi.sh: Remove support for unofficial 4-slot-abi EAPI.
+
+* locks: Drop comment regarding sleep() call.
+
+portage-3.0.66.1 (2024-09-18)
+--------------
+
+Bug fixes:
+* JobStatusDisplay: Fix width of display. Notable with the new 'merge wait'
+  metric.
+
+* install-qa-check.d: 90config-impl-decl: Skip various false positives.
+
+portage-3.0.66 (2024-09-11)
+--------------
+
+Features:
+* binrepos.conf: Support custom download location (bug #934784).
+
+  In binrepos.conf, 'location' can now be set to choose the location
+  for fetched binpkgs from a particular remote repository.
+
+* emerge: Make bare --root-deps option install build-time dependencies to ROOT
+  as well as / for all EAPIs rather than instead of / for EAPI 6 and below
+  (bug #435066).
+
+* Show length of merge-wait queue as part of the status display.
+
+* src: Allow GIL to be disabled for Whirlpool C extension (bug #934220).
+
+* ELF: Recognise BPF (bug #937485).
+
+* portage.util.compression_probe: Handle lack of ctypes (libffi) for
+  bootstrapping purposes.
+
+Bug fixes:
+* ebuild: Handle Bash 5.2's change in behavior which enables the shopt
+  'globskipdots' by default. This is needed to avoid breaking existing
+  working ebuilds. Future EAPIs will need to adjust the logic
+  added by this change. See bug #907061.
+
+* doebuild.spawn: Fix hang with FEATURES="network-sandbox-proxy" in consumers
+  like gentoolkit (bug #937384).
+
+* make.globals: add bcachefs_effective.* and bcachefs.* to PORTAGE_XATTR_EXCLUDE
+
+* vartree, movefile: Warn when rewriting a symlink (bug #934514).
+
+* repository: config: Allow a repository to be configured using one of its
+  aliases rather than its primary name (bug #935830).
+
+* emerge: Fix parallel-fetch to properly terminate FETCHCOMMAND processes when
+  needed, using a SIGTERM handler (bug #936273).
+
+* unpack: Don't display "Unpacking ..." message for skipped files.
+  Match file extensions case-sensitively in old EAPIs, fixes PMS compliance.
+
+* sync: zipfile: Fix installing module.
+
+* ebuild: Improve 'maintainer mode' QA check.
+
+* emerge-webrsync: Honour sync-webrsync-verify-signature attribute.
+
+* dispatch-conf: Don't use SHELL (bug #910560).
+
+* phase-functions: Fix QA_SONAME_NO_SYMLINK so it accepts regex (bug #924953).
+
+* ebuild.5: Improve QA_PREBUILT docs.
+
+* install-qa-check.d: 90gcc-warnings: Handle color in logs for build.log too.
+
+Cleanups:
+* tar_safe_extract: Port to Python 3.14 (bug #933433).
+
+* Drop unnecessary f-string use.
+
+* Improve detection of xtrace (debugging).
+
+* eapi.py: Use attrs rather than hardcoding / repeating EAPI properties.
+
+portage-3.0.65 (2024-06-04)
+--------------
+
+Features:
+* binrepos.conf: Support "frozen" attribute (bug #932739).
+
+  This avoids mutating the local index cache by fetching changes from a
+  binpkg host when running emerge repeatedly. It's useful for consistency
+  between emerge runs while completing an update.
+
+  It should only be used temporarily, not set on a permanent basis.
+
+* bintree: Add REPO_REVISIONS to Packages index header (bug #924772).
+
+  Portage will now store synced revisions at /var/lib/portage/repo_revisions.
+
+  This associates a binpkg being built with the repository state / revision
+  at a time, which will ultimately later allow pinning binhost clients
+  to <= the last commit the binhost was updated at.
+
+  It's also useful for pinning source builds from the same revision as
+  when binary builds were done for consistency and to minimize rebuilds and
+  maximize binpkg use.
+
+* mtimedb: Record binpkg BUILD_ID and BUILD_TIME (bug #933442).
+
+  This fixes 'emerge --resume' to correctly pick up binpkgs and not
+  recalculate.
+
+Bug fixes:
+* unpack: Skip unrecognized file formats silently, fixing PMS compliance.
+
+* estrip: Don't use splitdebug for .o files (bug #787623).
+
+  This fixes splitdebug mangling debug information with Clang.
+
+* sync: git: Add safe.directory for getting HEAD commit (bug #930992).
+
+* install-qa-checks.d: 90config-impl-decl: Suppress known false positives
+  for gnulib on glibc and musl.
+
+* CONFIG_PROTECT: Don't use shlex.split (as it's a whitespace-separated list).
+
+* depgraph: Fix crash with --useoldpkg with subslot bumps (bug #932804).
+
+* depgraph: find_smallest_cycle: Revert optimization which caused
+  merge order regression (bug #922629).
+
+  A new testcase is also added.
+
+* sync: Don't use IPv6 for rsync when disabled (bug #927241).
+
+* atomic_ofstream: Use mkstemp instead of PID for PID namespace safety (bug #851015).
+
+* MergeProcess: Pass bintree to subprocess (bug #933297).
+
+  This fixes FEATURES="downgrade-backup".
+
+* tar_stream_writer: Improve error handling (bug #933385).
+
+Cleanups:
+* Scheduler: Improve legibility.
+
+* portage.util.shlex_split: Drop legacy Python 2 wrapper.
+
+* eapi.sh: Drop obsolete ___eapi_has_dohtml_deprecated().
+
+portage-3.0.64 (2024-04-28)
+--------------
+
+Features:
+* Scheduler: Support parallel-install with merge-wait (bug #256616, bug #925213).
+
+  This makes the (future) improvement mentioned in portage-3.0.62's NEWS.
+
+* phase-functions: prematurely delete WORKDIR if FEATURES=merge-wait
+
+  The 'merge-wait' feature could lead to running out of disk space on
+  PORTAGE_TMPDIR's filesystem because many more workdirs were kept around
+  until merging was queued up. We now purge the workdirs but keep the image
+  around until merging.
+
+* Start to record REPO_REVISIONS in build-info in VDB (bug #924772).
+
+  Ultimately the intention is to expose this information in binhost
+  metadata so that clients can select consistent revisions of source
+  repositories.
+
+* util: file_copy: Support btrfs's FICLONE ioctl for fast file clones.
+
+  Added when implementing the below 'src: Drop linux_reflink C module.'
+  cleanup.
+
+* sync: Add new 'zipfile' sync-type.
+
+  This allows fetching ebuild repositories via snapshots from e.g. GitHub,
+  gitweb, cgit.
+
+Bug fixes:
+* ctypes: Add workaround for loading libc on musl.
+
+* util: set a timeout for urlopen calls (bug #926221).
+
+* SpawnProcess: Fix noise / warnings caused by set_term_size (bug #923750, bug #925456).
+
+* binpkg, gpkg: Add missing newlines to error messages.
+
+* writable_check: Improve whitespace handling when parsing /proc/self/mountinfo (bug #925888).
+
+* doebuild: Call _setup_locale (bug #925863).
+
+  This is needed to more robustly handle invalid or inappropriate locale settings.
+
+* binarytree._populate_remote: Fix UnboundLocalError for binpkg-request-signature (bug #926048).
+
+* elog/mod_custom: Spawn processes in background (bug #925907).
+
+  Fixes a noisy crash on exit.
+
+* Fix REQUIRED_USE error with --fetchonly --pretend but not --fetchonly (bug #675748).
+
+* socks5: Fix exit with FEATURES="network-sandbox-proxy" or FEATURES="distcc" (bug #925240).
+
+* meson.build: Install dist-info METADATA (bug #920330).
+
+  This is needed for 'pip' to not be confused when Portage is installed system-wide.
+
+* EbuildPhase/EbuildBinpkg: Ensure PKGDIR subdirectory permissions (bug #712222).
+
+  A warning (failure) was observed with FEATURES="installsources" otherwise.
+
+* config: Sort FEATURES to avoid non-determinism (bug #914441).
+
+* man: Document autoenabled options by --getbinpkgonly.
+
+* BinpkgPrefetcher: Use eerror for binarytree inject failures (bug #927632).
+
+  This improves the readability of the error substantially.
+
+* install-qa-check.d: Remove QA warning when no bash completions are found  (bug #928599, bug #928869).
+
+  This check had too many false positives.
+
+* lib: use more pure git-describe output for --version (bug #912209).
+
+  This makes 'emerge --version' info far nicer when using portage-9999.
+
+* lib: adhere to python package version conventions (bug #926966).
+
+  (Note that this needed fixing even before the change for bug #912209).
+
+Cleanups:
+* cnf: sets: Migrate @golang-rebuild to dev-lang/go (removed from Portage) (bug #919751).
+
+* src: Drop libc C module.
+
+  This was only used for `find_library` on musl. We've now implemented
+  an alternative workaround for this.
+
+* src: Drop linux_reflink C module.
+
+  This is now implemented in pure Python, which also means PyPy can
+  benefit.
+
+  Testsuite coverage was also improved for this area.
+
+* Delete compat_coroutine module.
+
 portage-3.0.63 (2024-02-25)
 --------------
 
@@ -999,7 +1330,7 @@ Bug fixes:
   and it's a no-op in older xz.
 
 * emerge(1), make.conf(5), xpak(5): document BINPKG_FORMAT and the gpkg binary
-  packate format further.
+  package format further.
 
 * sync: git: Fix sync printing local repo path (bug #875812)
 

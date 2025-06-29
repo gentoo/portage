@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -10,7 +10,7 @@ unalias -a
 unset BASH_COMPAT
 declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 
-source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
+source "${PORTAGE_BIN_PATH:?}/isolated-functions.sh" || exit
 
 # Set up the bash version compatibility level.  This does not disable
 # features when running with a newer version, but makes it so that when
@@ -18,7 +18,7 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 # used instead.
 __check_bash_version() {
 	# Figure out which min version of bash we require.
-	# Adjust patsub_replacement logic below on new EAPI!
+	# Adjust patsub_replacement/globskipdots logic below on new EAPI!
 	local maj min
 	if ___eapi_bash_3_2 ; then
 		maj=3 min=2
@@ -52,16 +52,16 @@ __check_bash_version() {
 		shopt -s compat32
 	fi
 
-	# patsub_replacement is a new option in bash-5.2 that is also default-on
+	# patsub_replacement and globskipdots are new options in bash-5.2 that are also default-on
 	# in that release. The default value is not gated by BASH_COMPAT (see bug #881383),
 	# hence we need to disable it for older Bashes to avoid behaviour changes in ebuilds
 	# and eclasses.
 	#
 	# New EAPI note: a newer EAPI (after 8) may well adopt Bash 5.2 as its minimum version.
 	# If it does, this logic will need to be adjusted to only disable patsub_replacement
-	# for < ${new_api}!
+	# and globskipdots for < ${new_api}!
 	if (( BASH_VERSINFO[0] >= 6 || ( BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 2 ) )) ; then
-		shopt -u patsub_replacement
+		shopt -u patsub_replacement globskipdots
 	fi
 
 }
@@ -88,7 +88,7 @@ else
 	# are considered to be severe QA violations.
 	funcs+=" best_version has_version portageq"
 	for x in ${funcs} ; do
-		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
+		eval "${x} () { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
 	unset funcs x
 
@@ -163,9 +163,7 @@ __sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
 	[[ $# -eq 1 ]] || die "Usage: add${_v,,} <path>"
-	# Make this fatal after 2024-12-31
-	[[ ${1} == *:* ]] \
-		&& eqawarn "QA Notice: add${_v,,} called with colon-separated argument"
+	[[ ${1} == *:* ]] && die "add${_v,,} argument must not contain a colon"
 	export ${var}="${!var:+${!var}:}$1"
 }
 # bash-4 version:
@@ -260,7 +258,7 @@ inherit() {
 			# disabled for nofetch, since that can be called by repoman and
 			# that triggers bug #407449 due to repoman not exporting
 			# non-essential variables such as INHERITED.
-			if ! has ${ECLASS} ${INHERITED} ${__INHERITED_QA_CACHE} ; then
+			if ! contains_word "${ECLASS}" "${INHERITED} ${__INHERITED_QA_CACHE}"; then
 				eqawarn "QA Notice: Eclass '${ECLASS}' inherited illegally in ${CATEGORY}/${PF} ${EBUILD_PHASE}"
 			fi
 		fi
@@ -287,21 +285,21 @@ inherit() {
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
 			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
-			[[ "${IUSE+set}"       = set ]] && B_IUSE="${IUSE}"
-			[[ "${REQUIRED_USE+set}" = set ]] && B_REQUIRED_USE="${REQUIRED_USE}"
-			[[ "${DEPEND+set}"     = set ]] && B_DEPEND="${DEPEND}"
-			[[ "${RDEPEND+set}"    = set ]] && B_RDEPEND="${RDEPEND}"
-			[[ "${PDEPEND+set}"    = set ]] && B_PDEPEND="${PDEPEND}"
-			[[ "${BDEPEND+set}"    = set ]] && B_BDEPEND="${BDEPEND}"
-			[[ "${IDEPEND+set}"    = set ]] && B_IDEPEND="${IDEPEND}"
+			[[ -v IUSE         ]] && B_IUSE="${IUSE}"
+			[[ -v REQUIRED_USE ]] && B_REQUIRED_USE="${REQUIRED_USE}"
+			[[ -v DEPEND       ]] && B_DEPEND="${DEPEND}"
+			[[ -v RDEPEND      ]] && B_RDEPEND="${RDEPEND}"
+			[[ -v PDEPEND      ]] && B_PDEPEND="${PDEPEND}"
+			[[ -v BDEPEND      ]] && B_BDEPEND="${BDEPEND}"
+			[[ -v IDEPEND      ]] && B_IDEPEND="${IDEPEND}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
-				[[ ${PROPERTIES+set} == set ]] && B_PROPERTIES=${PROPERTIES}
+				[[ -v PROPERTIES ]] && B_PROPERTIES=${PROPERTIES}
 				unset PROPERTIES
 			fi
 			if ___eapi_has_accumulated_RESTRICT; then
-				[[ ${RESTRICT+set} == set ]] && B_RESTRICT=${RESTRICT}
+				[[ -v RESTRICT ]] && B_RESTRICT=${RESTRICT}
 				unset RESTRICT
 			fi
 
@@ -317,49 +315,49 @@ inherit() {
 
 			# If each var has a value, append it to the global variable E_* to
 			# be applied after everything is finished. New incremental behavior.
-			[[ "${IUSE+set}"         = set ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
-			[[ "${REQUIRED_USE+set}" = set ]] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
-			[[ "${DEPEND+set}"       = set ]] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
-			[[ "${RDEPEND+set}"      = set ]] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
-			[[ "${PDEPEND+set}"      = set ]] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
-			[[ "${BDEPEND+set}"      = set ]] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
-			[[ "${IDEPEND+set}"      = set ]] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
+			[[ -v IUSE         ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+			[[ -v REQUIRED_USE ]] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+			[[ -v DEPEND       ]] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+			[[ -v RDEPEND      ]] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+			[[ -v PDEPEND      ]] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+			[[ -v BDEPEND      ]] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
+			[[ -v IDEPEND      ]] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
 
-			[[ "${B_IUSE+set}"     = set ]] && IUSE="${B_IUSE}"
-			[[ "${B_IUSE+set}"     = set ]] || unset IUSE
+			[[ -v B_IUSE ]] && IUSE="${B_IUSE}"
+			[[ -v B_IUSE ]] || unset IUSE
 
-			[[ "${B_REQUIRED_USE+set}"     = set ]] && REQUIRED_USE="${B_REQUIRED_USE}"
-			[[ "${B_REQUIRED_USE+set}"     = set ]] || unset REQUIRED_USE
+			[[ -v B_REQUIRED_USE ]] && REQUIRED_USE="${B_REQUIRED_USE}"
+			[[ -v B_REQUIRED_USE ]] || unset REQUIRED_USE
 
-			[[ "${B_DEPEND+set}"   = set ]] && DEPEND="${B_DEPEND}"
-			[[ "${B_DEPEND+set}"   = set ]] || unset DEPEND
+			[[ -v B_DEPEND ]] && DEPEND="${B_DEPEND}"
+			[[ -v B_DEPEND ]] || unset DEPEND
 
-			[[ "${B_RDEPEND+set}"  = set ]] && RDEPEND="${B_RDEPEND}"
-			[[ "${B_RDEPEND+set}"  = set ]] || unset RDEPEND
+			[[ -v B_RDEPEND ]] && RDEPEND="${B_RDEPEND}"
+			[[ -v B_RDEPEND ]] || unset RDEPEND
 
-			[[ "${B_PDEPEND+set}"  = set ]] && PDEPEND="${B_PDEPEND}"
-			[[ "${B_PDEPEND+set}"  = set ]] || unset PDEPEND
+			[[ -v B_PDEPEND ]] && PDEPEND="${B_PDEPEND}"
+			[[ -v B_PDEPEND ]] || unset PDEPEND
 
-			[[ "${B_BDEPEND+set}"  = set ]] && BDEPEND="${B_BDEPEND}"
-			[[ "${B_BDEPEND+set}"  = set ]] || unset BDEPEND
+			[[ -v B_BDEPEND ]] && BDEPEND="${B_BDEPEND}"
+			[[ -v B_BDEPEND ]] || unset BDEPEND
 
-			[[ "${B_IDEPEND+set}"  = set ]] && IDEPEND="${B_IDEPEND}"
-			[[ "${B_IDEPEND+set}"  = set ]] || unset IDEPEND
+			[[ -v B_IDEPEND ]] && IDEPEND="${B_IDEPEND}"
+			[[ -v B_IDEPEND ]] || unset IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
-				[[ ${PROPERTIES+set} == set ]] &&
+				[[ -v PROPERTIES ]] &&
 					E_PROPERTIES+=${E_PROPERTIES:+ }${PROPERTIES}
-				[[ ${B_PROPERTIES+set} == set ]] &&
+				[[ -v B_PROPERTIES ]] &&
 					PROPERTIES=${B_PROPERTIES}
-				[[ ${B_PROPERTIES+set} == set ]] ||
+				[[ -v B_PROPERTIES ]] ||
 					unset PROPERTIES
 			fi
 			if ___eapi_has_accumulated_RESTRICT; then
-				[[ ${RESTRICT+set} == set ]] &&
+				[[ -v RESTRICT ]] &&
 					E_RESTRICT+=${E_RESTRICT:+ }${RESTRICT}
-				[[ ${B_RESTRICT+set} == set ]] &&
+				[[ -v B_RESTRICT ]] &&
 					RESTRICT=${B_RESTRICT}
-				[[ ${B_RESTRICT+set} == set ]] ||
+				[[ -v B_RESTRICT ]] ||
 					unset RESTRICT
 			fi
 
@@ -376,9 +374,11 @@ inherit() {
 			fi
 			unset $__export_funcs_var
 
-			has $1 ${INHERITED} || export INHERITED="${INHERITED} $1"
+			if ! contains_word "$1" "${INHERITED}"; then
+				export INHERITED+=" $1"
+			fi
 			if [[ ${ECLASS_DEPTH} -eq 1 ]]; then
-				export PORTAGE_EXPLICIT_INHERIT="${PORTAGE_EXPLICIT_INHERIT} $1"
+				export PORTAGE_EXPLICIT_INHERIT+=" $1"
 			fi
 		fi
 
@@ -418,8 +418,6 @@ __source_all_bashrcs() {
 	PORTAGE_BASHRCS_SOURCED=1
 
 	local x
-	local OCC="${CC}" OCXX="${CXX}"
-
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		# Source the existing profile.bashrcs.
 		while read -r x; do
@@ -434,9 +432,6 @@ __source_all_bashrcs() {
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
-
-	[[ ! -z "${OCC}" ]] && export CC="${OCC}"
-	[[ ! -z "${OCXX}" ]] && export CXX="${OCXX}"
 }
 
 # @FUNCTION: __source_env_files
@@ -473,7 +468,7 @@ __try_source() {
 	if [[ -r ${1} && -f ${1} ]]; then
 		local debug_on=false
 
-		if [[ "${PORTAGE_DEBUG}" == "1" ]] && [[ "${-/x/}" == "$-" ]]; then
+		if [[ ${PORTAGE_DEBUG} == 1 ]] && [[ $- != *x* ]]; then
 			debug_on=true
 		fi
 
@@ -496,9 +491,6 @@ __try_source() {
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-# Turn off extended glob matching so that g++ doesn't get incorrectly matched.
-shopt -u extglob
-
 if [[ ${EBUILD_PHASE} == depend ]] ; then
 	QA_INTERCEPTORS="awk bash cc egrep equery fgrep g++
 		gawk gcc grep javac java-config nawk perl
@@ -511,15 +503,15 @@ fi
 
 # Level the QA interceptors if we're in depend
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
+	# shellcheck disable=SC2086
 	for BIN in ${QA_INTERCEPTORS}; do
-		BIN_PATH=$(type -Pf ${BIN})
-		if [[ "$?" != "0" ]]; then
+		if ! BIN_PATH=$(type -P -- "${BIN}"); then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
 		if [[ ${EBUILD_PHASE} == depend ]] ; then
-			FUNC_SRC="${BIN}() {
+			FUNC_SRC="${BIN} () {
 				if [[ \${ECLASS_DEPTH} -gt 0 ]]; then
 					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
 				else
@@ -527,19 +519,28 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 				fi
 			${BODY}
 			}"
-		elif has ${BIN} autoconf automake aclocal libtoolize ; then
-			FUNC_SRC="${BIN}() {
-				if ! has \${FUNCNAME[1]} eautoreconf eaclocal _elibtoolize \\
-					eautoheader eautoconf eautomake autotools_run_tool \\
-					autotools_check_macro autotools_get_subdirs \\
-					autotools_get_auxdir ; then
+		elif [[ ${BIN} == @(autoconf|automake|aclocal|libtoolize) ]]; then
+			FUNC_SRC="${BIN} () {
+				case \${FUNCNAME[1]} in
+					eautoreconf           |\\
+					eaclocal              |\\
+					_elibtoolize          |\\
+					eautoheader           |\\
+					eautoconf             |\\
+					eautomake             |\\
+					autotools_run_tool    |\\
+					autotools_check_macro |\\
+					autotools_get_subdirs |\\
+					autotools_get_auxdir  )
+					;;
+				*)
 					eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
 					eqawarn \"Use autotools.eclass instead of calling '${BIN}' directly.\"
-				fi
+				esac
 			${BODY}
 			}"
 		else
-			FUNC_SRC="${BIN}() {
+			FUNC_SRC="${BIN} () {
 				eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
 			${BODY}
 			}"
@@ -550,10 +551,11 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 fi
 
 # Subshell/helper die support (must export for the die helper).
-export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
+export EBUILD_MASTER_PID=${BASHPID}
 trap 'exit 1' SIGTERM
 
-if ! has "${EBUILD_PHASE}" clean cleanrm depend && ! [[ ${EMERGE_FROM} = ebuild && ${EBUILD_PHASE} = setup ]] && [[ -f "${T}"/environment ]]; then
+if [[ ${EBUILD_PHASE} != @(clean|cleanrm|depend) ]] && ! [[ ${EBUILD_PHASE} == setup && ${EMERGE_FROM} == ebuild ]] && [[ -f ${T}/environment ]]
+then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
@@ -598,7 +600,7 @@ eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.
-if ! has "${EBUILD_PHASE}" clean cleanrm ; then
+if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 	if [[ ${EBUILD_PHASE} = setup && ${EMERGE_FROM} = ebuild ]] || \
 	[[ ${EBUILD_PHASE} = depend || ! -f ${T}/environment || -f ${PORTAGE_BUILDDIR}/.ebuild_changed || " ${FEATURES} " == *" noauto "* ]] ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
@@ -628,7 +630,7 @@ if ! has "${EBUILD_PHASE}" clean cleanrm ; then
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 		unset PORTAGE_EXPLICIT_INHERIT
 
-		if [[ ${PORTAGE_DEBUG} != 1 || ${-/x/} != $- ]] ; then
+		if [[ ${PORTAGE_DEBUG} != 1 || $- == *x* ]] ; then
 			source "${EBUILD}" || die "error sourcing ebuild"
 		else
 			set -x
@@ -640,7 +642,7 @@ if ! has "${EBUILD_PHASE}" clean cleanrm ; then
 			shopt -u failglob
 		fi
 
-		[[ "${EAPI+set}" = set ]] || EAPI=0
+		[[ -v EAPI ]] || EAPI=0
 
 		# export EAPI for helpers (especially since we unset it above)
 		export EAPI
@@ -707,11 +709,11 @@ if ! has "${EBUILD_PHASE}" clean cleanrm ; then
 
 		if [[ ${EBUILD_PHASE} != depend ]] ; then
 
-			if has distcc ${FEATURES} ; then
+			if contains_word distcc "${FEATURES}"; then
 				[[ -n ${DISTCC_LOG} ]] && addwrite "${DISTCC_LOG%/*}"
 			fi
 
-			if has ccache ${FEATURES} ; then
+			if contains_word ccache "${FEATURES}"; then
 				if [[ -n ${CCACHE_DIR} ]] ; then
 					addread "${CCACHE_DIR}"
 					addwrite "${CCACHE_DIR}"
@@ -723,7 +725,7 @@ if ! has "${EBUILD_PHASE}" clean cleanrm ; then
 	fi
 fi
 
-if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT} ; then
+if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word strip "${PORTAGE_RESTRICT}"; then
 	export DEBUGBUILD=1
 fi
 
@@ -766,10 +768,12 @@ else
 
 	# If ${EBUILD_FORCE_TEST} == 1 and USE came from ${T}/environment
 	# then it might not have USE=test like it's supposed to here.
-	if [[ ${EBUILD_PHASE} == test && ${EBUILD_FORCE_TEST} == 1 ]] &&
-		___in_portage_iuse test && ! has test ${USE} ; then
-
-		export USE="${USE} test"
+	if [[ ${EBUILD_PHASE} == test ]] \
+		&& [[ ${EBUILD_FORCE_TEST} == 1 ]] \
+		&& ___in_portage_iuse test \
+		&& ! contains_word test "${USE}"
+	then
+		export USE+=" test"
 	fi
 	declare -r USE
 

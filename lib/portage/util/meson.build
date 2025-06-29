@@ -10,6 +10,7 @@ py.install_sources(
         'cpuinfo.py',
         'digraph.py',
         'env_update.py',
+        'file_copy.py',
         'formatter.py',
         'hooks.py',
         'install_mask.py',
@@ -41,7 +42,6 @@ py.install_sources(
 
 subdir('elf')
 subdir('endian')
-subdir('file_copy')
 subdir('futures')
 subdir('iterators')
 subdir('_async')

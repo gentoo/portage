@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # QA checks for bash-completion files
 
 bashcomp_check() {
@@ -54,10 +56,9 @@ bashcomp_check() {
 			_have ${1} && have=yes
 		}
 
-		local f c completions
-		local all_compls=()
-		local all_files=()
-		local qa_warnings=()
+		local -A seen_completion seen_file
+		local -a completions qa_warnings
+		local f c
 
 		for f in "${instcompdir}"/*; do
 			# ignore directories and other non-files
@@ -76,10 +77,7 @@ bashcomp_check() {
 				unset 'completions[0]'
 			fi
 
-			if [[ -z ${completions[@]} ]]; then
-				qa_warnings+=(
-					"${f##*/}: does not define any completions (failed to source?)."
-				)
+			if (( ! ${#completions[@]} )); then
 				continue
 			fi
 
@@ -89,28 +87,28 @@ bashcomp_check() {
 						"${f##*/}: absolute paths can not be used for completions (on '${c}')."
 					)
 				else
-					all_compls+=( "${c}" )
+					seen_completion[$c]=1
 				fi
 			done
 
-			if ! has "${f##*/}" "${all_compls[@]}"; then
+			if [[ ! ${seen_completion[${f##*/}]} ]]; then
 				qa_warnings+=(
 					"${f##*/}: incorrect name, no completions for '${f##*/}' command defined."
 				)
 			fi
 
-			all_files+=( "${f##*/}" )
+			seen_file[${f##*/}]=1
 		done
 
-		for c in "${all_compls[@]}"; do
-			if ! has "${c}" "${all_files[@]}"; then
+		for c in "${!seen_completion[@]}"; do
+			if [[ ! ${seen_file[$c]} ]]; then
 				qa_warnings+=(
 					"${c}: missing alias (symlink) for completed command."
 				)
 			fi
 		done
 
-		if [[ -n ${qa_warnings[@]} ]]; then
+		if (( ${#qa_warnings[@]} )); then
 			eqawarn "QA Notice: Problems with installed bash completions were found:"
 			eqawarn
 			for c in "${qa_warnings[@]}"; do
@@ -127,4 +125,4 @@ bashcomp_check() {
 bashcomp_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

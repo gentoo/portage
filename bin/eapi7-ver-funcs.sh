@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=SC2128
 
 __eapi7_ver_parse_range() {
 	local range=${1}

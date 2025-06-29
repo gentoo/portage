@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import stat
@@ -6,7 +6,7 @@ import stat
 from portage import best, os
 from portage.const import WORLD_FILE
 from portage.data import secpass
-from portage.exception import DirectoryNotFound
+from portage.exception import DirectoryNotFound, PermissionDenied
 from portage.localization import _
 from portage.output import bold, colorize
 from portage.update import (
@@ -15,10 +15,10 @@ from portage.update import (
     update_config_files,
     update_dbentry,
 )
-from portage.util import grabfile, shlex_split, writemsg, writemsg_stdout, write_atomic
+from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
 
 
-def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
+def _global_updates(root, trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     """
     Perform new global updates if they exist in 'profiles/updates/'
     subdirectories of all active repositories (PORTDIR + PORTDIR_OVERLAY).
@@ -35,21 +35,27 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     """
     # only do this if we're root and not running repoman/ebuild digest
 
-    if secpass < 2 or "SANDBOX_ACTIVE" in os.environ or len(trees) != 1:
+    if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
         return False
 
-    vardb = trees[trees._running_eroot]["vartree"].dbapi
-    vardb.lock()
+    vardb = trees[root]["vartree"].dbapi
+    try:
+        vardb.lock()
+    except PermissionDenied:
+        return False
     try:
         return _do_global_updates(
-            trees, prev_mtimes, quiet=quiet, if_mtime_changed=if_mtime_changed
+            root,
+            trees,
+            prev_mtimes,
+            quiet=quiet,
+            if_mtime_changed=if_mtime_changed,
         )
     finally:
         vardb.unlock()
 
 
-def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
-    root = trees._running_eroot
+def _do_global_updates(root, trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     mysettings = trees[root]["vartree"].settings
     portdb = trees[root]["porttree"].dbapi
     vardb = trees[root]["vartree"].dbapi
@@ -227,8 +233,8 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 
         update_config_files(
             root,
-            shlex_split(mysettings.get("CONFIG_PROTECT", "")),
-            shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
+            mysettings.get("CONFIG_PROTECT", "").split(),
+            mysettings.get("CONFIG_PROTECT_MASK", "").split(),
             repo_map,
             match_callback=_config_repo_match,
             case_insensitive="case-insensitive-fs" in mysettings.features,

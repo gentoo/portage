@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=SC2128
 
-source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
+source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
 if ___eapi_has_version_functions; then
 	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+fi
+
+if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
+	source "${PORTAGE_EBUILD_EXTRA_SOURCE}" || exit 1
+	# We deliberately do not unset PORTABE_EBUILD_EXTRA_SOURCE, so
+	# that it keeps being exported in the environment of this
+	# process and its child processes. There, for example portage
+	# helper like doins, can pick it up and set the PMS variables
+	# (usually by sourcing isolated-functions.sh).
 fi
 
 # We need this next line for "die" and "assert". It expands
@@ -100,18 +110,14 @@ nonfatal() {
 	PORTAGE_NONFATAL=1 "$@"
 }
 
-__bashpid() {
-	# The BASHPID variable is new to bash-4.0, so add a hack for older
-	# versions.  This must be used like so:
-	# ${BASHPID:-$(__bashpid)}
-	sh -c 'echo ${PPID}'
-}
-
 __helpers_die() {
+	local retval=$?
+
 	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
 		die "$@"
 	else
 		echo -e "$@" >&2
+		return "$(( retval || 1 ))"
 	fi
 }
 
@@ -164,7 +170,7 @@ die() {
 	# __dump_trace is useless when the main script is a helper binary
 	local main_index
 	(( main_index = ${#BASH_SOURCE[@]} - 1 ))
-	if has ${BASH_SOURCE[${main_index}]##*/} ebuild.sh misc-functions.sh ; then
+	if [[ ${BASH_SOURCE[main_index]##*/} == @(ebuild|misc-functions).sh ]]; then
 	__dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
@@ -174,21 +180,24 @@ die() {
 	# This tends to be the most common usage though, so let's do it.
 	# Due to the usage of appending to the hold space (even when empty),
 	# we always end up with the first line being a blank (thus the 2nd sed).
-	sed -n \
-		-e "# When we get to the line that failed, append it to the
-		    # hold space, move the hold space to the pattern space,
-		    # then print out the pattern space and quit immediately
-		    ${BASH_LINENO[0]}{H;g;p;q}" \
-		-e '# If this line ends with a line continuation, append it
-		    # to the hold space
-		    /\\$/H' \
-		-e '# If this line does not end with a line continuation,
-		    # erase the line and set the hold buffer to it (thus
-		    # erasing the hold buffer in the process)
-		    /[^\]$/{s:^.*$::;h}' \
-		"${BASH_SOURCE[1]}" \
-		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
-		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
+	local -a sed_args=(
+		# When we get to the line that failed, append it to the hold
+		# space, move the hold space to the pattern space, then print
+		# out the pattern space and quit immediately.
+		-n -e "${BASH_LINENO[0]}{H;g;p;q}"
+		# If this line ends with a line continuation, append it to the
+		# hold space.
+		-e '/\\$/H'
+		# If this line does not end with a line continuation, erase the
+		# line and set the hold buffer to it (thus erasing the hold
+		# buffer in the process).
+		-e '/[^\]$/{s:^.*$::;h}'
+	)
+	sed "${sed_args[@]}" "${BASH_SOURCE[1]}" \
+	| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
+	| while read -r n; do
+		eerror "  ${n#RETAIN-LEADING-SPACE}"
+	done
 	eerror
 	fi
 	eerror "If you need support, post the output of \`emerge --info '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`,"
@@ -198,8 +207,8 @@ die() {
 	# misc-functions.sh, since those are the only cases where the environment
 	# contains the hook functions. When necessary (like for __helpers_die), die
 	# hooks are automatically called later by a misc-functions.sh invocation.
-	if has ${BASH_SOURCE[${main_index}]##*/} ebuild.sh misc-functions.sh && \
-		[[ ${EBUILD_PHASE} != depend ]] ; then
+	if [[ ${EBUILD_PHASE} != depend && ${BASH_SOURCE[main_index]##*/} == @(ebuild|misc-functions).sh ]]
+	then
 		local x
 		for x in ${EBUILD_DEATH_HOOKS}; do
 			${x} "$@" >&2 1>&2
@@ -209,8 +218,9 @@ die() {
 
 	if [[ -n ${PORTAGE_LOG_FILE} ]] ; then
 		eerror "The complete build log is located at '${PORTAGE_LOG_FILE}'."
-		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] && \
-			! has fail-clean ${FEATURES} ; then
+		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] \
+			&& ! contains_word fail-clean "${FEATURES}"
+		then
 			# Display path to symlink in ${T}, as requested in bug #412865.
 			local log_ext=log
 			[[ ${PORTAGE_LOG_FILE} != *.log ]] && log_ext+=.${PORTAGE_LOG_FILE##*.}
@@ -233,8 +243,8 @@ die() {
 	[[ -n ${PORTAGE_IPC_DAEMON} ]] && "${PORTAGE_BIN_PATH}"/ebuild-ipc exit 1
 
 	# subshell die support
-	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID:-$(__bashpid)} != ${EBUILD_MASTER_PID} ]] ; then
-		kill -s SIGTERM ${EBUILD_MASTER_PID}
+	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID} != "${EBUILD_MASTER_PID}" ]] ; then
+		kill -s SIGTERM "${EBUILD_MASTER_PID}"
 	fi
 	exit 1
 }
@@ -250,6 +260,13 @@ __vecho() {
 # Internal logging function, don't use this in ebuilds
 __elog_base() {
 	local messagetype
+	if [[ ${EBUILD_PHASE} == depend && -z ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
+		# in depend phase, we want to output a banner indicating which
+		# package emitted the message
+		echo >&2
+		echo "Messages for package ${PORTAGE_COLOR_INFO}${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}${PORTAGE_COLOR_NORMAL}:" >&2
+		__PORTAGE_ELOG_BANNER_OUTPUT=1
+	fi
 	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
 	case "${1}" in
 		INFO|WARN|ERROR|LOG|QA)
@@ -329,7 +346,7 @@ eerror() {
 ebegin() {
 	local msg="$*" dots spaces=${RC_DOT_PATTERN//?/ }
 	if [[ -n ${RC_DOT_PATTERN} ]] ; then
-		dots=$(printf "%$(( COLS - 3 - ${#RC_INDENTATION} - ${#msg} - 7 ))s" '')
+		printf -v dots "%$(( COLS - 3 - ${#RC_INDENTATION} - ${#msg} - 7 ))s" ''
 		dots=${dots//${spaces}/${RC_DOT_PATTERN}}
 		msg="${msg}${dots}"
 	else
@@ -367,13 +384,13 @@ __eend() {
 }
 
 eend() {
-	[[ -n $1 ]] || eqawarn "QA Notice: eend called without first argument"
+	[[ -n ${1} ]] || die "${FUNCNAME}(): Missing argument"
+	local retval=${1}
+	shift
 	if (( --__EBEGIN_EEND_COUNT < 0 )); then
 		__EBEGIN_EEND_COUNT=0
 		eqawarn "QA Notice: eend called without preceding ebegin in ${FUNCNAME[1]}"
 	fi
-	local retval=${1:-0}
-	shift
 
 	__eend ${retval} eerror "$*"
 
@@ -470,50 +487,70 @@ fi
 # END PREFIX LOCAL
 
 if [[ -z ${XARGS} ]] ; then
-	case ${USERLAND} in
-	BSD)
-		if type -P gxargs > /dev/null; then
-			export XARGS="gxargs -r"
-		else
-			export XARGS="xargs"
-		fi
-		;;
-	*)
+	if XARGS=$(type -P gxargs); then
+		export XARGS+=" -r"
+	elif : | xargs -r 2>/dev/null; then
 		export XARGS="xargs -r"
-		;;
-	esac
+	else
+		export XARGS="xargs"
+	fi
 fi
 
 ___makeopts_jobs() {
-	# Copied from multiprocessing.eclass:makeopts_jobs
-	# This assumes the first .* will be more greedy than the second .*
-	# since POSIX doesn't specify a non-greedy match (i.e. ".*?").
-	local jobs=$(echo " ${MAKEOPTS} " | sed -r -n \
-		-e 's:.*[[:space:]](-[a-z]*j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p' || die)
+	local LC_ALL LC_COLLATE=C ere jobs
 
-	# Fallbacks for if MAKEOPTS parsing failed
-	[[ -n ${jobs} ]] || \
-		jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null) || \
-		jobs=$(sysctl -n hw.ncpu 2>/dev/null) || \
+	ere='.*[[:space:]](-[A-Ia-iK-Zk-z]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]]'
+
+	if [[ " ${MAKEOPTS} " =~ $ere ]]; then
+		jobs=$(( 10#${BASH_REMATCH[3]} ))
+	elif jobs=$({ getconf _NPROCESSORS_ONLN || sysctl -n hw.ncpu; } 2>/dev/null); then
+		:
+	else
 		jobs=1
-
-	echo ${jobs}
-}
-
-# Run ${XARGS} in parallel for detected number of CPUs, if supported.
-# Passes all arguments to xargs, and returns its exit code
-___parallel_xargs() {
-	local chunksize=1 jobs xargs=( ${XARGS} )
-
-	if "${xargs[@]}" --help | grep -q -- --max-procs=; then
-		jobs=$(___makeopts_jobs)
-		if [[ ${jobs} -gt 1 ]]; then
-			xargs+=("--max-procs=${jobs}" -L "${chunksize}")
-		fi
 	fi
 
-	"${xargs[@]}" "${@}"
+	printf '%s\n' "${jobs}"
 }
+
+# Considers the positional parameters as comprising a simple command, which
+# shall be executed for each null-terminated record read from the standard
+# input. For each record processed, its value shall be taken as an additional
+# parameter to append to the command. Commands shall be executed in parallel,
+# with the maximal degree of concurrency being determined by the output of the
+# ___makeopts_jobs function. Thus, the behaviour is quite similar to that of
+# xargs -0 -L1 -P"$(___makeopts_jobs)".
+#
+# If no records are read, or if all commands complete successfully, the return
+# value shall be 0. Otherwise, the return value shall be that of the last
+# reaped command that produced a non-zero exit status. As soon as any command
+# fails, no further records shall be read, nor any further commands executed.
+___parallel() (
+	local max_procs retval arg i
+
+	max_procs=$(___makeopts_jobs)
+	retval=0
+
+	while IFS= read -rd '' arg; do
+		if (( i >= max_procs )); then
+			wait -n
+			case $? in
+				0) (( i-- )) ;;
+				*) retval=$?; (( i-- )); break
+			esac
+		fi
+		"$@" "${arg}" & (( ++i ))
+	done
+
+	while (( i-- )); do
+		wait -n
+		case $? in
+			0) ;;
+			*) retval=$?
+		esac
+	done
+
+	return "${retval}"
+)
 
 hasq() {
 	___eapi_has_hasq || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
@@ -532,6 +569,9 @@ hasv() {
 	return 1
 }
 
+# Determines whether the first parameter is stringwise equal to any of the
+# following parameters. Do NOT use this function for checking whether a word is
+# contained by another string. For that, use contains_word() instead.
 has() {
 	local needle=$1
 	shift
@@ -631,16 +671,6 @@ __eqatag() {
 	) >> "${T}"/qa.log
 }
 
-if [[ BASH_VERSINFO -gt 4 || (BASH_VERSINFO -eq 4 && BASH_VERSINFO[1] -ge 4) ]] ; then
-	___is_indexed_array_var() {
-		[[ ${!1@a} == *a* ]]
-	}
-else
-	___is_indexed_array_var() {
-		[[ $(declare -p "$1" 2>/dev/null) == 'declare -a'* ]]
-	}
-fi
-
 # debug-print() gets called from many places with verbose status information useful
 # for tracking down problems. The output is in ${T}/eclass-debug.log.
 # You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.
@@ -681,5 +711,49 @@ debug-print-function() {
 debug-print-section() {
 	debug-print "now in section ${*}"
 }
+
+# Considers the first parameter as a word and the second parameter as a string
+# comprising zero or more whitespace-separated words before determining whether
+# said word can be matched against any of them. It addresses a use case for
+# which the has() function is commonly misappropriated, with maximal efficiency.
+contains_word() {
+	local IFS
+	[[ $1 == +([![:space:]]) && " ${*:2} " == *[[:space:]]"$1"[[:space:]]* ]]
+}
+
+# Invoke GNU find(1) in such a way that the paths to be searched are consumed
+# as a list of one or more null-terminated records from STDIN. The positional
+# parameters shall be conveyed verbatim and are guaranteed to be treated as
+# options and/or primaries, provided that the version of GNU findutils is 4.9.0
+# or greater. For older versions, no such guarantee is made.
+find0() {
+	if printf '/\0' | find -files0-from - -maxdepth 0 &>/dev/null; then
+		find0() {
+			find -files0-from - "$@"
+		}
+	else
+		# This is a temporary workaround for the GitHub CI runner, which
+		# suffers from an outdated version of findutils, per bug 957550.
+		find0() {
+			local -a opts paths
+
+			# All of -H, -L and -P are options. If specified, they
+			# must precede pathnames and primaries alike.
+			while [[ $1 == -[HLP] ]]; do
+				opts+=("$1")
+				shift
+			done
+			mapfile -td '' paths
+			if (( ${#paths[@]} )); then
+				find "${opts[@]}" "${paths[@]}" "$@"
+			fi
+		}
+	fi
+
+	find0 "$@"
+}
+
+# Initialise the function now because find0() is normally called after forking.
+find0 < /dev/null
 
 true

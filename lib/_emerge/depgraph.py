@@ -55,7 +55,7 @@ from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReas
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.dep._slot_operator import evaluate_slot_operator_equal_deps
-from portage.util import ConfigProtect, shlex_split, new_protect_filename
+from portage.util import ConfigProtect, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import ensure_dirs, normalize_path
 from portage.util import writemsg_level, write_atomic
@@ -1181,7 +1181,7 @@ class depgraph:
                     "NOTE: Refer to the following page for more information about dependency",
                     "      change(s) without revision bump:",
                     "",
-                    "          https://wiki.gentoo.org/wiki/Project:Portage/Changed_Deps",
+                    "          https://wiki.gentoo.org/wiki/Project:Portage/Changed_dependencies",
                     "",
                     "      In order to suppress reports about dependency changes, add",
                     "      --changed-deps-report=n to the EMERGE_DEFAULT_OPTS variable in",
@@ -4040,16 +4040,24 @@ class depgraph:
         if removal_action:
             depend_root = myroot
         else:
+            root_deps = self._frozen_config.myopts.get("--root-deps")
+
             if eapi_attrs.bdepend:
                 depend_root = pkg.root_config.settings["ESYSROOT"]
             else:
                 depend_root = self._frozen_config._running_root.root
-                root_deps = self._frozen_config.myopts.get("--root-deps")
-                if root_deps is not None:
-                    if root_deps is True:
-                        depend_root = myroot
-                    elif root_deps == "rdeps":
-                        ignore_depend_deps = True
+                if root_deps == "rdeps":
+                    ignore_depend_deps = True
+
+            if root_deps == True:
+                edepend["RDEPEND"] += (
+                    " "
+                    + edepend["IDEPEND"]
+                    + " "
+                    + edepend["DEPEND"]
+                    + " "
+                    + edepend["BDEPEND"]
+                )
 
         # If rebuild mode is not enabled, it's safe to discard ignored
         # build-time dependencies. If you want these deps to be traversed
@@ -6014,6 +6022,8 @@ class depgraph:
 
         for atoms in rdepend.values():
             for atom in atoms:
+                if atom.blocker:
+                    continue
                 if ignore_use:
                     atom = atom.without_use
                 pkg, existing = self._select_package(pkg.root, atom)
@@ -8177,6 +8187,7 @@ class depgraph:
                     ):
                         return pkg, existing_node
 
+            matched_oldpkg = [x for x in matched_oldpkg if x in matched_packages]
             visible_matches = []
             if matched_oldpkg:
                 visible_matches = [
@@ -8390,7 +8401,7 @@ class depgraph:
         for root in self._frozen_config.roots:
             if root != self._frozen_config.target_root and (
                 "remove" in self._dynamic_config.myparams
-                or self._frozen_config.myopts.get("--root-deps") is not None
+                or self._frozen_config.myopts.get("--root-deps") == "rdeps"
             ):
                 # Only pull in deps for the relevant root.
                 continue
@@ -8625,7 +8636,7 @@ class depgraph:
             dep_keys = Package._runtime_keys
             for myroot in self._frozen_config.trees:
                 if (
-                    self._frozen_config.myopts.get("--root-deps") is not None
+                    self._frozen_config.myopts.get("--root-deps") == "rdeps"
                     and myroot != self._frozen_config.target_root
                 ):
                     continue
@@ -9312,14 +9323,7 @@ class depgraph:
 
                 asap_nodes.extend(libc_pkgs)
 
-        def gather_deps(
-            ignore_priority,
-            mergeable_nodes,
-            selected_nodes,
-            node,
-            smallest_cycle=None,
-            traversed_nodes=None,
-        ):
+        def gather_deps(ignore_priority, mergeable_nodes, selected_nodes, node):
             """
             Recursively gather a group of nodes that RDEPEND on
             eachother. This ensures that they are merged as a group
@@ -9339,24 +9343,10 @@ class depgraph:
                 # RDEPENDs installed first, but ignore uninstalls
                 # (these occur when new portage blocks an older package version).
                 return False
-            if traversed_nodes is not None:
-                if node in traversed_nodes:
-                    # Identical to a previously traversed cycle.
-                    return False
-                traversed_nodes.add(node)
             selected_nodes.add(node)
-            if smallest_cycle is not None and len(selected_nodes) >= len(
-                smallest_cycle
-            ):
-                return False
             for child in mygraph.child_nodes(node, ignore_priority=ignore_priority):
                 if not gather_deps(
-                    ignore_priority,
-                    mergeable_nodes,
-                    selected_nodes,
-                    child,
-                    smallest_cycle=smallest_cycle,
-                    traversed_nodes=traversed_nodes,
+                    ignore_priority, mergeable_nodes, selected_nodes, child
                 ):
                     return False
             return True
@@ -9514,21 +9504,12 @@ class depgraph:
                             local_priority_range.MEDIUM_SOFT + 1,
                         )
                     ):
-                        # Traversed nodes for current priority
-                        traversed_nodes = set()
                         for node in nodes:
                             if not mygraph.parent_nodes(node):
                                 continue
-                            if node in traversed_nodes:
-                                continue
                             selected_nodes = set()
                             if gather_deps(
-                                priority,
-                                mergeable_nodes,
-                                selected_nodes,
-                                node,
-                                smallest_cycle=smallest_cycle,
-                                traversed_nodes=traversed_nodes,
+                                priority, mergeable_nodes, selected_nodes, node
                             ):
                                 if smallest_cycle is None or len(selected_nodes) < len(
                                     smallest_cycle
@@ -10650,8 +10631,8 @@ class depgraph:
                 settings = self._frozen_config.roots[root].settings
                 protect_obj[root] = ConfigProtect(
                     settings["PORTAGE_CONFIGROOT"],
-                    shlex_split(settings.get("CONFIG_PROTECT", "")),
-                    shlex_split(settings.get("CONFIG_PROTECT_MASK", "")),
+                    settings.get("CONFIG_PROTECT", "").split(),
+                    settings.get("CONFIG_PROTECT_MASK", "").split(),
                     case_insensitive=("case-insensitive-fs" in settings.features),
                 )
 
@@ -11095,6 +11076,13 @@ class depgraph:
         else:
             args = []
 
+        binpkgs_map = {}
+        binpkgs = resume_data.get("binpkgs")
+        if binpkgs:
+            for x in binpkgs:
+                if isinstance(x, dict) and "EROOT" in x and "CPV" in x:
+                    binpkgs_map[(x["EROOT"], x["CPV"])] = x
+
         serialized_tasks = []
         masked_tasks = []
         for x in mergelist:
@@ -11125,8 +11113,22 @@ class depgraph:
             except InvalidAtom:
                 continue
 
+            if pkg_type == "binary":
+                binpkg_info = binpkgs_map.get((myroot, pkg_key))
+            else:
+                binpkg_info = False
+
             pkg = None
             for pkg in self._iter_match_pkgs(root_config, pkg_type, atom):
+                if binpkg_info:
+                    if not (
+                        pkg.cpv.build_id == binpkg_info.get("BUILD_ID")
+                        and pkg.cpv.build_time == binpkg_info.get("BUILD_TIME")
+                        and pkg.cpv.mtime == binpkg_info.get("MTIME")
+                        and pkg.cpv.file_size == binpkg_info.get("SIZE")
+                    ):
+                        continue
+
                 if not self._pkg_visibility_check(
                     pkg
                 ) or self._frozen_config.excluded_pkgs.findAtomForPackage(

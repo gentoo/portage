@@ -8,6 +8,7 @@ import itertools
 import re
 import subprocess
 import sys
+from typing import Optional
 
 import portage
 
@@ -521,16 +522,23 @@ def get_term_size(fd=None):
         fd = sys.stdout
     if not hasattr(fd, "isatty") or not fd.isatty():
         return (0, 0)
-    try:
-        import curses
 
+    # Do not use curses.tigetnum("lines") or curses.tigetnum("cols") because it
+    # returns stale values after terminal resize. Do not use curses.initscr().getmaxyx()
+    # since that has unwanted side-effects, requiring a call to `stty sane` to restore a
+    # sane state.
+    if not sys.stdin.isatty():
+        # Use curses if stdin is not a tty since stty fails in that case.
         try:
-            curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
-            return curses.tigetnum("lines"), curses.tigetnum("cols")
-        except curses.error:
+            import curses
+
+            try:
+                curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
+                return curses.tigetnum("lines"), curses.tigetnum("cols")
+            except curses.error:
+                pass
+        except ImportError:
             pass
-    except ImportError:
-        pass
 
     try:
         proc = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, stderr=fd)
@@ -554,10 +562,16 @@ def get_term_size(fd=None):
     return (0, 0)
 
 
-def set_term_size(lines, columns, fd):
+def set_term_size(lines: int, columns: int, fd: int) -> Optional[asyncio.Future]:
     """
     Set the number of lines and columns for the tty that is connected to fd.
     For portability, this simply calls `stty rows $lines columns $columns`.
+
+    If spawn succeeds and the event loop is running then an instance of
+    asyncio.Future is returned and the caller should wait for it in order
+    to prevent possible error messages like this:
+
+    [ERROR] Task was destroyed but it is pending!
     """
 
     cmd = ["stty", "rows", str(lines), "columns", str(columns)]
@@ -568,9 +582,7 @@ def set_term_size(lines, columns, fd):
     else:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            asyncio.ensure_future(proc.wait(), loop).add_done_callback(
-                lambda future: future.result()
-            )
+            return asyncio.ensure_future(proc.wait(), loop=loop)
         else:
             loop.run_until_complete(proc.wait())
 

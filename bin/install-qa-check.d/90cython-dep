@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for missing dev-python/cython dep based on output
 # from setuptools cythonize() support
 
@@ -5,7 +7,7 @@ cython_dep_check() {
 	[[ ${CATEGORY}/${PN} == dev-python/cython ]] && return
 	# grepping log files is expensive, so do it only for ebuilds using
 	# distutils-r1
-	has distutils-r1 ${INHERITED} || return
+	contains_word distutils-r1 "${INHERITED}" || return
 	[[ ${BDEPEND} == *dev-python/cython* ]] && return
 
 	# Evaluate misc gcc warnings
@@ -13,7 +15,7 @@ cython_dep_check() {
 		# In debug mode, the grep calls will produce false positives
 		# if they're shown in the trace.
 		local reset_debug=0
-		if [[ ${-/x/} != $- ]] ; then
+		if [[ $- == *x* ]] ; then
 			set +x
 			reset_debug=1
 		fi
@@ -42,4 +44,4 @@ cython_dep_check() {
 cython_dep_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

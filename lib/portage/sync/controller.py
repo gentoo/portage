@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Gentoo Authors
+# Copyright 2014-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -8,6 +8,11 @@ import pwd
 import warnings
 
 import portage
+
+portage.proxy.lazyimport.lazyimport(
+    globals(),
+    "portage.sync.revision_history:get_repo_revision_history",
+)
 from portage import os
 from portage.progress import ProgressBar
 
@@ -170,6 +175,7 @@ class SyncManager:
         status = None
         taskmaster = TaskHandler(callback=self.do_callback)
         taskmaster.run_tasks(tasks, func, status, options=task_opts)
+        get_repo_revision_history(self.settings["EROOT"], [repo])
 
         if master_hooks or self.updatecache_flg or not repo.sync_hooks_only_on_change:
             hooks_enabled = True

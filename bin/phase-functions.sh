@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# shellcheck disable=SC2128
 
 # Hardcoded bash lists are needed for backward compatibility with
 # <portage-2.1.4 since they assume that a newly installed version
@@ -17,9 +18,10 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
 	PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC  \
 	PORTAGE_BINPKG_FILE PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE \
 	PORTAGE_BIN_PATH PORTAGE_BUILDDIR PORTAGE_BUILD_GROUP \
-	PORTAGE_BUILD_USER PORTAGE_BUNZIP2_COMMAND \
-	PORTAGE_BZIP2_COMMAND PORTAGE_COLORMAP PORTAGE_CONFIGROOT \
+	PORTAGE_BUILD_USER \
+	PORTAGE_COLORMAP PORTAGE_CONFIGROOT \
 	PORTAGE_DEBUG PORTAGE_DEPCACHEDIR PORTAGE_EBUILD_EXIT_FILE \
+	PORTAGE_EBUILD_EXTRA_SOURCE \
 	PORTAGE_ECLASS_LOCATIONS PORTAGE_EXPLICIT_INHERIT \
 	PORTAGE_GID PORTAGE_GRPNAME PORTAGE_INST_GID PORTAGE_INST_UID \
 	PORTAGE_INTERNAL_CALLER PORTAGE_IPC_DAEMON PORTAGE_IUSE PORTAGE_LOG_FILE \
@@ -46,7 +48,7 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # Read an environment from stdin and echo to stdout while filtering variables
 # with names that are known to cause interference:
 #
-#   * some specific variables for which bash does not allow assignment
+#   * all variables that can be set by or that may affect bash (except PATH)
 #   * some specific variables that affect portage or sandbox behavior
 #   * variable names that begin with a digit or that contain any
 #     non-alphanumeric characters that are not be supported by bash
@@ -78,76 +80,103 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
 # This is enabled automatically if EMERGE_FROM=binary, since it preserves
 # variables from when the package was originally built.
-#
-# In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
-# readonly variable cause the shell to exit while executing the "source"
-# builtin command. To avoid this problem, this function filters those
-# variables out and discards them. See bug #190128.
 __filter_readonly_variables() {
-	local x filtered_vars
-	local readonly_bash_vars="BASHOPTS BASHPID DIRSTACK EUID
-		FUNCNAME GROUPS PIPESTATUS PPID SHELLOPTS UID"
-	local bash_misc_vars="BASH BASH_.* COLUMNS COMP_WORDBREAKS HISTCMD
-		HISTFILE HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD
-		OPTERR OPTIND OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM
-		SECONDS SHLVL _"
-	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
-		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
-		SANDBOX_LOG SANDBOX_ON"
+	local -a {binpkg_untrusted,filtered_sandbox,misc_garbage,bash}_vars words
+	local IFS
+
+	# Collect an initial list of special bash variables by instructing a
+	# hygienic instance of bash(1) to report them.
+	mapfile -t bash_vars < <(
+		# Like compgen -A variable but doesn't require readline support.
+		env -i -- "${BASH}" -c "printf %s\\\n $(printf '${!%s*} ' {A..Z} {a..z} _)" \
+		| grep -vx PATH
+	)
+	# Incorporate other variables that are known to either be set by or be
+	# able to influence bash. This list was last updated for bash-5.3-rc2.
+	bash_vars+=(
+		BASH_COMPAT BASH_ENV BASH_LOADABLES_PATH BASH_REMATCH
+		BASH_XTRACEFD CDPATH CHILD_MAX COLUMNS COMPREPLY COMP_CWORD
+		COMP_KEY COMP_LINE COMP_POINT COMP_TYPE COMP_WORDS COPROC
+		ENV EXECIGNORE FCEDIT FIGNORE FUNCNAME FUNCNEST GLOBIGNORE
+		GLOBSORT HISTCONTROL HISTFILE HISTFILESIZE HISTIGNORE HISTSIZE
+		HISTTIMEFORMAT HOME HOSTFILE IGNOREEOF INPUTRC INSIDE_EMACS
+		LINES MAIL MAILCHECK MAILPATH MAPFILE OLDPWD OPTARG PIPESTATUS
+		POSIXLY_CORRECT PROMPT_COMMAND PROMPT_DIRTRIM PS0 PS1 PS2 PS3
+		READLINE_ARGUMENT READLINE_LINE READLINE_MARK READLINE_POINT
+		REPLY TIMEFORMAT TMOUT TMPDIR auto_resume histchars
+
+		# Exported functions bear this prefix.
+		"BASH_FUNC_.*"
+	)
+	filtered_sandbox_vars=(
+		SANDBOX_ACTIVE SANDBOX_BASHRC SANDBOX_DEBUG_LOG
+		SANDBOX_DISABLED SANDBOX_LIB SANDBOX_LOG SANDBOX_ON
+	)
 	# Untrusted due to possible application of package renames to binpkgs
-	local binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
-	local misc_garbage_vars="_portage_filter_opts"
-	filtered_vars="___.* ${readonly_bash_vars} ${bash_misc_vars}
-		${PORTAGE_READONLY_VARS} ${misc_garbage_vars}"
+	binpkg_untrusted_vars=(
+		CATEGORY P PF PN PR PV PVR
+	)
+	misc_garbage_vars=(
+		_portage_filter_opts
+	)
+	read -rd '' -a words <<<"${PORTAGE_READONLY_VARS}"
+	filtered_vars+=(
+		"${misc_garbage_vars[@]}"
+		"${bash_vars[@]}"
+		"${words[@]}"
+		"___.*"
+	)
 
 	# Filter SYSROOT unconditionally. It is propagated in every EAPI
 	# because it was used unofficially before EAPI 7. See bug #661006.
-	filtered_vars+=" SYSROOT"
+	filtered_vars+=( SYSROOT )
 
 	if ___eapi_has_BROOT; then
-		filtered_vars+=" BROOT"
+		filtered_vars+=( BROOT )
 	fi
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
 	if ___eapi_has_prefix_variables; then
-		filtered_vars+=" ED EPREFIX EROOT"
+		filtered_vars+=( ED EPREFIX EROOT )
 		if ___eapi_has_SYSROOT; then
-			filtered_vars+=" ESYSROOT"
+			filtered_vars+=( ESYSROOT )
 		fi
 	fi
 	if ___eapi_has_PORTDIR_ECLASSDIR; then
-		filtered_vars+=" PORTDIR ECLASSDIR"
+		filtered_vars+=( PORTDIR ECLASSDIR )
 	fi
 
-	if has --filter-sandbox $* ; then
-		filtered_vars="${filtered_vars} SANDBOX_.*"
+	if has --filter-sandbox "$@"; then
+		filtered_vars+=( "SANDBOX_.*" )
 	else
-		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
+		filtered_vars+=( "${filtered_sandbox_vars[@]}" )
 	fi
-	if has --filter-features $* ; then
-		filtered_vars="${filtered_vars} FEATURES PORTAGE_FEATURES"
+	if has --filter-features "$@"; then
+		filtered_vars+=( FEATURES PORTAGE_FEATURES )
 	fi
-	if has --filter-path $* ; then
-		filtered_vars+=" PATH"
+	if has --filter-path "$@"; then
+		filtered_vars+=( PATH )
 	fi
-	if has --filter-locale $* ; then
-		filtered_vars+=" LANG LC_ALL LC_COLLATE
-			LC_CTYPE LC_MESSAGES LC_MONETARY
-			LC_NUMERIC LC_PAPER LC_TIME"
+	if has --filter-locale "$@"; then
+		filtered_vars+=(
+			LANG LC_ALL LC_COLLATE LC_CTYPE LC_MESSAGES LC_MONETARY
+			LC_NUMERIC LC_PAPER LC_TIME
+		)
 	fi
-	if ! has --allow-extra-vars $* ; then
-		if [[ "${EMERGE_FROM}" = binary ]]; then
-			# preserve additional variables from build time,
-			# while excluding untrusted variables
-			filtered_vars+=" ${binpkg_untrusted_vars}"
-		else
-			filtered_vars+=" ${PORTAGE_SAVED_READONLY_VARS}"
-			filtered_vars+=" ${PORTAGE_MUTABLE_FILTERED_VARS}"
-		fi
+	if has --allow-extra-vars "$@"; then
+		:
+	elif [[ "${EMERGE_FROM}" = binary ]]; then
+		# Preserve additional variables from build time, while
+		# excluding untrusted variables.
+		filtered_vars+=( "${binpkg_untrusted_vars[@]}" )
+	else
+		read -rd '' -a words <<<"${PORTAGE_SAVED_READONLY_VARS} ${PORTAGE_MUTABLE_FILTERED_VARS}"
+		filtered_vars+=( "${words[@]}" )
 	fi
 
     # PREFIX LOCAL: use Prefix Python fallback
-	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
+	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars[*]}" \
+	|| die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: __preprocess_ebuild_env
@@ -192,10 +221,13 @@ __preprocess_ebuild_env() {
 		# because it's already filtered above.
 		source "${PORTAGE_BIN_PATH}/save-ebuild-env.sh" || exit $?
 
+		# Prefer latest make.conf values of these.
+		unset PORTAGE_BZIP2_COMMAND PORTAGE_BUNZIP2_COMMAND
+
 		# Rely on __save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
 		__save_ebuild_env || exit $?
-		>> "${T}/environment.success" || exit $?
+		: >> "${T}/environment.success" || exit $?
 	) > "${T}/environment.filtered"
 
 	local retval
@@ -236,7 +268,7 @@ __dyn_pretend() {
 
 	__ebuild_phase pre_pkg_pretend
 	__ebuild_phase pkg_pretend
-	>> "${PORTAGE_BUILDDIR}/.pretended" || \
+	: >> "${PORTAGE_BUILDDIR}/.pretended" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.pretended"
 	__ebuild_phase post_pkg_pretend
 }
@@ -250,7 +282,7 @@ __dyn_setup() {
 
 	__ebuild_phase pre_pkg_setup
 	__ebuild_phase pkg_setup
-	>> "${PORTAGE_BUILDDIR}/.setuped" || \
+	: >> "${PORTAGE_BUILDDIR}/.setuped" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.setuped"
 	__ebuild_phase post_pkg_setup
 }
@@ -269,7 +301,7 @@ __dyn_unpack() {
 	__ebuild_phase pre_src_unpack
 	__vecho ">>> Unpacking source..."
 	__ebuild_phase src_unpack
-	>> "${PORTAGE_BUILDDIR}/.unpacked" || \
+	: >> "${PORTAGE_BUILDDIR}/.unpacked" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.unpacked"
 	__vecho ">>> Source unpacked in ${WORKDIR}"
 	__ebuild_phase post_src_unpack
@@ -283,7 +315,7 @@ __dyn_clean() {
 		return 0
 	fi
 
-	if has chflags ${FEATURES} ; then
+	if contains_word chflags "${FEATURES}"; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
@@ -297,12 +329,14 @@ __dyn_clean() {
 		"${PORTAGE_BUILDDIR}/empty"
 	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
-	if [[ ${EMERGE_FROM} = binary ]] || \
-		! has keeptemp ${FEATURES} && ! has keepwork ${FEATURES} ; then
+	if [[ ${EMERGE_FROM} = binary ]] \
+		|| ! contains_word keeptemp "${FEATURES}" \
+		&& ! contains_word keepwork "${FEATURES}"
+	then
 		rm -rf "${T}"
 	fi
 
-	if [[ ${EMERGE_FROM} = binary ]] || ! has keepwork ${FEATURES} ; then
+	if [[ ${EMERGE_FROM} = binary ]] || ! contains_word keepwork "${FEATURES}"; then
 		rm -f "${PORTAGE_BUILDDIR}"/.{ebuild_changed,logid,pretended,setuped,unpacked,prepared} \
 			"${PORTAGE_BUILDDIR}"/.{configured,compiled,tested,packaged,instprepped} \
 			"${PORTAGE_BUILDDIR}"/.die_hooks \
@@ -315,16 +349,18 @@ __dyn_clean() {
 	fi
 
 	if [[ -f "${PORTAGE_BUILDDIR}/.unpacked" ]]; then
-		find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | ${XARGS} -0 rmdir &>/dev/null
+		printf '%s\0' "${PORTAGE_BUILDDIR}" \
+		| find0 -depth -type d -empty -print0 \
+		| while read -rd ''; do [[ ${REPLY} != "${WORKDIR}"?(/*) ]] && printf '%s\0' "${REPLY}"; done \
+		| ${XARGS:?} -0 rmdir --
 	fi
 
 	# Do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll
 	# result in it wiping the users distfiles directory (bad).
 	rm -rf "${PORTAGE_BUILDDIR}/distdir"
 
-	rmdir "${PORTAGE_BUILDDIR}" 2>/dev/null
-
-	true
+	printf '%s\0' "${PORTAGE_BUILDDIR}" \
+	| find0 -maxdepth 0 -type d -empty -exec rmdir -- {} \;
 }
 
 __abort_handler() {
@@ -376,7 +412,7 @@ __abort_install() {
 __has_phase_defined_up_to() {
 	local phase
 	for phase in unpack prepare configure compile test install; do
-		has ${phase} ${DEFINED_PHASES} && return 0
+		contains_word "${phase}" "${DEFINED_PHASES}" && return 0
 		[[ ${phase} == $1 ]] && return 1
 	done
 	# We shouldn't actually get here
@@ -412,7 +448,7 @@ __dyn_prepare() {
 		die "eapply_user (or default) must be called in src_prepare()!"
 	fi
 
-	>> "${PORTAGE_BUILDDIR}/.prepared" || \
+	: >> "${PORTAGE_BUILDDIR}/.prepared" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.prepared"
 	__vecho ">>> Source prepared."
 	__ebuild_phase post_src_prepare
@@ -443,7 +479,7 @@ __dyn_configure() {
 
 	__vecho ">>> Configuring source in ${PWD} ..."
 	__ebuild_phase src_configure
-	>> "${PORTAGE_BUILDDIR}/.configured" || \
+	: >> "${PORTAGE_BUILDDIR}/.configured" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.configured"
 	__vecho ">>> Source configured."
 
@@ -475,7 +511,7 @@ __dyn_compile() {
 
 	__vecho ">>> Compiling source in ${PWD} ..."
 	__ebuild_phase src_compile
-	>> "${PORTAGE_BUILDDIR}/.compiled" || \
+	: >> "${PORTAGE_BUILDDIR}/.compiled" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.compiled"
 	__vecho ">>> Source compiled."
 
@@ -503,16 +539,17 @@ __dyn_test() {
 		die "The source directory '${S}' doesn't exist"
 	fi
 
-	if has test ${PORTAGE_RESTRICT} && ! has all ${ALLOW_TEST} &&
-			! { has test_network ${PORTAGE_PROPERTIES} && has network ${ALLOW_TEST}; } &&
-			! { has test_privileged ${PORTAGE_PROPERTIES} && has privileged ${ALLOW_TEST}; }
+	if contains_word test "${PORTAGE_RESTRICT}" \
+		&& ! contains_word all "${ALLOW_TEST}" \
+		&& ! { contains_word test_network "${PORTAGE_PROPERTIES}" && contains_word network "${ALLOW_TEST}"; } \
+		&& ! { contains_word test_privileged "${PORTAGE_PROPERTIES}" && contains_word privileged "${ALLOW_TEST}"; }
 	then
 		einfo "Skipping make test/check due to ebuild restriction."
 		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
 
 	# If ${EBUILD_FORCE_TEST} == 1 and FEATURES came from ${T}/environment
 	# then it might not have FEATURES=test like it's supposed to here.
-	elif [[ ${EBUILD_FORCE_TEST} != 1 ]] && ! has test ${FEATURES} ; then
+	elif [[ ${EBUILD_FORCE_TEST} != 1 ]] && ! contains_word test "${FEATURES}"; then
 		__vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
 		local save_sp=${SANDBOX_PREDICT}
@@ -523,7 +560,7 @@ __dyn_test() {
 		__ebuild_phase src_test
 		__vecho ">>> Completed testing ${CATEGORY}/${PF}"
 
-		>> "${PORTAGE_BUILDDIR}/.tested" || \
+		: >> "${PORTAGE_BUILDDIR}/.tested" || \
 			die "Failed to create ${PORTAGE_BUILDDIR}/.tested"
 		__ebuild_phase post_src_test
 		SANDBOX_PREDICT=${save_sp}
@@ -535,7 +572,7 @@ __dyn_test() {
 __dyn_install() {
 	[[ -z "${PORTAGE_BUILDDIR}" ]] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 
-	if has noauto ${FEATURES} ; then
+	if contains_word noauto "${FEATURES}"; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
 	elif [[ -e ${PORTAGE_BUILDDIR}/.installed ]] ; then
 		__vecho ">>> It appears that '${PF}' is already installed; skipping."
@@ -556,8 +593,9 @@ __dyn_install() {
 
 		# These ones support regular expressions, so translate
 		# fnmatch patterns to regular expressions
-		for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED QA_SONAME ; do
-			if [[ $(declare -p ${x} 2>/dev/null) = declare\ -a* ]] ; then
+		for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED \
+			QA_SONAME QA_SONAME_NO_SYMLINK; do
+			if [[ ${!x@a} == *a* ]]; then
 				eval "${x}=(\"\${${x}[@]}\" ${QA_PREBUILT//\*/.*})"
 			else
 				eval "${x}+=\" ${QA_PREBUILT//\*/.*}\""
@@ -596,10 +634,6 @@ __dyn_install() {
 	__vecho
 	__vecho ">>> Install ${CATEGORY}/${PF} into ${D}"
 
-	# Our custom version of libtool uses ${S} and ${D} to fix
-	# invalid paths in .la files
-	export S D
-
 	# Reset exeinto(), docinto(), insinto(), and into() state variables
 	# in case the user is running the install phase multiple times
 	# consecutively via the ebuild command.
@@ -614,64 +648,69 @@ __dyn_install() {
 	export __E_DOCDESTTREE=""
 
 	__ebuild_phase src_install
-	>> "${PORTAGE_BUILDDIR}/.installed" || \
+	: >> "${PORTAGE_BUILDDIR}/.installed" || \
 		die "Failed to create ${PORTAGE_BUILDDIR}/.installed"
 	__vecho ">>> Completed installing ${CATEGORY}/${PF} into ${D}"
 	__vecho
 	__ebuild_phase post_src_install
 
-	# record build & installed size in build log
-	if type -P du &>/dev/null; then
-		# subshell to avoid polluting the caller env with the helper
-		# functions below
-		(
-			local nsz=( $(du -ks "${WORKDIR}") )
-			local isz=( $(du -ks "${D}") )
-			# align $1 to the right to the width of the widest of $1 and $2
-			padl() {
-				local s1=$1
-				local s2=$2
-				local width=${#s1}
-				[[ ${#s2} -gt ${width} ]] && width=${#s2}
-				printf "%*s" ${width} "${s1}"
-			}
+	# Record the sizes of WORKDIR and D to the build log. Employ a subshell
+	# so as to avoid polluting the caller's environment with several helper
+	# functions.
+	(
+		hash du 2>/dev/null || exit 0
 
-			# transform number in KiB into MiB, GiB or TiB based on size
-			human() {
-				local s1=$1
-				local units=( KiB MiB GiB TiB )
+		local nsz isz
 
-				s1=$((s1 * 10))
-				while [[ ${s1} -gt 10240 && ${#units[@]} -gt 1 ]] ; do
-					s1=$((s1 / 1024 ))
-					units=( ${units[@]:1} )
-				done
+		nsz=$(du -ks "${WORKDIR}")
+		isz=$(du -ks "${D}")
+		nsz=${nsz%%[[:blank:]]*}
+		isz=${isz%%[[:blank:]]*}
 
-				local r=${s1: -1}
-				s1=$((s1 / 10))
-				printf "%s.%s %s" "${s1}" "${r}" "${units[0]}"
-			}
+		# align $1 to the right to the width of the widest of $1 and $2
+		padl() {
+			local s1=$1
+			local s2=$2
+			local width=${#s1}
+			[[ ${#s2} -gt ${width} ]] && width=${#s2}
+			printf "%*s" ${width} "${s1}"
+		}
 
-			size() {
-				local s1=$1
-				local s2=$2
-				local out="$(padl "${s1}" "${s2}") KiB"
+		# transform number in KiB into MiB, GiB or TiB based on size
+		human() {
+			local s1=$1
+			local units=( KiB MiB GiB TiB )
 
-				if [[ ${s1} -gt 1024 ]] ; then
-					s1=$(human ${s1})
-					if [[ ${s2} -gt 1024 ]] ; then
-						s2=$(human ${s2})
-						s1=$(padl "${s1}" "${s2}")
-					fi
-					out+=" (${s1})"
+			s1=$((s1 * 10))
+			while [[ ${s1} -gt 10240 && ${#units[@]} -gt 1 ]] ; do
+				s1=$((s1 / 1024 ))
+				units=( ${units[@]:1} )
+			done
+
+			local r=${s1: -1}
+			s1=$((s1 / 10))
+			printf "%s.%s %s" "${s1}" "${r}" "${units[0]}"
+		}
+
+		size() {
+			local s1=$1
+			local s2=$2
+			local out="$(padl "${s1}" "${s2}") KiB"
+
+			if [[ ${s1} -gt 1024 ]] ; then
+				s1=$(human ${s1})
+				if [[ ${s2} -gt 1024 ]] ; then
+					s2=$(human ${s2})
+					s1=$(padl "${s1}" "${s2}")
 				fi
-				echo "${out}"
-			}
-			einfo "Final size of build directory: $(size ${nsz[0]} ${isz[0]})"
-			einfo "Final size of installed tree:  $(size ${isz[0]} ${nsz[0]})"
-		)
-		__vecho
-	fi
+				out+=" (${s1})"
+			fi
+			echo "${out}"
+		}
+		einfo "Final size of build directory: $(size "${nsz}" "${isz}")"
+		einfo "Final size of installed tree:  $(size "${isz}" "${nsz}")"
+	)
+	__vecho
 
 	cd "${PORTAGE_BUILDDIR}"/build-info
 	set -f
@@ -720,8 +759,9 @@ __dyn_install() {
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[[ -n "${PORTAGE_REPO_NAME}" ]]  && echo "${PORTAGE_REPO_NAME}" > repository
-	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}; then
-		>> DEBUGBUILD
+	[[ -n ${PORTAGE_REPO_REVISIONS} ]] && echo "${PORTAGE_REPO_REVISIONS}" > REPO_REVISIONS
+	if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word strip "${PORTAGE_RESTRICT}"; then
+		: >> DEBUGBUILD
 	fi
 	trap - SIGINT SIGQUIT
 }
@@ -774,7 +814,7 @@ __dyn_help() {
 	echo "  C++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}; then
+	if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word strip "${PORTAGE_RESTRICT}"; then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
@@ -924,7 +964,7 @@ __ebuild_phase_funcs() {
 				src_test() { default; }
 
 			# defaults starting with EAPI 4
-			if ! has ${eapi} 2 3; then
+			if [[ ${eapi} != [23] ]]; then
 				[[ ${phase_func} == src_install ]] && \
 					default_src_install() { __eapi4_src_install; }
 
@@ -933,7 +973,7 @@ __ebuild_phase_funcs() {
 			fi
 
 			# defaults starting with EAPI 6
-			if ! has ${eapi} 2 3 4 4-slot-abi 5; then
+			if [[ ${eapi} != [2-5] ]]; then
 				[[ ${phase_func} == src_prepare ]] && \
 					default_src_prepare() { __eapi6_src_prepare; }
 				[[ ${phase_func} == src_install ]] && \
@@ -944,7 +984,7 @@ __ebuild_phase_funcs() {
 			fi
 
 			# defaults starting with EAPI 8
-			if ! has ${eapi} 2 3 4 4-slot-abi 5 6 7; then
+			if [[ ${eapi} != [2-7] ]]; then
 				[[ ${phase_func} == src_prepare ]] && \
 					default_src_prepare() { __eapi8_src_prepare; }
 			fi
@@ -958,8 +998,20 @@ __ebuild_main() {
 	# setup EBUILD_MASTER_PID to refer to the current ${BASHPID},
 	# which seems to give the best results when further
 	# nested subshells call die.
-	export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
+	export EBUILD_MASTER_PID=${BASHPID}
 	trap 'exit 1' SIGTERM
+
+	if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE &&
+			  ${PORTAGE_EBUILD_EXTRA_SOURCE} != ${T}/* ]]; then
+		# Cleanup PORTAGE_EBUILD_EXTRA_SOURCE after ebuild.sh
+		# (__ebuild_main()) finishes if PORTAGE_EBUILD_EXTRA_SOURCE is
+		# not under T.
+		__portage_ebuild_exit() {
+			rm "${PORTAGE_EBUILD_EXTRA_SOURCE}" ||
+				die "failed to remove PORTAGE_EBUILD_EXTRA_SOURCE file (${PORTAGE_EBUILD_EXTRA_SOURCE})"
+		}
+		trap __portage_ebuild_exit EXIT
+	fi
 
 	# A reasonable default for ${S}
 	[[ -z ${S} ]] && export S=${WORKDIR}/${P}
@@ -985,7 +1037,9 @@ __ebuild_main() {
 
 	# Force configure scripts that automatically detect ccache to
 	# respect FEATURES="-ccache".
-	has ccache ${FEATURES} || export CCACHE_DISABLE=1
+	if ! contains_word ccache "${FEATURES}"; then
+		export CCACHE_DISABLE=1
+	fi
 
 	local ___phase_func=$(__ebuild_arg_to_phase "${EBUILD_PHASE}")
 	[[ -n ${___phase_func} ]] && __ebuild_phase_funcs "${EAPI}" "${___phase_func}"
@@ -997,12 +1051,11 @@ __ebuild_main() {
 		__ebuild_phase_with_hooks pkg_nofetch
 		;;
 	prerm|postrm|preinst|postinst|config|info)
-		if has "${1}" config info && \
-			! declare -F "pkg_${1}" >/dev/null ; then
+		if [[ $1 == @(config|info) ]] && ! declare -F "pkg_${1}" >/dev/null; then
 			ewarn  "pkg_${1}() is not defined: '${EBUILD##*/}'"
 		fi
 		export SANDBOX_ON="0"
-		if [[ "${PORTAGE_DEBUG}" != "1" || "${-/x/}" != "$-" ]]; then
+		if [[ ${PORTAGE_DEBUG} != 1 || $- == *x* ]]; then
 			__ebuild_phase_with_hooks pkg_${1}
 		else
 			set -x
@@ -1038,12 +1091,14 @@ __ebuild_main() {
 			done
 			unset x
 
-			has distcc ${FEATURES} && [[ -n ${DISTCC_DIR} ]] && \
-				[[ ${SANDBOX_WRITE/${DISTCC_DIR}} = ${SANDBOX_WRITE} ]] && \
-				addwrite "${DISTCC_DIR}"
+			contains_word distcc "${FEATURES}" \
+			&& [[ ${DISTCC_DIR} ]] \
+			&& [[ ${SANDBOX_WRITE/${DISTCC_DIR}} == ${SANDBOX_WRITE} ]] \
+			&& addwrite "${DISTCC_DIR}"
 
-			if has noauto ${FEATURES} && \
-				[[ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]] ; then
+			if contains_word noauto "${FEATURES}" \
+				&& [[ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]]
+			then
 				echo
 				echo "!!! We apparently haven't unpacked..." \
 					"This is probably not what you"
@@ -1069,7 +1124,7 @@ __ebuild_main() {
 			;;
 		esac
 
-		if [[ "${PORTAGE_DEBUG}" != "1" || "${-/x/}" != "$-" ]]; then
+		if [[ ${PORTAGE_DEBUG} != 1 || $- == *x* ]]; then
 			__dyn_${1}
 		else
 			set -x
@@ -1083,7 +1138,7 @@ __ebuild_main() {
 		# for example, awking and piping a file in /tmp requires a temp file to be created
 		# in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
-		if [[ "${PORTAGE_DEBUG}" != "1" || "${-/x/}" != "$-" ]]; then
+		if [[ ${PORTAGE_DEBUG} != 1 || $- == *x* ]]; then
 			__dyn_${1}
 		else
 			set -x
@@ -1103,7 +1158,7 @@ __ebuild_main() {
 	esac
 
 	# Save the env only for relevant phases.
-	if ! has "${1}" clean help info nofetch ; then
+	if [[ $1 != @(clean|help|info|nofetch) ]]; then
 		umask 002
 
 		# Use safe cwd, avoiding unsafe import for bug #469338.
@@ -1116,7 +1171,7 @@ __ebuild_main() {
 		chmod g+w "${T}/environment"
 	fi
 
-	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && > "${PORTAGE_EBUILD_EXIT_FILE}"
+	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && : > "${PORTAGE_EBUILD_EXIT_FILE}"
 	if [[ -n ${PORTAGE_IPC_DAEMON} ]] ; then
 		[[ ! -s ${SANDBOX_LOG} ]]
 

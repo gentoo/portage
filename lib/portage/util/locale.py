@@ -16,7 +16,7 @@ import traceback
 
 import portage
 from portage.util import _unicode_decode, writemsg_level
-from portage.util._ctypes import find_library, LoadLibrary
+from portage.util._ctypes import load_libc
 from portage.util.futures import asyncio
 
 
@@ -43,15 +43,9 @@ def _check_locale(silent):
     """
     The inner locale check function.
     """
-    try:
-        from portage.util import libc
-    except ImportError:
-        libc_fn = find_library("c")
-        if libc_fn is None:
-            return None
-        libc = LoadLibrary(libc_fn)
-        if libc is None:
-            return None
+    (libc, _) = load_libc()
+    if libc is None:
+        return None
 
     lc = list(range(ord("a"), ord("z") + 1))
     uc = list(range(ord("A"), ord("Z") + 1))

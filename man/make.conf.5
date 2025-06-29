@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jan 2024" "Portage @VERSION@" "Portage"
+.TH "MAKE.CONF" "5" "Aug 2024" "Portage @VERSION@" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -203,7 +203,7 @@ The GPG home where the trusted keys located. Please make sure the target \
 directory is globally readable, as the user will be dropped to \fBnobody\fR \
 during verification.
 .br
-Defaults to "/etc/portage/gnupg"
+Defaults to "/etc/portage/gnupg".
 .br
 .TP
 .B CBUILD
@@ -213,11 +213,12 @@ unless you know what you are doing.
 .TP
 \fBCCACHE_DIR\fR = \fI[path]\fR
 Defines the location of the ccache working directory.  See the \fBccache\fR(1)
-man page for more information.
+man page for more information.  The default location set by Portage differs
+from the upstream default.
 
 Only trusted users should be granted write access to this location.
 
-Defaults to /var/tmp/ccache
+Defaults to "${PORTAGE_TMPDIR}/ccache".
 .TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
 This controls the space use limitations for ccache.  See the \fI\-M\fR flag in
@@ -539,6 +540,23 @@ Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
 Run GPG unlock command every 5 mins to avoid the passphrase expired.
 If your GPG is auto unlocked on login, you do not need this.
 .TP
+.B home\-dir\-template\-copy
+As part of the ebuild environment setup, copy the PORTAGE_USERNAME (default
+"portage") home directory (currently /var/lib/portage/home) into the build environment
+HOME directory. By default, Portage uses an empty home directory for each new build.
+
+This is useful, for example, if the git-r3 eclass is being used to access a repository
+via ssh where keys and known_hosts values need to be specified in the ~/.ssh
+directory.
+
+It's also useful for adressing git's "fatal: detected dubious ownership in
+repository at..." error, which can occur when the ebuild is fetching from a
+local filesystem-resident repo. Running git to create an "--add safe.directory"
+exception \fInarrowly\fR to apply only to the portage user can be done as follows:
+
+    sudo -u portage git config --global --add safe.directory ...
+
+.TP
 .B icecream
 Enable portage support for the icecream package.
 .TP
@@ -655,9 +673,12 @@ terminal to view parallel-fetch progress.
 .TP
 .B parallel\-install
 Use finer\-grained locks when installing packages, allowing for greater
-parallelism. Note that \fIparallel\-install\fR currently has no effect
-unless \fImerge\-wait\fR is disabled. For additional parallelism,
-disable \fIebuild\-locks\fR.
+parallelism. For additional parallelism disable \fIebuild\-locks\fR.
+Also disable \fImerge\-wait\fR for additional parallelism if desired,
+but that increases the possibility of random build failures. When
+\fIparallel\-install\fR is used together with \fImerge\-wait\fR,
+parallel installation occurs in batches when there are no builds
+running.
 .TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it
@@ -721,6 +742,11 @@ Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
 On Mac OS X platforms that have /usr/bin/sandbox-exec available (10.5
 and later), this particular sandbox implementation is used instead of
 sys-apps/sandbox.
+.TP
+.B selinux
+Enable SELinux awareness.  Portage will install objects to the filesystem with
+a SELinux context calculated from the current loaded policy.
+Do not toggle this \fBFEATURE\fR yourself.
 .TP
 .B sesandbox
 Enable SELinux sandbox\-ing.  Do not toggle this \fBFEATURE\fR yourself.
@@ -951,6 +977,14 @@ Setting this and other *FLAGS variables arbitrarily may cause compile or
 runtime failures. Bug reports submitted when nonstandard values are
 enabled for these flags may be closed as INVALID.
 .TP
+.B MAKEFLAGS
+Use this variable instead of \fBMAKEOPTS\fR if you want to inject a
+centralized job server for make. In this case \fBMAKEOPTS\fR should be
+unset or else it can cause the make jobserver mode to reset. Include
+a \fB--jobserver-auth=fifo:PATH\fR flag to specify the path of the
+centralized jobserver fifo, which needs to be readable and writable by
+the portage group when userpriv is enabled.
+.TP
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
 have a dual\-processor system, set this variable to "\-j2" or "\-j3" for
@@ -1165,10 +1199,15 @@ PORTAGE_LOG_FILTER_FILE_CMD="bash -c \\"ansifilter; exec cat\\""
 .B PORTAGE_LOGDIR
 This variable defines the directory in which per\-ebuild logs are kept.
 Logs are created only when this is set. They are stored as
-${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
-directory does not exist, it will be created automatically and group
+${CATEGORY}<sep>${PF}<sep>YYYYMMDD\-HHMMSS.log in the directory specified,
+where <sep> is specified via PORTAGE_LOG_FILE_SEP, which defaults to ':'.
+If the directory does not exist, it will be created automatically and group
 permissions will be applied to it.  If the directory already exists, portage
 will not modify its permissions.
+.TP
+.B PORTAGE_LOG_FILE_SEP
+This variable defines the separator used between the components of the log
+files in PORTAGE_LOGDIR. Defaults to ':'.
 .TP
 .B PORTAGE_LOGDIR_CLEAN
 This variable should contain a command for portage to call in order
@@ -1236,7 +1275,7 @@ Defines the location of the temporary build directories.
 
 Only trusted users should be granted write access to ${PORTAGE_TMPDIR}/portage.
 
-Defaults to /var/tmp.
+Defaults to "/var/tmp".
 
 This should not be set to point anywhere under location of any repository.
 .TP
@@ -1351,12 +1390,12 @@ images. Make sure you use an absolute path. Refer to the
 \fBCross-compilation\fR section of \fBebuild\fR(5) for information about
 how dependencies are handled for \fBROOT\fR.
 .br
-Defaults to /.
+Defaults to "/".
 .TP
 \fBRPMDIR\fR = \fI[path]\fR
 Defines the location where created RPM packages will be stored.
 .br
-Defaults to /var/cache/rpm.
+Defaults to "/var/cache/rpm".
 .TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server
@@ -1366,7 +1405,7 @@ Note that the \fBSYNC\fR variable is now deprecated, and instead the
 sync\-type and sync\-uri attributes in repos.conf should be used. See
 \fBportage\fR(5) for more information.
 
-Defaults to rsync://rsync.gentoo.org/gentoo\-portage
+Defaults to "rsync://rsync.gentoo.org/gentoo\-portage".
 .RS
 .TP
 .B Usage:

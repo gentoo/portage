@@ -7,7 +7,10 @@ import sys
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
+import portage
 from portage import os
+from portage.elog import messages as elog_messages
+from portage.util import no_color
 
 
 class BinpkgPrefetcher(CompositeTask):
@@ -48,6 +51,14 @@ class BinpkgPrefetcher(CompositeTask):
             self.wait()
             return
 
+        if self._bintree.get_local_repo_location(self.pkg.cpv):
+            os.rename(self.pkg_path, self.pkg_allocated_path)
+            self._current_task = None
+            self.returncode = os.EX_OK
+            self.wait()
+            return
+
+        injected_pkg = None
         stdout_orig = sys.stdout
         stderr_orig = sys.stderr
         out = io.StringIO()
@@ -67,12 +78,33 @@ class BinpkgPrefetcher(CompositeTask):
 
             output_value = out.getvalue()
             if output_value:
-                self.scheduler.output(
-                    output_value,
-                    log_path=self.scheduler.fetch.log_file,
-                    background=self.background,
-                )
+                if injected_pkg is None:
+                    msg = ["Binary package is not usable:"]
+                    msg.extend("\t" + line for line in output_value.splitlines())
+                    self._elog("eerror", msg)
+                else:
+                    self.scheduler.output(
+                        output_value,
+                        log_path=self.scheduler.fetch.log_file,
+                        background=self.background,
+                    )
 
         self._current_task = None
         self.returncode = 1 if injected_pkg is None else os.EX_OK
         self.wait()
+
+    def _elog(self, elog_funcname, lines, phase="other"):
+        out = io.StringIO()
+        elog_func = getattr(elog_messages, elog_funcname)
+        global_havecolor = portage.output.havecolor
+        try:
+            portage.output.havecolor = not no_color(self._bintree.settings)
+            for line in lines:
+                elog_func(line, phase=phase, key=self.pkg.cpv, out=out)
+        finally:
+            portage.output.havecolor = global_havecolor
+        msg = out.getvalue()
+        if msg:
+            self.scheduler.output(
+                msg, background=self.background, log_path=self.scheduler.fetch.log_file
+            )

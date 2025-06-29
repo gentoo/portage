@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 # Check for accidental install into ${D}/${D}
 
 DD_check() {
@@ -15,4 +17,4 @@ DD_check() {
 DD_check
 : # guarantee successful exit
 
-# vim:ft=sh
+# vim:ft=bash

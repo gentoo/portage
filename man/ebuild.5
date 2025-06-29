@@ -734,7 +734,7 @@ If flag1 enabled then flag2 enabled	flag1? ( flag2 )
 If flag1 disabled then flag2 enabled	!flag1? ( flag2 )
 If flag1 disabled then flag2 disabled	!flag1? ( !flag2 )
 Must enable any one or more (inclusive or)	|| ( flag1 flag2 flag3 )
-Must enable exactly one but not more (exclusive or)	^^ ( flag1 flag2 flag3 )
+Must enable exactly one but not more (exclusive or)	\(ha\(ha ( flag1 flag2 flag3 )
 May enable at most one (EAPI 5 or later)	?? ( flag1 flag2 flag3 )
 .TE
 .TP
@@ -862,34 +862,6 @@ This should contain a list of file paths, relative to the image directory, of
 desktop files which should not be validated. The paths may contain regular
 expressions with escape\-quoted special characters.
 .TP
-.B QA_DT_NEEDED
-This should contain a list of file paths, relative to the image directory, of
-shared libraries that lack NEEDED entries. The paths may contain regular
-expressions with escape\-quoted special characters.
-.TP
-.B QA_EXECSTACK
-This should contain a list of file paths, relative to the image directory, of
-objects that require executable stack in order to run.
-The paths may contain fnmatch patterns.
-
-This variable is intended to be used on objects that truly need executable
-stack (i.e. not those marked to need it which in fact do not).
-.TP
-.B QA_FLAGS_IGNORED
-This should contain a list of file paths, relative to the image directory, of
-files that do not contain .GCC.command.line sections or contain .hash sections.
-The paths may contain regular expressions with escape\-quoted special
-characters.
-
-This variable is intended to be used on files of binary packages which ignore
-CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
-.TP
-.B QA_IGNORE_INSTALL_NAME_FILES
-This should contain a list of file names (without path) that should be
-ignored in the install_name check.  That is, if these files point to
-something not available in the image directory or live filesystem, these
-files are ignored, albeit being broken.
-.TP
 .B QA_MULTILIB_PATHS
 This should contain a list of file paths, relative to the image directory, of
 files that should be ignored for the multilib\-strict checks.
@@ -912,6 +884,28 @@ the QA_* variables that support regular expressions instead
 of fnmatch patterns. The translation mechanism simply replaces
 "*" with ".*".
 .TP
+.B QA_DT_NEEDED
+This should contain a list of file paths, relative to the image directory, of
+shared libraries that lack NEEDED entries. The paths may contain regular
+expressions with escape\-quoted special characters.
+.TP
+.B QA_EXECSTACK
+This should contain a list of file paths, relative to the image directory, of
+objects that require executable stack in order to run.
+The paths may contain fnmatch patterns.
+
+This variable is intended to be used on objects that truly need executable
+stack (i.e. not those marked to need it which in fact do not).
+.TP
+.B QA_FLAGS_IGNORED
+This should contain a list of file paths, relative to the image directory, of
+files that do not contain .GCC.command.line sections or contain .hash sections.
+The paths may contain regular expressions with escape\-quoted special
+characters.
+
+This variable is intended to be used on files of binary packages which ignore
+CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
+.TP
 .B QA_PRESTRIPPED
 This should contain a list of file paths, relative to the image directory, of
 files that contain pre-stripped binaries. The paths may contain regular
@@ -927,6 +921,12 @@ This should contain a list of file paths, relative to the image directory, of
 shared libraries that have SONAMEs but should not have a corresponding SONAME
 symlink in the same directory. The paths may contain regular expressions
 with escape\-quoted special characters.
+.TP
+.B QA_IGNORE_INSTALL_NAME_FILES
+This should contain a list of file names (without path) that should be
+ignored in the install_name check.  That is, if these files point to
+something not available in the image directory or live filesystem, these
+files are ignored, albeit being broken.
 .TP
 .B QA_TEXTRELS
 This variable can be set to a list of file paths, relative to the image

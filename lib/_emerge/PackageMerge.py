@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.CompositeTask import CompositeTask
@@ -7,7 +7,7 @@ from portage.output import colorize
 
 
 class PackageMerge(CompositeTask):
-    __slots__ = ("merge", "postinst_failure")
+    __slots__ = ("is_system_pkg", "merge", "postinst_failure")
 
     def _should_show_status(self):
         return (

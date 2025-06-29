@@ -26,10 +26,10 @@ def have_pep_476():
     return hasattr(__import__("ssl"), "_create_unverified_context")
 
 
-def urlopen(url, if_modified_since=None, headers={}, proxies=None):
+def urlopen(url, timeout=10, if_modified_since=None, headers={}, proxies=None):
     parse_result = urllib_parse.urlparse(url)
     if parse_result.scheme not in ("http", "https"):
-        return _urlopen(url)
+        return _urlopen(url, timeout=timeout)
 
     netloc = parse_result.netloc.rpartition("@")[-1]
     url = urllib_parse.urlunparse(
@@ -59,7 +59,7 @@ def urlopen(url, if_modified_since=None, headers={}, proxies=None):
         handlers.append(urllib_request.ProxyHandler(proxies))
     opener = urllib_request.build_opener(*handlers)
 
-    hdl = opener.open(request)
+    hdl = opener.open(request, timeout=timeout)
     if hdl.headers.get("last-modified", ""):
         try:
             add_header = hdl.headers.add_header

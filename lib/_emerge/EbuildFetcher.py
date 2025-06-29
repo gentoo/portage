@@ -1,9 +1,11 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
 import functools
 import io
+import multiprocessing
+import signal
 import sys
 
 import portage
@@ -17,11 +19,12 @@ from portage.package.ebuild.fetch import (
     _check_distfile,
     _drop_privs_userfetch,
     _want_userfetch,
-    fetch,
+    async_fetch,
 )
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._pty import _create_pty_or_pipe
+from portage.util.futures import asyncio
 from _emerge.CompositeTask import CompositeTask
 
 
@@ -34,6 +37,7 @@ class EbuildFetcher(CompositeTask):
         "logfile",
         "pkg",
         "prefetch",
+        "pre_exec",
         "_fetcher_proc",
     )
 
@@ -253,6 +257,7 @@ class _EbuildFetcherProcess(ForkProcess):
             self._get_manifest(),
             self._uri_map,
             self.fetchonly,
+            self.pre_exec,
         )
         ForkProcess._start(self)
 
@@ -263,7 +268,10 @@ class _EbuildFetcherProcess(ForkProcess):
         self._settings = None
 
     @staticmethod
-    def _target(settings, manifest, uri_map, fetchonly):
+    def _target(settings, manifest, uri_map, fetchonly, pre_exec):
+        if pre_exec is not None:
+            pre_exec()
+
         # Force consistent color output, in case we are capturing fetch
         # output through a normal pipe due to unavailability of ptys.
         portage.output.havecolor = settings.get("NOCOLOR") not in ("yes", "true")
@@ -273,17 +281,53 @@ class _EbuildFetcherProcess(ForkProcess):
         if _want_userfetch(settings):
             _drop_privs_userfetch(settings)
 
-        rval = 1
         allow_missing = manifest.allow_missing or "digest" in settings.features
-        if fetch(
-            uri_map,
-            settings,
-            fetchonly=fetchonly,
-            digests=copy.deepcopy(manifest.getTypeDigests("DIST")),
-            allow_missing_digests=allow_missing,
-        ):
-            rval = os.EX_OK
-        return rval
+
+        async def main():
+            loop = asyncio.get_event_loop()
+            task = asyncio.ensure_future(
+                async_fetch(
+                    uri_map,
+                    settings,
+                    fetchonly=fetchonly,
+                    digests=copy.deepcopy(manifest.getTypeDigests("DIST")),
+                    allow_missing_digests=allow_missing,
+                )
+            )
+
+            def sigterm_handler(signum, _frame):
+                loop.call_soon_threadsafe(task.cancel)
+                signal.signal(signal.SIGTERM, signal.SIG_IGN)
+
+            signal.signal(signal.SIGTERM, sigterm_handler)
+            try:
+                await task
+            except asyncio.CancelledError:
+                # If asyncio.CancelledError arrives too soon after fork/spawn
+                # then handers will not have an opportunity to terminate
+                # the corresponding process, so clean up after this race.
+                for proc in multiprocessing.active_children():
+                    proc.terminate()
+
+                # Use a non-zero timeout only for the first join because
+                # later joins are delayed by the first join.
+                timeout = 0.25
+                for proc in multiprocessing.active_children():
+                    proc.join(timeout)
+                    timeout = 0
+
+                for proc in multiprocessing.active_children():
+                    proc.kill()
+                    # Wait upon the process in order to ensure that its
+                    # pid will trigger ProcessLookupError for tests.
+                    proc.join()
+
+                signal.signal(signal.SIGTERM, signal.SIG_DFL)
+                os.kill(os.getpid(), signal.SIGTERM)
+
+            return os.EX_OK if task.result() else 1
+
+        return asyncio.run(main())
 
     def _get_ebuild_path(self):
         if self.ebuild_path is not None:
@@ -329,7 +373,7 @@ class _EbuildFetcherProcess(ForkProcess):
         def cache_result(result):
             try:
                 self._uri_map = result.result()
-            except Exception:
+            except (asyncio.CancelledError, Exception):
                 # The caller handles this when it retrieves the result.
                 pass
 
@@ -394,7 +438,9 @@ class _EbuildFetcherProcess(ForkProcess):
         stdout_pipe = None
         if not self.background:
             stdout_pipe = fd_pipes.get(1)
-        got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
+        self._pty_ready, master_fd, slave_fd = _create_pty_or_pipe(
+            copy_term_size=stdout_pipe
+        )
         return (master_fd, slave_fd)
 
     def _eerror(self, lines):

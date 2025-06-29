@@ -1,4 +1,4 @@
-# Copyright 2020 Gentoo Authors
+# Copyright 2020-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import OrderedDict
@@ -12,13 +12,16 @@ from portage.util.configparser import SafeConfigParser, ConfigParserError, read_
 
 class BinRepoConfig:
     __slots__ = (
+        "frozen",
         "name",
         "name_fallback",
         "fetchcommand",
+        "location",
         "priority",
         "resumecommand",
         "sync_uri",
     )
+    _bool_opts = ("frozen",)
 
     def __init__(self, opts):
         """
@@ -26,6 +29,9 @@ class BinRepoConfig:
         """
         for k in self.__slots__:
             setattr(self, k, opts.get(k.replace("_", "-")))
+        for k in self._bool_opts:
+            if isinstance(getattr(self, k, None), str):
+                setattr(self, k, getattr(self, k).lower() in ("true", "yes"))
 
     def info_string(self):
         """
@@ -35,9 +41,13 @@ class BinRepoConfig:
         indent = " " * 4
         repo_msg = []
         repo_msg.append(self.name or self.name_fallback)
+        if self.location:
+            repo_msg.append(indent + "location: " + self.location)
         if self.priority is not None:
             repo_msg.append(indent + "priority: " + str(self.priority))
         repo_msg.append(indent + "sync-uri: " + self.sync_uri)
+        if self.frozen:
+            repo_msg.append(f"{indent}frozen: {str(self.frozen).lower()}")
         repo_msg.append("")
         return "\n".join(repo_msg)
 
@@ -48,6 +58,7 @@ class BinRepoConfigLoader(Mapping):
 
         # Defaults for value interpolation.
         parser_defaults = {
+            "frozen": "false",
             "EPREFIX": settings["EPREFIX"],
             "EROOT": settings["EROOT"],
             "PORTAGE_CONFIGROOT": settings["PORTAGE_CONFIGROOT"],

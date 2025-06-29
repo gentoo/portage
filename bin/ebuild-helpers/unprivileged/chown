@@ -2,7 +2,7 @@
 # Copyright 2012-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 scriptpath=${BASH_SOURCE[0]}
 scriptname=${scriptpath##*/}

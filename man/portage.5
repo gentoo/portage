@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Apr 2023" "Portage @VERSION@" "Portage"
+.TH "PORTAGE" "5" "Jul 2024" "Portage @VERSION@" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -134,6 +134,7 @@ database to track installed packages
 .BR /var/lib/portage/
 .nf
 config
+repo_revisions
 world
 world_sets
 .fi
@@ -642,6 +643,12 @@ is intended to be used as a replacement for the \fBmake.conf\fR(5)
 .I Attributes supported in DEFAULT section:
 .RS
 .TP
+.B frozen = yes|no|true|false
+Use the most recently cached copy of the remote index, and do not
+attempt to refresh it. This should only be set temporarily in order to
+guarantee consistent and reproducible dependency calculations (for
+mixed binary and source updates).
+.TP
 .B fetchcommand
 Specifies a \fBFETCHCOMMAND\fR used to fetch files from a repository,
 overriding the value from \fBmake.conf\fR(5).
@@ -659,6 +666,11 @@ overriding the value from \fBmake.conf\fR(5).
 .B priority
 Specifies priority of given repository. When a package exists in multiple
 repositories, those with higher priority are preferred.
+.TP
+.B location
+Specify a cache location which serves as a partial local mirror of a
+remote repository. If unset then the effective default is PKGDIR
+(see \fBmake.conf\fR(5)).
 .TP
 .B sync\-uri
 Specifies URI of repository used for `emerge \-\-getbinpkg`.
@@ -1140,7 +1152,7 @@ expire while it is in use by a running process.
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid non\-empty values: cvs, git, mercurial, rsync, svn, webrsync
+Valid non\-empty values: cvs, git, mercurial, rsync, zipfile, svn, webrsync
 (emerge\-webrsync)
 .br
 This attribute can be set to empty value to disable synchronization of given
@@ -1165,6 +1177,8 @@ cvs: [cvs://]:access_method:[username@]hostname[:port]:/path
 git: (git|git+ssh|http|https)://[username@]hostname[:port]/path
 .br
 rsync: (rsync|ssh)://[username@]hostname[:port]/(module|path)
+.br
+zipfile: (http|https)://hostname[:port]/path/to/zipfile.zip
 .TP
 Examples:
 .RS
@@ -1326,6 +1340,13 @@ auto\-sync = yes
 location = /var/lib/layman/voip
 sync\-type = laymanator
 sync\-uri = git://anongit.gentoo.org/proj/voip.git
+auto\-sync = yes
+
+# Overlay with latest ebuild repository snapshot.
+[snapshot]
+location = /var/db/repos/snapshot
+sync\-type = zipfile
+sync\-uri = https://github.com/gentoo/gentoo/archive/refs/heads/master.zip
 auto\-sync = yes
 .fi
 .RE
@@ -1885,6 +1906,20 @@ x86_32: ld-linux.so.2 libc.so.6 x86_64: ld-linux-x86-64.so.2 libc.so.6
 Hashes which are used to determine whether files in config protected
 directories have been modified since being installed.  Files which have not
 been modified will automatically be unmerged.
+.TP
+.BR repo_revisions
+Contains the most recent repository revisions obtained via either
+\fBemaint sync\fR or \fBemerge \-\-sync\fR. The format is a JSON
+object which maps a repo name to list of revisions in descending
+order by time. In cases when revisions are not ordered by time,
+the volatile attribute should be set in \fBrepos.conf\fR in order
+to prevent unordered revisions from being stored in the
+repo_revisions file. The \fBemaint revisions\fR command can be
+used to purge revisions for specific repos, which should be done
+in any case when there is a need to roll back to an older
+revision (the \fBemerge\-webrsync \-\-revert\fR option calls
+\fBemaint revisions\fR in order to purge all revision history
+for the repository).
 .TP
 .BR world
 Every time you emerge a package, the package that you requested is
