@@ -48,7 +48,7 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # Read an environment from stdin and echo to stdout while filtering variables
 # with names that are known to cause interference:
 #
-#   * all variables that can be set by or that may affect bash (except PATH)
+#   * all variables that can be set by or that affect bash (except EMACS & PATH)
 #   * some specific variables that affect portage or sandbox behavior
 #   * variable names that begin with a digit or that contain any
 #     non-alphanumeric characters that are not be supported by bash
