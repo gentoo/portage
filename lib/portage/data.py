@@ -6,8 +6,6 @@ import grp
 import os
 import platform
 import pwd
-# PREFIX LOCAL
-from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME, EPREFIX
 
 import portage
 from portage.localization import _
@@ -23,7 +21,7 @@ portage.proxy.lazyimport.lazyimport(
 ostype = platform.system()
 userland = "GNU"
 # PREFIX LOCAL: Prefix always has USERLAND=GNU
-if EPREFIX == "" and (ostype == "DragonFly" or ostype.endswith("BSD")):
+if portage.const.EPREFIX == "" and (ostype == "DragonFly" or ostype.endswith("BSD")):
     userland = "BSD"
 
 lchown = getattr(os, "lchown", None)
@@ -332,17 +330,13 @@ def _init(settings):
         # from grp.getgrnam() with PyPy
         native_string = platform.python_implementation() == "PyPy"
 
-        # PREFIX LOCAL: use var iso hardwired 'portage'
-        v = settings.get("PORTAGE_GRPNAME", PORTAGE_GROUPNAME)
-        # END PREFIX LOCAL
+        v = settings.get("PORTAGE_GRPNAME", "portage")
         if native_string:
             v = portage._native_string(v)
         globals()["_portage_grpname"] = v
         _initialized_globals.add("_portage_grpname")
 
-        # PREFIX LOCAL: use var iso hardwired 'portage'
-        v = settings.get("PORTAGE_USERNAME", PORTAGE_USERNAME)
-        # END PREFIX LOCAL
+        v = settings.get("PORTAGE_USERNAME", "portage")
         if native_string:
             v = portage._native_string(v)
         globals()["_portage_username"] = v

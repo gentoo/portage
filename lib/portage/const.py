@@ -121,9 +121,6 @@ MACOSSANDBOX_PROFILE     = '''(version 1)
 @@MACOSSANDBOX_PATHS@@)
 (allow file-write-data
 @@MACOSSANDBOX_PATHS_CONTENT_ONLY@@)'''
-
-PORTAGE_GROUPNAME        = portagegroup
-PORTAGE_USERNAME         = portageuser
 # END PREFIX LOCAL
 
 INVALID_ENV_FILE = "/etc/spork/is/not/valid/profile.env"

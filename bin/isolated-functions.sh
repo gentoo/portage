@@ -696,8 +696,7 @@ debug-print() {
 		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
 
 		# Let the portage user own/write to this file
-		# PREFIX LOCAL: fallback to configured group
-		chgrp "${PORTAGE_GRPNAME:-${PORTAGE_GROUP}}" "${T}/eclass-debug.log"
+		chgrp "${PORTAGE_GRPNAME:-portage}" "${T}/eclass-debug.log"
 		chmod g+w "${T}/eclass-debug.log"
 	fi
 }

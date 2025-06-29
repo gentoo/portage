@@ -127,10 +127,6 @@ __save_ebuild_env() (
 	# user config variables
 	unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
 
-	# PREFIX LOCAL: Prefix additions
-	unset EXTRA_PATH PORTAGE_GROUP PORTAGE_USER
-	# END PREFIX LOCAL
-
 	declare -p
 	declare -fp
 )

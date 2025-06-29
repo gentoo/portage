@@ -139,9 +139,8 @@ USE_ORDER="env:pkg:conf:defaults:pkginternal:features:repo:env.d"
 
 # PREFIX LOCAL: additional vars set during install
 # Default portage user/group
-PORTAGE_USER='@portageuser@'
-PORTAGE_GROUP='@portagegroup@'
-PORTAGE_ROOT_USER='@rootuser@'
+PORTAGE_USERNAME='@portageuser@'
+PORTAGE_GRPNAME='@portagegroup@'
 
 # Default ownership of installed files.
 PORTAGE_INST_UID="@rootuid@"
@@ -157,6 +156,7 @@ PORTAGE_ELOG_SYSTEM="save_summary:log,warn,error,qa echo"
 PORTAGE_ELOG_MAILURI="@rootuser@"
 PORTAGE_ELOG_MAILSUBJECT="[portage] ebuild log for \${PACKAGE} on \${HOST}"
 PORTAGE_ELOG_MAILFROM="@portageuser@@localhost"
+# END PREFIX LOCAL
 
 # Signing command used by egencache
 PORTAGE_GPG_SIGNING_COMMAND="gpg --sign --digest-algo SHA256 --clearsign --yes --default-key \"\${PORTAGE_GPG_KEY}\" --homedir \"\${PORTAGE_GPG_DIR}\" \"\${FILE}\""

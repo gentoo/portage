@@ -1166,8 +1166,7 @@ __ebuild_main() {
 		__save_ebuild_env | __filter_readonly_variables \
 			--filter-features > "${T}/environment"
 		assert "__save_ebuild_env failed"
-		# PREFIX LOCAL: use configured group
-		chgrp "${PORTAGE_GRPNAME:-${PORTAGE_GROUP}}" "${T}/environment"
+		chgrp "${PORTAGE_GRPNAME:-portage}" "${T}/environment"
 		chmod g+w "${T}/environment"
 	fi
 

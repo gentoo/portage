@@ -243,11 +243,6 @@ environ_whitelist = frozenset(
         "STY",
         "WINDOW",
         "XAUTHORITY",
-        # BEGIN PREFIX LOCAL
-        "EXTRA_PATH",
-        "PORTAGE_GROUP",
-        "PORTAGE_USER",
-        # END PREFIX LOCAL
     )
 )
 
