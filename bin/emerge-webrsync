@@ -243,16 +243,18 @@ check_file_digest() {
 	fi
 }
 
-md5sum_hex() {
-	local output
-
-	if hash md5 2>/dev/null; then
+if hash md5 2>/dev/null; then
+	md5sum_hex() {
 		md5 -q -- "$1"
-	else
+	}
+else
+	md5sum_hex() {
+		local output
+
 		output=$(md5sum -- "$1") \
 		&& printf '%s\n' "${output%%[[:blank:]]*}"
-	fi
-}
+	}
+fi
 
 check_file_signature_gemato() {
 	local file=$1
