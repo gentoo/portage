@@ -339,7 +339,7 @@ gpg_fingerprint() {
 		[[ ${fields[0]} == fpr && ${fields[9]} =~ ^[[:xdigit:]]{40}$ ]] \
 		&& printf '%s\n' "${fields[9]}" \
 		&& return
-	done < <(gpg --with-colons --list-keys "$@")
+	done < <(gpg --batch --with-colons --list-keys "$@")
 }
 
 gpg_verify() {
