@@ -262,16 +262,10 @@ check_file_signature_gemato() {
 	local key
 
 	assign_key
+	gemato_args=( openpgp-verify-detached -K "${key}" )
 
-	gemato_args=(
-		openpgp-verify-detached
-		-K "${key}"
-	)
-
-	if [[ -n ${http_proxy} || -n ${https_proxy} ]] ; then
-		gemato_args+=(
-			--proxy "${http_proxy:-${https_proxy}}"
-		)
+	if [[ ${http_proxy} || ${https_proxy} ]]; then
+		gemato_args+=( --proxy "${http_proxy:-${https_proxy}}" )
 	fi
 
 	# PORTAGE_GPG_KEY_SERVER is directly exported by the webrsync module.
@@ -436,7 +430,6 @@ sync_local() {
 		"${emerge}" --metadata
 	fi
 
-	# --quiet suppresses output if there are no relevant news items
 	if (( ! from_portage )) && contains_word news "${FEATURES}"; then
 		"${emerge}" --check-news --quiet
 	fi
@@ -464,8 +457,7 @@ do_snapshot() {
 
 	read -rd '' -a mirrors <<<"${GENTOO_MIRRORS}"
 
-	for mirror in "${mirrors[@]}"; do
-		mirror=${mirror%/}
+	for mirror in "${mirrors[@]/%\/}"; do
 		einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 		for file in "${tarballs[@]}"; do
 			digest="${file}.md5sum"
