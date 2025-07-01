@@ -983,8 +983,13 @@ if ___eapi_has_einstalldocs; then
 fi
 
 if ___eapi_has_eapply; then
+	# For BSD userland support, use gpatch if available.
+	if hash gpatch 2>/dev/null; then
+		patch() { gpatch "$@"; }
+	fi
+
 	eapply() {
-		local LC_ALL LC_COLLATE=C f i patch_cmd path
+		local LC_ALL LC_COLLATE=C f i path
 		local -a operands options
 
 		_eapply_patch() {
@@ -997,7 +1002,7 @@ if ___eapi_has_eapply; then
 			# -g0 to guarantee no VCS interaction
 			# --no-backup-if-mismatch not to pollute the sources
 			set -- -p1 -f -g0 --no-backup-if-mismatch "$@"
-			if output=$(LC_ALL= LC_MESSAGES=C "${patch_cmd}" "$@" < "${patch}" 2>&1); then
+			if output=$(LC_ALL= LC_MESSAGES=C patch "$@" < "${patch}" 2>&1); then
 				# The patch was successfully applied. Maintain
 				# silence unless applied with fuzz.
 				if [[ ${output} == *[0-9]' with fuzz '[0-9]* ]]; then
@@ -1033,11 +1038,6 @@ if ___eapi_has_eapply; then
 
 		if (( ! ${#operands[@]} )); then
 			die "eapply: no operands were specified"
-		elif hash gpatch 2>/dev/null; then
-			# for bsd userland support, use gpatch if available
-			patch_cmd=gpatch
-		else
-			patch_cmd=patch
 		fi
 
 		for path in "${operands[@]}"; do
