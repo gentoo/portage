@@ -378,8 +378,6 @@ sync_local() {
 	local ownership snapshot_dir
 	local -a tarsync_opts rsync_opts
 
-	einfo "Syncing local repository ..."
-
 	if ! contains_word usersync "${FEATURES}"; then
 		ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
 	elif [[ ${USERLAND} == BSD ]]; then
@@ -389,6 +387,8 @@ sync_local() {
 	fi || exit
 
 	if hash tarsync 2>/dev/null; then
+		einfo "Using tarsync to refresh ${repo_location@Q} ..."
+
 		tarsync_opts=( -s 1 -e /distfiles -e /packages -e /local )
 		if chown "${ownership}" -- "${repo_location}" 2>/dev/null; then
 			tarsync_opts+=( -o "${ownership%:*}" -g "${ownership#*:}" )
@@ -397,17 +397,23 @@ sync_local() {
 			tarsync_opts+=( -v )
 		fi
 		if ! tarsync "${tarsync_opts[@]}" -- "${file}" "${repo_location}"; then
-			eerror "tarsync failed; tarball is corrupt? (${file})"
+			file=${file##*/}
+			eerror "Failed to sync ${repo_location@Q} with ${file@Q}"
 			return 1
 		fi
 	else
+		einfo "Extracting ${file@Q} ..."
+
 		snapshot_dir=${tmpdir:?}/snapshot
 		mkdir -- "${snapshot_dir}" && cd -- "${snapshot_dir}" || exit
 
 		if ! do_tar "${file}" -x --strip-components=1 -f -; then
-			eerror "tar failed to extract the image. tarball is corrupt? (${file})"
+			file=${file##*/}
+			eerror "Failed to extract the contents of ${file@Q}"
 			return 1
 		fi
+
+		einfo "Using rsync to refresh ${repo_location@Q} ..."
 
 		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
 		if (( opt[quiet] )); then
