@@ -48,7 +48,7 @@ main() {
 
 	mkdir -p -- "${repo_location}" || exit
 	if contains_word usersync "${FEATURES}"; then
-		chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" -- "${repo_location}" || exit
+		chown -- "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || exit
 	fi
 
 	if [[ ! -w ${repo_location} ]] ; then
@@ -390,7 +390,7 @@ sync_local() {
 		einfo "Using tarsync to refresh ${repo_location@Q} ..."
 
 		tarsync_opts=( -s 1 -e /distfiles -e /packages -e /local )
-		if chown "${ownership}" -- "${repo_location}" 2>/dev/null; then
+		if chown -- "${ownership}" "${repo_location}" 2>/dev/null; then
 			tarsync_opts+=( -o "${ownership%:*}" -g "${ownership#*:}" )
 		fi
 		if (( ! opt[quiet] )); then
