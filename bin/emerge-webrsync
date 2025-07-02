@@ -196,8 +196,28 @@ is_uint() {
 fetch_file() {
 	# shellcheck disable=2034
 	local URI=$1 FILE=$2
+
+	if [[ ! ${fetchcommand} ]]; then
+		fetchcommand=$(get_fetchcommand)
+	fi
+
+	einfo "Fetching file ${FILE} ..."
+
+	if [[ ${fetchcommand} != @(curl|wget)[[:blank:]]* ]]; then
+		rm -f -- "${DISTDIR}/${FILE}"
+	fi
+
+	# Already set DISTDIR=
+	if ! eval "${fetchcommand}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
+		rm -f -- "${DISTDIR}/${FILE}"
+		return 1
+	fi
+}
+
+get_fetchcommand() {
 	local cmd_name cmd_args opts
 
+	# shellcheck disable=2153
 	read -rd '' cmd_name cmd_args <<<"${FETCHCOMMAND}"
 
 	case ${cmd_name} in
@@ -214,18 +234,11 @@ fetch_file() {
 			fi
 			;;
 		*)
-			cmd_name=${FETCHCOMMAND}
-			cmd_args=
-			rm -f -- "${DISTDIR}/${FILE}"
+			printf '%s\n' "${FETCHCOMMAND}"
+			return
 	esac
 
-	einfo "Fetching file ${FILE} ..."
-
-	# Already set DISTDIR=
-	if ! eval "${cmd_name} ${opts} ${cmd_args}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
-		rm -f -- "${DISTDIR}/${FILE}"
-		return 1
-	fi
+	printf '%s\n' "${cmd_name} ${opts} ${cmd_args}"
 }
 
 check_file_digest() {
@@ -683,5 +696,6 @@ if [[ -n "${PORTAGE_NICENESS}" ]]; then
 	renice "${PORTAGE_NICENESS}" $$ > /dev/null
 fi
 
+unset -v fetchcommand
 declare -A opt=()
 main "$@"
