@@ -196,29 +196,33 @@ is_uint() {
 fetch_file() {
 	# shellcheck disable=2034
 	local URI=$1 FILE=$2
-	local opts
+	local cmd_name cmd_args opts
 
-	case ${FETCHCOMMAND} in
-		*wget*)
+	read -rd '' cmd_name cmd_args <<<"${FETCHCOMMAND}"
+
+	case ${cmd_name} in
+		wget)
 			opts="--continue --no-verbose"
 			if (( ! opt[quiet] )); then
 				opts+=" --show-progress"
 			fi
 			;;
-		*curl*)
+		curl)
 			opts="--continue-at -f -S"
 			if (( opt[quiet] )); then
 				opts+=" -s"
 			fi
 			;;
 		*)
+			cmd_name=${FETCHCOMMAND}
+			cmd_args=
 			rm -f -- "${DISTDIR}/${FILE}"
 	esac
 
 	einfo "Fetching file ${FILE} ..."
 
 	# Already set DISTDIR=
-	if ! eval "${FETCHCOMMAND} ${opts}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
+	if ! eval "${cmd_name} ${opts} ${cmd_args}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
 		rm -f -- "${DISTDIR}/${FILE}"
 		return 1
 	fi
