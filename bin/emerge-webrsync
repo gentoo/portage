@@ -450,11 +450,11 @@ sync_local() {
 
 	if (( ! from_portage )) && contains_word metadata-transfer "${FEATURES}"; then
 		einfo "Updating cache ..."
-		"${emerge}" --metadata
+		"${path_of[emerge]}" --metadata
 	fi
 
 	if (( ! from_portage )) && contains_word news "${FEATURES}"; then
-		"${emerge}" --check-news --quiet
+		"${path_of[emerge]}" --check-news --quiet
 	fi
 
 	return 0
@@ -628,12 +628,13 @@ from_portage=${PORTAGE_BIN_PATH:+1}
 
 # Use emerge and portageq from the same directory/prefix as the current script,
 # so that we don't have to rely on PATH including the current EPREFIX.
-if ! emerge=$(PATH=${BASH_SOURCE%/*}:${PATH} type -P emerge); then
-	die "could not find 'emerge'; aborting"
-fi
-if ! portageq=$(PATH=${BASH_SOURCE%/*}:${PATH} type -P portageq); then
-	die "could not find 'portageq'; aborting"
-fi
+declare -A path_of=()
+for bin in emerge portageq; do
+	if ! path_of[$bin]=$(PATH=${BASH_SOURCE%/*}:${PATH} type -P "${bin}"); then
+		printf >&2 '%s: unable to locate the "%s" binary; aborting\n' "$0" "${bin}"
+		exit 1
+	fi
+done
 
 portage_vars=(
 	DISTDIR
@@ -657,7 +658,7 @@ portage_vars=(
 	https_proxy
 )
 
-eval "$("${portageq}" envvar -v "${portage_vars[@]}")"
+eval "$("${path_of[portageq]}" envvar -v "${portage_vars[@]}")"
 export http_proxy https_proxy ftp_proxy
 
 source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
