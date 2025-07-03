@@ -197,8 +197,8 @@ fetch_file() {
 	# shellcheck disable=2034
 	local URI=$1 FILE=$2
 
-	if [[ ! ${fetchcommand} ]]; then
-		fetchcommand=$(get_fetchcommand)
+	if [[ ! ${fetchcommand} ]] && ! fetchcommand=$(get_fetchcommand); then
+		die "couldn't parse FETCHCOMMAND"
 	fi
 
 	einfo "Fetching file ${FILE} ..."
@@ -216,6 +216,11 @@ fetch_file() {
 
 get_fetchcommand() {
 	local cmd_name cmd_args opts
+
+	if [[ ${FETCHCOMMAND} == *([[:blank:]]) ]]; then
+		eerror "FETCHCOMMAND has been set as an empty or blank string"
+		return 1
+	fi
 
 	# shellcheck disable=2153
 	read -rd '' cmd_name cmd_args <<<"${FETCHCOMMAND}"
