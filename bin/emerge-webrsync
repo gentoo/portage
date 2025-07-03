@@ -392,7 +392,7 @@ get_snapshot_timestamp() {
 
 sync_local() {
 	local file=$1
-	local ownership snapshot_dir
+	local snapshot_dir ownership tarball
 	local -a tarsync_opts rsync_opts
 
 	if ! contains_word usersync "${FEATURES}"; then
@@ -402,6 +402,8 @@ sync_local() {
 	else
 		ownership=$(stat -c '%U:%G' -- "${repo_location}")
 	fi || exit
+
+	tarball=${file##*/}
 
 	if hash tarsync 2>/dev/null; then
 		einfo "Using tarsync to refresh ${repo_location@Q} ..."
@@ -414,19 +416,17 @@ sync_local() {
 			tarsync_opts+=( -v )
 		fi
 		if ! tarsync "${tarsync_opts[@]}" -- "${file}" "${repo_location}"; then
-			file=${file##*/}
-			eerror "Failed to sync ${repo_location@Q} with ${file@Q}"
+			eerror "Failed to sync ${repo_location@Q} with ${tarball@Q}"
 			return 1
 		fi
 	else
-		einfo "Extracting ${file@Q} ..."
+		einfo "Extracting ${tarball@Q} ..."
 
 		snapshot_dir=${tmpdir:?}/snapshot
 		mkdir -- "${snapshot_dir}" && cd -- "${snapshot_dir}" || exit
 
 		if ! do_tar "${file}" -x --strip-components=1 -f -; then
-			file=${file##*/}
-			eerror "Failed to extract the contents of ${file@Q}"
+			eerror "Failed to extract the contents of ${tarball@Q}"
 			return 1
 		fi
 
