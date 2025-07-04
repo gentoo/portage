@@ -491,11 +491,12 @@ do_snapshot() {
 			digest="${file}.md5sum"
 			signature="${file}.gpgsig"
 
-			if [[ -s "${DISTDIR}/${file}" && -s "${DISTDIR}/${digest}" && -s "${DISTDIR}/${signature}" ]] ; then
-				check_file_digest "${DISTDIR}/${file}" \
-				&& check_file_signature "${DISTDIR}/${file}" \
-				&& have_files=1
-			fi
+			test -s "${DISTDIR}/${file}" \
+			&& test -s "${DISTDIR}/${digest}" \
+			&& test -s "${DISTDIR}/${signature}" \
+			&& check_file_digest "${DISTDIR}/${file}" \
+			&& check_file_signature "${DISTDIR}/${file}" \
+			&& have_files=1
 
 			if (( ! have_files )); then
 				fetch_file "${mirror}/snapshots/${digest}" "${digest}" \
