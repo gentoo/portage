@@ -519,6 +519,9 @@ do_snapshot() {
 
 	if (( have_files )); then
 		sync_local "${DISTDIR}/${file}"
+	elif (( ! ${#mirrors[@]} )); then
+		eerror "GENTOO_MIRRORS has been set as an empty or blank string"
+		die "couldn't parse GENTOO_MIRRORS"
 	else
 		ewarn "${date} snapshot was not found"
 		false
