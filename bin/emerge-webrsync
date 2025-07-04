@@ -467,7 +467,7 @@ sync_local() {
 
 do_snapshot() {
 	local ignore_timestamp=$1 date=$2
-	local {repo,snapshot}_timestamp have_files signature unixtime digest mirror file
+	local have_files signature digest mirror file
 	local -a tarballs mirrors
 	local -A suffix_by
 
@@ -506,36 +506,9 @@ do_snapshot() {
 				&& have_files=1
 			fi
 
-			#
-			# If timestamp is invalid
-			# we want to try and retrieve
-			# from a different mirror
-			#
-			if (( have_files )); then
-				einfo "Getting snapshot timestamp ..."
-
-				if ! snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}"); then
-					die "couldn't determine the timestamp of snapshot ${file@Q}"
-				fi
-				if [[ ${ignore_timestamp} == 0 ]]; then
-					if ! repo_timestamp=$(get_repository_timestamp); then
-						die "couldn't determine the timestamp of repo ${repo_location@Q}"
-					fi
-					if (( snapshot_timestamp < repo_timestamp )); then
-						ewarn "Repository (age) is newer than fetched snapshot"
-						have_files=0
-					fi
-				else
-					# Check that this snapshot is of the age it claims to be.
-					unixtime=$(get_unixtime_by_date "${date}")
-					if (( snapshot_timestamp < unixtime
-						|| snapshot_timestamp > unixtime + 2 * 86400 ))
-					then
-						ewarn "Snapshot timestamp is not within acceptable period!"
-						have_files=0
-					fi
-				fi
-			fi
+			(( have_files )) \
+			&& ! is_snapshot_fresh "${DISTDIR}/${file}" "${ignore_timestamp}" \
+			&& have_files=0
 
 			if (( have_files )); then
 				break 2
@@ -551,6 +524,36 @@ do_snapshot() {
 	else
 		ewarn "${date} snapshot was not found"
 		false
+	fi
+}
+
+is_snapshot_fresh() {
+	local file=$1 ignore_timestamp=$2
+	local snapshot_timestamp repo_timestamp unixtime date
+
+	einfo "Getting snapshot timestamp ..."
+
+	if ! snapshot_timestamp=$(get_snapshot_timestamp "${file}"); then
+		die "couldn't determine the timestamp of snapshot ${file@Q}"
+	fi
+	if (( ! ignore_timestamp )); then
+		if ! repo_timestamp=$(get_repository_timestamp); then
+			die "couldn't determine the timestamp of repo ${repo_location@Q}"
+		fi
+		if (( snapshot_timestamp < repo_timestamp )); then
+			ewarn "Repository (age) is newer than fetched snapshot"
+			return 1
+		fi
+	else
+		# Check that this snapshot is of the age it claims to be.
+		date=${file##*-} date=${date%%.*}
+		unixtime=$(get_unixtime_by_date "${date}")
+		if (( snapshot_timestamp < unixtime
+			|| snapshot_timestamp > unixtime + 2 * 86400 ))
+		then
+			ewarn "Snapshot timestamp is not within acceptable period!"
+			return 1
+		fi
 	fi
 }
 
