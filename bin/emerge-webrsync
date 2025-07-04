@@ -195,7 +195,7 @@ is_uint() {
 
 fetch_file() {
 	# shellcheck disable=2034
-	local URI=$1 FILE=$2
+	local URI=$1 FILE=${1##*/}
 
 	if [[ ! ${fetchcommand} ]] && ! fetchcommand=$(get_fetchcommand); then
 		die "couldn't parse FETCHCOMMAND"
@@ -499,9 +499,9 @@ do_snapshot() {
 			&& have_files=1
 
 			if (( ! have_files )); then
-				fetch_file "${mirror}/snapshots/${digest}" "${digest}" \
-				&& fetch_file "${mirror}/snapshots/${signature}" "${signature}" \
-				&& fetch_file "${mirror}/snapshots/${file}" "${file}" \
+				fetch_file "${mirror}/snapshots/${digest}" \
+				&& fetch_file "${mirror}/snapshots/${signature}" \
+				&& fetch_file "${mirror}/snapshots/${file}" \
 				&& check_file_digest "${DISTDIR}/${file}" \
 				&& check_file_signature "${DISTDIR}/${file}" \
 				&& have_files=1
