@@ -467,7 +467,7 @@ sync_local() {
 
 do_snapshot() {
 	local ignore_timestamp=$1 date=$2
-	local have_files signature digest mirror file
+	local have_files mirror file
 	local -a tarballs mirrors
 	local -A suffix_by
 
@@ -488,19 +488,16 @@ do_snapshot() {
 	for mirror in "${mirrors[@]/%\/}"; do
 		einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 		for file in "${tarballs[@]}"; do
-			digest="${file}.md5sum"
-			signature="${file}.gpgsig"
-
-			test -s "${DISTDIR}/${file}" \
-			&& test -s "${DISTDIR}/${digest}" \
-			&& test -s "${DISTDIR}/${signature}" \
+			test -s "${DISTDIR}/${file}.md5sum" \
+			&& test -s "${DISTDIR}/${file}.gpgsig" \
+			&& test -s "${DISTDIR}/${file}" \
 			&& check_file_digest "${DISTDIR}/${file}" \
 			&& check_file_signature "${DISTDIR}/${file}" \
 			&& have_files=1
 
 			if (( ! have_files )); then
-				fetch_file "${mirror}/snapshots/${digest}" \
-				&& fetch_file "${mirror}/snapshots/${signature}" \
+				fetch_file "${mirror}/snapshots/${file}.md5sum" \
+				&& fetch_file "${mirror}/snapshots/${file}.gpgsig" \
 				&& fetch_file "${mirror}/snapshots/${file}" \
 				&& check_file_digest "${DISTDIR}/${file}" \
 				&& check_file_signature "${DISTDIR}/${file}" \
@@ -515,7 +512,7 @@ do_snapshot() {
 				break 2
 			else
 				# Remove files and use a different mirror
-				rm -f -- "${DISTDIR}"/{"$file","$digest","$signature"}
+				rm -f -- "${DISTDIR}/${file}"{".md5sum",".gpgsig",}
 			fi
 		done
 	done
