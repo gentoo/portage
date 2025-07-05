@@ -370,9 +370,13 @@ check_file_signature() {
 
 get_snapshot_timestamp() {
 	local file=$1
-	local unixtime
+	local unixtime is_gnu
 
-	tar --wildcards -O -xf "${file}" '*/metadata/timestamp.x' |
+	if tar --version 2>/dev/null | grep -q 'GNU tar'; then
+		is_gnu=1
+	fi
+
+	tar ${is_gnu+--wildcards} -O -xf "${file}" '*/metadata/timestamp.x' |
 	{
 		read -r unixtime _ \
 		&& is_uint "${unixtime}" \
