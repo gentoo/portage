@@ -149,21 +149,6 @@ handle_pgp_setup() {
 	fi
 }
 
-do_tar() {
-	local -
-
-	shopt -o -s pipefail
-	case $1 in
-		*.xz)   xzcat -- "$1" ;;
-		*.bz2)  bzcat -- "$1" ;;
-		*.gz)   zcat  -- "$1" ;;
-		*)      cat   -- "$1" ;;
-	esac | {
-		shift
-		tar "$@"
-	}
-}
-
 get_unixtime_by_date() {
 	local date=$1
 
@@ -387,7 +372,7 @@ get_snapshot_timestamp() {
 	local file=$1
 	local unixtime
 
-	do_tar "${file}" --to-stdout -f - --wildcards -x '*/metadata/timestamp.x' |
+	tar --wildcards -O -xf "${file}" '*/metadata/timestamp.x' |
 	{
 		read -r unixtime _ \
 		&& is_uint "${unixtime}" \
@@ -430,7 +415,7 @@ sync_local() {
 		snapshot_dir=${tmpdir:?}/snapshot
 		mkdir -- "${snapshot_dir}" && cd -- "${snapshot_dir}" || exit
 
-		if ! do_tar "${file}" -x --strip-components=1 -f -; then
+		if ! tar --strip-components=1 -xf "${file}"; then
 			eerror "Failed to extract the contents of ${tarball@Q}"
 			return 1
 		fi
@@ -469,21 +454,9 @@ do_snapshot() {
 	local ignore_timestamp=$1 date=$2
 	local have_files mirror file
 	local -a tarballs mirrors
-	local -A suffix_by
-
-	suffix_by=([xzcat]=xz [bzcat]=bz2 [zcat]=gz)
-
-	for file in xzcat bzcat zcat; do
-		if hash "${file}" 2>/dev/null; then
-			tarballs+=( {"$repo_name","portage"}-"${date}.tar.${suffix_by[$file]}" )
-		fi
-	done
-
-	if (( ! ${#tarballs[@]} )); then
-		die "unable to locate any decompressors (xzcat, bzcat or zcat)"
-	fi
 
 	read -rd '' -a mirrors <<<"${GENTOO_MIRRORS}"
+	tarballs=( {"$repo_name","portage"}-"${date}.tar."{"xz","bz2"} )
 
 	for mirror in "${mirrors[@]/%\/}"; do
 		einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
