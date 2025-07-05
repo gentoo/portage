@@ -296,11 +296,5 @@ class JobStatusDisplay:
             self._update(color_output.getvalue())
 
         if self.xterm_titles:
-            # If the HOSTNAME variable is exported, include it
-            # in the xterm title, just like emergelog() does.
-            # See bug #390699.
             title_str = " ".join(plain_output.split())
-            hostname = os.environ.get("HOSTNAME")
-            if hostname is not None:
-                title_str = f"{hostname}: {title_str}"
             xtermTitle(title_str)
