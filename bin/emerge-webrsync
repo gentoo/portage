@@ -488,6 +488,9 @@ do_snapshot() {
 	for mirror in "${mirrors[@]/%\/}"; do
 		einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 		for file in "${tarballs[@]}"; do
+			have_files=0
+
+			# Attempt to use any previously downloaded files.
 			test -s "${DISTDIR}/${file}.md5sum" \
 			&& test -s "${DISTDIR}/${file}.gpgsig" \
 			&& test -s "${DISTDIR}/${file}" \
@@ -495,25 +498,23 @@ do_snapshot() {
 			&& check_file_signature "${DISTDIR}/${file}" \
 			&& have_files=1
 
-			if (( ! have_files )); then
-				fetch_file "${mirror}/snapshots/${file}.md5sum" \
-				&& fetch_file "${mirror}/snapshots/${file}.gpgsig" \
-				&& fetch_file "${mirror}/snapshots/${file}" \
-				&& check_file_digest "${DISTDIR}/${file}" \
-				&& check_file_signature "${DISTDIR}/${file}" \
-				&& have_files=1
-			fi
+			# Otherwise, attempt to fetch the required files.
+			(( ! have_files )) \
+			&& fetch_file "${mirror}/snapshots/${file}.md5sum" \
+			&& fetch_file "${mirror}/snapshots/${file}.gpgsig" \
+			&& fetch_file "${mirror}/snapshots/${file}" \
+			&& check_file_digest "${DISTDIR}/${file}" \
+			&& check_file_signature "${DISTDIR}/${file}" \
+			&& have_files=1
 
+			# Accept any validated files under consideration,
+			# provided that the age of the snapshot is tolerable.
 			(( have_files )) \
-			&& ! is_snapshot_fresh "${DISTDIR}/${file}" "${ignore_timestamp}" \
-			&& have_files=0
+			&& is_snapshot_fresh "${DISTDIR}/${file}" "${ignore_timestamp}" \
+			&& break 2
 
-			if (( have_files )); then
-				break 2
-			else
-				# Remove files and use a different mirror
-				rm -f -- "${DISTDIR}/${file}"{".md5sum",".gpgsig",}
-			fi
+			# Remove any files before trying a different mirror.
+			rm -f -- "${DISTDIR}/${file}"{".md5sum",".gpgsig",}
 		done
 	done
 
