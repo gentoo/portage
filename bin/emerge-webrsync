@@ -199,6 +199,7 @@ fetch_file() {
 	fi
 }
 
+# shellcheck disable=2153
 get_fetchcommand() {
 	local cmd_name cmd_args opts
 
@@ -207,7 +208,6 @@ get_fetchcommand() {
 		return 1
 	fi
 
-	# shellcheck disable=2153
 	read -rd '' cmd_name cmd_args <<<"${FETCHCOMMAND}"
 
 	case ${cmd_name} in
