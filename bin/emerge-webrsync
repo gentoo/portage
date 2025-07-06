@@ -192,7 +192,6 @@ fetch_file() {
 		rm -f -- "${DISTDIR}/${FILE}"
 	fi
 
-	# Already set DISTDIR=
 	if ! eval "${fetchcommand}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
 		rm -f -- "${DISTDIR}/${FILE}"
 		return 1
