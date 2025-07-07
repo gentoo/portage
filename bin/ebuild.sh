@@ -576,20 +576,24 @@ then
 	# may be unusable (triggering in spurious sandbox violations)
 	# until we've merged them with our current values.
 	export SANDBOX_ON=0
-	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
-		y="PORTAGE_${x}"
-		if [[ -z "${!x}" ]]; then
-			export ${x}="${!y}"
-		elif [[ -n "${!y}" && "${!y}" != "${!x}" ]]; then
-			# Filter out dupes
-			export ${x}="$(printf '%s:%s' "${!y}" "${!x}" | tr ":" "\0" | \
-				sort -z -u | tr "\0" ":")"
-		fi
-		export ${x}="${!x%:}"
-		unset PORTAGE_${x}
+	declare -A seen
+	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE; do
+		{
+			export "${x}="
+			seen=()
+			i=0
+			while IFS= read -rd : path; do
+				if [[ ${path} && ! ${seen[$path]} ]]; then
+					(( i++ > 0 )) && eval "${x}+=:"
+					eval "${x}+=${path@Q}"
+					seen[$path]=1
+				fi
+			done
+		} < <(y="PORTAGE_${x}"; printf '%s:%s:' "${!y}" "${!x}")
+		unset "PORTAGE_${x}"
 	done
 
-	unset x y
+	unset path seen i x
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
 	[[ -n ${EAPI} ]] || EAPI=0
