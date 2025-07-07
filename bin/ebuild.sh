@@ -582,7 +582,7 @@ then
 			export ${x}="${!y}"
 		elif [[ -n "${!y}" && "${!y}" != "${!x}" ]]; then
 			# Filter out dupes
-			export ${x}="$(printf "${!y}:${!x}" | tr ":" "\0" | \
+			export ${x}="$(printf '%s:%s' "${!y}" "${!x}" | tr ":" "\0" | \
 				sort -z -u | tr "\0" ":")"
 		fi
 		export ${x}="${!x%:}"
