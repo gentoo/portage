@@ -90,14 +90,6 @@ __save_ebuild_env() (
 	___eapi_has_in_iuse && unset -f in_iuse
 	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
 
-	# Clear out the triple underscore namespace as it is reserved by the PM.
-	while IFS=' ' read -r _ _ REPLY; do
-		if [[ ${REPLY} == ___* ]]; then
-			unset -f "${REPLY}"
-		fi
-	done < <(declare -F)
-	unset -v REPLY "${!___@}"
-
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BUILD_PREFIX COLS \
 		DISTDIR DOC_SYMLINKS_DIR \
@@ -126,6 +118,14 @@ __save_ebuild_env() (
 
 	# user config variables
 	unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
+
+	# Clear out the triple underscore namespace as it is reserved by the PM.
+	while IFS=' ' read -r _ _ REPLY; do
+		if [[ ${REPLY} == ___* ]]; then
+			unset -f "${REPLY}"
+		fi
+	done < <(declare -F)
+	unset -v REPLY "${!___@}"
 
 	declare -p
 	declare -fp
