@@ -76,10 +76,13 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # However, old settings should be overridden when loading the
 # environment from a binary or installed package.
 #
-# ---allow-extra-vars causes some extra vars to be allowd through, such
-# as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
-# This is enabled automatically if EMERGE_FROM=binary, since it preserves
-# variables from when the package was originally built.
+# --allow-extra-vars inhibits the filtering of the variables whose names are
+# specified by the PORTAGE_SAVED_READONLY_VARS and PORTAGE_MUTABLE_FILTERED_VARS
+# variables. However, in the absence of the option, only the CATEGORY, P, PF,
+# PN, PR, PV and PVR variables shall be filtered, provided that the value of
+# EMERGE_FROM is equal to "binary". The reason for this exception in behaviour
+# is to preserve various variables as they were at the time that the binary
+# package was built while protecting against the application of package renames.
 __filter_readonly_variables() {
 	local -a {binpkg_untrusted,filtered_sandbox,misc_garbage,bash}_vars words
 	local IFS
