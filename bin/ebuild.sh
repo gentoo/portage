@@ -761,7 +761,7 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
 	# declare them only after it has already run.
-	declare -r ${PORTAGE_READONLY_METADATA} ${PORTAGE_READONLY_VARS}
+	declare -r "${portage_readonly_metadata[@]}" "${portage_readonly_vars[@]}"
 	if ___eapi_has_prefix_variables; then
 		declare -r ED EPREFIX EROOT
 	fi
