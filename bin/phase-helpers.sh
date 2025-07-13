@@ -1063,22 +1063,22 @@ fi
 
 if ___eapi_has_eapply_user; then
 	eapply_user() {
+		local basename basedir columns tagfile hr d f
+		local -A patch_by
+
 		[[ ${EBUILD_PHASE} == prepare ]] || \
 			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
 
 		# Keep path in __dyn_prepare in sync!
-		local tagfile=${T}/.portage_user_patches_applied
+		tagfile=${T}/.portage_user_patches_applied
 		[[ -f ${tagfile} ]] && return
 		>> "${tagfile}"
 
-		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
+		basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
 
-		local columns=${COLUMNS:-0}
+		columns=${COLUMNS:-0}
 		[[ ${columns} == 0 ]] && columns=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
 		(( columns > 0 )) || (( columns = 80 ))
-
-		local -A patch_by
-		local d f basename hr
 
 		# Patches from all matched directories are combined into a
 		# sorted (POSIX order) list of the patch basenames. Patches
