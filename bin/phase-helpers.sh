@@ -1062,9 +1062,42 @@ if ___eapi_has_eapply; then
 fi
 
 if ___eapi_has_eapply_user; then
+	# Considers the first operand as a directory pathname and attempts to
+	# read its immediate entries into an array variable named 'dirents'. If
+	# the operand is unspecified or empty, the current working directory
+	# shall be read. The array indices might not begin from 0, and might
+	# not be contiguous. If both the . and .. entries are seen, the return
+	# value shall be 0. Otherwise, it shall be greater than 0.
+	__readdir() {
+		local path=$1
+		local reset_shopts count i
+
+		# The globskipdots option was introduced by bash-5.2. Unless
+		# disabled, it prevents the matching of the . and .. entries.
+		reset_shopts=$(
+			shopt -p globskipdots 2>/dev/null
+			shopt -p nullglob extglob
+		)
+		[[ ${reset_shopts} == *globskipdots* ]] && shopt -u globskipdots
+		shopt -s nullglob extglob
+		[[ ${path} && ${path} != */ ]] && path+=/
+		eval 'dirents=( "${path}"@(.?(.)|*) );' "${reset_shopts}"
+
+		# For the . and .. entries to exist implies beyond a reasonable
+		# doubt that the path is a directory and was successfully read.
+		for i in "${!dirents[@]}"; do
+			if [[ ${dirents[i]##*/} == .?(.) ]]; then
+				unset -v 'dirents[i]'
+				(( ++count == 2 )) && return
+			fi
+		done
+		return 1
+	}
+
 	eapply_user() {
 		local basename basedir columns tagfile hr d f
 		local -A patch_by
+		local -a dirents
 
 		[[ ${EBUILD_PHASE} == prepare ]] || \
 			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
@@ -1094,7 +1127,11 @@ if ___eapi_has_eapply_user; then
 		# 3. ${CATEGORY}/${PN}
 		# all of the above may be optionally followed by a slot
 		for d in "${basedir}"/"${CATEGORY}"/{"${PN}","${P}","${P}-${PR}"}{,":${SLOT%/*}"}; do
-			for f in "${d}"/*; do
+			if ! __readdir "${d}" && [[ -e ${d} || -L ${d} ]]; then
+				__helpers_die "eapply_user: ${d@Q} exists but can't be opened as a directory by ${PORTAGE_BUILD_USER@Q}"
+				return
+			fi
+			for f in "${dirents[@]}"; do
 				if [[ ${f} == *.@(diff|patch) ]]; then
 					basename=${f##*/}
 					if [[ -s ${f} ]]; then
