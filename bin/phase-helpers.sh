@@ -322,14 +322,8 @@ use_enable() {
 }
 
 unpack() {
-	local created_symlink
-	local suffix_known
+	local created_symlink suffix_known basename srcdir suffix f -
 	local -a bzip2_cmd
-	local basename
-	local srcdir
-	local suffix
-	local f
-	local -
 
 	if (( $# == 0 )); then
 		die "unpack: too few arguments (got 0; expected at least 1)"
