@@ -87,7 +87,7 @@ portage_mutable_filtered_vars=( AA HOSTNAME )
 # is to preserve various variables as they were at the time that the binary
 # package was built while protecting against the application of package renames.
 __filter_readonly_variables() {
-	local -a {binpkg_untrusted,filtered_sandbox,misc_garbage,bash}_vars
+	local -a filtered_vars bash_vars
 	local IFS
 
 	# Collect an initial list of special bash variables by instructing a
@@ -115,20 +115,9 @@ __filter_readonly_variables() {
 		# Exported functions bear this prefix.
 		"BASH_FUNC_.*"
 	)
-	filtered_sandbox_vars=(
-		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_ACTIVE
-		SANDBOX_BASHRC SANDBOX_LIB SANDBOX_LOG SANDBOX_ON
-	)
-	# Untrusted due to possible application of package renames to binpkgs
-	binpkg_untrusted_vars=(
-		CATEGORY PVR PF PN PR PV P
-	)
-	misc_garbage_vars=(
-		_portage_filter_opts
-	)
 	filtered_vars+=(
 		"${portage_readonly_vars[@]}"
-		"${misc_garbage_vars[@]}"
+		_portage_filter_opts
 		"${bash_vars[@]}"
 		"___.*"
 	)
@@ -155,7 +144,10 @@ __filter_readonly_variables() {
 	if has --filter-sandbox "$@"; then
 		filtered_vars+=( "SANDBOX_.*" )
 	else
-		filtered_vars+=( "${filtered_sandbox_vars[@]}" )
+		filtered_vars+=(
+			SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_ACTIVE
+			SANDBOX_BASHRC SANDBOX_LIB SANDBOX_LOG SANDBOX_ON
+		)
 	fi
 	if has --filter-features "$@"; then
 		filtered_vars+=( FEATURES PORTAGE_FEATURES )
@@ -173,9 +165,11 @@ __filter_readonly_variables() {
 		:
 	elif [[ "${EMERGE_FROM}" = binary ]]; then
 		# Preserve additional variables from build time, while
-		# excluding untrusted variables.
-		filtered_vars+=( "${binpkg_untrusted_vars[@]}" )
+		# excluding some variables that are untrusted, due to the
+		# possible application of package renames to binpkgs.
+		filtered_vars+=( CATEGORY PVR PF PN PR PV P )
 	else
+		# Allow for the option to have its full effect.
 		filtered_vars+=(
 			"${portage_mutable_filtered_vars[@]}"
 			"${portage_saved_readonly_vars[@]}"
