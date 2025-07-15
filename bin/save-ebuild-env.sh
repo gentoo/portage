@@ -81,10 +81,10 @@ __save_ebuild_env() (
 
 		__assert_sigpipe_ok __abort_configure __abort_compile
 		__abort_handler __abort_install __abort_prepare __abort_test
-		__check_bash_version __dyn_configure __dyn_compile
-		__dyn_install __dyn_prepare __dyn_pretend __dump_trace
-		__dyn_unpack __dyn_clean __dyn_setup __dyn_help __dyn_test
-		__ebuild_phase_with_hooks __eapi7_ver_compare_int
+		__check_bash_version __compose_bzip2_cmd __dyn_configure
+		__dyn_compile __dyn_install __dyn_prepare __dyn_pretend
+		__dump_trace __dyn_unpack __dyn_clean __dyn_setup __dyn_help
+		__dyn_test __ebuild_phase_with_hooks __eapi7_ver_compare_int
 		__eapi7_ver_parse_range __ebuild_arg_to_phase
 		__ebuild_phase_funcs __eapi7_ver_compare __eapi7_ver_split
 		__ebuild_phase __ebuild_main __elog_base __eqaquote __eqatag
