@@ -97,12 +97,13 @@ __save_ebuild_env() (
 		__unpack_tar __vecho
 
 		addpredict addwrite adddeny addread assert best_version
-		debug-print-function debug-print-section debug-print docompress
-		default diropts docinto dostrip die einstall eqawarn exeinto
-		exeopts ebegin eerror einfon econf einfo ewarn eend elog get_KV
-		has_version hasq hasv has inherit insinto insopts into libopts
-		nonfatal portageq register_success_hook register_die_hook
-		use_enable use_with unpack useq usev use
+		contains_word debug-print-function debug-print-section
+		debug-print docompress default diropts docinto dostrip die
+		einstall eqawarn exeinto exeopts ebegin eerror einfon econf
+		einfo ewarn eend elog get_KV has_version hasq hasv has inherit
+		insinto insopts into libopts nonfatal portageq
+		register_success_hook register_die_hook use_enable use_with
+		unpack useq usev use
 
 		# Defined by the "ebuild.sh" utility.
 		${QA_INTERCEPTORS}
