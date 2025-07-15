@@ -38,9 +38,14 @@ __save_ebuild_env() (
 	fi
 
 	REPLY+=(
+		# variables that can influence the behaviour of GNU coreutils
+		BLOCK_SIZE COLORTERM COLUMNS DF_BLOCK_SIZE DU_BLOCK_SIZE HOME
+		LS_BLOCK_SIZE LS_COLORS POSIXLY_CORRECT PATH PWD QUOTING_STYLE
+		SHELL TIME_STYLE TABSIZE TMPDIR TERM TZ
+
 		# misc variables inherited from the calling environment
-		COLORTERM DISPLAY EDITOR LS_COLORS LESSOPEN LOGNAME LESS PAGER
-		TERMCAP TERM USER ftp_proxy https_proxy http_proxy no_proxy
+		DISPLAY EDITOR LESSOPEN LOGNAME LESS PAGER TERMCAP USER
+		ftp_proxy https_proxy http_proxy no_proxy
 
 		# other variables inherited from the calling environment
 		CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO SSH_AGENT_PID
