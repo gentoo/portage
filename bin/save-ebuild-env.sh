@@ -11,113 +11,119 @@
 # or removal of the packages, and can therefore be safely excluded.
 #
 __save_ebuild_env() (
-	if has --exclude-init-phases $* ; then
-		unset S __E_DESTTREE __E_INSDESTTREE __E_DOCDESTTREE __E_EXEDESTTREE \
-			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
-			PORTAGE_DOCOMPRESS_SKIP PORTAGE_DOSTRIP PORTAGE_DOSTRIP_SKIP
+	# REPLY is purposed as an array that undergoes two phases of assembly.
+	# The first entails gathering the names of variables that are to be
+	# unset. The second entails gathering the names of functions that are
+	# to be unset. The REPLY variable is eventually unset in its own right.
+	REPLY=()
+
+	if has --exclude-init-phases "$@"; then
+		REPLY+=(
+			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS_SKIP
+			PORTAGE_DOSTRIP_SKIP PORTAGE_DOCOMPRESS PORTAGE_DOSTRIP
+			S __E_DOCDESTTREE __E_EXEDESTTREE __E_INSDESTTREE
+			__E_DESTTREE
+
+			# Discard stale GNU Make POSIX Jobserver flags.
+			MAKEFLAGS
+		)
 		if [[ -n ${PYTHONPATH} &&
 			${PYTHONPATH%%:*} -ef ${PORTAGE_PYM_PATH} ]] ; then
 			if [[ ${PYTHONPATH} == *:* ]] ; then
 				export PYTHONPATH=${PYTHONPATH#*:}
 			else
-				unset PYTHONPATH
+				REPLY+=( PYTHONPATH )
 			fi
 		fi
-
-		# Discard stale GNU Make POSIX Jobserver flags.
-		unset MAKEFLAGS
 	fi
 
-	# misc variables inherited from the calling environment
-	unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
-		TERM TERMCAP USER ftp_proxy http_proxy https_proxy no_proxy
+	REPLY+=(
+		# misc variables inherited from the calling environment
+		COLORTERM DISPLAY EDITOR LS_COLORS LESSOPEN LOGNAME LESS PAGER
+		TERMCAP TERM USER ftp_proxy https_proxy http_proxy no_proxy
 
-	# other variables inherited from the calling environment
-	unset CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO \
-	SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
+		# other variables inherited from the calling environment
+		CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO SSH_AGENT_PID
+		SSH_AUTH_SOCK STY WINDOW XAUTHORITY
 
-	# CCACHE and DISTCC config
-	unset "${!CCACHE_@}" "${!DISTCC_@}"
+		# portage config variables and variables set directly by portage
+		ACCEPT_LICENSE BUILD_PREFIX COLS DOC_SYMLINKS_DIR DISTDIR
+		EBUILD_FORCE_TEST EBUILD_MASTER_PID ECLASS_DEPTH ENDCOL
+		FAKEROOTKEY HOME LAST_E_CMD LAST_E_LEN LD_PRELOAD
+		MISC_FUNCTIONS_ARGS MOPREFIX NO_COLOR NOCOLOR
+		PORTAGE_DOHTML_UNWARNED_SKIPPED_EXTENSIONS
+		PORTAGE_DOHTML_UNWARNED_SKIPPED_FILES
+		PORTAGE_DOHTML_WARN_ON_SKIPPED_FILES
+		PORTAGE_COMPRESS_EXCLUDE_SUFFIXES PORTAGE_BASHRCS_SOURCED
+		PORTAGE_SANDBOX_PREDICT PORTAGE_COLOR_BRACKET
+		PORTAGE_SANDBOX_WRITE PORTAGE_BASHRC_FILES PORTAGE_COLOR_HILITE
+		PORTAGE_COLOR_NORMAL PORTAGE_COLOR_QAWARN PORTAGE_SANDBOX_DENY
+		PORTAGE_SANDBOX_READ PORTAGE_SOCKS5_PROXY PORTAGE_COLOR_GOOD
+		PORTAGE_COLOR_INFO PORTAGE_COLOR_WARN PORTAGE_COLOR_BAD
+		PORTAGE_COLOR_ERR PORTAGE_COLOR_LOG PORTAGE_COMPRESS
+		PORTAGE_NONFATAL PORTAGE_QUIET PREROOTPATH PKG_LOGDIR
+		PKG_TMPDIR PKGDIR PKGUSE QA_INTERCEPTORS RC_DEFAULT_INDENT
+		RC_DOT_PATTERN RC_INDENTATION RC_ENDCOL ROOTPATH RPMDIR ROOT
+		TMPDIR TEMP TMP USE_EXPAND XARGS _RC_GET_KV_CACHE
 
-	# There's no need to bloat environment.bz2 with internally defined
-	# functions and variables, so filter them out if possible.
+		# user config variables
+		DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
 
-	for _ in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
-		src_compile src_test src_install pkg_preinst pkg_postinst \
-		pkg_prerm pkg_postrm pkg_config pkg_info pkg_pretend ; do
-		unset -f default_${_} __eapi{0,1,2,4,6,8}_${_}
+		# CCACHE and DISTCC config
+		"${!CCACHE_@}" "${!DISTCC_@}"
+	)
+
+	# Unset the collected variables before moving on to functions.
+	unset -v "${REPLY[@]}"
+
+	REPLY=(
+		EXPORT_FUNCTIONS KV_to_int KV_major KV_micro KV_minor
+
+		__assert_sigpipe_ok __abort_configure __abort_compile
+		__abort_handler __abort_install __abort_prepare __abort_test
+		__check_bash_version __dyn_configure __dyn_compile
+		__dyn_install __dyn_prepare __dyn_pretend __dump_trace
+		__dyn_unpack __dyn_clean __dyn_setup __dyn_help __dyn_test
+		__ebuild_phase_with_hooks __eapi7_ver_compare_int
+		__eapi7_ver_parse_range __ebuild_arg_to_phase
+		__ebuild_phase_funcs __eapi7_ver_compare __eapi7_ver_split
+		__ebuild_phase __ebuild_main __elog_base __eqaquote __eqatag
+		__eend __filter_readonly_variables __has_phase_defined_up_to
+		__helpers_die __hasgq __hasg __preprocess_ebuild_env
+		__quiet_mode __qa_source __qa_call __repo_attr
+		__strip_duplicate_slashes __source_all_bashrcs
+		__source_env_files __save_ebuild_env __sb_append_var
+		__start_distcc __set_colors __try_source __unset_colors
+		__unpack_tar __vecho
+
+		addpredict addwrite adddeny addread assert best_version
+		debug-print-function debug-print-section debug-print docompress
+		default diropts docinto dostrip die einstall eqawarn exeinto
+		exeopts ebegin eerror einfon econf einfo ewarn eend elog get_KV
+		has_version hasq hasv has inherit insinto insopts into libopts
+		nonfatal portageq register_success_hook register_die_hook
+		use_enable use_with unpack useq usev use
+
+		# Defined by the "ebuild.sh" utility.
+		${QA_INTERCEPTORS}
+	)
+
+	for _ in \
+		pkg_{config,info,nofetch,postinst,preinst,pretend,postrm,prerm,setup} \
+		src_{configure,compile,install,prepare,test,unpack}
+	do
+		REPLY+=( default_"${_}" __eapi{0,1,2,4,6,8}_"${_}" )
 	done
 
-	unset -f assert __assert_sigpipe_ok \
-		__dump_trace die \
-		__quiet_mode __vecho __elog_base eqawarn elog \
-		einfo einfon ewarn eerror ebegin __eend eend KV_major \
-		KV_minor KV_micro KV_to_int get_KV has \
-		__has_phase_defined_up_to \
-		hasv hasq __qa_source __qa_call \
-		addread addwrite adddeny addpredict __sb_append_var \
-		use usev useq has_version portageq \
-		best_version use_with use_enable register_die_hook \
-		unpack __strip_duplicate_slashes econf einstall \
-		__dyn_setup __dyn_unpack __dyn_clean \
-		into insinto exeinto docinto \
-		insopts diropts exeopts libopts docompress dostrip \
-		__abort_handler __abort_prepare __abort_configure __abort_compile \
-		__abort_test __abort_install __dyn_prepare __dyn_configure \
-		__dyn_compile __dyn_test __dyn_install \
-		__dyn_pretend __dyn_help \
-		debug-print debug-print-function \
-		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
-		nonfatal register_success_hook \
-		__hasg __hasgq \
-		__save_ebuild_env __set_colors __filter_readonly_variables \
-		__preprocess_ebuild_env \
-		__repo_attr __source_all_bashrcs \
-		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
-		__ebuild_arg_to_phase __ebuild_phase_funcs default \
-		__unpack_tar __unset_colors \
-		__source_env_files __try_source __check_bash_version \
-		__start_distcc \
-		__eqaquote __eqatag \
-		__eapi7_ver_parse_range __eapi7_ver_split \
-		__eapi7_ver_compare_int __eapi7_ver_compare \
-		${QA_INTERCEPTORS}
+	___eapi_has_version_functions && REPLY+=( ver_test ver_cut ver_rs )
+	___eapi_has_einstalldocs && REPLY+=( einstalldocs )
+	___eapi_has_get_libdir && REPLY+=( get_libdir )
+	___eapi_has_in_iuse && REPLY+=( in_iuse )
+	___eapi_has_eapply && REPLY+=( eapply_user eapply )
+	___eapi_has_usex && REPLY+=( usex )
 
-	___eapi_has_usex && unset -f usex
-	___eapi_has_get_libdir && unset -f get_libdir
-	___eapi_has_einstalldocs && unset -f einstalldocs
-	___eapi_has_eapply && unset -f eapply eapply_user
-	___eapi_has_in_iuse && unset -f in_iuse
-	___eapi_has_version_functions && unset -f ver_cut ver_rs ver_test
-
-	# portage config variables and variables set directly by portage
-	unset ACCEPT_LICENSE BUILD_PREFIX COLS \
-		DISTDIR DOC_SYMLINKS_DIR \
-		EBUILD_FORCE_TEST EBUILD_MASTER_PID \
-		ECLASS_DEPTH ENDCOL FAKEROOTKEY \
-		HOME \
-		LAST_E_CMD LAST_E_LEN LD_PRELOAD MISC_FUNCTIONS_ARGS MOPREFIX \
-		NOCOLOR NO_COLOR PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
-		PORTAGE_BASHRC_FILES PORTAGE_BASHRCS_SOURCED \
-		PORTAGE_COLOR_BAD PORTAGE_COLOR_BRACKET PORTAGE_COLOR_ERR \
-		PORTAGE_COLOR_GOOD PORTAGE_COLOR_HILITE PORTAGE_COLOR_INFO \
-		PORTAGE_COLOR_LOG PORTAGE_COLOR_NORMAL PORTAGE_COLOR_QAWARN \
-		PORTAGE_COLOR_WARN \
-		PORTAGE_COMPRESS PORTAGE_COMPRESS_EXCLUDE_SUFFIXES \
-		PORTAGE_DOHTML_UNWARNED_SKIPPED_EXTENSIONS \
-		PORTAGE_DOHTML_UNWARNED_SKIPPED_FILES \
-		PORTAGE_DOHTML_WARN_ON_SKIPPED_FILES \
-		PORTAGE_NONFATAL PORTAGE_QUIET \
-		PORTAGE_SANDBOX_DENY PORTAGE_SANDBOX_PREDICT \
-		PORTAGE_SANDBOX_READ PORTAGE_SANDBOX_WRITE \
-		PORTAGE_SOCKS5_PROXY PREROOTPATH \
-		QA_INTERCEPTORS \
-		RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL RC_INDENTATION  \
-		ROOT ROOTPATH RPMDIR TEMP TMP TMPDIR USE_EXPAND \
-		XARGS _RC_GET_KV_CACHE
-
-	# user config variables
-	unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
+	# Destroy the collected functions.
+	unset -f "${REPLY[@]}"
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do
