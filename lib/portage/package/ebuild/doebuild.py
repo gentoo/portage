@@ -472,11 +472,6 @@ def doebuild_environment(
     # Set requested Python interpreter for Portage helpers.
     mysettings["PORTAGE_PYTHON"] = portage._python_interpreter
 
-    # This is used by assert_sigpipe_ok() that's used by the ebuild
-    # unpack() helper. SIGPIPE is typically 13, but its better not
-    # to assume that.
-    mysettings["PORTAGE_SIGPIPE_STATUS"] = str(128 + signal.SIGPIPE)
-
     # We are disabling user-specific bashrc files.
     mysettings["BASH_ENV"] = INVALID_ENV_FILE
 

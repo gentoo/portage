@@ -171,7 +171,6 @@ environ_whitelist = frozenset(
         "PORTAGE_REPO_NAME",
         "PORTAGE_REPOSITORIES",
         "PORTAGE_RESTRICT",
-        "PORTAGE_SIGPIPE_STATUS",
         "PORTAGE_SOCKS5_PROXY",
         "PORTAGE_TMPDIR",
         "PORTAGE_UPDATE_ENV",

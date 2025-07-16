@@ -84,8 +84,8 @@ __save_ebuild_env() (
 	REPLY=(
 		EXPORT_FUNCTIONS KV_to_int KV_major KV_micro KV_minor
 
-		__assert_sigpipe_ok __abort_configure __abort_compile
-		__abort_handler __abort_install __abort_prepare __abort_test
+		__abort_configure __abort_compile __abort_handler
+		__abort_install __abort_prepare __abort_test
 		__check_bash_version __compose_bzip2_cmd __dyn_configure
 		__dyn_compile __dyn_install __dyn_prepare __dyn_pretend
 		__dump_trace __dyn_unpack __dyn_clean __dyn_setup __dyn_help
