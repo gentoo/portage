@@ -322,7 +322,7 @@ use_enable() {
 }
 
 unpack() {
-	local created_symlink suffix_known basename srcdir suffix f -
+	local created_symlink suffix_known basename output srcdir suffix f -
 	local -a bzip2_cmd
 
 	if (( $# == 0 )); then
@@ -438,9 +438,8 @@ unpack() {
 				__unpack_tar "${bzip2_cmd[@]}"
 				;;
 			7z)
-				local my_output
-				if ! my_output=$(7z x -y "${srcdir}${f}"); then
-					printf '%s\n' "${my_output}" >&2
+				if ! output=$(7z x -y "${srcdir}${f}"); then
+					printf '%s\n' "${output}" >&2
 					false
 				fi
 				;;
