@@ -128,7 +128,7 @@ __save_ebuild_env() (
 	___eapi_has_eapply_user && REPLY+=( __readdir eapply_user )
 	___eapi_has_get_libdir && REPLY+=( get_libdir )
 	___eapi_has_in_iuse && REPLY+=( in_iuse )
-	___eapi_has_eapply && REPLY+=( eapply patch )
+	___eapi_has_eapply && REPLY+=( __eapply_patch eapply patch )
 	___eapi_has_usex && REPLY+=( usex )
 
 	# Destroy the collected functions.
