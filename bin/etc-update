@@ -822,7 +822,7 @@ SCAN_PATHS=${*:-${CONFIG_PROTECT}}
 TMP=
 trap 'rm -rf -- "${TMP}"' EXIT
 TMP=$(mktemp -d -- "${PORTAGE_TMPDIR}/etc-update.XXXXXX") \
-&& chown "${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0}" -- "${TMP}" \
+&& chown -- "${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0}" "${TMP}" \
 || exit
 
 trap "die terminated" SIGTERM
