@@ -23,10 +23,7 @@ fi
 shopt -s expand_aliases
 
 assert() {
-	local x pipestatus=${PIPESTATUS[*]}
-	for x in ${pipestatus} ; do
-		[[ ${x} -eq 0 ]] || die "$@"
-	done
+	IFS='|' expression=${PIPESTATUS[*]} let '! expression' || die "$@"
 }
 
 shopt -s extdebug
