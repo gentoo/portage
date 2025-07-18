@@ -48,8 +48,8 @@ __save_ebuild_env() (
 		ftp_proxy https_proxy http_proxy no_proxy
 
 		# other variables inherited from the calling environment
-		CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO SSH_AGENT_PID
-		SSH_AUTH_SOCK STY WINDOW XAUTHORITY
+		"${!SSH_@}" CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO STY WINDOW
+		XAUTHORITY
 
 		# portage config variables and variables set directly by portage
 		ACCEPT_LICENSE BUILD_PREFIX COLS DOC_SYMLINKS_DIR DISTDIR
