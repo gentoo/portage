@@ -691,34 +691,27 @@ contains_word() {
 # parameters shall be conveyed verbatim and are guaranteed to be treated as
 # options and/or primaries, provided that the version of GNU findutils is 4.9.0
 # or greater. For older versions, no such guarantee is made.
-find0() {
-	if printf '/\0' | find -files0-from - -maxdepth 0 &>/dev/null; then
-		find0() {
-			find -files0-from - "$@"
-		}
-	else
-		# This is a temporary workaround for the GitHub CI runner, which
-		# suffers from an outdated version of findutils, per bug 957550.
-		find0() {
-			local -a opts paths
+if printf '/\0' | find -files0-from - -maxdepth 0 &>/dev/null; then
+	find0() {
+		find -files0-from - "$@"
+	}
+else
+	# This is a temporary workaround for the GitHub CI runner, which
+	# suffers from an outdated version of findutils, per bug 957550.
+	find0() {
+		local -a opts paths
 
-			# All of -H, -L and -P are options. If specified, they
-			# must precede pathnames and primaries alike.
-			while [[ $1 == -[HLP] ]]; do
-				opts+=("$1")
-				shift
-			done
-			mapfile -td '' paths
-			if (( ${#paths[@]} )); then
-				find "${opts[@]}" "${paths[@]}" "$@"
-			fi
-		}
-	fi
-
-	find0 "$@"
-}
-
-# Initialise the function now because find0() is normally called after forking.
-find0 < /dev/null
+		# All of -H, -L and -P are options. If specified, they must
+		# precede pathnames and primaries alike.
+		while [[ $1 == -[HLP] ]]; do
+			opts+=("$1")
+			shift
+		done
+		mapfile -td '' paths
+		if (( ${#paths[@]} )); then
+			find "${opts[@]}" "${paths[@]}" "$@"
+		fi
+	}
+fi
 
 true
