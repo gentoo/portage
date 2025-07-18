@@ -223,6 +223,10 @@ Bug fixes:
 * EbuildExecuter: Prevent src phases from being erroneously skipped for packages
   whose metadata cache entries lack DEFINED_PHASES.
 
+* isolated-functions.sh: Print the diagnostic messages of failed helpers
+  verbatim where nonfatal is in effect, rather than interpret backslash-escape
+  sequences or treat arguments as options of the echo builtin.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
