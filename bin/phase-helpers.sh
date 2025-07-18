@@ -981,33 +981,33 @@ if ___eapi_has_eapply; then
 		patch() { gpatch "$@"; }
 	fi
 
+	_eapply_patch() {
+		local prefix=$1 patch=$2 output IFS
+		shift 2
+
+		ebegin "${prefix:-Applying }${patch##*/}"
+		# -p1 as a sane default
+		# -f to avoid interactivity
+		# -g0 to guarantee no VCS interaction
+		# --no-backup-if-mismatch not to pollute the sources
+		set -- -p1 -f -g0 --no-backup-if-mismatch "$@"
+		if output=$(LC_ALL= LC_MESSAGES=C patch "$@" < "${patch}" 2>&1); then
+			# The patch was successfully applied. Maintain silence
+			# unless applied with fuzz.
+			if [[ ${output} == *[0-9]' with fuzz '[0-9]* ]]; then
+				printf '%s\n' "${output}"
+			fi
+			eend 0
+		else
+			printf '%s\n' "${output}" >&2
+			eend 1
+			__helpers_die "patch ${*@Q} failed with ${patch@Q}"
+		fi
+	}
+
 	eapply() {
 		local LC_ALL LC_COLLATE=C f i path
 		local -a operands options
-
-		_eapply_patch() {
-			local prefix=$1 patch=$2 output IFS
-			shift 2
-
-			ebegin "${prefix:-Applying }${patch##*/}"
-			# -p1 as a sane default
-			# -f to avoid interactivity
-			# -g0 to guarantee no VCS interaction
-			# --no-backup-if-mismatch not to pollute the sources
-			set -- -p1 -f -g0 --no-backup-if-mismatch "$@"
-			if output=$(LC_ALL= LC_MESSAGES=C patch "$@" < "${patch}" 2>&1); then
-				# The patch was successfully applied. Maintain
-				# silence unless applied with fuzz.
-				if [[ ${output} == *[0-9]' with fuzz '[0-9]* ]]; then
-					printf '%s\n' "${output}"
-				fi
-				eend 0
-			else
-				printf '%s\n' "${output}" >&2
-				eend 1
-				__helpers_die "patch ${*@Q} failed with ${patch@Q}"
-			fi
-		}
 
 		while (( $# )); do
 			case $1 in
