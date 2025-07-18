@@ -981,7 +981,7 @@ if ___eapi_has_eapply; then
 		patch() { gpatch "$@"; }
 	fi
 
-	_eapply_patch() {
+	__eapply_patch() {
 		local prefix=$1 patch=$2 output IFS
 		shift 2
 
@@ -1041,14 +1041,14 @@ if ___eapi_has_eapply; then
 						if (( i++ == 0 )); then
 							einfo "Applying patches from ${path} ..."
 						fi
-						_eapply_patch '  ' "${f}" "${options[@]}" || return
+						__eapply_patch '  ' "${f}" "${options[@]}" || return
 					fi
 				done
 				if (( i == 0 )); then
 					die "No *.{patch,diff} files in directory ${path}"
 				fi
 			else
-				_eapply_patch '' "${path}" "${options[@]}" || return
+				__eapply_patch '' "${path}" "${options[@]}" || return
 			fi
 		done
 	}
