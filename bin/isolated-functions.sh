@@ -183,7 +183,7 @@ die() {
 		for x in ${EBUILD_DEATH_HOOKS}; do
 			${x} "$@"
 		done >&2
-		> "${PORTAGE_BUILDDIR}/.die_hooks"
+		: > "${PORTAGE_BUILDDIR}/.die_hooks"
 	fi
 
 	if [[ -n ${PORTAGE_LOG_FILE} ]] ; then
@@ -209,7 +209,7 @@ die() {
 	eerror "Working directory: '$(pwd)'"
 	[[ -n ${S} ]] && eerror "S: '${S}'"
 
-	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && > "${PORTAGE_EBUILD_EXIT_FILE}"
+	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && : > "${PORTAGE_EBUILD_EXIT_FILE}"
 	[[ -n ${PORTAGE_IPC_DAEMON} ]] && "${PORTAGE_BIN_PATH}"/ebuild-ipc exit 1
 
 	# subshell die support
