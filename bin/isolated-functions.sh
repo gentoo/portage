@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# shellcheck disable=SC2128
+# shellcheck disable=2128,2185
 
 source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
