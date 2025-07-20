@@ -230,7 +230,9 @@ __vecho() {
 
 # Internal logging function, don't use this in ebuilds
 __elog_base() {
-	local messagetype
+	local messagetype=$1
+	shift
+
 	if [[ ${EBUILD_PHASE} == depend && -z ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
 		# in depend phase, we want to output a banner indicating which
 		# package emitted the message
@@ -239,16 +241,6 @@ __elog_base() {
 		__PORTAGE_ELOG_BANNER_OUTPUT=1
 	fi
 	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
-	case "${1}" in
-		INFO|WARN|ERROR|LOG|QA)
-			messagetype="${1}"
-			shift
-			;;
-		*)
-			__vecho -e " ${PORTAGE_COLOR_BAD}*${PORTAGE_COLOR_NORMAL} Invalid use of internal function __elog_base(), next message will not be logged"
-			return 1
-			;;
-	esac
 	echo -e "$@" | while read -r ; do
 		echo "${messagetype} ${REPLY}"
 	done >> "${T}/logging/${EBUILD_PHASE:-other}"
