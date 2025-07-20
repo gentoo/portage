@@ -32,9 +32,8 @@ shopt -s extdebug
 #            [whitespacing for filenames],
 #            [whitespacing for line numbers])
 __dump_trace() {
+	local strip=${1:-1} filespacing=$2 linespacing=$3
 	local sourcefile funcname lineno n p
-	declare -i strip=${1:-1}
-	local filespacing=$2 linespacing=$3
 
 	# The __qa_call() function and anything before it are portage internals
 	# that the user will not be interested in. Therefore, the stack trace
