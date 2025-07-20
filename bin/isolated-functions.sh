@@ -23,6 +23,7 @@ fi
 shopt -s expand_aliases
 
 assert() {
+	# shellcheck disable=2219
 	IFS='|' expression=${PIPESTATUS[*]} let '! expression' || die "$@"
 }
 
@@ -317,7 +318,7 @@ ebegin() {
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
-	let ++__EBEGIN_EEND_COUNT
+	(( ++__EBEGIN_EEND_COUNT ))
 	return 0
 }
 
