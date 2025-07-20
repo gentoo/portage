@@ -540,15 +540,15 @@ has() {
 }
 
 __repo_attr() {
-	local appropriate_section exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
+	local in_section exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
 	shopt -s extglob
 
 	while read -r line; do
-		if (( ! appropriate_section )) && [[ ${line} == "[$1]" ]]; then
-			appropriate_section=1
-		elif (( appropriate_section )) && [[ ${line} == "["*"]" ]]; then
-			appropriate_section=0
-		elif (( appropriate_section )) && [[ ${line} =~ ^${2}[[:space:]]*= ]]; then
+		if (( ! in_section )) && [[ ${line} == "[$1]" ]]; then
+			in_section=1
+		elif (( in_section )) && [[ ${line} == "["*"]" ]]; then
+			in_section=0
+		elif (( in_section )) && [[ ${line} =~ ^${2}[[:space:]]*= ]]; then
 			echo "${line##$2*( )=*( )}"
 			exit_status=0
 			break
