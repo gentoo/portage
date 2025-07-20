@@ -32,7 +32,7 @@ shopt -s extdebug
 #            [whitespacing for filenames],
 #            [whitespacing for line numbers])
 __dump_trace() {
-	local funcname="" sourcefile="" lineno="" s="yes" n p
+	local sourcefile funcname lineno n p
 	declare -i strip=${1:-1}
 	local filespacing=$2 linespacing=$3
 
