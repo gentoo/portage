@@ -540,21 +540,21 @@ has() {
 }
 
 __repo_attr() {
-	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
+	local appropriate_section exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
 	shopt -s extglob
+
 	while read -r line; do
-		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
-		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
-		# If a conditional expression like [[ ${line} == $2*( )=* ]] is used
-		# then bash-3.2 produces an error like the following when the file is
-		# sourced: syntax error in conditional expression: unexpected token `('
-		# Therefore, use a regular expression for compatibility.
-		if [[ ${appropriate_section} == 1 && ${line} =~ ^${2}[[:space:]]*= ]]; then
+		if (( ! appropriate_section )) && [[ ${line} == "[$1]" ]]; then
+			appropriate_section=1
+		elif (( appropriate_section )) && [[ ${line} == "["*"]" ]]; then
+			appropriate_section=0
+		elif (( appropriate_section )) && [[ ${line} =~ ^${2}[[:space:]]*= ]]; then
 			echo "${line##$2*( )=*( )}"
 			exit_status=0
 			break
 		fi
 	done <<< "${PORTAGE_REPOSITORIES}"
+
 	eval "${saved_extglob_shopt}"
 	return ${exit_status}
 }
