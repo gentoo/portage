@@ -412,7 +412,6 @@ __set_colors() {
 
 RC_ENDCOL="yes"
 RC_INDENTATION=''
-RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
 
 
