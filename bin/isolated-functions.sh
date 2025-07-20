@@ -141,7 +141,7 @@ die() {
 	local main_index
 	(( main_index = ${#BASH_SOURCE[@]} - 1 ))
 	if [[ ${BASH_SOURCE[main_index]##*/} == @(ebuild|misc-functions).sh ]]; then
-	__dump_trace 2 ${filespacing} ${linespacing}
+	__dump_trace 2 "${filespacing}" "${linespacing}"
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
 	# This scans the file that called die and prints out the logic that
@@ -341,7 +341,7 @@ __eend() {
 		printf "%$(( COLS - LAST_E_LEN - 7 ))s%b\n" '' "${msg}" >&2
 	fi
 
-	return ${retval}
+	return "${retval}"
 }
 
 eend() {
@@ -353,10 +353,10 @@ eend() {
 		eqawarn "QA Notice: eend called without preceding ebegin in ${FUNCNAME[1]}"
 	fi
 
-	__eend ${retval} eerror "$*"
+	__eend "${retval}" eerror "$*"
 
 	LAST_E_CMD="eend"
-	return ${retval}
+	return "${retval}"
 }
 
 __unset_colors() {
@@ -391,8 +391,10 @@ __set_colors() {
 	# Now, ${ENDCOL} will move us to the end of the
 	# column; regardless of character width
 	ENDCOL=$'\e[A\e['$(( COLS - 8 ))'C'
-	if [[ -n "${PORTAGE_COLORMAP}" ]]; then
-		eval ${PORTAGE_COLORMAP}
+	if [[ ${PORTAGE_COLORMAP} ]]; then
+		# The PORTAGE_COLORMAP environment variable is defined by the
+		# doebuild.py unit and is intended to be evaluated as code.
+		eval "${PORTAGE_COLORMAP}"
 	else
 		PORTAGE_COLOR_BAD=$'\e[31;01m'
 		PORTAGE_COLOR_BRACKET=$'\e[34;01m'
