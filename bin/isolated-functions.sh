@@ -391,6 +391,7 @@ __set_colors() {
 	# Now, ${ENDCOL} will move us to the end of the
 	# column; regardless of character width
 	ENDCOL=$'\e[A\e['$(( COLS - 8 ))'C'
+	# shellcheck disable=2034
 	if [[ ${PORTAGE_COLORMAP} ]]; then
 		# The PORTAGE_COLORMAP environment variable is defined by the
 		# doebuild.py unit and is intended to be evaluated as code.
