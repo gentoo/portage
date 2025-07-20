@@ -540,7 +540,7 @@ has() {
 __repo_attr() {
 	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
 	shopt -s extglob
-	while read line; do
+	while read -r line; do
 		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
 		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
 		# If a conditional expression like [[ ${line} == $2*( )=* ]] is used
