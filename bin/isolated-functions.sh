@@ -182,8 +182,8 @@ die() {
 	then
 		local x
 		for x in ${EBUILD_DEATH_HOOKS}; do
-			${x} "$@" >&2 1>&2
-		done
+			${x} "$@"
+		done >&2
 		> "${PORTAGE_BUILDDIR}/.die_hooks"
 	fi
 
@@ -234,8 +234,8 @@ __elog_base() {
 	if [[ ${EBUILD_PHASE} == depend && -z ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
 		# in depend phase, we want to output a banner indicating which
 		# package emitted the message
-		echo >&2
-		echo "Messages for package ${PORTAGE_COLOR_INFO}${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}${PORTAGE_COLOR_NORMAL}:" >&2
+		printf >&2 '\nMessages for package %s%s%s:\n' \
+			"${PORTAGE_COLOR_INFO}" "${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}" "${PORTAGE_COLOR_NORMAL}"
 		__PORTAGE_ELOG_BANNER_OUTPUT=1
 	fi
 	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
@@ -250,9 +250,8 @@ __elog_base() {
 			;;
 	esac
 	echo -e "$@" | while read -r ; do
-		echo "${messagetype} ${REPLY}" >> \
-			"${T}/logging/${EBUILD_PHASE:-other}"
-	done
+		echo "${messagetype} ${REPLY}"
+	done >> "${T}/logging/${EBUILD_PHASE:-other}"
 	return 0
 }
 
@@ -260,8 +259,8 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+	done >&2
 	LAST_E_CMD="eqawarn"
 	return 0
 }
@@ -270,8 +269,8 @@ elog() {
 	__elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+	done >&2
 	LAST_E_CMD="elog"
 	return 0
 }
@@ -280,8 +279,8 @@ einfo() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+	done >&2
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -298,8 +297,8 @@ ewarn() {
 	__elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}"
+	done >&2
 	LAST_E_CMD="ewarn"
 	return 0
 }
@@ -308,8 +307,8 @@ eerror() {
 	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}"
+	done >&2
 	LAST_E_CMD="eerror"
 	return 0
 }
