@@ -123,6 +123,9 @@ Features:
 * depgraph: Make FEATURES="buildpkg-proactive" trigger a rebuild when
   --binpkg-respect-user-patches would mask a binary package.
 
+* isolated-functions.sh: Accelerate the output commands by avoiding subshells.
+  For a message of one line, einfo takes less than a tenth of the time.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata
@@ -199,6 +202,9 @@ Bug fixes:
 
 * save-ebuild-env.sh: Prevent the internal __pipestatus() function from leaking
   into the saved ebuild environment, as it has done since portage-3.0.73.
+
+* isolated-functions.sh: Prevent einfo, einfon, elog, ewarn, eqawarn and eerror
+  from treating any of their arguments as options of the echo builtin.
 
 Cleanups:
 

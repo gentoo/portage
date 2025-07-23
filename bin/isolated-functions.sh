@@ -232,69 +232,96 @@ __vecho() {
 	__quiet_mode || echo "$@" >&2
 }
 
-# Internal logging function, don't use this in ebuilds
 __elog_base() {
-	local messagetype=$1
+	local level=$1
+	local line
 	shift
 
-	if [[ ${EBUILD_PHASE} == depend && -z ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
-		# in depend phase, we want to output a banner indicating which
-		# package emitted the message
-		printf >&2 '\nMessages for package %s%s%s:\n' \
+	if [[ ${T} && -d ${T}/logging ]]; then
+		for line; do
+			printf '%s %s\n' "${level}" "${line%$'\n'}"
+		done >> "${T}/logging/${EBUILD_PHASE:-other}"
+	fi
+}
+
+__eprint() {
+	local level=$1 format=$2
+	local nameref color line msg IFS
+	local -a lines
+	shift 2
+
+	if [[ ${EBUILD_PHASE} == depend && ! ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
+		# If in the depend phase, output a banner indicating which
+		# package emitted the message.
+		printf '\nMessages for package %s%s%s:\n' \
 			"${PORTAGE_COLOR_INFO}" "${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}" "${PORTAGE_COLOR_NORMAL}"
 		__PORTAGE_ELOG_BANNER_OUTPUT=1
 	fi
-	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
-	echo -e "$@" | while read -r ; do
-		echo "${messagetype} ${REPLY}"
-	done >> "${T}/logging/${EBUILD_PHASE:-other}"
-	return 0
+
+	case ${level} in
+		QA)
+			color=${PORTAGE_COLOR_QAWARN}
+			;;
+		ERROR)
+			color=${PORTAGE_COLOR_ERR}
+			;;
+		*)
+			nameref=PORTAGE_COLOR_${level}
+			color=${!nameref}
+	esac
+
+	# As absurd as it is, PMS requires that <backslash>-escape sequences be
+	# "interpreted as for the echo -e command of bash". Currently, callers
+	# pass the %b format specifier to that end.
+	#
+	# https://projects.gentoo.org/pms/9/pms.html#x1-12700012.3.5
+	# shellcheck disable=2059
+	printf -v msg "${format}" "$*"
+
+	# Read the message into an array of lines, each retaining its <newline>.
+	# A here-string appends a <newline> of its own, so remove it from the
+	# final element. Should that element then be empty, discard it unless it
+	# is the only one, as occurs when einfon() is called without a message.
+	if mapfile lines <<<"${msg}"; then
+		lines[-1]=${lines[-1]%$'\n'}
+		if [[ ! ${lines[-1]} ]] && (( ${#lines[@]} > 1 )); then
+			unset -v 'lines[-1]'
+		fi
+	fi
+
+	for line in "${lines[@]}"; do
+		printf ' %s*%s %s' "${color}" "${PORTAGE_COLOR_NORMAL}" "${line}"
+	done
+
+	# Refrain from logging if the joined parameters form an empty string.
+	# This is a historical quirk, for empty lines are otherwise logged.
+	if (( $# > 1 || ${#1} > 0 )); then
+		__elog_base "${level}" "${lines[@]}"
+	fi
 }
 
 eqawarn() {
-	__elog_base QA "$*"
-	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
-	done >&2
-	return 0
+	__eprint >&2 QA '%b\n' "$@"
 }
 
 elog() {
-	__elog_base LOG "$*"
-	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
-	done >&2
-	return 0
+	__eprint >&2 LOG '%b\n' "$@"
 }
 
 einfo() {
-	__elog_base INFO "$*"
-	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
-	done >&2
-	return 0
+	__eprint >&2 INFO '%b\n' "$@"
 }
 
 einfon() {
-	__elog_base INFO "$*"
-	echo -ne " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} $*" >&2
-	return 0
+	__eprint >&2 INFO '%b' "$@"
 }
 
 ewarn() {
-	__elog_base WARN "$*"
-	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
-	done >&2
-	return 0
+	__eprint >&2 WARN '%b\n' "$@"
 }
 
 eerror() {
-	__elog_base ERROR "$*"
-	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
-	done >&2
-	return 0
+	__eprint >&2 ERROR '%b\n' "$@"
 }
 
 ebegin() {

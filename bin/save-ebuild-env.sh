@@ -199,6 +199,7 @@ __save_ebuild_env() (
 		__ebuild_phase_with_hooks
 		__eend
 		__elog_base
+		__eprint
 		__eqaquote
 		__eqatag
 		__filter_readonly_variables
