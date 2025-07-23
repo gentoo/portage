@@ -98,7 +98,8 @@ install_qa_check() {
 		(
 			# Allow inheriting eclasses.
 			# XXX: we want this only in repository-wide checks.
-			_IN_INSTALL_QA_CHECK=1
+			# shellcheck disable=SC2154
+			___state[in-qa-check]=1
 			source "${d}/${f}" || eerror "Post-install QA check ${f} failed to run"
 		)
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
@@ -353,7 +354,8 @@ postinst_qa_check() {
 		(
 			# Allow inheriting eclasses.
 			# XXX: we want this only in repository-wide checks.
-			_IN_INSTALL_QA_CHECK=1
+			# shellcheck disable=SC2154
+			___state[in-qa-check]=1
 			source "${d}/${f}" || eerror "Post-${PORTAGE_QA_PHASE} QA check ${f} failed to run"
 		)
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)

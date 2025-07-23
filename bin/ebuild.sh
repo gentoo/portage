@@ -10,6 +10,11 @@ unalias -a
 unset BASH_COMPAT
 declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 
+# Define an array to act as a key-value store that need not be known to
+# subprocesses of bash, nor be saved by the __save_ebuild_env() function,
+# thereby discouraging the proliferation of variables in the global scope.
+declare -A ___state=()
+
 source "${PORTAGE_BIN_PATH:?}/isolated-functions.sh" || exit
 
 __check_bash_version() {
@@ -199,14 +204,12 @@ fi
 umask 022
 
 # Sources all eclasses in parameters
-declare -ix ECLASS_DEPTH=0
 inherit() {
-	ECLASS_DEPTH=$((${ECLASS_DEPTH} + 1))
-	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
-		debug-print "*** Multiple Inheritance (Level: ${ECLASS_DEPTH})"
+	if (( ___state[eclass-depth]++ > 0 )); then
+		debug-print "*** Multiple Inheritance (Level: ${___state[eclass-depth]})"
 
-		# Since ECLASS_DEPTH > 1, the following variables are locals from the
-		# previous inherit call in the call stack.
+		# This call is nested within another, so the following variables
+		# are still the locals of the enclosing inherit() call.
 		if [[ -n ${ECLASS} && -n ${!__export_funcs_var} ]] ; then
 			eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
 			eqawarn "For compatibility with PMS and to avoid breakage with Pkgcore, only call"
@@ -234,12 +237,11 @@ inherit() {
 		potential_location=""
 
 		ECLASS="${1##*/}"
-		__export_funcs_var=__export_functions_${ECLASS_DEPTH}
+		__export_funcs_var=__export_functions_${___state[eclass-depth]}
 		unset ${__export_funcs_var}
 
-		if [[ ${EBUILD_PHASE} != depend && ${EBUILD_PHASE} != nofetch && \
-			${EBUILD_PHASE} != *rm && ${EMERGE_FROM} != "binary" && \
-			-z ${_IN_INSTALL_QA_CHECK} ]]
+		if (( ! ___state[in-qa-check] )) \
+			&& [[ ${EBUILD_PHASE} != @(depend|nofetch|*rm) && ${EMERGE_FROM} != binary ]]
 		then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
@@ -247,7 +249,7 @@ inherit() {
 			# disabled for nofetch, since that can be called by repoman and
 			# that triggers bug #407449 due to repoman not exporting
 			# non-essential variables such as INHERITED.
-			if ! contains_word "${ECLASS}" "${INHERITED} ${__INHERITED_QA_CACHE}"; then
+			if ! contains_word "${ECLASS}" "${INHERITED} ${___state[cached-inherited]}"; then
 				eqawarn "QA Notice: Eclass '${ECLASS}' inherited illegally in ${CATEGORY}/${PF} ${EBUILD_PHASE}"
 			fi
 		fi
@@ -264,7 +266,7 @@ inherit() {
 		[[ -z ${location} ]] && die "${1}.eclass could not be found by inherit()"
 
 		# Inherits in QA checks can't handle metadata assignments
-		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
+		if (( ! ___state[in-qa-check] )); then
 			# We need to back up the values of *DEPEND to B_*DEPEND
 			# (if set).. and then restore them after the inherit call.
 
@@ -298,7 +300,7 @@ inherit() {
 
 		__qa_source "${location}" || die "died sourcing ${location} in inherit()"
 
-		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
+		if (( ! ___state[in-qa-check] )); then
 			# Turn off glob expansion
 			set -f
 
@@ -366,14 +368,14 @@ inherit() {
 			if ! contains_word "$1" "${INHERITED}"; then
 				export INHERITED+=" $1"
 			fi
-			if [[ ${ECLASS_DEPTH} -eq 1 ]]; then
+			if (( ___state[eclass-depth] == 1 )); then
 				export PORTAGE_EXPLICIT_INHERIT+=" $1"
 			fi
 		fi
 
 		shift
 	done
-	((--ECLASS_DEPTH)) # Returns 1 when ECLASS_DEPTH reaches 0.
+	(( ___state[eclass-depth]-- ))
 	return 0
 }
 
@@ -388,8 +390,6 @@ EXPORT_FUNCTIONS() {
 	eval ${__export_funcs_var}+=\" $*\"
 }
 
-PORTAGE_BASHRCS_SOURCED=0
-
 # @FUNCTION: __source_all_bashrcs
 # @DESCRIPTION:
 # Source a relevant bashrc files and perform other miscellaneous
@@ -402,9 +402,9 @@ PORTAGE_BASHRCS_SOURCED=0
 #    function for the current phase.
 #
 __source_all_bashrcs() {
-	[[ ${PORTAGE_BASHRCS_SOURCED} = 1 ]] && return 0
-
-	PORTAGE_BASHRCS_SOURCED=1
+	if (( ___state[bashrcs-sourced]++ )); then
+		return
+	fi
 
 	local x
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
@@ -502,7 +502,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 		fi
 		if [[ ${EBUILD_PHASE} == depend ]] ; then
 			FUNC_SRC="${BIN} () {
-				if [[ \${ECLASS_DEPTH} -gt 0 ]]; then
+				if (( ___state[eclass-depth] > 0 )); then
 					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
 				else
 					eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
@@ -603,7 +603,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		# from cache. In order to make INHERITED content independent of
 		# EBUILD_PHASE during inherit() calls, we unset INHERITED after
 		# we make a backup copy for QA checks.
-		__INHERITED_QA_CACHE=${INHERITED}
+		___state[cached-inherited]=${INHERITED}
 
 		# Catch failed globbing attempts in case ebuild writer forgot to
 		# escape '*' or likes.
@@ -701,7 +701,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		fi
 
 		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
-		unset E_BDEPEND E_PROPERTIES E_RESTRICT __INHERITED_QA_CACHE
+		unset E_BDEPEND E_PROPERTIES E_RESTRICT '___state[cached-inherited]'
 
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
 			PROPERTIES=${PORTAGE_PROPERTIES}

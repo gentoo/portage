@@ -104,7 +104,6 @@ environ_whitelist = frozenset(
         "EBUILD_PHASE",
         "EBUILD_PHASE_FUNC",
         "ECLASSDIR",
-        "ECLASS_DEPTH",
         "ED",
         "EMERGE_FROM",
         "ENV_UNSET",
