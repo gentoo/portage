@@ -312,14 +312,9 @@ eerror() {
 }
 
 ebegin() {
-	local msg="$*" dots spaces=${RC_DOT_PATTERN//?/ }
-	if [[ -n ${RC_DOT_PATTERN} ]] ; then
-		printf -v dots "%$(( COLS - 3 - ${#msg} - 7 ))s" ''
-		dots=${dots//${spaces}/${RC_DOT_PATTERN}}
-		msg="${msg}${dots}"
-	else
-		msg="${msg} ..."
-	fi
+	local msg
+
+	msg="$* ..."
 	einfon "${msg}"
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#msg} ))
@@ -418,9 +413,6 @@ __set_colors() {
 }
 
 RC_ENDCOL="yes"
-RC_DOT_PATTERN=''
-
-
 
 if [[ -z ${NO_COLOR} ]] ; then
 	case ${NOCOLOR:-false} in
