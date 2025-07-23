@@ -295,7 +295,7 @@ ewarn() {
 	__elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}"
+		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
 	done >&2
 	LAST_E_CMD="ewarn"
 	return 0
@@ -305,7 +305,7 @@ eerror() {
 	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}"
+		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
 	done >&2
 	LAST_E_CMD="eerror"
 	return 0
@@ -314,7 +314,7 @@ eerror() {
 ebegin() {
 	local msg="$*" dots spaces=${RC_DOT_PATTERN//?/ }
 	if [[ -n ${RC_DOT_PATTERN} ]] ; then
-		printf -v dots "%$(( COLS - 3 - ${#RC_INDENTATION} - ${#msg} - 7 ))s" ''
+		printf -v dots "%$(( COLS - 3 - ${#msg} - 7 ))s" ''
 		dots=${dots//${spaces}/${RC_DOT_PATTERN}}
 		msg="${msg}${dots}"
 	else
@@ -322,7 +322,7 @@ ebegin() {
 	fi
 	einfon "${msg}"
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
-	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
+	LAST_E_LEN=$(( 3 + ${#msg} ))
 	LAST_E_CMD="ebegin"
 	(( ++__EBEGIN_EEND_COUNT ))
 	return 0
@@ -418,7 +418,6 @@ __set_colors() {
 }
 
 RC_ENDCOL="yes"
-RC_INDENTATION=''
 RC_DOT_PATTERN=''
 
 
