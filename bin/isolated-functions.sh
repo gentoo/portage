@@ -539,23 +539,22 @@ has() {
 }
 
 __repo_attr() {
-	local in_section exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
-	shopt -s extglob
+	local section key val i
+	local -a records
 
-	while read -r line; do
-		if (( ! in_section )) && [[ ${line} == "[$1]" ]]; then
-			in_section=1
-		elif (( in_section )) && [[ ${line} == "["*"]" ]]; then
-			in_section=0
-		elif (( in_section )) && [[ ${line} =~ ^${2}[[:space:]]*= ]]; then
-			echo "${line##$2*( )=*( )}"
-			exit_status=0
+	mapfile -td '' records < <(configparser <<<"${PORTAGE_REPOSITORIES}")
+
+	for (( i = 0; i < ${#records[@]}; i += 3 )); do
+		section=${records[i]}
+		key=${records[i + 1]}
+		if [[ ${section} == "$1" && ${key} == "$2" ]]; then
+			val=${records[i + 2]}
 			break
 		fi
-	done <<< "${PORTAGE_REPOSITORIES}"
+	done
 
-	eval "${saved_extglob_shopt}"
-	return ${exit_status}
+	# Only print the found value in the case that configparser succeeded.
+	wait "$!" && [[ -v val ]] && printf '%s\n' "${val}"
 }
 
 # eqaquote <string>
@@ -702,5 +701,98 @@ else
 		fi
 	}
 fi
+
+# Consumes the standard input and attempts to parse it as the "configparser"
+# configuration file format that is native to python. Each key/value entry
+# shall be printed in the format of "%s\0%s\0%s\0", <section>, <key>, <value>.
+# If the entirety of the input can be successfully parsed, the return value
+# shall be 0. Otherwise, a diagnostic message shall be printed to standard
+# error and the return value shall be greater than 0. Upon encountering the
+# first error of syntax, no further key/value entries shall be printed.
+configparser() {
+	local IFS next_{section,key} reset_extglob scalar_val section flush key_i line key nr i
+	local -a next_val lines val
+	local -A seen
+
+	reset_extglob=$(shopt -p extglob)
+	shopt -s extglob
+	IFS=$'\n'
+
+	# https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
+	mapfile -t lines
+	for nr in "${!lines[@]}"; do
+		# Trim trailing whitespace characters.
+		line=${lines[nr++]%%+([[:space:]])}
+
+		# Count and trim leading whitespace characters.
+		[[ ${line} =~ ^[[:space:]]* ]]
+		if (( i = ${#BASH_REMATCH} )); then
+			line=${line:i}
+		fi
+
+		if [[ ${line} == [#\;]* ]]; then
+			# Encountered a comment.
+			false
+		elif (( ${#val[@]} && (${#line} == 0 || i > key_i) )); then
+			# Encountered the continuation of a multiline value.
+			val+=( "${line}" )
+			false
+		elif (( ${#line} == 0 )); then
+			# Encountered an empty line that is not a continuation.
+			true
+		elif [[ ${line} =~ ^\[(.+)\]$ ]]; then
+			# Encountered a new section.
+			next_section=${BASH_REMATCH[1]}
+			seen=()
+		elif [[ ${line} =~ ^([^:=]+)[:=][[:space:]]*(.*) ]]; then
+			# Encountered the beginning of a key/value entry.
+			next_key=${BASH_REMATCH[1]%%*([[:space:]])}
+			if let 'seen[$next_key]++'; then
+				printf >&2 \
+					'configparser: duplicate key in section %s at STDIN[%d]: %s\n' \
+					"${section@Q}" "${nr}" "${line@Q}"
+				eval "${reset_extglob}"
+				return 1
+			elif [[ ! ${section} ]]; then
+				printf >&2 \
+					'configparser: key declared before section at STDIN[%d]: %s\n' \
+					"${nr}" "${line@Q}"
+				eval "${reset_extglob}"
+				return 1
+			fi
+			next_val=( "${BASH_REMATCH[2]}" )
+			key_i=$i
+		else
+			printf >&2 \
+				'configparser: syntax error at STDIN[%d]: %s\n' \
+				"${nr}" "${line@Q}"
+			eval "${reset_extglob}"
+			return 1
+		fi && flush=1
+
+		if (( nr == ${#lines[@]} - 1 )); then
+			# Last line encountered. Flush any pending value.
+			flush=1
+		fi
+
+		if (( flush && ${#val[@]} )); then
+			# Print section, key and value, null-terminated.
+			scalar_val=${val[*]}
+			scalar_val=${scalar_val%%+($'\n')}
+			printf '%s\0' "${section}" "${key}" "${scalar_val}"
+			val=()
+		fi
+
+		section=${next_section}
+		key=${next_key}
+		if (( ${#next_val[@]} )); then
+			val=( "${next_val[@]}" )
+			next_val=()
+		fi
+		flush=0
+	done
+
+	eval "${reset_extglob}"
+}
 
 true
