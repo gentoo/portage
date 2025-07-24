@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# shellcheck disable=2128,2185
+# shellcheck disable=2128,2185,2219
 
 source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
@@ -23,7 +23,6 @@ fi
 shopt -s expand_aliases
 
 assert() {
-	# shellcheck disable=2219
 	IFS='|' expression=${PIPESTATUS[*]} let '! expression' || die "$@"
 }
 
