@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Gentoo Authors
+# Copyright 2022-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from unittest.mock import MagicMock, patch, call
@@ -142,7 +142,7 @@ class BinarytreeTestCase(TestCase):
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
         ppopulate_remote.assert_called_once_with(
-            getbinpkg_refresh=refresh, pretend=False
+            getbinpkg_refresh=refresh, pretend=False, verbose=False
         )
 
     @patch("portage.dbapi.bintree.writemsg")
@@ -184,7 +184,9 @@ class BinarytreeTestCase(TestCase):
         settings.__getitem__.return_value = "/some/path"
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True)
-        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=False, pretend=False)
+        ppopulate_remote.assert_called_once_with(
+            getbinpkg_refresh=False, pretend=False, verbose=False
+        )
 
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
     @patch("portage.dbapi.bintree.binarytree._run_trust_helper")
