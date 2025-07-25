@@ -142,12 +142,12 @@ EBUILD_SH_ARGS="$*"
 shift $#
 
 # Unset some variables that break things.
-unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
+unset -v BZIP BZIP2 CDPATH GLOBIGNORE GREP_COLOR GREP_OPTIONS GZIP
 if ___eapi_has_ENV_UNSET; then
-	for x in ${ENV_UNSET}; do
-		unset "${x}"
-	done
-	unset x
+	set -f
+	# shellcheck disable=2086
+	unset -v -- ${ENV_UNSET}
+	set +f
 fi
 
 [[ ${PORTAGE_QUIET} != "" ]] && export PORTAGE_QUIET
