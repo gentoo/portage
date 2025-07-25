@@ -12,60 +12,65 @@ declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 
 source "${PORTAGE_BIN_PATH:?}/isolated-functions.sh" || exit
 
-# Set up the bash version compatibility level.  This does not disable
-# features when running with a newer version, but makes it so that when
-# bash changes behavior in an incompatible way, the older behavior is
-# used instead.
 __check_bash_version() {
-	# Figure out which min version of bash we require.
-	# Adjust patsub_replacement/globskipdots logic below on new EAPI!
-	local maj min
-	if ___eapi_bash_3_2 ; then
-		maj=3 min=2
-	elif ___eapi_bash_4_2 ; then
-		maj=4 min=2
-	elif ___eapi_bash_5_0 ; then
-		maj=5 min=0
-	elif ___eapi_bash_5_2 ; then
-		maj=5 min=2
-	else
-		return
-	fi
+	local IFS compat_maj compat_min dependent maj min
 
-	# Make sure the active bash is sane.
-	if [[ ${BASH_VERSINFO[0]} -lt ${maj} ]] ||
-	   [[ ${BASH_VERSINFO[0]} -eq ${maj} && ${BASH_VERSINFO[1]} -lt ${min} ]] ; then
-		die "EAPI=\"${EAPI}\" requires >=bash-${maj}.${min}, but bash-${BASH_VERSION} found"
-	fi
+	# Portage uses features that are only available in >=bash-4.4.
+	dependent="Portage"
+	maj=4
+	min=4
 
-	# Set the compat level in case things change with newer ones.  We must not
-	# export this into the env otherwise we might break  other shell scripts we
-	# execute (e.g. ones in /usr/bin).
-	BASH_COMPAT="${maj}.${min}"
-
-	# The variable above is new to bash-4.3.  For older versions, we have to use
-	# a compat knob.  Further, the compat knob only exists with older versions
-	# (e.g. bash-4.3 has compat42 but not compat43).  This means we only need to
-	# turn the knob with older EAPIs, and only when running newer bash versions:
-	# there is no bash-3.3 (it went 3.2 to 4.0), and when requiring bash-4.2, the
-	# var works with bash-4.3+, and you don't need to set compat to 4.2 when you
-	# are already running 4.2.
-	if ___eapi_bash_3_2 && [[ ${BASH_VERSINFO[0]} -gt 3 ]] ; then
-		shopt -s compat32
-	fi
-
-	# patsub_replacement and globskipdots are new options in bash-5.2 that are also default-on
-	# in that release. The default value is not gated by BASH_COMPAT (see bug #881383),
-	# hence we need to disable it for older Bashes to avoid behaviour changes in ebuilds
-	# and eclasses.
+	# Based on the value of EAPI, determine which shell compatibility level
+	# to activate. Further, raise the minimum required version if needs be.
 	#
-	# New EAPI note: a newer EAPI (after 8) may well adopt Bash 5.2 as its minimum version.
-	# If it does, this logic will need to be adjusted to only disable patsub_replacement
-	# and globskipdots for < ${new_api}!
-	if (( BASH_VERSINFO[0] >= 6 || ( BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 2 ) )) ; then
-		shopt -u patsub_replacement globskipdots
+	# https://projects.gentoo.org/pms/8/pms.html#x1-580006
+	if ___eapi_bash_3_2; then
+		compat_maj=3
+		compat_min=2
+	elif ___eapi_bash_4_2; then
+		compat_maj=4
+		compat_min=2
+	elif ___eapi_bash_5_0; then
+		dependent="EAPI ${EAPI}"
+		(( compat_maj = maj = 5 ))
+		(( compat_min = min = 0 ))
+	elif ___eapi_bash_5_2; then
+		dependent="EAPI ${EAPI}"
+		(( compat_maj = maj = 5 ))
+		(( compat_min = min = 2 ))
 	fi
 
+	# Ensure that the minimum required version is satisfied.
+	if (( BASH_VERSINFO[0] < maj
+		|| (BASH_VERSINFO[0] == maj && BASH_VERSINFO[1] < min) ))
+	then
+		IFS=.
+		die "${dependent} requires >=bash-${maj}.${min} but only ${BASH_VERSINFO[*]:0:2} was found"
+	fi
+
+	# Activate the selected shell compatibility level, if any. The
+	# BASH_COMPAT variable must never be exported, otherwise it will affect
+	# all bash scripts executed as subprocesses. The following document
+	# explains the behaviour of each available compatibility level.
+	#
+	# https://www.gnu.org/software/bash/manual/html_node/Shell-Compatibility-Mode.html
+	if [[ ${compat_maj} && ${compat_min} ]]; then
+		BASH_COMPAT="${compat_maj}.${compat_min}"
+	fi
+
+	# The "patsub_replacement" and "globskipdots" options were introduced
+	# by bash-5.2. Both are default-enabled and change the behaviour of
+	# bash in a manner that is backwards-incompatible. Setting BASH_COMPAT
+	# has no effect on either option. Hence, ensure that both are disabled
+	# until such time as a future EAPI not only requires >=5.2, but also
+	# mandates that the options be enabled.
+	#
+	# https://bugs.gentoo.org/881383
+	# https://bugs.gentoo.org/907061
+	# https://bugs.gentoo.org/946193
+	# https://bugs.gentoo.org/946179
+	shopt -u patsub_replacement globskipdots 2>/dev/null
+	true
 }
 __check_bash_version
 
