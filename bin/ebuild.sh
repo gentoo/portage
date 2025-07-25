@@ -593,8 +593,12 @@ eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.
 if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
-	if [[ ${EBUILD_PHASE} = setup && ${EMERGE_FROM} = ebuild ]] || \
-	[[ ${EBUILD_PHASE} = depend || ! -f ${T}/environment || -f ${PORTAGE_BUILDDIR}/.ebuild_changed || " ${FEATURES} " == *" noauto "* ]] ; then
+	if [[ ${EBUILD_PHASE} = setup && ${EMERGE_FROM} = ebuild ]] \
+		|| [[ ${EBUILD_PHASE} = depend ]] \
+		|| [[ ! -f ${T}/environment ]] \
+		|| [[ -f ${PORTAGE_BUILDDIR}/.ebuild_changed ]] \
+		|| contains_word noauto "${FEATURES}"
+	then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
 		# during sourcing of ebuilds and eclasses.
 		__source_all_bashrcs
