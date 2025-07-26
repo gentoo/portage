@@ -40,7 +40,7 @@ __save_ebuild_env() (
 	REPLY+=(
 		# variables that can influence the behaviour of GNU coreutils
 		BLOCK_SIZE COLORTERM COLUMNS DF_BLOCK_SIZE DU_BLOCK_SIZE HOME
-		LS_BLOCK_SIZE LS_COLORS POSIXLY_CORRECT PATH PWD QUOTING_STYLE
+		LS_BLOCK_SIZE LS_COLORS POSIXLY_CORRECT PWD QUOTING_STYLE
 		SHELL TIME_STYLE TABSIZE TMPDIR TERM TZ
 
 		# misc variables inherited from the calling environment
