@@ -265,6 +265,7 @@ environ_filter = frozenset(
         "MANPATH",
         "USER",
         # variables that break bash
+        "GLOBSORT",
         "HISTFILE",
         "POSIXLY_CORRECT",
         # portage config variables and variables set directly by portage
