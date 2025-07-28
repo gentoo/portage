@@ -50,7 +50,7 @@ portage_mutable_filtered_vars=( AA HOSTNAME )
 # Read an environment from stdin and echo to stdout while filtering variables
 # with names that are known to cause interference:
 #
-#   * all variables that can be set by or that affect bash (except EMACS & PATH)
+#   * variables that can be set by or that affect bash (with several exceptions)
 #   * some specific variables that affect portage or sandbox behavior
 #   * variable names that begin with a digit or that contain any
 #     non-alphanumeric characters that are not be supported by bash
@@ -94,10 +94,11 @@ __filter_readonly_variables() {
 	mapfile -t bash_vars < <(
 		# Like compgen -A variable but doesn't require readline support.
 		env -i -- "${BASH}" -c "printf %s\\\n $(printf '${!%s*} ' {A..Z} {a..z} _)" \
-		| grep -vx PATH
+		| grep -vx -e PATH -e SHELL
 	)
 	# Incorporate other variables that are known to either be set by or be
 	# able to influence bash. This list was last updated for bash-5.3.
+	# EMACS is omitted, so as not to break the "elisp-common" eclass.
 	bash_vars+=(
 		BASH_LOADABLES_PATH BASH_XTRACEFD BASH_REMATCH BASH_TRAPSIG
 		BASH_COMPAT BASH_ENV COMP_CWORD COMP_POINT COMP_WORDS CHILD_MAX

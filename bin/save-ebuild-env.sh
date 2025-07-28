@@ -56,7 +56,6 @@ __save_ebuild_env() (
 		POSIXLY_CORRECT
 		PWD
 		QUOTING_STYLE
-		SHELL
 		TABSIZE
 		TERM
 		TIME_STYLE
