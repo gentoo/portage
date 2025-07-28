@@ -61,7 +61,6 @@ __save_ebuild_env() (
 		TERM
 		TIME_STYLE
 		TMPDIR
-		TZ
 
 		# Miscellaneous variables inherited from the operating environment.
 		DISPLAY
