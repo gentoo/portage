@@ -282,6 +282,9 @@ def xtermTitle(mystr, raw=False):
         )
 
     if dotitles and not _disable_xtermTitle:
+        if "HOSTNAME" in os.environ and not raw:
+            hostname = os.environ["HOSTNAME"]
+            mystr = f"{hostname}: {mystr}"
         # If the title string is too big then the terminal can
         # misbehave. Therefore, truncate it if it's too big.
         if len(mystr) > _max_xtermTitle_len:
