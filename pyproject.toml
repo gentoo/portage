@@ -3,7 +3,7 @@ name = 'portage'
 dynamic = ['version']
 description = 'Portage is the package management and distribution system for Gentoo'
 readme = 'README.md'
-requires-python = '>=3.9'
+requires-python = '>=3.10'
 license = {file = "LICENSE"}
 authors = [
   {name = 'Gentoo Portage Development Team', email = 'dev-portage@gentoo.org'},
