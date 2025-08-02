@@ -6,6 +6,86 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+Security:
+
+* The emerge-webrsync utility will now parse the output of gpg(1) correctly
+  and safely. This addresses a security issue affecting users that might
+  run emerge-werbsync in a situation where gemato is unusable, for whatever
+  reason.
+
+* The emerge-webrsync utility will now validate the input that it obtains
+  from the "metadata/timestamp.x" file.
+
+  This addresses a security issue whereby arbitrary code execution was
+  achievable in the course of bash performing arithmetic operations on
+  numbers representing unix time.
+
+Bug fixes:
+
+* The emerge-webrsync utility will now ensure that the temporary directory
+  containing an ephemeral keyring is deleted upon editing, in the case that
+  it chooses to use gpg rather than gemato.
+
+  Further, it will automatically terminate the gpg-agent process that would
+  otherwise become defunct.
+
+* The emerge-webrsync utility will no longer attempt to show news in the
+  case that it was invoked by portage itself.
+
+* The emerge-webrsync utility will no longer consider executing emerge --metadata
+  in the case that it was invoked by portage itself.
+
+* The 90gcc-warnings QA check will now perform so-called ANSI filtering correctly
+  for instances of 'PORTAGE_LOG_FILE' that have been compresesed with gzip.
+
+* The 90gcc-warnings QA check is now able to raise -Wparentheses warnings.
+  Previously, it could not, owing to a defective pattern.
+
+* The 90gcc-warnings QA check will now de-duplicate all warnings detected,
+  even if they are not adjacent to one another.
+
+* The use() function can no longer return true when given an abnormal USE
+  flag (such as "foo foo").
+
+* The estrip utility will no longer produce multiple, redundant warnings
+  whose lines are unpredictably interleaved (bug 832138).
+
+Performance:
+
+* The way in which portage searches for words that are subsumed by scalar
+  variables containing whitespace-separated words has been changed. The
+  newly employed method is approximately twice as fast and considerably
+  less noisy in the case that the "xtrace" shell option is enabled.
+
+  In turn, this change benefits certain functions, such as use().
+
+* Patches are now applied more quickly. Previously, portage would apply the
+  patch twice, once with the --dry-run option in effect, then again without.
+
+  The first of these two phases has been eliminated.
+
+* The performance of the 60bash-compeletion QA check has been improved by
+  using associative arrays to track seen completions and file basenames.
+
+* The 90gcc-warnings QA check will now use much less memory in the course
+  of collecting and conveying warnings. It should also perform a little
+  better on account of composing an extended regular expression that is
+  simpler and shorter than was previously the case.
+
+* The ecompress utility has been made slightly faster by having GNU find
+  resolve the targets of symlinks, rather than execute the readlink
+  utility once for each pathname that is traversed.
+
+Cleanups:
+
+* Owing to an effort to modernise the parts of portage that are written in
+  bash, a number of improvements have been made in terms of code quality and
+  legibility, with various bash anti-patterns having been eliminated, new
+  features leveraged (up to bash 4.4) and diagnostic messages improved.
+
+  Though in its early stages, this effort is expected to continue at a brisk
+  pace through upcoming releases of portage.
+
 portage-3.0.69 (UNRELEASED)
 --------------
 
