@@ -23,7 +23,7 @@ Security:
 Bug fixes:
 
 * The emerge-webrsync utility will now ensure that the temporary directory
-  containing an ephemeral keyring is deleted upon editing, in the case that
+  containing an ephemeral keyring is deleted upon exiting, in the case that
   it chooses to use gpg rather than gemato.
 
   Further, it will automatically terminate the gpg-agent process that would
