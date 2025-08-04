@@ -112,7 +112,7 @@ def writemsg(mystr: str, noiselevel: int = 0, fd: Optional[TextIO] = None) -> No
         fd = sys.stderr
     if noiselevel <= noiselimit:
         # avoid potential UnicodeEncodeError
-        if isinstance(fd, io.StringIO):
+        if isinstance(fd, io.TextIOBase):
             mystr = _unicode_decode(
                 mystr, encoding=_encodings["content"], errors="replace"
             )
