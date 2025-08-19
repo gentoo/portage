@@ -1,4 +1,4 @@
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -20,7 +20,7 @@ portage.proxy.lazyimport.lazyimport(
     + "writemsg,writemsg_stdout",
     "portage.util.path:first_existing",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
-    "portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476",
+    "portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476,http_to_timestamp",
     "portage.versions:best,catpkgsplit,catsplit,_pkg_str",
 )
 
@@ -61,6 +61,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 
 import codecs
+import datetime
 import errno
 import io
 import json
@@ -883,6 +884,7 @@ class binarytree:
         self,
         getbinpkgs=False,
         getbinpkg_refresh=False,
+        verbose=False,
         add_repos=(),
         force_reindex=False,
         invalid_errors=True,
@@ -959,7 +961,9 @@ class binarytree:
                     )
                 else:
                     self._populate_remote(
-                        getbinpkg_refresh=getbinpkg_refresh, pretend=pretend
+                        getbinpkg_refresh=getbinpkg_refresh,
+                        pretend=pretend,
+                        verbose=verbose,
                     )
 
         finally:
@@ -1352,7 +1356,7 @@ class binarytree:
             return
         ret.check_returncode()
 
-    def _populate_remote(self, getbinpkg_refresh=True, pretend=False):
+    def _populate_remote(self, getbinpkg_refresh=True, pretend=False, verbose=False):
         self._remote_has_index = False
         self._remotepkgs = {}
 
@@ -1369,6 +1373,7 @@ class binarytree:
 
         # Order by descending priority.
         for repo in reversed(list(self._binrepos_conf.values())):
+            binrepo_name = repo.name or repo.name_fallback
             base_url = repo.sync_uri
             parsed_url = urlparse(base_url)
             host = parsed_url.hostname or ""
@@ -1459,6 +1464,11 @@ class binarytree:
                         if (
                             hasattr(err, "code") and err.code == 304
                         ):  # not modified (since local_timestamp)
+                            if hasattr(err, "headers") and err.headers.get(
+                                "Last-Modified", ""
+                            ):
+                                last_modified = err.headers.get("Last-Modified")
+                                remote_timestamp = http_to_timestamp(last_modified)
                             raise UseCachedCopyOfRemoteIndex()
 
                         if parsed_url.scheme in ("ftp", "http", "https"):
@@ -1542,19 +1552,20 @@ class binarytree:
                         pkgindex = None
                         writemsg(
                             _(
-                                "\n\n!!! Binhost package index "
+                                "\n\n!!! [%s] Binhost package index "
                                 " has no TIMESTAMP field.\n"
                             ),
+                            binrepo_name,
                             noiselevel=-1,
                         )
                     else:
                         if not self._pkgindex_version_supported(rmt_idx):
                             writemsg(
                                 _(
-                                    "\n\n!!! Binhost package index version"
+                                    "\n\n!!! [%s] Binhost package index version"
                                     " is not supported: '%s'\n"
                                 )
-                                % rmt_idx.header.get("VERSION"),
+                                % (binrepo_name, rmt_idx.header.get("VERSION")),
                                 noiselevel=-1,
                             )
                             pkgindex = None
@@ -1574,18 +1585,36 @@ class binarytree:
                             AlarmSignal.unregister()
                     except AlarmSignal:
                         writemsg(
-                            "\n\n!!! %s\n"
-                            % _("Timed out while closing connection to binhost"),
+                            "\n\n!!! [%s] %s\n"
+                            % (
+                                binrepo_name,
+                                _("Timed out while closing connection to binhost"),
+                            ),
                             noiselevel=-1,
                         )
             except UseCachedCopyOfRemoteIndex:
                 changed = False
-                desc = "frozen" if repo.frozen else "up-to-date"
+                extra_info = ""
+                if repo.frozen:
+                    desc = "frozen"
+                else:
+
+                    def convUnixTs(ts):
+
+                        dt = datetime.datetime.fromtimestamp(
+                            int(ts), datetime.timezone.utc
+                        )
+                        return dt.isoformat()
+
+                    desc = "up-to-date"
+                    if remote_timestamp and verbose:
+                        extra_info = f" (local: {convUnixTs(local_timestamp)}, remote: {convUnixTs(remote_timestamp)})"
                 writemsg_stdout("\n")
                 writemsg_stdout(
                     colorize(
                         "GOOD",
-                        _("Local copy of remote index is %s and will be used.") % desc,
+                        _("[%s] Local copy of remote index is %s and will be used%s.")
+                        % (binrepo_name, desc, extra_info),
                     )
                     + "\n"
                 )
@@ -1594,8 +1623,8 @@ class binarytree:
                 # This includes URLError which is raised for SSL
                 # certificate errors when PEP 476 is supported.
                 writemsg(
-                    _("\n\n!!! Error fetching binhost package" " info from '%s'\n")
-                    % _hide_url_passwd(base_url)
+                    _("\n\n!!! [%s] Error fetching binhost package" " info from '%s'\n")
+                    % (binrepo_name, _hide_url_passwd(base_url))
                 )
                 # With Python 2, the EnvironmentError message may
                 # contain bytes or unicode, so use str to ensure
@@ -1654,7 +1683,7 @@ class binarytree:
                             writemsg(
                                 colorize(
                                     "WARN",
-                                    f"{e}\n",
+                                    f"[{binrepo_name} {e}\n",
                                 ),
                                 noiselevel=-1,
                             )
@@ -1664,7 +1693,7 @@ class binarytree:
                                 writemsg(
                                     colorize(
                                         "WARN",
-                                        f"Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
+                                        f"[{binrepo_name}] Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
                                     ),
                                     noiselevel=-1,
                                 )
