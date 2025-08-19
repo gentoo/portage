@@ -1677,16 +1677,16 @@ class vartree:
     def getpath(self, mykey, filename=None):
         return self.dbapi.getpath(mykey, filename=filename)
 
-    def zap(self, mycpv):
+    def zap(self, mycpv: str) -> None:
         return
 
-    def inject(self, mycpv):
+    def inject(self, mycpv: str) -> None:
         return
 
-    def get_provide(self, mycpv):
+    def get_provide(self, mycpv: str) -> list[object]:
         return []
 
-    def get_all_provides(self):
+    def get_all_provides(self) -> dict[str, list[str]]:
         return {}
 
     def dep_bestmatch(self, mydep, use_cache=1):
