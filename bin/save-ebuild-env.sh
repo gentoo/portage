@@ -11,14 +11,14 @@
 # or removal of the packages, and can therefore be safely excluded.
 #
 __save_ebuild_env() (
-	# REPLY is purposed as an array that undergoes two phases of assembly.
+	# MAPFILE is purposed as an array that undergoes two phases of assembly.
 	# The first entails gathering the names of variables that are to be
 	# unset. The second entails gathering the names of functions that are
-	# to be unset. The REPLY variable is eventually unset in its own right.
-	REPLY=()
+	# to be unset.
+	MAPFILE=()
 
 	if has --exclude-init-phases "$@"; then
-		REPLY+=(
+		MAPFILE+=(
 			# Discard stale GNU Make POSIX Jobserver flags.
 			MAKEFLAGS
 
@@ -38,12 +38,12 @@ __save_ebuild_env() (
 			if [[ ${PYTHONPATH} == *:* ]] ; then
 				export PYTHONPATH=${PYTHONPATH#*:}
 			else
-				REPLY+=( PYTHONPATH )
+				MAPFILE+=( PYTHONPATH )
 			fi
 		fi
 	fi
 
-	REPLY+=(
+	MAPFILE+=(
 		# Variables that can influence the behaviour of GNU coreutils.
 		BLOCK_SIZE
 		COLORTERM
@@ -167,9 +167,9 @@ __save_ebuild_env() (
 	)
 
 	# Unset the collected variables before moving on to functions.
-	unset -v "${REPLY[@]}"
+	unset -v "${MAPFILE[@]}"
 
-	REPLY=(
+	MAPFILE=(
 		EXPORT_FUNCTIONS
 		KV_major
 		KV_micro
@@ -285,26 +285,26 @@ __save_ebuild_env() (
 		${QA_INTERCEPTORS}
 	)
 
-	for _ in \
+	for REPLY in \
 		pkg_{config,info,nofetch,postinst,preinst,pretend,postrm,prerm,setup} \
 		src_{configure,compile,install,prepare,test,unpack}
 	do
-		REPLY+=( default_"${_}" __eapi{0,1,2,4,6,8}_"${_}" )
+		MAPFILE+=( default_"${REPLY}" __eapi{0,1,2,4,6,8}_"${REPLY}" )
 	done
 
-	___eapi_has_version_functions && REPLY+=( ver_test ver_cut ver_rs )
-	___eapi_has_einstalldocs && REPLY+=( einstalldocs )
-	___eapi_has_eapply_user && REPLY+=( __readdir eapply_user )
-	___eapi_has_get_libdir && REPLY+=( get_libdir )
-	___eapi_has_in_iuse && REPLY+=( in_iuse )
-	___eapi_has_eapply && REPLY+=( __eapply_patch eapply patch )
-	___eapi_has_usex && REPLY+=( usex )
-	___eapi_has_pipestatus && REPLY+=( pipestatus )
-	___eapi_has_ver_replacing && REPLY+=( ver_replacing )
-	___eapi_has_edo && REPLY+=( edo )
+	___eapi_has_version_functions && MAPFILE+=( ver_test ver_cut ver_rs )
+	___eapi_has_einstalldocs && MAPFILE+=( einstalldocs )
+	___eapi_has_eapply_user && MAPFILE+=( __readdir eapply_user )
+	___eapi_has_get_libdir && MAPFILE+=( get_libdir )
+	___eapi_has_in_iuse && MAPFILE+=( in_iuse )
+	___eapi_has_eapply && MAPFILE+=( __eapply_patch eapply patch )
+	___eapi_has_usex && MAPFILE+=( usex )
+	___eapi_has_pipestatus && MAPFILE+=( pipestatus )
+	___eapi_has_ver_replacing && MAPFILE+=( ver_replacing )
+	___eapi_has_edo && MAPFILE+=( edo )
 
 	# Destroy the collected functions.
-	unset -f "${REPLY[@]}"
+	unset -f "${MAPFILE[@]}"
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	while IFS=' ' read -r _ _ REPLY; do
@@ -312,7 +312,7 @@ __save_ebuild_env() (
 			unset -f "${REPLY}"
 		fi
 	done < <(declare -F)
-	unset -v REPLY "${!___@}"
+	unset -v MAPFILE REPLY "${!___@}"
 
 	declare -p
 	declare -fp
