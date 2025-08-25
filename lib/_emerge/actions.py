@@ -3161,7 +3161,13 @@ def set_scheduling_policy(settings):
             )
             return os.EX_USAGE
 
-    os.sched_setscheduler(portage.getpid(), policy, os.sched_param(scheduling_priority))
+    try:
+        os.sched_setscheduler(
+            portage.getpid(), policy, os.sched_param(scheduling_priority)
+        )
+    except OSError as e:
+        out.eerror(f"Unable to apply PORTAGE_SCHEDULING_POLICY: {e}")
+        return os.EX_UNAVAILABLE
 
     return os.EX_OK
 
