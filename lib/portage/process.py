@@ -482,13 +482,30 @@ class MultiprocessingProcess(AbstractProcess):
             except ValueError:
                 pass
 
-        # Now that proc.sentinel is ready, poll until process exit
-        # status has become available.
-        while True:
-            proc.join(0)
-            if proc.exitcode is not None:
-                break
-            await asyncio.sleep(self._proc_join_interval, loop=loop)
+        # Now that proc.sentinel is ready, join on proc.
+
+        async def join_via_polling(proc):
+            while True:
+                proc.join(0)
+                if proc.exitcode is not None:
+                    break
+                await asyncio.sleep(self._proc_join_interval, loop=loop)
+
+        # We can only safely create a new thread to await the join if
+        # we use 'forkserver' or 'spawn'.
+        if multiprocessing.get_start_method() in ("forkserver", "spawn"):
+            try:
+                await _asyncio.to_thread(proc.join)
+            except RuntimeError as exc:
+                # A RuntimeError may be thrown if this is invoked
+                # during shutdown, e.g., via run_coroutine_exitfuncs
+                # as in the Socks5ServerAtExistTestCase, hence we need
+                # to fall back to polling in this case.
+                if str(exc) != "cannot schedule new futures after shutdown":
+                    raise
+                await join_via_polling(proc)
+        else:
+            await join_via_polling(proc)
 
     def _proc_join_done(self, future):
         # The join task should never be cancelled, so let it raise
