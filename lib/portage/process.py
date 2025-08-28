@@ -426,10 +426,6 @@ class MultiprocessingProcess(AbstractProcess):
     An object that wraps OS processes created by multiprocessing.Process.
     """
 
-    # Number of seconds between poll attempts for process exit status
-    # (after the sentinel has become ready).
-    _proc_join_interval = 0.1
-
     def __init__(self, proc: multiprocessing.Process):
         self._proc = proc
         self.pid = proc.pid
@@ -480,13 +476,7 @@ class MultiprocessingProcess(AbstractProcess):
             except ValueError:
                 pass
 
-        # Now that proc.sentinel is ready, poll until process exit
-        # status has become available.
-        while True:
-            proc.join(0)
-            if proc.exitcode is not None:
-                break
-            await asyncio.sleep(self._proc_join_interval, loop=loop)
+        await loop.run_in_executor(None, proc.join)
 
     def _proc_join_done(self, future):
         # The join task should never be cancelled, so let it raise
