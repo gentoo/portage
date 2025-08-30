@@ -1,4 +1,4 @@
-# Copyright 2022 Gentoo Authors
+# Copyright 2022-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from unittest.mock import MagicMock, patch
@@ -47,7 +47,7 @@ class RunActionTestCase(TestCase):
         run_action(config)
 
         bt.populate.assert_called_once_with(
-            getbinpkgs=False, getbinpkg_refresh=True, pretend=False
+            getbinpkgs=False, getbinpkg_refresh=True, pretend=False, verbose=False
         )
 
     def testGetSystemLibc(self):
