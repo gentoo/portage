@@ -414,43 +414,18 @@ unpack() {
 		fi
 
 		case ${suffix,,} in
-			tar)
-				tar xof "${srcdir}${f}"
-				;;
-			tgz)
-				tar xozf "${srcdir}${f}"
-				;;
-			tbz|tbz2)
-				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
-				"${bzip2_cmd[@]}" -c -- "${srcdir}${f}" | tar xof -
-				;;
-			zip|jar)
-				# unzip will interactively prompt under some error conditions,
-				# as reported in bug #336285. Inducing EOF on STDIN makes for
-				# an adequate countermeasure.
-				unzip -qo "${srcdir}${f}" </dev/null
-				;;
-			gz|z)
-				__unpack_tar gzip -d
-				;;
-			bz2|bz)
-				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
-				__unpack_tar "${bzip2_cmd[@]}"
-				;;
 			7z)
 				if ! output=$(7z x -y "${srcdir}${f}"); then
 					printf '%s\n' "${output}" >&2
 					false
 				fi
 				;;
-			rar)
-				unrar x -idq -o+ "${srcdir}${f}"
-				;;
-			lha|lzh)
-				lha xfq "${srcdir}${f}"
-				;;
 			a)
 				ar x "${srcdir}${f}"
+				;;
+			bz|bz2)
+				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
+				__unpack_tar "${bzip2_cmd[@]}"
 				;;
 			deb)
 				# Unpacking .deb archives can not always be done with
@@ -475,14 +450,39 @@ unpack() {
 					ar x "${srcdir}${f}"
 				fi
 				;;
+			gz|z)
+				__unpack_tar gzip -d
+				;;
+			jar|zip)
+				# unzip will interactively prompt under some error conditions,
+				# as reported in bug #336285. Inducing EOF on STDIN makes for
+				# an adequate countermeasure.
+				unzip -qo "${srcdir}${f}" </dev/null
+				;;
+			lha|lzh)
+				lha xfq "${srcdir}${f}"
+				;;
 			lzma)
 				__unpack_tar lzma -d
 				;;
-			xz)
-				__unpack_tar xz -T"$(___makeopts_jobs)" -d
+			rar)
+				unrar x -idq -o+ "${srcdir}${f}"
+				;;
+			tar)
+				tar xof "${srcdir}${f}"
+				;;
+			tbz|tbz2)
+				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
+				"${bzip2_cmd[@]}" -c -- "${srcdir}${f}" | tar xof -
+				;;
+			tgz)
+				tar xozf "${srcdir}${f}"
 				;;
 			txz)
 				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${f}"
+				;;
+			xz)
+				__unpack_tar xz -T"$(___makeopts_jobs)" -d
 				;;
 		esac || die "unpack: failure unpacking ${f@Q}"
 	done
