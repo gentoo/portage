@@ -355,11 +355,13 @@ class EbuildBuild(CompositeTask):
         buildpkg_live = "buildpkg-live" in features
         live_ebuild = "live" in self.settings.get("PROPERTIES", "").split()
         buildpkg_live_disabled = live_ebuild and not buildpkg_live
+        restrict_binpkg = "binpkg" in self.settings.get("RESTRICT", "").split()
 
         if (
             ("buildpkg" in features or self._issyspkg)
             and not buildpkg_live_disabled
             and not self.opts.buildpkg_exclude.findAtomForPackage(pkg)
+            and not restrict_binpkg
         ):
             self._buildpkg = True
 
