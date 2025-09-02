@@ -184,7 +184,6 @@ __save_ebuild_env() (
 		__abort_prepare
 		__abort_test
 		__check_bash_version
-		__compose_bzip2_cmd
 		__dump_trace
 		__dyn_clean
 		__dyn_compile
@@ -223,7 +222,6 @@ __save_ebuild_env() (
 		__start_distcc
 		__strip_duplicate_slashes
 		__try_source
-		__unpack_tar
 		__unset_colors
 		__vecho
 		__ver_compare
