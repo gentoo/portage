@@ -322,47 +322,65 @@ use_enable() {
 }
 
 unpack() {
-	local created_symlink suffix_known basename output srcdir suffix f -
-	local -a bzip2_cmd
+	local created_symlink bzip2_cmd basename output srcdir suffix name f
+	local -A suffix_by
+	local -a suffixes
+	local -x XZ_OPT
 
 	if (( $# == 0 )); then
 		die "unpack: too few arguments (got 0; expected at least 1)"
 	fi
 
-	__unpack_tar() {
-		local inner_suffix
+	# Define an array of supported suffixes, case-sensitively.
+	# https://projects.gentoo.org/pms/8/pms.html#x1-13500012.3.15
+	suffixes=(
+		a
+		bz
+		bz2
+		deb
+		gz
+		jar
+		lzma
+		tar
+		tar.bz
+		tar.bz2
+		tar.gz
+		tar.lzma
+		tar.Z
+		tbz
+		tbz2
+		tgz
+		Z
+		zip
+		ZIP
+	)
+	___eapi_unpack_supports_7z  && suffixes+=( 7z 7Z )
+	___eapi_unpack_supports_lha && suffixes+=( lha LHa LHA lzh )
+	___eapi_unpack_supports_rar && suffixes+=( rar RAR )
+	___eapi_unpack_supports_txz && suffixes+=( tar.xz txz )
+	___eapi_unpack_supports_xz  && suffixes+=( xz )
 
-		inner_suffix=${basename%.*} inner_suffix=${inner_suffix##*.}
-		if ! ___eapi_unpack_is_case_sensitive; then
-			inner_suffix=${inner_suffix,,}
+	# Compose a finalised dictionary of supported suffixes.
+	if ! ___eapi_unpack_is_case_sensitive; then
+		# Induce lowercase conversion upon all subsequent assignments.
+		typeset -l suffix
+	fi
+	for suffix in "${suffixes[@]}"; do
+		suffix_by[$suffix]=
+	done
+
+	# Honour the user's choice of bzip2 decompressor, if specified.
+	for name in PORTAGE_BUNZIP2_CMD PORTAGE_BZIP2_CMD; do
+		if [[ ${!name} == +([![:blank:]\"\']) ]]; then
+			bzip2_cmd=${!name}
+			break
 		fi
-		if [[ ${inner_suffix} == tar ]]; then
-			"$@" -c -- "${srcdir}${f}" | tar xof -
-		else
-			"$@" -c -- "${srcdir}${f}" > "${basename%.*}"
-		fi
-	}
+	done
 
-	__compose_bzip2_cmd() {
-		local IFS
+	# Ensure that xz(1) operates in its multi-threaded mode.
+	XZ_OPT="-T$(___makeopts_jobs)"
 
-		read -rd '' -a bzip2_cmd <<<"${PORTAGE_BUNZIP2_COMMAND}"
-		if (( ! ${#bzip2_cmd[@]} )); then
-			read -rd '' -a bzip2_cmd <<<"${PORTAGE_BZIP2_COMMAND}"
-			if (( ${#bzip2_cmd[@]} )); then
-				bzip2_cmd+=( -d )
-			else
-				die "unpack: both PORTAGE_BUNZIP2_COMMAND and PORTAGE_BZIP2_COMMAND specify null commands"
-			fi
-		fi
-	}
-
-	shopt -o -s pipefail
-
-	for f in "$@"; do
-		basename=${f##*/}
-		suffix=${basename##*.}
-
+	for f; do
 		# wrt PMS 12.3.15 Misc Commands
 		if [[ ${f} != */* ]]; then
 			# filename without path of any kind
@@ -391,22 +409,16 @@ unpack() {
 			die "unpack: ${f@Q} cannot be unpacked because it is an empty file"
 		fi
 
-		case ${suffix,,} in
-			tar|tgz|tbz2|tbz|zip|jar|gz|z|bz2|bz|a|deb|lzma) ;;
-			7z)      ___eapi_unpack_supports_7z  ;;
-			rar)     ___eapi_unpack_supports_rar ;;
-			lha|lzh) ___eapi_unpack_supports_lha ;;
-			xz)      ___eapi_unpack_supports_xz  ;;
-			txz)     ___eapi_unpack_supports_txz ;;
-			*)       false                       ;;
-		esac \
-		&& suffix_known=1
 
-		___eapi_unpack_is_case_sensitive \
-		&& [[ ${suffix} != @("${suffix,,}"|ZIP|Z|7Z|RAR|LH[Aa]) ]] \
-		&& suffix_known=0
+		# Extract the suffix of the filename.
+		basename=${f##*/}
+		suffix=
+		if [[ ${basename} =~ \.([Tt][Aa][Rr]\.)?[^.]+$ ]]; then
+			suffix=${BASH_REMATCH[0]#.}
+		fi
 
-		if (( suffix_known )); then
+		# Skip any files bearing unsupported suffixes.
+		if [[ -v 'suffix_by[$suffix]' ]]; then
 			__vecho ">>> Unpacking ${f@Q} to ${PWD}"
 		else
 			__vecho "=== Skipping unpack of ${f@Q}"
@@ -424,8 +436,7 @@ unpack() {
 				ar x "${srcdir}${f}"
 				;;
 			bz|bz2)
-				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
-				__unpack_tar "${bzip2_cmd[@]}"
+				"${bzip2_cmd-bzip2}" -dc -- "${srcdir}${f}" > "${basename%.*}"
 				;;
 			deb)
 				# Unpacking .deb archives can not always be done with
@@ -451,7 +462,7 @@ unpack() {
 				fi
 				;;
 			gz|z)
-				__unpack_tar gzip -d
+				gzip -dc -- "${srcdir}${f}" > "${basename%.*}"
 				;;
 			jar|zip)
 				# unzip will interactively prompt under some error conditions,
@@ -463,26 +474,26 @@ unpack() {
 				lha xfq "${srcdir}${f}"
 				;;
 			lzma)
-				__unpack_tar lzma -d
+				xz -F lzma -dc -- "${srcdir}${f}" > "${basename%.*}"
 				;;
 			rar)
 				unrar x -idq -o+ "${srcdir}${f}"
 				;;
-			tar)
-				tar xof "${srcdir}${f}"
+			tar.bz|tar.bz2|tbz|tbz2)
+				tar -I "${bzip2_cmd-bzip2} -c" -xof "${srcdir}${f}"
 				;;
-			tbz|tbz2)
-				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
-				"${bzip2_cmd[@]}" -c -- "${srcdir}${f}" | tar xof -
-				;;
-			tgz)
-				tar xozf "${srcdir}${f}"
+			tar|tar.*|tgz)
+				# GNU tar recognises various file suffixes, for
+				# which it is able to execute the appropriate
+				# decompressor. They are documented by the
+				# (info) manual for the -a option.
+				tar --warning=decompress-program -xof "${srcdir}${f}"
 				;;
 			txz)
-				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${f}"
+				tar -xJof "${srcdir}${f}"
 				;;
 			xz)
-				__unpack_tar xz -T"$(___makeopts_jobs)" -d
+				xz -dc -- "${srcdir}${f}" > "${basename%.*}"
 				;;
 		esac || die "unpack: failure unpacking ${f@Q}"
 	done
