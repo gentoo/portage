@@ -156,24 +156,21 @@ def action_build(
         and emerge_config.opts.get("--quickpkg-direct", "n") == "y"
         and emerge_config.target_config.settings["ROOT"] != quickpkg_root
     )
-    if "--getbinpkg" in emerge_config.opts or quickpkg_direct:
+    if quickpkg_direct:
         kwargs = {}
-        if quickpkg_direct:
-            if quickpkg_root == emerge_config.running_config.settings["ROOT"]:
-                quickpkg_vardb = emerge_config.running_config.trees["vartree"].dbapi
-            else:
-                quickpkg_settings = portage.config(
-                    config_root=emerge_config.target_config.settings[
-                        "PORTAGE_CONFIGROOT"
-                    ],
-                    target_root=quickpkg_root,
-                    env=emerge_config.target_config.settings.backupenv.copy(),
-                    sysroot=emerge_config.target_config.settings["SYSROOT"],
-                    eprefix=emerge_config.target_config.settings["EPREFIX"],
-                )
-                quickpkg_vardb = portage.vartree(settings=quickpkg_settings).dbapi
-            kwargs["add_repos"] = (quickpkg_vardb,)
+        if quickpkg_root == emerge_config.running_config.settings["ROOT"]:
+            quickpkg_vardb = emerge_config.running_config.trees["vartree"].dbapi
+        else:
+            quickpkg_settings = portage.config(
+                config_root=emerge_config.target_config.settings["PORTAGE_CONFIGROOT"],
+                target_root=quickpkg_root,
+                env=emerge_config.target_config.settings.backupenv.copy(),
+                sysroot=emerge_config.target_config.settings["SYSROOT"],
+                eprefix=emerge_config.target_config.settings["EPREFIX"],
+            )
+            quickpkg_vardb = portage.vartree(settings=quickpkg_settings).dbapi
 
+        kwargs["add_repos"] = (quickpkg_vardb,)
         try:
             kwargs["pretend"] = "--pretend" in emerge_config.opts
             emerge_config.target_config.trees["bintree"].populate(
