@@ -1580,16 +1580,18 @@ class binarytree:
                         )
             except UseCachedCopyOfRemoteIndex:
                 changed = False
-                desc = "frozen" if repo.frozen else "up-to-date"
-                writemsg_stdout("\n")
-                writemsg_stdout(
-                    colorize(
-                        "GOOD",
-                        _("Local copy of remote index is %s and will be used.") % desc,
-                    )
-                    + "\n"
-                )
                 rmt_idx = pkgindex
+                if getbinpkg_refresh or repo.frozen:
+                    desc = "frozen" if repo.frozen else "up-to-date"
+                    writemsg_stdout("\n")
+                    writemsg_stdout(
+                        colorize(
+                            "GOOD",
+                            _("Local copy of remote index is %s and will be used.")
+                            % desc,
+                        )
+                        + "\n"
+                    )
             except OSError as e:
                 # This includes URLError which is raised for SSL
                 # certificate errors when PEP 476 is supported.
