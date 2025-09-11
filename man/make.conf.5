@@ -595,7 +595,8 @@ matters when using the \fBemerge\fR(1) \fB\-\-jobs\fR option. This
 feature is always effectively enabled and it cannot be disabled for
 packages that satisfy direct or indirect dependencies of the system
 set. For other packages, it can be disabled in order to trade the
-possibility of random build failures for greater parallelism.
+possibility of random build failures for greater parallelism.  The queue
+can be flushed by ending the SIGUSR2 signal to \fBemerge\fR(1).
 This feature is enabled by default.
 .TP
 .B metadata\-transfer
