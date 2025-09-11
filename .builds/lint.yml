@@ -7,7 +7,6 @@ repositories:
   deadsnakes: https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy main "BA6932366A755776"
 environment:
   PYTHON_VERSIONS:
-    - '3.9'
     - '3.10'
     - '3.11'
 tasks:

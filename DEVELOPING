@@ -9,7 +9,7 @@ bad habits that exist in the current codebase.
 Python Version
 --------------
 
-Python 3.9 is the minimum supported version.
+Python 3.10 is the minimum supported version.
 
 Dependencies
 ------------
