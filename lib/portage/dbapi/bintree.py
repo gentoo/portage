@@ -1664,16 +1664,8 @@ class binarytree:
                         )
                         % (binrepo_name, _hide_url_passwd(base_url))
                     )
-                    # With Python 2, the EnvironmentError message may
-                    # contain bytes or unicode, so use str to ensure
-                    # safety with all locales (bug #532784).
-                    try:
-                        error_msg = str(e)
-                    except UnicodeDecodeError as uerror:
-                        error_msg = str(
-                            uerror.object, encoding="utf_8", errors="replace"
-                        )
-                    writemsg(f"!!! [${binrepo_name}] {error_msg}\n\n")
+                    error_msg = str(e)
+                    writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
                     del e
                     pkgindex = None
                 finally:
