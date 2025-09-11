@@ -61,11 +61,7 @@ def urlopen(url, timeout=10, if_modified_since=None, headers={}, proxies=None):
 
     hdl = opener.open(request, timeout=timeout)
     if hdl.headers.get("last-modified", ""):
-        try:
-            add_header = hdl.headers.add_header
-        except AttributeError:
-            # Python 2
-            add_header = hdl.headers.addheader
+        add_header = hdl.headers.add_header
         add_header("timestamp", http_to_timestamp(hdl.headers.get("last-modified")))
     return hdl
 
