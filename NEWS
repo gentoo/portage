@@ -51,7 +51,28 @@ Features:
   (Note that Portage also received a fix in this release for respecting
   cached Packages indexes.)
 
+* estrip: Salt build IDs (bug 549672, bug 953869)
+
+  Preparatory work for enabling build IDs by default in Gentoo.
+
+  Build IDs may be the same in two different packages if there's a bundled
+  binary or library. Salt with ${CATEGORY}/${PF}:${SLOT} to make sure it's
+  unique per-package.
+
+* sets: VariableSet: honour 'excludes' (bug 906044, bug 919751, bug 953884)
+
+  This allows defining @golang-rebuild and @rust-rebuild in such a way that
+  dev-lang/go and dev-lang/rust (and -bin) are excluded, as users don't
+  usually want to rebuild the toolchain there, just packages affected
+  by static linking and such.
+
+* cnf: sets: bring back @golang-rebuild (bug 919751).
+
 Bug fixes:
+
+* Don't strip LD_PRELOAD.
+
+  It may be provided by the user.
 
 * _global_updates: Skip if vardb lock raises PermissionDenied (bug #953449).
 
@@ -66,6 +87,8 @@ Bug fixes:
 * actions: Handle sched_setscheduler failure gracefully (bug 904502).
 
   Handles PORTAGE_SCHEDULING_POLICY on e.g. musl in a nicer way.
+
+* Python 3.14 fixes (bug 941956).
 
 * emergelog: Truncate fractional seconds
 
