@@ -6,6 +6,9 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.69 (UNRELEASED)
+--------------
+
 Security:
 
 * The emerge-webrsync utility will now parse the output of gpg(1) correctly
@@ -22,10 +25,49 @@ Security:
 
 Features:
 
+* Initial work by Ulrich Müller and Florian Schmaus on implementing EAPI 9.
+
+  So far, we have:
+  * ban assert
+  * ban domo
+  * add pipestatus
+  * add ver_replacing
+  * add edo
+  * do not rewrite absolute symlinks
+
+* bintree: Accelerate index fetch by requesting Packages.gz first (bug 248089).
+
 * Portage will now show statistics about its internal LRU caches if the
   PORTAGE_SHOW_LRU_CACHE_INFO environment variable is set.
 
+* Introduce PORTAGE_LOG_FILE_SEP, allowing to configure the separator between
+  the components of the log files produced by portage.
+
+* bintree: Introduce PORTAGE_BINHOST_TTL setting (bug 958401).
+
+  If set (to a value in seconds), Portage will add a TTL field to the Packages
+  index for binhosts.
+
+  (Note that Portage also received a fix in this release for respecting
+  cached Packages indexes.)
+
 Bug fixes:
+
+* _global_updates: Skip if vardb lock raises PermissionDenied (bug #953449).
+
+* process: do not poll join() in MultiprocessingProcess (bug 958635).
+
+  This is a significant performance improvement from Esteve Varela Colominas
+  and Florian Schmaus.
+
+* bintree: Fix local vs. remote timestamp comparison for cached Packages
+  index (bug 958200, bug 958236).
+
+* actions: Handle sched_setscheduler failure gracefully (bug 904502).
+
+  Handles PORTAGE_SCHEDULING_POLICY on e.g. musl in a nicer way.
+
+* emergelog: Truncate fractional seconds
 
 * The emerge-webrsync utility will now ensure that the temporary directory
   containing an ephemeral keyring is deleted upon exiting, in the case that
@@ -54,6 +96,11 @@ Bug fixes:
 
 * The estrip utility will no longer produce multiple, redundant warnings
   whose lines are unpredictably interleaved (bug 832138).
+
+* file_copy: Update list of acceptable copy_file_range 'errors' to ignore
+  where we fallback (bug 961738).
+
+* ebuild.sh: Improve diagnostics with too old-bash version.
 
 Performance:
 
@@ -91,20 +138,12 @@ Cleanups:
   Though in its early stages, this effort is expected to continue at a brisk
   pace through upcoming releases of portage.
 
-portage-3.0.69 (UNRELEASED)
---------------
-
-Bug fixes:
-* _global_updates: Skip if vardb lock raises PermissionDenied (bug #953449).
-
 portage-3.0.68 (2025-04-12)
 --------------
 
 Features:
 * Allow "portageq envvar" to treat a trailing * as a wildcard, matching multiple
   variables. Useful for multilib.
-* Introduce PORTAGE_LOG_FILE_SEP, allowing to configure the separator between
-  the components of the log files produced by portage.
 
 * Show package category, name, and repository before global-scope messages.
 
