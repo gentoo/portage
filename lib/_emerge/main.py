@@ -1186,6 +1186,12 @@ def emerge_main(args: Optional[list[str]] = None):
     # EMERGE_DEFAULT_OPTS has been parsed).
     portage.output.havecolor = 0
 
+    if os.environ.get("PORTAGE_SHOW_HTTP_TRACE"):
+        import http.client
+
+        http.client.HTTPConnection.debuglevel = 1
+        http.client.HTTPSConnection.debuglevel = 1
+
     # This first pass is just for options that need to be known as early as
     # possible, such as --config-root.  They will be parsed again later,
     # together with EMERGE_DEFAULT_OPTS (which may vary depending on the
