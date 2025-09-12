@@ -1465,10 +1465,40 @@ class binarytree:
                                     if_modified_since=local_timestamp,
                                     proxies=proxies,
                                 )
-                                if hasattr(f, "headers") and f.headers.get(
-                                    "timestamp", ""
+                                if hasattr(f, "headers"):
+                                    if f.headers.get("timestamp", ""):
+                                        remote_timestamp = f.headers.get("timestamp")
+                                    elif f.headers.get("Last-Modified", ""):
+                                        last_modified = err.headers.get("Last-Modified")
+                                        remote_timestamp = http_to_timestamp(
+                                            last_modified
+                                        )
+                                if (
+                                    remote_timestamp
+                                    and local_timestamp
+                                    and int(remote_timestamp) < int(local_timestamp)
                                 ):
-                                    remote_timestamp = f.headers.get("timestamp")
+                                    msg = (
+                                        f"[{binrepo_name}] WARNING: Service {host} did not respect If-Modified-Since."
+                                        f" Consider asking the service operator to enable support for"
+                                        f" If-Modified-Since or using another service"
+                                    )
+                                    extra_info = ""
+                                    if verbose:
+                                        local_iso_time = unix_to_iso_time(
+                                            local_timestamp
+                                        )
+                                        remote_iso_time = unix_to_iso_time(
+                                            remote_timestamp
+                                        )
+                                        extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
+                                    writemsg(
+                                        colorize(
+                                            "WARN",
+                                            f"{msg}{extra_info}.\n",
+                                        ),
+                                        noiselevel=-1,
+                                    )
                         except OSError as err:
                             if (
                                 hasattr(err, "code") and err.code == 304
