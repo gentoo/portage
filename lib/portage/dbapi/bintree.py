@@ -18,6 +18,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.update:update_dbentries",
     "portage.util:atomic_ofstream,ensure_dirs,normalize_path,"
     + "writemsg,writemsg_stdout",
+    "portage.util.time:unix_to_iso_time",
     "portage.util.path:first_existing",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
     "portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476,http_to_timestamp",
@@ -61,7 +62,6 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 
 import codecs
-import datetime
 import errno
 import io
 import json
@@ -1623,16 +1623,11 @@ class binarytree:
                         if repo.frozen:
                             desc = "frozen"
                         else:
-
-                            def convUnixTs(ts):
-                                dt = datetime.datetime.fromtimestamp(
-                                    int(ts), datetime.timezone.utc
-                                )
-                                return dt.isoformat()
-
                             desc = "up-to-date"
                             if remote_timestamp and verbose:
-                                extra_info = f" (local: {convUnixTs(local_timestamp)}, remote: {convUnixTs(remote_timestamp)})"
+                                local_iso_time = unix_to_iso_time(local_timestamp)
+                                remote_iso_time = unix_to_iso_time(remote_timestamp)
+                                extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
 
                         writemsg_stdout("\n")
                         writemsg_stdout(
