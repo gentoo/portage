@@ -40,6 +40,9 @@ Features:
 * Portage will now show statistics about its internal LRU caches if the
   PORTAGE_SHOW_LRU_CACHE_INFO environment variable is set.
 
+* Portage will show a HTTP trace if the PORTAGE_SHOW_HTTP_TRACE environment
+  variable is set.
+
 * Introduce PORTAGE_LOG_FILE_SEP, allowing to configure the separator between
   the components of the log files produced by portage.
 
