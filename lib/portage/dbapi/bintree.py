@@ -1644,6 +1644,8 @@ class binarytree:
                                 ),
                                 noiselevel=-1,
                             )
+                    # We successfully fetched the remote index, break
+                    # out of the ("Packages.gz", "Packages") loop.
                     break
                 except UseCachedCopyOfRemoteIndex:
                     changed = False
@@ -1670,6 +1672,8 @@ class binarytree:
                             )
                             + "\n"
                         )
+                    # We are using the cached index, break out of the
+                    # ("Packages.gz", "Packages") loop.
                     break
                 except OSError as e:
                     if (
