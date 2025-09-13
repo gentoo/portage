@@ -24,6 +24,7 @@ py.install_sources(
         'portage_lru_cache.py',
         'shelve.py',
         'socks5.py',
+		'time.py',
         'whirlpool.py',
         'writeable_check.py',
         '_compare_files.py',
