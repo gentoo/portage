@@ -1670,6 +1670,7 @@ class binarytree:
                             )
                             + "\n"
                         )
+                    break
                 except OSError as e:
                     if (
                         remote_pkgindex_file == "Packages.gz"
