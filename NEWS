@@ -9,10 +9,15 @@ Release notes take the form of the following optional categories:
 portage-3.0.70 (UNRELEASED)
 --------------
 
-Features
+Features:
 
 * Prefer the 'Last-Modified' over the 'timestamp' HTTP header when
   querying binhosts.
+
+Bug fixes:
+
+* Fix timestamp comparison for Packages index by using UTC consistently
+  (bug #962832).
 
 portage-3.0.69 (2025-09-14)
 --------------
