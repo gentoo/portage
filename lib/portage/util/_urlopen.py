@@ -3,6 +3,7 @@
 
 import io
 from datetime import datetime
+from time import mktime
 from email.utils import formatdate, parsedate_tz, mktime_tz
 from urllib.request import urlopen as _urlopen
 import urllib.parse as urllib_parse
@@ -67,7 +68,7 @@ def urlopen(url, timeout=10, if_modified_since=None, headers={}, proxies=None):
 
 def timestamp_to_http(timestamp):
     dt = datetime.fromtimestamp(float(int(timestamp) + TIMESTAMP_TOLERANCE))
-    stamp = mktime_tz(dt.timetuple())
+    stamp = mktime(dt.timetuple())
     return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
 
