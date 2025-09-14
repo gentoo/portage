@@ -26,15 +26,16 @@ Security:
 
 * The emerge-webrsync utility will now parse the output of gpg(1) correctly
   and safely. This addresses a security issue affecting users that might
-  run emerge-werbsync in a situation where gemato is unusable, for whatever
+  run emerge-webrsync in a situation where gemato is unusable, for whatever
   reason.
 
 * The emerge-webrsync utility will now validate the input that it obtains
   from the "metadata/timestamp.x" file.
 
-  This addresses a security issue whereby arbitrary code execution was
+  This addresses a possible security issue whereby arbitrary code execution was
   achievable in the course of bash performing arithmetic operations on
-  numbers representing unix time.
+  numbers representing unix time. The permissions on this should be limited
+  to portage:portage, so limited impact.
 
 Features:
 
