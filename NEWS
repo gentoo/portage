@@ -9,7 +9,10 @@ Release notes take the form of the following optional categories:
 portage-3.0.70 (UNRELEASED)
 --------------
 
-TODO
+Features
+
+* Prefer the 'Last-Modified' over the 'timestamp' HTTP header when
+  querying binhosts.
 
 portage-3.0.69 (2025-09-14)
 --------------

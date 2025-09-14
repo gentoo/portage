@@ -1466,13 +1466,13 @@ class binarytree:
                                     proxies=proxies,
                                 )
                                 if hasattr(f, "headers"):
-                                    if f.headers.get("timestamp", ""):
-                                        remote_timestamp = f.headers.get("timestamp")
-                                    elif f.headers.get("Last-Modified", ""):
+                                    if f.headers.get("Last-Modified", ""):
                                         last_modified = f.headers.get("Last-Modified")
                                         remote_timestamp = http_to_timestamp(
                                             last_modified
                                         )
+                                    elif f.headers.get("timestamp", ""):
+                                        remote_timestamp = f.headers.get("timestamp")
                                 if (
                                     remote_timestamp
                                     and local_timestamp
