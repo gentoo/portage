@@ -1469,7 +1469,7 @@ class binarytree:
                                     if f.headers.get("timestamp", ""):
                                         remote_timestamp = f.headers.get("timestamp")
                                     elif f.headers.get("Last-Modified", ""):
-                                        last_modified = err.headers.get("Last-Modified")
+                                        last_modified = f.headers.get("Last-Modified")
                                         remote_timestamp = http_to_timestamp(
                                             last_modified
                                         )
