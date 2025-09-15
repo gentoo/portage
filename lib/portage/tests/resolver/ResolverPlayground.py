@@ -179,7 +179,7 @@ class ResolverPlayground:
                 "rm",
                 "sed",
                 "sort",
-                "tar",
+                "gtar",
                 "tr",
                 "uname",
                 "uniq",

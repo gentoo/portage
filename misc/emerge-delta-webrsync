@@ -278,7 +278,7 @@ do_tar() {
 		*.gz)   decompressor="zcat"  ;;
 		*)      decompressor="cat"   ;;
 	esac
-	${decompressor} "${file}" | tar "$@"
+	${decompressor} "${file}" | gtar "$@"
 	_pipestatus=${PIPESTATUS[*]}
 	[[ ${_pipestatus// /} -eq 0 ]]
 }
