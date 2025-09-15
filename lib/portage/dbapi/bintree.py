@@ -1506,6 +1506,7 @@ class binarytree:
                             if (
                                 hasattr(err, "code") and err.code == 304
                             ):  # not modified (since local_timestamp)
+                                extra_info = ""
                                 if hasattr(err, "headers") and err.headers.get(
                                     "Last-Modified", ""
                                 ):
