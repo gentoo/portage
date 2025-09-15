@@ -17,7 +17,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd",
     "portage.update:update_dbentries",
     "portage.util:atomic_ofstream,ensure_dirs,normalize_path,"
-    + "writemsg,writemsg_stdout",
+    + "writemsg",
     "portage.util.time:unix_to_iso_time",
     "portage.util.path:first_existing",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
@@ -1662,7 +1662,7 @@ class binarytree:
                     rmt_idx = pkgindex
                     if getbinpkg_refresh or repo.frozen:
                         extra_info = exc.extra_info if verbose else ""
-                        writemsg_stdout(
+                        writemsg(
                             colorize(
                                 "GOOD",
                                 _(
