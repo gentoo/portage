@@ -1663,14 +1663,10 @@ class binarytree:
                     if getbinpkg_refresh or repo.frozen:
                         extra_info = exc.extra_info if verbose else ""
                         writemsg(
-                            colorize(
-                                "GOOD",
-                                _(
-                                    "[%s] Local copy of remote index is %s and will be used%s."
-                                )
-                                % (binrepo_name, exc.desc, extra_info),
+                            _(
+                                "[%s] Local copy of remote index is %s and will be used%s.\n"
                             )
-                            + "\n"
+                            % (binrepo_name, exc.desc, extra_info),
                         )
                     # We are using the cached index, break out of the
                     # ("Packages.gz", "Packages") loop.
