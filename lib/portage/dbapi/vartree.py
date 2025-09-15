@@ -1094,7 +1094,7 @@ class vardbapi(dbapi):
             "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
         )
         if binpkg_format == "xpak":
-            tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
+            tar_cmd = ("gtar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
             pr, pw = multiprocessing.Pipe(duplex=False)
             proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
             pr.close()

@@ -39,7 +39,7 @@ class BinpkgExtractorAsync(SpawnProcess):
         tar_options = ""
         if "xattr" in self.features:
             process = subprocess.Popen(
-                ["tar", "--help"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ["gtar", "--help"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             output = process.communicate()[0]
             if b"--xattrs" in output:
@@ -121,7 +121,7 @@ class BinpkgExtractorAsync(SpawnProcess):
                 f"""
                     cmd0=(head -c {pkg_xpak.filestat.st_size - pkg_xpak.xpaksize} -- {shlex.quote(self.pkg_path)})
                     cmd1=({decomp_cmd})
-                    cmd2=(tar -xp {tar_options} -C {shlex.quote(self.image_dir)} -f -);
+                    cmd2=(gtar -xp {tar_options} -C {shlex.quote(self.image_dir)} -f -);
                 """
                 """
                     "${cmd0[@]}" | "${cmd1[@]}" | "${cmd2[@]}";
