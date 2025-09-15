@@ -84,7 +84,9 @@ from urllib.parse import urlparse
 class UseCachedCopyOfRemoteIndex(Exception):
     # If the local copy is recent enough
     # then fetching the remote index can be skipped.
-    pass
+    def __init__(self, desc: str, extra_info: str = ""):
+        self.desc = desc
+        self.extra_info = extra_info
 
 
 class bindbapi(fakedbapi):
@@ -1427,7 +1429,9 @@ class binarytree:
                     f = None
 
                     if local_timestamp and (repo.frozen or not getbinpkg_refresh):
-                        raise UseCachedCopyOfRemoteIndex()
+                        if repo.frozen:
+                            raise UseCachedCopyOfRemoteIndex("frozen")
+                        raise UseCachedCopyOfRemoteIndex("")
 
                     try:
                         ttl = float(pkgindex.header.get("TTL", 0))
@@ -1439,7 +1443,7 @@ class binarytree:
                             and ttl
                             and download_timestamp + ttl > time.time()
                         ):
-                            raise UseCachedCopyOfRemoteIndex()
+                            raise UseCachedCopyOfRemoteIndex("within TTL")
 
                     # Set proxy settings for _urlopen -> urllib_request
                     proxies = {}
@@ -1508,7 +1512,13 @@ class binarytree:
                                 ):
                                     last_modified = err.headers.get("Last-Modified")
                                     remote_timestamp = http_to_timestamp(last_modified)
-                                raise UseCachedCopyOfRemoteIndex()
+                                    local_iso_time = unix_to_iso_time(local_timestamp)
+                                    remote_iso_time = unix_to_iso_time(remote_timestamp)
+                                    extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
+
+                                raise UseCachedCopyOfRemoteIndex(
+                                    "up-to-date", extra_info
+                                )
 
                             if parsed_url.scheme in ("ftp", "http", "https"):
                                 # This protocol is supposedly supported by urlopen,
@@ -1647,20 +1657,11 @@ class binarytree:
                     # We successfully fetched the remote index, break
                     # out of the ("Packages.gz", "Packages") loop.
                     break
-                except UseCachedCopyOfRemoteIndex:
+                except UseCachedCopyOfRemoteIndex as exc:
                     changed = False
                     rmt_idx = pkgindex
                     if getbinpkg_refresh or repo.frozen:
-                        extra_info = ""
-                        if repo.frozen:
-                            desc = "frozen"
-                        else:
-                            desc = "up-to-date"
-                            if remote_timestamp and verbose:
-                                local_iso_time = unix_to_iso_time(local_timestamp)
-                                remote_iso_time = unix_to_iso_time(remote_timestamp)
-                                extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
-
+                        extra_info = exc.extra_info if verbose else ""
                         writemsg_stdout("\n")
                         writemsg_stdout(
                             colorize(
@@ -1668,7 +1669,7 @@ class binarytree:
                                 _(
                                     " [%s] Local copy of remote index is %s and will be used%s."
                                 )
-                                % (binrepo_name, desc, extra_info),
+                                % (binrepo_name, exc.desc, extra_info),
                             )
                             + "\n"
                         )
