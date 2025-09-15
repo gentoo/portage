@@ -1662,7 +1662,6 @@ class binarytree:
                     rmt_idx = pkgindex
                     if getbinpkg_refresh or repo.frozen:
                         extra_info = exc.extra_info if verbose else ""
-                        writemsg_stdout("\n")
                         writemsg_stdout(
                             colorize(
                                 "GOOD",
