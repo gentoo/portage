@@ -19,6 +19,25 @@ Bug fixes:
 * Fix timestamp comparison for Packages index by using UTC consistently
   (bug #962832).
 
+Cleanups:
+
+* Drop legacy USE=test hacks.
+
+portage-3.0.69.1 (2025-09-15)
+--------------
+
+[This release was done as a standalone tag.]
+
+Features:
+
+* Prefer the 'Last-Modified' over the 'timestamp' HTTP header when
+  querying binhosts.
+
+Bug fixes:
+
+* Fix timestamp comparison for Packages index by using UTC consistently
+  (bug #962832).
+
 portage-3.0.69 (2025-09-14)
 --------------
 
