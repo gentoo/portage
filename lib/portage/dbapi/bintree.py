@@ -1666,7 +1666,7 @@ class binarytree:
                             colorize(
                                 "GOOD",
                                 _(
-                                    " [%s] Local copy of remote index is %s and will be used%s."
+                                    "[%s] Local copy of remote index is %s and will be used%s."
                                 )
                                 % (binrepo_name, exc.desc, extra_info),
                             )
