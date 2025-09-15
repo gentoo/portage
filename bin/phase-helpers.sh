@@ -480,17 +480,17 @@ unpack() {
 				unrar x -idq -o+ "${srcdir}${f}"
 				;;
 			tar.bz|tar.bz2|tbz|tbz2)
-				tar -I "${bzip2_cmd-bzip2} -c" -xof "${srcdir}${f}"
+				gtar -I "${bzip2_cmd-bzip2} -c" -xof "${srcdir}${f}"
 				;;
 			tar|tar.*|tgz)
 				# GNU tar recognises various file suffixes, for
 				# which it is able to execute the appropriate
 				# decompressor. They are documented by the
 				# (info) manual for the -a option.
-				tar --warning=decompress-program -xof "${srcdir}${f}"
+				gtar --warning=decompress-program -xof "${srcdir}${f}"
 				;;
 			txz)
-				tar -xJof "${srcdir}${f}"
+				gtar -xJof "${srcdir}${f}"
 				;;
 			xz)
 				xz -dc -- "${srcdir}${f}" > "${basename%.*}"

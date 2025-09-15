@@ -531,14 +531,14 @@ __dyn_package() {
 
 		[[ ${PORTAGE_VERBOSE} = 1 ]] && tar_options+=" -v"
 		if contains_word xattr "${FEATURES}" \
-			&& tar --help 2>/dev/null | grep -q -- --xattrs
+			&& gtar --help 2>/dev/null | grep -q -- --xattrs
 		then
 			tar_options+=" --xattrs"
 		fi
 
 		[[ -z "${PORTAGE_COMPRESSION_COMMAND}" ]] && die "PORTAGE_COMPRESSION_COMMAND is unset"
 
-		tar ${tar_options} -cf - ${PORTAGE_BINPKG_TAR_OPTS} -C "${D}" . | \
+		gtar ${tar_options} -cf - ${PORTAGE_BINPKG_TAR_OPTS} -C "${D}" . | \
 			${PORTAGE_COMPRESSION_COMMAND} > "${PORTAGE_BINPKG_TMPFILE}"
 		assert "failed to pack binary package: '${PORTAGE_BINPKG_TMPFILE}'"
 
@@ -584,7 +584,7 @@ __dyn_spec() {
 	mkdir -p "${sources_dir}"
 	declare -a tar_args=("${EBUILD}")
 	[[ -d ${FILESDIR} ]] && tar_args=("${EBUILD}" "${FILESDIR}")
-	tar czf "${sources_dir}/${PF}.tar.gz" \
+	gtar czf "${sources_dir}/${PF}.tar.gz" \
 		"${tar_args[@]}" || \
 		die "Failed to create base rpm tarball."
 
