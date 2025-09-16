@@ -14,6 +14,9 @@ Features:
 * Prefer the 'Last-Modified' over the 'timestamp' HTTP header when
   querying binhosts.
 
+* Enable sync-git-verify-commit-signature for the 'gentoo' repository
+  per default.
+
 Bug fixes:
 
 * Fix timestamp comparison for Packages index by using UTC consistently
