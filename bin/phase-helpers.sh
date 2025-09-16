@@ -962,7 +962,11 @@ if ___eapi_has_einstalldocs; then
 	einstalldocs() (
 		local f
 
-		if [[ ! -v DOCS ]]; then
+		# The implementation deviates from PMS, which purports to be
+		# concerned with whether the "DOCS variable is unset". In fact,
+		# the implementation checks whether the variable is undeclared.
+		# However, it is PMS that is in the wrong. See bug #962934.
+		if [[ ! ${DOCS@A} ]]; then
 			for f in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 				THANKS BUGS FAQ CREDITS CHANGELOG
 			do
