@@ -488,7 +488,7 @@ unpack() {
 				unrar x -idq -o+ "${srcdir}${f}"
 				;;
 			tar.bz|tar.bz2|tbz|tbz2)
-				gtar -I "${bzip2_cmd-bzip2} -c" -xof "${srcdir}${f}"
+				gtar --use-compress-program="${bzip2_cmd-bzip2} -c" -xof "${srcdir}${f}"
 				;;
 			tar|tar.*|tgz)
 				# GNU tar recognises various file suffixes, for
