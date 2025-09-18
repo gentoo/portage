@@ -1440,6 +1440,18 @@ Defines the location where created RPM packages will be stored.
 .br
 Defaults to "/var/cache/rpm".
 .TP
+\fBSCCACHE_DIR\fR = \fI[path]\fR
+Defines the location of the sccache cache directory.
+
+Only trusted users should be granted write access to this location.
+
+Defaults to "${PORTAGE_TMPDIR}/sccache".
+.TP
+\fBSCCACHE_CACHE_SIZE\fR = \fI"size"\fR
+This controls the space use limitations for sccache.
+
+Defaults to 10G.
+.TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server
 is used to sync the local ebuild repository when `emerge \-\-sync` is run.
