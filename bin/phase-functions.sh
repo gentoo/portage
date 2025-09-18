@@ -1087,7 +1087,8 @@ __ebuild_main() {
 
 			local x
 			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
-				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
+				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS \
+				SCCACHE_DIR SCCACHE_CACHE_SIZE ; do
 				[[ ${!x+set} = set ]] && export ${x}
 			done
 			unset x

@@ -216,6 +216,11 @@ def _prepare_features_dirs(mysettings):
             "subdirs": ("lock", "state"),
             "always_recurse": True,
         },
+        "sccache": {
+            "basedir_var": "SCCACHE_DIR",
+            "default_dir": os.path.join(mysettings["PORTAGE_TMPDIR"], "sccache"),
+            "always_recurse": False,
+        },
     }
     dirmode = 0o2070
     filemode = 0o60

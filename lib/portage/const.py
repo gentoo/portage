@@ -225,6 +225,7 @@ SUPPORTED_FEATURES = frozenset(
         "python-trace",
         "qa-unresolved-soname-deps",
         "sandbox",
+        "sccache",
         "selinux",
         "sesandbox",
         "sfperms",

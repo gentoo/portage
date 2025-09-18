@@ -247,7 +247,7 @@ environ_whitelist = frozenset(
     )
 )
 
-environ_whitelist_re = re.compile(r"^(CCACHE_|DISTCC_).*")
+environ_whitelist_re = re.compile(r"^(S?CCACHE_|DISTCC_).*")
 
 # Filter selected variables in the config.environ() method so that
 # they don't needlessly propagate down into the ebuild environment.
