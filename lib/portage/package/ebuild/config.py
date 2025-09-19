@@ -1,5 +1,6 @@
 # Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+from __future__ import annotations
 
 __all__ = [
     "autouse",
@@ -18,6 +19,8 @@ import re
 import shlex
 import sys
 import traceback
+from typing import TYPE_CHECKING, Any
+from collections.abc import Iterator, Mapping
 import warnings
 
 from _emerge.Package import Package
@@ -67,6 +70,7 @@ from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
 from portage.repository.config import (
+    RepoConfigLoader,
     allow_profile_repo_deps,
     load_repository_config,
 )
@@ -104,6 +108,9 @@ from portage.package.ebuild._config.helper import (
     ordered_by_atom_specificity,
     prune_incremental,
 )
+
+if TYPE_CHECKING:
+    from portage.dbapi.vartree import vartree
 
 
 def autouse(myvartree, use_cache=1, mysettings=None):
@@ -215,20 +222,25 @@ class config:
     _environ_whitelist_re = special_env_vars.environ_whitelist_re
     _global_only_vars = special_env_vars.global_only_vars
 
+    categories: list[str]
+    depcachedir: str
+    features: features_set
+    repositories: RepoConfigLoader
+
     def __init__(
         self,
-        clone=None,
-        mycpv=None,
-        config_profile_path=None,
-        config_incrementals=None,
-        config_root=None,
-        target_root=None,
-        sysroot=None,
-        eprefix=None,
-        local_config=True,
-        env=None,
-        _unmatched_removal=False,
-        repositories=None,
+        clone: config | None = None,
+        mycpv: str | None = None,
+        config_profile_path: str | None = None,
+        config_incrementals: Mapping[str, str] | None = None,
+        config_root: str | None = None,
+        target_root: str | None = None,
+        sysroot: str | None = None,
+        eprefix: str | None = None,
+        local_config: bool = True,
+        env: Mapping[str, str] | None = None,
+        _unmatched_removal: bool = False,
+        repositories: RepoConfigLoader | None = None,
     ):
         """
         @param clone: If provided, init will use deepcopy to copy by value the instance.
@@ -941,7 +953,7 @@ class config:
 
                 # package.bashrc
                 for profile in profiles_complex:
-                    if not "profile-bashrcs" in profile.profile_formats:
+                    if "profile-bashrcs" not in profile.profile_formats:
                         continue
                     self._pbashrcdict[profile] = portage.dep.ExtendedAtomDict(dict)
                     bashrc = grabdict_package(
@@ -1667,7 +1679,7 @@ class config:
             self.settings = settings
             self.values = None
 
-        def __getitem__(self, k):
+        def __getitem__(self, k: str) -> str:
             if self.values is None:
                 self.values = self._init_values()
             return self.values[k]
@@ -2102,7 +2114,7 @@ class config:
                 allow_test = self.get("ALLOW_TEST", "").split()
                 restrict_test = (
                     "test" in restrict
-                    and not "all" in allow_test
+                    and "all" not in allow_test
                     and not ("test_network" in properties and "network" in allow_test)
                     and not (
                         "test_privileged" in properties and "privileged" in allow_test
@@ -3068,7 +3080,7 @@ class config:
         self.getvirtuals()
         return self._virtuals_manager.get_virts_p()
 
-    def getvirtuals(self):
+    def getvirtuals(self) -> dict[str, list[Atom]]:
         if self._virtuals_manager._treeVirtuals is None:
             # Hack around the fact that VirtualsManager needs a vartree
             # and vartree needs a config instance.
@@ -3081,7 +3093,7 @@ class config:
 
         return self._virtuals_manager.getvirtuals()
 
-    def _populate_treeVirtuals_if_needed(self, vartree):
+    def _populate_treeVirtuals_if_needed(self, vartree: vartree) -> None:
         """Reduce the provides into a list by CP."""
         if self._virtuals_manager._treeVirtuals is None:
             if self.local_config:
@@ -3089,10 +3101,10 @@ class config:
             else:
                 self._virtuals_manager._treeVirtuals = {}
 
-    def __delitem__(self, mykey):
+    def __delitem__(self, mykey: str) -> None:
         self.pop(mykey)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         try:
             return self._getitem(key)
         except KeyError:
@@ -3129,7 +3141,7 @@ class config:
                 )
                 return ""
 
-    def _getitem(self, mykey):
+    def _getitem(self, mykey: str) -> Any:
         if mykey in self._constant_keys:
             # These two point to temporary values when
             # portage plans to update itself.
@@ -3173,13 +3185,13 @@ class config:
 
         raise KeyError(mykey)
 
-    def get(self, k, x=None):
+    def get(self, k: str, x: Any = None) -> Any:
         try:
             return self._getitem(k)
         except KeyError:
             return x
 
-    def pop(self, key, *args):
+    def pop(self, key: str, *args: Any) -> Any:
         self.modifying()
         if len(args) > 1:
             raise TypeError(
@@ -3194,7 +3206,7 @@ class config:
             raise KeyError(key)
         return v
 
-    def __contains__(self, mykey):
+    def __contains__(self, mykey: str) -> bool:
         """Called to implement membership test operators (in and not in)."""
         try:
             self._getitem(mykey)
@@ -3203,28 +3215,28 @@ class config:
         else:
             return True
 
-    def setdefault(self, k, x=None):
+    def setdefault(self, k: str, x: Any = None) -> Any:
         v = self.get(k)
         if v is not None:
             return v
         self[k] = x
         return x
 
-    def __iter__(self):
-        keys = set()
+    def __iter__(self) -> Iterator[str]:
+        keys: set[str] = set()
         keys.update(self._constant_keys)
         for d in self.lookuplist:
             keys.update(d)
         return iter(keys)
 
-    def iterkeys(self):
+    def iterkeys(self) -> Iterator[str]:
         return iter(self)
 
-    def iteritems(self):
+    def iteritems(self) -> Iterator[tuple[str, Any]]:
         for k in self:
             yield (k, self._getitem(k))
 
-    def __setitem__(self, mykey, myvalue):
+    def __setitem__(self, mykey: str, myvalue: Any) -> None:
         "set a value; will be thrown away at reset() time"
         if not isinstance(myvalue, str):
             raise ValueError(
@@ -3239,7 +3251,7 @@ class config:
         self.modifiedkeys.append(mykey)
         self.configdict["env"][mykey] = myvalue
 
-    def environ(self):
+    def environ(self) -> dict[str, Any]:
         "return our locally-maintained environment"
         mydict = {}
         environ_filter = self._environ_filter
@@ -3388,7 +3400,7 @@ class config:
 
         return mydict
 
-    def thirdpartymirrors(self):
+    def thirdpartymirrors(self) -> dict[str, Any]:
         if getattr(self, "_thirdpartymirrors", None) is None:
             thirdparty_lists = []
             for repo_name in reversed(self.repositories.prepos_order):
@@ -3404,14 +3416,14 @@ class config:
             self._thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
         return self._thirdpartymirrors
 
-    def archlist(self):
+    def archlist(self) -> list[str]:
         _archlist = []
         for myarch in self["PORTAGE_ARCHLIST"].split():
             _archlist.append(myarch)
             _archlist.append("~" + myarch)
         return _archlist
 
-    def selinux_enabled(self):
+    def selinux_enabled(self) -> int:
         if getattr(self, "_selinux_enabled", None) is None:
             self._selinux_enabled = 0
             if "selinux" in self.features:
