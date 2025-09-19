@@ -58,6 +58,7 @@ jobs:
 
           # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
           sudo ln -s /bin/true /usr/bin/getuto
+          sudo ln -s "$(type -P tar)" /usr/bin/gtar
       - name: Patch python scripts to set spawn start method
         if: ${{ matrix.start-method == 'spawn' }}
         run: |
