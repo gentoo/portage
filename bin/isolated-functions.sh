@@ -681,30 +681,10 @@ contains_word() {
 # Invoke GNU find(1) in such a way that the paths to be searched are consumed
 # as a list of one or more null-terminated records from STDIN. The positional
 # parameters shall be conveyed verbatim and are guaranteed to be treated as
-# options and/or primaries, provided that the version of GNU findutils is 4.9.0
-# or greater. For older versions, no such guarantee is made.
-if printf '/\0' | find -files0-from - -maxdepth 0 &>/dev/null; then
-	find0() {
-		find -files0-from - "$@"
-	}
-else
-	# This is a temporary workaround for the GitHub CI runner, which
-	# suffers from an outdated version of findutils, per bug 957550.
-	find0() {
-		local -a opts paths
-
-		# All of -H, -L and -P are options. If specified, they must
-		# precede pathnames and primaries alike.
-		while [[ $1 == -[HLP] ]]; do
-			opts+=("$1")
-			shift
-		done
-		mapfile -td '' paths
-		if (( ${#paths[@]} )); then
-			find "${opts[@]}" "${paths[@]}" "$@"
-		fi
-	}
-fi
+# options and/or primaries. This requires GNU findutils >=4.9.0.
+find0() {
+	find -files0-from - "$@"
+}
 
 # Consumes the standard input and attempts to parse it as the "configparser"
 # configuration file format that is native to python. Each key/value entry
