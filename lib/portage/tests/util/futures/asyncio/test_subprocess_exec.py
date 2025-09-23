@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -7,25 +7,13 @@ import subprocess
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
-from portage.util.futures import asyncio
 from portage.util.futures._asyncio import create_subprocess_exec
-from portage.util.futures.unix_events import DefaultEventLoopPolicy
 
 
 class SubprocessExecTestCase(TestCase):
     def _run_test(self, test):
-        initial_policy = asyncio.get_event_loop_policy()
-        if not isinstance(initial_policy, DefaultEventLoopPolicy):
-            asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
-
-        loop = asyncio._wrap_loop()
-        try:
-            test(loop)
-        finally:
-            asyncio.set_event_loop_policy(initial_policy)
-            if loop not in (None, global_event_loop()):
-                loop.close()
-                self.assertFalse(global_event_loop().is_closed())
+        loop = global_event_loop()
+        test(loop)
 
     def testEcho(self):
         args_tuple = (b"hello", b"world")
