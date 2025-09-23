@@ -416,7 +416,8 @@ class _ForkWatcher:
         _ForkWatcher.current_pid = None
         # Force instantiation of a new event loop policy as a workaround
         # for https://bugs.python.org/issue22087.
-        asyncio.set_event_loop_policy(None)
+        if sys.version_info < (3, 12):
+            asyncio.set_event_loop_policy(None)
 
 
 _ForkWatcher.hook(_ForkWatcher)
