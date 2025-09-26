@@ -537,7 +537,8 @@ is_snapshot_fresh() {
 
 do_latest_snapshot() {
 	local timestamp_{difference,problem} snapshot_{date,unixtime} approx_snapshot_time existing_timestamp start_{hour,time}
-	local min_time_diff attempts TZ=UTC
+	local min_time_diff attempts
+	local -x TZ=UTC
 
 	einfo "Fetching most recent snapshot ..."
 
