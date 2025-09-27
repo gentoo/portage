@@ -1446,6 +1446,14 @@ statistics about its internal LRU caches.
 .BR PORTAGE_SHOW_HTTP_TRACE
 If this environment variable is set, then Portage will show
 a trace of all HTTP request.
+.TP
+.BR PORTAGE_DO_NOT_EXPORT_PMS_VARS
+If this environment variable is set, then Portage will not export PMS
+variables regardless of the EAPI.  The variables are still available
+to ebuilds; however, they are not exported and therefore not available
+to child processes of the ebuild.  Since EAPI 9, Portage will never
+export PMS variables.  This setting allows testing EAPI < 9 ebuilds
+with the new behavior.
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP
