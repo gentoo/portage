@@ -2184,12 +2184,14 @@ def spawn(
     eapi = mysettings["EAPI"]
 
     unexported_env_vars = None
-    if "export-pms-vars" not in mysettings.features or not eapi_exports_pms_vars(eapi):
+    if not eapi_exports_pms_vars(eapi) or os.environ.get(
+        "PORTAGE_DO_NOT_EXPORT_PMS_VARS"
+    ):
         unexported_env_vars = _unexported_pms_vars
 
     if unexported_env_vars:
-        # Starting with EAPI 9 (or if FEATURES="-export-pms-vars"),
-        # PMS variables should not longer be exported.
+        # Starting with EAPI 9 (or if the PORTAGE_DO_NOT_EXPORT_PMS_VARS env
+        # variable is set) PMS variables should not longer be exported.
 
         phase = mysettings.get("EBUILD_PHASE")
         is_pms_ebuild_phase = phase in _phase_func_map.keys()

@@ -183,7 +183,6 @@ SUPPORTED_FEATURES = frozenset(
         "distlocks",
         "downgrade-backup",
         "ebuild-locks",
-        "export-pms-vars",
         "fail-clean",
         "fakeroot",
         "fixlafiles",

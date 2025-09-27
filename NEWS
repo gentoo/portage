@@ -22,6 +22,8 @@ Bug fixes:
 Cleanups:
 
 * Drop legacy USE=test hacks.
+* Replace FEATURES=export-pms-vars with Portage development feature
+  PORTAGE_DO_NOT_EXPORT_PMS_VARS (bug #953842)
 
 portage-3.0.69.1 (2025-09-15)
 --------------
