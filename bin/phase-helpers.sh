@@ -1024,25 +1024,47 @@ if ___eapi_has_eapply; then
 		local LC_ALL LC_COLLATE=C f i path
 		local -a operands options
 
+		# PMS mandates an unconventional option parsing scheme whereby
+		# the rule that options must precede non-option arguments is
+		# only enforced in the case that no "--" argument is found.
+		# https://projects.gentoo.org/pms/8/pms.html#x1-127001r1
 		while (( $# )); do
 			case $1 in
 				--)
-					shift
-					operands+=("$@")
 					break
 					;;
-				-*)
-					if (( ! ${#operands[@]} )); then
-						options+=("$1")
-					else
-						die "eapply: options must precede non-option arguments"
-					fi
-					;;
 				*)
-					operands+=("$1")
+					options+=("$1")
 			esac
 			shift
 		done
+
+		if (( $# )); then
+			# The "--" argument was encountered. Forward those to
+			# its left to the patch(1) utility, while considering
+			# those to its right as eapply operands.
+			shift
+			operands=("$@")
+		else
+			# Restore the positional parameters and parse normally.
+			set -- "${options[@]}"
+			options=()
+
+			while (( $# )); do
+				case $1 in
+					-*)
+						if (( ! ${#operands[@]} )); then
+							options+=("$1")
+						else
+							die "eapply: options must precede non-option arguments"
+						fi
+						;;
+					*)
+						operands+=("$1")
+				esac
+				shift
+			done
+		fi
 
 		if (( ! ${#operands[@]} )); then
 			die "eapply: no operands were specified"
