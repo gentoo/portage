@@ -6,6 +6,20 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.69.3 (2025-10-01)
+--------------
+
+[This release was done as a standalone tag.]
+
+Bug fixes:
+
+* Fix unbound variable error.
+
+* Use gtar consistently for systems where tar is not from GNU Tar,
+  like libarchive.
+
+* Fix DOCS when undeclared but not unset (bug #962934).
+
 portage-3.0.69.2 (2025-10-01)
 --------------
 
