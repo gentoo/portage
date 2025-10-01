@@ -25,6 +25,17 @@ Cleanups:
 * Replace FEATURES=export-pms-vars with Portage development feature
   PORTAGE_DO_NOT_EXPORT_PMS_VARS (bug #953842)
 
+portage-3.0.69.2 (2025-10-01)
+--------------
+
+[This release was done as a standalone tag.]
+
+Bug fixes:
+
+* Fix 'eapply -d' and other option handling (bug #963536).
+
+* emerge-webrsync: Handle TZ properly (bug #963423).
+
 portage-3.0.69.1 (2025-09-15)
 --------------
 
