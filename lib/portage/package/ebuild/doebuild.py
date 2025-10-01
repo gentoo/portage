@@ -631,7 +631,10 @@ def doebuild_environment(
 
             for feature, m in masquerades:
                 for l in possible_libexecdirs:
-                    p = os.path.join(os.sep, eprefix_lstrip, "usr", l, m, "bin")
+                    masqdir = os.path.join(os.sep, eprefix_lstrip, "usr", l, m)
+                    p = os.path.join(masqdir, "bin")
+                    if not os.path.isdir(p):
+                        p = masqdir
                     if os.path.isdir(p):
                         mysettings["PATH"] = p + ":" + mysettings["PATH"]
                         break
