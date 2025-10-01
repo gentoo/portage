@@ -1451,6 +1451,8 @@ class Atom(str):
     # Distiguishes soname atoms from other atom types
     soname = False
 
+    cp: str
+
     class _blocker:
         __slots__ = ("overlap",)
 
@@ -1468,9 +1470,9 @@ class Atom(str):
 
     def __init__(
         self,
-        s,
+        s: str,
         unevaluated_atom=None,
-        allow_wildcard=False,
+        allow_wildcard: bool = False,
         allow_repo=None,
         _use=None,
         eapi=None,
