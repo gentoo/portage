@@ -1217,8 +1217,27 @@ only for protocols supporting cryptographic verification, provided
 that the respective verification option is enabled. If unset, the user's
 keyring is used.
 .TP
-.B sync\-openpgp\-key\-refresh = yes
+.B sync\-openpgp\-key\-refresh = yes|true|wkd|keyserver|no|false|false-nowarn
 Enable OpenPGP key(ring) refresh. This option is enabled by default.
+
+The refresh method is determined by the value:
+.RS
+.TP
+\fIyes\fR (\fItrue\fR)
+Attempt refresh first via WKD (Web Key Directory), with a fallback to the configured keyserver. (Default)
+.TP
+\fIwkd\fR
+Refresh keys using WKD only.
+.TP
+\fIkeyserver\fR
+Refresh keys using the configured keyserver only.
+.TP
+\fIno\fR (\fIfalse\fR)
+Disable refresh and emit a warning about the security impact.
+.TP
+\fIfalse\-nowarn\fR
+Disable refresh without emitting a warning.
+.RE
 
 \fBWarning\fR: It is a security vulnerability to disable this option
 because this will prevent detection of revoked keys!

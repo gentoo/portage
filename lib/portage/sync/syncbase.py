@@ -272,7 +272,9 @@ class SyncBase:
             quiet=("--quiet" in self.options["emerge_config"].opts)
         )
 
-        if not self.repo.sync_openpgp_key_refresh:
+        if self.repo.sync_openpgp_key_refresh == "false-nowarn":
+            return
+        elif self.repo.sync_openpgp_key_refresh == "false":
             out.ewarn(
                 "Key refresh is disabled via a repos.conf sync-openpgp-key-refresh"
             )
@@ -282,11 +284,12 @@ class SyncBase:
             out.ewarn("detection of revoked keys!")
             return
 
-        out.ebegin("Refreshing keys via WKD")
-        if openpgp_env.refresh_keys_wkd():
-            out.eend(0)
-            return
-        out.eend(1)
+        if self.repo.sync_openpgp_key_refresh in ("true", "wkd"):
+            out.ebegin("Refreshing keys via WKD")
+            if openpgp_env.refresh_keys_wkd():
+                out.eend(0)
+                return
+            out.eend(1)
 
         out.ebegin(
             "Refreshing keys from keyserver{}".format(
