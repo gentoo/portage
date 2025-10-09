@@ -1,17 +1,16 @@
 certificate version 0.1
-pusher 0x226DE4AA4B9704A49DEF6B9B1A333AEFBD714C02 1759766408 -0400
-pushee ssh://git.gentoo.org/proj/portage.git
-nonce 1759766408-e6f5b269f617d34df18257e13853318f7f1a8baa
+pusher Sam James <sam@gentoo.org> 1759987999 +0100
+pushee git+ssh://git.gentoo.org/proj/portage.git
+nonce 1759987999-4ac604015927bf78edc5540313c3c4549a6e81ea
 
-8c362e8d31c88c6d3d58796adc2f050fc83d5132 3eb27da9879a22e3807426a8fcdd9c56b618acd5 refs/heads/master
+3eb27da9879a22e3807426a8fcdd9c56b618acd5 ef36e16b22c99440d58185216cb1e34cd610d338 refs/heads/master
 -----BEGIN PGP SIGNATURE-----
 
-iQEzBAABCAAdFiEEEcy8hJz1vFF5g9/mfliimPQvnM0FAmjj54gACgkQfliimPQv
-nM0dFQf/TuXzDDKBadtlwiAdvs0fGetrr3DcAom+6GEl+BziGiwXJ76QwtjW8FXh
-ztp6rAC7EKa5JK2let0OfN38m8jziHE9BrVclYh974++VrTQIM0hbS2pdx4CDm8z
-/cBOS1nwj3juLl2D/qrzGGu1bnTwCWseNPkzSS0EfCoRRaayXS+lx7EUaRMmeEbX
-fVqyhMM37WGLlseEWmkWcXNdRLfzOtQxl2weT+p+xoVynRJwM2VOLZv2Uw0b83ta
-oM1uvfoPhaeDpauA99mpviJEZfckzkngw8y2IDucVG6OHyleoBvetVXT6Xh/sJ3Y
-Mz3ZWl5voLquOxk9+OaFR4w4RrnZKA==
-=yMr0
+iQEBBAAWCgCpFiEEJaa7iN2bdkxrVUHCc4QJ9SDfkZAFAmjnSSAbFIAAAAAABAAO
+bWFudTIsMi41KzEuMTEsMiwyXxSAAAAAAC4AKGlzc3Vlci1mcHJAbm90YXRpb25z
+Lm9wZW5wZ3AuZmlmdGhob3JzZW1hbi5uZXQyNUE2QkI4OEREOUI3NjRDNkI1NTQx
+QzI3Mzg0MDlGNTIwREY5MTkwDxxzYW1AZ2VudG9vLm9yZwAKCRBzhAn1IN+RkAQ1
+AP9yYv5zZlANrGtyWuAuZNoD626wceHlwVTTorOKDlRl9QD/XC8g1kfqCRK/otf5
+oyqtTMwmgO1y1BlTCvPTKfENkgQ=
+=4IVQ
 -----END PGP SIGNATURE-----
