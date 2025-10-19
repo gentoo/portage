@@ -1,9 +1,12 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+from __future__ import annotations
 
 __all__ = ("VirtualsManager",)
 
 from copy import deepcopy
+from typing import TYPE_CHECKING
+
 
 from portage import os
 from portage.dep import Atom
@@ -11,6 +14,9 @@ from portage.exception import InvalidAtom
 from portage.localization import _
 from portage.util import grabdict, stack_dictlist, writemsg
 from portage.versions import cpv_getkey
+
+if TYPE_CHECKING:
+    from portage.dbapi.vartree import vartree
 
 
 class VirtualsManager:
@@ -164,7 +170,7 @@ class VirtualsManager:
 
         return self._virtuals
 
-    def _populate_treeVirtuals(self, vartree):
+    def _populate_treeVirtuals(self, vartree: vartree) -> None:
         """
         Initialize _treeVirtuals from the given vartree.
         It must not have been initialized already, otherwise

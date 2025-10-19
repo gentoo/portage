@@ -103,7 +103,7 @@ def _get_lock_fn():
 
 
 def _test_lock_fn(
-    lock_fn: typing.Callable[[str, int, int], typing.Callable[[], None]]
+    lock_fn: typing.Callable[[str, int, int], typing.Callable[[], None]],
 ) -> bool:
     fd, lock_path = tempfile.mkstemp()
     unlock_fn = None

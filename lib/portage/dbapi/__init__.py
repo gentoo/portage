@@ -1,5 +1,6 @@
 # Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+from __future__ import annotations
 
 __all__ = ["dbapi"]
 
@@ -7,7 +8,7 @@ import functools
 import logging
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional, Literal
 from collections.abc import Sequence
 
 import portage
@@ -35,9 +36,32 @@ from portage.localization import _
 from _emerge.Package import Package
 
 
+if TYPE_CHECKING:
+    _AuxKeys = Literal[
+        "DEFINED_PHASES",
+        "DEPEND",
+        "EAPI",
+        "HDEPEND",
+        "HOMEPAGE",
+        "INHERITED",
+        "IUSE",
+        "KEYWORDS",
+        "LICENSE",
+        "PDEPEND",
+        "PROPERTIES",
+        "PROVIDE",
+        "RDEPEND",
+        "REQUIRED_USE",
+        "RESTRICT",
+        "SRC_URI",
+        "SLOT",
+        "repository",
+    ]
+
+
 class dbapi:
     _category_re = re.compile(r"^\w[-.+\w]*$", re.UNICODE)
-    _categories: Optional[tuple[str, ...]] = None
+    _categories: tuple[str, ...] | None = None
     _use_mutable = False
     _known_keys = frozenset(auxdbkeys)
     _pkg_str_aux_keys = ("EAPI", "KEYWORDS", "SLOT", "repository")
@@ -73,7 +97,7 @@ class dbapi:
         return result
 
     @staticmethod
-    def _cpv_sort_ascending(cpv_list: Sequence[Any]) -> None:
+    def _cpv_sort_ascending(cpv_list: list[str]) -> None:
         """
         Use this to sort self.cp_list() results in ascending
         order. It sorts in place and returns None.
@@ -111,7 +135,7 @@ class dbapi:
         raise NotImplementedError
 
     def aux_get(
-        self, mycpv: str, mylist: str, myrepo: Optional[str] = None
+        self, mycpv: str, mylist: Sequence[_AuxKeys], myrepo: str | None = None
     ) -> list[str]:
         """Return the metadata keys in mylist for mycpv
         Args:

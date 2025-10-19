@@ -760,7 +760,7 @@ class depgraph:
             self._dynamic_config._package_tracker.add_installed_pkg(pkg)
             self._add_installed_sonames(pkg)
             ebuild_path, repo_path = portdb.findname2(pkg.cpv, myrepo=pkg.repo)
-            if ebuild_path is None:
+            if not ebuild_path:
                 fake_vartree.dynamic_deps_preload(pkg, None)
                 continue
             metadata, ebuild_hash = portdb._pull_valid_cache(
