@@ -14,6 +14,7 @@ py.install_sources(
         'test_backtracking.py',
         'test_bdeps.py',
         'test_binary_pkg_ebuild_visibility.py',
+        'test_binpackage_downgrades_slot_dep.py',
         'test_blocker.py',
         'test_broken_deps.py',
         'test_bootstrap_deps.py',
