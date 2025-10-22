@@ -269,9 +269,27 @@ class RepoConfig:
 
         self.sync_openpgp_key_path = repo_opts.get("sync-openpgp-key-path", None)
 
-        self.sync_openpgp_key_refresh = repo_opts.get(
+        sync_openpgp_key_refresh = repo_opts.get(
             "sync-openpgp-key-refresh", "true"
-        ).lower() in ("true", "yes")
+        ).lower()
+        if sync_openpgp_key_refresh == "yes":
+            sync_openpgp_key_refresh = "true"
+        elif sync_openpgp_key_refresh == "no":
+            sync_openpgp_key_refresh = "false"
+        elif sync_openpgp_key_refresh not in (
+            "true",
+            "false",
+            "wkd",
+            "keyserver",
+            "false-nowarn",
+        ):
+            writemsg(
+                f"!!! Invalid sync-openpgpg-key-refresh setting for repo {name}: {sync_openpgp_key_refresh}\n",
+                noiselevel=-1,
+            )
+            sync_openpgp_key_refresh = "true"
+
+        self.sync_openpgp_key_refresh = sync_openpgp_key_refresh
 
         for k in (
             "sync_openpgp_key_refresh_retry_count",
@@ -596,8 +614,10 @@ class RepoConfig:
             repo_msg.append(indent + "location: " + self.location)
         if not self.strict_misc_digests:
             repo_msg.append(indent + "strict-misc-digests: false")
-        if not self.sync_openpgp_key_refresh:
-            repo_msg.append(indent + "sync-openpgp-key-refresh: no")
+        if self.sync_openpgp_key_refresh != "true":
+            repo_msg.append(
+                indent + "sync-openpgp-key-refresh: " + self.sync_openpgp_key_refresh
+            )
         if self.sync_type:
             repo_msg.append(indent + "sync-type: " + self.sync_type)
         if self.sync_umask:
