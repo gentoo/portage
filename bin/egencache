@@ -1,14 +1,9 @@
 #!/usr/bin/env python
-# Copyright 2009-2022 Gentoo Authors
+# Copyright 2009-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import signal
-
-# For compatibility with Python < 3.8
-raise_signal = getattr(
-    signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
-)
 
 
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
