@@ -1,4 +1,4 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -1938,15 +1938,8 @@ class depgraph:
             # conflicts (or by blind luck).
             raise self._unknown_internal_error()
 
-        # Both _process_slot_conflict and _slot_operator_trigger_reinstalls
-        # can call _slot_operator_update_probe, which requires that
-        # self._dynamic_config._blocked_pkgs has been initialized by a
-        # call to the _validate_blockers method.
         for conflict in self._dynamic_config._package_tracker.slot_conflicts():
             self._process_slot_conflict(conflict)
-
-        if self._dynamic_config._allow_backtracking:
-            self._slot_operator_trigger_reinstalls()
 
     def _process_slot_conflict(self, conflict):
         """
@@ -2903,50 +2896,50 @@ class depgraph:
 
         return None
 
-    def _slot_operator_trigger_reinstalls(self):
+    def _slot_operator_trigger_backtracking(self, dep: Dependency) -> bool:
         """
-        Search for packages with slot-operator deps on older slots, and schedule
-        rebuilds if they can link to a newer slot that's in the graph.
+        Trigger backtracking for slot operator issues if needed.
+        Return True if this triggers backtracking, and False otherwise.
         """
+        if not self._dynamic_config._allow_backtracking:
+            return False
+
+        atom = dep.atom
+
+        if not (atom.soname or atom.slot_operator_built):
+            new_child_slot = self._slot_change_probe(dep)
+            if new_child_slot is not None:
+                self._slot_change_backtrack(dep, new_child_slot)
+                return True
+
+        if not (dep.parent and isinstance(dep.parent, Package) and dep.parent.built):
+            return False
 
         rebuild_if_new_slot = (
             self._dynamic_config.myparams.get("rebuild_if_new_slot", "y") == "y"
         )
 
-        for slot_key, slot_info in self._dynamic_config._slot_operator_deps.items():
-            for dep in slot_info:
-                atom = dep.atom
+        # If the parent is not installed, check if it needs to be
+        # rebuilt against an installed instance, since otherwise
+        # it could trigger downgrade of an installed instance as
+        # in bug #652938.
+        want_update_probe = dep.want_update or not dep.parent.installed
 
-                if not (atom.soname or atom.slot_operator_built):
-                    new_child_slot = self._slot_change_probe(dep)
-                    if new_child_slot is not None:
-                        self._slot_change_backtrack(dep, new_child_slot)
-                    continue
+        # Check for slot update first, since we don't want to
+        # trigger reinstall of the child package when a newer
+        # slot will be used instead.
+        if rebuild_if_new_slot and want_update_probe:
+            new_dep = self._slot_operator_update_probe(dep, new_child_slot=True)
+            if new_dep is not None:
+                self._slot_operator_update_backtrack(dep, new_child_slot=new_dep.child)
+                return True
 
-                if not (
-                    dep.parent and isinstance(dep.parent, Package) and dep.parent.built
-                ):
-                    continue
+        if want_update_probe:
+            if self._slot_operator_update_probe(dep):
+                self._slot_operator_update_backtrack(dep)
+                return True
 
-                # If the parent is not installed, check if it needs to be
-                # rebuilt against an installed instance, since otherwise
-                # it could trigger downgrade of an installed instance as
-                # in bug #652938.
-                want_update_probe = dep.want_update or not dep.parent.installed
-
-                # Check for slot update first, since we don't want to
-                # trigger reinstall of the child package when a newer
-                # slot will be used instead.
-                if rebuild_if_new_slot and want_update_probe:
-                    new_dep = self._slot_operator_update_probe(dep, new_child_slot=True)
-                    if new_dep is not None:
-                        self._slot_operator_update_backtrack(
-                            dep, new_child_slot=new_dep.child
-                        )
-
-                if want_update_probe:
-                    if self._slot_operator_update_probe(dep):
-                        self._slot_operator_update_backtrack(dep)
+        return False
 
     def _reinstall_for_flags(
         self, pkg, forced_flags, orig_use, orig_iuse, cur_use, cur_iuse
@@ -3437,44 +3430,6 @@ class depgraph:
                     raise
                 del e
 
-        # NOTE: REQUIRED_USE checks are delayed until after
-        # package selection, since we want to prompt the user
-        # for USE adjustment rather than have REQUIRED_USE
-        # affect package selection and || dep choices.
-        if (
-            not pkg.built
-            and pkg._metadata.get("REQUIRED_USE")
-            and eapi_has_required_use(pkg.eapi)
-        ):
-            required_use_is_sat = check_required_use(
-                pkg._metadata["REQUIRED_USE"],
-                self._pkg_use_enabled(pkg),
-                pkg.iuse.is_valid_flag,
-                eapi=pkg.eapi,
-            )
-            if not required_use_is_sat:
-                if dep.atom is not None and dep.parent is not None:
-                    self._add_parent_atom(pkg, (dep.parent, dep.atom))
-
-                if arg_atoms:
-                    for parent_atom in arg_atoms:
-                        parent, atom = parent_atom
-                        self._add_parent_atom(pkg, parent_atom)
-
-                atom = dep.atom
-                if atom is None:
-                    atom = Atom("=" + pkg.cpv)
-                self._dynamic_config._unsatisfied_deps_for_display.append(
-                    ((pkg.root, atom), {"myparent": dep.parent, "show_req_use": pkg})
-                )
-                self._dynamic_config._required_use_unsatisfied = True
-                self._dynamic_config._skip_restart = True
-                # Add pkg to digraph in order to enable autounmask messages
-                # for this package, which is useful when autounmask USE
-                # changes have violated REQUIRED_USE.
-                self._dynamic_config.digraph.add(pkg, dep.parent, priority=priority)
-                return 0
-
         if not pkg.onlydeps:
             existing_node, existing_node_matches = self._check_slot_conflict(
                 pkg, dep.atom
@@ -3633,6 +3588,43 @@ class depgraph:
             and (dep.atom.soname or dep.atom.slot_operator == "=")
         ):
             self._add_slot_operator_dep(dep)
+            if self._slot_operator_trigger_backtracking(dep):
+                # Drop slot operator deps that trigger backtracking, since
+                # they may be irrelevant and therefore we don't want to
+                # enforce the REQUIRED_USE check that comes below (bug 964705).
+                # Since backtracking has been triggered, the _need_restart flag
+                # is set and this depgraph is only useful for collecting
+                # backtracking parameters at this point, so it is acceptable to
+                # drop dependencies as needed. It would not be acceptable to
+                # abort depgraph creation here, since that would not scale well
+                # for large numbers of slot operator rebuilds.
+                return 1
+
+        # NOTE: REQUIRED_USE checks are delayed until after
+        # package selection, since we want to prompt the user
+        # for USE adjustment rather than have REQUIRED_USE
+        # affect package selection and || dep choices.
+        if (
+            not pkg.built
+            and pkg._metadata.get("REQUIRED_USE")
+            and eapi_has_required_use(pkg.eapi)
+        ):
+            required_use_is_sat = check_required_use(
+                pkg._metadata["REQUIRED_USE"],
+                self._pkg_use_enabled(pkg),
+                pkg.iuse.is_valid_flag,
+                eapi=pkg.eapi,
+            )
+            if not required_use_is_sat:
+                atom = dep.atom
+                if atom is None:
+                    atom = Atom("=" + pkg.cpv)
+                self._dynamic_config._unsatisfied_deps_for_display.append(
+                    ((pkg.root, atom), {"myparent": dep.parent, "show_req_use": pkg})
+                )
+                self._dynamic_config._required_use_unsatisfied = True
+                self._dynamic_config._skip_restart = True
+                return 0
 
         recurse = deep is True or not self._too_deep(self._depth_increment(depth, n=1))
         dep_stack = self._dynamic_config._dep_stack
