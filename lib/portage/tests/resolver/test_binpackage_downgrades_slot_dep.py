@@ -1,8 +1,6 @@
 # Copyright 2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import pytest
-
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -11,7 +9,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class BinpackageDowngradesSlotDepTestCase(TestCase):
-    @pytest.mark.xfail()
     def testBinpackageDowngradesSlotDep(self):
         python_use = "python_targets_python3_12 +python_targets_python3_13"
         python_usedep = "python_targets_python3_12(-)?,python_targets_python3_13(-)?"
@@ -92,7 +89,7 @@ class BinpackageDowngradesSlotDepTestCase(TestCase):
             binpkgs=binpkgs,
             world=world,
             user_config=user_config,
-            debug=True,
+            debug=False,
         )
 
         settings = playground.settings
