@@ -5,7 +5,6 @@
 """System health checks and maintenance utilities.
 """
 
-import os
 import signal
 
 
