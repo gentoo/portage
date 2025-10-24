@@ -308,4 +308,4 @@ except KeyboardInterrupt as e:
     # Prevent traceback on ^C
     signum = getattr(e, "signum", signal.SIGINT)
     signal.signal(signum, signal.SIG_DFL)
-    raise_signal(signum)
+    signal.raise_signal(signum)

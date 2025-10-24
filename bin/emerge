@@ -90,7 +90,7 @@ if __name__ == "__main__":
         signal.signal(signum, signal.SIG_DFL)
         sys.stderr.write(f"\n\nExiting on signal {signum}\n")
         sys.stderr.flush()
-        raise_signal(signum)
+        signal.raise_signal(signum)
     finally:
         # Only close the event loop for __main__,
         # since outside of __main__ it would close the

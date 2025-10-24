@@ -440,4 +440,4 @@ if __name__ == "__main__":
         # Prevent traceback on ^C
         signum = getattr(e, "signum", signal.SIGINT)
         signal.signal(signum, signal.SIG_DFL)
-        raise_signal(signum)
+        signal.raise_signal(signum)
