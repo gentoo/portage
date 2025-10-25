@@ -2,10 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
-import sys
 import tempfile
-
-import pytest
 
 from portage import os
 from portage import shutil
@@ -126,15 +123,9 @@ class AsynchronousLockTestCase(TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    @pytest.mark.skipif(
-        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
-    )
     def testAsynchronousLockWaitCancel(self):
         self._testAsynchronousLockWaitCancel()
 
-    @pytest.mark.skipif(
-        sys.version_info >= (3, 14), reason="fails with python 3.14.0a3"
-    )
     def testAsynchronousLockWaitCancelHardlink(self):
         prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
         os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"

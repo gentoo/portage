@@ -162,7 +162,7 @@ class ForkProcess(SpawnProcess):
                     fd,
                     self.pid,
                 )
-        except BrokenPipeError as e:
+        except (BrokenPipeError, ConnectionResetError) as e:
             # This case is triggered by testAsynchronousLockWaitCancel
             # when the test case terminates the child process while
             # this thread is still sending the fd_pipes (bug 923852).
