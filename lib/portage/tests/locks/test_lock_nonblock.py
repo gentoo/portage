@@ -14,12 +14,14 @@ from portage.tests import TestCase
 
 
 class LockNonblockTestCase(TestCase):
-    def _testLockNonblock(self):
+    def _testLockNonblock(self, env=None):
         tempdir = tempfile.mkdtemp()
         try:
             path = os.path.join(tempdir, "lock_me")
             lock1 = portage.locks.lockfile(path)
-            proc = multiprocessing.Process(target=self._lock_subprocess, args=(path,))
+            proc = multiprocessing.Process(
+                target=self._lock_subprocess, args=(path, env)
+            )
             proc.start()
             self.assertEqual(proc.pid > 0, True)
             proc.join()
@@ -30,7 +32,12 @@ class LockNonblockTestCase(TestCase):
             shutil.rmtree(tempdir)
 
     @staticmethod
-    def _lock_subprocess(path):
+    def _lock_subprocess(path, env):
+        if env is not None:
+            # This serves to implement __PORTAGE_TEST_HARDLINK_LOCKS
+            # environment variable inheritance for the multiprocessing
+            # forkserver start method.
+            os.environ.update(env)
         portage.locks._close_fds()
         # Disable close_fds since we don't exec
         # (see _setup_pipes docstring).
@@ -55,7 +62,7 @@ class LockNonblockTestCase(TestCase):
         prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
         os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
         try:
-            self._testLockNonblock()
+            self._testLockNonblock(env={"__PORTAGE_TEST_HARDLINK_LOCKS": "1"})
         finally:
             os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
             if prev_state is not None:
