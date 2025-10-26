@@ -217,7 +217,7 @@ get_fetchcommand() {
 			fi
 			;;
 		curl)
-			opts="--continue-at -f -S"
+			opts="--continue-at - -f -S"
 			if (( opt[quiet] )); then
 				opts+=" -s"
 			fi
