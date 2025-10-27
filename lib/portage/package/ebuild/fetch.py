@@ -120,6 +120,10 @@ def _drop_privs_userfetch(settings):
     os.setuid(int(spawn_kwargs["uid"]))
     os.umask(spawn_kwargs["umask"])
     portage.data.secpass = 1
+    try:
+        os.chdir(settings.get("HOME", "/"))
+    except Exception:
+        os.chdir("/")
 
 
 def _spawn_fetch(settings, args, **kwargs):
