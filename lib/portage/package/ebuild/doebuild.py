@@ -1654,6 +1654,14 @@ def doebuild(
 
 
 def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests, fetchonly):
+
+    if sys.version_info >= (3, 14):
+        # Since we typically drop privileges for userfetch here,
+        # a forkserver shared with the parent would open privilege
+        # escalation issues that are better to avoid, therefore
+        # force the multiprocessing start method to spawn.
+        multiprocessing.set_start_method("spawn", force=True)
+
     # For userfetch, drop privileges for the entire fetch call, in
     # order to handle DISTDIR on NFS with root_squash for bug 601252.
     if _want_userfetch(mysettings):
