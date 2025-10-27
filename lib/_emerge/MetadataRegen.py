@@ -10,6 +10,46 @@ from portage.dep import _repo_separator
 from portage.util._async.AsyncScheduler import AsyncScheduler
 
 
+async def metadata_regen_retry(*args, max_tries=3, **kwargs) -> int:
+    """
+    Since MetadataRegen is not well suited for internal retry, create
+    a new MetadataRegen instance for each retry. Returns the returncode
+    from the last MetadataRegen instance, which will only be non-zero
+    if all retries failed.
+    """
+    tries = max_tries
+    scheduler = MetadataRegen(*args, **kwargs)
+    scheduler.start()
+    try:
+        await scheduler.async_wait()
+    except asyncio.CancelledError:
+        scheduler.terminate()
+        await scheduler.async_wait()
+        raise
+    cpv_failed = scheduler.cpv_failed.copy()
+    tries -= 1
+    while scheduler.cp_retry and tries > 0:
+        kwargs["cp_iter"] = iter(scheduler.cp_retry)
+        scheduler = MetadataRegen(*args, **kwargs)
+        scheduler.start()
+        try:
+            await scheduler.async_wait()
+        except asyncio.CancelledError:
+            scheduler.terminate()
+            await scheduler.async_wait()
+            raise
+        cpv_failed.update(scheduler.cpv_failed)
+        cpv_failed.difference_update(scheduler.cpv_successful)
+        tries -= 1
+
+    # Account for failures from all MetadataRegen instances, since we
+    # only retry when the returncode is unexpected.
+    if cpv_failed:
+        scheduler.returncode |= 1
+
+    return scheduler.returncode
+
+
 class MetadataRegen(AsyncScheduler):
     def __init__(self, portdb, cp_iter=None, consumer=None, write_auxdb=True, **kwargs):
         AsyncScheduler.__init__(self, **kwargs)
@@ -28,6 +68,9 @@ class MetadataRegen(AsyncScheduler):
         self._cp_set = set()
         self._process_iter = self._iter_metadata_processes()
         self._running_tasks = set()
+        self.cp_retry = set()
+        self.cpv_failed = set()
+        self.cpv_successful = set()
 
     def _next_task(self):
         return next(self._process_iter)
@@ -152,7 +195,13 @@ class MetadataRegen(AsyncScheduler):
         portdb.flush_cache()
 
     def _task_exit(self, metadata_process):
-        if metadata_process.returncode != os.EX_OK:
+        if metadata_process.returncode == os.EX_OK:
+            self.cpv_successful.add(metadata_process.cpv)
+        else:
+            self.cpv_failed.add(metadata_process.cpv)
+            if metadata_process.returncode != 1:
+                # Retry if the returncode was unexpected.
+                self.cp_retry.add(metadata_process.cpv.cp)
             self._valid_pkgs.discard(metadata_process.cpv)
             if not self._terminated_tasks:
                 portage.writemsg(
