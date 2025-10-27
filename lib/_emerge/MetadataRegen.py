@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
@@ -156,7 +156,7 @@ class MetadataRegen(AsyncScheduler):
             self._valid_pkgs.discard(metadata_process.cpv)
             if not self._terminated_tasks:
                 portage.writemsg(
-                    f"Error processing {metadata_process.cpv}, continuing...\n",
+                    f"Error processing {metadata_process.cpv} with returncode {metadata_process.returncode}, continuing...\n",
                     noiselevel=-1,
                 )
 
