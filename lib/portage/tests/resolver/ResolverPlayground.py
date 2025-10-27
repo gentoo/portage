@@ -1,4 +1,4 @@
-# Copyright 2010-2024 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
@@ -341,7 +341,9 @@ class ResolverPlayground:
                 env=self.settings.environ(),
             )
             if result.returncode != os.EX_OK:
-                raise AssertionError(f"command failed: {egencache_cmd}")
+                raise AssertionError(
+                    f"command failed with returncode {result.returncode}: {egencache_cmd}"
+                )
 
     def _create_binpkgs(self, binpkgs):
         # When using BUILD_ID, there can be multiple instances for the
