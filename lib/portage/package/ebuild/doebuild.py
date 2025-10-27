@@ -1,4 +1,4 @@
-# Copyright 2010-2024 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
@@ -9,6 +9,7 @@ import errno
 import fnmatch
 from itertools import chain
 import logging
+import multiprocessing
 import os as _os
 import platform
 import pwd
