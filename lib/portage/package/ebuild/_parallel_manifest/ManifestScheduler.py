@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -95,8 +95,13 @@ class ManifestScheduler(AsyncScheduler):
         if task.returncode != os.EX_OK:
             if not self._terminated_tasks:
                 portage.writemsg(
-                    "Error processing %s%s%s, continuing...\n"
-                    % (task.cp, _repo_separator, task.repo_config.name),
+                    "Error processing %s%s%s with returncode %s, continuing...\n"
+                    % (
+                        task.cp,
+                        _repo_separator,
+                        task.repo_config.name,
+                        task.returncode,
+                    ),
                     noiselevel=-1,
                 )
 
