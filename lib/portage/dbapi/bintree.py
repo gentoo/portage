@@ -1638,8 +1638,8 @@ class binarytree:
                                 _(
                                     "\n\n!!! [%s] Binhost package index "
                                     " has no TIMESTAMP field.\n"
-                                ),
-                                binrepo_name,
+                                )
+                                % binrepo_name,
                                 noiselevel=-1,
                             )
                         else:
