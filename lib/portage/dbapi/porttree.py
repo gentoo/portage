@@ -852,6 +852,14 @@ class portdbapi(dbapi):
             return
         if proc is not None:
             if proc.returncode != os.EX_OK:
+                if proc.returncode != 1:
+                    writemsg(
+                        _(
+                            "!!! aux_get(): metadata phase for package '%(pkg)s' failed with unexpected returncode %(returncode)s\n"
+                        )
+                        % {"pkg": mycpv, "returncode": proc.returncode},
+                        noiselevel=-1,
+                    )
                 self._broken_ebuilds.add(myebuild)
                 future.set_exception(PortageKeyError(mycpv))
                 return
