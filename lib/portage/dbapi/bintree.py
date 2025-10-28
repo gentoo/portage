@@ -1419,30 +1419,30 @@ class binarytree:
             rmt_idx = self._new_pkgindex()
             proc = None
             tmp_filename = None
-            for remote_pkgindex_file in ("Packages.gz", "Packages"):
+            try:
+                if local_timestamp and (repo.frozen or not getbinpkg_refresh):
+                    if repo.frozen:
+                        raise UseCachedCopyOfRemoteIndex("frozen")
+                    raise UseCachedCopyOfRemoteIndex("")
+
                 try:
+                    ttl = float(pkgindex.header.get("TTL", 0))
+                except ValueError:
+                    pass
+                else:
+                    if (
+                        download_timestamp
+                        and ttl
+                        and download_timestamp + ttl > time.time()
+                    ):
+                        raise UseCachedCopyOfRemoteIndex("within TTL")
+
+                for remote_pkgindex_file in ("Packages.gz", "Packages"):
                     # urlparse.urljoin() only works correctly with recognized
                     # protocols and requires the base url to have a trailing
                     # slash, so join manually...
                     url = base_url.rstrip("/") + "/" + remote_pkgindex_file
                     f = None
-
-                    if local_timestamp and (repo.frozen or not getbinpkg_refresh):
-                        if repo.frozen:
-                            raise UseCachedCopyOfRemoteIndex("frozen")
-                        raise UseCachedCopyOfRemoteIndex("")
-
-                    try:
-                        ttl = float(pkgindex.header.get("TTL", 0))
-                    except ValueError:
-                        pass
-                    else:
-                        if (
-                            download_timestamp
-                            and ttl
-                            and download_timestamp + ttl > time.time()
-                        ):
-                            raise UseCachedCopyOfRemoteIndex("within TTL")
 
                     # Set proxy settings for _urlopen -> urllib_request
                     proxies = {}
@@ -1519,6 +1519,28 @@ class binarytree:
                                 raise UseCachedCopyOfRemoteIndex(
                                     "up-to-date", extra_info
                                 )
+                            if (
+                                remote_pkgindex_file == "Packages.gz"
+                                and isinstance(err, urllib.error.HTTPError)
+                                and err.code == 404
+                            ):
+                                # Ignore 404s for Packages.gz, as the file is
+                                # not guaranteed to exist.
+                                continue
+
+                            # This includes URLError which is raised for SSL
+                            # certificate errors when PEP 476 is supported.
+                            writemsg(
+                                _(
+                                    "\n\n!!! [%s] Error fetching binhost package"
+                                    " info from '%s'\n"
+                                )
+                                % (binrepo_name, _hide_url_passwd(base_url))
+                            )
+                            error_msg = str(err)
+                            writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
+                            del err
+                            pkgindex = None
 
                             if parsed_url.scheme in ("ftp", "http", "https"):
                                 # This protocol is supposedly supported by urlopen,
@@ -1654,57 +1676,28 @@ class binarytree:
                                 ),
                                 noiselevel=-1,
                             )
+                        if proc is not None:
+                            if proc.poll() is None:
+                                proc.kill()
+                                proc.wait()
+                            proc = None
+                        if tmp_filename is not None:
+                            try:
+                                os.unlink(tmp_filename)
+                            except OSError:
+                                pass
                     # We successfully fetched the remote index, break
                     # out of the ("Packages.gz", "Packages") loop.
                     break
-                except UseCachedCopyOfRemoteIndex as exc:
-                    changed = False
-                    rmt_idx = pkgindex
-                    if getbinpkg_refresh or repo.frozen:
-                        extra_info = exc.extra_info if verbose else ""
-                        writemsg(
-                            _(
-                                "[%s] Local copy of remote index is %s and will be used%s.\n"
-                            )
-                            % (binrepo_name, exc.desc, extra_info),
-                        )
-                    # We are using the cached index, break out of the
-                    # ("Packages.gz", "Packages") loop.
-                    break
-                except OSError as e:
-                    if (
-                        remote_pkgindex_file == "Packages.gz"
-                        and isinstance(e, urllib.error.HTTPError)
-                        and e.code == 404
-                    ):
-                        # Ignore 404s for Packages.gz, as the file is
-                        # not guaranteed to exist.
-                        continue
-
-                    # This includes URLError which is raised for SSL
-                    # certificate errors when PEP 476 is supported.
+            except UseCachedCopyOfRemoteIndex as exc:
+                changed = False
+                rmt_idx = pkgindex
+                if getbinpkg_refresh or repo.frozen:
+                    extra_info = exc.extra_info if verbose else ""
                     writemsg(
-                        _(
-                            "\n\n!!! [%s] Error fetching binhost package"
-                            " info from '%s'\n"
-                        )
-                        % (binrepo_name, _hide_url_passwd(base_url))
+                        _("[%s] Local copy of remote index is %s and will be used%s.\n")
+                        % (binrepo_name, exc.desc, extra_info),
                     )
-                    error_msg = str(e)
-                    writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
-                    del e
-                    pkgindex = None
-                finally:
-                    if proc is not None:
-                        if proc.poll() is None:
-                            proc.kill()
-                            proc.wait()
-                        proc = None
-                    if tmp_filename is not None:
-                        try:
-                            os.unlink(tmp_filename)
-                        except OSError:
-                            pass
 
             if pkgindex is rmt_idx and changed:
                 pkgindex.modified = False  # don't update the header
