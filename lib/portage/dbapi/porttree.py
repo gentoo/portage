@@ -1,4 +1,4 @@
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"]
@@ -47,7 +47,6 @@ import threading
 import traceback
 import warnings
 import errno
-import functools
 import shlex
 
 import collections
@@ -752,25 +751,54 @@ class portdbapi(dbapi):
 
         mydata, ebuild_hash = self._pull_valid_cache(mycpv, myebuild, mylocation)
 
-        if mydata is not None:
-            future = loop.create_future()
-            self._aux_get_return(
-                future,
-                mycpv,
-                mylist,
-                myebuild,
-                ebuild_hash,
-                mydata,
-                mylocation,
-                cache_me,
-                None,
-            )
-            return future.result()
-
-        if myebuild in self._broken_ebuilds:
-            raise PortageKeyError(mycpv)
-
         proc = None
+        if mydata is None:
+            if myebuild in self._broken_ebuilds:
+                raise PortageKeyError(mycpv)
+
+            # Retry for an intermittent unexpected returncode which
+            # occurs in CI runs with forkserver (bug 965132). In CI
+            # the unexpected returncode tends to be 255 which indicates
+            # that the forkserver exited unexpectedly.
+            tries = 3
+            while tries > 0:
+                tries -= 1
+                proc = await self._run_metadata_phase(
+                    mycpv, mylocation, ebuild_hash, loop
+                )
+
+                if proc.returncode != os.EX_OK:
+                    if proc.returncode != 1:
+                        writemsg(
+                            _(
+                                "!!! aux_get(): metadata phase for package '%(pkg)s' failed with unexpected returncode %(returncode)s\n"
+                            )
+                            % {"pkg": mycpv, "returncode": proc.returncode},
+                            noiselevel=-1,
+                        )
+                        # Only retry for an unexpected returncode.
+                        if tries > 0:
+                            continue
+                    self._broken_ebuilds.add(myebuild)
+                    raise PortageKeyError(mycpv)
+
+                mydata = proc.metadata
+                break
+
+        return self._aux_get_return(
+            mycpv,
+            mylist,
+            myebuild,
+            ebuild_hash,
+            mydata,
+            mylocation,
+            cache_me,
+        )
+
+    async def _run_metadata_phase(
+        self, mycpv, mylocation, ebuild_hash, loop
+    ) -> EbuildMetadataPhase:
+
         deallocate_config = None
         async with contextlib.AsyncExitStack() as stack:
             try:
@@ -800,21 +828,6 @@ class portdbapi(dbapi):
                     deallocate_config=deallocate_config,
                 )
 
-                future = loop.create_future()
-                proc.addExitListener(
-                    functools.partial(
-                        self._aux_get_return,
-                        future,
-                        mycpv,
-                        mylist,
-                        myebuild,
-                        ebuild_hash,
-                        mydata,
-                        mylocation,
-                        cache_me,
-                    )
-                )
-                future.add_done_callback(functools.partial(self._aux_get_cancel, proc))
                 proc.start()
 
             finally:
@@ -824,21 +837,24 @@ class portdbapi(dbapi):
                     if proc is None or not proc.isAlive():
                         deallocate_config.done() or deallocate_config.cancel()
                     else:
-                        await deallocate_config
+                        try:
+                            await deallocate_config
+                        except asyncio.CancelledError:
+                            proc.cancel()
+                            raise
 
         # After deallocate_config is done, release self._doebuild_settings_lock
-        # by leaving the stack context, and wait for proc to finish and
-        # trigger a call to self._aux_get_return.
-        return await future
-
-    @staticmethod
-    def _aux_get_cancel(proc, future):
-        if future.cancelled() and proc.returncode is None:
+        # by leaving the stack context, and wait for proc to finish.
+        try:
+            await proc.async_wait()
+        except asyncio.CancelledError:
             proc.cancel()
+            raise
+
+        return proc
 
     def _aux_get_return(
         self,
-        future,
         mycpv,
         mylist,
         myebuild,
@@ -846,24 +862,7 @@ class portdbapi(dbapi):
         mydata,
         mylocation,
         cache_me,
-        proc,
     ):
-        if future.cancelled():
-            return
-        if proc is not None:
-            if proc.returncode != os.EX_OK:
-                if proc.returncode != 1:
-                    writemsg(
-                        _(
-                            "!!! aux_get(): metadata phase for package '%(pkg)s' failed with unexpected returncode %(returncode)s\n"
-                        )
-                        % {"pkg": mycpv, "returncode": proc.returncode},
-                        noiselevel=-1,
-                    )
-                self._broken_ebuilds.add(myebuild)
-                future.set_exception(PortageKeyError(mycpv))
-                return
-            mydata = proc.metadata
         mydata["repository"] = self.repositories.get_name_for_location(mylocation)
         mydata["_mtime_"] = ebuild_hash.mtime
         eapi = mydata.get("EAPI")
@@ -882,7 +881,7 @@ class portdbapi(dbapi):
                 aux_cache[x] = mydata.get(x, "")
             self._aux_cache[mycpv] = aux_cache
 
-        future.set_result(returnme)
+        return returnme
 
     def getFetchMap(self, mypkg, useflags=None, mytree=None):
         """
