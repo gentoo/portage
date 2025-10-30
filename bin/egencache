@@ -61,7 +61,7 @@ try:
     from portage.dep import _repo_separator
     from portage.output import colorize, EOutput
     from portage.package.ebuild._parallel_manifest.ManifestScheduler import (
-        ManifestScheduler,
+        manifest_scheduler_retry,
     )
     from portage.util import cmp_sort_key, writemsg_level, no_color
     from portage.util._async.AsyncFunction import AsyncFunction
@@ -1351,20 +1351,27 @@ try:
                 cp_iter = iter(atoms)
 
             event_loop = global_event_loop()
-            scheduler = ManifestScheduler(
-                portdb,
-                cp_iter=cp_iter,
-                gpg_cmd=gpg_cmd,
-                gpg_vars=gpg_vars,
-                force_sign_key=force_sign_key,
-                max_jobs=options.jobs,
-                max_load=options.load_average,
-                event_loop=event_loop,
+            manifest_task = AsyncTaskFuture(
+                future=manifest_scheduler_retry(
+                    portdb,
+                    cp_iter=cp_iter,
+                    gpg_cmd=gpg_cmd,
+                    gpg_vars=gpg_vars,
+                    force_sign_key=force_sign_key,
+                    max_jobs=options.jobs,
+                    max_load=options.load_average,
+                    event_loop=event_loop,
+                )
             )
+
+            scheduler = TaskScheduler(iter([manifest_task]), event_loop=event_loop)
 
             signum = run_main_scheduler(scheduler)
             if signum is not None:
                 sys.exit(128 + signum)
+
+            # Raise an unexpected exception if one occurred.
+            manifest_task.future.result()
 
             if options.tolerant:
                 ret.append(os.EX_OK)
