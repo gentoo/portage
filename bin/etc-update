@@ -34,14 +34,20 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
-OS_RELEASE_POSSIBLE_IDS=$(source /etc/os-release >/dev/null 2>&1; echo ":${ID}:${ID_LIKE//[[:space:]]/:}:")
+# Allow overriding the detected os family using an environment variable.
+# The primary use is for the CI runner to force a specific behaviour for tests.
+if [[ -n ${ETC_UPDATE_OS_FAMILY} ]]; then
+	OS_FAMILY="${ETC_UPDATE_OS_FAMILY}"
+else
+	OS_RELEASE_POSSIBLE_IDS=$(source /etc/os-release >/dev/null 2>&1; echo ":${ID}:${ID_LIKE//[[:space:]]/:}:")
 
-case ${OS_RELEASE_POSSIBLE_IDS} in
-	*:suse:*|*:opensuse:*|*:opensuse-tumbleweed:*) OS_FAMILY='rpm';;
-	*:fedora:*|*:rhel:*) OS_FAMILY='rpm';;
-	*:arch:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
-	*) OS_FAMILY='gentoo';;
-esac
+	case ${OS_RELEASE_POSSIBLE_IDS} in
+		*:suse:*|*:opensuse:*|*:opensuse-tumbleweed:*) OS_FAMILY='rpm';;
+		*:fedora:*|*:rhel:*) OS_FAMILY='rpm';;
+		*:arch:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
+		*) OS_FAMILY='gentoo';;
+	esac
+fi
 
 if [[ ${OS_FAMILY} == 'gentoo' ]]; then
 	get_basename() {
