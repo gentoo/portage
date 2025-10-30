@@ -1,6 +1,8 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import asyncio
+
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import portage
