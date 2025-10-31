@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -1203,8 +1203,8 @@ class config:
             "PKG_CONFIG_.*",
         )
 
-        broot_only_variables_re = re.compile(r"^(%s)$" % "|".join(broot_only_variables))
-        eroot_only_variables_re = re.compile(r"^(%s)$" % "|".join(eroot_only_variables))
+        broot_only_variables_re = re.compile(rf"^({'|'.join(broot_only_variables)})$")
+        eroot_only_variables_re = re.compile(rf"^({'|'.join(eroot_only_variables)})$")
 
         broot_env_d_path = os.path.join(broot or "/", "etc", "profile.env")
         eroot_env_d_path = os.path.join(eroot or "/", "etc", "profile.env")
@@ -2644,7 +2644,7 @@ class config:
                 self._accept_chost_re = re.compile(".*")
             elif len(accept_chost) == 1:
                 try:
-                    self._accept_chost_re = re.compile(r"^%s$" % accept_chost[0])
+                    self._accept_chost_re = re.compile(rf"^{accept_chost[0]}$")
                 except re.error as e:
                     writemsg(
                         _("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")
@@ -2654,9 +2654,7 @@ class config:
                     self._accept_chost_re = re.compile("^$")
             else:
                 try:
-                    self._accept_chost_re = re.compile(
-                        r"^(%s)$" % "|".join(accept_chost)
-                    )
+                    self._accept_chost_re = re.compile(rf"^({'|'.join(accept_chost)})$")
                 except re.error as e:
                     writemsg(
                         _("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")

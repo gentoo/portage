@@ -1,5 +1,5 @@
 # cvstree.py -- cvs tree utilities
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import re
@@ -61,7 +61,7 @@ def isadded(entries, path):
     mylines = myfile.readlines()
     myfile.close()
 
-    rep = re.compile(r"^\/%s\/" % re.escape(filename))
+    rep = re.compile(rf"^\/{re.escape(filename)}\/")
     for x in mylines:
         if rep.search(x):
             return 1

@@ -34,7 +34,7 @@ class ManifestTask(CompositeTask):
     )
 
     _PGP_HEADER = b"BEGIN PGP SIGNED MESSAGE"
-    _manifest_line_re = re.compile(r"^(%s) " % "|".join(MANIFEST2_IDENTIFIERS))
+    _manifest_line_re = re.compile(rf"^({'|'.join(MANIFEST2_IDENTIFIERS)}) ")
     _gpg_key_id_re = re.compile(r"^[0-9A-F]*$")
     _gpg_key_id_lengths = (8, 16, 24, 32, 40)
 
