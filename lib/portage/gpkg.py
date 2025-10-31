@@ -555,7 +555,11 @@ class checksum_helper:
                 trust_signature = True
 
         if (not good_signature) or (not trust_signature):
-            writemsg(colorize("BAD", f"!!!\n{self.gpg_result.decode()}"))
+            writemsg(
+                colorize(
+                    "BAD", f"!!!\n{self.gpg_result.decode('UTF-8', errors='replace')}"
+                )
+            )
             raise InvalidSignature("GPG verify failed")
 
     def update(self, data):
@@ -593,11 +597,22 @@ class checksum_helper:
 
             if return_code == os.EX_OK:
                 if self.gpg_operation == checksum_helper.VERIFY:
-                    self._check_gpg_status(self.gpg_result.decode())
+                    self._check_gpg_status(
+                        self.gpg_result.decode("UTF-8", errors="replace")
+                    )
             else:
-                writemsg(colorize("BAD", f"!!!\n{self.gpg_result.decode()}"))
+                writemsg(
+                    colorize(
+                        "BAD",
+                        f"!!!\n{self.gpg_result.decode('UTF-8', errors='replace')}",
+                    )
+                )
                 if self.gpg_operation == checksum_helper.SIGNING:
-                    writemsg(colorize("BAD", self.gpg_output.decode()))
+                    writemsg(
+                        colorize(
+                            "BAD", self.gpg_output.decode("UTF-8", errors="replace")
+                        )
+                    )
                     raise GPGException("GPG signing failed")
                 elif self.gpg_operation == checksum_helper.VERIFY:
                     raise InvalidSignature("GPG verify failed")
