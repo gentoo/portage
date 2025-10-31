@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -73,6 +73,8 @@ class ManifestTask(CompositeTask):
     def _manifest_proc_exit(self, manifest_proc):
         self._assert_current(manifest_proc)
         if manifest_proc.returncode not in (os.EX_OK, manifest_proc.MODIFIED):
+            # Expose the process returncode so that manifest_scheduler_retry
+            # can detect an unexpected process returncode (bug 965132).
             self.returncode = manifest_proc.returncode
             self._current_task = None
             self.wait()
@@ -205,6 +207,9 @@ class ManifestTask(CompositeTask):
 
     def _gpg_proc_exit(self, gpg_proc):
         if self._default_exit(gpg_proc) != os.EX_OK:
+            # Expose the process returncode so that manifest_scheduler_retry
+            # can detect an unexpected process returncode (bug 965132).
+            self.returncode = gpg_proc.returncode
             self.wait()
             return
 
