@@ -537,7 +537,7 @@ class checksum_helper:
     def __del__(self):
         self.finish()
 
-    def _check_gpg_status(self, gpg_status):
+    def _check_gpg_status(self, gpg_status: bytes) -> None:
         """
         Check GPG status log for extra info.
         GPG will return OK even if the signature owner is not trusted.
@@ -546,11 +546,11 @@ class checksum_helper:
         trust_signature = False
 
         for l in gpg_status.splitlines():
-            if l.startswith("[GNUPG:] GOODSIG"):
+            if l.startswith(b"[GNUPG:] GOODSIG"):
                 good_signature = True
 
-            if l.startswith("[GNUPG:] TRUST_ULTIMATE") or l.startswith(
-                "[GNUPG:] TRUST_FULLY"
+            if l.startswith(b"[GNUPG:] TRUST_ULTIMATE") or l.startswith(
+                b"[GNUPG:] TRUST_FULLY"
             ):
                 trust_signature = True
 
@@ -597,9 +597,7 @@ class checksum_helper:
 
             if return_code == os.EX_OK:
                 if self.gpg_operation == checksum_helper.VERIFY:
-                    self._check_gpg_status(
-                        self.gpg_result.decode("UTF-8", errors="replace")
-                    )
+                    self._check_gpg_status(self.gpg_result)
             else:
                 writemsg(
                     colorize(
