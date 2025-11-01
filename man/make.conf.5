@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Aug 2024" "Portage @VERSION@" "Portage"
+.TH "MAKE.CONF" "5" "Sep 2025" "Portage @VERSION@" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -51,9 +51,9 @@ Defaults to the value of $CHOST.
 .TP
 \fBACCEPT_KEYWORDS\fR = \fI[space delimited list of KEYWORDS]\fR
 Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
-of the 'x86' architecture would set this to '\(tix86' while ppc users would
-set this to '\(tippc'.  This is an incremental variable.  Only define a
-\(tiarch.
+of the 'x86' architecture would set this to '\[ti]x86' while ppc users would
+set this to '\[ti]ppc'.  This is an incremental variable.  Only define a
+\[ti]arch.
 .br
 Defaults to the value of $ARCH.
 .TP
@@ -598,7 +598,8 @@ matters when using the \fBemerge\fR(1) \fB\-\-jobs\fR option. This
 feature is always effectively enabled and it cannot be disabled for
 packages that satisfy direct or indirect dependencies of the system
 set. For other packages, it can be disabled in order to trade the
-possibility of random build failures for greater parallelism.
+possibility of random build failures for greater parallelism.  The queue
+can be flushed by ending the SIGUSR2 signal to \fBemerge\fR(1).
 This feature is enabled by default.
 .TP
 .B metadata\-transfer
@@ -810,10 +811,7 @@ bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
 Run package\-specific tests during each merge to help make sure
 the package compiled properly.  See \fItest\fR in \fBebuild\fR(1)
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
-\fBUSE\fR flag if it is a member of \fBIUSE\fR, either explicitly or
-implicitly (see \fBebuild\fR(5) for more information about \fBIUSE\fR).
-The "test" \fBUSE\fR flag is also automatically disabled when the
-"test" feature is disabled.
+\fBUSE\fR flag.
 .TP
 .B test\-fail\-continue
 If "test" is enabled \fBFEATURES\fR and the test phase of an ebuild fails,
@@ -1045,6 +1043,14 @@ index file which is located at ${PKGDIR}/Packages. Clients that have
 use the URI header field as a base URI for fetching binary packages. If the URI
 header field is not defined then the client will use its ${PORTAGE_BINHOST}
 setting as the base URI.
+.TP
+\fBPORTAGE_BINHOST_TTL\fR = \
+\fI"3600"\fR
+If this is set, its value will be used to define the TTL header in package
+index.  The TTL header indicates to portage the duration in seconds after
+which the local package index should be considered potentially outdated.  It is
+recommended to set this value to the minimal duration between binary package
+builds to avoid unnecessary network requests on the package index.
 .TP
 .B PORTAGE_BINPKG_FORMAT
 This variable sets default format used for binary packages. Possible values

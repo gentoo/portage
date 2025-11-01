@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -271,6 +271,13 @@ class _EbuildFetcherProcess(ForkProcess):
     def _target(settings, manifest, uri_map, fetchonly, pre_exec):
         if pre_exec is not None:
             pre_exec()
+
+        if sys.version_info >= (3, 14):
+            # Since we typically drop privileges for userfetch here,
+            # a forkserver shared with the parent would open privilege
+            # escalation issues that are better to avoid, therefore
+            # force the multiprocessing start method to spawn.
+            multiprocessing.set_start_method("spawn", force=True)
 
         # Force consistent color output, in case we are capturing fetch
         # output through a normal pipe due to unavailability of ptys.

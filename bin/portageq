@@ -1,14 +1,9 @@
 #!/usr/bin/env python
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import signal
-
-# For compatibility with Python < 3.8
-raise_signal = getattr(
-    signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
-)
 
 
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
@@ -1122,10 +1117,7 @@ try:
 
     # Match if metadata.xml contains no maintainer (orphaned package)
     def match_orphaned(metadata_xml):
-        if not metadata_xml.maintainers():
-            return True
-        else:
-            return False
+        return not metadata_xml.maintainers()
 
     def pquery(parser, opts, args):
         portdb = portage.db[portage.root]["porttree"].dbapi
@@ -1581,4 +1573,4 @@ except KeyboardInterrupt as e:
     # Prevent traceback on ^C
     signum = getattr(e, "signum", signal.SIGINT)
     signal.signal(signum, signal.SIG_DFL)
-    raise_signal(signum)
+    signal.raise_signal(signum)

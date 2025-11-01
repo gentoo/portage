@@ -1,4 +1,4 @@
-# Copyright 1998-2023 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
@@ -15,7 +15,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.dbapi._SyncfsProcess:SyncfsProcess",
     "portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,"
     + "use_reduce,_slot_separator,_repo_separator",
-    "portage.eapi:_get_eapi_attrs",
+    "portage.eapi:_get_eapi_attrs,eapi_rewrites_symlinks",
     "portage.elog:collect_ebuild_messages,collect_messages,"
     + "elog_process,_merge_logentries",
     "portage.locks:lockdir,unlockdir,lockfile,unlockfile",
@@ -1109,7 +1109,7 @@ class vardbapi(dbapi):
             "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
         )
         if binpkg_format == "xpak":
-            tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
+            tar_cmd = ("gtar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
             pr, pw = multiprocessing.Pipe(duplex=False)
             proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
             pr.close()
@@ -5582,19 +5582,24 @@ class dblink:
                 if myabsto.startswith(srcroot):
                     myabsto = myabsto[len(srcroot) :]
                 myabsto = myabsto.lstrip(sep)
-                if self.settings and self.settings["D"]:
-                    if myto.startswith(self.settings["D"]):
-                        self._eqawarn(
-                            "preinst",
-                            [
-                                _(
-                                    "QA Notice: Absolute symlink %s points to %s inside the image directory.\n"
-                                    "Removing the leading %s from its path."
-                                )
-                                % (mydest, myto, self.settings["D"])
-                            ],
-                        )
-                        myto = myto[len(self.settings["D"]) - 1 :]
+                if (
+                    self.settings
+                    and "EAPI" in self.settings
+                    and eapi_rewrites_symlinks(self.settings["EAPI"])
+                    and self.settings["D"]
+                    and myto.startswith(self.settings["D"])
+                ):
+                    self._eqawarn(
+                        "preinst",
+                        [
+                            _(
+                                "QA Notice: Absolute symlink %s points to %s inside the image directory.\n"
+                                "Removing the leading %s from its path."
+                            )
+                            % (mydest, myto, self.settings["D"])
+                        ],
+                    )
+                    myto = myto[len(self.settings["D"]) - 1 :]
                 # myrealto contains the path of the real file to which this symlink points.
                 # we can simply test for existence of this file to see if the target has been merged yet
                 myrealto = normalize_path(os.path.join(destroot, myabsto))

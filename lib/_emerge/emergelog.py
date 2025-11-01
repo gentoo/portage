@@ -30,8 +30,6 @@ def emergelog(xterm_titles, mystr, short_msg=None):
         short_msg = _unicode_decode(short_msg)
 
     if xterm_titles and short_msg:
-        if "HOSTNAME" in os.environ:
-            short_msg = os.environ["HOSTNAME"] + ": " + short_msg
         xtermTitle(short_msg)
     try:
         file_path = os.path.join(_emerge_log_dir, "emerge.log")

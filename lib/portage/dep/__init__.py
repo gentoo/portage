@@ -25,6 +25,7 @@ __all__ = [
     "remove_slot",
     "strip_empty",
     "use_reduce",
+    "_repo_name_re",
     "_repo_separator",
     "_slot_separator",
 ]
@@ -75,8 +76,7 @@ _op = r"([=~]|[><]=?)"
 
 _repo_separator = "::"
 _repo_name = r"[\w][\w-]*"
-_repo_name_re = re.compile("^" + _repo_name + "$", re.UNICODE)
-_repo = r"(?:" + _repo_separator + "(" + _repo_name + ")" + ")?"
+_repo_name_re = re.compile(rf"^{_repo_name}\Z", re.ASCII)
 
 _extended_cat = r"[\w+*][\w+.*-]*"
 
@@ -90,11 +90,18 @@ def _get_slot_dep_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
         return slot_re
 
     if eapi_attrs.slot_operator:
-        slot_re = _slot + r"?(\*|=|/" + _slot + r"=?)?"
+        slot_re = (
+            "("
+            # we don't want to name this group "slot",
+            # as that group name is already used in _get_atom_re()
+            + f"(?P<main_slot>{_slot})"
+            + ("(/" + f"(?P<sub_slot>{_slot})" + ")?")
+            + ")?"
+        ) + "(?P<slot_operator>[*=])?"
     else:
         slot_re = _slot
 
-    slot_re = re.compile("^" + slot_re + "$", re.VERBOSE | re.UNICODE)
+    slot_re = re.compile(rf"^{slot_re}\Z", re.VERBOSE | re.ASCII)
 
     _slot_dep_re_cache[cache_key] = slot_re
     return slot_re
@@ -125,26 +132,29 @@ def _get_atom_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
     cpv_re = _cpv
 
     _atom_re = re.compile(
-        "^(?P<without_use>(?:"
-        + "(?P<op>"
-        + _op
-        + cpv_re
-        + ")|"
-        + "(?P<star>="
-        + cpv_re
-        + r"\*)|"
-        + "(?P<simple>"
-        + cp_re
-        + "))"
-        + "("
-        + _slot_separator
-        + _slot_loose
-        + ")?"
-        + _repo
-        + ")("
-        + _use
-        + ")?$",
-        re.VERBOSE | re.UNICODE,
+        rf"""
+        ^
+        (?P<without_use>
+            (?:
+                (?P<op>{_op}{cpv_re})
+                |
+                (?P<star>={cpv_re}\*)
+                |
+                (?P<simple>{cp_re})
+            )
+            (?:
+                {_slot_separator}
+                (?P<slot>{_slot_loose})
+            )?
+            (?:
+                {_repo_separator}
+                (?P<repo>{_repo_name})
+            )?
+        )
+        (?P<usedeps>{_use})?
+        \Z
+        """,
+        re.VERBOSE | re.ASCII,
     )
     return _atom_re
 
@@ -160,26 +170,37 @@ def _get_atom_wildcard_re(eapi_attrs):
     pkg_re = r"[\w+*][\w+*-]*?"
 
     _atom_wildcard_re = re.compile(
-        r"((?P<simple>("
-        + _extended_cat
-        + r")/("
-        + pkg_re
-        + r"(-"
-        + _vr
-        + ")?))"
-        + "|(?P<star>=(("
-        + _extended_cat
-        + r")/("
-        + pkg_re
-        + r"))-(?P<version>\*\w+\*)))"
-        + "(:(?P<slot>"
-        + _slot_loose
-        + r"))?("
-        + _repo_separator
-        + r"(?P<repo>"
-        + _repo_name
-        + r"))?$",
-        re.UNICODE,
+        rf"""
+        ^
+        (?:
+            (?P<simple>
+                {_extended_cat}
+                /
+                {pkg_re}
+                (?:
+                    -{_vr}
+                )?
+            )
+            |
+            (?P<star>=
+                {_extended_cat}
+                /
+                {pkg_re}
+                -
+                (?P<version>\*\w+\*)
+            )
+        )
+        (?:
+            {_slot_separator}
+            (?P<slot>{_slot_loose})
+        )?
+        (?:
+            {_repo_separator}
+            (?P<repo>{_repo_name})
+        )?
+        \Z
+        """,
+        re.VERBOSE | re.ASCII,
     )
     return _atom_wildcard_re
 
@@ -1530,10 +1551,10 @@ class Atom(str):
                 m_group = m.group
                 if m_group("star") is not None:
                     op = "=*"
-                    base = atom_re.groupindex["star"]
-                    cp = m_group(base + 1)
                     cpv = m_group("star")[1:]
-                    extended_version = m_group(base + 4)
+                    extended_version = m_group("version")
+                    # Drop trailing "-{version}" from the cpv to get cp.
+                    cp = cpv[: -(len(extended_version) + 1)]
                 else:
                     op = None
                     cpv = cp = m_group("simple")
@@ -1553,9 +1574,9 @@ class Atom(str):
             op = m_group(base + 1)
             cpv = m_group(base + 2)
             cp = m_group(base + 3)
-            slot = m_group(atom_re.groups - 2)
-            repo = m_group(atom_re.groups - 1)
-            use_str = m_group(atom_re.groups)
+            slot = m_group("slot")
+            repo = m_group("repo")
+            use_str = m_group("usedeps")
             version = m_group(base + 4)
             if version is not None:
                 if allow_build_id:
@@ -1578,18 +1599,18 @@ class Atom(str):
             m_group = m.group
             cpv = m_group(base + 1)
             cp = m_group(base + 2)
-            slot = m_group(atom_re.groups - 2)
-            repo = m_group(atom_re.groups - 1)
-            use_str = m_group(atom_re.groups)
+            slot = m_group("slot")
+            repo = m_group("repo")
+            use_str = m_group("usedeps")
             if m_group(base + 3) is not None:
                 raise InvalidAtom(self)
         elif m.group("simple") is not None:
             op = None
             m_group = m.group
             cpv = cp = m_group(atom_re.groupindex["simple"] + 1)
-            slot = m_group(atom_re.groups - 2)
-            repo = m_group(atom_re.groups - 1)
-            use_str = m_group(atom_re.groups)
+            slot = m_group("slot")
+            repo = m_group("repo")
+            use_str = m_group("usedeps")
             if m_group(atom_re.groupindex["simple"] + 2) is not None:
                 raise InvalidAtom(self)
 
@@ -1614,21 +1635,13 @@ class Atom(str):
             if slot_match is None:
                 raise InvalidAtom(self)
             if eapi_attrs.slot_operator:
-                self.__dict__["slot"] = slot_match.group(1)
-                sub_slot = slot_match.group(2)
-                if sub_slot is not None:
-                    sub_slot = sub_slot.lstrip("/")
-                if sub_slot in ("*", "="):
-                    self.__dict__["sub_slot"] = None
-                    self.__dict__["slot_operator"] = sub_slot
-                else:
-                    slot_operator = None
-                    if sub_slot is not None and sub_slot[-1:] == "=":
-                        slot_operator = sub_slot[-1:]
-                        sub_slot = sub_slot[:-1]
-                    self.__dict__["sub_slot"] = sub_slot
-                    self.__dict__["slot_operator"] = slot_operator
+                self.__dict__["slot"] = slot_match.group("main_slot")
+                self.__dict__["sub_slot"] = slot_match.group("sub_slot")
+                self.__dict__["slot_operator"] = slot_match.group("slot_operator")
                 if self.slot is not None and self.slot_operator == "*":
+                    raise InvalidAtom(self)
+                # since both parts are optional, we could theoretically match on nothing
+                if self.slot is None and self.slot_operator is None:
                     raise InvalidAtom(self)
             else:
                 self.__dict__["slot"] = slot
@@ -1929,7 +1942,7 @@ def extended_cp_match(extended_cp, other_cp):
     extended_cp_re = _extended_cp_re_cache.get(extended_cp)
     if extended_cp_re is None:
         extended_cp_re = re.compile(
-            "^" + re.escape(extended_cp).replace(r"\*", "[^/]*") + "$", re.UNICODE
+            "^" + re.escape(extended_cp).replace(r"\*", "[^/]*") + "$", re.ASCII
         )
         _extended_cp_re_cache[extended_cp] = extended_cp_re
     return extended_cp_re.match(other_cp) is not None

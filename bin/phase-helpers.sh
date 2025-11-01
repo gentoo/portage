@@ -322,53 +322,65 @@ use_enable() {
 }
 
 unpack() {
-	local created_symlink
-	local suffix_known
-	local -a bzip2_cmd
-	local basename
-	local srcdir
-	local suffix
-	local f
-	local -
+	local created_symlink bzip2_cmd basename output srcdir suffix name f
+	local -A suffix_by
+	local -a suffixes
+	local -x XZ_OPT
 
 	if (( $# == 0 )); then
 		die "unpack: too few arguments (got 0; expected at least 1)"
 	fi
 
-	__unpack_tar() {
-		local inner_suffix
+	# Define an array of supported suffixes, case-sensitively.
+	# https://projects.gentoo.org/pms/8/pms.html#x1-13500012.3.15
+	suffixes=(
+		a
+		bz
+		bz2
+		deb
+		gz
+		jar
+		lzma
+		tar
+		tar.bz
+		tar.bz2
+		tar.gz
+		tar.lzma
+		tar.Z
+		tbz
+		tbz2
+		tgz
+		Z
+		zip
+		ZIP
+	)
+	___eapi_unpack_supports_7z  && suffixes+=( 7z 7Z )
+	___eapi_unpack_supports_lha && suffixes+=( lha LHa LHA lzh )
+	___eapi_unpack_supports_rar && suffixes+=( rar RAR )
+	___eapi_unpack_supports_txz && suffixes+=( tar.xz txz )
+	___eapi_unpack_supports_xz  && suffixes+=( xz )
 
-		inner_suffix=${basename%.*} inner_suffix=${inner_suffix##*.}
-		if ! ___eapi_unpack_is_case_sensitive; then
-			inner_suffix=${inner_suffix,,}
+	# Compose a finalised dictionary of supported suffixes.
+	if ! ___eapi_unpack_is_case_sensitive; then
+		# Induce lowercase conversion upon all subsequent assignments.
+		typeset -l suffix
+	fi
+	for suffix in "${suffixes[@]}"; do
+		suffix_by[$suffix]=
+	done
+
+	# Honour the user's choice of bzip2 decompressor, if specified.
+	for name in PORTAGE_BUNZIP2_CMD PORTAGE_BZIP2_CMD; do
+		if [[ ${!name} == +([![:blank:]\"\']) ]]; then
+			bzip2_cmd=${!name}
+			break
 		fi
-		if [[ ${inner_suffix} == tar ]]; then
-			"$@" -c -- "${srcdir}${f}" | tar xof -
-		else
-			"$@" -c -- "${srcdir}${f}" > "${basename%.*}"
-		fi
-	}
+	done
 
-	__compose_bzip2_cmd() {
-		local IFS
+	# Ensure that xz(1) operates in its multi-threaded mode.
+	XZ_OPT="-T$(___makeopts_jobs)"
 
-		read -rd '' -a bzip2_cmd <<<"${PORTAGE_BUNZIP2_COMMAND}"
-		if (( ! ${#bzip2_cmd[@]} )); then
-			read -rd '' -a bzip2_cmd <<<"${PORTAGE_BZIP2_COMMAND}"
-			if (( ${#bzip2_cmd[@]} )); then
-				bzip2_cmd+=( -d )
-			else
-				die "unpack: both PORTAGE_BUNZIP2_COMMAND and PORTAGE_BZIP2_COMMAND specify null commands"
-			fi
-		fi
-	}
-
-	shopt -o -s pipefail
-
-	for f in "$@"; do
-		basename=${f##*/}
-		suffix=${basename##*.}
-
+	for f; do
 		# wrt PMS 12.3.15 Misc Commands
 		if [[ ${f} != */* ]]; then
 			# filename without path of any kind
@@ -397,22 +409,16 @@ unpack() {
 			die "unpack: ${f@Q} cannot be unpacked because it is an empty file"
 		fi
 
-		case ${suffix,,} in
-			tar|tgz|tbz2|tbz|zip|jar|gz|z|bz2|bz|a|deb|lzma) ;;
-			7z)      ___eapi_unpack_supports_7z  ;;
-			rar)     ___eapi_unpack_supports_rar ;;
-			lha|lzh) ___eapi_unpack_supports_lha ;;
-			xz)      ___eapi_unpack_supports_xz  ;;
-			txz)     ___eapi_unpack_supports_txz ;;
-			*)       false                       ;;
-		esac \
-		&& suffix_known=1
 
-		___eapi_unpack_is_case_sensitive \
-		&& [[ ${suffix} != @("${suffix,,}"|ZIP|Z|7Z|RAR|LH[Aa]) ]] \
-		&& suffix_known=0
+		# Extract the suffix of the filename.
+		basename=${f##*/}
+		suffix=
+		if [[ ${basename} =~ \.([Tt][Aa][Rr]\.)?[^.]+$ ]]; then
+			suffix=${BASH_REMATCH[0]#.}
+		fi
 
-		if (( suffix_known )); then
+		# Skip any files bearing unsupported suffixes.
+		if [[ -v 'suffix_by[$suffix]' ]]; then
 			__vecho ">>> Unpacking ${f@Q} to ${PWD}"
 		else
 			__vecho "=== Skipping unpack of ${f@Q}"
@@ -420,44 +426,17 @@ unpack() {
 		fi
 
 		case ${suffix,,} in
-			tar)
-				tar xof "${srcdir}${f}"
-				;;
-			tgz)
-				tar xozf "${srcdir}${f}"
-				;;
-			tbz|tbz2)
-				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
-				"${bzip2_cmd[@]}" -c -- "${srcdir}${f}" | tar xof -
-				;;
-			zip|jar)
-				# unzip will interactively prompt under some error conditions,
-				# as reported in bug #336285. Inducing EOF on STDIN makes for
-				# an adequate countermeasure.
-				unzip -qo "${srcdir}${f}" </dev/null
-				;;
-			gz|z)
-				__unpack_tar gzip -d
-				;;
-			bz2|bz)
-				(( ${#bzip2_cmd[@]} )) || __compose_bzip2_cmd
-				__unpack_tar "${bzip2_cmd[@]}"
-				;;
 			7z)
-				local my_output
-				if ! my_output=$(7z x -y "${srcdir}${f}"); then
-					printf '%s\n' "${my_output}" >&2
+				if ! output=$(7z x -y "${srcdir}${f}"); then
+					printf '%s\n' "${output}" >&2
 					false
 				fi
 				;;
-			rar)
-				unrar x -idq -o+ "${srcdir}${f}"
-				;;
-			lha|lzh)
-				lha xfq "${srcdir}${f}"
-				;;
 			a)
 				ar x "${srcdir}${f}"
+				;;
+			bz|bz2)
+				"${bzip2_cmd-bzip2}" -dc -- "${srcdir}${f}" > "${basename%.*}"
 				;;
 			deb)
 				# Unpacking .deb archives can not always be done with
@@ -482,14 +461,39 @@ unpack() {
 					ar x "${srcdir}${f}"
 				fi
 				;;
-			lzma)
-				__unpack_tar lzma -d
+			gz|z)
+				gzip -dc -- "${srcdir}${f}" > "${basename%.*}"
 				;;
-			xz)
-				__unpack_tar xz -T"$(___makeopts_jobs)" -d
+			jar|zip)
+				# unzip will interactively prompt under some error conditions,
+				# as reported in bug #336285. Inducing EOF on STDIN makes for
+				# an adequate countermeasure.
+				unzip -qo "${srcdir}${f}" </dev/null
+				;;
+			lha|lzh)
+				lha xfq "${srcdir}${f}"
+				;;
+			lzma)
+				xz -F lzma -dc -- "${srcdir}${f}" > "${basename%.*}"
+				;;
+			rar)
+				unrar x -idq -o+ "${srcdir}${f}"
+				;;
+			tar.bz|tar.bz2|tbz|tbz2)
+				gtar -I "${bzip2_cmd-bzip2} -c" -xof "${srcdir}${f}"
+				;;
+			tar|tar.*|tgz)
+				# GNU tar recognises various file suffixes, for
+				# which it is able to execute the appropriate
+				# decompressor. They are documented by the
+				# (info) manual for the -a option.
+				gtar --warning=decompress-program -xof "${srcdir}${f}"
 				;;
 			txz)
-				XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${f}"
+				gtar -xJof "${srcdir}${f}"
+				;;
+			xz)
+				xz -dc -- "${srcdir}${f}" > "${basename%.*}"
 				;;
 		esac || die "unpack: failure unpacking ${f@Q}"
 	done
@@ -958,7 +962,11 @@ if ___eapi_has_einstalldocs; then
 	einstalldocs() (
 		local f
 
-		if [[ ! -v DOCS ]]; then
+		# The implementation deviates from PMS, which purports to be
+		# concerned with whether the "DOCS variable is unset". In fact,
+		# the implementation checks whether the variable is undeclared.
+		# However, it is PMS that is in the wrong. See bug #962934.
+		if [[ ! ${DOCS@A} ]]; then
 			for f in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 				THANKS BUGS FAQ CREDITS CHANGELOG
 			do
@@ -983,61 +991,83 @@ if ___eapi_has_einstalldocs; then
 fi
 
 if ___eapi_has_eapply; then
+	# For BSD userland support, use gpatch if available.
+	if hash gpatch 2>/dev/null; then
+		patch() { gpatch "$@"; }
+	fi
+
+	__eapply_patch() {
+		local prefix=$1 patch=$2 output IFS
+		shift 2
+
+		ebegin "${prefix:-Applying }${patch##*/}"
+		# -p1 as a sane default
+		# -f to avoid interactivity
+		# -g0 to guarantee no VCS interaction
+		# --no-backup-if-mismatch not to pollute the sources
+		set -- -p1 -f -g0 --no-backup-if-mismatch "$@"
+		if output=$(LC_ALL= LC_MESSAGES=C patch "$@" < "${patch}" 2>&1); then
+			# The patch was successfully applied. Maintain silence
+			# unless applied with fuzz.
+			if [[ ${output} == *[0-9]' with fuzz '[0-9]* ]]; then
+				printf '%s\n' "${output}"
+			fi
+			eend 0
+		else
+			printf '%s\n' "${output}" >&2
+			eend 1
+			__helpers_die "patch ${*@Q} failed with ${patch@Q}"
+		fi
+	}
+
 	eapply() {
-		local LC_ALL LC_COLLATE=C f i patch_cmd path
+		local LC_ALL LC_COLLATE=C f i path
 		local -a operands options
 
-		_eapply_patch() {
-			local prefix=$1 patch=$2 output IFS
-			shift 2
-
-			ebegin "${prefix:-Applying }${patch##*/}"
-			# -p1 as a sane default
-			# -f to avoid interactivity
-			# -g0 to guarantee no VCS interaction
-			# --no-backup-if-mismatch not to pollute the sources
-			set -- -p1 -f -g0 --no-backup-if-mismatch "$@"
-			if output=$(LC_ALL= LC_MESSAGES=C "${patch_cmd}" "$@" < "${patch}" 2>&1); then
-				# The patch was successfully applied. Maintain
-				# silence unless applied with fuzz.
-				if [[ ${output} == *[0-9]' with fuzz '[0-9]* ]]; then
-					printf '%s\n' "${output}"
-				fi
-				eend 0
-			else
-				printf '%s\n' "${output}" >&2
-				eend 1
-				__helpers_die "patch ${*@Q} failed with ${patch@Q}"
-			fi
-		}
-
+		# PMS mandates an unconventional option parsing scheme whereby
+		# the rule that options must precede non-option arguments is
+		# only enforced in the case that no "--" argument is found.
+		# https://projects.gentoo.org/pms/8/pms.html#x1-127001r1
 		while (( $# )); do
 			case $1 in
 				--)
-					shift
-					operands+=("$@")
 					break
 					;;
-				-*)
-					if (( ! ${#operands[@]} )); then
-						options+=("$1")
-					else
-						die "eapply: options must precede non-option arguments"
-					fi
-					;;
 				*)
-					operands+=("$1")
+					options+=("$1")
 			esac
 			shift
 		done
 
+		if (( $# )); then
+			# The "--" argument was encountered. Forward those to
+			# its left to the patch(1) utility, while considering
+			# those to its right as eapply operands.
+			shift
+			operands=("$@")
+		else
+			# Restore the positional parameters and parse normally.
+			set -- "${options[@]}"
+			options=()
+
+			while (( $# )); do
+				case $1 in
+					-*)
+						if (( ! ${#operands[@]} )); then
+							options+=("$1")
+						else
+							die "eapply: options must precede non-option arguments"
+						fi
+						;;
+					*)
+						operands+=("$1")
+				esac
+				shift
+			done
+		fi
+
 		if (( ! ${#operands[@]} )); then
 			die "eapply: no operands were specified"
-		elif hash gpatch 2>/dev/null; then
-			# for bsd userland support, use gpatch if available
-			patch_cmd=gpatch
-		else
-			patch_cmd=patch
 		fi
 
 		for path in "${operands[@]}"; do
@@ -1048,37 +1078,70 @@ if ___eapi_has_eapply; then
 						if (( i++ == 0 )); then
 							einfo "Applying patches from ${path} ..."
 						fi
-						_eapply_patch '  ' "${f}" "${options[@]}" || return
+						__eapply_patch '  ' "${f}" "${options[@]}" || return
 					fi
 				done
 				if (( i == 0 )); then
 					die "No *.{patch,diff} files in directory ${path}"
 				fi
 			else
-				_eapply_patch '' "${path}" "${options[@]}" || return
+				__eapply_patch '' "${path}" "${options[@]}" || return
 			fi
 		done
 	}
 fi
 
 if ___eapi_has_eapply_user; then
+	# Considers the first operand as a directory pathname and attempts to
+	# read its immediate entries into an array variable named 'dirents'. If
+	# the operand is unspecified or empty, the current working directory
+	# shall be read. The array indices might not begin from 0, and might
+	# not be contiguous. If both the . and .. entries are seen, the return
+	# value shall be 0. Otherwise, it shall be greater than 0.
+	__readdir() {
+		local path=$1
+		local reset_shopts count i
+
+		# The globskipdots option was introduced by bash-5.2. Unless
+		# disabled, it prevents the matching of the . and .. entries.
+		reset_shopts=$(
+			shopt -p globskipdots 2>/dev/null
+			shopt -p nullglob extglob
+		)
+		[[ ${reset_shopts} == *globskipdots* ]] && shopt -u globskipdots
+		shopt -s nullglob extglob
+		[[ ${path} && ${path} != */ ]] && path+=/
+		eval 'dirents=( "${path}"@(.?(.)|*) );' "${reset_shopts}"
+
+		# For the . and .. entries to exist implies beyond a reasonable
+		# doubt that the path is a directory and was successfully read.
+		for i in "${!dirents[@]}"; do
+			if [[ ${dirents[i]##*/} == .?(.) ]]; then
+				unset -v 'dirents[i]'
+				(( ++count == 2 )) && return
+			fi
+		done
+		return 1
+	}
+
 	eapply_user() {
+		local basename basedir columns tagfile hr d f
+		local -A patch_by
+		local -a dirents
+
 		[[ ${EBUILD_PHASE} == prepare ]] || \
 			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
 
 		# Keep path in __dyn_prepare in sync!
-		local tagfile=${T}/.portage_user_patches_applied
+		tagfile=${T}/.portage_user_patches_applied
 		[[ -f ${tagfile} ]] && return
 		>> "${tagfile}"
 
-		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
+		basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
 
-		local columns=${COLUMNS:-0}
+		columns=${COLUMNS:-0}
 		[[ ${columns} == 0 ]] && columns=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
 		(( columns > 0 )) || (( columns = 80 ))
-
-		local -A patch_by
-		local d f basename hr
 
 		# Patches from all matched directories are combined into a
 		# sorted (POSIX order) list of the patch basenames. Patches
@@ -1094,7 +1157,11 @@ if ___eapi_has_eapply_user; then
 		# 3. ${CATEGORY}/${PN}
 		# all of the above may be optionally followed by a slot
 		for d in "${basedir}"/"${CATEGORY}"/{"${PN}","${P}","${P}-${PR}"}{,":${SLOT%/*}"}; do
-			for f in "${d}"/*; do
+			if ! __readdir "${d}" && [[ -e ${d} || -L ${d} ]]; then
+				__helpers_die "eapply_user: ${d@Q} exists but can't be opened as a directory by ${PORTAGE_BUILD_USER@Q}"
+				return
+			fi
+			for f in "${dirents[@]}"; do
 				if [[ ${f} == *.@(diff|patch) ]]; then
 					basename=${f##*/}
 					if [[ -s ${f} ]]; then
@@ -1130,5 +1197,42 @@ if ___eapi_has_in_iuse; then
 		fi
 
 		contains_word "$1" "${IUSE_EFFECTIVE}"
+	}
+fi
+
+if ___eapi_has_pipestatus; then
+	pipestatus() {
+		local status=( "${PIPESTATUS[@]}" )
+		local s ret=0 verbose=""
+
+		[[ ${1} == -v ]] && { verbose=1; shift; }
+		[[ $# -ne 0 ]] && die "usage: pipestatus [-v]"
+
+		for s in "${status[@]}"; do
+			[[ ${s} -ne 0 ]] && ret=${s}
+		done
+
+		[[ ${verbose} ]] && echo "${status[@]}"
+		return "${ret}"
+	}
+fi
+
+if ___eapi_has_edo; then
+	edo() {
+		# list of special characters taken from sh_contains_shell_metas
+		# in shquote.c (bash-5.2)
+		local a out regex='[] '\''"\|&;()<>!{}*[?^$`]|^[#~]|[=:]~'
+
+		[[ $# -ge 1 ]] || die "edo: at least one argument needed"
+
+		for a; do
+			# quote if (and only if) necessary
+			[[ ${a} =~ ${regex} || ! ${a} =~ ^[[:print:]]+$ ]] && a=${a@Q}
+			out+=" ${a}"
+		done
+
+		einfon
+		printf '%s\n' "${out:1}" >&2
+		"$@" || __helpers_die "edo: failed to run command: ${1}"
 	}
 fi

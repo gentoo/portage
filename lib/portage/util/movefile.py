@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["movefile"]
@@ -21,6 +21,7 @@ from portage import (
     _unicode_module_wrapper,
 )
 from portage.const import MOVE_BINARY
+from portage.eapi import eapi_rewrites_symlinks
 from portage.exception import OperationNotSupported
 from portage.localization import _
 from portage.process import spawn
@@ -209,7 +210,13 @@ def movefile(
     if stat.S_ISLNK(sstat[stat.ST_MODE]):
         try:
             target = os.readlink(src)
-            if mysettings and "D" in mysettings and target.startswith(mysettings["D"]):
+            if (
+                mysettings
+                and "EAPI" in mysettings
+                and eapi_rewrites_symlinks(mysettings["EAPI"])
+                and "D" in mysettings
+                and target.startswith(mysettings["D"])
+            ):
                 writemsg(
                     f"!!! {_('Absolute symlink points to image directory.')}\n",
                     noiselevel=-1,

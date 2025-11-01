@@ -1,5 +1,7 @@
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import asyncio
 
 import portage
 from portage import os
@@ -8,6 +10,46 @@ from portage.dep import _repo_separator
 from portage.localization import _
 from portage.util._async.AsyncScheduler import AsyncScheduler
 from .ManifestTask import ManifestTask
+
+
+async def manifest_scheduler_retry(*args, max_tries=3, **kwargs) -> int:
+    """
+    Since ManifestScheduler is not well suited for internal retry, create
+    a new ManifestScheduler instance for each retry. Returns the returncode
+    from the last ManifestScheduler instance, which will only be non-zero
+    if all retries failed.
+    """
+    tries = max_tries
+    scheduler = ManifestScheduler(*args, **kwargs)
+    scheduler.start()
+    try:
+        await scheduler.async_wait()
+    except asyncio.CancelledError:
+        scheduler.terminate()
+        await scheduler.async_wait()
+        raise
+    cp_failed = scheduler.cp_failed.copy()
+    tries -= 1
+    while scheduler.cp_retry and tries > 0:
+        kwargs["cp_iter"] = iter(scheduler.cp_retry)
+        scheduler = ManifestScheduler(*args, **kwargs)
+        scheduler.start()
+        try:
+            await scheduler.async_wait()
+        except asyncio.CancelledError:
+            scheduler.terminate()
+            await scheduler.async_wait()
+            raise
+        cp_failed.update(scheduler.cp_failed)
+        cp_failed.difference_update(scheduler.cp_successful)
+        tries -= 1
+
+    # Account for failures from all ManifestScheduler instances, since we
+    # only retry when the returncode is unexpected.
+    if cp_failed:
+        scheduler.returncode |= 1
+
+    return scheduler.returncode
 
 
 class ManifestScheduler(AsyncScheduler):
@@ -31,6 +73,9 @@ class ManifestScheduler(AsyncScheduler):
         self._gpg_vars = gpg_vars
         self._force_sign_key = force_sign_key
         self._task_iter = self._iter_tasks()
+        self.cp_retry = set()
+        self.cp_failed = set()
+        self.cp_successful = set()
 
     def _next_task(self):
         return next(self._task_iter)
@@ -92,11 +137,23 @@ class ManifestScheduler(AsyncScheduler):
                 )
 
     def _task_exit(self, task):
-        if task.returncode != os.EX_OK:
+        if task.returncode == os.EX_OK:
+            self.cp_successful.add(task.cp)
+        else:
+            self.cp_failed.add(task.cp)
+            if task.returncode != 1:
+                # Retry if the returncode was unexpected.
+                self.cp_retry.add(task.cp)
+
             if not self._terminated_tasks:
                 portage.writemsg(
-                    "Error processing %s%s%s, continuing...\n"
-                    % (task.cp, _repo_separator, task.repo_config.name),
+                    "Error processing %s%s%s with returncode %s, continuing...\n"
+                    % (
+                        task.cp,
+                        _repo_separator,
+                        task.repo_config.name,
+                        task.returncode,
+                    ),
                     noiselevel=-1,
                 )
 

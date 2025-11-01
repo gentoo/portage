@@ -48,7 +48,7 @@ main() {
 
 	mkdir -p -- "${repo_location}" || exit
 	if contains_word usersync "${FEATURES}"; then
-		chown "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" -- "${repo_location}" || exit
+		chown -- "${PORTAGE_USERNAME}":"${PORTAGE_GRPNAME}" "${repo_location}" || exit
 	fi
 
 	if [[ ! -w ${repo_location} ]] ; then
@@ -149,21 +149,6 @@ handle_pgp_setup() {
 	fi
 }
 
-do_tar() {
-	local -
-
-	shopt -o -s pipefail
-	case $1 in
-		*.xz)   xzcat -- "$1" ;;
-		*.bz2)  bzcat -- "$1" ;;
-		*.gz)   zcat  -- "$1" ;;
-		*)      cat   -- "$1" ;;
-	esac | {
-		shift
-		tar "$@"
-	}
-}
-
 get_unixtime_by_date() {
 	local date=$1
 
@@ -195,33 +180,54 @@ is_uint() {
 
 fetch_file() {
 	# shellcheck disable=2034
-	local URI=$1 FILE=$2
-	local opts
+	local URI=$1 FILE=${1##*/}
 
-	case ${FETCHCOMMAND} in
-		*wget*)
+	if [[ ! ${fetchcommand} ]] && ! fetchcommand=$(get_fetchcommand); then
+		die "couldn't parse FETCHCOMMAND"
+	fi
+
+	einfo "Fetching file ${FILE} ..."
+
+	if [[ ${fetchcommand} != @(curl|wget)[[:blank:]]* ]]; then
+		rm -f -- "${DISTDIR}/${FILE}"
+	fi
+
+	if ! eval "${fetchcommand}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
+		rm -f -- "${DISTDIR}/${FILE}"
+		return 1
+	fi
+}
+
+# shellcheck disable=2153
+get_fetchcommand() {
+	local cmd_name cmd_args opts
+
+	if [[ ${FETCHCOMMAND} == *([[:blank:]]) ]]; then
+		eerror "FETCHCOMMAND has been set as an empty or blank string"
+		return 1
+	fi
+
+	read -rd '' cmd_name cmd_args <<<"${FETCHCOMMAND}"
+
+	case ${cmd_name} in
+		wget)
 			opts="--continue --no-verbose"
 			if (( ! opt[quiet] )); then
 				opts+=" --show-progress"
 			fi
 			;;
-		*curl*)
-			opts="--continue-at -f -S"
+		curl)
+			opts="--continue-at - -f -S"
 			if (( opt[quiet] )); then
 				opts+=" -s"
 			fi
 			;;
 		*)
-			rm -f -- "${DISTDIR}/${FILE}"
+			printf '%s\n' "${FETCHCOMMAND}"
+			return
 	esac
 
-	einfo "Fetching file ${FILE} ..."
-
-	# Already set DISTDIR=
-	if ! eval "${FETCHCOMMAND} ${opts}" || [[ ! -s ${DISTDIR}/${FILE} ]]; then
-		rm -f -- "${DISTDIR}/${FILE}"
-		return 1
-	fi
+	printf '%s\n' "${cmd_name} ${opts} ${cmd_args}"
 }
 
 check_file_digest() {
@@ -243,16 +249,18 @@ check_file_digest() {
 	fi
 }
 
-md5sum_hex() {
-	local output
-
-	if hash md5 2>/dev/null; then
+if hash md5 2>/dev/null; then
+	md5sum_hex() {
 		md5 -q -- "$1"
-	else
+	}
+else
+	md5sum_hex() {
+		local output
+
 		output=$(md5sum -- "$1") \
 		&& printf '%s\n' "${output%%[[:blank:]]*}"
-	fi
-}
+	}
+fi
 
 check_file_signature_gemato() {
 	local file=$1
@@ -260,16 +268,10 @@ check_file_signature_gemato() {
 	local key
 
 	assign_key
+	gemato_args=( openpgp-verify-detached -K "${key}" )
 
-	gemato_args=(
-		openpgp-verify-detached
-		-K "${key}"
-	)
-
-	if [[ -n ${http_proxy} || -n ${https_proxy} ]] ; then
-		gemato_args+=(
-			--proxy "${http_proxy:-${https_proxy}}"
-		)
+	if [[ ${http_proxy} || ${https_proxy} ]]; then
+		gemato_args+=( --proxy "${http_proxy:-${https_proxy}}" )
 	fi
 
 	# PORTAGE_GPG_KEY_SERVER is directly exported by the webrsync module.
@@ -337,7 +339,7 @@ gpg_fingerprint() {
 		[[ ${fields[0]} == fpr && ${fields[9]} =~ ^[[:xdigit:]]{40}$ ]] \
 		&& printf '%s\n' "${fields[9]}" \
 		&& return
-	done < <(gpg --with-colons --list-keys "$@")
+	done < <(gpg --batch --with-colons --list-keys "$@")
 }
 
 gpg_verify() {
@@ -367,9 +369,13 @@ check_file_signature() {
 
 get_snapshot_timestamp() {
 	local file=$1
-	local unixtime
+	local unixtime is_gnu
 
-	do_tar "${file}" --to-stdout -f - --wildcards -x '*/metadata/timestamp.x' |
+	if tar --version 2>/dev/null | grep -q 'GNU tar'; then
+		is_gnu=1
+	fi
+
+	tar ${is_gnu+--wildcards} -O -xf "${file}" '*/metadata/timestamp.x' |
 	{
 		read -r unixtime _ \
 		&& is_uint "${unixtime}" \
@@ -379,10 +385,8 @@ get_snapshot_timestamp() {
 
 sync_local() {
 	local file=$1
-	local ownership snapshot_dir
+	local snapshot_dir ownership tarball
 	local -a tarsync_opts rsync_opts
-
-	einfo "Syncing local repository ..."
 
 	if ! contains_word usersync "${FEATURES}"; then
 		ownership="${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}"
@@ -392,26 +396,34 @@ sync_local() {
 		ownership=$(stat -c '%U:%G' -- "${repo_location}")
 	fi || exit
 
+	tarball=${file##*/}
+
 	if hash tarsync 2>/dev/null; then
+		einfo "Using tarsync to refresh ${repo_location@Q} ..."
+
 		tarsync_opts=( -s 1 -e /distfiles -e /packages -e /local )
-		if chown "${ownership}" -- "${repo_location}" 2>/dev/null; then
+		if chown -- "${ownership}" "${repo_location}" 2>/dev/null; then
 			tarsync_opts+=( -o "${ownership%:*}" -g "${ownership#*:}" )
 		fi
 		if (( ! opt[quiet] )); then
 			tarsync_opts+=( -v )
 		fi
 		if ! tarsync "${tarsync_opts[@]}" -- "${file}" "${repo_location}"; then
-			eerror "tarsync failed; tarball is corrupt? (${file})"
+			eerror "Failed to sync ${repo_location@Q} with ${tarball@Q}"
 			return 1
 		fi
 	else
+		einfo "Extracting ${tarball@Q} ..."
+
 		snapshot_dir=${tmpdir:?}/snapshot
 		mkdir -- "${snapshot_dir}" && cd -- "${snapshot_dir}" || exit
 
-		if ! do_tar "${file}" -x --strip-components=1 -f -; then
-			eerror "tar failed to extract the image. tarball is corrupt? (${file})"
+		if ! tar --strip-components=1 -xf "${file}"; then
+			eerror "Failed to extract the contents of ${tarball@Q}"
 			return 1
 		fi
+
+		einfo "Using rsync to refresh ${repo_location@Q} ..."
 
 		read -rd '' -a rsync_opts <<<"${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
 		if (( opt[quiet] )); then
@@ -431,12 +443,11 @@ sync_local() {
 
 	if (( ! from_portage )) && contains_word metadata-transfer "${FEATURES}"; then
 		einfo "Updating cache ..."
-		"${emerge}" --metadata
+		"${path_of[emerge]}" --metadata
 	fi
 
-	# --quiet suppresses output if there are no relevant news items
 	if (( ! from_portage )) && contains_word news "${FEATURES}"; then
-		"${emerge}" --check-news --quiet
+		"${path_of[emerge]}" --check-news --quiet
 	fi
 
 	return 0
@@ -444,97 +455,90 @@ sync_local() {
 
 do_snapshot() {
 	local ignore_timestamp=$1 date=$2
-	local {repo,snapshot}_timestamp have_files signature unixtime digest mirror file
+	local have_files mirror file
 	local -a tarballs mirrors
-	local -A suffix_by
-
-	suffix_by=([xzcat]=xz [bzcat]=bz2 [zcat]=gz)
-
-	for file in xzcat bzcat zcat; do
-		if hash "${file}" 2>/dev/null; then
-			tarballs+=( {"$repo_name","portage"}-"${date}.tar.${suffix_by[$file]}" )
-		fi
-	done
-
-	if (( ! ${#tarballs[@]} )); then
-		die "unable to locate any decompressors (xzcat, bzcat or zcat)"
-	fi
 
 	read -rd '' -a mirrors <<<"${GENTOO_MIRRORS}"
+	tarballs=( {"$repo_name","portage"}-"${date}.tar."{"xz","bz2"} )
 
-	for mirror in "${mirrors[@]}"; do
-		mirror=${mirror%/}
+	for mirror in "${mirrors[@]/%\/}"; do
 		einfo "Trying to retrieve ${date} snapshot from ${mirror} ..."
 		for file in "${tarballs[@]}"; do
-			digest="${file}.md5sum"
-			signature="${file}.gpgsig"
+			have_files=0
 
-			if [[ -s "${DISTDIR}/${file}" && -s "${DISTDIR}/${digest}" && -s "${DISTDIR}/${signature}" ]] ; then
-				check_file_digest "${DISTDIR}/${file}" \
-				&& check_file_signature "${DISTDIR}/${file}" \
-				&& have_files=1
-			fi
+			# Attempt to use any previously downloaded files.
+			test -s "${DISTDIR}/${file}.md5sum" \
+			&& test -s "${DISTDIR}/${file}.gpgsig" \
+			&& test -s "${DISTDIR}/${file}" \
+			&& check_file_digest "${DISTDIR}/${file}" \
+			&& check_file_signature "${DISTDIR}/${file}" \
+			&& have_files=1
 
-			if (( ! have_files )); then
-				fetch_file "${mirror}/snapshots/${digest}" "${digest}" \
-				&& fetch_file "${mirror}/snapshots/${signature}" "${signature}" \
-				&& fetch_file "${mirror}/snapshots/${file}" "${file}" \
-				&& check_file_digest "${DISTDIR}/${file}" \
-				&& check_file_signature "${DISTDIR}/${file}" \
-				&& have_files=1
-			fi
+			# Otherwise, attempt to fetch the required files.
+			(( ! have_files )) \
+			&& fetch_file "${mirror}/snapshots/${file}.md5sum" \
+			&& fetch_file "${mirror}/snapshots/${file}.gpgsig" \
+			&& fetch_file "${mirror}/snapshots/${file}" \
+			&& check_file_digest "${DISTDIR}/${file}" \
+			&& check_file_signature "${DISTDIR}/${file}" \
+			&& have_files=1
 
-			#
-			# If timestamp is invalid
-			# we want to try and retrieve
-			# from a different mirror
-			#
-			if (( have_files )); then
-				einfo "Getting snapshot timestamp ..."
+			# Accept any validated files under consideration,
+			# provided that the age of the snapshot is tolerable.
+			(( have_files )) \
+			&& is_snapshot_fresh "${DISTDIR}/${file}" "${ignore_timestamp}" \
+			&& break 2
 
-				if ! snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}"); then
-					die "couldn't determine the timestamp of snapshot ${file@Q}"
-				fi
-				if [[ ${ignore_timestamp} == 0 ]]; then
-					if ! repo_timestamp=$(get_repository_timestamp); then
-						die "couldn't determine the timestamp of repo ${repo_location@Q}"
-					fi
-					if (( snapshot_timestamp < repo_timestamp )); then
-						ewarn "Repository (age) is newer than fetched snapshot"
-						have_files=0
-					fi
-				else
-					# Check that this snapshot is of the age it claims to be.
-					unixtime=$(get_unixtime_by_date "${date}")
-					if (( snapshot_timestamp < unixtime
-						|| snapshot_timestamp > unixtime + 2 * 86400 ))
-					then
-						ewarn "Snapshot timestamp is not within acceptable period!"
-						have_files=0
-					fi
-				fi
-			fi
-
-			if (( have_files )); then
-				break 2
-			else
-				# Remove files and use a different mirror
-				rm -f -- "${DISTDIR}"/{"$file","$digest","$signature"}
-			fi
+			# Remove any files before trying a different mirror.
+			rm -f -- "${DISTDIR}/${file}"{".md5sum",".gpgsig",}
 		done
 	done
 
 	if (( have_files )); then
 		sync_local "${DISTDIR}/${file}"
+	elif (( ! ${#mirrors[@]} )); then
+		eerror "GENTOO_MIRRORS has been set as an empty or blank string"
+		die "couldn't parse GENTOO_MIRRORS"
 	else
 		ewarn "${date} snapshot was not found"
 		false
 	fi
 }
 
+is_snapshot_fresh() {
+	local file=$1 ignore_timestamp=$2
+	local snapshot_timestamp repo_timestamp unixtime date
+
+	einfo "Getting snapshot timestamp ..."
+
+	if ! snapshot_timestamp=$(get_snapshot_timestamp "${file}"); then
+		die "couldn't determine the timestamp of snapshot ${file@Q}"
+	fi
+	if (( ! ignore_timestamp )); then
+		if ! repo_timestamp=$(get_repository_timestamp); then
+			die "couldn't determine the timestamp of repo ${repo_location@Q}"
+		fi
+		if (( snapshot_timestamp < repo_timestamp )); then
+			ewarn "Repository (age) is newer than fetched snapshot"
+			return 1
+		fi
+	else
+		# Check that this snapshot is of the age it claims to be.
+		date=${file##*-} date=${date%%.*}
+		unixtime=$(get_unixtime_by_date "${date}")
+		if (( snapshot_timestamp < unixtime
+			|| snapshot_timestamp > unixtime + 2 * 86400 ))
+		then
+			ewarn "Snapshot timestamp is not within acceptable period!"
+			return 1
+		fi
+	fi
+}
+
 do_latest_snapshot() {
 	local timestamp_{difference,problem} snapshot_{date,unixtime} approx_snapshot_time existing_timestamp start_{hour,time}
-	local min_time_diff attempts TZ=UTC
+	local min_time_diff attempts
+	local -x TZ=UTC
 
 	einfo "Fetching most recent snapshot ..."
 
@@ -611,12 +615,13 @@ from_portage=${PORTAGE_BIN_PATH:+1}
 
 # Use emerge and portageq from the same directory/prefix as the current script,
 # so that we don't have to rely on PATH including the current EPREFIX.
-if ! emerge=$(PATH=${BASH_SOURCE%/*}:${PATH} type -P emerge); then
-	die "could not find 'emerge'; aborting"
-fi
-if ! portageq=$(PATH=${BASH_SOURCE%/*}:${PATH} type -P portageq); then
-	die "could not find 'portageq'; aborting"
-fi
+declare -A path_of=()
+for bin in emerge portageq; do
+	if ! path_of[$bin]=$(PATH=${BASH_SOURCE%/*}:${PATH} type -P "${bin}"); then
+		printf >&2 '%s: unable to locate the "%s" binary; aborting\n' "$0" "${bin}"
+		exit 1
+	fi
+done
 
 portage_vars=(
 	DISTDIR
@@ -640,7 +645,7 @@ portage_vars=(
 	https_proxy
 )
 
-eval "$("${portageq}" envvar -v "${portage_vars[@]}")"
+eval "$("${path_of[portageq]}" envvar -v "${portage_vars[@]}")"
 export http_proxy https_proxy ftp_proxy
 
 # PREFIX LOCAL: use Prefix servers, just because we want this and infra
@@ -684,5 +689,6 @@ if [[ -n "${PORTAGE_NICENESS}" ]]; then
 	renice "${PORTAGE_NICENESS}" $$ > /dev/null
 fi
 
+unset -v fetchcommand
 declare -A opt=()
 main "$@"

@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "May 2024" "Portage @VERSION@" "Portage"
+.TH "EMERGE" "1" "Sep 2025" "Portage @VERSION@" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -509,10 +509,6 @@ changed since installation. This option also implies the
 \fB\-\-selective\fR option. Unlike \fB\-\-newuse\fR, the
 \fB\-\-changed\-use\fR option does not trigger reinstallation when
 flags that the user has not enabled are added or removed.
-
-NOTE: This option ignores the state of the "test" USE flag, since that flag
-has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
-information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-color < y | n >"
 Enable or disable color output.  This option will override \fINO_COLOR\fR
@@ -735,10 +731,6 @@ settings. If you would like to skip rebuilds for which disabled flags have
 been added to or removed from IUSE, see the related
 \fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
 specific packages, see the \fB\-\-exclude\fR option.
-
-NOTE: This option ignores the state of the "test" USE flag, since that flag
-has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
-information about \fBFEATURES\fR settings).
 .TP
 .BR \-\-noconfmem
 Causes portage to disregard merge records indicating that a config file
@@ -1101,7 +1093,6 @@ Symbol	Location	Meaning
 *	suffix	transition to or from the enabled state
 %	suffix	newly added or removed
 ()	circumfix	forced, masked, or removed
-{}	circumfix	state is bound to FEATURES settings
 .TE
 .TP
 .BR \-\-verbose\-conflicts
@@ -1287,10 +1278,10 @@ Symbol	Mask Type
 
 #	package.mask
 *	missing keyword
-\(ti	unstable keyword
+\[ti]	unstable keyword
 .TE
 
-\fBNOTE:\fR The unstable keyword symbol (\(ti) will not be shown in cases
+\fBNOTE:\fR The unstable keyword symbol (\[ti]) will not be shown in cases
 in which the corresponding unstable keywords have been accepted
 globally via \fBACCEPT_KEYWORDS\fR.
 .TP
@@ -1367,7 +1358,7 @@ The \fBKEYWORDS\fR variable in an \fBebuild\fR file is also used for masking
 a package still in testing.  There are architecture\-specific keywords for
 each package that let \fBportage\fR know which systems are compatible with
 the package.  Packages which compile on an architecture, but have not been
-proven to be "stable", are masked with a tilde (\fB\(ti\fR) in front of the
+proven to be "stable", are masked with a tilde (\fB\[ti]\fR) in front of the
 architecture name.  \fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment
 variable to allow or disallow the emerging of a package masked by
 \fBKEYWORDS\fR.  To inform \fBemerge\fR that it should build these 'testing'
@@ -1447,6 +1438,28 @@ When an offset prefix (\fBEPREFIX\fR) is active, all paths in
 offset by Portage before they are considered.  Hence, these paths never
 contain the offset prefix, and the variables can be defined in
 offset-unaware locations, such as the profiles. 
+.SH "PORTAGE DEVELOPMENT FEATURES"
+This section describes features that are of interest when developing
+Portage.  They allow for introspection, debugging, and performance
+analysis.  Portage provides no stability guarantee; any feature may
+disappear in the future, and the output format may change without
+prior notice.
+.TP
+.BR PORTAGE_SHOW_LRU_CACHE_INFO
+If this environment variable is set, then Portage will display
+statistics about its internal LRU caches.
+.TP
+.BR PORTAGE_SHOW_HTTP_TRACE
+If this environment variable is set, then Portage will show
+a trace of all HTTP request.
+.TP
+.BR PORTAGE_DO_NOT_EXPORT_PMS_VARS
+If this environment variable is set, then Portage will not export PMS
+variables regardless of the EAPI.  The variables are still available
+to ebuilds; however, they are not exported and therefore not available
+to child processes of the ebuild.  Since EAPI 9, Portage will never
+export PMS variables.  This setting allows testing EAPI < 9 ebuilds
+with the new behavior.
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP

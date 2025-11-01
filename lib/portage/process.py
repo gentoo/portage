@@ -343,17 +343,19 @@ class EnvStats:
     env_largest_size: int
 
 
+@lru_cache(1024)
+def _encoded_length(s):
+    return len(os.fsencode(s))
+
+
 def calc_env_stats(env) -> EnvStats:
-    @lru_cache(1024)
-    def encoded_length(s):
-        return len(os.fsencode(s))
 
     env_size = 0
     env_largest_name = None
     env_largest_size = 0
     for env_name, env_value in env.items():
-        env_name_size = encoded_length(env_name)
-        env_value_size = encoded_length(env_value)
+        env_name_size = _encoded_length(env_name)
+        env_value_size = _encoded_length(env_value)
         # Add two for '=' and the terminating null byte.
         total_size = env_name_size + env_value_size + 2
         if total_size > env_largest_size:
@@ -446,10 +448,6 @@ class MultiprocessingProcess(AbstractProcess):
     An object that wraps OS processes created by multiprocessing.Process.
     """
 
-    # Number of seconds between poll attempts for process exit status
-    # (after the sentinel has become ready).
-    _proc_join_interval = 0.1
-
     def __init__(self, proc: multiprocessing.Process):
         self._proc = proc
         self.pid = proc.pid
@@ -500,13 +498,42 @@ class MultiprocessingProcess(AbstractProcess):
             except ValueError:
                 pass
 
-        # Now that proc.sentinel is ready, poll until process exit
-        # status has become available.
-        while True:
-            proc.join(0)
-            if proc.exitcode is not None:
-                break
-            await asyncio.sleep(self._proc_join_interval, loop=loop)
+        # Now that proc.sentinel is ready, join on proc.
+
+        async def join_via_polling(proc):
+            # Initial number of seconds between poll attempts for
+            # process exit status.
+            proc_join_interval_initial = 0.002
+            # Maximum number of seconds between poll attempts.
+            proc_join_interval_max = 0.1
+            # Factory by which the poll interval increases.
+            proc_join_interval_factor = 1.3
+
+            delay = proc_join_interval_initial
+            while True:
+                proc.join(0)
+                if proc.exitcode is not None:
+                    break
+                delay *= proc_join_interval_factor
+                if delay > proc_join_interval_max:
+                    delay = proc_join_interval_max
+                await asyncio.sleep(delay, loop=loop)
+
+        # We can only safely create a new thread to await the join if
+        # we use 'forkserver' or 'spawn'.
+        if multiprocessing.get_start_method() in ("forkserver", "spawn"):
+            try:
+                await _asyncio.to_thread(proc.join)
+            except RuntimeError as exc:
+                # A RuntimeError may be thrown if this is invoked
+                # during shutdown, e.g., via run_coroutine_exitfuncs
+                # as in the Socks5ServerAtExistTestCase, hence we need
+                # to fall back to polling in this case.
+                if str(exc) != "cannot schedule new futures after shutdown":
+                    raise
+                await join_via_polling(proc)
+        else:
+            await join_via_polling(proc)
 
     def _proc_join_done(self, future):
         # The join task should never be cancelled, so let it raise

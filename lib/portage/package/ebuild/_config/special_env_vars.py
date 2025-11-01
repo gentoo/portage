@@ -171,7 +171,6 @@ environ_whitelist = frozenset(
         "PORTAGE_REPO_NAME",
         "PORTAGE_REPOSITORIES",
         "PORTAGE_RESTRICT",
-        "PORTAGE_SIGPIPE_STATUS",
         "PORTAGE_SOCKS5_PROXY",
         "PORTAGE_TMPDIR",
         "PORTAGE_UPDATE_ENV",
@@ -279,6 +278,7 @@ environ_filter = frozenset(
         "__CF_USER_TEXT_ENCODING",
         # END PREFIX LOCAL
         # variables that break bash
+        "GLOBSORT",
         "HISTFILE",
         "POSIXLY_CORRECT",
         # portage config variables and variables set directly by portage
@@ -303,6 +303,7 @@ environ_filter = frozenset(
         "FETCHCOMMAND_HTTPS",
         "FETCHCOMMAND_RSYNC",
         "FETCHCOMMAND_SFTP",
+        "FETCHCOMMAND_SSH",
         "GENTOO_MIRRORS",
         "NOCONFMEM",
         "O",
@@ -344,6 +345,7 @@ environ_filter = frozenset(
         "RESUMECOMMAND_HTTPS",
         "RESUMECOMMAND_RSYNC",
         "RESUMECOMMAND_SFTP",
+        "RESUMECOMMAND_SSH",
         "UNINSTALL_IGNORE",
         "USE_EXPAND_HIDDEN",
         "USE_ORDER",

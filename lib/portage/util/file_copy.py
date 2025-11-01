@@ -19,6 +19,22 @@ FICLONE = getattr(fcntl, "FICLONE", 0x40049409)
 SEEK_DATA = getattr(os, "SEEK_DATA", 3)
 SEEK_HOLE = getattr(os, "SEEK_HOLE", 4)
 
+# Taken from coreutils
+_CFR_IGNORE = frozenset(
+    (
+        errno.ENOSYS,
+        errno.ENOTTY,
+        errno.EOPNOTSUPP,
+        errno.ENOTSUP,
+        errno.EINVAL,
+        errno.EBADF,
+        errno.EXDEV,
+        errno.ETXTBSY,
+        errno.EPERM,
+        errno.EACCES,
+    )
+)
+
 
 def _get_chunks(src):
     try:
@@ -102,7 +118,7 @@ def _fastcopy(src, dst):
                         continue
                     except OSError as e:
                         try_cfr = False
-                        if e.errno not in (errno.EXDEV, errno.ENOSYS, errno.EOPNOTSUPP):
+                        if e.errno not in _CFR_IGNORE:
                             logger.warning(
                                 "_do_copy_file_range failed unexpectedly",
                                 exc_info=sys.exc_info(),

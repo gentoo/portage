@@ -2,17 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
   pull_request:
     branches: [ master ]
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         start-method:
-          - 'fork'
+          - 'fork-or-forkserver'
           - 'spawn'
         python-version:
           - '3.9'
@@ -33,8 +32,6 @@ jobs:
             start-method: 'spawn'
           - python-version: '3.13'
             start-method: 'spawn'
-          - python-version: '3.14-dev'
-            start-method: 'fork'
           - python-version: 'pypy-3.11'
             start-method: 'spawn'
       fail-fast: false
@@ -51,9 +48,6 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson pax-utils zstd
 
-          # Patch Ubuntu's old Meson to fix pypy-3.9 detection.
-          curl -s -f https://github.com/mesonbuild/meson/commit/2540ad6e9e08370ddd0b6753fdc9314945a672f0.patch | sudo patch -d /usr/lib/python3/dist-packages -p1 --no-backup-if-mismatch
-
           python -VV
           python -m site
           python -m pip install --upgrade pip
@@ -62,6 +56,7 @@ jobs:
 
           # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
           sudo ln -s /bin/true /usr/bin/getuto
+          sudo ln -s "$(type -P tar)" /usr/bin/gtar
       - name: Patch python scripts to set spawn start method
         if: ${{ matrix.start-method == 'spawn' }}
         run: |

@@ -1,17 +1,11 @@
 #!/usr/bin/env python
-# Copyright 2005-2023 Gentoo Authors
+# Copyright 2005-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """System health checks and maintenance utilities.
 """
 
-import os
 import signal
-
-# For compatibility with Python < 3.8
-raise_signal = getattr(
-    signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
-)
 
 
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
@@ -73,4 +67,4 @@ except KeyboardInterrupt as e:
     # Prevent traceback on ^C
     signum = getattr(e, "signum", signal.SIGINT)
     signal.signal(signum, signal.SIG_DFL)
-    raise_signal(signum)
+    signal.raise_signal(signum)

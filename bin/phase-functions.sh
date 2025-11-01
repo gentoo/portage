@@ -8,47 +8,49 @@
 # of ebuild.sh will work for pkg_postinst, pkg_prerm, and pkg_postrm
 # when portage is upgrading itself.
 
-PORTAGE_READONLY_METADATA="BDEPEND DEFINED_PHASES DEPEND DESCRIPTION
-	EAPI HOMEPAGE IDEPEND INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
-	PDEPEND RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
+portage_readonly_metadata=(
+	BDEPEND DEFINED_PHASES DESCRIPTION DEPEND EAPI HOMEPAGE INHERITED
+	IDEPEND IUSE KEYWORDS LICENSE PDEPEND REQUIRED_USE REPOSITORY RESTRICT
+	RDEPEND SRC_URI SLOT
+)
 
-PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
-	EBUILD_SH_ARGS ED EMERGE_FROM EROOT FILESDIR MERGE_TYPE \
-	PM_EBUILD_HOOK_DIR \
-	PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC  \
-	PORTAGE_BINPKG_FILE PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE \
-	PORTAGE_BIN_PATH PORTAGE_BUILDDIR PORTAGE_BUILD_GROUP \
-	PORTAGE_BUILD_USER \
-	PORTAGE_COLORMAP PORTAGE_CONFIGROOT \
-	PORTAGE_DEBUG PORTAGE_DEPCACHEDIR PORTAGE_EBUILD_EXIT_FILE \
-	PORTAGE_EBUILD_EXTRA_SOURCE \
-	PORTAGE_ECLASS_LOCATIONS PORTAGE_EXPLICIT_INHERIT \
-	PORTAGE_GID PORTAGE_GRPNAME PORTAGE_INST_GID PORTAGE_INST_UID \
-	PORTAGE_INTERNAL_CALLER PORTAGE_IPC_DAEMON PORTAGE_IUSE PORTAGE_LOG_FILE \
-	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_OVERRIDE_EPREFIX PORTAGE_PROPERTIES \
-	PORTAGE_PYM_PATH PORTAGE_PYTHON PORTAGE_PYTHONPATH \
-	PORTAGE_READONLY_METADATA PORTAGE_READONLY_VARS \
-	PORTAGE_REPO_NAME PORTAGE_REPOSITORIES PORTAGE_RESTRICT \
-	PORTAGE_SAVED_READONLY_VARS PORTAGE_SIGPIPE_STATUS \
-	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
-	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTAGE_XATTR_EXCLUDE \
-	REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
-	__PORTAGE_HELPER __PORTAGE_TEST_HARDLINK_LOCKS"
+portage_readonly_vars=(
+	D EBUILD_PHASE_FUNC EBUILD_SH_ARGS EBUILD_PHASE EMERGE_FROM EBUILD
+	EROOT ED FILESDIR MERGE_TYPE PORTAGE_EBUILD_EXTRA_SOURCE
+	PORTAGE_EBUILD_EXIT_FILE PORTAGE_ECLASS_LOCATIONS
+	PORTAGE_EXPLICIT_INHERIT PORTAGE_OVERRIDE_EPREFIX
+	PORTAGE_BINPKG_TAR_OPTS PORTAGE_INTERNAL_CALLER PORTAGE_ACTUAL_DISTDIR
+	PORTAGE_BINPKG_TMPFILE PORTAGE_XATTR_EXCLUDE PORTAGE_REPOSITORIES
+	PORTAGE_WORKDIR_MODE PORTAGE_BINPKG_FILE PORTAGE_BUILD_GROUP
+	PORTAGE_DEPCACHEDIR PM_EBUILD_HOOK_DIR PORTAGE_BUILD_USER
+	PORTAGE_CONFIGROOT PORTAGE_IPC_DAEMON PORTAGE_PROPERTIES
+	PORTAGE_PYTHONPATH PORTAGE_UPDATE_ENV PORTAGE_REPO_NAME
+	PORTAGE_ARCHLIST PORTAGE_BIN_PATH PORTAGE_BUILDDIR PORTAGE_COLORMAP
+	PORTAGE_INST_GID PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_PYM_PATH
+	PORTAGE_RESTRICT PORTAGE_USERNAME PORTAGE_GRPNAME PORTAGE_VERBOSE
+	PORTAGE_BASHRC PORTAGE_PYTHON PORTAGE_TMPDIR PORTAGE_DEBUG PORTAGE_IUSE
+	PORTAGE_GID REPLACED_BY_VERSION REPLACING_VERSIONS T WORKDIR
+	__PORTAGE_TEST_HARDLINK_LOCKS __PORTAGE_HELPER
+	portage_mutable_filtered_vars portage_saved_readonly_vars
+	portage_readonly_metadata portage_readonly_vars
+)
 
-PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
+portage_saved_readonly_vars=(
+	A CATEGORY PVR PF PN PR PV P
+)
 
 # Variables that portage sets but doesn't mark readonly.
 # In order to prevent changed values from causing unexpected
 # interference, they are filtered out of the environment when
 # it is saved or loaded (any mutations do not persist).
-PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
+portage_mutable_filtered_vars=( AA HOSTNAME )
 
 # @FUNCTION: __filter_readonly_variables
 # @DESCRIPTION: [--filter-sandbox] [--allow-extra-vars]
 # Read an environment from stdin and echo to stdout while filtering variables
 # with names that are known to cause interference:
 #
-#   * all variables that can be set by or that may affect bash (except PATH)
+#   * variables that can be set by or that affect bash (with several exceptions)
 #   * some specific variables that affect portage or sandbox behavior
 #   * variable names that begin with a digit or that contain any
 #     non-alphanumeric characters that are not be supported by bash
@@ -76,12 +78,15 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # However, old settings should be overridden when loading the
 # environment from a binary or installed package.
 #
-# ---allow-extra-vars causes some extra vars to be allowd through, such
-# as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
-# This is enabled automatically if EMERGE_FROM=binary, since it preserves
-# variables from when the package was originally built.
+# --allow-extra-vars inhibits the filtering of the variables whose names are
+# specified by the PORTAGE_SAVED_READONLY_VARS and PORTAGE_MUTABLE_FILTERED_VARS
+# variables. However, in the absence of the option, only the CATEGORY, P, PF,
+# PN, PR, PV and PVR variables shall be filtered, provided that the value of
+# EMERGE_FROM is equal to "binary". The reason for this exception in behaviour
+# is to preserve various variables as they were at the time that the binary
+# package was built while protecting against the application of package renames.
 __filter_readonly_variables() {
-	local -a {binpkg_untrusted,filtered_sandbox,misc_garbage,bash}_vars words
+	local -a filtered_vars bash_vars
 	local IFS
 
 	# Collect an initial list of special bash variables by instructing a
@@ -89,41 +94,31 @@ __filter_readonly_variables() {
 	mapfile -t bash_vars < <(
 		# Like compgen -A variable but doesn't require readline support.
 		env -i -- "${BASH}" -c "printf %s\\\n $(printf '${!%s*} ' {A..Z} {a..z} _)" \
-		| grep -vx PATH
+		| grep -vx -e PATH -e SHELL
 	)
 	# Incorporate other variables that are known to either be set by or be
-	# able to influence bash. This list was last updated for bash-5.3-rc2.
+	# able to influence bash. This list was last updated for bash-5.3.
+	# EMACS is omitted, so as not to break the "elisp-common" eclass.
 	bash_vars+=(
-		BASH_COMPAT BASH_ENV BASH_LOADABLES_PATH BASH_REMATCH
-		BASH_XTRACEFD CDPATH CHILD_MAX COLUMNS COMPREPLY COMP_CWORD
-		COMP_KEY COMP_LINE COMP_POINT COMP_TYPE COMP_WORDS COPROC
-		ENV EXECIGNORE FCEDIT FIGNORE FUNCNAME FUNCNEST GLOBIGNORE
-		GLOBSORT HISTCONTROL HISTFILE HISTFILESIZE HISTIGNORE HISTSIZE
-		HISTTIMEFORMAT HOME HOSTFILE IGNOREEOF INPUTRC INSIDE_EMACS
-		LINES MAIL MAILCHECK MAILPATH MAPFILE OLDPWD OPTARG PIPESTATUS
-		POSIXLY_CORRECT PROMPT_COMMAND PROMPT_DIRTRIM PS0 PS1 PS2 PS3
-		READLINE_ARGUMENT READLINE_LINE READLINE_MARK READLINE_POINT
-		REPLY TIMEFORMAT TMOUT TMPDIR auto_resume histchars
+		BASH_LOADABLES_PATH BASH_XTRACEFD BASH_REMATCH BASH_TRAPSIG
+		BASH_COMPAT BASH_ENV COMP_CWORD COMP_POINT COMP_WORDS CHILD_MAX
+		COMPREPLY COMP_LINE COMP_TYPE COMP_KEY COLUMNS CDPATH COPROC
+		EXECIGNORE ENV FUNCNAME FUNCNEST FIGNORE FCEDIT GLOBIGNORE
+		GLOBSORT HISTTIMEFORMAT HISTFILESIZE HISTCONTROL HISTIGNORE
+		HISTFILE HISTSIZE HOSTFILE HOME INSIDE_EMACS IGNOREEOF INPUTRC
+		LINES MAILCHECK MAILPATH MAPFILE MAIL OLDPWD OPTARG
+		POSIXLY_CORRECT PROMPT_COMMAND PROMPT_DIRTRIM PIPESTATUS PS0
+		PS1 PS2 PS3 READLINE_ARGUMENT READLINE_POINT READLINE_LINE
+		READLINE_MARK REPLY TIMEFORMAT TMPDIR TMOUT auto_resume
+		histchars
 
 		# Exported functions bear this prefix.
 		"BASH_FUNC_.*"
 	)
-	filtered_sandbox_vars=(
-		SANDBOX_ACTIVE SANDBOX_BASHRC SANDBOX_DEBUG_LOG
-		SANDBOX_DISABLED SANDBOX_LIB SANDBOX_LOG SANDBOX_ON
-	)
-	# Untrusted due to possible application of package renames to binpkgs
-	binpkg_untrusted_vars=(
-		CATEGORY P PF PN PR PV PVR
-	)
-	misc_garbage_vars=(
-		_portage_filter_opts
-	)
-	read -rd '' -a words <<<"${PORTAGE_READONLY_VARS}"
 	filtered_vars+=(
-		"${misc_garbage_vars[@]}"
+		"${portage_readonly_vars[@]}"
+		_portage_filter_opts
 		"${bash_vars[@]}"
-		"${words[@]}"
 		"___.*"
 	)
 
@@ -149,7 +144,10 @@ __filter_readonly_variables() {
 	if has --filter-sandbox "$@"; then
 		filtered_vars+=( "SANDBOX_.*" )
 	else
-		filtered_vars+=( "${filtered_sandbox_vars[@]}" )
+		filtered_vars+=(
+			SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_ACTIVE
+			SANDBOX_BASHRC SANDBOX_LIB SANDBOX_LOG SANDBOX_ON
+		)
 	fi
 	if has --filter-features "$@"; then
 		filtered_vars+=( FEATURES PORTAGE_FEATURES )
@@ -159,19 +157,23 @@ __filter_readonly_variables() {
 	fi
 	if has --filter-locale "$@"; then
 		filtered_vars+=(
-			LANG LC_ALL LC_COLLATE LC_CTYPE LC_MESSAGES LC_MONETARY
-			LC_NUMERIC LC_PAPER LC_TIME
+			LC_MESSAGES LC_MONETARY LC_COLLATE LC_NUMERIC LC_CTYPE
+			LC_PAPER LC_TIME LC_ALL LANG
 		)
 	fi
 	if has --allow-extra-vars "$@"; then
 		:
 	elif [[ "${EMERGE_FROM}" = binary ]]; then
 		# Preserve additional variables from build time, while
-		# excluding untrusted variables.
-		filtered_vars+=( "${binpkg_untrusted_vars[@]}" )
+		# excluding some variables that are untrusted, due to the
+		# possible application of package renames to binpkgs.
+		filtered_vars+=( CATEGORY PVR PF PN PR PV P )
 	else
-		read -rd '' -a words <<<"${PORTAGE_SAVED_READONLY_VARS} ${PORTAGE_MUTABLE_FILTERED_VARS}"
-		filtered_vars+=( "${words[@]}" )
+		# Allow for the option to have its full effect.
+		filtered_vars+=(
+			"${portage_mutable_filtered_vars[@]}"
+			"${portage_saved_readonly_vars[@]}"
+		)
 	fi
 
     # PREFIX LOCAL: use Prefix Python fallback

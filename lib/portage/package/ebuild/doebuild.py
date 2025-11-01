@@ -1,4 +1,4 @@
-# Copyright 2010-2024 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
@@ -9,12 +9,12 @@ import errno
 import fnmatch
 from itertools import chain
 import logging
+import multiprocessing
 import os as _os
 import platform
 import pwd
 import re
 import shlex
-import signal
 import stat
 import subprocess
 import sys
@@ -483,11 +483,6 @@ def doebuild_environment(
     # Set requested Python interpreter for Portage helpers.
     mysettings["PORTAGE_PYTHON"] = portage._python_interpreter
 
-    # This is used by assert_sigpipe_ok() that's used by the ebuild
-    # unpack() helper. SIGPIPE is typically 13, but its better not
-    # to assume that.
-    mysettings["PORTAGE_SIGPIPE_STATUS"] = str(128 + signal.SIGPIPE)
-
     # We are disabling user-specific bashrc files.
     mysettings["BASH_ENV"] = INVALID_ENV_FILE
 
@@ -648,7 +643,10 @@ def doebuild_environment(
 
             for feature, m in masquerades:
                 for l in possible_libexecdirs:
-                    p = os.path.join(os.sep, eprefix_lstrip, "usr", l, m, "bin")
+                    masqdir = os.path.join(os.sep, eprefix_lstrip, "usr", l, m)
+                    p = os.path.join(masqdir, "bin")
+                    if not os.path.isdir(p):
+                        p = masqdir
                     if os.path.isdir(p):
                         mysettings["PATH"] = p + ":" + mysettings["PATH"]
                         break
@@ -1668,6 +1666,14 @@ def doebuild(
 
 
 def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests, fetchonly):
+
+    if sys.version_info >= (3, 14):
+        # Since we typically drop privileges for userfetch here,
+        # a forkserver shared with the parent would open privilege
+        # escalation issues that are better to avoid, therefore
+        # force the multiprocessing start method to spawn.
+        multiprocessing.set_start_method("spawn", force=True)
+
     # For userfetch, drop privileges for the entire fetch call, in
     # order to handle DISTDIR on NFS with root_squash for bug 601252.
     if _want_userfetch(mysettings):
@@ -2286,12 +2292,14 @@ def spawn(
     eapi = mysettings["EAPI"]
 
     unexported_env_vars = None
-    if "export-pms-vars" not in mysettings.features or not eapi_exports_pms_vars(eapi):
+    if not eapi_exports_pms_vars(eapi) or os.environ.get(
+        "PORTAGE_DO_NOT_EXPORT_PMS_VARS"
+    ):
         unexported_env_vars = _unexported_pms_vars
 
     if unexported_env_vars:
-        # Starting with EAPI 9 (or if FEATURES="-export-pms-vars"),
-        # PMS variables should not longer be exported.
+        # Starting with EAPI 9 (or if the PORTAGE_DO_NOT_EXPORT_PMS_VARS env
+        # variable is set) PMS variables should not longer be exported.
 
         phase = mysettings.get("EBUILD_PHASE")
         is_pms_ebuild_phase = phase in _phase_func_map.keys()

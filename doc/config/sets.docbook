@@ -555,6 +555,10 @@
 		values that must not be contained within the specified
 		variable.</para>
 		</listitem>
+		<listitem><para><varname>excludes_output</varname>: A list of
+		values that must not be contained within the package list
+		that is returned.</para>
+		</listitem>
 		<listitem><para><varname>metadata-source</varname>: Optional, defaults to
 		"vartree". Specifies the repository to use for getting the metadata
 		to check.</para></listitem>

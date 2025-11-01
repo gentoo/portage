@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# shellcheck disable=SC2128
+# shellcheck disable=2128,2185,2219
 
 source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
 if ___eapi_has_version_functions; then
-	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+	source "${PORTAGE_BIN_PATH}/version-functions.sh" || exit 1
 fi
 
 if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
@@ -23,36 +23,11 @@ fi
 shopt -s expand_aliases
 
 assert() {
-	local x pipestatus=${PIPESTATUS[*]}
-	for x in ${pipestatus} ; do
+	local x pipestatus=( "${PIPESTATUS[@]}" )
+	___eapi_has_assert || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
+	for x in "${pipestatus[@]}"; do
 		[[ ${x} -eq 0 ]] || die "$@"
 	done
-}
-
-__assert_sigpipe_ok() {
-	# When extracting a tar file like this:
-	#
-	#     bzip2 -dc foo.tar.bz2 | tar xof -
-	#
-	# For some tar files (see bug #309001), tar will
-	# close its stdin pipe when the decompressor still has
-	# remaining data to be written to its stdout pipe. This
-	# causes the decompressor to be killed by SIGPIPE. In
-	# this case, we want to ignore pipe writers killed by
-	# SIGPIPE, and trust the exit status of tar. We refer
-	# to the bash manual section "3.7.5 Exit Status"
-	# which says, "When a command terminates on a fatal
-	# signal whose number is N, Bash uses the value 128+N
-	# as the exit status."
-
-	local x pipestatus=${PIPESTATUS[*]}
-	for x in ${pipestatus} ; do
-		# Allow SIGPIPE through (128 + 13)
-		[[ ${x} -ne 0 && ${x} -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]] && die "$@"
-	done
-
-	# Require normal success for the last process (tar).
-	[[ ${x} -eq 0 ]] || die "$@"
 }
 
 shopt -s extdebug
@@ -61,9 +36,8 @@ shopt -s extdebug
 #            [whitespacing for filenames],
 #            [whitespacing for line numbers])
 __dump_trace() {
-	local funcname="" sourcefile="" lineno="" s="yes" n p
-	declare -i strip=${1:-1}
-	local filespacing=$2 linespacing=$3
+	local strip=${1:-1} filespacing=$2 linespacing=$3
+	local sourcefile funcname lineno n p
 
 	# The __qa_call() function and anything before it are portage internals
 	# that the user will not be interested in. Therefore, the stack trace
@@ -171,7 +145,7 @@ die() {
 	local main_index
 	(( main_index = ${#BASH_SOURCE[@]} - 1 ))
 	if [[ ${BASH_SOURCE[main_index]##*/} == @(ebuild|misc-functions).sh ]]; then
-	__dump_trace 2 ${filespacing} ${linespacing}
+	__dump_trace 2 "${filespacing}" "${linespacing}"
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
 	# This scans the file that called die and prints out the logic that
@@ -211,9 +185,9 @@ die() {
 	then
 		local x
 		for x in ${EBUILD_DEATH_HOOKS}; do
-			${x} "$@" >&2 1>&2
-		done
-		> "${PORTAGE_BUILDDIR}/.die_hooks"
+			${x} "$@"
+		done >&2
+		: > "${PORTAGE_BUILDDIR}/.die_hooks"
 	fi
 
 	if [[ -n ${PORTAGE_LOG_FILE} ]] ; then
@@ -239,7 +213,7 @@ die() {
 	eerror "Working directory: '$(pwd)'"
 	[[ -n ${S} ]] && eerror "S: '${S}'"
 
-	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && > "${PORTAGE_EBUILD_EXIT_FILE}"
+	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && : > "${PORTAGE_EBUILD_EXIT_FILE}"
 	[[ -n ${PORTAGE_IPC_DAEMON} ]] && "${PORTAGE_BIN_PATH}"/ebuild-ipc exit 1
 
 	# subshell die support
@@ -259,29 +233,20 @@ __vecho() {
 
 # Internal logging function, don't use this in ebuilds
 __elog_base() {
-	local messagetype
+	local messagetype=$1
+	shift
+
 	if [[ ${EBUILD_PHASE} == depend && -z ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
 		# in depend phase, we want to output a banner indicating which
 		# package emitted the message
-		echo >&2
-		echo "Messages for package ${PORTAGE_COLOR_INFO}${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}${PORTAGE_COLOR_NORMAL}:" >&2
+		printf >&2 '\nMessages for package %s%s%s:\n' \
+			"${PORTAGE_COLOR_INFO}" "${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}" "${PORTAGE_COLOR_NORMAL}"
 		__PORTAGE_ELOG_BANNER_OUTPUT=1
 	fi
 	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
-	case "${1}" in
-		INFO|WARN|ERROR|LOG|QA)
-			messagetype="${1}"
-			shift
-			;;
-		*)
-			__vecho -e " ${PORTAGE_COLOR_BAD}*${PORTAGE_COLOR_NORMAL} Invalid use of internal function __elog_base(), next message will not be logged"
-			return 1
-			;;
-	esac
 	echo -e "$@" | while read -r ; do
-		echo "${messagetype} ${REPLY}" >> \
-			"${T}/logging/${EBUILD_PHASE:-other}"
-	done
+		echo "${messagetype} ${REPLY}"
+	done >> "${T}/logging/${EBUILD_PHASE:-other}"
 	return 0
 }
 
@@ -289,8 +254,8 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+	done >&2
 	LAST_E_CMD="eqawarn"
 	return 0
 }
@@ -299,8 +264,8 @@ elog() {
 	__elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+	done >&2
 	LAST_E_CMD="elog"
 	return 0
 }
@@ -309,8 +274,8 @@ einfo() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+	done >&2
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -327,8 +292,8 @@ ewarn() {
 	__elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}"
+	done >&2
 	LAST_E_CMD="ewarn"
 	return 0
 }
@@ -337,8 +302,8 @@ eerror() {
 	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
-	done
+		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}"
+	done >&2
 	LAST_E_CMD="eerror"
 	return 0
 }
@@ -356,7 +321,7 @@ ebegin() {
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
-	let ++__EBEGIN_EEND_COUNT
+	(( ++__EBEGIN_EEND_COUNT ))
 	return 0
 }
 
@@ -380,7 +345,7 @@ __eend() {
 		printf "%$(( COLS - LAST_E_LEN - 7 ))s%b\n" '' "${msg}" >&2
 	fi
 
-	return ${retval}
+	return "${retval}"
 }
 
 eend() {
@@ -392,10 +357,10 @@ eend() {
 		eqawarn "QA Notice: eend called without preceding ebegin in ${FUNCNAME[1]}"
 	fi
 
-	__eend ${retval} eerror "$*"
+	__eend "${retval}" eerror "$*"
 
 	LAST_E_CMD="eend"
-	return ${retval}
+	return "${retval}"
 }
 
 __unset_colors() {
@@ -430,8 +395,11 @@ __set_colors() {
 	# Now, ${ENDCOL} will move us to the end of the
 	# column; regardless of character width
 	ENDCOL=$'\e[A\e['$(( COLS - 8 ))'C'
-	if [[ -n "${PORTAGE_COLORMAP}" ]]; then
-		eval ${PORTAGE_COLORMAP}
+	# shellcheck disable=2034
+	if [[ ${PORTAGE_COLORMAP} ]]; then
+		# The PORTAGE_COLORMAP environment variable is defined by the
+		# doebuild.py unit and is intended to be evaluated as code.
+		eval "${PORTAGE_COLORMAP}"
 	else
 		PORTAGE_COLOR_BAD=$'\e[31;01m'
 		PORTAGE_COLOR_BRACKET=$'\e[34;01m'
@@ -448,7 +416,6 @@ __set_colors() {
 
 RC_ENDCOL="yes"
 RC_INDENTATION=''
-RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
 
 
@@ -584,23 +551,22 @@ has() {
 }
 
 __repo_attr() {
-	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
-	shopt -s extglob
-	while read line; do
-		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
-		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
-		# If a conditional expression like [[ ${line} == $2*( )=* ]] is used
-		# then bash-3.2 produces an error like the following when the file is
-		# sourced: syntax error in conditional expression: unexpected token `('
-		# Therefore, use a regular expression for compatibility.
-		if [[ ${appropriate_section} == 1 && ${line} =~ ^${2}[[:space:]]*= ]]; then
-			echo "${line##$2*( )=*( )}"
-			exit_status=0
+	local section key val i
+	local -a records
+
+	mapfile -td '' records < <(configparser <<<"${PORTAGE_REPOSITORIES}")
+
+	for (( i = 0; i < ${#records[@]}; i += 3 )); do
+		section=${records[i]}
+		key=${records[i + 1]}
+		if [[ ${section} == "$1" && ${key} == "$2" ]]; then
+			val=${records[i + 2]}
 			break
 		fi
-	done <<< "${PORTAGE_REPOSITORIES}"
-	eval "${saved_extglob_shopt}"
-	return ${exit_status}
+	done
+
+	# Only print the found value in the case that configparser succeeded.
+	wait "$!" && [[ -v val ]] && printf '%s\n' "${val}"
 }
 
 # eqaquote <string>
@@ -723,36 +689,102 @@ contains_word() {
 # Invoke GNU find(1) in such a way that the paths to be searched are consumed
 # as a list of one or more null-terminated records from STDIN. The positional
 # parameters shall be conveyed verbatim and are guaranteed to be treated as
-# options and/or primaries, provided that the version of GNU findutils is 4.9.0
-# or greater. For older versions, no such guarantee is made.
+# options and/or primaries. This requires GNU findutils >=4.9.0.
 find0() {
-	if printf '/\0' | find -files0-from - -maxdepth 0 &>/dev/null; then
-		find0() {
-			find -files0-from - "$@"
-		}
-	else
-		# This is a temporary workaround for the GitHub CI runner, which
-		# suffers from an outdated version of findutils, per bug 957550.
-		find0() {
-			local -a opts paths
-
-			# All of -H, -L and -P are options. If specified, they
-			# must precede pathnames and primaries alike.
-			while [[ $1 == -[HLP] ]]; do
-				opts+=("$1")
-				shift
-			done
-			mapfile -td '' paths
-			if (( ${#paths[@]} )); then
-				find "${opts[@]}" "${paths[@]}" "$@"
-			fi
-		}
-	fi
-
-	find0 "$@"
+	find -files0-from - "$@"
 }
 
-# Initialise the function now because find0() is normally called after forking.
-find0 < /dev/null
+# Consumes the standard input and attempts to parse it as the "configparser"
+# configuration file format that is native to python. Each key/value entry
+# shall be printed in the format of "%s\0%s\0%s\0", <section>, <key>, <value>.
+# If the entirety of the input can be successfully parsed, the return value
+# shall be 0. Otherwise, a diagnostic message shall be printed to standard
+# error and the return value shall be greater than 0. Upon encountering the
+# first error of syntax, no further key/value entries shall be printed.
+configparser() {
+	local IFS next_{section,key} reset_extglob scalar_val section flush key_i line key nr i
+	local -a next_val lines val
+	local -A seen
+
+	reset_extglob=$(shopt -p extglob)
+	shopt -s extglob
+	IFS=$'\n'
+
+	# https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
+	mapfile -t lines
+	for nr in "${!lines[@]}"; do
+		# Trim trailing whitespace characters.
+		line=${lines[nr++]%%+([[:space:]])}
+
+		# Count and trim leading whitespace characters.
+		[[ ${line} =~ ^[[:space:]]* ]]
+		if (( i = ${#BASH_REMATCH} )); then
+			line=${line:i}
+		fi
+
+		if [[ ${line} == [#\;]* ]]; then
+			# Encountered a comment.
+			false
+		elif (( ${#val[@]} && (${#line} == 0 || i > key_i) )); then
+			# Encountered the continuation of a multiline value.
+			val+=( "${line}" )
+			false
+		elif (( ${#line} == 0 )); then
+			# Encountered an empty line that is not a continuation.
+			true
+		elif [[ ${line} =~ ^\[(.+)\]$ ]]; then
+			# Encountered a new section.
+			next_section=${BASH_REMATCH[1]}
+			seen=()
+		elif [[ ${line} =~ ^([^:=]+)[:=][[:space:]]*(.*) ]]; then
+			# Encountered the beginning of a key/value entry.
+			next_key=${BASH_REMATCH[1]%%*([[:space:]])}
+			if let 'seen[$next_key]++'; then
+				printf >&2 \
+					'configparser: duplicate key in section %s at STDIN[%d]: %s\n' \
+					"${section@Q}" "${nr}" "${line@Q}"
+				eval "${reset_extglob}"
+				return 1
+			elif [[ ! ${section} ]]; then
+				printf >&2 \
+					'configparser: key declared before section at STDIN[%d]: %s\n' \
+					"${nr}" "${line@Q}"
+				eval "${reset_extglob}"
+				return 1
+			fi
+			next_val=( "${BASH_REMATCH[2]}" )
+			key_i=$i
+		else
+			printf >&2 \
+				'configparser: syntax error at STDIN[%d]: %s\n' \
+				"${nr}" "${line@Q}"
+			eval "${reset_extglob}"
+			return 1
+		fi && flush=1
+
+		if (( nr == ${#lines[@]} - 1 )); then
+			# Last line encountered. Flush any pending value.
+			flush=1
+		fi
+
+		if (( flush && ${#val[@]} )); then
+			# Print section, key and value, null-terminated.
+			scalar_val=${val[*]}
+			scalar_val=${scalar_val%%+($'\n')}
+			printf '%s\0' "${section}" "${key}" "${scalar_val}"
+			val=()
+		fi
+
+		section=${next_section}
+		key=${next_key}
+		if (( ${#next_val[@]} )); then
+			val=( "${next_val[@]}" )
+			next_val=()
+		fi
+		flush=0
+	done
+
+	eval "${reset_extglob}"
+}
 
 true

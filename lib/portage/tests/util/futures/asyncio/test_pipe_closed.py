@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Gentoo Authors
+# Copyright 2018-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -9,10 +9,8 @@ import socket
 import tempfile
 
 from portage.tests import TestCase
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures.unix_events import (
-    DefaultEventLoopPolicy,
     _set_nonblocking,
 )
 
@@ -53,10 +51,6 @@ class ReaderPipeClosedTestCase(_PipeClosedTestCase, TestCase):
     """
 
     def _do_test(self, read_end, write_end):
-        initial_policy = asyncio.get_event_loop_policy()
-        if not isinstance(initial_policy, DefaultEventLoopPolicy):
-            asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
-
         loop = asyncio._wrap_loop()
         read_end = os.fdopen(read_end, "rb", 0)
         write_end = os.fdopen(write_end, "wb", 0)
@@ -82,10 +76,6 @@ class ReaderPipeClosedTestCase(_PipeClosedTestCase, TestCase):
             loop.remove_reader(read_end.fileno())
             write_end.close()
             read_end.close()
-            asyncio.set_event_loop_policy(initial_policy)
-            if loop not in (None, global_event_loop()):
-                loop.close()
-                self.assertFalse(global_event_loop().is_closed())
 
 
 class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
@@ -95,10 +85,6 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
     """
 
     def _do_test(self, read_end, write_end):
-        initial_policy = asyncio.get_event_loop_policy()
-        if not isinstance(initial_policy, DefaultEventLoopPolicy):
-            asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
-
         loop = asyncio._wrap_loop()
         read_end = os.fdopen(read_end, "rb", 0)
         write_end = os.fdopen(write_end, "wb", 0)
@@ -146,7 +132,3 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
             loop.remove_writer(write_end.fileno())
             write_end.close()
             read_end.close()
-            asyncio.set_event_loop_policy(initial_policy)
-            if loop not in (None, global_event_loop()):
-                loop.close()
-                self.assertFalse(global_event_loop().is_closed())

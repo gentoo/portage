@@ -1,4 +1,4 @@
-# Copyright 2010-2023 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -106,24 +106,6 @@ from portage.package.ebuild._config.helper import (
     ordered_by_atom_specificity,
     prune_incremental,
 )
-
-
-_feature_flags_cache = {}
-
-
-def _get_feature_flags(eapi_attrs):
-    cache_key = (eapi_attrs.feature_flag_test,)
-    flags = _feature_flags_cache.get(cache_key)
-    if flags is not None:
-        return flags
-
-    flags = []
-    if eapi_attrs.feature_flag_test:
-        flags.append("test")
-
-    flags = frozenset(flags)
-    _feature_flags_cache[cache_key] = flags
-    return flags
 
 
 def autouse(myvartree, use_cache=1, mysettings=None):
@@ -1230,8 +1212,8 @@ class config:
             "PKG_CONFIG_.*",
         )
 
-        broot_only_variables_re = re.compile(r"^(%s)$" % "|".join(broot_only_variables))
-        eroot_only_variables_re = re.compile(r"^(%s)$" % "|".join(eroot_only_variables))
+        broot_only_variables_re = re.compile(rf"^({'|'.join(broot_only_variables)})$")
+        eroot_only_variables_re = re.compile(rf"^({'|'.join(eroot_only_variables)})$")
 
         broot_env_d_path = os.path.join(broot or "/", "etc", "profile.env")
         eroot_env_d_path = os.path.join(eroot or "/", "etc", "profile.env")
@@ -2214,20 +2196,6 @@ class config:
                 "BASH_FUNC____in_portage_iuse%%"
             ] = "() { [[ $1 =~ ${PORTAGE_IUSE} ]]; }"
 
-        ebuild_force_test = not restrict_test and self.get("EBUILD_FORCE_TEST") == "1"
-
-        if "test" in explicit_iuse or iuse_implicit_match("test"):
-            if "test" in self.features:
-                if ebuild_force_test and "test" in self.usemask:
-                    self.usemask = frozenset(x for x in self.usemask if x != "test")
-            if restrict_test or ("test" in self.usemask and not ebuild_force_test):
-                # "test" is in IUSE and USE=test is masked, so execution
-                # of src_test() probably is not reliable. Therefore,
-                # temporarily disable FEATURES=test just for this package.
-                self["FEATURES"] = " ".join(
-                    x for x in sorted(self.features) if x != "test"
-                )
-
         # Allow _* flags from USE_EXPAND wildcards to pass through here.
         use.difference_update(
             [
@@ -2685,7 +2653,7 @@ class config:
                 self._accept_chost_re = re.compile(".*")
             elif len(accept_chost) == 1:
                 try:
-                    self._accept_chost_re = re.compile(r"^%s$" % accept_chost[0])
+                    self._accept_chost_re = re.compile(rf"^{accept_chost[0]}$")
                 except re.error as e:
                     writemsg(
                         _("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")
@@ -2695,9 +2663,7 @@ class config:
                     self._accept_chost_re = re.compile("^$")
             else:
                 try:
-                    self._accept_chost_re = re.compile(
-                        r"^(%s)$" % "|".join(accept_chost)
-                    )
+                    self._accept_chost_re = re.compile(rf"^({'|'.join(accept_chost)})$")
                 except re.error as e:
                     writemsg(
                         _("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")

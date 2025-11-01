@@ -277,51 +277,39 @@ process_ar() {
 	fi
 }
 
-get_inode_number() {
-	if  [[ ${USERLAND} == BSD ]]; then
-		get_inode_number() {
-			stat -f '%i' "$1"
-		}
-	else
-		get_inode_number() {
-			stat -c '%i' "$1"
-		}
-	fi
+if  [[ ${USERLAND} == BSD ]]; then
+	get_inode_number() {
+		stat -f '%i' "$1"
+	}
+else
+	get_inode_number() {
+		stat -c '%i' "$1"
+	}
+fi
 
-	get_inode_number "$@"
-}
+if hash getfattr 2>/dev/null; then
+	dump_xattrs() {
+		getfattr -d -m - --absolute-names "$1"
+	}
+else
+	dump_xattrs() {
+		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" \
+		"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
+	}
+fi
 
-dump_xattrs() {
-	if hash getfattr 2>/dev/null; then
-		dump_xattrs() {
-			getfattr -d -m - --absolute-names "$1"
-		}
-	else
-		dump_xattrs() {
-			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" \
-			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
-		}
-	fi
-
-	dump_xattrs "$@"
-}
-
-restore_xattrs() {
-	if hash setfattr 2>/dev/null; then
-		restore_xattrs() {
-			setfattr --restore=-
-		}
-	else
-		restore_xattrs() {
-			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" \
-			"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
-		}
-	fi
-
-	restore_xattrs "$@"
-}
+if hash setfattr 2>/dev/null; then
+	restore_xattrs() {
+		setfattr --restore=-
+	}
+else
+	restore_xattrs() {
+		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" \
+		"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
+	}
+fi
 
 do_ignore() {
 	local -a skip_dirs

@@ -4,7 +4,7 @@
 
 # Ensure that ver_test is available.
 if ! ___eapi_has_version_functions; then
-	source "${PORTAGE_BIN_PATH:?}/eapi7-ver-funcs.sh" || exit
+	source "${PORTAGE_BIN_PATH:?}/version-functions.sh" || exit
 fi
 
 pkgconfig_check() {

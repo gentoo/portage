@@ -1,14 +1,9 @@
 #!/usr/bin/env python
-# Copyright 2009-2022 Gentoo Authors
+# Copyright 2009-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import signal
-
-# For compatibility with Python < 3.8
-raise_signal = getattr(
-    signal, "raise_signal", lambda signum: os.kill(os.getpid(), signum)
-)
 
 
 # Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
@@ -66,10 +61,11 @@ try:
     from portage.dep import _repo_separator
     from portage.output import colorize, EOutput
     from portage.package.ebuild._parallel_manifest.ManifestScheduler import (
-        ManifestScheduler,
+        manifest_scheduler_retry,
     )
     from portage.util import cmp_sort_key, writemsg_level, no_color
     from portage.util._async.AsyncFunction import AsyncFunction
+    from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
     from portage.util._async.run_main_scheduler import run_main_scheduler
     from portage.util._async.TaskScheduler import TaskScheduler
     from portage.util._eventloop.global_event_loop import global_event_loop
@@ -77,7 +73,7 @@ try:
     from portage import cpv_getkey
     from portage.dep import Atom, isjustname
     from portage.versions import vercmp
-    from _emerge.MetadataRegen import MetadataRegen
+    from _emerge.MetadataRegen import metadata_regen_retry
 
     try:
         from xml.etree import ElementTree
@@ -325,15 +321,22 @@ try:
             write_auxdb = (
                 external_cache_only or "metadata-transfer" in portdb.settings.features
             )
-            self._regen = MetadataRegen(
-                portdb,
-                cp_iter=cp_iter,
-                consumer=self._metadata_callback,
-                max_jobs=max_jobs,
-                max_load=max_load,
-                write_auxdb=write_auxdb,
-                main=True,
+            self._regen_task = AsyncTaskFuture(
+                future=metadata_regen_retry(
+                    portdb,
+                    cp_iter=cp_iter,
+                    consumer=self._metadata_callback,
+                    max_jobs=max_jobs,
+                    max_load=max_load,
+                    write_auxdb=write_auxdb,
+                    main=True,
+                )
             )
+            self._regen = TaskScheduler(
+                iter([self._regen_task]),
+                event_loop=global_event_loop(),
+            )
+
             self.returncode = os.EX_OK
             conf = portdb.repositories.get_repo_for_location(tree)
             if external_cache_only:
@@ -450,6 +453,9 @@ try:
                 sys.exit(128 + signum)
 
             self.returncode |= self._regen.returncode
+
+            # Raise an unexpected exception if one occurred.
+            self._regen_task.future.result()
 
             for trg_cache in self._trg_caches:
                 self._cleanse_cache(trg_cache)
@@ -1345,20 +1351,27 @@ try:
                 cp_iter = iter(atoms)
 
             event_loop = global_event_loop()
-            scheduler = ManifestScheduler(
-                portdb,
-                cp_iter=cp_iter,
-                gpg_cmd=gpg_cmd,
-                gpg_vars=gpg_vars,
-                force_sign_key=force_sign_key,
-                max_jobs=options.jobs,
-                max_load=options.load_average,
-                event_loop=event_loop,
+            manifest_task = AsyncTaskFuture(
+                future=manifest_scheduler_retry(
+                    portdb,
+                    cp_iter=cp_iter,
+                    gpg_cmd=gpg_cmd,
+                    gpg_vars=gpg_vars,
+                    force_sign_key=force_sign_key,
+                    max_jobs=options.jobs,
+                    max_load=options.load_average,
+                    event_loop=event_loop,
+                )
             )
+
+            scheduler = TaskScheduler(iter([manifest_task]), event_loop=event_loop)
 
             signum = run_main_scheduler(scheduler)
             if signum is not None:
                 sys.exit(128 + signum)
+
+            # Raise an unexpected exception if one occurred.
+            manifest_task.future.result()
 
             if options.tolerant:
                 ret.append(os.EX_OK)
@@ -1391,4 +1404,4 @@ except KeyboardInterrupt as e:
     # Prevent traceback on ^C
     signum = getattr(e, "signum", signal.SIGINT)
     signal.signal(signum, signal.SIG_DFL)
-    raise_signal(signum)
+    signal.raise_signal(signum)
