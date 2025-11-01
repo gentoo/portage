@@ -3663,7 +3663,7 @@ class depgraph:
                     continue
                 dep = Dependency(
                     atom=atom,
-                    blocker=False,
+                    blocker=None,
                     depth=depth,
                     parent=pkg,
                     priority=self._priority(cross=self._cross(pkg.root), runtime=True),
@@ -4700,7 +4700,7 @@ class depgraph:
                 # Note: Eventually this will check for PROPERTIES=virtual
                 # or whatever other metadata gets implemented for this
                 # purpose.
-                if x.cp.startswith("virtual/"):
+                if x.category == "virtual":
                     disjunctions.append(x)
                 else:
                     yield x
@@ -5121,8 +5121,10 @@ class depgraph:
                 if len(expanded_atoms) > 1:
                     number_of_virtuals = 0
                     for expanded_atom in expanded_atoms:
-                        if expanded_atom.cp.startswith(
-                            ("acct-group/", "acct-user/", "virtual/")
+                        if expanded_atom.category in (
+                            "acct-group",
+                            "acct-user",
+                            "virtual",
                         ):
                             number_of_virtuals += 1
                         else:
@@ -5152,7 +5154,8 @@ class depgraph:
                     if virts_p:
                         # Allow the depgraph to choose which virtual.
                         atom = Atom(
-                            null_atom.replace("null/", "virtual/", 1), allow_repo=True
+                            str(null_atom).replace("null/", "virtual/", 1),
+                            allow_repo=True,
                         )
                     else:
                         atom = null_atom
@@ -5304,7 +5307,7 @@ class depgraph:
             pprovideddict = pkgsettings.pprovideddict
             virtuals = pkgsettings.getvirtuals()
 
-            for atom in sorted(arg.pset.getAtoms()):
+            for atom in sorted(arg.pset.getAtoms(), key=str):
                 self._spinner_update()
                 dep = Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg)
                 try:
@@ -5353,7 +5356,7 @@ class depgraph:
                         pprovided_match = False
                         for virt_choice in virtuals.get(atom.cp, []):
                             expanded_atom = portage.dep.Atom(
-                                atom.replace(atom.cp, virt_choice.cp, 1)
+                                str(atom).replace(atom.cp, virt_choice.cp, 1)
                             )
                             pprovided = pprovideddict.get(expanded_atom.cp)
                             if pprovided and portage.match_from_list(
@@ -5393,7 +5396,7 @@ class depgraph:
                     if atom.cp != pkg.cp:
                         # For old-style virtuals, we need to repeat the
                         # package.provided check against the selected package.
-                        expanded_atom = atom.replace(atom.cp, pkg.cp)
+                        expanded_atom = str(atom).replace(atom.cp, pkg.cp)
                         pprovided = pprovideddict.get(pkg.cp)
                         if pprovided and portage.match_from_list(
                             expanded_atom, pprovided
@@ -5955,7 +5958,7 @@ class depgraph:
         if not isinstance(atom, Atom):
             atom = Atom(atom)
 
-        if not atom.cp.startswith("virtual/"):
+        if atom.category != "virtual":
             yield atom
             return
 
@@ -6783,7 +6786,7 @@ class depgraph:
             mask_docs = True
         else:
             cp_exists = False
-            if atom.package and not atom.cp.startswith("null/"):
+            if atom.package and atom.category != "null":
                 for pkg in self._iter_match_pkgs_any(root_config, Atom(atom.cp)):
                     cp_exists = True
                     break
@@ -8453,7 +8456,7 @@ class depgraph:
 
         self._set_args(args)
         for arg in self._expand_set_args(args, add_to_digraph=True):
-            for atom in sorted(arg.pset.getAtoms()):
+            for atom in sorted(arg.pset.getAtoms(), key=str):
                 if not self._add_dep(
                     Dependency(
                         atom=atom,
@@ -8766,7 +8769,7 @@ class depgraph:
                             show_invalid_depstring_notice(pkg, atoms)
                             return False
                         blocker_atoms = [myatom for myatom in atoms if myatom.blocker]
-                        blocker_atoms.sort()
+                        blocker_atoms.sort(key=str)
                         blocker_cache[cpv] = blocker_cache.BlockerData(
                             pkg.counter, blocker_atoms
                         )
@@ -11193,7 +11196,7 @@ class depgraph:
             # added via _add_pkg() so that they are included in the
             # digraph (needed at least for --tree display).
             for arg in self._expand_set_args(args, add_to_digraph=True):
-                for atom in sorted(arg.pset.getAtoms()):
+                for atom in sorted(arg.pset.getAtoms(), key=str):
                     pkg, existing_node = self._select_package(
                         arg.root_config.root, atom
                     )
@@ -11495,7 +11498,7 @@ class _dep_check_composite_db(dbapi):
         if (
             pkg is not None
             and atom.sub_slot is None
-            and pkg.cp.startswith("virtual/")
+            and pkg.category == "virtual"
             and (
                 (
                     "remove" not in self._depgraph._dynamic_config.myparams
@@ -11587,7 +11590,7 @@ class _dep_check_composite_db(dbapi):
                 if not self._depgraph._equiv_ebuild_visible(pkg):
                     return False
 
-        if pkg.cp.startswith("virtual/"):
+        if pkg.category == "virtual":
             if not self._depgraph._virt_deps_visible(pkg, ignore_use=True):
                 return False
 

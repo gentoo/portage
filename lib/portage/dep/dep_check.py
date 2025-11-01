@@ -169,7 +169,7 @@ def _expand_new_virtuals(
         matches.reverse()
         for pkg in matches:
             # only use new-style matches
-            if pkg.cp.startswith("virtual/"):
+            if pkg.category == "virtual":
                 pkgs.append(pkg)
 
         mychoices = []
@@ -211,7 +211,7 @@ def _expand_new_virtuals(
             # Allow the depgraph to map this atom back to the
             # original, in order to avoid distortion in places
             # like display or conflict resolution code.
-            virt_atom.__dict__["_orig_atom"] = x
+            virt_atom.__setattr__("_orig_atom", x)
 
             # According to GLEP 37, RDEPEND is the only dependency
             # type that is valid for new-style virtuals. Repoman
@@ -580,7 +580,7 @@ def dep_zapdeps(
                     parent, avail_pkg
                 ):
                     want_update = True
-                if not slot_atom.cp.startswith("virtual/") and not graph_db.match_pkgs(
+                if slot_atom.category != "virtual" and not graph_db.match_pkgs(
                     slot_atom
                 ):
                     new_slot_count += 1
@@ -602,7 +602,7 @@ def dep_zapdeps(
             all_installed = True
             for atom in {Atom(atom.cp) for atom in atoms if not atom.blocker}:
                 # New-style virtuals have zero cost to install.
-                if not vardb.match(atom) and not atom.startswith("virtual/"):
+                if not vardb.match(atom) and atom.category != "virtual":
                     all_installed = False
                     break
             all_installed_slots = False
@@ -610,9 +610,7 @@ def dep_zapdeps(
                 all_installed_slots = True
                 for slot_atom in slot_map:
                     # New-style virtuals have zero cost to install.
-                    if not vardb.match(slot_atom) and not slot_atom.startswith(
-                        "virtual/"
-                    ):
+                    if not vardb.match(slot_atom) and slot_atom.category != "virtual":
                         all_installed_slots = False
                         break
             this_choice.all_installed_slots = all_installed_slots
@@ -638,7 +636,7 @@ def dep_zapdeps(
                 all_in_graph = True
                 for atom in atoms:
                     # New-style virtuals have zero cost to install.
-                    if atom.blocker or atom.cp.startswith("virtual/"):
+                    if atom.blocker or atom.category == "virtual":
                         continue
                     # We check if the matched package has actually been
                     # added to the digraph, in order to distinguish between
@@ -1063,7 +1061,7 @@ def dep_wordreduce(mydeplist, mysettings, mydbapi, mode, use_cache=1):
             )
         elif deplist[mypos] == "||":
             pass
-        elif token[:1] == "!":
+        elif str(token).startswith("!"):
             deplist[mypos] = False
         else:
             mykey = deplist[mypos].cp
@@ -1091,7 +1089,7 @@ def dep_wordreduce(mydeplist, mysettings, mydbapi, mode, use_cache=1):
                     mydep = mydbapi.match(deplist[mypos], use_cache=use_cache)
                 if mydep is not None:
                     tmp = len(mydep) >= 1
-                    if deplist[mypos][0] == "!":
+                    if str(deplist[mypos]).startswith("!"):
                         tmp = False
                     deplist[mypos] = tmp
                 else:

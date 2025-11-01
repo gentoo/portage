@@ -104,7 +104,7 @@ def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
                 if atom.slot_operator is not None:
                     slot_part += atom.slot_operator
 
-                split_content[i] = atom.with_slot(slot_part)
+                split_content[i] = str(atom.with_slot(slot_part))
                 modified = True
 
             if modified:

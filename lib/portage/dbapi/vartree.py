@@ -1919,7 +1919,7 @@ class dblink:
         # Sort atoms so that locks are acquired in a predictable
         # order, preventing deadlocks with competitors that may
         # be trying to acquire overlapping locks.
-        slot_atoms.sort()
+        slot_atoms.sort(key=str)
         for slot_atom in slot_atoms:
             self.vartree.dbapi._slot_lock(slot_atom)
             self._slot_locks.append(slot_atom)
