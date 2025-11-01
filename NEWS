@@ -6,25 +6,48 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.70 (UNRELEASED)
+portage-3.0.70 (2025-11-01)
 --------------
+
+Lots of Python 3.14 compatibility fixes: the default multiprocessing start
+method for Linux became 'forkserver' and we've run into a bunch of issues,
+some on the CPython side, and some on the Portage side.
+
+Testing this release (and master) with Python 3.14 is encouraged. It works
+but users may run into the odd problem. Bug reports appreciated.
 
 Features:
 
-* Prefer the 'Last-Modified' over the 'timestamp' HTTP header when
-  querying binhosts.
-
 * Enable sync-git-verify-commit-signature for the 'gentoo' repository
-  per default.
+  per default (bug #901385, bug #959831).
+
+  Accompanied by the 2025-11-01-portage-git-sync-verify news item in
+  gentoo-news.git.
+
+* sync-openpgp-key-refresh in portage(5) now supports more options:
+  'wkd', 'keyserver', and 'false-nowarn' to allow choosing the specific
+  refresh methods used and to suppress warnings if someone doesn't want
+  verification for a repo (bug #661518).
 
 Bug fixes:
 
-* Fix timestamp comparison for Packages index by using UTC consistently
-  (bug #962832).
+* Many multiprocessing-related fixes for Python 3.14.
+
+* bintree: Fix crash when binhost is unavailable (bug #965098).
+
+* bintree: Fix argument error / crash (bug #965098).
+
+* gpkg: Decode 'gpg-status' correctly for compatibility with other
+  GPG implementations like app-crypt/sequoia-chameleon-gnupg.
+
+* emerge-webrsync: Fix curl support.
+
+* Improve Portage regex for parsing dependencies.
 
 Cleanups:
 
 * Drop legacy USE=test hacks.
+
 * Replace FEATURES=export-pms-vars with Portage development feature
   PORTAGE_DO_NOT_EXPORT_PMS_VARS (bug #953842)
 
