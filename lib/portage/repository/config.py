@@ -262,7 +262,7 @@ class RepoConfig:
                 writemsg(
                     "\n!!! The following atoms are invalid in %s attribute for "
                     "repo [%s] (only package names and slot atoms allowed):\n"
-                    "\n    %s\n" % (opt, name, "\n    ".join(bad_atoms))
+                    "\n    %s\n" % (opt, name, "\n    ".join(str(a) for a in bad_atoms))
                 )
                 for a in bad_atoms:
                     usepkg_atoms.remove(a)
@@ -278,7 +278,7 @@ class RepoConfig:
             writemsg(
                 "\n!!! The following atoms appear in both the usepkg-exclude "
                 "usepkg-include lists for repo [%s]:\n"
-                "\n    %s\n" % (name, "\n    ".join(conflicted_atoms))
+                "\n    %s\n" % (name, "\n    ".join(str(a) for a in conflicted_atoms))
             )
             for a in conflicted_atoms:
                 self.usepkg_exclude.remove(a)
@@ -1468,7 +1468,7 @@ class RepoConfigLoader:
                     elif key in _str_tuple_keys:
                         config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
-                            " ".join(getattr(repo, key)),
+                            " ".join(str(x) for x in getattr(repo, key)),
                         )
                     elif key in _repo_config_tuple_keys:
                         config_string += "{} = {}\n".format(

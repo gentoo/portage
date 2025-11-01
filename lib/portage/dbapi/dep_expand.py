@@ -47,7 +47,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 
     if has_cat:
         # Optimize most common cases to avoid calling cpv_expand.
-        if not mydep.cp.startswith("virtual/"):
+        if mydep.category != "virtual":
             return mydep
         if not hasattr(mydb, "cp_list") or mydb.cp_list(mydep.cp):
             return mydep
@@ -55,4 +55,4 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
         mydep = mydep.cp
 
     expanded = cpv_expand(mydep, mydb=mydb, use_cache=use_cache, settings=settings)
-    return Atom(orig_dep.replace(mydep, expanded, 1), allow_repo=True)
+    return Atom(str(orig_dep).replace(mydep, expanded, 1), allow_repo=True)

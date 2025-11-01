@@ -77,7 +77,10 @@ class StaticFileSet(EditablePackageSet):
     def write(self):
         write_atomic(
             self._filename,
-            "".join(f"{atom}\n" for atom in sorted(chain(self._atoms, self._nonatoms))),
+            "".join(
+                f"{atom}\n"
+                for atom in sorted(chain(self._atoms, self._nonatoms), key=str)
+            ),
         )
 
     def load(self):
@@ -305,7 +308,9 @@ class WorldSelectedPackagesSet(EditablePackageSet):
         return ValidAtomValidator(atom, allow_repo=True)
 
     def write(self):
-        write_atomic(self._filename, "".join(sorted(f"{x}\n" for x in self._atoms)))
+        write_atomic(
+            self._filename, "".join(sorted((f"{x}\n" for x in self._atoms), key=str))
+        )
 
     def load(self):
         atoms = []
@@ -401,7 +406,9 @@ class WorldSelectedSetsSet(EditablePackageSet):
         return setname.startswith(SETPREFIX)
 
     def write(self):
-        write_atomic(self._filename, "".join(sorted(f"{x}\n" for x in self._nonatoms)))
+        write_atomic(
+            self._filename, "".join(sorted((f"{x}\n" for x in self._nonatoms), key=str))
+        )
 
     def load(self):
         atoms_changed = False

@@ -67,7 +67,8 @@ class BinRepoConfig:
             writemsg(
                 "\n!!! The following atoms appear in both the getbinpkg-exclude "
                 "getbinpkg-include lists for binrepo [%s]:\n"
-                "\n    %s\n" % (self.name, "\n    ".join(conflicted_atoms))
+                "\n    %s\n"
+                % (self.name, "\n    ".join(str(a) for a in conflicted_atoms))
             )
             for a in conflicted_atoms:
                 self.getbinpkg_exclude.remove(a)

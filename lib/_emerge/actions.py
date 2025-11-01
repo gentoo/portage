@@ -1758,8 +1758,8 @@ def action_deselect(settings, trees, opts, atoms):
         expanded_atoms = set(atoms)
 
         for atom in atoms:
-            if not atom.startswith(SETPREFIX):
-                if atom.cp.startswith("null/"):
+            if not str(atom).startswith(SETPREFIX):
+                if atom.category == "null":
                     # try to expand category from world set
                     null_cat, pn = portage.catsplit(atom.cp)
                     for world_atom in world_atoms:
@@ -1767,7 +1767,7 @@ def action_deselect(settings, trees, opts, atoms):
                         if pn == world_pn:
                             expanded_atoms.add(
                                 Atom(
-                                    atom.replace("null", cat, 1),
+                                    str(atom).replace("null", cat, 1),
                                     allow_repo=True,
                                     allow_wildcard=True,
                                 )
@@ -1780,13 +1780,13 @@ def action_deselect(settings, trees, opts, atoms):
         discard_atoms = set()
         for atom in world_set:
             for arg_atom in expanded_atoms:
-                if arg_atom.startswith(SETPREFIX):
-                    if atom.startswith(SETPREFIX) and arg_atom == atom:
+                if str(arg_atom).startswith(SETPREFIX):
+                    if str(atom).startswith(SETPREFIX) and arg_atom == atom:
                         discard_atoms.add(atom)
                         break
                 else:
                     if (
-                        not atom.startswith(SETPREFIX)
+                        not str(atom).startswith(SETPREFIX)
                         and arg_atom.intersects(atom)
                         and not (arg_atom.slot and not atom.slot)
                         and not (arg_atom.repo and not atom.repo)
@@ -1794,13 +1794,13 @@ def action_deselect(settings, trees, opts, atoms):
                         discard_atoms.add(atom)
                         break
         if discard_atoms:
-            for atom in sorted(discard_atoms):
+            for atom in sorted(discard_atoms, key=str):
                 if pretend:
                     action_desc = "Would remove"
                 else:
                     action_desc = "Removing"
 
-                if atom.startswith(SETPREFIX):
+                if str(atom).startswith(SETPREFIX):
                     filename = "world_sets"
                 else:
                     filename = "world"
@@ -2103,7 +2103,7 @@ def action_info(settings, trees, myopts, myfiles):
                 if not atom.blocker:
                     atoms.append((x, atom))
 
-    myvars = sorted(set(atoms))
+    myvars = sorted(set(atoms), key=lambda t: str(t[0]))
 
     cp_map = {}
     cp_max_len = 0
@@ -2835,7 +2835,7 @@ def binpkg_selection_config(opts, settings):
         writemsg(
             "\n!!! The following atoms appear in both the --usepkg-exclude "
             "and --usepkg-include command line arguments:\n"
-            "\n    %s\n" % ("\n    ".join(conflicted_atoms))
+            "\n    %s\n" % ("\n    ".join(str(a) for a in conflicted_atoms))
         )
         for a in conflicted_atoms:
             usepkg_exclude.remove(a)
@@ -2847,14 +2847,16 @@ def binpkg_selection_config(opts, settings):
             writemsg(
                 "\n!!! The following --usepkg-exclude atoms are ignored due "
                 "to use of --nobindeps:\n"
-                "\n    %s\n" % ("\n    ".join(usepkg_exclude.getAtoms()))
+                "\n    %s\n"
+                % ("\n    ".join(str(a) for a in usepkg_exclude.getAtoms()))
             )
             usepkg_exclude.clear()
         if not usepkg_include.isEmpty():
             writemsg(
                 "\n!!! The following --usepkg-include atoms are ignored due "
                 "to use of --nobindeps:\n"
-                "\n    %s\n" % ("\n    ".join(usepkg_include.getAtoms()))
+                "\n    %s\n"
+                % ("\n    ".join(str(a) for a in usepkg_include.getAtoms()))
             )
             usepkg_include.clear()
         for repo in settings.repositories:
@@ -2863,7 +2865,10 @@ def binpkg_selection_config(opts, settings):
                     "\n!!! The following usepkg-exclude atoms for [%s] are "
                     "ignored due to use of --nobindeps:\n"
                     "\n    %s\n"
-                    % (repo.name, "\n    ".join(repo.usepkg_exclude.getAtoms()))
+                    % (
+                        repo.name,
+                        "\n    ".join(str(a) for a in repo.usepkg_exclude.getAtoms()),
+                    )
                 )
                 repo.usepkg_exclude.clear()
             if not repo.usepkg_include.isEmpty():
@@ -2871,7 +2876,10 @@ def binpkg_selection_config(opts, settings):
                     "\n!!! The following usepkg-include atoms for [%s] are "
                     "ignored due to use of --nobindeps:\n"
                     "\n    %s\n"
-                    % (repo.name, "\n    ".join(repo.usepkg_include.getAtoms()))
+                    % (
+                        repo.name,
+                        "\n    ".join(str(a) for a in repo.usepkg_include.getAtoms()),
+                    )
                 )
                 repo.usepkg_include.clear()
 
@@ -2884,7 +2892,8 @@ def binpkg_selection_config(opts, settings):
             writemsg(
                 "\n!!! The following usepkg-exclude atoms for [%s] have "
                 "been overridden by the --usepkg-include option:\n"
-                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+                "\n    %s\n"
+                % (repo.name, "\n    ".join(str(a) for a in conflicted_exclude))
             )
             for a in conflicted_exclude:
                 repo.usepkg_exclude.remove(a)
@@ -2895,7 +2904,8 @@ def binpkg_selection_config(opts, settings):
             writemsg(
                 "\n!!! The following usepkg-include atoms for [%s] have "
                 "been overridden by the --usepkg-exclude option:\n"
-                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+                "\n    %s\n"
+                % (repo.name, "\n    ".join(str(a) for a in conflicted_include))
             )
             for a in conflicted_include:
                 repo.usepkg_include.remove(a)
@@ -2908,20 +2918,20 @@ def binpkg_selection_config(opts, settings):
         writemsg(
             "\n!!! The following atoms appear in both the --getbinpkg-exclude "
             "and --getbinpkg-include command line arguments:\n"
-            "\n    %s\n" % ("\n    ".join(conflicted_atoms))
+            "\n    %s\n" % ("\n    ".join(str(a) for a in conflicted_atoms))
         )
         for a in conflicted_atoms:
             getbinpkg_exclude.remove(a)
             getbinpkg_include.remove(a)
 
     if not getbinpkg_exclude.isEmpty():
-        opts["--getbinpkg-exclude"] = list(getbinpkg_exclude)
+        opts["--getbinpkg-exclude"] = [str(a) for a in getbinpkg_exclude]
     if not getbinpkg_include.isEmpty():
-        opts["--getbinpkg-include"] = list(getbinpkg_include)
+        opts["--getbinpkg-include"] = [str(a) for a in getbinpkg_include]
     if not usepkg_exclude.isEmpty():
-        opts["--usepkg-exclude"] = list(usepkg_exclude)
+        opts["--usepkg-exclude"] = [str(a) for a in usepkg_exclude]
     if not usepkg_include.isEmpty():
-        opts["--usepkg-include"] = list(usepkg_include)
+        opts["--usepkg-include"] = [str(a) for a in usepkg_include]
 
 
 def display_missing_pkg_set(root_config, set_name):
@@ -4161,11 +4171,11 @@ def run_action(emerge_config):
                     # look at the ebuilds, since EAPI 4 allows running pkg_info
                     # on non-installed packages
                     valid_atom = dep_expand(x, mydb=vardb)
-                    if valid_atom.cp.split("/")[0] == "null":
+                    if valid_atom.category == "null":
                         valid_atom = dep_expand(x, mydb=portdb)
 
                     if (
-                        valid_atom.cp.split("/")[0] == "null"
+                        valid_atom.category == "null"
                         and emerge_config.opts.get("--usepkg") is True
                     ):
                         valid_atom = dep_expand(x, mydb=bindb)

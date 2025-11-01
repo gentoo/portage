@@ -40,9 +40,9 @@ class WorldHandler:
         maxval = len(world_atoms)
         if onProgress:
             onProgress(maxval, 0)
-        for i, atom in enumerate(sorted(world_atoms)):
+        for i, atom in enumerate(sorted(world_atoms, key=str)):
             if not isinstance(atom, portage.dep.Atom):
-                if atom.startswith(SETPREFIX):
+                if str(atom).startswith(SETPREFIX):
                     s = atom[len(SETPREFIX) :]
                     if s in sets:
                         self.okay.append(atom)
