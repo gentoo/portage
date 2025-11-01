@@ -1377,6 +1377,7 @@ class binarytree:
         for repo in reversed(list(self._binrepos_conf.values())):
             binrepo_name = repo.name or repo.name_fallback
             base_url = repo.sync_uri
+            pkgindex_uri = base_url.rstrip("/") + "/Packages"
             parsed_url = urlparse(base_url)
             host = parsed_url.hostname or ""
             port = parsed_url.port
@@ -1755,7 +1756,7 @@ class binarytree:
 
                     d["CPV"] = cpv
                     d["BASE_URI"] = remote_base_uri
-                    d["PKGINDEX_URI"] = url
+                    d["PKGINDEX_URI"] = pkgindex_uri
                     # FETCHCOMMAND and RESUMECOMMAND may be specified
                     # by binrepos.conf, and otherwise ensure that they
                     # do not propagate from the Packages index since
