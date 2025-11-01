@@ -40,7 +40,7 @@ class ProfilePackageSet(PackageSet):
                 ],
                 incremental=1,
             )
-            if x[:1] != "*"
+            if str(x)[:1] != "*"
         )
 
     def singleBuilder(self, options, settings, trees):
