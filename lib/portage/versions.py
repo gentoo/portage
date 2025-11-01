@@ -19,8 +19,11 @@ import re
 import typing
 import warnings
 from functools import lru_cache
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from collections.abc import Sequence
+
+if TYPE_CHECKING:
+    from portage.dep import Atom
 
 from portage import _unicode_decode
 from portage.eapi import _eapi_attrs, _get_eapi_attrs
@@ -603,8 +606,11 @@ def cpv_sort_key(eapi: Any = None) -> Any:
     return cmp_sort_key(cmp_cpv)
 
 
-def catsplit(mydep: str) -> list[str]:
-    return mydep.split("/", 1)
+# it would be better to fix the call sites,
+# but most of them are completely untyped,
+# and themselves use something like `str | Atom | OtherMonstrosity`
+def catsplit(mydep: "Union[str, Atom]") -> list[str]:
+    return str(mydep).split("/", 1)
 
 
 def best(mymatches: Sequence[Any], eapi: Any = None) -> Any:

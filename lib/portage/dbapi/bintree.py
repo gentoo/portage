@@ -1427,9 +1427,9 @@ class binarytree:
         else:
             gpkg_only = False
 
-        atoms = " ".join(getbinpkg_exclude or []).split()
+        atoms = " ".join(str(a) for a in (getbinpkg_exclude or [])).split()
         getbinpkg_exclude = WildcardPackageSet(atoms)
-        atoms = " ".join(getbinpkg_include or []).split()
+        atoms = " ".join(str(a) for a in (getbinpkg_include or [])).split()
         getbinpkg_include = WildcardPackageSet(atoms)
 
         # Order by descending priority.
@@ -1450,7 +1450,8 @@ class binarytree:
                 writemsg(
                     "\n!!! The following getbinpkg-exclude atoms for [%s] have "
                     "been overridden by the --getbinpkg-include option:\n"
-                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(str(a) for a in conflicted_exclude))
                 )
                 for a in conflicted_exclude:
                     getbinpkg_exclude_repo.remove(a)
@@ -1463,7 +1464,8 @@ class binarytree:
                 writemsg(
                     "\n!!! The following getbinpkg-include atoms for [%s] have "
                     "been overridden by the --getbinpkg-exclude option:\n"
-                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(str(a) for a in conflicted_include))
                 )
                 for a in conflicted_include:
                     getbinpkg_include_repo.remove(a)

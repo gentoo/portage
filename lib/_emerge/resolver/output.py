@@ -953,7 +953,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
     def perform_coloring():
         atom_str = ""
         marker_str = ""
-        for ii, x in enumerate(atom):
+        for ii, x in enumerate(str(atom)):
             if ii in highlight:
                 atom_str += colorize("BAD", x)
                 marker_str += "^"
@@ -964,7 +964,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
 
     if atom.cp != pkg.cp:
         # Highlight the cp part only.
-        ii = atom.find(atom.cp)
+        ii = str(atom).find(atom.cp)
         highlight.update(range(ii, ii + len(atom.cp)))
         return perform_coloring()
 
@@ -994,7 +994,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
             highlight.update(range(len(op)))
 
         if ver is not None:
-            start = atom.rfind(ver)
+            start = str(atom).rfind(ver)
             end = start + len(ver)
             highlight.update(range(start, end))
 
@@ -1004,7 +1004,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
             slot_str += "/" + atom.sub_slot
         if atom.slot_operator:
             slot_str += atom.slot_operator
-        start = atom.find(slot_str)
+        start = str(atom).find(slot_str)
         end = start + len(slot_str)
         highlight.update(range(start, end))
 
@@ -1027,7 +1027,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
                     )
 
     if highlight_use:
-        ii = atom.find("[") + 1
+        ii = str(atom).find("[") + 1
         for token in atom.use.tokens:
             if token.lstrip("-!").rstrip("=?") in highlight_use:
                 highlight.update(range(ii, ii + len(token)))

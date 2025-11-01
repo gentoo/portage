@@ -122,8 +122,9 @@ def _unmerge_display(
                 print(f"\nNo packages to {unmerge_action} have been provided.\n")
                 return 1, {}
             for x in unmerge_files:
-                arg_parts = x.split("/")
-                if x[0] not in [".", "/"] and arg_parts[-1][-7:] != ".ebuild":
+                x_str = str(x)  # this could be an Atom, stringify
+                arg_parts = x_str.split("/")
+                if x_str[0] not in [".", "/"] and arg_parts[-1][-7:] != ".ebuild":
                     # possible cat/pkg or dep; treat as such
                     candidate_catpkgs.append(x)
                 elif unmerge_action in ["prune", "clean"]:

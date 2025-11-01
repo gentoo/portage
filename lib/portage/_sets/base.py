@@ -5,7 +5,6 @@ from portage.dep import Atom, ExtendedAtomDict, best_match_to_list, match_from_l
 from portage.exception import InvalidAtom
 from portage.versions import cpv_getkey
 
-
 OPERATIONS = ["merge", "unmerge"]
 
 
@@ -133,7 +132,7 @@ class PackageSet:
             else:
                 rev_transform[
                     Atom(
-                        atom.replace(atom.cp, pkg.cp, 1),
+                        str(atom).replace(atom.cp, pkg.cp, 1),
                         allow_wildcard=True,
                         allow_repo=True,
                     )

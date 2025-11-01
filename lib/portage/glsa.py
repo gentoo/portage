@@ -331,7 +331,7 @@ def match(atom, dbapi, match_type="default"):
     @rtype:		list of strings
     @return:	a list with the matching versions
     """
-    if atom[2] == "~":
+    if str(atom)[2] == "~":
         return revisionMatch(atom, dbapi, match_type=match_type)
     if match_type == "default" or not hasattr(dbapi, "xmatch"):
         return dbapi.match(atom)
