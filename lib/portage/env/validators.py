@@ -14,7 +14,7 @@ def PackagesFileValidator(atom):
     Args:
         atom: a string representing an atom such as sys-apps/portage-2.1
     """
-    if atom.startswith("*") or atom.startswith("-"):
+    if str(atom).startswith("*") or str(atom).startswith("-"):
         atom = atom[1:]
     if not isvalidatom(atom):
         return False

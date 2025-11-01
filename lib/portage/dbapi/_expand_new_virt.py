@@ -16,7 +16,7 @@ def expand_new_virt(vardb, atom):
     if not isinstance(atom, Atom):
         atom = Atom(atom)
 
-    if not atom.cp.startswith("virtual/"):
+    if atom.category != "virtual":
         yield atom
         return
 
@@ -25,7 +25,7 @@ def expand_new_virt(vardb, atom):
 
     while stack:
         atom = stack.pop()
-        if atom.blocker or not atom.cp.startswith("virtual/"):
+        if atom.blocker or atom.category != "virtual":
             yield atom
             continue
 
