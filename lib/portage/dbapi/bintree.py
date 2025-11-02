@@ -1529,20 +1529,6 @@ class binarytree:
                                 # not guaranteed to exist.
                                 continue
 
-                            # This includes URLError which is raised for SSL
-                            # certificate errors when PEP 476 is supported.
-                            writemsg(
-                                _(
-                                    "\n\n!!! [%s] Error fetching binhost package"
-                                    " info from '%s'\n"
-                                )
-                                % (binrepo_name, _hide_url_passwd(base_url))
-                            )
-                            error_msg = str(err)
-                            writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
-                            del err
-                            pkgindex = None
-
                             if parsed_url.scheme in ("ftp", "http", "https"):
                                 # This protocol is supposedly supported by urlopen,
                                 # so apparently there's a problem with the url
@@ -1550,6 +1536,8 @@ class binarytree:
                                 if self.settings.get("PORTAGE_DEBUG", "0") != "0":
                                     traceback.print_exc()
 
+                                # Re-raise the OSError. It will be caught again in this function,
+                                # just above the remote_pkgindex_file loop.
                                 raise
                         except ValueError:
                             raise ParseError(
@@ -1699,6 +1687,17 @@ class binarytree:
                         _("[%s] Local copy of remote index is %s and will be used%s.\n")
                         % (binrepo_name, exc.desc, extra_info),
                     )
+            except OSError as err:
+                # This includes URLError which is raised for SSL
+                # certificate errors when PEP 476 is supported.
+                writemsg(
+                    _("\n\n!!! [%s] Error fetching binhost package" " info from '%s'\n")
+                    % (binrepo_name, _hide_url_passwd(base_url))
+                )
+                error_msg = str(err)
+                writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
+                del err
+                pkgindex = None
 
             if pkgindex is rmt_idx and changed:
                 pkgindex.modified = False  # don't update the header
