@@ -1455,8 +1455,10 @@ class binarytree:
                     # Don't use urlopen for https, unless
                     # PEP 476 is supported (bug #469888).
                     if (
-                        repo.fetchcommand is None or parsed_url.scheme in ("", "file")
-                    ) and (parsed_url.scheme not in ("https",) or _have_pep_476()):
+                        (repo.fetchcommand is None or parsed_url.scheme in ("", "file"))
+                        and (parsed_url.scheme not in ("https",) or _have_pep_476())
+                        and (parsed_url.scheme not in ("ssh",))
+                    ):
                         try:
                             if parsed_url.scheme in ("", "file"):
                                 f = open(
