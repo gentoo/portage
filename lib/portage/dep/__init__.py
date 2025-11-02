@@ -54,7 +54,7 @@ import portage.cache.mappings
 from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:
-    import _emerge.Package
+    from _emerge.Package import Package
 
 # \w is [a-zA-Z0-9_]
 
@@ -100,11 +100,7 @@ def _get_slot_dep_re(eapi_attrs: _eapi_attrs) -> re.Pattern:
     return slot_re
 
 
-def _match_slot(atom, pkg) -> bool:
-    """
-    @type atom: portage.dep.Atom
-    @type pkg: _emerge.Package.Package
-    """
+def _match_slot(atom: "Atom", pkg: "Package") -> bool:
     if pkg.slot == atom.slot:
         if not atom.sub_slot:
             return True
@@ -242,7 +238,7 @@ def _get_useflag_re(eapi):
     return _useflag_re
 
 
-def cpvequal(cpv1, cpv2):
+def cpvequal(cpv1: Union[str, _pkg_str], cpv2: Union[str, _pkg_str]) -> bool:
     """
     Example Usage:
             >>> from portage.dep import cpvequal
@@ -250,10 +246,7 @@ def cpvequal(cpv1, cpv2):
             >>> True
 
     @param cpv1: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
-    @type cpv1: String
     @param cpv2: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
-    @type cpv2: String
-    @rtype: Boolean
     @return:
             1.  True if cpv1 = cpv2
             2.  False Otherwise
@@ -490,8 +483,8 @@ def paren_enclose(
             else:
                 mystrparts.append(f"( {paren_enclose(x)} )")
         else:
-            if unevaluated_atom:
-                x = getattr(x, "unevaluated_atom", x)
+            if unevaluated_atom and isinstance(x, Atom):
+                x = x.unevaluated_atom
             mystrparts.append(str(x))
     return " ".join(mystrparts)
 
@@ -2024,14 +2017,12 @@ class Atom:
         memo[id(self)] = self
         return self
 
-    def match(self, pkg: "_emerge.Package"):
+    def match(self, pkg: "Package") -> bool:
         """
         Check if the given package instance matches this atom.
 
         @param pkg: a Package instance
-        @type pkg: Package
         @return: True if this atom matches pkg, otherwise False
-        @rtype: bool
         """
         return bool(match_from_list(self, (pkg,)))
 
@@ -2156,7 +2147,7 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
         self._normal.clear()
 
 
-def get_operator(mydep):
+def get_operator(mydep: Union[str, Atom]) -> Optional[str]:
     """
     Return the operator used in a depstring.
 
@@ -2166,8 +2157,6 @@ def get_operator(mydep):
             '>='
 
     @param mydep: The dep string to check
-    @type mydep: String
-    @rtype: String
     @return: The operator. One of:
             '~', '=', '>', '<', '=*', '>=', or '<='
     """
@@ -2177,7 +2166,7 @@ def get_operator(mydep):
     return mydep.operator
 
 
-def dep_getcpv(mydep):
+def dep_getcpv(mydep: Union[str, Atom]) -> str:
     """
     Return the category-package-version with any operators/slot specifications stripped off
 
@@ -2186,8 +2175,6 @@ def dep_getcpv(mydep):
             'media-libs/test-3.0'
 
     @param mydep: The depstring
-    @type mydep: String
-    @rtype: String
     @return: The depstring with the operator removed
     """
     if not isinstance(mydep, Atom):
@@ -2196,7 +2183,7 @@ def dep_getcpv(mydep):
     return mydep.cpv
 
 
-def dep_getslot(mydep):
+def dep_getslot(mydep: Union[str, Atom]) -> Optional[str]:
     """
     Retrieve the slot on a depend.
 
@@ -2205,13 +2192,10 @@ def dep_getslot(mydep):
             '3'
 
     @param mydep: The depstring to retrieve the slot of
-    @type mydep: String
-    @rtype: String
     @return: The slot
     """
-    slot = getattr(mydep, "slot", False)
-    if slot is not False:
-        return slot
+    if isinstance(mydep, Atom):
+        return mydep.slot
 
     # remove repo_name if present
     mydep = mydep.split(_repo_separator)[0]
@@ -2225,35 +2209,28 @@ def dep_getslot(mydep):
     return None
 
 
-def dep_getrepo(mydep):
+def dep_getrepo(mydep: Union[str, Atom]) -> Optional[str]:
     """
     Retrieve the repo on a depend.
 
     @param mydep: The depstring to retrieve the repository of
-    @type mydep: String
-    @rtype: String
     @return: The repository name
 
     Example usage:
             >>> dep_getrepo('app-misc/test::repository')
             'repository'
     """
-    repo = getattr(mydep, "repo", False)
-    if repo is not False:
-        return repo
+    if isinstance(mydep, Atom):
+        return mydep.repo
 
-    metadata = getattr(mydep, "metadata", False)
-    if metadata:
-        repo = metadata.get("repository", False)
-        if repo is not False:
-            return repo
-
+    # Handle string case
     colon = mydep.find(_repo_separator)
     if colon != -1:
         bracket = mydep.find("[", colon)
         if bracket == -1:
             return mydep[colon + 2 :]
         return mydep[colon + 2 : bracket]
+
     return None
 
 
@@ -2277,21 +2254,20 @@ def remove_slot(mydep: Union[str, Atom]) -> str:
     return mydep
 
 
-def dep_getusedeps(depend):
+def dep_getusedeps(depend: Union[str, Atom]) -> tuple[str, ...]:
     """
     Pull a listing of USE Dependencies out of a dep atom.
 
     @param depend: The depstring to process
-    @type depend: String
-    @rtype: List
-    @return: List of use flags ( or [] if no flags exist )
+    @return: Tuple of use flags (or () if no flags exist)
 
     Example usage:
             >>> dep_getusedeps('app-misc/test:3[foo,-bar]')
             ('foo', '-bar')
     """
+    depend_str = str(depend)
     use_list = []
-    open_bracket = depend.find("[")
+    open_bracket = depend_str.find("[")
     # -1 = failure (think c++ string::npos)
     comma_separated = False
     bracket_count = 0
@@ -2302,10 +2278,10 @@ def dep_getusedeps(depend):
                 _("USE Dependency with more " "than one set of brackets: %s")
                 % (depend,)
             )
-        close_bracket = depend.find("]", open_bracket)
+        close_bracket = depend_str.find("]", open_bracket)
         if close_bracket == -1:
             raise InvalidAtom(_("USE Dependency with no closing bracket: %s") % depend)
-        use = depend[open_bracket + 1 : close_bracket]
+        use = depend_str[open_bracket + 1 : close_bracket]
         # foo[1:1] may return '' instead of None, we don't want '' in the result
         if not use:
             raise InvalidAtom(_("USE Dependency with " "no use flag ([]): %s") % depend)
@@ -2334,7 +2310,7 @@ def dep_getusedeps(depend):
             use_list.append(use)
 
         # Find next use flag
-        open_bracket = depend.find("[", open_bracket + 1)
+        open_bracket = depend_str.find("[", open_bracket + 1)
     return tuple(use_list)
 
 
@@ -2383,7 +2359,7 @@ def isvalidatom(
         return False
 
 
-def isjustname(mypkg):
+def isjustname(mypkg: Union[str, Atom]) -> bool:
     """
     Checks to see if the atom is only the package name (no version parts).
 
@@ -2394,8 +2370,6 @@ def isjustname(mypkg):
             True
 
     @param mypkg: The package atom to check
-    @param mypkg: String or Atom
-    @rtype: Integer
     @return: One of the following:
             1) False if the package string is not just the package name
             2) True if it is
@@ -2403,17 +2377,17 @@ def isjustname(mypkg):
     try:
         if not isinstance(mypkg, Atom):
             mypkg = Atom(mypkg)
-        return mypkg == mypkg.cp
+        return str(mypkg) == mypkg.cp
     except InvalidAtom:
         pass
 
-    for x in mypkg.split("-")[-2:]:
+    for x in str(mypkg).split("-")[-2:]:
         if ververify(x):
             return False
     return True
 
 
-def isspecific(mypkg):
+def isspecific(mypkg: Union[str, Atom]) -> bool:
     """
     Checks to see if a package is in =category/package-version or
     package-version format.
@@ -2425,8 +2399,6 @@ def isspecific(mypkg):
             True
 
     @param mypkg: The package depstring to check against
-    @type mypkg: String
-    @rtype: Boolean
     @return: One of the following:
             1) False if the package string is not specific
             2) True if it is
@@ -2434,7 +2406,7 @@ def isspecific(mypkg):
     try:
         if not isinstance(mypkg, Atom):
             mypkg = Atom(mypkg)
-        return mypkg != mypkg.cp
+        return str(mypkg) != mypkg.cp
     except InvalidAtom:
         pass
 
@@ -2442,7 +2414,7 @@ def isspecific(mypkg):
     return not isjustname(mypkg)
 
 
-def dep_getkey(mydep):
+def dep_getkey(mydep: Union[str, Atom]) -> str:
     """
     Return the category/package-name of a depstring.
 
@@ -2451,8 +2423,6 @@ def dep_getkey(mydep):
             'media-libs/test'
 
     @param mydep: The depstring to retrieve the category/package-name of
-    @type mydep: String
-    @rtype: String
     @return: The package category/package-name
     """
     if not isinstance(mydep, Atom):
@@ -2461,15 +2431,12 @@ def dep_getkey(mydep):
     return mydep.cp
 
 
-def match_to_list(mypkg, mylist):
+def match_to_list(mypkg: Union[str, Atom], mylist: list) -> list:
     """
     Searches list for entries that matches the package.
 
     @param mypkg: The package atom to match
-    @type mypkg: String
     @param mylist: The list of package atoms to compare against
-    @type mylist: List
-    @rtype: List
     @return: A unique list of package atoms that match the given package atom
     """
     matches = set()
@@ -2483,12 +2450,11 @@ def match_to_list(mypkg, mylist):
     return result
 
 
-def best_match_to_list(mypkg, mylist):
+def best_match_to_list(mypkg: Union[str, Atom], mylist: list) -> Optional[Atom]:
     """
     Returns the most specific entry that matches the package given.
 
     @param mypkg: The package atom to check
-    @type mypkg: String
     @param mylist: The list of package atoms to check against
     @type mylist: List
     @rtype: String
@@ -2622,11 +2588,17 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
 
     if mydep.extended_syntax:
         for x in candidate_list:
-            cp = getattr(x, "cp", None)
-            if cp is None:
+            if isinstance(x, Atom):
+                cp = x.cp
+            elif hasattr(x, "cp"):
+                # Package object
+                cp = x.cp
+            else:
                 mysplit = catpkgsplit(remove_slot(x))
                 if mysplit is not None:
                     cp = mysplit[0] + "/" + mysplit[1]
+                else:
+                    cp = None
 
             if cp is None:
                 continue
@@ -2641,8 +2613,12 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
             ver = mydep.version[1:-1]
 
             for x in candidate_list:
-                x_ver = getattr(x, "version", None)
-                if x_ver is None:
+                if isinstance(x, Atom):
+                    x_ver = x.version
+                elif hasattr(x, "version"):
+                    # Package object
+                    x_ver = x.version
+                else:
                     xs = catpkgsplit(remove_slot(x))
                     if xs is None:
                         continue
@@ -2652,11 +2628,17 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
 
     elif operator is None:
         for x in candidate_list:
-            cp = getattr(x, "cp", None)
-            if cp is None:
+            if isinstance(x, Atom):
+                cp = x.cp
+            elif hasattr(x, "cp"):
+                # Package object
+                cp = x.cp
+            else:
                 mysplit = catpkgsplit(remove_slot(x))
                 if mysplit is not None:
                     cp = mysplit[0] + "/" + mysplit[1]
+                else:
+                    cp = None
 
             if cp is None:
                 continue
@@ -2666,13 +2648,18 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
 
     elif operator == "=":  # Exact match
         for x in candidate_list:
-            xcpv = getattr(x, "cpv", None)
-            if xcpv is None:
+            if isinstance(x, Atom):
+                xcpv = x.cpv
+            elif hasattr(x, "cpv"):
+                # Package has cpv attribute - use it directly to preserve _pkg_str with build_id
+                xcpv = x.cpv
+            else:
                 xcpv = remove_slot(x)
             if not cpvequal(xcpv, mycpv):
                 continue
-            if build_id is not None and getattr(xcpv, "build_id", None) != build_id:
-                continue
+            if build_id is not None:
+                if isinstance(xcpv, _pkg_str) and xcpv.build_id != build_id:
+                    continue
             mylist.append(x)
 
     elif operator == "=*":  # glob match
@@ -2724,8 +2711,12 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
 
     elif operator == "~":  # version, any revision, match
         for x in candidate_list:
-            xs = getattr(x, "cpv_split", None)
-            if xs is None:
+            if isinstance(x, _pkg_str):
+                xs = x.cpv_split
+            elif hasattr(x, "cpv"):
+                # Package object
+                xs = x.cpv.cpv_split
+            else:
                 xs = catpkgsplit(remove_slot(x))
             if xs is None:
                 raise InvalidData(x)
@@ -2806,7 +2797,12 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
         candidate_list = mylist
         mylist = []
         for x in candidate_list:
-            use = getattr(x, "use", None)
+            # Only package objects have 'use' and 'iuse' attributes
+            if not hasattr(x, "use"):
+                mylist.append(x)
+                continue
+
+            use = x.use
             if use is not None:
                 if mydep.unevaluated_atom.use and not x.iuse.is_valid_flag(
                     mydep.unevaluated_atom.use.required
@@ -2848,8 +2844,12 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
         candidate_list = mylist
         mylist = []
         for x in candidate_list:
-            repo = getattr(x, "repo", False)
-            if repo is False:
+            if isinstance(x, Atom):
+                repo = x.repo
+            elif hasattr(x, "repo"):
+                # Package object
+                repo = x.repo
+            else:
                 repo = dep_getrepo(x)
             if repo is not None and repo != _unknown_repo and repo != mydep.repo:
                 continue
