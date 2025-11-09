@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Sep 2025" "Portage @VERSION@" "Portage"
+.TH "EMERGE" "1" "Nov 2025" "Portage @VERSION@" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -677,7 +677,9 @@ Assume that packages may have implicit dependencies on packages which
 belong to the @system set. This option is enabled by default. One of the
 effects of disabling this option is to allow the \-\-jobs option to
 spawn jobs without accounting for the possibility of implicit dependencies
-on packages that belong to the @system set.
+on packages that belong to the @system set. This option interacts with
+the \fImerge\-wait\fR and \fIparallel\-install\fR features as discussed
+in the \fBmake.conf\fR(5) man page.
 .TP
 .BR \-j\ [JOBS] ", "  \-\-jobs[=JOBS]
 Specifies the number of packages to build simultaneously. If this option is

@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Sep 2025" "Portage @VERSION@" "Portage"
+.TH "MAKE.CONF" "5" "Nov 2025" "Portage @VERSION@" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -591,12 +591,13 @@ This feature is enabled by default.
 .TP
 .B merge\-wait
 Wait for all builds to complete before merging new packages, which only
-matters when using the \fBemerge\fR(1) \fB\-\-jobs\fR option. This
-feature is always effectively enabled and it cannot be disabled for
-packages that satisfy direct or indirect dependencies of the system
-set. For other packages, it can be disabled in order to trade the
-possibility of random build failures for greater parallelism.  The queue
-can be flushed by ending the SIGUSR2 signal to \fBemerge\fR(1).
+matters when using the \fBemerge\fR(1) \fB\-\-jobs\fR option. Unless the
+\fBemerge\fR(1) \fB\-\-implicit\-system\-deps=n\fR option is used,
+\fImerge\-wait\fR is always effectively enabled for packages that satisfy
+direct or indirect dependencies of the system set. The \fImerge\-wait\fR
+feature can be disabled in order to trade the possibility of random build
+failures for greater parallelism.
+The queue can be flushed by sending the SIGUSR2 signal to \fBemerge\fR(1).
 This feature is enabled by default.
 .TP
 .B metadata\-transfer
@@ -676,7 +677,10 @@ Also disable \fImerge\-wait\fR for additional parallelism if desired,
 but that increases the possibility of random build failures. When
 \fIparallel\-install\fR is used together with \fImerge\-wait\fR,
 parallel installation occurs in batches when there are no builds
-running.
+running. Unless the \fBemerge\fR(1) \fB\-\-implicit\-system\-deps=n\fR
+option is used, \fIparallel\-install\fR is always effectively disabled
+for packages that satisfy direct or indirect dependencies of the system
+set.
 .TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it
