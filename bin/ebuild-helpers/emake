@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # emake: Run make and automatically pass along flags set in the env.  We support
@@ -10,6 +10,9 @@
 # With newer EAPIs, we also automatically fail the build if make itself fails.
 
 source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
+
+# Prevent MAKEOPTS from resetting MAKEFLAGS jobserver mode for bug 692576.
+[[ -n ${MAKEFLAGS} ]] && unset MAKEOPTS
 
 cmd=(
 	${MAKE:-make} ${MAKEOPTS} "$@" ${EXTRA_EMAKE}
