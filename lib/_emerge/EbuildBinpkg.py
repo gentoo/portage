@@ -1,8 +1,9 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
 import sys
+import tempfile
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
@@ -32,7 +33,15 @@ class EbuildBinpkg(CompositeTask):
         bintree._ensure_dir(os.path.dirname(pkg_allocated_path))
 
         self.pkg_allocated_path = pkg_allocated_path
-        self._binpkg_tmpfile = self.pkg_allocated_path + "." + str(portage.getpid())
+
+        with tempfile.NamedTemporaryFile(
+            prefix=os.path.basename(pkg_allocated_path),
+            suffix="." + str(portage.getpid()),
+            dir=os.path.dirname(pkg_allocated_path),
+            delete=False,
+        ) as binpkg_tmpfile:
+            os.fchmod(binpkg_tmpfile.fileno(), 0o644)
+            self._binpkg_tmpfile = binpkg_tmpfile.name
         self.settings["PORTAGE_BINPKG_TMPFILE"] = self._binpkg_tmpfile
 
         if "binpkg-multi-instance" in self.settings.features:
