@@ -1498,6 +1498,7 @@ def doebuild(
                         dir=binpkg_tmpfile_dir,
                         delete=False,
                     ) as binpkg_tmpfile:
+                        os.fchmod(binpkg_tmpfile.fileno(), 0o644)
                         mysettings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile.name
                 else:
                     parent_dir = os.path.join(
