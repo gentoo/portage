@@ -1,10 +1,11 @@
-# Copyright 2005-2021 Gentoo Authors
+# Copyright 2005-2025 Gentoo Authors
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
 import errno
 import re
 import stat
+import tempfile
 from operator import attrgetter
 
 import portage
@@ -149,21 +150,29 @@ class database(flat_hash.database):
                     )
 
         s = cpv.rfind("/")
-        fp = os.path.join(
-            self.location, cpv[:s], ".update.%i.%s" % (portage.getpid(), cpv[s + 1 :])
+        tempfile_kwargs = dict(
+            prefix=_unicode_encode(
+                f".update.{portage.getpid()}.{cpv[s + 1:]}",
+                encoding=_encodings["fs"],
+                errors="strict",
+            ),
+            dir=_unicode_encode(
+                os.path.join(self.location, cpv[:s]),
+                encoding=_encodings["fs"],
+                errors="strict",
+            ),
+            delete=False,
+            mode="wb",
         )
         try:
-            myf = open(
-                _unicode_encode(fp, encoding=_encodings["fs"], errors="strict"), "wb"
-            )
+            myf = tempfile.NamedTemporaryFile(**tempfile_kwargs)
+            fp = myf.name
         except OSError as e:
             if errno.ENOENT == e.errno:
                 try:
                     self._ensure_dirs(cpv)
-                    myf = open(
-                        _unicode_encode(fp, encoding=_encodings["fs"], errors="strict"),
-                        "wb",
-                    )
+                    myf = tempfile.NamedTemporaryFile(**tempfile_kwargs)
+                    fp = myf.name
                 except OSError as e:
                     raise cache_errors.CacheCorruption(cpv, e)
             else:
