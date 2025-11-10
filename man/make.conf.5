@@ -1087,8 +1087,9 @@ PORTAGE_CHECKSUM_FILTER="\-* sha256"
 .fi
 .TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
-This variable contains the command used to compress documentation during the
-install phase.
+This variable contains the name of the command used to compress documentation
+during the install phase. If set as an empty string, the documentation shall
+not be compressed.
 .TP
 \fBPORTAGE_COMPRESS_EXCLUDE_SUFFIXES\fR = \fI"gif htm[l]? jp[e]?g pdf png"\fR
 This variable contains a space delimited list of file suffixes for which
