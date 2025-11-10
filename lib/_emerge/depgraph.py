@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -693,6 +693,9 @@ class depgraph:
         self._slot_operator_check_reverse_dependencies = functools.lru_cache(
             maxsize=1000
         )(self._slot_operator_check_reverse_dependencies)
+
+        self._virt_deps_visible_recursion = set()
+        self._virtual_cycle = None
 
     def _index_binpkgs(self):
         for root in self._frozen_config.trees:
@@ -4828,6 +4831,18 @@ class depgraph:
             if spinner is not None and spinner.update is not spinner.update_quiet:
                 spinner_cb.handle = self._event_loop.call_soon(spinner_cb)
             return self._select_files(args)
+        except self._virtual_cycle_error as e:
+            self._virtual_cycle = e.value
+
+            msg = ["\n\n!!! virtual cycle detected:\n\n"]
+            for pkg in sorted(self._virtual_cycle):
+                msg.append(f"  {pkg.cpv}::{pkg.repo}\n")
+            msg.append("\n")
+
+            for chunk in msg:
+                writemsg(chunk, noiselevel=-1)
+            self._dynamic_config._skip_restart = True
+            return 0, []
         finally:
             if spinner_cb.handle is not None:
                 spinner_cb.handle.cancel()
@@ -5998,6 +6013,17 @@ class depgraph:
         useful for checking if it will be necessary to expand virtual slots,
         for cases like bug #382557.
         """
+        if pkg in self._virt_deps_visible_recursion:
+            raise self._virtual_cycle_error(list(self._virt_deps_visible_recursion))
+
+        self._virt_deps_visible_recursion.add(pkg)
+        try:
+            return self._virt_deps_visible_imp(pkg, ignore_use)
+        finally:
+            self._virt_deps_visible_recursion.remove(pkg)
+
+    def _virt_deps_visible_imp(self, pkg, ignore_use):
+
         try:
             rdepend = self._select_atoms(
                 pkg.root,
@@ -11332,6 +11358,12 @@ class depgraph:
         This is raised by _show_unsatisfied_dep() when it's called with
         check_autounmask_breakage=True and a matching package has been
         been disqualified due to autounmask changes.
+        """
+
+    class _virtual_cycle_error(_internal_exception):
+        """
+        This is raised by _virt_deps_visible when a virtual cycle is
+        detected.
         """
 
     def need_restart(self):

@@ -90,6 +90,7 @@ py.install_sources(
         'test_use_dep_defaults.py',
         'test_virtual_minimize_children.py',
         'test_virtual_slot.py',
+        'test_virtual_cycle.py',
         'test_with_test_deps.py',
         '__init__.py',
         '__test__.py',

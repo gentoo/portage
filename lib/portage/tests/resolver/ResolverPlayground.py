@@ -1034,6 +1034,7 @@ class ResolverPlaygroundResult:
         "forced_rebuilds",
         "required_use_unsatisfied",
         "graph_order",
+        "virtual_cycle",
     )
     optional_checks = (
         "forced_rebuilds",
@@ -1057,6 +1058,7 @@ class ResolverPlaygroundResult:
         self.unsatisfied_deps = frozenset()
         self.forced_rebuilds = None
         self.required_use_unsatisfied = None
+        self.virtual_cycle = None
 
         self.graph_order = [
             _mergelist_str(node, self.depgraph)
@@ -1134,6 +1136,9 @@ class ResolverPlaygroundResult:
                 required_use_unsatisfied.append(pargs[1])
         if required_use_unsatisfied:
             self.required_use_unsatisfied = set(required_use_unsatisfied)
+
+        if self.depgraph._virtual_cycle:
+            self.virtual_cycle = {pkg.cpv for pkg in self.depgraph._virtual_cycle}
 
 
 class ResolverPlaygroundDepcleanResult:
