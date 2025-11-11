@@ -63,7 +63,7 @@ try:
     from portage.package.ebuild._parallel_manifest.ManifestScheduler import (
         manifest_scheduler_retry,
     )
-    from portage.util import cmp_sort_key, writemsg_level, no_color
+    from portage.util import atomic_ofstream, cmp_sort_key, writemsg_level, no_color
     from portage.util._async.AsyncFunction import AsyncFunction
     from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
     from portage.util._async.run_main_scheduler import run_main_scheduler
@@ -669,7 +669,7 @@ try:
                             "r+b",
                         )
                     else:
-                        output = open(
+                        output = atomic_ofstream(
                             _unicode_encode(
                                 desc_path, encoding=_encodings["fs"], errors="strict"
                             ),
@@ -698,7 +698,7 @@ try:
                     )
                     self._preserve_comments = False
                     try:
-                        output = open(
+                        output = atomic_ofstream(
                             _unicode_encode(
                                 desc_path, encoding=_encodings["fs"], errors="strict"
                             ),
@@ -728,14 +728,24 @@ try:
 
                 # Finished probing comments in binary mode, now append
                 # in text mode.
-                output = open(
+                output = atomic_ofstream(
                     _unicode_encode(
                         desc_path, encoding=_encodings["fs"], errors="strict"
                     ),
-                    mode="a",
+                    mode="w",
                     encoding=_encodings["repo.content"],
                     errors="backslashreplace",
                 )
+                # Copy previous content in order to simulate "append" with atomic_ofstream.
+                with open(
+                    _unicode_encode(
+                        desc_path, encoding=_encodings["fs"], errors="strict"
+                    ),
+                    encoding=_encodings["repo.content"],
+                    errors="backslashreplace",
+                ) as previous_content:
+                    for line in previous_content:
+                        output.write(line)
                 output.write("\n")
             else:
                 output.write(
