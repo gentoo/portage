@@ -1,4 +1,4 @@
-# Copyright 2001-2024 Gentoo Authors
+# Copyright 2001-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tarfile
@@ -1053,10 +1053,20 @@ class gpkg:
                 raise InvalidBinaryPackageFormat("Cannot identify tar format")
 
         # container
-        tmp_gpkg_file_name = f"{self.gpkg_file}.{os.getpid()}"
-        with tarfile.TarFile(
-            name=tmp_gpkg_file_name, mode="w", format=container_tar_format
-        ) as container:
+        with (
+            tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(self.gpkg_file),
+                prefix=f"{os.path.basename(self.gpkg_file)}.{portage.getpid()}",
+                delete=False,
+            ) as tmp_gpkg_file,
+            tarfile.TarFile(
+                name=tmp_gpkg_file.name, mode="w", format=container_tar_format
+            ) as container,
+        ):
+            os.fchmod(tmp_gpkg_file.fileno(), 0o644)
+            tmp_gpkg_file_name = tmp_gpkg_file.name
+            tmp_gpkg_file.close()
+
             # gpkg version
             gpkg_version_file = tarfile.TarInfo(
                 os.path.join(new_basename, self.gpkg_version)
@@ -1121,10 +1131,20 @@ class gpkg:
                 raise InvalidBinaryPackageFormat("Cannot identify tar format")
 
         # container
-        tmp_gpkg_file_name = f"{self.gpkg_file}.{os.getpid()}"
-        with tarfile.TarFile(
-            name=tmp_gpkg_file_name, mode="w", format=container_tar_format
-        ) as container:
+        with (
+            tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(self.gpkg_file),
+                prefix=f"{os.path.basename(self.gpkg_file)}.{portage.getpid()}",
+                delete=False,
+            ) as tmp_gpkg_file,
+            tarfile.TarFile(
+                name=tmp_gpkg_file.name, mode="w", format=container_tar_format
+            ) as container,
+        ):
+            os.fchmod(tmp_gpkg_file.fileno(), 0o644)
+            tmp_gpkg_file_name = tmp_gpkg_file.name
+            tmp_gpkg_file.close()
+
             # gpkg version
             gpkg_version_file = tarfile.TarInfo(
                 os.path.join(self.prefix, self.gpkg_version)
