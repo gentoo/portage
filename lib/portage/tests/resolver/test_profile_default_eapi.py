@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -11,7 +11,12 @@ from portage.util import ensure_dirs
 
 
 class ProfileDefaultEAPITestCase(TestCase):
-    def testProfileDefaultEAPI(self):
+
+    def testEapi9ProfilesDefaultEAPI(self):
+        self._testProfileDefaultEAPI(top_level_eapi="9-pre1")
+
+    def testProfileFormatsDefaultEAPI(self):
+
         repo_configs = {
             "test_repo": {
                 "layout.conf": (
@@ -20,6 +25,16 @@ class ProfileDefaultEAPITestCase(TestCase):
                 ),
             }
         }
+        self._testProfileDefaultEAPI(repo_configs=repo_configs)
+
+    def _testProfileDefaultEAPI(self, repo_configs=None, top_level_eapi=None):
+
+        if repo_configs is None:
+            repo_configs = {
+                "test_repo": {
+                    "layout.conf": (),
+                }
+            }
 
         profiles = (
             (
@@ -113,6 +128,10 @@ class ProfileDefaultEAPITestCase(TestCase):
                     ) as f:
                         for line in v:
                             f.write(f"{line}\n")
+
+            if top_level_eapi is not None:
+                with open(os.path.join(profile_root, "eapi"), "w") as f:
+                    f.write(f"{top_level_eapi}\n")
 
             # The config must be reloaded in order to account
             # for the above profile customizations.

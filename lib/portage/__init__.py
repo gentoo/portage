@@ -498,7 +498,7 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset([])
+_testing_eapis = frozenset(["9-pre1"])
 _deprecated_eapis = frozenset(
     [
         "3_pre1",

@@ -152,6 +152,10 @@ def eapi_rewrites_symlinks(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).symlink_rewrite
 
 
+def eapi_has_profile_eapi_default(eapi: str) -> bool:
+    return _get_eapi_attrs(eapi).profile_eapi_default
+
+
 _eapi_attrs = collections.namedtuple(
     "_eapi_attrs",
     (
@@ -176,6 +180,7 @@ _eapi_attrs = collections.namedtuple(
         "pkg_pretend",
         "prefix",
         "profile_file_dirs",
+        "profile_eapi_default",
         "rdepend_depend",
         "repo_deps",
         "required_use",
@@ -212,10 +217,11 @@ class Eapi:
     _eapi_val: int = -1
 
     def __init__(self, eapi_string: str):
-        if not eapi_string in self.ALL_EAPIS:
+        eapi_key = eapi_string.partition("-")[0]
+        if not eapi_key in self.ALL_EAPIS:
             raise ValueError(f"'{eapi_string}' not recognized as a valid EAPI")
 
-        self._eapi_val = int(eapi_string.partition("-")[0])
+        self._eapi_val = int(eapi_key)
 
     def __ge__(self, other: "Eapi") -> bool:
         return self._eapi_val >= other._eapi_val
@@ -256,6 +262,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             posixish_locale=False,
             prefix=True,
             profile_file_dirs=False,
+            profile_eapi_default=False,
             rdepend_depend=False,
             repo_deps=True,
             required_use=True,
@@ -296,6 +303,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             posixish_locale=eapi >= Eapi("6"),
             prefix=eapi >= Eapi("3"),
             profile_file_dirs=eapi >= Eapi("7"),
+            profile_eapi_default=eapi >= Eapi("9"),
             rdepend_depend=eapi <= Eapi("3"),
             repo_deps=False,
             required_use=eapi >= Eapi("4"),
