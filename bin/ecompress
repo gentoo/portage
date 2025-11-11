@@ -116,6 +116,7 @@ do_queue() {
 	fi
 }
 
+# shellcheck disable=2030
 guess_suffix() (
 	local IFS f i tmpdir
 	local -a args
@@ -183,6 +184,7 @@ fix_symlinks() (
 		# affect OpenRC users. See bug #965423.
 		(( PIPESTATUS[1] == 0 )) || return
 
+		# shellcheck disable=2031
 		if (( ! something_changed )); then
 			break
 		elif (( ++i >= 100 )); then
