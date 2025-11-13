@@ -929,7 +929,7 @@ try:
                 return
 
             try:
-                output = open(
+                output = atomic_ofstream(
                     self._changelog_output,
                     mode="w",
                     encoding=_encodings["repo.content"],
