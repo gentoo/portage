@@ -8,6 +8,7 @@ import fnmatch
 import os as _os
 import stat
 import textwrap
+import tempfile
 
 import portage
 from portage import (
@@ -282,7 +283,10 @@ def movefile(
     # and them use os.rename() to replace the destination.
     if hardlink_candidates:
         head, tail = os.path.split(dest)
-        hardlink_tmp = os.path.join(head, f".{tail}._portage_merge_.{portage.getpid()}")
+        with tempfile.NamedTemporaryFile(
+            dir=head, prefix=f".{tail}._portage_merge_.{portage.getpid()}"
+        ) as hardlink_tmp_file:
+            hardlink_tmp = hardlink_tmp_file.name
         try:
             os.unlink(hardlink_tmp)
         except OSError as e:
