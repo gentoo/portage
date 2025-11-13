@@ -15,6 +15,7 @@ import platform
 import pwd
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import sys
@@ -3421,6 +3422,38 @@ def _prepare_self_update(settings):
 
     for dir_path in (base_path_tmp, portage._bin_path, portage._pym_path):
         os.chmod(dir_path, 0o755)
+
+    # Update sys.path used to unpickle child process arguments for
+    # multiprocessing forkserver and spawn start methods (bug 965976).
+    sys.path.insert(0, portage._pym_path)
+
+    if multiprocessing.get_start_method() == "forkserver":
+
+        def _get_forkserver_pid():
+            try:
+                return multiprocessing.forkserver._forkserver._forkserver_pid
+            except AttributeError:
+                return None
+
+        forkserver_pid = _get_forkserver_pid()
+        if not isinstance(forkserver_pid, int):
+            # force forkserver launch
+            portage.process.spawn(["true"])
+            forkserver_pid = _get_forkserver_pid()
+
+            if not isinstance(forkserver_pid, int):
+                writemsg(
+                    "!!! Failed to locate forkserver pid for sys.path update\n",
+                    noiselevel=-1,
+                )
+
+            # If a forkserver was successfully launched then it
+            # inherited our sys.path update and there is no need
+            # to kill it.
+        else:
+            # Kill forkserver in order to force a sys.path update,
+            # and a new forkserver will launch on demand.
+            os.kill(forkserver_pid, signal.SIGTERM)
 
 
 def _handle_self_update(settings, vardb):
