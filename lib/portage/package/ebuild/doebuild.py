@@ -2271,13 +2271,26 @@ def spawn(
                 mysettings["PORTAGE_EBUILD_EXTRA_SOURCE"] = ebuild_extra_source_path
 
         with open(ebuild_extra_source_path, mode="w") as f:
-            for var_name in unexported_env_vars:
-                var_value = mysettings.environ().get(var_name)
+
+            def unexport_var(var_name: str):
+                var_value = env.get(var_name)
                 if var_value is None:
-                    continue
+                    return
                 quoted_var_value = shlex.quote(var_value)
                 f.write(f"{var_name}={quoted_var_value}\n")
                 del env[var_name]
+
+            for var_name in unexported_env_vars:
+                unexport_var(var_name)
+
+            # All variables named in USE_EXPAND and USE_EXPAND_UNPREFIXED
+            for use_expand in ("USE_EXPAND", "USE_EXPAND_UNPREFIXED"):
+                for v in mysettings.get(use_expand, "").split():
+                    unexport_var(v)
+
+            # USE_EXPAND_VALUES_${v}, where ${v} is a value in USE_EXPAND_IMPLICIT
+            for v in mysettings.get("USE_EXPAND_IMPLICIT", "").split():
+                unexport_var(f"USE_EXPAND_VALUES_{v}")
 
         env["PORTAGE_EBUILD_EXTRA_SOURCE"] = str(ebuild_extra_source_path)
     else:
