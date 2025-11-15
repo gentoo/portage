@@ -13,13 +13,19 @@ class VariableSetTestCase(TestCase):
         rust_with_rustc_rebuild = "{class=portage.sets.dbapi.VariableSet,variable=BDEPEND,includes=dev-lang/rust dev-lang/rust-bin}"
 
         ebuilds = {
-            "dev-go/go-pkg-1": {"BDEPEND": "dev-lang/go"},
+            "dev-lang/go-1": {},
+            "dev-go/go-pkg-1": {"EAPI": "7", "BDEPEND": "dev-lang/go"},
             "www-client/firefox-1": {
-                "BDEPEND": "|| ( dev-lang/rust dev-lang/rust-bin )"
+                "EAPI": "7",
+                "BDEPEND": "|| ( dev-lang/rust dev-lang/rust-bin )",
             },
-            "dev-lang/rust-1": {"BDEPEND": "|| ( dev-lang/rust dev-lang/rust-bin )"},
+            "dev-lang/rust-1": {
+                "EAPI": "7",
+                "BDEPEND": "|| ( dev-lang/rust dev-lang/rust-bin )",
+            },
             "dev-lang/rust-bin-1": {
-                "BDEPEND": "|| ( dev-lang/rust-bin dev-lang/rust )"
+                "EAPI": "7",
+                "BDEPEND": "|| ( dev-lang/rust-bin dev-lang/rust )",
             },
         }
         installed = ebuilds
