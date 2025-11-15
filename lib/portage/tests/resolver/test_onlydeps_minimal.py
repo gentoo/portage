@@ -1,8 +1,6 @@
 # Copyright 2017-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import pytest
-
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -12,7 +10,6 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class OnlydepsMinimalTestCase(TestCase):
 
-    @pytest.mark.xfail(reason="bug #966088")
     def testOnlydepsMinimal(self):
         ebuilds = {
             "dev-libs/A-1": {
@@ -36,7 +33,7 @@ class OnlydepsMinimalTestCase(TestCase):
                 success=True,
                 options={"--onlydeps": True, "--onlydeps-with-rdeps": "y"},
                 ambiguous_merge_order=True,
-                mergelist=[("dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1")],
+                mergelist=[("dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1", "dev-libs/E-1")],
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
@@ -55,7 +52,7 @@ class OnlydepsMinimalTestCase(TestCase):
                     "--onlydeps-with-ideps": "y",
                 },
                 ambiguous_merge_order=True,
-                mergelist=[("dev-libs/B-1",)],
+                mergelist=[("dev-libs/B-1", "dev-libs/E-1")],
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
