@@ -1,5 +1,7 @@
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import pytest
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
@@ -9,9 +11,12 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class OnlydepsMinimalTestCase(TestCase):
+
+    @pytest.mark.xfail(reason="bug #966088")
     def testOnlydepsMinimal(self):
         ebuilds = {
             "dev-libs/A-1": {
+                "EAPI": "8",
                 "DEPEND": "dev-libs/B",
                 "RDEPEND": "dev-libs/C",
                 "PDEPEND": "dev-libs/D",
