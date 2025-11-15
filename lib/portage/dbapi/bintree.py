@@ -1394,7 +1394,6 @@ class binarytree:
         host = parsed_url.hostname or ""
         port = parsed_url.port
         user = parsed_url.username
-        passwd = parsed_url.password
         user_passwd = user + "@" if user else ""
         gpkg_only_warned = False
 
