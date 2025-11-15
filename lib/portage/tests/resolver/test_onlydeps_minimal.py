@@ -33,7 +33,9 @@ class OnlydepsMinimalTestCase(TestCase):
                 success=True,
                 options={"--onlydeps": True, "--onlydeps-with-rdeps": "y"},
                 ambiguous_merge_order=True,
-                mergelist=[("dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1", "dev-libs/E-1")],
+                mergelist=[
+                    ("dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1", "dev-libs/E-1")
+                ],
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
