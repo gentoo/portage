@@ -1367,7 +1367,7 @@ class binarytree:
             # when binpackages are involved, not only when we refuse unsigned
             # ones. (If the keys have expired we end up refusing signed but
             # technically invalid packages...)
-            if not pretend and self.dbapi.writable:
+            if not pretend and self.dbapi.writable and portage.data.secpass >= 2:
                 self._run_trust_helper()
             gpkg_only = True
         else:
