@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Gentoo Authors
+# Copyright 2015-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -15,15 +15,16 @@ from portage.output import colorize
 class BuildIdProfileFormatTestCase(TestCase):
     def testBuildIdProfileFormat(self):
         profile = {
+            "eapi": "5",
             "packages": ("=app-misc/A-1-2::test_repo",),
             "package.mask": ("<app-misc/A-1::test_repo",),
-            "package.keywords": ("app-misc/A-1::test_repo x86",),
+            "package.keywords": ("=app-misc/A-1::test_repo x86",),
             "package.unmask": (">=app-misc/A-1::test_repo",),
-            "package.use": ("app-misc/A-1::test_repo foo",),
-            "package.use.mask": ("app-misc/A-1::test_repo -foo",),
-            "package.use.stable.mask": ("app-misc/A-1::test_repo -foo",),
-            "package.use.force": ("app-misc/A-1::test_repo foo",),
-            "package.use.stable.force": ("app-misc/A-1::test_repo foo",),
+            "package.use": ("=app-misc/A-1::test_repo foo",),
+            "package.use.mask": ("=app-misc/A-1::test_repo -foo",),
+            "package.use.stable.mask": ("=app-misc/A-1::test_repo -foo",),
+            "package.use.force": ("=app-misc/A-1::test_repo foo",),
+            "package.use.stable.force": ("=app-misc/A-1::test_repo foo",),
             "package.provided": ("sys-libs/zlib-1.2.8-r1",),
         }
 
