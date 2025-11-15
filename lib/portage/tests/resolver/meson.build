@@ -51,6 +51,7 @@ py.install_sources(
         'test_perl_rebuild_bug.py',
         'test_profile_default_eapi.py',
         'test_profile_package_set.py',
+        'test_profile_use_stable.py',
         'test_rebuild.py',
         'test_rebuild_ghostscript.py',
         'test_regular_slot_change_without_revbump.py',

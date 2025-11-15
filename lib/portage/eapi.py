@@ -112,6 +112,10 @@ def eapi_has_repo_deps(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).repo_deps
 
 
+def eapi_supports_use_stable(eapi: str) -> bool:
+    return _get_eapi_attrs(eapi).use_stable
+
+
 def eapi_supports_stable_use_forcing_and_masking(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).stablemask
 
@@ -191,6 +195,7 @@ _eapi_attrs = collections.namedtuple(
         "src_prepare_src_configure",
         "src_uri_arrows",
         "stablemask",
+        "use_stable",
         "strong_blocks",
         "symlink_rewrite",
         "sysroot",
@@ -273,6 +278,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             src_prepare_src_configure=True,
             src_uri_arrows=True,
             stablemask=True,
+            use_stable=True,
             strong_blocks=True,
             symlink_rewrite=False,
             sysroot=True,
@@ -314,6 +320,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             src_prepare_src_configure=eapi >= Eapi("2"),
             src_uri_arrows=eapi >= Eapi("2"),
             stablemask=eapi >= Eapi("5"),
+            use_stable=eapi >= Eapi("9"),
             strong_blocks=eapi >= Eapi("2"),
             symlink_rewrite=eapi <= Eapi("8"),
             sysroot=eapi >= Eapi("7"),

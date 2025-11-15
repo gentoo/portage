@@ -65,11 +65,13 @@ class ResolverPlayground:
             "package.use",
             "package.use.force",
             "package.use.mask",
+            "package.use.stable",
             "package.use.stable.force",
             "package.use.stable.mask",
             "soname.provided",
             "use.force",
             "use.mask",
+            "use.stable",
             "layout.conf",
         )
     )

@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ("UseManager",)
@@ -13,6 +13,7 @@ from portage.dep import (
     _get_useflag_re,
 )
 from portage.eapi import (
+    eapi_supports_use_stable,
     eapi_supports_stable_use_forcing_and_masking,
 )
 from portage.localization import _
@@ -38,10 +39,12 @@ class UseManager:
         # 	repositories
         # --------------------------------
         # 	use.mask			_repo_usemask_dict
+        # 	use.stable			_repo_use_stable_dict
         # 	use.stable.mask			_repo_usestablemask_dict
         # 	use.force			_repo_useforce_dict
         # 	use.stable.force		_repo_usestableforce_dict
         # 	package.use.mask		_repo_pusemask_dict
+        # 	package.use.stable		_repo_puse_stable_dict
         # 	package.use.stable.mask		_repo_pusestablemask_dict
         # 	package.use.force		_repo_puseforce_dict
         # 	package.use.stable.force	_repo_pusestableforce_dict
@@ -49,10 +52,12 @@ class UseManager:
         # 	profiles
         # --------------------------------
         # 	use.mask			_usemask_list
+        # 	use.stable			_use_stable_list
         # 	use.stable.mask			_usestablemask_list
         # 	use.force			_useforce_list
         # 	use.stable.force		_usestableforce_list
         # 	package.use.mask		_pusemask_list
+        # 	package.use.stable		_puse_stable_list
         # 	package.use.stable.mask		_pusestablemask_list
         # 	package.use			_pkgprofileuse
         # 	package.use.force		_puseforce_list
@@ -78,6 +83,11 @@ class UseManager:
         self._repo_usemask_dict = self._parse_repository_files_to_dict_of_tuples(
             "use.mask", repositories
         )
+        self._repo_use_stable_dict = self._parse_repository_files_to_dict_of_tuples(
+            "use.stable",
+            repositories,
+            eapi_filter=eapi_supports_use_stable,
+        )
         self._repo_usestablemask_dict = self._parse_repository_files_to_dict_of_tuples(
             "use.stable.mask",
             repositories,
@@ -93,6 +103,11 @@ class UseManager:
         )
         self._repo_pusemask_dict = self._parse_repository_files_to_dict_of_dicts(
             "package.use.mask", repositories
+        )
+        self._repo_puse_stable_dict = self._parse_repository_files_to_dict_of_dicts(
+            "package.use.stable",
+            repositories,
+            eapi_filter=eapi_supports_use_stable,
         )
         self._repo_pusestablemask_dict = self._parse_repository_files_to_dict_of_dicts(
             "package.use.stable.mask",
@@ -114,6 +129,11 @@ class UseManager:
         self._usemask_list = self._parse_profile_files_to_tuple_of_tuples(
             "use.mask", profiles
         )
+        self._use_stable_list = self._parse_profile_files_to_tuple_of_tuples(
+            "use.stable",
+            profiles,
+            eapi_filter=eapi_supports_use_stable,
+        )
         self._usestablemask_list = self._parse_profile_files_to_tuple_of_tuples(
             "use.stable.mask",
             profiles,
@@ -129,6 +149,12 @@ class UseManager:
         )
         self._pusemask_list = self._parse_profile_files_to_tuple_of_dicts(
             "package.use.mask", profiles
+        )
+        self._puse_stable_list = self._parse_profile_files_to_tuple_of_dicts(
+            "package.use.stable",
+            profiles,
+            eapi_filter=eapi_supports_use_stable,
+            juststrings=True,
         )
         self._pusestablemask_list = self._parse_profile_files_to_tuple_of_dicts(
             "package.use.stable.mask",
