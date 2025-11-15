@@ -191,7 +191,7 @@ _vdb_use_conditional_keys = Package._dep_keys + (
     "RESTRICT",
 )
 
-# The following is a set of PMS § 11.1 and § 7.4 without
+# The following is a set of PMS § 11.1, § 7.4, and § 5.3.2 without
 # - TMPDIR
 # - HOME
 # because these variables are often assumed to be exported and
@@ -238,6 +238,17 @@ _unexported_pms_vars = frozenset(
         "ECLASS",
         "INHERITED",
         "DEFINED_PHASES",
+        # PMS § 5.3.2
+#        "ARCH",          # Not exported by Portage
+        "CONFIG_PROTECT",
+        "CONFIG_PROTECT_MASK",
+        "USE",            # N.B. this is not IUSE
+        "USE_EXPAND",
+        "USE_EXPAND_UNPREFIXED",
+        "USE_EXPAND_HIDDEN",
+        "USE_EXPAND_IMPLICIT",
+        "IUSE_IMPLICIT",
+        "ENV_UNSET",
     ]
     # fmt: on
 )
