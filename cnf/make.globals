@@ -104,6 +104,9 @@ AUTOCLEAN="no"
 
 PORTAGE_BZIP2_COMMAND="bzip2"
 
+# The program used to compress documentation during the install phase.
+PORTAGE_COMPRESS="bzip2"
+
 # Don't compress files with these suffixes.
 PORTAGE_COMPRESS_EXCLUDE_SUFFIXES="css gif htm[l]? jp[e]?g js pdf png"
 
