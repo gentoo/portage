@@ -250,11 +250,7 @@ fi
 
 # figure out the new suffix
 if ! PORTAGE_COMPRESS_SUFFIX=$(guess_suffix); then
-	error="${0##*/}: failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
-	if [[ ${PORTAGE_COMPRESS##*/} == @(true|:) ]]; then
-		error+=' (to disable compression, set PORTAGE_COMPRESS="" instead)'
-	fi
-	die "${error}"
+	die "Failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
 fi
 
 export PORTAGE_COMPRESS_SUFFIX PORTAGE_COMPRESS_FLAGS PORTAGE_COMPRESS
