@@ -201,7 +201,6 @@ class BootstrapChainTestCase(TestCase):
             "B? ( || ( dev-libs/A:4[B] =dev-libs/B-4 ) ) C? ( dev-libs/A:4[C] )",
         )
 
-    @pytest.mark.xfail(reason="bug #951296")
     def testBootstrapChainDisruptedShortcutWithShortcutLastAnyOf(self):
         self.__bootstrapChainDisruptedShortcutWithShortcutLastImpl(
             "B? ( || ( dev-libs/A:4[B] =dev-libs/B-4 ) ) C? ( || ( dev-libs/A:4[C] dev-libs/A:4[C] ) )",
@@ -240,7 +239,7 @@ class BootstrapChainTestCase(TestCase):
         )
 
         playground = ResolverPlayground(
-            ebuilds=ebuilds, installed=installed, user_config=user_config, debug=True
+            ebuilds=ebuilds, installed=installed, user_config=user_config, debug=False
         )
         try:
             for test_case in test_cases:
