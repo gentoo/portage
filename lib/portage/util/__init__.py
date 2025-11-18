@@ -344,19 +344,20 @@ def stack_lists(
             if incremental:
                 if token == "-*":
                     new_list.clear()
-                elif token[:1] == "-":
+                elif str(token).startswith("-"):
                     matched = False
                     if ignore_repo and not "::" in token:
                         # Let -cat/pkg remove cat/pkg::repo.
                         to_be_removed = []
-                        token_slice = token[1:]
+                        token_str = str(token)
+                        token_slice = token_str[1:]
                         for atom in new_list:
                             atom_without_repo = atom
                             if atom.repo is not None:
                                 # Atom.without_repo instantiates a new Atom,
                                 # which is unnecessary here, so use string
                                 # replacement instead.
-                                atom_without_repo = atom.replace(
+                                atom_without_repo = str(atom).replace(
                                     "::" + atom.repo, "", 1
                                 )
                             if atom_without_repo == token_slice:
@@ -367,7 +368,7 @@ def stack_lists(
                                 new_list.pop(atom)
                     else:
                         try:
-                            new_list.pop(token[1:])
+                            new_list.pop(str(token)[1:])
                             matched = True
                         except KeyError:
                             pass

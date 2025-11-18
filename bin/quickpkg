@@ -71,7 +71,8 @@ def quickpkg_atom(options, infos, arg, eout):
         eout.eerror(f"Invalid atom: {arg}")
         infos["missing"].append(arg)
         return 1
-    if atom[:1] == "=" and arg[:1] != "=":
+    # Check if dep_expand added an operator that wasn't in the original arg
+    if atom.operator == "=" and not str(arg).startswith("="):
         # dep_expand() allows missing '=' but it's really invalid
         eout.eerror(f"Invalid atom: {arg}")
         infos["missing"].append(arg)

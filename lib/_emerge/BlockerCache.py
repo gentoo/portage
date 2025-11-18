@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+from portage.dep import Atom
 from portage.util import writemsg
 from portage.data import secpass
 import portage
@@ -99,10 +100,10 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
                     continue
                 invalid_atom = False
                 for atom in atoms:
-                    if not isinstance(atom, str):
+                    if not isinstance(atom, (str, Atom)):
                         invalid_atom = True
                         break
-                    if atom[:1] != "!" or not portage.isvalidatom(
+                    if str(atom)[:1] != "!" or not portage.isvalidatom(
                         atom, allow_blockers=True
                     ):
                         invalid_atom = True

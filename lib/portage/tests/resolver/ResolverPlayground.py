@@ -865,10 +865,10 @@ class ResolverPlaygroundTestCase:
                     if got:
                         new_got = []
                         for cpv in got:
-                            if cpv[:1] == "!":
+                            if str(cpv)[:1] == "!":
                                 new_got.append(cpv)
                                 continue
-                            new_got.append(cpv.split(_repo_separator)[0])
+                            new_got.append(str(cpv).split(_repo_separator)[0])
                         got = new_got
                     if expected:
                         new_expected = []

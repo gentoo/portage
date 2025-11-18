@@ -76,8 +76,8 @@ class BlockerDB:
                     )
                     continue
 
-                blocker_atoms = [atom for atom in atoms if atom.startswith("!")]
-                blocker_atoms.sort()
+                blocker_atoms = [atom for atom in atoms if atom.blocker]
+                blocker_atoms.sort(key=str)
                 blocker_cache[inst_pkg.cpv] = blocker_cache.BlockerData(
                     inst_pkg.counter, blocker_atoms
                 )
@@ -113,7 +113,7 @@ class BlockerDB:
             show_invalid_depstring_notice(new_pkg, atoms)
             assert False
 
-        blocker_atoms = [atom.lstrip("!") for atom in atoms if atom[:1] == "!"]
+        blocker_atoms = [str(atom).lstrip("!") for atom in atoms if atom.blocker]
         if blocker_atoms:
             blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
             for inst_pkg in installed_pkgs:
