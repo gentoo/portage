@@ -34,10 +34,10 @@ __check_bash_version() {
 		dependent="EAPI ${EAPI}"
 		(( compat_maj = maj = 5 ))
 		(( compat_min = min = 0 ))
-	elif ___eapi_bash_5_2; then
+	elif ___eapi_bash_5_3; then
 		dependent="EAPI ${EAPI}"
 		(( compat_maj = maj = 5 ))
-		(( compat_min = min = 2 ))
+		(( compat_min = min = 3 ))
 	fi
 
 	# Ensure that the minimum required version is satisfied.
