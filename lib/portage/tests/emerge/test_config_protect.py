@@ -220,6 +220,7 @@ src_install() {
             "DISTDIR": distdir,
             "EMERGE_DEFAULT_OPTS": "-v",
             "EMERGE_WARNING_DELAY": "0",
+            "ETC_UPDATE_OS_FAMILY": "gentoo",
             "INFODIR": "",
             "INFOPATH": "",
             "PATH": path,
