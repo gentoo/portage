@@ -23,14 +23,6 @@ import warnings
 from _emerge.Package import Package
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.data:portage_gid",
-    "portage.dep.soname.SonameAtom:SonameAtom",
-    "portage.dbapi.vartree:vartree",
-    "portage.package.ebuild.doebuild:_phase_func_map",
-    "portage.util.compression_probe:_compressors",
-)
 from portage import bsd_chflags, load_mod, os, selinux, _unicode_decode
 from portage.const import (
     CACHE_PATH,
@@ -1298,6 +1290,8 @@ class config:
         """
         Create a few directories that are critical to portage operation
         """
+        from portage.data import portage_gid
+
         if not os.access(self["EROOT"], os.W_OK):
             return
 
@@ -1373,6 +1367,8 @@ class config:
 
     @property
     def soname_provided(self):
+        from portage.dep.soname.SonameAtom import SonameAtom
+
         if self._soname_provided is None:
             d = stack_dictlist(
                 (
@@ -1397,6 +1393,7 @@ class config:
     def validate(self):
         """Validate miscellaneous settings and display warnings if necessary.
         (This code was previously in the global scope of portage.py)"""
+        from portage.util.compression_probe import _compressors
 
         groups = self.get("ACCEPT_KEYWORDS", "").split()
         archlist = self.archlist()
@@ -3099,6 +3096,8 @@ class config:
         return self._virtuals_manager.get_virts_p()
 
     def getvirtuals(self):
+        from portage.dbapi.vartree import vartree
+
         if self._virtuals_manager._treeVirtuals is None:
             # Hack around the fact that VirtualsManager needs a vartree
             # and vartree needs a config instance.
@@ -3160,6 +3159,8 @@ class config:
                 return ""
 
     def _getitem(self, mykey):
+        from portage.data import portage_gid
+
         if mykey in self._constant_keys:
             # These two point to temporary values when
             # portage plans to update itself.
@@ -3271,6 +3272,8 @@ class config:
 
     def environ(self):
         "return our locally-maintained environment"
+        from portage.package.ebuild.doebuild import _phase_func_map
+
         mydict = {}
         environ_filter = self._environ_filter
 
