@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -28,14 +28,6 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util._async.ForkProcess:ForkProcess",
-    "portage.util._eventloop.global_event_loop:global_event_loop",
-    "portage.util.futures:asyncio",
-    "portage.util:dump_traceback,writemsg,writemsg_level",
-)
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
@@ -205,6 +197,8 @@ def atexit_register(func, *args, **kargs):
     # The internal asyncio wrapper module would trigger a circular import
     # if used here.
     if iscoroutinefunction(func):
+        from portage.util._eventloop.global_event_loop import global_event_loop
+
         # Add this coroutine function to the exit handlers for the loop
         # which is associated with the current thread.
         global_event_loop()._coroutine_exithandlers.append((func, args, kargs))
@@ -217,6 +211,7 @@ def run_exitfuncs():
     the atexit module at exit time.  It's only necessary to call this
     function when atexit will not work (because of os.execv, for
     example)."""
+    from portage.util import dump_traceback
 
     # This function is a copy of the private atexit._run_exitfuncs()
     # from the python 2.4.2 sources.  The only difference from the
@@ -252,6 +247,8 @@ async def run_coroutine_exitfuncs():
     run_exitfuncs hook will close it, causing run_coroutine_exitfuncs to be
     called via run_exitfuncs.
     """
+    from portage.util._eventloop.global_event_loop import global_event_loop
+
     # The _thread_weakrefs_atexit function makes an adjustment to ensure
     # that global_event_loop() returns the correct loop when it is closing,
     # regardless of which thread the loop was initially associated with.
@@ -259,7 +256,7 @@ async def run_coroutine_exitfuncs():
     tasks = []
     while _coroutine_exithandlers:
         func, targs, kargs = _coroutine_exithandlers.pop()
-        tasks.append(asyncio.ensure_future(func(*targs, **kargs)))
+        tasks.append(_asyncio.ensure_future(func(*targs, **kargs)))
     tracebacks = []
     exc_info = None
     for task in tasks:
@@ -394,6 +391,8 @@ class Process(AbstractProcess):
 
         Set and return the returncode attribute.
         """
+        from portage.util._eventloop.global_event_loop import global_event_loop
+
         if self.returncode is not None:
             return self.returncode
 
@@ -443,12 +442,14 @@ class MultiprocessingProcess(AbstractProcess):
 
         Set and return the returncode attribute.
         """
+        from portage.util._eventloop.global_event_loop import global_event_loop
+
         if self.returncode is not None:
             return self.returncode
 
         loop = global_event_loop()
         if not self._exit_waiters:
-            asyncio.ensure_future(self._proc_join(), loop=loop).add_done_callback(
+            _asyncio.ensure_future(self._proc_join()).add_done_callback(
                 self._proc_join_done
             )
         waiter = loop.create_future()
@@ -456,6 +457,8 @@ class MultiprocessingProcess(AbstractProcess):
         return await waiter
 
     async def _proc_join(self):
+        from portage.util._eventloop.global_event_loop import global_event_loop
+
         loop = global_event_loop()
         sentinel_reader = loop.create_future()
         proc = self._proc
@@ -497,7 +500,7 @@ class MultiprocessingProcess(AbstractProcess):
                 delay *= proc_join_interval_factor
                 if delay > proc_join_interval_max:
                     delay = proc_join_interval_max
-                await asyncio.sleep(delay, loop=loop)
+                await _asyncio.sleep(delay)
 
         # We can only safely create a new thread to await the join if
         # we use 'forkserver' or 'spawn'.
@@ -617,6 +620,9 @@ def spawn(
        somewhere else.)
 
     """
+    from portage.util import writemsg_level
+    from portage.util._eventloop.global_event_loop import global_event_loop
+    from portage.util.futures import asyncio
 
     if logfile and returnproc:
         raise ValueError(
@@ -852,6 +858,7 @@ def _configure_loopback_interface():
     """
     Configure the loopback interface.
     """
+    from portage.util import writemsg
 
     # We add some additional addresses to work around odd behavior in glibc's
     # getaddrinfo() implementation when the AI_ADDRCONFIG flag is set.
@@ -908,6 +915,8 @@ def _exec_wrapper(
     The intention is for _exec_wrapper and _exec to be reusable with
     other process cloning implementations besides _start_fork.
     """
+    from portage.util import writemsg
+
     try:
         _exec(
             binary,
@@ -1006,6 +1015,7 @@ def _exec(
     @rtype: None
     @return: Never returns (calls os.execve)
     """
+    from portage.util import writemsg
 
     # If the process we're creating hasn't been given a name
     # assign it the name of the executable.
@@ -1196,6 +1206,8 @@ def _exec2(
     unshare_pid,
     libc,
 ):
+    from portage.util import writemsg
+
     if unshare_mount:
         # mark the whole filesystem as slave to avoid
         # mounts escaping the namespace
@@ -1557,6 +1569,9 @@ def _start_proc(
     should ensure that any relevant file descriptors are
     non-inheritable and therefore automatically closed on exec.
     """
+    from portage.util._async.ForkProcess import ForkProcess
+    from portage.util._eventloop.global_event_loop import global_event_loop
+
     if close_fds:
         raise NotImplementedError(
             "close_fds is not supported (since file descriptors are non-inheritable by default for exec)"
