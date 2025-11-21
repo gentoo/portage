@@ -28,27 +28,6 @@ import zlib
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.package.ebuild.config:check_config_instance",
-    "portage.package.ebuild.digestcheck:digestcheck",
-    "portage.package.ebuild.digestgen:digestgen",
-    "portage.package.ebuild.fetch:_drop_privs_userfetch,_want_userfetch,fetch",
-    "portage.package.ebuild.prepare_build_dirs:_prepare_fake_distdir",
-    "portage.package.ebuild._ipc.QueryCommand:QueryCommand",
-    "portage.dep._slot_operator:evaluate_slot_operator_equal_deps",
-    "portage.package.ebuild._spawn_nofetch:spawn_nofetch",
-    "portage.util.elf.header:ELFHeader",
-    "portage.dep.soname.multilib_category:compute_multilib_category",
-    "portage.util._desktop_entry:validate_desktop_entry",
-    "portage.util._dyn_libs.NeededEntry:NeededEntry",
-    "portage.util._dyn_libs.soname_deps:SonameDepsProcessor",
-    "portage.util._async.SchedulerInterface:SchedulerInterface",
-    "portage.util._eventloop.global_event_loop:global_event_loop",
-    "portage.util.ExtractKernelVersion:ExtractKernelVersion",
-    "_emerge.EbuildPhase:_setup_locale",
-)
-
 from portage import (
     bsd_chflags,
     eapi_is_supported,
@@ -324,6 +303,8 @@ def _spawn_phase(
     logfile=None,
     **kwargs,
 ):
+    from portage.util._async.SchedulerInterface import SchedulerInterface
+
     if returnproc or returnpid:
         return _doebuild_spawn(
             phase,
@@ -414,6 +395,7 @@ def doebuild_environment(
     EAPI metadata.
     The myroot and use_cache parameters are unused.
     """
+    from portage.util.ExtractKernelVersion import ExtractKernelVersion
 
     if settings is None:
         raise TypeError("settings argument is required")
@@ -860,6 +842,11 @@ def doebuild(
     Other variables may not be strictly required, many have defaults that are set inside of doebuild.
 
     """
+    from _emerge.EbuildPhase import _setup_locale
+    from portage.package.ebuild.digestcheck import digestcheck
+    from portage.package.ebuild.digestgen import digestgen
+    from portage.package.ebuild.prepare_build_dirs import _prepare_fake_distdir
+    from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 
     if settings is None:
         raise TypeError("settings parameter is required")
@@ -1668,6 +1655,11 @@ def doebuild(
 
 
 def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests, fetchonly):
+    from portage.package.ebuild.fetch import (
+        _drop_privs_userfetch,
+        _want_userfetch,
+        fetch,
+    )
 
     if sys.version_info >= (3, 14):
         # Since we typically drop privileges for userfetch here,
@@ -2053,6 +2045,8 @@ def spawn(
     @return:
     1. The return code of the spawned process.
     """
+    from portage.package.ebuild.config import check_config_instance
+    from portage.util._async.SchedulerInterface import SchedulerInterface
 
     check_config_instance(mysettings)
 
@@ -2690,6 +2684,8 @@ def _post_src_install_write_metadata(settings):
     setting. Also, revert IUSE in case it's corrupted
     due to local environment settings like in bug #386829.
     """
+    from portage.dep._slot_operator import evaluate_slot_operator_equal_deps
+    from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 
     eapi_attrs = _get_eapi_attrs(settings.configdict["pkg"]["EAPI"])
     build_info_dir = os.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
@@ -2819,6 +2815,7 @@ def _post_src_install_uid_fix(mysettings, out):
     S_ISUID and S_ISGID bits, so those bits are restored if
     necessary.
     """
+    from portage.util._desktop_entry import validate_desktop_entry
 
     os = _os_merge
 
@@ -3060,7 +3057,8 @@ def _reapply_bsdflags_to_image(mysettings):
 
 
 def _inject_libc_dep(build_info_dir, mysettings):
-    #
+    from portage.package.ebuild._ipc.QueryCommand import QueryCommand
+
     # We could skip this for non-binpkgs but there doesn't seem to be much
     # value in that, as users shouldn't downgrade libc anyway.
     injected_libc_depstring = []
@@ -3108,6 +3106,10 @@ def _post_src_install_soname_symlinks(mysettings, out):
     This requires $PORTAGE_BUILDDIR/build-info/NEEDED.ELF.2 for
     operation.
     """
+    from portage.dep.soname.multilib_category import compute_multilib_category
+    from portage.util._dyn_libs.NeededEntry import NeededEntry
+    from portage.util._dyn_libs.soname_deps import SonameDepsProcessor
+    from portage.util.elf.header import ELFHeader
 
     image_dir = mysettings["D"]
     build_info_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info")
