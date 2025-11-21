@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-# Copyright 2006-2023 Gentoo Authors
+# Copyright 2006-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import importlib
 import grp
 import os
 import os.path as osp
@@ -34,6 +35,7 @@ def prepare_environment():
     # user/group configuration.
     os.environ["PORTAGE_USERNAME"] = pwd.getpwuid(os.getuid()).pw_name
     os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
+    importlib.reload(portage.data)
 
     # Insert our parent dir so we can do shiny import "tests"
     # This line courtesy of Marienz and Pkgcore ;)
