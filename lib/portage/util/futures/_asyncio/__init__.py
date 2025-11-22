@@ -1,4 +1,4 @@
-# Copyright 2018-2024 Gentoo Authors
+# Copyright 2018-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -49,11 +49,7 @@ import threading
 from typing import Optional
 
 import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util.futures.unix_events:_PortageEventLoopPolicy",
-)
+from portage.process import atexit_register
 from portage.util._eventloop.asyncio_event_loop import (
     AsyncioEventLoop as _AsyncioEventLoop,
 )
@@ -70,6 +66,8 @@ def get_event_loop_policy():
     @rtype: asyncio.AbstractEventLoopPolicy (or compatible)
     @return: the current event loop policy
     """
+    from portage.util.futures.unix_events import _PortageEventLoopPolicy
+
     global _lock, _policy
     with _lock:
         if _policy is None:
@@ -85,6 +83,8 @@ def set_event_loop_policy(policy):
     @type policy: asyncio.AbstractEventLoopPolicy or None
     @param policy: new event loop policy
     """
+    from portage.util.futures.unix_events import _PortageEventLoopPolicy
+
     global _lock, _policy
     with _lock:
         _policy = policy or _PortageEventLoopPolicy()
@@ -433,4 +433,4 @@ def _thread_weakrefs_atexit():
 _thread_weakrefs = types.SimpleNamespace(
     lock=threading.Lock(), loops=None, mainloop=None, pid=None
 )
-portage.process.atexit_register(_thread_weakrefs_atexit)
+atexit_register(_thread_weakrefs_atexit)
