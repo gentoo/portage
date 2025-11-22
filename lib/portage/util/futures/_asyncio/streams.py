@@ -1,16 +1,8 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import os
-
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "_emerge.PipeReader:PipeReader",
-    "portage.util.futures:asyncio",
-)
 
 
 def _reader(input_file, loop=None):
@@ -25,6 +17,8 @@ def _reader(input_file, loop=None):
     @return: bytes
     @rtype: asyncio.Future (or compatible)
     """
+    from portage.util.futures import asyncio
+
     loop = asyncio._wrap_loop(loop)
     future = loop.create_future()
     _Reader(future, input_file, loop)
@@ -33,6 +27,8 @@ def _reader(input_file, loop=None):
 
 class _Reader:
     def __init__(self, future, input_file, loop):
+        from _emerge.PipeReader import PipeReader
+
         self._future = future
         self._pipe_reader = PipeReader(
             input_files={"input_file": input_file}, scheduler=loop
@@ -71,6 +67,8 @@ async def _writer(output_file, content, loop=DeprecationWarning):
     @type content: bytes
     @param loop: deprecated
     """
+    from portage.util.futures import asyncio
+
     loop = asyncio.get_event_loop()
     fd = output_file.fileno()
     while content:
