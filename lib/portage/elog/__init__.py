@@ -1,14 +1,7 @@
 # elog/__init__.py - elog core functions
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util:writemsg",
-)
 
 from portage.const import EBUILD_PHASES
 from portage.exception import AlarmSignal, PortageException
@@ -104,6 +97,8 @@ _elog_atexit_handlers = []
 
 
 def elog_process(cpv, mysettings, phasefilter=None):
+    from portage.util import writemsg
+
     global _elog_atexit_handlers
 
     logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM", "").split()
