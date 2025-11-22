@@ -6,15 +6,6 @@ import os as _os
 from portage.cache import template
 from portage import os
 
-from portage.proxy.lazyimport import lazyimport
-
-lazyimport(
-    globals(),
-    "portage.exception:PortageException",
-    "portage.util:apply_permissions,ensure_dirs",
-)
-del lazyimport
-
 
 class FsBased(template.database):
     """template wrapping fs needed options, and providing _ensure_access as a way to
@@ -37,6 +28,9 @@ class FsBased(template.database):
     def _ensure_access(self, path, mtime=-1):
         """returns true or false if it's able to ensure that path is properly chmod'd and chowned.
         if mtime is specified, attempts to ensure that's correct also"""
+        from portage.exception import PortageException
+        from portage.util import apply_permissions
+
         try:
             apply_permissions(path, gid=self._gid, mode=self._perms)
             if mtime != -1:
@@ -48,6 +42,8 @@ class FsBased(template.database):
 
     def _ensure_dirs(self, path=None):
         """with path!=None, ensure beyond self.location.  otherwise, ensure self.location"""
+        from portage.util import ensure_dirs, apply_permissions
+
         if path:
             path = os.path.dirname(path)
             base = self.location
