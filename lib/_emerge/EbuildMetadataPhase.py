@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -6,11 +6,6 @@ import sys
 from portage.cache.mappings import slot_dict_class
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "_emerge.EbuildPhase:_setup_locale",
-    "portage.package.ebuild._metadata_invalid:eapi_invalid",
-)
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -54,6 +49,9 @@ class EbuildMetadataPhase(SubProcess):
         self._registered = True
 
     async def _async_start(self):
+        from _emerge.EbuildPhase import _setup_locale
+        from portage.package.ebuild.doebuild import doebuild
+
         ebuild_path = self.ebuild_hash.location
 
         with open(
@@ -128,7 +126,7 @@ class EbuildMetadataPhase(SubProcess):
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
 
-        retval = portage.doebuild(
+        retval = doebuild(
             ebuild_path,
             "depend",
             settings=settings,
@@ -261,6 +259,8 @@ class EbuildMetadataPhase(SubProcess):
                 self.returncode = 1
 
     def _eapi_invalid(self, metadata):
+        from portage.package.ebuild._metadata_invalid import eapi_invalid
+
         repo_name = self.portdb.getRepositoryName(self.repo_path)
         if metadata is not None:
             eapi_var = metadata["EAPI"]
