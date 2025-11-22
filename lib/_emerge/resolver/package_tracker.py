@@ -4,15 +4,6 @@
 import bisect
 import collections
 
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.dep:Atom,match_from_list",
-    "portage.util:cmp_sort_key",
-    "portage.versions:vercmp",
-)
-
 _PackageConflict = collections.namedtuple(
     "_PackageConflict", ["root", "pkgs", "atom", "description"]
 )
@@ -238,6 +229,10 @@ class PackageTracker:
         If 'installed' is True, installed non-replaced
         packages may also be returned.
         """
+        from portage.dep import match_from_list
+        from portage.util import cmp_sort_key
+        from portage.versions import vercmp
+
         if atom.soname:
             return iter(self._provides_index.get((root, atom), []))
 
@@ -380,6 +375,9 @@ class PackageTrackerDbapiWrapper:
         self._package_tracker.add_pkg(pkg)
 
     def match_pkgs(self, atom):
+        from portage.util import cmp_sort_key
+        from portage.versions import vercmp
+
         ret = sorted(
             self._package_tracker.match(self._root, atom),
             key=cmp_sort_key(lambda x, y: vercmp(x.version, y.version)),
@@ -393,4 +391,6 @@ class PackageTrackerDbapiWrapper:
         return self.match_pkgs(atom)
 
     def cp_list(self, cp):
+        from portage.dep import Atom
+
         return self.match_pkgs(Atom(cp))
