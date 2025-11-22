@@ -1,4 +1,4 @@
-# Copyright 2010-2024 Gentoo Authors
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["fetch"]
@@ -22,17 +22,6 @@ from urllib.parse import urlparse
 from urllib.parse import quote as urlquote
 
 import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.package.ebuild.config:check_config_instance,config",
-    "portage.package.ebuild.doebuild:doebuild_environment," + "_doebuild_spawn",
-    "portage.package.ebuild.prepare_build_dirs:prepare_build_dirs",
-    "portage.util:atomic_ofstream",
-    "portage.util.configparser:SafeConfigParser,read_configs," + "ConfigParserError",
-    "portage.util.install_mask:_raise_exc",
-    "portage.util._urlopen:urlopen",
-)
 
 from portage import (
     os,
@@ -258,6 +247,8 @@ async def _ensure_distdir(settings, distdir):
     @type distdir: str
     @raise PortageException: portage.exception wrapper exception
     """
+    from portage.util.install_mask import _raise_exc
+
     global _userpriv_test_write_file_cache
     dirmode = 0o070
     filemode = 0o60
@@ -477,6 +468,8 @@ class FlatLayout:
         return filename
 
     def get_filenames(self, distdir):
+        from portage.util.install_mask import _raise_exc
+
         for dirpath, dirnames, filenames in os.walk(distdir, onerror=_raise_exc):
             for filename in filenames:
                 try:
@@ -640,6 +633,12 @@ class MirrorLayoutConfig:
         self.structure = ()
 
     def read_from_file(self, f):
+        from portage.util.configparser import (
+            SafeConfigParser,
+            read_configs,
+            ConfigParserError,
+        )
+
         cp = SafeConfigParser()
         read_configs(cp, [f])
         vals = []
@@ -727,6 +726,9 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 
 
 async def async_mirror_url(mirror_url, filename, mysettings, cache_path=None):
+    from portage.util import atomic_ofstream
+    from portage.util.configparser import ConfigParserError
+
     mirror_conf = MirrorLayoutConfig()
 
     cache = {}
@@ -856,6 +858,7 @@ async def async_fetch(
     allow_missing_digests=True,
     force=False,
 ):
+    from portage.package.ebuild.config import check_config_instance
 
     if force and digests:
         # Since the force parameter can trigger unnecessary fetch when the

@@ -2,13 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from unittest.mock import MagicMock, patch, call
+import io
 import os
+import sys
 import tempfile
 
 from portage.tests import TestCase
 
 from portage.dbapi.bintree import binarytree
-from portage.localization import _
 from portage.const import BINREPOS_CONF_FILE
 
 
@@ -145,12 +146,11 @@ class BinarytreeTestCase(TestCase):
             getbinpkg_refresh=refresh, pretend=False, verbose=False
         )
 
-    @patch("portage.dbapi.bintree.writemsg")
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
     @patch("portage.dbapi.bintree.binarytree._populate_remote")
     @patch("portage.dbapi.bintree.binarytree._populate_local")
     def test_populate_with_getbinpkgs_and_not_BinRepoConfigLoader(
-        self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader, pwritemsg
+        self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader
     ):
         refresh = "something"
         settings = MagicMock()
@@ -159,14 +159,18 @@ class BinarytreeTestCase(TestCase):
         pBinRepoConfigLoader.return_value = None
         conf_file = os.path.join(portage_root, BINREPOS_CONF_FILE)
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
-        bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
+        out = io.StringIO()
+        stderr_orig = sys.stderr
+        try:
+            sys.stderr = out
+            bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
+        finally:
+            sys.stderr = stderr_orig
+
         ppopulate_remote.assert_not_called()
-        pwritemsg.assert_called_once_with(
-            _(
-                f"!!! {conf_file} is missing (or PORTAGE_BINHOST is unset)"
-                ", but use is requested.\n"
-            ),
-            noiselevel=-1,
+        self.assertEqual(
+            out.getvalue(),
+            f"!!! {conf_file} is missing (or PORTAGE_BINHOST is unset), but use is requested.\n",
         )
 
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
@@ -188,6 +192,7 @@ class BinarytreeTestCase(TestCase):
             getbinpkg_refresh=False, pretend=False, verbose=False
         )
 
+    @patch("portage.data.secpass", 2)
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
     @patch("portage.dbapi.bintree.binarytree._run_trust_helper")
     def test_default_getbinpkg_refresh_in_populate_trusthelper(

@@ -1,4 +1,4 @@
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __docformat__ = "epytext"
@@ -9,16 +9,10 @@ import re
 import socket
 import subprocess
 import sys
+from asyncio import Future
 from typing import Optional
 
 import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.process:spawn",
-    "portage.util:writemsg",
-    "portage.util.futures:asyncio",
-)
 import portage.util.formatter as formatter
 
 from portage import os
@@ -306,6 +300,8 @@ default_xterm_title = None
 
 
 def xtermTitleReset():
+    from portage.process import find_binary, spawn
+
     global default_xterm_title
     if default_xterm_title is None:
         prompt_command = os.environ.get("PROMPT_COMMAND")
@@ -318,8 +314,6 @@ def xtermTitleReset():
                 and _legal_terms_re.match(os.environ["TERM"]) is not None
                 and sys.__stderr__.isatty()
             ):
-                from portage.process import find_binary, spawn
-
                 shell = os.environ.get("SHELL")
                 if not shell or not os.access(shell, os.EX_OK):
                     shell = find_binary("sh")
@@ -566,7 +560,7 @@ def get_term_size(fd=None):
     return (0, 0)
 
 
-def set_term_size(lines: int, columns: int, fd: int) -> Optional[asyncio.Future]:
+def set_term_size(lines: int, columns: int, fd: int) -> Optional[Future]:
     """
     Set the number of lines and columns for the tty that is connected to fd.
     For portability, this simply calls `stty rows $lines columns $columns`.
@@ -577,6 +571,9 @@ def set_term_size(lines: int, columns: int, fd: int) -> Optional[asyncio.Future]
 
     [ERROR] Task was destroyed but it is pending!
     """
+    from portage.process import spawn
+    from portage.util import writemsg
+    from portage.util.futures import asyncio
 
     cmd = ["stty", "rows", str(lines), "columns", str(columns)]
     try:
@@ -626,6 +623,8 @@ class EOutput:
         sys.stderr.flush()
 
     def _write(self, f, s):
+        from portage.util import writemsg
+
         # avoid potential UnicodeEncodeError
         writemsg(s, noiselevel=-1, fd=f)
 
@@ -963,6 +962,7 @@ def _init(config_root="/"):
     on first access of the codes or _styles attributes (unless it has already
     been called for some other reason).
     """
+    from portage.util import writemsg
 
     global _color_map_loaded, codes, _styles
     if _color_map_loaded:

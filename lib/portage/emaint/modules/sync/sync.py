@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Gentoo Authors
+# Copyright 2014-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -17,15 +17,6 @@ from portage.util._async.AsyncScheduler import AsyncScheduler
 
 import _emerge
 from _emerge.emergelog import emergelog
-
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "_emerge.actions:adjust_configs,load_emerge_config",
-    "_emerge.chk_updated_cfg_files:chk_updated_cfg_files",
-    "_emerge.main:parse_opts",
-    "_emerge.post_emerge:display_news_notification",
-)
 
 warn = create_color_func("WARN")
 
@@ -46,6 +37,9 @@ class SyncRepos:
         @param emerge_config: optional an emerge_config instance to use
         @param emerge_logging: boolean, defaults to False
         """
+        from _emerge.main import parse_opts
+        from _emerge.actions import load_emerge_config
+
         if emerge_config is None:
             # need a basic options instance
             actions, opts, _files = parse_opts([], silent=True)
@@ -201,6 +195,8 @@ class SyncRepos:
         return selected
 
     def _sync(self, selected_repos, return_messages, emaint_opts=None):
+        from _emerge.post_emerge import display_news_notification
+
         msgs = []
         if not selected_repos:
             if return_messages:
@@ -290,6 +286,8 @@ class SyncRepos:
                 self._reload_config()
 
     def _check_updates(self):
+        from _emerge.chk_updated_cfg_files import chk_updated_cfg_files
+
         mybestpv = self.emerge_config.target_config.trees["porttree"].dbapi.xmatch(
             "bestmatch-visible", portage.const.PORTAGE_PACKAGE_ATOM
         )
@@ -359,6 +357,8 @@ class SyncRepos:
 
     def _reload_config(self):
         """Reload the whole config from scratch."""
+        from _emerge.actions import load_emerge_config, adjust_configs
+
         load_emerge_config(emerge_config=self.emerge_config)
         adjust_configs(self.emerge_config.opts, self.emerge_config.trees)
 

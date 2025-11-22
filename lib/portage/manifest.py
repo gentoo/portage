@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -7,16 +7,6 @@ import logging
 import re
 import stat
 import warnings
-
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.checksum:get_valid_checksum_keys,perform_multiple_checksums,"
-    + "verify_all,_apply_hash_filter,_filter_unaccelarated_hashes",
-    "portage.repository.config:_find_invalid_path_char",
-    "portage.util:write_atomic,writemsg_level",
-)
 
 from portage import os
 from portage import _encodings
@@ -146,6 +136,8 @@ class Manifest:
             a Manifest (not needed for parsing and checking sums).
             If thin is specified, then the manifest carries only info for
             distfiles."""
+        from portage.checksum import get_valid_checksum_keys
+        from portage.repository.config import _find_invalid_path_char
 
         if manifest1_compat is not DeprecationWarning:
             warnings.warn(
@@ -271,6 +263,8 @@ class Manifest:
         return myhashdict
 
     def _createManifestEntries(self):
+        from portage.checksum import get_valid_checksum_keys
+
         valid_hashes = set(itertools.chain(get_valid_checksum_keys(), ("size",)))
         mytypes = sorted(self.fhashdict)
         for mytype in mytypes:
@@ -310,6 +304,8 @@ class Manifest:
         """Write Manifest instance to disk, optionally signing it. Returns
         True if the Manifest is actually written, and False if the write
         is skipped due to existing Manifest being identical."""
+        from portage.util import write_atomic
+
         rval = False
         if not self.allow_create:
             return rval
@@ -389,6 +385,8 @@ class Manifest:
         @param entries: list of current Manifest2Entry instances
         @type entries: list
         """
+        from portage.util import writemsg_level
+
         # Use stat_result[stat.ST_MTIME] for 1 second resolution, since
         # it always rounds down. Note that stat_result.st_mtime will round
         # up from 0.999999999 to 1.0 when precision is lost during conversion
@@ -506,6 +504,8 @@ class Manifest:
         distfiles to raise a FileNotFound exception for (if no file or existing
         checksums are available), and defaults to all distfiles when not
         specified."""
+        from portage.checksum import perform_multiple_checksums
+
         if not self.allow_create:
             return
         if checkExisting:
@@ -581,10 +581,12 @@ class Manifest:
                         raise
 
     def _is_cpv(self, cat, pn, filename):
+        from portage.versions import _pkgsplit
+
         if not filename.endswith(".ebuild"):
             return None
         pf = filename[:-7]
-        ps = portage.versions._pkgsplit(pf)
+        ps = _pkgsplit(pf)
         cpv = f"{cat}/{pf}"
         if not ps:
             raise PortagePackageException(_(f"Invalid package name: '{cpv}'"))
@@ -615,6 +617,8 @@ class Manifest:
         return cpvlist
 
     def _update_thick_pkgdir(self, cat, pn, pkgdir):
+        from portage.checksum import perform_multiple_checksums
+
         _, _, pkgdir_files = next(os.walk(pkgdir), (None, None, None))
         cpvlist = []
         for f in pkgdir_files:
@@ -678,6 +682,12 @@ class Manifest:
             )
 
     def checkFileHashes(self, ftype, fname, ignoreMissing=False, hash_filter=None):
+        from portage.checksum import (
+            _apply_hash_filter,
+            _filter_unaccelarated_hashes,
+            verify_all,
+        )
+
         digests = _filter_unaccelarated_hashes(self.fhashdict[ftype][fname])
         if hash_filter is not None:
             digests = _apply_hash_filter(digests, hash_filter)
@@ -720,6 +730,8 @@ class Manifest:
         self, ftype, fnames, checkExisting=True, ignoreMissing=True, reuseExisting=False
     ):
         """Regenerate hashes from a list of files"""
+        from portage.checksum import perform_multiple_checksums
+
         for fname in fnames:
             if checkExisting:
                 self.checkFileHashes(ftype, fname, ignoreMissing=ignoreMissing)

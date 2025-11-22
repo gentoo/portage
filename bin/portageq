@@ -68,19 +68,6 @@ try:
     from portage.eapi import eapi_has_repo_deps
     from portage.util import writemsg, writemsg_stdout, no_color
 
-    portage.proxy.lazyimport.lazyimport(
-        globals(),
-        "re",
-        "subprocess",
-        "_emerge.Package:Package",
-        "_emerge.RootConfig:RootConfig",
-        "_emerge.is_valid_package_atom:insert_category_into_atom",
-        "portage.dbapi._expand_new_virt:expand_new_virt",
-        "portage._sets.base:InternalPackageSet",
-        "portage.util._eventloop.global_event_loop:global_event_loop",
-        "portage.xml.metadata:MetaDataXML",
-    )
-
     def eval_atom_use(atom):
         if "USE" in os.environ:
             use = frozenset(os.environ["USE"].split())
@@ -493,6 +480,10 @@ try:
 
     @uses_eroot
     def best_visible(argv):
+        from _emerge.Package import Package
+        from _emerge.RootConfig import RootConfig
+        from portage._sets.base import InternalPackageSet
+
         if len(argv) < 2:
             writemsg("ERROR: insufficient parameters!\n", noiselevel=-1)
             return 2
@@ -680,6 +671,8 @@ try:
 
     @uses_eroot
     def expand_virtual(argv):
+        from portage.dbapi._expand_new_virt import expand_new_virt
+
         if len(argv) != 2:
             writemsg(f"ERROR: expected 2 parameters, got {len(argv)}!\n", noiselevel=-1)
             return 2
@@ -1104,6 +1097,8 @@ try:
 
     class MaintainerEmailMatcher:
         def __init__(self, maintainer_emails):
+            import re
+
             self._re = re.compile(f"^({'|'.join(maintainer_emails)})$", re.I)
 
         def __call__(self, metadata_xml):
@@ -1120,6 +1115,12 @@ try:
         return not metadata_xml.maintainers()
 
     def pquery(parser, opts, args):
+        import re
+        from _emerge.Package import Package
+        from _emerge.RootConfig import RootConfig
+        from _emerge.is_valid_package_atom import insert_category_into_atom
+        from portage.xml.metadata import MetaDataXML
+
         portdb = portage.db[portage.root]["porttree"].dbapi
         root_config = RootConfig(portdb.settings, portage.db[portage.root], None)
 
@@ -1440,6 +1441,8 @@ try:
         eapi = os.environ.get("EAPI")
 
         def elog(elog_funcname, lines):
+            import subprocess
+
             cmd = f"source '{os.environ['PORTAGE_BIN_PATH']}/isolated-functions.sh' ; "
             for line in lines:
                 cmd += f"{elog_funcname} {shlex.quote(line)} ; "
@@ -1564,10 +1567,7 @@ try:
             sys.exit(1)
 
     if __name__ == "__main__":
-        try:
-            sys.exit(main(sys.argv))
-        finally:
-            global_event_loop().close()
+        sys.exit(main(sys.argv))
 
 except KeyboardInterrupt as e:
     # Prevent traceback on ^C

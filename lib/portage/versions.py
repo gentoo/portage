@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2024 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -22,14 +22,6 @@ from functools import lru_cache
 from typing import Any, Optional, Union
 from collections.abc import Sequence
 
-
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.repository.config:_gen_valid_repo",
-    "portage.util:cmp_sort_key",
-)
 from portage import _unicode_decode
 from portage.eapi import _eapi_attrs, _get_eapi_attrs
 from portage.exception import InvalidData
@@ -405,6 +397,8 @@ class _pkg_str(str):
         db: Any = None,
         repoconfig: Any = None,
     ):
+        from portage.repository.config import _gen_valid_repo
+
         if not isinstance(cpv, str):
             # Avoid TypeError from str.__init__ with PyPy.
             cpv = _unicode_decode(cpv)
@@ -572,6 +566,7 @@ def cpv_sort_key(eapi: Any = None) -> Any:
     @return: object for use as the 'key' parameter in places like
             list.sort() or sorted()
     """
+    from portage.util import cmp_sort_key
 
     split_cache = {}
 

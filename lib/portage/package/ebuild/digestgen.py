@@ -7,11 +7,6 @@ import errno
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.package.ebuild._spawn_nofetch:spawn_nofetch",
-)
-
 from portage import os
 from portage.const import MANIFEST2_HASH_DEFAULTS
 from portage.dbapi.porttree import FetchlistDict
@@ -42,6 +37,8 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
     @rtype: int
     @return: 1 on success and 0 on failure
     """
+    from portage.package.ebuild._spawn_nofetch import spawn_nofetch
+
     if mysettings is None or myportdb is None:
         raise TypeError(
             "portage.digestgen(): 'mysettings' and 'myportdb' parameter are required."

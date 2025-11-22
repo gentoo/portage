@@ -10,17 +10,6 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple
 from collections.abc import Sequence
 
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.dbapi.dep_expand:dep_expand@_dep_expand",
-    "portage.dep:Atom,match_from_list,_match_slot",
-    "portage.output:colorize",
-    "portage.util:cmp_sort_key,writemsg",
-    "portage.versions:catsplit,catpkgsplit,vercmp,_pkg_str",
-)
-
 from portage.const import MERGING_IDENTIFIER
 
 from portage import os
@@ -52,6 +41,8 @@ class dbapi:
         can delete the self._categories attribute in cases when the cached
         categories become invalid and need to be regenerated.
         """
+        from portage.versions import catsplit
+
         if self._categories is not None:
             return self._categories
         self._categories = tuple(sorted({catsplit(x)[0] for x in self.cp_all()}))
@@ -65,6 +56,8 @@ class dbapi:
 
     @staticmethod
     def _cmp_cpv(cpv1, cpv2) -> int:
+        from portage.versions import vercmp
+
         result = vercmp(cpv1.version, cpv2.version)
         if result == 0 and cpv1.build_time is not None and cpv2.build_time is not None:
             result = (cpv1.build_time > cpv2.build_time) - (
@@ -78,6 +71,8 @@ class dbapi:
         Use this to sort self.cp_list() results in ascending
         order. It sorts in place and returns None.
         """
+        from portage.util import cmp_sort_key
+
         if len(cpv_list) > 1:
             # If the cpv includes explicit -r0, it has to be preserved
             # for consistency in findname and aux_get calls, so use a
@@ -143,12 +138,16 @@ class dbapi:
         Returns:
                 a list of packages that match origdep
         """
+        from portage.dbapi.dep_expand import dep_expand as _dep_expand
+
         mydep = _dep_expand(origdep, mydb=self, settings=self.settings)
         return list(
             self._iter_match(mydep, self.cp_list(mydep.cp, use_cache=use_cache))
         )
 
     def _iter_match(self, atom: str, cpv_iter):
+        from portage.dep import match_from_list
+
         cpv_iter = iter(match_from_list(atom, cpv_iter))
         if atom.repo:
             cpv_iter = self._iter_match_repo(atom, cpv_iter)
@@ -165,6 +164,8 @@ class dbapi:
         then simply return it. Otherwise, fetch metadata and construct
         a _pkg_str instance. This may raise KeyError or InvalidData.
         """
+        from portage.versions import _pkg_str
+
         try:
             cpv.slot
         except AttributeError:
@@ -192,6 +193,8 @@ class dbapi:
                     yield pkg_str
 
     def _iter_match_slot(self, atom, cpv_iter):
+        from portage.dep import _match_slot
+
         for cpv in cpv_iter:
             try:
                 pkg_str = self._pkg_str(cpv, atom.repo)
@@ -206,6 +209,7 @@ class dbapi:
         1) Check for required IUSE intersection (need implicit IUSE here).
         2) Check enabled/disabled flag states.
         """
+        from portage.versions import _pkg_str
 
         aux_keys = ["EAPI", "IUSE", "KEYWORDS", "SLOT", "USE", "repository"]
         for cpv in cpv_iter:
@@ -364,6 +368,9 @@ class dbapi:
         return True
 
     def invalidentry(self, mypath):
+        from portage.output import colorize
+        from portage.util import writemsg
+
         if "/" + MERGING_IDENTIFIER in mypath:
             if os.path.exists(mypath):
                 writemsg(
@@ -385,6 +392,9 @@ class dbapi:
         @type onUpdate: a callable that takes 2 integer arguments:
                 maxval and curval
         """
+        from portage.versions import _pkg_str
+        from portage.update import update_dbentries
+
         cpv_all = self.cpv_all()
         cpv_all.sort()
         maxval = len(cpv_all)
@@ -423,9 +433,7 @@ class dbapi:
             if not updates_list:
                 continue
 
-            metadata_updates = portage.update_dbentries(
-                updates_list, metadata, parent=pkg
-            )
+            metadata_updates = update_dbentries(updates_list, metadata, parent=pkg)
             if metadata_updates:
                 try:
                     aux_update(cpv, metadata_updates)
@@ -447,6 +455,8 @@ class dbapi:
         Returns:
                 The number of slotmoves this function did
         """
+        from portage.dep import Atom
+
         atom = mylist[1]
         origslot = mylist[2]
         newslot = mylist[3]
