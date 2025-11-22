@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -45,25 +45,14 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.elog:messages@elog_messages",
-    "portage.package.ebuild.doebuild:_check_build_log,"
-    + "_post_phase_cmds,_post_phase_userpriv_perms,"
-    + "_post_phase_emptydir_cleanup,"
-    + "_post_src_install_soname_symlinks,"
-    + "_post_src_install_uid_fix,_postinst_bsdflags,"
-    + "_post_src_install_write_metadata,"
-    + "_preinst_bsdflags",
-    "portage.util.futures.unix_events:_set_nonblocking",
-    "portage.util.locale:async_check_locale,split_LC_ALL",
-)
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 
 
 async def _setup_locale(settings):
+    from portage.util.locale import async_check_locale, split_LC_ALL
+
     eapi_attrs = _get_eapi_attrs(settings["EAPI"])
     if eapi_attrs.posixish_locale:
         split_LC_ALL(settings)
@@ -85,10 +74,12 @@ async def _setup_locale(settings):
 
 
 async def _setup_repo_revisions(settings):
+    from portage.dbapi.porttree import portdbapi
+
     repo_name = settings.configdict["pkg"].get("PORTAGE_REPO_NAME")
     db = getattr(settings.mycpv, "_db", None)
     if (
-        isinstance(db, portage.portdbapi)
+        isinstance(db, portdbapi)
         and repo_name
         and "PORTAGE_REPO_REVISIONS" not in settings.configdict["pkg"]
     ):
@@ -362,6 +353,17 @@ class EbuildPhase(CompositeTask):
             )
 
     def _ebuild_exit_unlocked(self, ebuild_process, unlock_task=None):
+        from portage.package.ebuild.doebuild import (
+            _check_build_log,
+            _post_phase_cmds,
+            _post_phase_userpriv_perms,
+            _post_phase_emptydir_cleanup,
+            _post_src_install_write_metadata,
+            _post_src_install_uid_fix,
+            _postinst_bsdflags,
+            _preinst_bsdflags,
+        )
+
         if unlock_task is not None:
             self._assert_current(unlock_task)
             if unlock_task.cancelled:
@@ -553,6 +555,9 @@ class EbuildPhase(CompositeTask):
         self.wait()
 
     async def _elog(self, elog_funcname, lines, background=None):
+        from portage.elog import messages as elog_messages
+        from portage.util.futures.unix_events import _set_nonblocking
+
         if background is None:
             background = self.background
         out = io.StringIO()
@@ -637,6 +642,8 @@ class _PostPhaseCommands(CompositeTask):
         self._start_task(tasks, self._commands_exit)
 
     def _commands_exit(self, task):
+        from portage.package.ebuild.doebuild import _post_src_install_soname_symlinks
+
         if self._default_exit(task) != os.EX_OK:
             self._async_wait()
             return
