@@ -19,20 +19,6 @@ from itertools import chain
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.dbapi._similar_name_search:similar_name_search",
-    "portage.debug",
-    "portage.news:count_unread_news,display_news_notifications",
-    "portage.util._get_vm_info:get_vm_info",
-    "portage.util.locale:check_locale",
-    "portage.emaint.modules.sync.sync:SyncRepos",
-    "_emerge.chk_updated_cfg_files:chk_updated_cfg_files",
-    "_emerge.help:emerge_help",
-    "_emerge.post_emerge:display_news_notification,post_emerge",
-    "_emerge.stdout_spinner:stdout_spinner",
-)
-
 from portage import os
 from portage import shutil
 from portage import _encodings, _unicode_decode
@@ -117,6 +103,8 @@ def action_build(
     myfiles=DeprecationWarning,
     spinner=None,
 ):
+    from _emerge.chk_updated_cfg_files import chk_updated_cfg_files
+
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_build() now expects "
@@ -1847,6 +1835,9 @@ class _info_pkgs_ver:
 
 
 def action_info(settings, trees, myopts, myfiles):
+    from portage.dbapi._similar_name_search import similar_name_search
+    from portage.util._get_vm_info import get_vm_info
+
     # See if we can find any packages installed matching the strings
     # passed on the command line
     mypkgs = []
@@ -2427,6 +2418,8 @@ def action_sync(
     opts=DeprecationWarning,
     action=DeprecationWarning,
 ):
+    from portage.emaint.modules.sync.sync import SyncRepos
+
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_sync() now expects "
@@ -3033,6 +3026,8 @@ _emerge_features_warn = frozenset(["keeptemp", "keepwork"])
 
 
 def validate_ebuild_environment(trees):
+    from portage.util.locale import check_locale
+
     features_warn = set()
     for myroot in trees:
         settings = trees[myroot]["vartree"].settings
@@ -3500,6 +3495,11 @@ def repo_name_duplicate_check(trees):
 
 def run_action(emerge_config):
     # skip global updates prior to sync, since it's called after sync
+    from _emerge.help import emerge_help
+    from _emerge.post_emerge import display_news_notification, post_emerge
+    from _emerge.stdout_spinner import stdout_spinner
+    from portage.news import count_unread_news, display_news_notifications
+
     configs = [emerge_config.target_config]
     if emerge_config.target_config.root != emerge_config.running_config.root:
         configs.append(emerge_config.running_config)
