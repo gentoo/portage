@@ -12,21 +12,6 @@ from portage.localization import _
 from portage import os
 
 
-def _preload_elog_modules(settings):
-    logsystems = settings.get("PORTAGE_ELOG_SYSTEM", "").split()
-    for s in logsystems:
-        # allow per module overrides of PORTAGE_ELOG_CLASSES
-        if ":" in s:
-            s, levels = s.split(":", 1)
-            levels = levels.split(",")
-        # - is nicer than _ for module names, so allow people to use it.
-        s = s.replace("-", "_")
-        try:
-            _load_mod("portage.elog.mod_" + s)
-        except ImportError:
-            pass
-
-
 def _merge_logentries(a, b):
     rValue = {}
     phases = set(a)

@@ -1,4 +1,4 @@
-# Copyright 2009-2023 Gentoo Authors
+# Copyright 2009-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lazyimport"]
@@ -12,30 +12,6 @@ from portage.proxy.objectproxy import ObjectProxy
 
 _module_proxies = {}
 _module_proxies_lock = threading.RLock()
-
-
-def _preload_portage_submodules():
-    """
-    Load lazily referenced portage submodules into memory,
-    so imports won't fail during portage upgrade/downgrade.
-    Note that this recursively loads only the modules that
-    are lazily referenced by currently imported modules,
-    so some portage submodules may still remain unimported
-    after this function is called.
-    """
-    imported = set()
-    while True:
-        remaining = False
-        for name in list(_module_proxies):
-            if name.startswith("portage.") or name.startswith("_emerge."):
-                if name in imported:
-                    continue
-                imported.add(name)
-                remaining = True
-                __import__(name)
-                _unregister_module_proxy(name)
-        if not remaining:
-            break
 
 
 def _register_module_proxy(name, proxy):

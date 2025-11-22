@@ -71,7 +71,7 @@ from portage.eapi import (
     eapi_has_pkg_pretend,
     _get_eapi_attrs,
 )
-from portage.elog import elog_process, _preload_elog_modules
+from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import (
     DigestException,
@@ -3418,11 +3418,6 @@ def _prepare_self_update(settings):
     # sanity check: ensure that that this routine only runs once
     if portage._bin_path != portage.const.PORTAGE_BIN_PATH:
         return
-
-    # Load lazily referenced portage submodules into memory,
-    # so imports won't fail during portage upgrade/downgrade.
-    _preload_elog_modules(settings)
-    portage.proxy.lazyimport._preload_portage_submodules()
 
     # Make the temp directory inside $PORTAGE_TMPDIR/portage, since
     # it's common for /tmp and /var/tmp to be mounted with the
