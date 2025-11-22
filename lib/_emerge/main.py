@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
+import logging
 import locale
 import platform
 import shlex
@@ -9,18 +10,6 @@ import sys
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "logging",
-    "portage.dep:Atom",
-    "portage.output:xtermTitleReset",
-    "portage.util:writemsg_level",
-    "textwrap",
-    "_emerge.actions:load_emerge_config,run_action," + "validate_ebuild_environment",
-    "_emerge.emergelog:emergelog",
-    "_emerge.help:emerge_help",
-    "_emerge.is_valid_package_atom:insert_category_into_atom",
-)
 from portage import os
 from portage.sync import _SUBMODULE_PATH_MAP
 
@@ -297,6 +286,9 @@ def _find_bad_atoms(atoms, less_strict=False):
     It accepts atoms with wildcards.
     In less_strict mode it accepts operators and repo specs.
     """
+    from _emerge.is_valid_package_atom import insert_category_into_atom
+    from portage.dep import Atom
+
     bad_atoms = []
     for x in " ".join(atoms).split():
         atom = x
@@ -1139,6 +1131,10 @@ def parse_opts(tmpcmdline, silent=False):
 
 
 def profile_check(trees, myaction):
+    import textwrap
+    from _emerge.actions import validate_ebuild_environment
+    from portage.util import writemsg_level
+
     if myaction in ("help", "info", "search", "sync", "version"):
         return os.EX_OK
     for root_trees in trees.values():
@@ -1171,6 +1167,12 @@ def emerge_main(args: Optional[list[str]] = None):
     Processes command line arguments (default: sys.argv[1:]) and decides
     what the current run of emerge should by creating `emerge_config`
     """
+    from _emerge.actions import load_emerge_config, run_action
+    from _emerge.emergelog import emergelog
+    from _emerge.help import emerge_help
+    from portage.output import xtermTitleReset
+    from portage.util import writemsg_level
+
     if args is None:
         args = sys.argv[1:]
 
