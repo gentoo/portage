@@ -5,25 +5,6 @@ __all__ = ["bindbapi", "binarytree"]
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "_emerge.BinpkgExtractorAsync:BinpkgExtractorAsync",
-    "portage.checksum:get_valid_checksum_keys,perform_multiple_checksums,"
-    + "verify_all,_apply_hash_filter,_hash_filter",
-    "portage.dbapi.dep_expand:dep_expand",
-    "portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list",
-    "portage.output:EOutput,colorize",
-    "portage.locks:lockfile,unlockfile",
-    "portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd",
-    "portage.update:update_dbentries",
-    "portage.util:atomic_ofstream,ensure_dirs,normalize_path,writemsg",
-    "portage.util.time:unix_to_iso_time",
-    "portage.util.path:first_existing",
-    "portage.util._async.SchedulerInterface:SchedulerInterface",
-    "portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476,http_to_timestamp",
-    "portage.versions:best,catpkgsplit,catsplit,_pkg_str",
-)
-
 from portage.binrepo.config import BinRepoConfigLoader
 from portage.cache.mappings import slot_dict_class
 from portage.const import (
@@ -178,6 +159,8 @@ class bindbapi(fakedbapi):
         @return: True if PKGDIR is writable or can be created,
                 False otherwise
         """
+        from portage.util.path import first_existing
+
         return os.access(first_existing(self.bintree.pkgdir), os.W_OK)
 
     def match(self, *pargs, **kwargs):
@@ -277,6 +260,8 @@ class bindbapi(fakedbapi):
         return [mydata.get(x, "") for x in wants]
 
     def aux_update(self, cpv, values):
+        from portage.util import writemsg
+
         if not self.bintree.populated:
             self.bintree.populate()
         try:
@@ -363,6 +348,8 @@ class bindbapi(fakedbapi):
         @param dest_dir: destination directory
         @type dest_dir: str
         """
+        from portage.versions import _pkg_str
+
         loop = asyncio._wrap_loop(loop)
         if isinstance(pkg, _pkg_str):
             cpv = pkg
@@ -401,6 +388,10 @@ class bindbapi(fakedbapi):
         @param dest_dir: destination directory
         @type dest_dir: str
         """
+        from _emerge.BinpkgExtractorAsync import BinpkgExtractorAsync
+        from portage.util._async.SchedulerInterface import SchedulerInterface
+        from portage.versions import _pkg_str
+
         loop = asyncio._wrap_loop(loop)
         if isinstance(pkg, _pkg_str):
             settings = self.settings
@@ -496,6 +487,8 @@ class binarytree:
         virtual=DeprecationWarning,
         settings=None,
     ):
+        from portage.util import normalize_path
+
         if pkgdir is None:
             raise TypeError("pkgdir parameter is required")
 
@@ -664,6 +657,12 @@ class binarytree:
         return self.settings["ROOT"]
 
     def move_ent(self, mylist, repo_match=None):
+        from portage.dep import isjustname, isvalidatom
+        from portage.locks import lockfile, unlockfile
+        from portage.update import update_dbentries
+        from portage.util import writemsg
+        from portage.versions import _pkg_str, catsplit
+
         if not self.populated:
             self.populate()
         origcp = mylist[1]
@@ -902,6 +901,8 @@ class binarytree:
         @param add_repos: additional binary package repositories
         @type add_repos: sequence
         """
+        from portage.locks import lockfile, unlockfile
+        from portage.util import writemsg
 
         # TODO: Should we return here if we're --pretend? On the one hand,
         # people might not want --pretend to affect state. On the other hand,
@@ -973,6 +974,9 @@ class binarytree:
         self.populated = True
 
     def _populate_local(self, reindex=True, invalid_errors=True):
+        from portage.util import writemsg
+        from portage.versions import _pkg_str, catpkgsplit, catsplit
+
         """
         Populates the binarytree with local package metadata.
 
@@ -1341,6 +1345,8 @@ class binarytree:
         return pkgindex if update_pkgindex else None
 
     def _run_trust_helper(self):
+        from portage.util import writemsg
+
         portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "")
         if portage_trust_helper == "":
             return
@@ -1386,6 +1392,16 @@ class binarytree:
         verbose: bool,
         gpkg_only: bool,
     ):
+        from portage.package.ebuild.fetch import _hide_url_passwd
+        from portage.util import atomic_ofstream, writemsg
+        from portage.util.time import unix_to_iso_time
+        from portage.util._urlopen import (
+            urlopen as _urlopen,
+            have_pep_476 as _have_pep_476,
+            http_to_timestamp,
+        )
+        from portage.versions import _pkg_str
+
         binrepo_name = repo.name or repo.name_fallback
         base_url = repo.sync_uri
         pkgindex_uri = base_url.rstrip("/") + "/Packages"
@@ -1778,6 +1794,8 @@ class binarytree:
             self._merge_pkgindex_header(pkgindex.header, self._pkgindex_header)
 
     def _populate_additional(self, repos):
+        from portage.versions import _pkg_str
+
         for repo in repos:
             aux_keys = list(set(chain(repo._aux_cache_keys, repo._pkg_str_aux_keys)))
             for cpv in repo.cpv_all():
@@ -1788,6 +1806,10 @@ class binarytree:
                 self.dbapi.cpv_inject(pkg)
 
     def inject(self, cpv, current_pkg_path=None, allocated_pkg_path=None):
+        from portage.locks import lockfile, unlockfile
+        from portage.util import writemsg
+        from portage.versions import _pkg_str, catsplit
+
         """Add a freshly built package to the database.  This updates
         $PKGDIR/Packages with the new package metadata (including MD5).
         @param cpv: The cpv of the new package to inject
@@ -1926,6 +1948,9 @@ class binarytree:
         @return: None
         @raise KeyError: If cpv does not exist in the internal state
         """
+        from portage.locks import lockfile, unlockfile
+        from portage.util import writemsg
+
         if not self.populated:
             self.populate()
         os.makedirs(self.pkgdir, exist_ok=True)
@@ -2122,6 +2147,8 @@ class binarytree:
         return d
 
     def _pkgindex_write(self, pkgindex):
+        from portage.util import atomic_ofstream
+
         contents = codecs.getwriter(_encodings["repo.content"])(io.BytesIO())
         pkgindex.write(contents)
         contents = contents.getvalue()
@@ -2157,6 +2184,8 @@ class binarytree:
             os.utime(fname, (atime, mtime))
 
     def _pkgindex_entry(self, cpv):
+        from portage.checksum import perform_multiple_checksums
+
         """
         Performs checksums, and gets size and mtime via lstat.
         Raises InvalidDependString if necessary.
@@ -2250,6 +2279,8 @@ class binarytree:
         maintain a cache of implicit IUSE settings for use with binary
         packages.
         """
+        from portage.util import normalize_path
+
         if not (self.settings.profile_path and "IUSE_IMPLICIT" in self.settings):
             header.setdefault("VERSION", str(self._pkgindex_version))
             return
@@ -2304,6 +2335,8 @@ class binarytree:
         return False
 
     def _eval_use_flags(self, cpv, metadata):
+        from portage.util import writemsg
+
         use = frozenset(metadata.get("USE", "").split())
         for k in self._pkgindex_use_evaluated_keys:
             if k.endswith("DEPEND"):
@@ -2323,6 +2356,8 @@ class binarytree:
             metadata[k] = deps
 
     def exists_specific(self, cpv):
+        from portage.dbapi.dep_expand import dep_expand
+
         if not self.populated:
             self.populate()
         return self.dbapi.match(
@@ -2330,6 +2365,11 @@ class binarytree:
         )
 
     def dep_bestmatch(self, mydep):
+        from portage.dbapi.dep_expand import dep_expand
+        from portage.dep import dep_getkey, match_from_list
+        from portage.util import writemsg
+        from portage.versions import best
+
         "compatibility method -- all matches, not just visible ones"
         if not self.populated:
             self.populate()
@@ -2358,6 +2398,8 @@ class binarytree:
         a new path, behavior depends on the binpkg-multi-instance
         FEATURES setting.
         """
+        from portage.versions import _pkg_str, catsplit
+
         if not self.populated:
             self.populate()
 
@@ -2461,6 +2503,8 @@ class binarytree:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
     def _allocate_filename_multi(self, cpv, remote_binpkg_format=None):
+        from portage.versions import catsplit
+
         if remote_binpkg_format is None:
             try:
                 binpkg_format = get_binpkg_format(cpv._metadata["PATH"])
@@ -2595,6 +2639,8 @@ class binarytree:
     def get_local_repo_location(self, pkgname):
         """Returns local repo location associated with pkgname or None
         if a location is not associated."""
+        from portage.util import normalize_path
+
         # Since pkgname._repoconfig is not guaranteed to be present
         # here, retrieve it from the remote metadata.
         if not self._remotepkgs:
@@ -2627,6 +2673,8 @@ class binarytree:
     def gettbz2(self, pkgname):
         """Fetches the package from a remote site, if necessary.  Attempts to
         resume if the file appears to be partially downloaded."""
+        from portage.util import writemsg
+
         instance_key = self.dbapi._instance_key(pkgname)
         tbz2_path = self.getname(pkgname)
         tbz2name = os.path.basename(tbz2_path)
@@ -2690,6 +2738,10 @@ class binarytree:
         return pkgindex
 
     def _get_digests(self, pkg):
+        from portage.checksum import get_valid_checksum_keys
+        from portage.util import writemsg
+        from portage.versions import _pkg_str
+
         try:
             cpv = pkg.cpv
         except AttributeError:
@@ -2730,6 +2782,14 @@ class binarytree:
         return digests
 
     def digestCheck(self, pkg):
+        from portage.checksum import (
+            _hash_filter,
+            _apply_hash_filter,
+            _check_distfile,
+            verify_all,
+        )
+        from portage.output import EOutput
+
         """
         Verify digests for the given package and raise DigestException
         if verification fails.
