@@ -1,4 +1,4 @@
-# Copyright 2003-2023 Gentoo Authors
+# Copyright 2003-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """deps.py -- Portage dependency resolution functions"""
@@ -35,15 +35,8 @@ import warnings
 
 from functools import lru_cache
 
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util:cmp_sort_key,writemsg",
-)
-
-from portage import _encodings, _unicode_decode, _unicode_encode
-from portage.eapi import _get_eapi_attrs
+from portage import _unicode_decode
+from portage.eapi import _eapi_attrs, _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import (
@@ -83,7 +76,7 @@ _extended_cat = r"[\w+*][\w+.*-]*"
 _slot_dep_re_cache = {}
 
 
-def _get_slot_dep_re(eapi_attrs: portage.eapi._eapi_attrs) -> re.Pattern:
+def _get_slot_dep_re(eapi_attrs: _eapi_attrs) -> re.Pattern:
     cache_key = eapi_attrs.slot_operator
     slot_re = _slot_dep_re_cache.get(cache_key)
     if slot_re is not None:
@@ -2399,6 +2392,8 @@ def best_match_to_list(mypkg, mylist):
             - cp:slot with extended syntax	0
             - cp with extended syntax	-1
     """
+    from portage.util import cmp_sort_key
+
     operator_values = {
         "=": 6,
         "~": 5,
@@ -2476,6 +2471,7 @@ def match_from_list(mydep, candidate_list):
     @rtype: List
     @return: A list of package atoms that match the given package atom
     """
+    from portage.util import writemsg
 
     if not candidate_list:
         return []
