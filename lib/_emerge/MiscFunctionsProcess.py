@@ -1,12 +1,10 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import shlex
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
-
-portage.proxy.lazyimport.lazyimport(globals(), "portage.package.ebuild.doebuild:spawn")
 from portage import os
 
 
@@ -34,6 +32,8 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
         AbstractEbuildProcess._start(self)
 
     def _spawn(self, args, **kwargs):
+        from portage.package.ebuild.doebuild import spawn
+
         # If self.ld_preload_sandbox is None, default to free=False,
         # in alignment with the spawn(free=False) default.
         kwargs.setdefault(
