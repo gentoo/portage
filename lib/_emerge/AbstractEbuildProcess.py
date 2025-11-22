@@ -1,4 +1,4 @@
-# Copyright 1999-2023 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -16,11 +16,6 @@ from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
 from portage.util.futures import asyncio
 from portage.util import apply_secpass_permissions, no_color
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.package.ebuild.doebuild:_global_pid_phases",
-)
 
 
 class AbstractEbuildProcess(SpawnProcess):
