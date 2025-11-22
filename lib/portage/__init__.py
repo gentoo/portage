@@ -165,7 +165,6 @@ try:
         REPO_NAME_FILE,
         # BEGIN PREFIX LOCAL
         EPREFIX,
-        rootuid,
         # END PREFIX LOCAL
     )
 
