@@ -64,7 +64,6 @@ import codecs
 import errno
 import io
 import json
-import re
 import shlex
 import stat
 import subprocess
@@ -2519,6 +2518,8 @@ class binarytree:
 
     @staticmethod
     def _parse_build_id(filename):
+        from portage.versions import _pkgsplit
+
         build_id = -1
         if filename.endswith(SUPPORTED_XPAK_EXTENSIONS):
             suffixlen = len(".xpak")
@@ -2528,8 +2529,17 @@ class binarytree:
             raise InvalidBinaryPackageFormat(filename)
 
         filename = filename[:-suffixlen]
-        if re.match(r".*-[\w.]*\d+[\w.]*-\d+$", filename):
-            build_id = int(filename.split("-")[-1])
+        filename = os.path.basename(filename)
+        filename_split = filename.rsplit("-", 1)
+        if len(filename_split) == 2:
+            pf, build_id_str = filename_split
+            # Use _pkgsplit to ensure that a version is not confused with a build_id.
+            pf_split = _pkgsplit(pf)
+            if pf_split is not None:
+                try:
+                    build_id = int(build_id_str)
+                except ValueError:
+                    pass
 
         return build_id
 

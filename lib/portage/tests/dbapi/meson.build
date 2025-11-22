@@ -2,6 +2,7 @@ py.install_sources(
     [
         'test_auxdb.py',
         'test_bintree.py',
+        'test_bintree_build_id.py',
         'test_fakedbapi.py',
         'test_portdb_cache.py',
         '__init__.py',
