@@ -147,7 +147,14 @@ def copyfile(src, dst):
     @type dst: str
     """
 
-    try:
-        _fastcopy(src, dst)
-    except OSError:
-        shutil.copyfile(src, dst)
+    # BEGIN PREFIX LOCAL: don't try _fastcopy on Darwin, it fails for
+    # everything and gives fugly backtraces, bug #966267
+    if platform.system() != "Darwin":
+        try:
+            _fastcopy(src, dst)
+            return
+        except OSError:
+            pass
+
+    shutil.copyfile(src, dst)
+    # END PREFIX LOCAL
