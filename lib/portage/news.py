@@ -1,5 +1,5 @@
 # portage: news management code
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -471,6 +471,17 @@ def count_unread_news(
     @rtype: dict
     @return: dictionary mapping repos to integer counts of unread news items
     """
+
+    if not portdb.settings.profile_path:
+        # Skip news because the profile path is needed for items with profile restrictions.
+        msg = [
+            _("!!! News items will not be displayed due to an invalid profile setting.")
+            + "\n",
+            _("!!! Use eselect profile to update your profile.") + "\n",
+        ]
+        for line in msg:
+            writemsg_level(line, level=logging.ERROR, noiselevel=-1)
+        return OrderedDict()
 
     NEWS_PATH = os.path.join("metadata", "news")
     UNREAD_PATH = os.path.join(vardb.settings["EROOT"], NEWS_LIB_PATH, "news")

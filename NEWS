@@ -6,6 +6,65 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.72 (2025-11-17)
+--------------
+
+Lots of EAPI 9 preparation.
+
+Features:
+
+* EAPI 9: Implement "profile EAPI defaults to top-level" (bug #965891).
+
+* EAPI 9: Implement use.stable, package.use.stable (bug #965968).
+
+* PORTAGE_NICENESS, PORTAGE_IONICE_COMMAND, PORTAGE_SCHEDULING_POLICY:
+  Support Python's forkserver multiprocessing method (bug #965763).
+
+* egencache: Update use.local.desc atomically (bug #577126).
+
+Bug fixes:
+
+* bintree: Don't call trust helper w/ insufficient privileges (bug #920180).
+
+* ecompress: Workaround bash behaviour with PID recycling (bug #965423).
+
+* emake: Ignore MAKEOPTS if MAKEFLAGS is set (bug #692576).
+
+* man: Document --implicit-system-deps=n vs merge-wait (bug #681312, bug #965819).
+
+* man: Document PORTAGE_COMPRESS="" (bug #965903).
+
+* depgraph: Avoid RecursionError for virtual cycle (bug #965570).
+
+* PID namespace safety for temporary files (bug #851015).
+
+* sync: Fix pickle error for noisy_refresh_keys (bug #965969).
+
+* _prepare_self_update: Update sys.path for forkserver or spawn (bug #965976).
+
+* dep_zapdeps: Ignore installed circular dependency (bug #703440, bug #951296).
+
+Cleanups:
+
+* Fix some testcases missing EAPI declarations so not testing what they ought
+  to (bug #966088).
+
+* bintree: Refactor _populate_remote.
+
+* ecompress: Don't call when PORTAGE_COMPRESS is empty.
+
+portage-3.0.71 (2025-11-05)
+--------------
+
+Bug fixes:
+
+* bintree: Fix --getbinpkg crash with frozen repo in binrepos.conf (bug #965453).
+
+* bintree: Fix fetching Packages index in some cases, mostly with various
+  sync-uri (bug #965464).
+
+* news: Skip news if profile is invalid (bug #953800).
+
 portage-3.0.70 (2025-11-01)
 --------------
 

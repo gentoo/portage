@@ -1,4 +1,4 @@
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -9,9 +9,11 @@ from portage.tests.resolver.ResolverPlayground import (
 
 
 class OnlydepsMinimalTestCase(TestCase):
+
     def testOnlydepsMinimal(self):
         ebuilds = {
             "dev-libs/A-1": {
+                "EAPI": "8",
                 "DEPEND": "dev-libs/B",
                 "RDEPEND": "dev-libs/C",
                 "PDEPEND": "dev-libs/D",
@@ -31,7 +33,9 @@ class OnlydepsMinimalTestCase(TestCase):
                 success=True,
                 options={"--onlydeps": True, "--onlydeps-with-rdeps": "y"},
                 ambiguous_merge_order=True,
-                mergelist=[("dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1")],
+                mergelist=[
+                    ("dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1", "dev-libs/E-1")
+                ],
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
@@ -50,7 +54,7 @@ class OnlydepsMinimalTestCase(TestCase):
                     "--onlydeps-with-ideps": "y",
                 },
                 ambiguous_merge_order=True,
-                mergelist=[("dev-libs/B-1",)],
+                mergelist=[("dev-libs/B-1", "dev-libs/E-1")],
             ),
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],

@@ -144,14 +144,21 @@ guess_suffix() (
 	done
 )
 
-fix_symlinks() {
+fix_symlinks() (
 	local something_changed link target1 target2 i
+
+	# Run the last element of the ensuing pipeline in the current shell.
+	# This option shall not persist because the function is a forking list.
+	shopt -s lastpipe
 
 	# Repeat until nothing changes, in order to handle multiple
 	# levels of indirection (see bug #470916).
 	while true ; do
 		something_changed=0
-		while IFS= read -rd '' link && IFS= read -rd '' target1; do
+
+		printf '%s\0' "${ED}" \
+		| find0 -type l -xtype l -printf '%p\0%l\0' \
+		| while IFS= read -rd '' link && IFS= read -rd '' target1; do
 			target2=${target1}${PORTAGE_COMPRESS_SUFFIX}
 
 			if [[ ${target2} == /* ]]; then
@@ -166,10 +173,15 @@ fix_symlinks() {
 			rm -f -- "${link}" \
 			&& ln -snf -- "${target2}" "${link}${PORTAGE_COMPRESS_SUFFIX}" \
 			|| return
-		done < <(printf '%s\0' "${ED}" | find0 -type l -xtype l -printf '%p\0%l\0')
+		done
 
-		# Check whether the invocation of find(1) succeeded.
-		wait "$!" || return
+		# Check whether the invocation of find(1) succeeded. The use of
+		# the wait builtin is avoided here because the rm(1) and ln(1)
+		# utilities may be executed many times, with bash being prone
+		# to losing the status code of the last asynchronous command as
+		# a consequence of PID reuse. This is an issue most likely to
+		# affect OpenRC users. See bug #965423.
+		(( PIPESTATUS[1] == 0 )) || return
 
 		if (( ! something_changed )); then
 			break
@@ -180,7 +192,7 @@ fix_symlinks() {
 			break
 		fi
 	done
-}
+)
 
 if [[ -z $1 ]] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
@@ -213,11 +225,8 @@ while (( $# )); do
 	esac
 done
 
-# Default to bzip2 if unset.
-if [[ ! ${PORTAGE_COMPRESS=bzip2} ]]; then
-	# It was set as the null string. Take it that no compression is desired.
-	printf '%s\0' "${ED}" | find0 -name '*.ecompress' ! -path $'*\n*' -delete
-	exit 0
+if [[ ! ${PORTAGE_COMPRESS} ]]; then
+	die "${0##*/}: aborting because PORTAGE_COMPRESS is either empty or unset"
 fi
 
 if [[ ! -v PORTAGE_COMPRESS_FLAGS ]] ; then
@@ -241,7 +250,11 @@ fi
 
 # figure out the new suffix
 if ! PORTAGE_COMPRESS_SUFFIX=$(guess_suffix); then
-	die "Failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
+	error="${0##*/}: failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
+	if [[ ${PORTAGE_COMPRESS##*/} == @(true|:) ]]; then
+		error+=' (to disable compression, set PORTAGE_COMPRESS="" instead)'
+	fi
+	die "${error}"
 fi
 
 export PORTAGE_COMPRESS_SUFFIX PORTAGE_COMPRESS_FLAGS PORTAGE_COMPRESS

@@ -1,4 +1,4 @@
-# Copyright 2004-2024 Gentoo Authors
+# Copyright 2004-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.cache.mappings import UserDict
@@ -1525,7 +1525,10 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                         try:
                             st = os.stat(real_name)
                         except FileNotFoundError:
-                            umask_test_file = f"{tmp_name}_umask_test"
+                            if isinstance(tmp_name, bytes):
+                                umask_test_file = tmp_name + b"_umask_test"
+                            else:
+                                umask_test_file = f"{tmp_name}_umask_test"
                             with open(umask_test_file, "w") as f:
                                 st = os.fstat(f.fileno())
                                 os.unlink(umask_test_file)

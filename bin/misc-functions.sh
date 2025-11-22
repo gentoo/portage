@@ -146,7 +146,7 @@ install_qa_check() {
 
 	# If binpkg-docompress is enabled, apply compression before creating
 	# the binary package.
-	if contains_word binpkg-docompress "${FEATURES}"; then
+	if [[ ${PORTAGE_COMPRESS} ]] && contains_word binpkg-docompress "${FEATURES}"; then
 		"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
@@ -452,7 +452,7 @@ __dyn_instprep() {
 
 	# If binpkg-docompress is disabled, we need to apply compression
 	# before installing.
-	if ! contains_word binpkg-docompress "${FEATURES}"; then
+	if [[ ${PORTAGE_COMPRESS} ]] && ! contains_word binpkg-docompress "${FEATURES}"; then
 		"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue

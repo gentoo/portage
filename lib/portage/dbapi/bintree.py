@@ -1375,7 +1375,7 @@ class binarytree:
             # when binpackages are involved, not only when we refuse unsigned
             # ones. (If the keys have expired we end up refusing signed but
             # technically invalid packages...)
-            if not pretend and self.dbapi.writable:
+            if not pretend and self.dbapi.writable and portage.data.secpass >= 2:
                 self._run_trust_helper()
             gpkg_only = True
         else:
@@ -1383,405 +1383,408 @@ class binarytree:
 
         # Order by descending priority.
         for repo in reversed(list(self._binrepos_conf.values())):
-            binrepo_name = repo.name or repo.name_fallback
-            base_url = repo.sync_uri
-            parsed_url = urlparse(base_url)
-            host = parsed_url.hostname or ""
-            port = parsed_url.port
-            user = parsed_url.username
-            passwd = parsed_url.password
-            user_passwd = user + "@" if user else ""
-            gpkg_only_warned = False
-
-            pkgindex_file = os.path.join(
-                self.settings["EROOT"],
-                CACHE_PATH,
-                "binhost",
-                host,
-                parsed_url.path.lstrip("/"),
-                "Packages",
+            self._populate_remote_repo(
+                repo, getbinpkg_refresh, pretend, verbose, gpkg_only
             )
-            pkgindex = self._new_pkgindex()
+
+    def _populate_remote_repo(
+        self,
+        repo,
+        getbinpkg_refresh: bool,
+        pretend: bool,
+        verbose: bool,
+        gpkg_only: bool,
+    ):
+        binrepo_name = repo.name or repo.name_fallback
+        base_url = repo.sync_uri
+        pkgindex_uri = base_url.rstrip("/") + "/Packages"
+        parsed_url = urlparse(base_url)
+        host = parsed_url.hostname or ""
+        port = parsed_url.port
+        user = parsed_url.username
+        user_passwd = user + "@" if user else ""
+        gpkg_only_warned = False
+
+        pkgindex_file = os.path.join(
+            self.settings["EROOT"],
+            CACHE_PATH,
+            "binhost",
+            host,
+            parsed_url.path.lstrip("/"),
+            "Packages",
+        )
+        pkgindex = self._new_pkgindex()
+        try:
+            f = open(
+                _unicode_encode(
+                    pkgindex_file, encoding=_encodings["fs"], errors="strict"
+                ),
+                encoding=_encodings["repo.content"],
+                errors="replace",
+            )
             try:
-                f = open(
-                    _unicode_encode(
-                        pkgindex_file, encoding=_encodings["fs"], errors="strict"
-                    ),
-                    encoding=_encodings["repo.content"],
-                    errors="replace",
-                )
-                try:
-                    pkgindex.read(f)
-                finally:
-                    f.close()
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
-            changed = True
-            local_timestamp = pkgindex.header.get("TIMESTAMP", None)
+                pkgindex.read(f)
+            finally:
+                f.close()
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+        changed = True
+        local_timestamp = pkgindex.header.get("TIMESTAMP", None)
+        try:
+            download_timestamp = float(pkgindex.header.get("DOWNLOAD_TIMESTAMP", 0))
+        except ValueError:
+            download_timestamp = 0
+        remote_timestamp = None
+        rmt_idx = self._new_pkgindex()
+        proc = None
+        tmp_filename = None
+        try:
+            if local_timestamp and (repo.frozen or not getbinpkg_refresh):
+                if repo.frozen:
+                    raise UseCachedCopyOfRemoteIndex("frozen")
+                raise UseCachedCopyOfRemoteIndex("")
+
             try:
-                download_timestamp = float(pkgindex.header.get("DOWNLOAD_TIMESTAMP", 0))
+                ttl = float(pkgindex.header.get("TTL", 0))
             except ValueError:
-                download_timestamp = 0
-            remote_timestamp = None
-            rmt_idx = self._new_pkgindex()
-            proc = None
-            tmp_filename = None
-            try:
-                if local_timestamp and (repo.frozen or not getbinpkg_refresh):
-                    if repo.frozen:
-                        raise UseCachedCopyOfRemoteIndex("frozen")
-                    raise UseCachedCopyOfRemoteIndex("")
+                pass
+            else:
+                if (
+                    download_timestamp
+                    and ttl
+                    and download_timestamp + ttl > time.time()
+                ):
+                    raise UseCachedCopyOfRemoteIndex("within TTL")
 
-                try:
-                    ttl = float(pkgindex.header.get("TTL", 0))
-                except ValueError:
-                    pass
-                else:
-                    if (
-                        download_timestamp
-                        and ttl
-                        and download_timestamp + ttl > time.time()
-                    ):
-                        raise UseCachedCopyOfRemoteIndex("within TTL")
+            for remote_pkgindex_file in ("Packages.gz", "Packages"):
+                # urlparse.urljoin() only works correctly with recognized
+                # protocols and requires the base url to have a trailing
+                # slash, so join manually...
+                url = base_url.rstrip("/") + "/" + remote_pkgindex_file
+                f = None
 
-                for remote_pkgindex_file in ("Packages.gz", "Packages"):
-                    # urlparse.urljoin() only works correctly with recognized
-                    # protocols and requires the base url to have a trailing
-                    # slash, so join manually...
-                    url = base_url.rstrip("/") + "/" + remote_pkgindex_file
-                    f = None
+                # Set proxy settings for _urlopen -> urllib_request
+                proxies = {}
+                for proto in ("http", "https"):
+                    value = self.settings.get(proto + "_proxy")
+                    if value is not None:
+                        proxies[proto] = value
 
-                    # Set proxy settings for _urlopen -> urllib_request
-                    proxies = {}
-                    for proto in ("http", "https"):
-                        value = self.settings.get(proto + "_proxy")
-                        if value is not None:
-                            proxies[proto] = value
-
-                    # Don't use urlopen for https, unless
-                    # PEP 476 is supported (bug #469888).
-                    if (
-                        repo.fetchcommand is None or parsed_url.scheme in ("", "file")
-                    ) and (parsed_url.scheme not in ("https",) or _have_pep_476()):
-                        try:
-                            if parsed_url.scheme in ("", "file"):
-                                f = open(
-                                    f"{parsed_url.path.rstrip('/')}/{remote_pkgindex_file}",
-                                    "rb",
-                                )
-                            else:
-                                f = _urlopen(
-                                    url,
-                                    if_modified_since=local_timestamp,
-                                    proxies=proxies,
-                                )
-                                if hasattr(f, "headers"):
-                                    if f.headers.get("Last-Modified", ""):
-                                        last_modified = f.headers.get("Last-Modified")
-                                        remote_timestamp = http_to_timestamp(
-                                            last_modified
-                                        )
-                                    elif f.headers.get("timestamp", ""):
-                                        remote_timestamp = f.headers.get("timestamp")
-                                if (
-                                    remote_timestamp
-                                    and local_timestamp
-                                    and int(remote_timestamp) < int(local_timestamp)
-                                ):
-                                    msg = (
-                                        f"[{binrepo_name}] WARNING: Service {host} did not respect If-Modified-Since."
-                                        f" Consider asking the service operator to enable support for"
-                                        f" If-Modified-Since or using another service"
-                                    )
-                                    extra_info = ""
-                                    if verbose:
-                                        local_iso_time = unix_to_iso_time(
-                                            local_timestamp
-                                        )
-                                        remote_iso_time = unix_to_iso_time(
-                                            remote_timestamp
-                                        )
-                                        extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
-                                    writemsg(
-                                        colorize(
-                                            "WARN",
-                                            f"{msg}{extra_info}.\n",
-                                        ),
-                                        noiselevel=-1,
-                                    )
-                        except OSError as err:
-                            if (
-                                hasattr(err, "code") and err.code == 304
-                            ):  # not modified (since local_timestamp)
-                                extra_info = ""
-                                if hasattr(err, "headers") and err.headers.get(
-                                    "Last-Modified", ""
-                                ):
-                                    last_modified = err.headers.get("Last-Modified")
+                # Don't use urlopen for https, unless
+                # PEP 476 is supported (bug #469888).
+                if (
+                    (repo.fetchcommand is None or parsed_url.scheme in ("", "file"))
+                    and (parsed_url.scheme not in ("https",) or _have_pep_476())
+                    and (parsed_url.scheme not in ("ssh",))
+                ):
+                    try:
+                        if parsed_url.scheme in ("", "file"):
+                            f = open(
+                                f"{parsed_url.path.rstrip('/')}/{remote_pkgindex_file}",
+                                "rb",
+                            )
+                        else:
+                            f = _urlopen(
+                                url,
+                                if_modified_since=local_timestamp,
+                                proxies=proxies,
+                            )
+                            if hasattr(f, "headers"):
+                                if f.headers.get("Last-Modified", ""):
+                                    last_modified = f.headers.get("Last-Modified")
                                     remote_timestamp = http_to_timestamp(last_modified)
+                                elif f.headers.get("timestamp", ""):
+                                    remote_timestamp = f.headers.get("timestamp")
+                            if (
+                                remote_timestamp
+                                and local_timestamp
+                                and int(remote_timestamp) < int(local_timestamp)
+                            ):
+                                msg = (
+                                    f"[{binrepo_name}] WARNING: Service {host} did not respect If-Modified-Since."
+                                    f" Consider asking the service operator to enable support for"
+                                    f" If-Modified-Since or using another service"
+                                )
+                                extra_info = ""
+                                if verbose:
                                     local_iso_time = unix_to_iso_time(local_timestamp)
                                     remote_iso_time = unix_to_iso_time(remote_timestamp)
                                     extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
-
-                                raise UseCachedCopyOfRemoteIndex(
-                                    "up-to-date", extra_info
-                                )
-                            if (
-                                remote_pkgindex_file == "Packages.gz"
-                                and isinstance(err, urllib.error.HTTPError)
-                                and err.code == 404
-                            ):
-                                # Ignore 404s for Packages.gz, as the file is
-                                # not guaranteed to exist.
-                                continue
-
-                            # This includes URLError which is raised for SSL
-                            # certificate errors when PEP 476 is supported.
-                            writemsg(
-                                _(
-                                    "\n\n!!! [%s] Error fetching binhost package"
-                                    " info from '%s'\n"
-                                )
-                                % (binrepo_name, _hide_url_passwd(base_url))
-                            )
-                            error_msg = str(err)
-                            writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
-                            del err
-                            pkgindex = None
-
-                            if parsed_url.scheme in ("ftp", "http", "https"):
-                                # This protocol is supposedly supported by urlopen,
-                                # so apparently there's a problem with the url
-                                # or a bug in urlopen.
-                                if self.settings.get("PORTAGE_DEBUG", "0") != "0":
-                                    traceback.print_exc()
-
-                                raise
-                        except ValueError:
-                            raise ParseError(
-                                f"Invalid Portage BINHOST value '{url.lstrip()}'"
-                            )
-
-                    if f is None:
-                        path = parsed_url.path.rstrip("/") + "/" + remote_pkgindex_file
-
-                        if repo.fetchcommand is None and parsed_url.scheme == "ssh":
-                            if remote_pkgindex_file == "Packages.gz":
-                                # TODO: Check first if Packages.gz exist before
-                                # cat'ing it. Until this is done, never try to retrieve
-                                # Packages.gz as it is not guaranteed to exist.
-                                continue
-
-                            # Use a pipe so that we can terminate the download
-                            # early if we detect that the TIMESTAMP header
-                            # matches that of the cached Packages file.
-                            ssh_args = ["ssh"]
-                            if port is not None:
-                                ssh_args.append(f"-p{port}")
-                            # NOTE: shlex evaluates embedded quotes
-                            ssh_args.extend(
-                                shlex.split(self.settings.get("PORTAGE_SSH_OPTS", ""))
-                            )
-                            ssh_args.append(user_passwd + host)
-                            ssh_args.append("--")
-                            ssh_args.append("cat")
-                            ssh_args.append(path)
-
-                            proc = subprocess.Popen(ssh_args, stdout=subprocess.PIPE)
-                            f = proc.stdout
-                        else:
-                            if repo.fetchcommand is None:
-                                setting = "FETCHCOMMAND_" + parsed_url.scheme.upper()
-                                fcmd = self.settings.get(setting)
-                                if not fcmd:
-                                    fcmd = self.settings.get("FETCHCOMMAND")
-                                    if not fcmd:
-                                        raise OSError("FETCHCOMMAND is unset")
-                            else:
-                                fcmd = repo.fetchcommand
-
-                            fd, tmp_filename = tempfile.mkstemp()
-                            tmp_dirname, tmp_basename = os.path.split(tmp_filename)
-                            os.close(fd)
-
-                            fcmd_vars = {
-                                "DISTDIR": tmp_dirname,
-                                "FILE": tmp_basename,
-                                "URI": url,
-                            }
-
-                            for k in ("PORTAGE_SSH_OPTS",):
-                                v = self.settings.get(k)
-                                if v is not None:
-                                    fcmd_vars[k] = v
-
-                            success = portage.getbinpkg.file_get(
-                                fcmd=fcmd, fcmd_vars=fcmd_vars
-                            )
-                            if not success:
-                                if remote_pkgindex_file == "Packages.gz":
-                                    # Ignore failures for Packages.gz, as the file is
-                                    # not guaranteed to exist.
-                                    continue
-                                raise OSError(f"{setting} failed")
-                            f = open(tmp_filename, "rb")
-
-                    if remote_pkgindex_file == "Packages.gz":
-                        f = GzipFile(fileobj=f, mode="rb")
-
-                    f_dec = codecs.iterdecode(
-                        f, _encodings["repo.content"], errors="replace"
-                    )
-                    try:
-                        rmt_idx.readHeader(f_dec)
-                        if (
-                            not remote_timestamp
-                        ):  # in case it had not been read from HTTP header
-                            remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
-                        if not remote_timestamp:
-                            # no timestamp in the header, something's wrong
-                            pkgindex = None
-                            writemsg(
-                                _(
-                                    "\n\n!!! [%s] Binhost package index "
-                                    " has no TIMESTAMP field.\n"
-                                )
-                                % binrepo_name,
-                                noiselevel=-1,
-                            )
-                        else:
-                            if not self._pkgindex_version_supported(rmt_idx):
-                                writemsg(
-                                    _(
-                                        "\n\n!!! [%s] Binhost package index version"
-                                        " is not supported: '%s'\n"
-                                    )
-                                    % (binrepo_name, rmt_idx.header.get("VERSION")),
-                                    noiselevel=-1,
-                                )
-                                pkgindex = None
-                            elif not local_timestamp or int(local_timestamp) < int(
-                                remote_timestamp
-                            ):
-                                rmt_idx.readBody(f_dec)
-                                pkgindex = rmt_idx
-                    finally:
-                        # Timeout after 5 seconds, in case close() blocks
-                        # indefinitely (see bug #350139).
-                        try:
-                            try:
-                                AlarmSignal.register(5)
-                                f.close()
-                            finally:
-                                AlarmSignal.unregister()
-                        except AlarmSignal:
-                            writemsg(
-                                "\n\n!!! [%s] %s\n"
-                                % (
-                                    binrepo_name,
-                                    _("Timed out while closing connection to binhost"),
-                                ),
-                                noiselevel=-1,
-                            )
-                        if proc is not None:
-                            if proc.poll() is None:
-                                proc.kill()
-                                proc.wait()
-                            proc = None
-                        if tmp_filename is not None:
-                            try:
-                                os.unlink(tmp_filename)
-                            except OSError:
-                                pass
-                    # We successfully fetched the remote index, break
-                    # out of the ("Packages.gz", "Packages") loop.
-                    break
-            except UseCachedCopyOfRemoteIndex as exc:
-                changed = False
-                rmt_idx = pkgindex
-                if getbinpkg_refresh or repo.frozen:
-                    extra_info = exc.extra_info if verbose else ""
-                    writemsg(
-                        _("[%s] Local copy of remote index is %s and will be used%s.\n")
-                        % (binrepo_name, exc.desc, extra_info),
-                    )
-
-            if pkgindex is rmt_idx and changed:
-                pkgindex.modified = False  # don't update the header
-                pkgindex.header["DOWNLOAD_TIMESTAMP"] = "%d" % time.time()
-                try:
-                    ensure_dirs(os.path.dirname(pkgindex_file))
-                    f = atomic_ofstream(pkgindex_file)
-                    pkgindex.write(f)
-                    f.close()
-                except (OSError, PortageException):
-                    if os.access(os.path.dirname(pkgindex_file), os.W_OK):
-                        raise
-                    # The current user doesn't have permission to cache the
-                    # file, but that's alright.
-            if pkgindex:
-                remote_base_uri = pkgindex.header.get("URI", base_url)
-                for d in pkgindex.packages:
-                    cpv = _pkg_str(
-                        d["CPV"],
-                        metadata=d,
-                        settings=self.settings,
-                        db=self.dbapi,
-                        repoconfig=repo,
-                    )
-                    # Local package instances override remote instances
-                    # with the same instance_key.
-                    if self.dbapi.cpv_exists(cpv):
-                        continue
-
-                    if gpkg_only:
-                        try:
-                            binpkg_format = get_binpkg_format(
-                                d.get("PATH"), remote=True
-                            )
-                        except InvalidBinaryPackageFormat as e:
-                            writemsg(
-                                colorize(
-                                    "WARN",
-                                    f"{e}\n",
-                                ),
-                                noiselevel=-1,
-                            )
-                            continue
-                        if binpkg_format != "gpkg":
-                            if not gpkg_only_warned:
                                 writemsg(
                                     colorize(
                                         "WARN",
-                                        f"[{binrepo_name} Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
+                                        f"{msg}{extra_info}.\n",
                                     ),
                                     noiselevel=-1,
                                 )
-                                gpkg_only_warned = True
+                    except OSError as err:
+                        if (
+                            hasattr(err, "code") and err.code == 304
+                        ):  # not modified (since local_timestamp)
+                            extra_info = ""
+                            if hasattr(err, "headers") and err.headers.get(
+                                "Last-Modified", ""
+                            ):
+                                last_modified = err.headers.get("Last-Modified")
+                                remote_timestamp = http_to_timestamp(last_modified)
+                                local_iso_time = unix_to_iso_time(local_timestamp)
+                                remote_iso_time = unix_to_iso_time(remote_timestamp)
+                                extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
+
+                            raise UseCachedCopyOfRemoteIndex("up-to-date", extra_info)
+                        if (
+                            remote_pkgindex_file == "Packages.gz"
+                            and isinstance(err, urllib.error.HTTPError)
+                            and err.code == 404
+                        ):
+                            # Ignore 404s for Packages.gz, as the file is
+                            # not guaranteed to exist.
                             continue
 
-                    d["CPV"] = cpv
-                    d["BASE_URI"] = remote_base_uri
-                    d["PKGINDEX_URI"] = url
-                    # FETCHCOMMAND and RESUMECOMMAND may be specified
-                    # by binrepos.conf, and otherwise ensure that they
-                    # do not propagate from the Packages index since
-                    # it may be unsafe to execute remotely specified
-                    # commands.
-                    if repo.fetchcommand is None:
-                        d.pop("FETCHCOMMAND", None)
-                    else:
-                        d["FETCHCOMMAND"] = repo.fetchcommand
-                    if repo.resumecommand is None:
-                        d.pop("RESUMECOMMAND", None)
-                    else:
-                        d["RESUMECOMMAND"] = repo.resumecommand
-                    self._remotepkgs[self.dbapi._instance_key(cpv)] = d
-                    self.dbapi.cpv_inject(cpv)
+                        if parsed_url.scheme in ("ftp", "http", "https"):
+                            # This protocol is supposedly supported by urlopen,
+                            # so apparently there's a problem with the url
+                            # or a bug in urlopen.
+                            if self.settings.get("PORTAGE_DEBUG", "0") != "0":
+                                traceback.print_exc()
 
-                self._remote_has_index = True
-                self._merge_pkgindex_header(pkgindex.header, self._pkgindex_header)
+                            # Re-raise the OSError. It will be caught again in this function,
+                            # just above the remote_pkgindex_file loop.
+                            raise
+                    except ValueError:
+                        raise ParseError(
+                            f"Invalid Portage BINHOST value '{url.lstrip()}'"
+                        )
+
+                if f is None:
+                    path = parsed_url.path.rstrip("/") + "/" + remote_pkgindex_file
+
+                    if repo.fetchcommand is None and parsed_url.scheme == "ssh":
+                        if remote_pkgindex_file == "Packages.gz":
+                            # TODO: Check first if Packages.gz exist before
+                            # cat'ing it. Until this is done, never try to retrieve
+                            # Packages.gz as it is not guaranteed to exist.
+                            continue
+
+                        # Use a pipe so that we can terminate the download
+                        # early if we detect that the TIMESTAMP header
+                        # matches that of the cached Packages file.
+                        ssh_args = ["ssh"]
+                        if port is not None:
+                            ssh_args.append(f"-p{port}")
+                        # NOTE: shlex evaluates embedded quotes
+                        ssh_args.extend(
+                            shlex.split(self.settings.get("PORTAGE_SSH_OPTS", ""))
+                        )
+                        ssh_args.append(user_passwd + host)
+                        ssh_args.append("--")
+                        ssh_args.append("cat")
+                        ssh_args.append(path)
+
+                        proc = subprocess.Popen(ssh_args, stdout=subprocess.PIPE)
+                        f = proc.stdout
+                    else:
+                        if repo.fetchcommand is None:
+                            setting = "FETCHCOMMAND_" + parsed_url.scheme.upper()
+                            fcmd = self.settings.get(setting)
+                            if not fcmd:
+                                fcmd = self.settings.get("FETCHCOMMAND")
+                                if not fcmd:
+                                    raise OSError("FETCHCOMMAND is unset")
+                        else:
+                            fcmd = repo.fetchcommand
+
+                        fd, tmp_filename = tempfile.mkstemp()
+                        tmp_dirname, tmp_basename = os.path.split(tmp_filename)
+                        os.close(fd)
+
+                        fcmd_vars = {
+                            "DISTDIR": tmp_dirname,
+                            "FILE": tmp_basename,
+                            "URI": url,
+                        }
+
+                        for k in ("PORTAGE_SSH_OPTS",):
+                            v = self.settings.get(k)
+                            if v is not None:
+                                fcmd_vars[k] = v
+
+                        success = portage.getbinpkg.file_get(
+                            fcmd=fcmd, fcmd_vars=fcmd_vars
+                        )
+                        if not success:
+                            if remote_pkgindex_file == "Packages.gz":
+                                # Ignore failures for Packages.gz, as the file is
+                                # not guaranteed to exist.
+                                continue
+                            raise OSError(f"{setting} failed")
+                        f = open(tmp_filename, "rb")
+
+                if remote_pkgindex_file == "Packages.gz":
+                    f = GzipFile(fileobj=f, mode="rb")
+
+                f_dec = codecs.iterdecode(
+                    f, _encodings["repo.content"], errors="replace"
+                )
+                try:
+                    rmt_idx.readHeader(f_dec)
+                    if (
+                        not remote_timestamp
+                    ):  # in case it had not been read from HTTP header
+                        remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
+                    if not remote_timestamp:
+                        # no timestamp in the header, something's wrong
+                        pkgindex = None
+                        writemsg(
+                            _(
+                                "\n\n!!! [%s] Binhost package index "
+                                " has no TIMESTAMP field.\n"
+                            )
+                            % binrepo_name,
+                            noiselevel=-1,
+                        )
+                    else:
+                        if not self._pkgindex_version_supported(rmt_idx):
+                            writemsg(
+                                _(
+                                    "\n\n!!! [%s] Binhost package index version"
+                                    " is not supported: '%s'\n"
+                                )
+                                % (binrepo_name, rmt_idx.header.get("VERSION")),
+                                noiselevel=-1,
+                            )
+                            pkgindex = None
+                        elif not local_timestamp or int(local_timestamp) < int(
+                            remote_timestamp
+                        ):
+                            rmt_idx.readBody(f_dec)
+                            pkgindex = rmt_idx
+                finally:
+                    # Timeout after 5 seconds, in case close() blocks
+                    # indefinitely (see bug #350139).
+                    try:
+                        try:
+                            AlarmSignal.register(5)
+                            f.close()
+                        finally:
+                            AlarmSignal.unregister()
+                    except AlarmSignal:
+                        writemsg(
+                            "\n\n!!! [%s] %s\n"
+                            % (
+                                binrepo_name,
+                                _("Timed out while closing connection to binhost"),
+                            ),
+                            noiselevel=-1,
+                        )
+                    if proc is not None:
+                        if proc.poll() is None:
+                            proc.kill()
+                            proc.wait()
+                        proc = None
+                    if tmp_filename is not None:
+                        try:
+                            os.unlink(tmp_filename)
+                        except OSError:
+                            pass
+                # We successfully fetched the remote index, break
+                # out of the ("Packages.gz", "Packages") loop.
+                break
+        except UseCachedCopyOfRemoteIndex as exc:
+            changed = False
+            rmt_idx = pkgindex
+            if getbinpkg_refresh or repo.frozen:
+                extra_info = exc.extra_info if verbose else ""
+                writemsg(
+                    _("[%s] Local copy of remote index is %s and will be used%s.\n")
+                    % (binrepo_name, exc.desc, extra_info),
+                )
+        except OSError as err:
+            # This includes URLError which is raised for SSL
+            # certificate errors when PEP 476 is supported.
+            writemsg(
+                _("\n\n!!! [%s] Error fetching binhost package" " info from '%s'\n")
+                % (binrepo_name, _hide_url_passwd(base_url))
+            )
+            error_msg = str(err)
+            writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
+            del err
+            pkgindex = None
+
+        if pkgindex is rmt_idx and changed:
+            pkgindex.modified = False  # don't update the header
+            pkgindex.header["DOWNLOAD_TIMESTAMP"] = "%d" % time.time()
+            try:
+                ensure_dirs(os.path.dirname(pkgindex_file))
+                f = atomic_ofstream(pkgindex_file)
+                pkgindex.write(f)
+                f.close()
+            except (OSError, PortageException):
+                if os.access(os.path.dirname(pkgindex_file), os.W_OK):
+                    raise
+                # The current user doesn't have permission to cache the
+                # file, but that's alright.
+        if pkgindex:
+            remote_base_uri = pkgindex.header.get("URI", base_url)
+            for d in pkgindex.packages:
+                cpv = _pkg_str(
+                    d["CPV"],
+                    metadata=d,
+                    settings=self.settings,
+                    db=self.dbapi,
+                    repoconfig=repo,
+                )
+                # Local package instances override remote instances
+                # with the same instance_key.
+                if self.dbapi.cpv_exists(cpv):
+                    continue
+
+                if gpkg_only:
+                    try:
+                        binpkg_format = get_binpkg_format(d.get("PATH"), remote=True)
+                    except InvalidBinaryPackageFormat as e:
+                        writemsg(
+                            colorize(
+                                "WARN",
+                                f"{e}\n",
+                            ),
+                            noiselevel=-1,
+                        )
+                        continue
+                    if binpkg_format != "gpkg":
+                        if not gpkg_only_warned:
+                            writemsg(
+                                colorize(
+                                    "WARN",
+                                    f"[{binrepo_name} Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
+                                ),
+                                noiselevel=-1,
+                            )
+                            gpkg_only_warned = True
+                        continue
+
+                d["CPV"] = cpv
+                d["BASE_URI"] = remote_base_uri
+                d["PKGINDEX_URI"] = pkgindex_uri
+                # FETCHCOMMAND and RESUMECOMMAND may be specified
+                # by binrepos.conf, and otherwise ensure that they
+                # do not propagate from the Packages index since
+                # it may be unsafe to execute remotely specified
+                # commands.
+                if repo.fetchcommand is None:
+                    d.pop("FETCHCOMMAND", None)
+                else:
+                    d["FETCHCOMMAND"] = repo.fetchcommand
+                if repo.resumecommand is None:
+                    d.pop("RESUMECOMMAND", None)
+                else:
+                    d["RESUMECOMMAND"] = repo.resumecommand
+                self._remotepkgs[self.dbapi._instance_key(cpv)] = d
+                self.dbapi.cpv_inject(cpv)
+
+            self._remote_has_index = True
+            self._merge_pkgindex_header(pkgindex.header, self._pkgindex_header)
 
     def _populate_additional(self, repos):
         for repo in repos:

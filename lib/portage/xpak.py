@@ -1,4 +1,4 @@
-# Copyright 2001-2020 Gentoo Authors
+# Copyright 2001-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -35,6 +35,7 @@ __all__ = [
 
 import array
 import errno
+import tempfile
 
 import portage
 from portage import os
@@ -381,7 +382,11 @@ class tbz2:
         self.scan()  # Don't care about condition... We'll rewrite the data anyway.
 
         if break_hardlinks and self.filestat and self.filestat.st_nlink > 1:
-            tmp_fname = "%s.%d" % (self.file, portage.getpid())
+            with tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(self.file),
+                prefix=f"{os.path.basename(self.file)}.{portage.getpid()}",
+            ) as safe_temp:
+                tmp_fname = safe_temp.name
             copyfile(self.file, tmp_fname)
             try:
                 portage.util.apply_stat_permissions(self.file, self.filestat)

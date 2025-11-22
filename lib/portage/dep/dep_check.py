@@ -677,7 +677,13 @@ def dep_zapdeps(
                         circular_dependency.get(virt_parent, []),
                     ):
                         for atom in atoms:
-                            if not atom.blocker and atom.match(circular_child):
+                            if atom.blocker:
+                                continue
+                            if vardb.match(atom):
+                                # If the atom is satisfied by an installed
+                                # version then it's not a circular dep.
+                                continue
+                            if atom.match(circular_child):
                                 circular_atom = atom
                                 break
                         if circular_atom is not None:

@@ -1907,6 +1907,7 @@ class config:
                     pkginternaluse_list.append(x)
             pkginternaluse = " ".join(pkginternaluse_list)
 
+        stable = self._isStable(cpv_slot) if hasattr(cpv_slot, "_metadata") else None
         eapi_attrs = _get_eapi_attrs(eapi)
 
         if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
@@ -1931,12 +1932,30 @@ class config:
                     # make a copy, since we might modify it with
                     # package.use settings
                     d = d.copy()
+
+                # package.use.stable > package.use > use.stable
+                if stable:
+                    x = self._use_manager._repo_use_stable_dict.get(repo, ())
+                    if x:
+                        d["USE"] = d.get("USE", "") + " " + " ".join(x)
+
                 cpdict = self._use_manager._repo_puse_dict.get(repo, {}).get(cp)
                 if cpdict:
                     repo_puse = ordered_by_atom_specificity(cpdict, cpv_slot)
                     if repo_puse:
                         for x in repo_puse:
                             d["USE"] = d.get("USE", "") + " " + " ".join(x)
+
+                if stable:
+                    cpdict = self._use_manager._repo_puse_stable_dict.get(repo, {}).get(
+                        cp
+                    )
+                    if cpdict:
+                        repo_puse = ordered_by_atom_specificity(cpdict, cpv_slot)
+                        if repo_puse:
+                            for x in repo_puse:
+                                d["USE"] = d.get("USE", "") + " " + " ".join(x)
+
                 if d:
                     repo_env.append(d)
 
@@ -1951,11 +1970,24 @@ class config:
         for i, pkgprofileuse_dict in enumerate(self._use_manager._pkgprofileuse):
             if self.make_defaults_use[i]:
                 defaults.append(self.make_defaults_use[i])
+
+            # package.use.stable > package.use > use.stable
+            if stable and self._use_manager._use_stable_list[i]:
+                defaults.append(" ".join(self._use_manager._use_stable_list[i]))
+
             cpdict = pkgprofileuse_dict.get(cp)
             if cpdict:
                 pkg_defaults = ordered_by_atom_specificity(cpdict, cpv_slot)
                 if pkg_defaults:
                     defaults.extend(pkg_defaults)
+
+            if stable:
+                cpdict = self._use_manager._puse_stable_list[i].get(cp)
+                if cpdict:
+                    pkg_defaults = ordered_by_atom_specificity(cpdict, cpv_slot)
+                    if pkg_defaults:
+                        defaults.extend(pkg_defaults)
+
         defaults = " ".join(defaults)
         if defaults != self.configdict["defaults"].get("USE", ""):
             self.configdict["defaults"]["USE"] = defaults

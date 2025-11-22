@@ -1,4 +1,4 @@
-# Copyright 2013-2021 Gentoo Authors
+# Copyright 2013-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -7,6 +7,7 @@ import logging
 import random
 import shlex
 import subprocess
+import tempfile
 
 import portage
 from portage import _encodings, _unicode_encode
@@ -461,11 +462,14 @@ class FetchTask(CompositeTask):
             self._fetch_tmp_dir_info = "distfiles"
             distdir = self.config.options.distfiles
 
-        tmp_basename = self.distfile + f"._emirrordist_fetch_.{portage.getpid()}"
+        with tempfile.NamedTemporaryFile(
+            dir=distdir, prefix=f"._emirrordist_fetch_.{portage.getpid()}"
+        ) as safe_temp:
+            self._fetch_tmp_file = safe_temp.name
+
+        tmp_basename = os.path.basename(self._fetch_tmp_file)
 
         variables = {"DISTDIR": distdir, "URI": uri, "FILE": tmp_basename}
-
-        self._fetch_tmp_file = os.path.join(distdir, tmp_basename)
 
         try:
             os.unlink(self._fetch_tmp_file)
@@ -684,9 +688,10 @@ class FetchTask(CompositeTask):
 
     def _hardlink_atomic(self, src, dest, dir_info, symlink=False):
         head, tail = os.path.split(dest)
-        hardlink_tmp = os.path.join(
-            head, f".{tail}._mirrordist_hardlink_.{portage.getpid()}"
-        )
+        with tempfile.NamedTemporaryFile(
+            dir=head, prefix=f".{tail}._mirrordist_hardlink_.{portage.getpid()}"
+        ) as safe_temp:
+            hardlink_tmp = safe_temp.name
 
         try:
             try:
