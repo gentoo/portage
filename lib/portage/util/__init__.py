@@ -8,7 +8,7 @@ from portage.exception import (
     InvalidAtom,
     PortageException,
     FileNotFound,
-    IsADirectory,
+    InvalidLocation,
     OperationNotPermitted,
     ParseError,
     PermissionDenied,
@@ -76,14 +76,6 @@ import glob
 from typing import Optional, TextIO
 
 import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "pickle",
-    "portage.dep:Atom",
-    "subprocess",
-)
-
 
 noiselimit = 0
 
@@ -519,6 +511,7 @@ def grabdict_package(
 ):
     """Does the same thing as grabdict except it validates keys
     with isvalidatom()"""
+    from portage.dep import Atom
 
     if recursive:
         file_list = _recursive_file_list(myfilename)
@@ -582,6 +575,8 @@ def grabfile_package(
     eapi=None,
     eapi_default="0",
 ):
+    from portage.dep import Atom
+
     pkgs = grabfile(
         myfilename, compatlevel, recursive=recursive, remember_source_file=True
     )
@@ -1050,6 +1045,8 @@ pickle_write = None
 
 
 def pickle_read(filename, default=None, debug=0):
+    import pickle
+
     if not os.access(filename, os.R_OK):
         writemsg(_("pickle_read(): File not readable. '") + filename + "'\n", 1)
         return default
@@ -1382,7 +1379,7 @@ def apply_recursive_permissions(
                 # Ignore InvalidLocation exceptions such as FileNotFound
                 # and DirectoryNotFound since sometimes things disappear,
                 # like when adjusting permissions on DISTCC_DIR.
-                if not isinstance(e, portage.exception.InvalidLocation):
+                if not isinstance(e, InvalidLocation):
                     all_applied = False
                     onerror(e)
     return all_applied
@@ -1950,6 +1947,7 @@ def find_updated_config_files(target_root, config_protect):
             [protected_file, None]
     If no configuration files needs to be updated, None is returned
     """
+    import subprocess
 
     encoding = _encodings["fs"]
 
