@@ -1,18 +1,15 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(), "portage.package.ebuild.doebuild:_doebuild_spawn,_spawn_actionmap"
-)
 
 
 class EbuildProcess(AbstractEbuildProcess):
     __slots__ = ("actionmap",)
 
     def _spawn(self, args, **kwargs):
+        from portage.package.ebuild.doebuild import _doebuild_spawn, _spawn_actionmap
+
         actionmap = self.actionmap
         if actionmap is None:
             actionmap = _spawn_actionmap(self.settings)
