@@ -2140,6 +2140,12 @@ class binarytree:
                     fileobj,
                 )
             )
+        else:
+            try:
+                os.unlink(self._pkgindex_file + ".gz")
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
 
         for f, fname, f_close in output_files:
             f.write(contents)
