@@ -35,7 +35,8 @@ def prepare_environment():
     # user/group configuration.
     os.environ["PORTAGE_USERNAME"] = pwd.getpwuid(os.getuid()).pw_name
     os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
-    importlib.reload(portage.data)
+    if "portage.data" in sys.modules:
+        importlib.reload(portage.data)
 
     # Insert our parent dir so we can do shiny import "tests"
     # This line courtesy of Marienz and Pkgcore ;)
