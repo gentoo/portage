@@ -1361,7 +1361,7 @@ class vardbapi(dbapi):
         @type new_needed: list of NeededEntry
         """
         from portage.util import atomic_ofstream
-        from portage.util._dyn_libs import LinkageMapELF as LinkageMap
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
 
         root = self.settings["ROOT"]
         self._bump_mtime(pkg.mycpv)
@@ -3560,7 +3560,7 @@ class dblink:
         self.
         """
         from portage.util.digraph import digraph
-        from portage.util._dyn_libs import LinkageMapELF as LinkageMap
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
 
         if (
             self._linkmap_broken
@@ -3752,7 +3752,7 @@ class dblink:
         Find preserved libraries that don't have any consumers left.
         """
         from portage.util.digraph import digraph
-        from portage.util._dyn_libs import LinkageMapELF as LinkageMap
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
 
         if (
             self._linkmap_broken
