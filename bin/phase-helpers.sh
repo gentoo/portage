@@ -28,6 +28,14 @@ if ! contains_word strip "${PORTAGE_RESTRICT}"; then
         PORTAGE_DOSTRIP+=( / )
 fi
 
+assert() {
+	local x pipestatus=( "${PIPESTATUS[@]}" )
+	___eapi_has_assert || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
+	for x in "${pipestatus[@]}"; do
+		[[ ${x} -eq 0 ]] || die "$@"
+	done
+}
+
 into() {
 	if [[ "$1" == "/" ]]; then
 		export __E_DESTTREE=""
