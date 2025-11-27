@@ -38,7 +38,7 @@ class WorldHandler:
             onProgress(maxval, 0)
         for i, atom in enumerate(world_atoms):
             if not isinstance(atom, portage.dep.Atom):
-                if atom.startswith(SETPREFIX):
+                if str(atom).startswith(SETPREFIX):
                     s = atom[len(SETPREFIX) :]
                     if s in sets:
                         self.okay.append(atom)

@@ -129,7 +129,7 @@ class PackageSet:
             else:
                 rev_transform[
                     Atom(
-                        atom.replace(atom.cp, pkg.cp, 1),
+                        str(atom).replace(atom.cp, pkg.cp, 1),
                         allow_wildcard=True,
                         allow_repo=True,
                     )

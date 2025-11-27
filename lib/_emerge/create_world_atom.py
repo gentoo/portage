@@ -113,7 +113,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
         # gcc for example.
         system_atom = sets["system"].findAtomForPackage(pkg)
         if system_atom:
-            if not system_atom.cp.startswith("virtual/"):
+            if system_atom.category != "virtual":
                 return None
             # System virtuals aren't safe to exclude from world since they can
             # match multiple old-style virtuals but only one of them will be

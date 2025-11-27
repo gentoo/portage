@@ -186,6 +186,12 @@ addread "${PORTAGE_TMPDIR}/portage"
 addwrite "${PORTAGE_TMPDIR}/portage"
 [[ -n ${PORTAGE_GPG_DIR} ]] && addpredict "${PORTAGE_GPG_DIR}"
 
+if [[ -f /sys/fs/selinux/enforce ]]; then
+	addpredict /proc/self/attr/fscreate
+	addpredict /proc/thread-self/attr/fscreate
+	addpredict /proc/self/attr/current
+fi
+
 # Avoid sandbox violations in temporary directories.
 if [[ -w ${T} ]] ; then
 	export TEMP=${T}

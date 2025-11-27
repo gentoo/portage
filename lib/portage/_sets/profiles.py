@@ -66,7 +66,7 @@ class PackagesSystemSet(PackageSet):
                 noiselevel=-1,
             )
 
-        self._setAtoms([x[1:] for x in mylist if x[0] == "*"])
+        self._setAtoms([str(x)[1:] for x in mylist if str(x)[0] == "*"])
 
     def singleBuilder(self, options, settings, trees):
         debug = get_boolean(options, "debug", False)

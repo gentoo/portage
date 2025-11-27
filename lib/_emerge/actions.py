@@ -1754,8 +1754,8 @@ def action_deselect(settings, trees, opts, atoms):
         expanded_atoms = set(atoms)
 
         for atom in atoms:
-            if not atom.startswith(SETPREFIX):
-                if atom.cp.startswith("null/"):
+            if not str(atom).startswith(SETPREFIX):
+                if atom.category == "null":
                     # try to expand category from world set
                     null_cat, pn = portage.catsplit(atom.cp)
                     for world_atom in world_atoms:
@@ -1763,7 +1763,7 @@ def action_deselect(settings, trees, opts, atoms):
                         if pn == world_pn:
                             expanded_atoms.add(
                                 Atom(
-                                    atom.replace("null", cat, 1),
+                                    str(atom).replace("null", cat, 1),
                                     allow_repo=True,
                                     allow_wildcard=True,
                                 )
@@ -1776,13 +1776,13 @@ def action_deselect(settings, trees, opts, atoms):
         discard_atoms = set()
         for atom in world_set:
             for arg_atom in expanded_atoms:
-                if arg_atom.startswith(SETPREFIX):
-                    if atom.startswith(SETPREFIX) and arg_atom == atom:
+                if str(arg_atom).startswith(SETPREFIX):
+                    if str(atom).startswith(SETPREFIX) and arg_atom == atom:
                         discard_atoms.add(atom)
                         break
                 else:
                     if (
-                        not atom.startswith(SETPREFIX)
+                        not str(atom).startswith(SETPREFIX)
                         and arg_atom.intersects(atom)
                         and not (arg_atom.slot and not atom.slot)
                         and not (arg_atom.repo and not atom.repo)
@@ -1790,13 +1790,13 @@ def action_deselect(settings, trees, opts, atoms):
                         discard_atoms.add(atom)
                         break
         if discard_atoms:
-            for atom in sorted(discard_atoms):
+            for atom in sorted(discard_atoms, key=str):
                 if pretend:
                     action_desc = "Would remove"
                 else:
                     action_desc = "Removing"
 
-                if atom.startswith(SETPREFIX):
+                if str(atom).startswith(SETPREFIX):
                     filename = "world_sets"
                 else:
                     filename = "world"
@@ -2096,7 +2096,7 @@ def action_info(settings, trees, myopts, myfiles):
                 if not atom.blocker:
                     atoms.append((x, atom))
 
-    myvars = sorted(set(atoms))
+    myvars = sorted(set(atoms), key=lambda t: str(t[0]))
 
     cp_map = {}
     cp_max_len = 0
@@ -4013,11 +4013,11 @@ def run_action(emerge_config):
                     # look at the ebuilds, since EAPI 4 allows running pkg_info
                     # on non-installed packages
                     valid_atom = dep_expand(x, mydb=vardb)
-                    if valid_atom.cp.split("/")[0] == "null":
+                    if valid_atom.category == "null":
                         valid_atom = dep_expand(x, mydb=portdb)
 
                     if (
-                        valid_atom.cp.split("/")[0] == "null"
+                        valid_atom.category == "null"
                         and "--usepkg" in emerge_config.opts
                     ):
                         valid_atom = dep_expand(x, mydb=bindb)
