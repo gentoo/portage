@@ -744,6 +744,9 @@ __eapi0_src_compile() {
 }
 
 __eapi0_src_test() {
+	# Prevent MAKEOPTS from resetting MAKEFLAGS jobserver mode for bug 692576.
+	[[ -n ${MAKEFLAGS} ]] && local MAKEOPTS=""
+
 	# Since we don't want emake's automatic die
 	# support (EAPI 4 and later), and we also don't
 	# want the warning messages that it produces if
