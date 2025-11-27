@@ -30,6 +30,15 @@ assert() {
 	done
 }
 
+# Simplified version of pipestatus() for internal use
+__pipestatus() {
+	local status=( "${PIPESTATUS[@]}" ) s ret=0
+	for s in "${status[@]}"; do
+		[[ ${s} -ne 0 ]] && ret=${s}
+	done
+	return "${ret}"
+}
+
 shopt -s extdebug
 
 # __dump_trace([number of funcs on stack to skip],
