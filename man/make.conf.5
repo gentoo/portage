@@ -360,7 +360,7 @@ strips (or splits) them before installing.
 .B binpkg-ignore-signature
 This will disable GPG signature check for all binary packages. Enable this
 could be dangerous if you get binary packages from remote site or use third
-party packages.
+party packages.  If enabled, takes precedence over \fBbinrepos.conf\fR.
 .TP
 .B binpkg\-logs
 Keep logs from successful binary package merges. This is relevant only when
@@ -397,8 +397,8 @@ This feature is enabled by default.
 .B binpkg-request-signature
 Binary packages are requested to be signed by trusted GPG signature.
 Portage will reject to process any binary package without a valid GPG
-signature. The verify command is defined in
-\fBBINPKG_GPG_VERIFY_COMMAND\fR variable.
+signature. The verify command is defined in \fBBINPKG_GPG_VERIFY_COMMAND\fR
+variable.  If enabled, takes precedence over \fBbinrepos.conf\fR.
 .TP
 .B binpkg-signing
 Binary packages will be signed by given GPG command. The signing command

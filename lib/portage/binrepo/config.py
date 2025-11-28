@@ -20,8 +20,9 @@ class BinRepoConfig:
         "priority",
         "resumecommand",
         "sync_uri",
+        "verify_signature",
     )
-    _bool_opts = ("frozen",)
+    _bool_opts = ("frozen", "verify_signature")
 
     def __init__(self, opts):
         """
@@ -46,6 +47,7 @@ class BinRepoConfig:
         if self.priority is not None:
             repo_msg.append(indent + "priority: " + str(self.priority))
         repo_msg.append(indent + "sync-uri: " + self.sync_uri)
+        repo_msg.append(indent + f"verify-signature: {self.verify_signature}")
         if self.frozen:
             repo_msg.append(f"{indent}frozen: {str(self.frozen).lower()}")
         repo_msg.append("")

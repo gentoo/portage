@@ -710,7 +710,7 @@ class gpkg:
     https://www.gentoo.org/glep/glep-0078.html
     """
 
-    def __init__(self, settings, basename=None, gpkg_file=None):
+    def __init__(self, settings, basename=None, gpkg_file=None, verify_signature=None):
         """
         gpkg class handle all gpkg operations for one package.
         basename is the package basename.
@@ -735,32 +735,43 @@ class gpkg:
         self.signature_exist = None
         self.prefix = None
 
-        # Compression is the compression algorithm, if set to None will
-        # not use compression.
+        # Compression is the compression algorithm. No compression
+        # if set to None.
         self.compression = self.settings.get("BINPKG_COMPRESS", None)
         if self.compression in ["", "none"]:
             self.compression = None
 
-        # The create_signature is whether create signature for the package or not.
-        if "binpkg-signing" in self.settings.features:
-            self.create_signature = True
-        else:
-            self.create_signature = False
+        # Whether to sign the package or not
+        self.create_signature = "binpkg-signing" in self.settings.features
 
-        # The request_signature is whether signature files are mandatory.
-        # If set true, any missing signature file will cause reject processing.
+        # If `verify-signature` is unset in binrepos.conf, use the FEATURES
+        # flags instead.
+        if verify_signature is None:
+            # request_signature is whether signature files are mandatory.
+            # If true, any missing signature file will cause processing to be
+            # rejected.
+            self.request_signature = (
+                "binpkg-request-signature" in self.settings.features
+            )
+
+            # verify_signature is whether to verify package signatures or not.
+            # In rare cases, the user may want to ignore signature, e.g.
+            # a package with an expired signature.
+            self.verify_signature = (
+                "binpkg-ignore-signature" not in self.settings.features
+            )
+        else:
+            self.verify_signature = verify_signature
+            self.request_signature = verify_signature
+
+        # FEATURES should override in one direction if they're stronger
+        # and explicitly set. This also makes testing easier.
         if "binpkg-request-signature" in self.settings.features:
             self.request_signature = True
-        else:
-            self.request_signature = False
-
-        # The verify_signature is whether verify package signature or not.
-        # In rare case user may want to ignore signature,
-        # E.g. package with expired signature.
-        if "binpkg-ignore-signature" in self.settings.features:
-            self.verify_signature = False
-        else:
             self.verify_signature = True
+        elif "binpkg-ignore-signature" in self.settings.features:
+            self.request_signature = False
+            self.verify_signature = False
 
         self.ext_list = {
             "gzip": ".gz",
@@ -879,7 +890,7 @@ class gpkg:
             )
 
             # Verify metadata file signature if needed
-            # binpkg-ignore-signature can override this.
+            # (binpkg-ignore-signature can override this)
             signature_filename = metadata_tarinfo.name + ".sig"
             if signature_filename in container.getnames():
                 if self.request_signature and self.verify_signature:
@@ -1630,7 +1641,7 @@ class gpkg:
                 signature_exist = True
 
             # Check Manifest signature if needed.
-            # binpkg-ignore-signature can override this.
+            # (binpkg-ignore-signature can override this.)
             if self.request_signature or signature_exist:
                 checksum_info = checksum_helper(
                     self.settings, gpg_operation=checksum_helper.VERIFY, detached=False
@@ -1680,7 +1691,7 @@ class gpkg:
                     continue
 
                 # Verify current file signature if needed
-                # binpkg-ignore-signature can override this.
+                # (binpkg-ignore-signature can override this.)
                 if (
                     (self.request_signature or signature_exist)
                     and self.verify_signature
@@ -1742,13 +1753,13 @@ class gpkg:
                 unverified_files.remove(f)
                 unverified_manifest.remove(manifest_record)
 
-        # Check if any file IN Manifest but NOT IN binary package
+        # Check if any files are IN the Manifest but NOT IN the binary package
         if len(unverified_manifest) != 0:
             raise DigestException(
                 f"Missing files: {str(unverified_manifest)} in {self.gpkg_file}"
             )
 
-        # Check if any file NOT IN Manifest but IN binary package
+        # Check if any files are NOT IN the Manifest but are IN the binary package
         if len(unverified_files) != 0:
             raise DigestException(
                 f"Unknown files exists: {str(unverified_files)} in {self.gpkg_file}"

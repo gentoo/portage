@@ -369,9 +369,19 @@ class bindbapi(fakedbapi):
                     dest_dir,
                 )
             elif binpkg_format == "gpkg":
+                gpkg_args = {}
+                repoconfig = self.bintree.get_local_repo(cpv)
+                if repoconfig:
+                    # This may be missing if it's not a remote binpkg, or
+                    # remote binpkgs are mingled in with local binpkgs
+                    # (no separate `location` in binrepos.conf)
+                    gpkg_args["verify_signature"] = repoconfig.verify_signature
+
                 await loop.run_in_executor(
                     ForkExecutor(loop=loop),
-                    portage.gpkg.gpkg(self.settings, cpv, binpkg_file).unpack_metadata,
+                    portage.gpkg.gpkg(
+                        self.settings, cpv, binpkg_file, **gpkg_args
+                    ).unpack_metadata,
                     dest_dir,
                 )
             else:
@@ -420,9 +430,19 @@ class bindbapi(fakedbapi):
                 if extractor.returncode != os.EX_OK:
                     raise PortageException(f"Error Extracting '{pkg_path}'")
             elif binpkg_format == "gpkg":
+                gpkg_args = {}
+                repoconfig = self.bintree.get_local_repo(cpv)
+                if repoconfig:
+                    # This may be missing if it's not a remote binpkg, or
+                    # remote binpkgs are mingled in with local binpkgs
+                    # (no separate `location` in binrepos.conf)
+                    gpkg_args["verify_signature"] = repoconfig.verify_signature
+
                 await loop.run_in_executor(
                     ForkExecutor(loop=loop),
-                    portage.gpkg.gpkg(self.settings, cpv, pkg_path).decompress,
+                    portage.gpkg.gpkg(
+                        self.settings, cpv, pkg_path, **gpkg_args
+                    ).decompress,
                     dest_dir,
                 )
             else:
@@ -2636,11 +2656,8 @@ class binarytree:
             or int(remote_metadata["_mtime_"]) != st[stat.ST_MTIME]
         )
 
-    def get_local_repo_location(self, pkgname):
-        """Returns local repo location associated with pkgname or None
-        if a location is not associated."""
-        from portage.util import normalize_path
-
+    def get_local_repo(self, pkgname):
+        """Returns local repo associated with pkgname"""
         # Since pkgname._repoconfig is not guaranteed to be present
         # here, retrieve it from the remote metadata.
         if not self._remotepkgs:
@@ -2648,10 +2665,16 @@ class binarytree:
         instance_key = self.dbapi._instance_key(pkgname)
         remote_metadata = self._remotepkgs.get(instance_key)
         if remote_metadata is None:
-            return False
-        repoconfig = remote_metadata["CPV"]._repoconfig
-        if repoconfig is None:
             return None
+        repoconfig = remote_metadata["CPV"]._repoconfig
+        return repoconfig
+
+    def get_local_repo_location(self, pkgname):
+        """Returns local repo location associated with pkgname or None
+        if a location is not associated."""
+        from portage.util import normalize_path
+
+        repoconfig = self.get_local_repo(pkgname)
         if repoconfig.location:
             location = normalize_path(repoconfig.location)
             if location == self.pkgdir:
