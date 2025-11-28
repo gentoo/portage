@@ -46,7 +46,7 @@ jobs:
           set -xe
           echo "force-unsafe-io" | sudo tee /etc/dpkg/dpkg.cfg.d/force-unsafe-io
           sudo apt-get update -q
-          sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson pax-utils zstd
+          sudo apt-get install -qy --no-install-recommends docbook-xml libxslt-dev libxml2-dev libxml2-utils meson pax-utils sphinx xmlto zstd
 
           python -VV
           python -m site
@@ -86,6 +86,7 @@ jobs:
         run: |
           echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
           meson setup --native-file /tmp/native.ini /tmp/build .
+          meson configure -Ddoc=true -Dapidoc=true /tmp/build
           meson install -C /tmp/build --destdir /tmp/install-root
       - name: Run tests for ${{ matrix.python-version }}
         run: |
