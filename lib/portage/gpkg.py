@@ -710,7 +710,7 @@ class gpkg:
     https://www.gentoo.org/glep/glep-0078.html
     """
 
-    def __init__(self, settings, basename=None, gpkg_file=None):
+    def __init__(self, settings, basename=None, gpkg_file=None, verify_signature=None):
         """
         gpkg class handle all gpkg operations for one package.
         basename is the package basename.
@@ -747,20 +747,27 @@ class gpkg:
         else:
             self.create_signature = False
 
-        # The request_signature is whether signature files are mandatory.
-        # If set true, any missing signature file will cause reject processing.
-        if "binpkg-request-signature" in self.settings.features:
-            self.request_signature = True
-        else:
-            self.request_signature = False
+        # If `verify-signature` is unset in binrepos.conf, use the FEATURES
+        # flags instead.
+        if verify_signature is None:
+            print("using this fallback")
+            # The request_signature is whether signature files are mandatory.
+            # If set true, any missing signature file will cause reject processing.
+            if "binpkg-request-signature" in self.settings.features:
+                self.request_signature = True
+            else:
+                self.request_signature = False
 
-        # The verify_signature is whether verify package signature or not.
-        # In rare case user may want to ignore signature,
-        # E.g. package with expired signature.
-        if "binpkg-ignore-signature" in self.settings.features:
-            self.verify_signature = False
+            # The verify_signature is whether verify package signature or not.
+            # In rare case user may want to ignore signature,
+            # E.g. package with expired signature.
+            if "binpkg-ignore-signature" in self.settings.features:
+                self.verify_signature = False
+            else:
+                self.verify_signature = True
         else:
-            self.verify_signature = True
+            self.verify_signature = verify_signature
+            self.request_signature = verify_signature
 
         self.ext_list = {
             "gzip": ".gz",
@@ -883,6 +890,7 @@ class gpkg:
             signature_filename = metadata_tarinfo.name + ".sig"
             if signature_filename in container.getnames():
                 if self.request_signature and self.verify_signature:
+                    print("get_metadata_url: verifying...")
                     metadata_signature = container.extractfile(
                         signature_filename
                     ).read()
@@ -1632,6 +1640,7 @@ class gpkg:
             # Check Manifest signature if needed.
             # binpkg-ignore-signature can override this.
             if self.request_signature or signature_exist:
+                print("_verify_binpkg: verifying...")
                 checksum_info = checksum_helper(
                     self.settings, gpg_operation=checksum_helper.VERIFY, detached=False
                 )
