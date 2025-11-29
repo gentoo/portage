@@ -618,7 +618,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND PROPERTIES RESTRICT
+		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND IDEPEND PROPERTIES RESTRICT
 		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
 		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
