@@ -611,7 +611,7 @@ class ChangedDepsSet(PackageSet):
         self._vardb = vardb
 
     def load(self):
-        depvars = ("RDEPEND", "PDEPEND")
+        depvars = ("RDEPEND", "IDEPEND", "PDEPEND")
         ebuild_vars = depvars + ("EAPI",)
         installed_vars = depvars + ("USE", "EAPI")
 
