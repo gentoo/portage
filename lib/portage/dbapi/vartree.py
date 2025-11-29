@@ -2750,7 +2750,14 @@ class dblink:
             # process symlinks second-to-last, directories last.
             mydirs = set()
 
-            uninstall_ignore = shlex.split(self.settings.get("UNINSTALL_IGNORE", ""))
+            uninstall_ignore = self.settings.get("UNINSTALL_IGNORE", "")
+            if "packdebug" in self.settings.features:
+                # For packdebug, we don't want to clean up old debuginfo
+                # tarballs that we made, as we want to keep serving them
+                # to binhost clients for some time.
+                uninstall_ignore += " /usr/lib/debug/.tarball/*"
+
+            uninstall_ignore = shlex.split(uninstall_ignore)
 
             def unlink(file_name, lstatobj):
                 if bsd_chflags:
@@ -3935,6 +3942,15 @@ class dblink:
 
         collision_ignore = []
         for x in shlex.split(self.settings.get("COLLISION_IGNORE", "")):
+            if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
+                x = normalize_path(x)
+                x += "/*"
+            collision_ignore.append(x)
+
+        # packdebug tarballs are orphaned for management outside of Portage,
+        # so it's expected that we may collide with an orphaned file. Ignore it.
+        if "packdebug" in self.settings.features:
+            x = "/usr/lib/debug/.tarball"
             if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
                 x = normalize_path(x)
                 x += "/*"
