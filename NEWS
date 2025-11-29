@@ -21,6 +21,13 @@ Features:
 
   Support is still experimental and its semantics may change.
 
+* Introduce support for seperate debuginfo tarballs via FEATURES="packdebug"
+  (bug #728818).
+
+  This produces tarballs under /usr/lib/debug/.tarball which debuginfod
+  (from dev-libs/elfutils) can index and serve to clients. Requires
+  build IDs to be enabled in the compiler.
+
 * profiles: Support 'profile-license' extension for package.license files.
 
 * Monitor free space in PORTAGE_TMPDIR (bug #934382).

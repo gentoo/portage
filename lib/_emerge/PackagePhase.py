@@ -32,6 +32,12 @@ class PackagePhase(CompositeTask):
     _shell_binary = portage.const.BASH_BINARY
 
     def _start(self):
+        packdebug_maskstr = ""
+        if "packdebug" in self.settings.features:
+            # We don't want to include debug information in binpkgs themselves
+            # w/ packdebug as binpkg consumers should fetch them via debuginfod.
+            packdebug_maskstr += " /usr/src/debug/ /usr/lib/debug/"
+
         try:
             with open(
                 _unicode_encode(
@@ -46,9 +52,10 @@ class PackagePhase(CompositeTask):
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
-                self._pkg_install_mask = InstallMask(f.read())
+                self._pkg_install_mask = InstallMask(f.read() + packdebug_maskstr)
         except OSError:
-            self._pkg_install_mask = None
+            self._pkg_install_mask = InstallMask(packdebug_maskstr)
+
         if self._pkg_install_mask:
             self._proot = os.path.join(self.settings["T"], "packaging")
             self._start_task(

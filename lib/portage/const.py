@@ -213,6 +213,7 @@ SUPPORTED_FEATURES = frozenset(
         "noman",
         "nostrip",
         "notitles",
+        "packdebug",
         "parallel-fetch",
         "parallel-install",
         "pid-sandbox",
