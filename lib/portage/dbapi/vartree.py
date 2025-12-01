@@ -2750,7 +2750,14 @@ class dblink:
             # process symlinks second-to-last, directories last.
             mydirs = set()
 
-            uninstall_ignore = shlex.split(self.settings.get("UNINSTALL_IGNORE", ""))
+            uninstall_ignore = self.settings.get("UNINSTALL_IGNORE", "")
+            if "packdebug" in self.settings.features:
+                # For packdebug, we don't want to clean up old debuginfo
+                # tarballs that we made, as we want to keep serving them
+                # to binhost clients for some time.
+                uninstall_ignore += " /usr/lib/debug/.tarball/*"
+
+            uninstall_ignore = shlex.split(uninstall_ignore)
 
             def unlink(file_name, lstatobj):
                 if bsd_chflags:
