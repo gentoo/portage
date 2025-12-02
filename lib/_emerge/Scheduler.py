@@ -84,7 +84,13 @@ class Scheduler(PollScheduler):
     )
 
     class _iface_class(SchedulerInterface):
-        __slots__ = ("fetch", "jobserver_file", "scheduleSetup", "scheduleUnpack")
+        __slots__ = (
+            "fetch",
+            "scheduleSetup",
+            "scheduleUnpack",
+            "acquire_job_token",
+            "jobserver_file",
+        )
 
     class _fetch_iface_class(SlotObject):
         __slots__ = ("log_file", "schedule")
@@ -259,6 +265,7 @@ class Scheduler(PollScheduler):
                 # TODO: print a warning otherwise?
                 # TODO: where to close it?
                 self._jobserver_file = open(jobserver_path, "r+b")
+                self._jobserver_queue = []
 
         self._fetch_log = os.path.join(
             _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
@@ -270,9 +277,10 @@ class Scheduler(PollScheduler):
             self._event_loop,
             is_background=self._is_background,
             fetch=fetch_iface,
-            jobserver_file=self._jobserver_file,
             scheduleSetup=self._schedule_setup,
             scheduleUnpack=self._schedule_unpack,
+            jobserver_file=self._jobserver_file,
+            acquire_job_token=self._acquire_job_token,
         )
 
         self._prefetchers = weakref.WeakValueDictionary()
@@ -2409,3 +2417,19 @@ class Scheduler(PollScheduler):
         )
         self._pkg_cache[pkg] = pkg
         return pkg
+
+    def _acquire_job_token(self, callback):
+        print(f"AJT {callback}")
+        self._jobserver_queue.append(callback)
+        self._sched_iface.add_reader(
+            self._jobserver_file.fileno(), self._read_job_token
+        )
+
+    def _read_job_token(self):
+        token = self._jobserver_file.read(1)
+        next_callback = self._jobserver_queue.pop(0)
+        print(f"RJT {next_callback}")
+        if not self._jobserver_queue:
+            self._sched_iface.remove_reader(self._jobserver_file.fileno())
+            print("CLEARED")
+        next_callback(token)

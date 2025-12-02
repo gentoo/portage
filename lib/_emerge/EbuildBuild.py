@@ -398,11 +398,13 @@ class EbuildBuild(CompositeTask):
             logger.log(msg, short_msg=short_msg)
 
         if scheduler.jobserver_file is not None:
-            # TODO: how to make this asynchronous?
-            self._jobserver_token = scheduler.jobserver_file.read(1)
-            self._start_with_job_token()
+            scheduler.acquire_job_token(self._read_job_token)
             return
 
+        self._start_with_job_token()
+
+    def _read_job_token(self, token: str) -> None:
+        self._jobserver_token = token
         self._start_with_job_token()
 
     def _start_with_job_token(self):
