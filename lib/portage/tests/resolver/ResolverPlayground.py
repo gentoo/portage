@@ -28,7 +28,11 @@ from portage.exception import InvalidBinaryPackageFormat
 from portage.gpg import GPG
 
 import _emerge
-from _emerge.actions import _calc_depclean, expand_set_arguments
+from _emerge.actions import (
+    _calc_depclean,
+    binpkg_selection_config,
+    expand_set_arguments,
+)
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.DependencyArg import DependencyArg
@@ -736,6 +740,8 @@ class ResolverPlayground:
 
         if "--usepkgonly" in options:
             options["--usepkg"] = True
+
+        binpkg_selection_config(options, self.settings)
 
         global_noiselimit = portage.util.noiselimit
         global_emergelog_disable = _emerge.emergelog._disable

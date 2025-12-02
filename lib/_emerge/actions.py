@@ -77,7 +77,12 @@ from portage.binpkg import get_binpkg_format
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.Dependency import Dependency
-from _emerge.depgraph import backtrack_depgraph, depgraph, resume_depgraph
+from _emerge.depgraph import (
+    backtrack_depgraph,
+    depgraph,
+    resume_depgraph,
+    _wildcard_set,
+)
 from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.main import profile_check
@@ -2784,6 +2789,32 @@ def adjust_config(myopts, settings):
     if "--pkg-format" in myopts:
         settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]
         settings.backup_changes("PORTAGE_BINPKG_FORMAT")
+
+    binpkg_selection_config(myopts, settings)
+
+
+def binpkg_selection_config(opts, settings):
+    atoms = " ".join(opts.pop("--usepkg-exclude", [])).split()
+    usepkg_exclude = _wildcard_set(atoms)
+    atoms = " ".join(opts.pop("--usepkg-include", [])).split()
+    usepkg_include = _wildcard_set(atoms)
+
+    # warn if include/exclude lists overlap on command line
+    conflicted_atoms = usepkg_exclude.getAtoms().intersection(usepkg_include.getAtoms())
+    if conflicted_atoms:
+        writemsg(
+            "\n!!! The following atoms appear in both the --usepkg-exclude "
+            "and --usepkg-include command line arguments:\n"
+            "\n    %s\n" % ("\n    ".join(conflicted_atoms))
+        )
+        for a in conflicted_atoms:
+            usepkg_exclude.remove(a)
+            usepkg_include.remove(a)
+
+    if not usepkg_exclude.isEmpty():
+        opts["--usepkg-exclude"] = list(usepkg_exclude)
+    if not usepkg_include.isEmpty():
+        opts["--usepkg-include"] = list(usepkg_include)
 
 
 def display_missing_pkg_set(root_config, set_name):

@@ -209,6 +209,8 @@ class _frozen_depgraph_config:
         self.reinstall_atoms = _wildcard_set(atoms)
         atoms = " ".join(myopts.get("--usepkg-exclude", [])).split()
         self.usepkg_exclude = _wildcard_set(atoms)
+        atoms = " ".join(myopts.get("--usepkg-include", [])).split()
+        self.usepkg_include = _wildcard_set(atoms)
         atoms = " ".join(myopts.get("--useoldpkg-atoms", [])).split()
         self.useoldpkg_atoms = _wildcard_set(atoms)
         atoms = " ".join(myopts.get("--rebuild-exclude", [])).split()
@@ -7616,6 +7618,9 @@ class depgraph:
         )
         reinstall_atoms = self._frozen_config.reinstall_atoms
         usepkg_exclude = self._frozen_config.usepkg_exclude
+        usepkg_include = self._frozen_config.usepkg_include
+        have_usepkg_exclude = not usepkg_exclude.isEmpty()
+        have_usepkg_include = not usepkg_include.isEmpty()
         useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
         matched_oldpkg = []
         # Behavior of the "selective" parameter depends on
@@ -7686,14 +7691,21 @@ class depgraph:
                     ):
                         continue
 
-                    if (
-                        built
-                        and not installed
-                        and usepkg_exclude.findAtomForPackage(
-                            pkg, modified_use=self._pkg_use_enabled(pkg)
+                    if built and not installed:
+                        in_usepkg_exclude = (
+                            have_usepkg_exclude
+                            and usepkg_exclude.findAtomForPackage(
+                                pkg, modified_use=self._pkg_use_enabled(pkg)
+                            )
                         )
-                    ):
-                        break
+                        in_usepkg_include = (
+                            not have_usepkg_include
+                            or usepkg_include.findAtomForPackage(
+                                pkg, modified_use=self._pkg_use_enabled(pkg)
+                            )
+                        )
+                        if in_usepkg_exclude or not in_usepkg_include:
+                            break
 
                     # We can choose not to install a live package from using binary
                     # cache by disabling it with option --usepkg-exclude-live in the
