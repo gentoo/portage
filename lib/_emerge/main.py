@@ -570,6 +570,11 @@ def parse_opts(tmpcmdline, silent=False):
             + "Emerge will ignore matching binary packages. ",
             "action": "append",
         },
+        "--usepkg-include": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will ignore non-matching binary packages. ",
+            "action": "append",
+        },
         "--onlydeps-with-ideps": {
             "help": "modify interpretation of dependencies to include IDEPEND",
             "choices": true_y_or_n,
@@ -883,6 +888,7 @@ def parse_opts(tmpcmdline, silent=False):
         (myoptions.rebuild_exclude, "rebuild-exclude"),
         (myoptions.rebuild_ignore, "rebuild-ignore"),
         (myoptions.usepkg_exclude, "usepkg-exclude"),
+        (myoptions.usepkg_include, "usepkg-include"),
         (myoptions.useoldpkg_atoms, "useoldpkg-atoms"),
     )
     bad_options = (
