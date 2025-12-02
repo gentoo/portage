@@ -39,7 +39,14 @@ class EbuildBuild(CompositeTask):
         "prefetcher",
         "settings",
         "world_atom",
-    ) + ("_build_dir", "_buildpkg", "_ebuild_path", "_issyspkg", "_tree")
+    ) + (
+        "_build_dir",
+        "_buildpkg",
+        "_ebuild_path",
+        "_issyspkg",
+        "_jobserver_token",
+        "_tree",
+    )
 
     def _start(self):
         if not self.opts.fetchonly:
@@ -390,8 +397,20 @@ class EbuildBuild(CompositeTask):
             )
             logger.log(msg, short_msg=short_msg)
 
+        if scheduler.jobserver_file is not None:
+            # TODO: how to make this asynchronous?
+            self._jobserver_token = scheduler.jobserver_file.read(1)
+            self._start_with_job_token()
+            return
+
+        self._start_with_job_token()
+
+    def _start_with_job_token(self):
         build = EbuildExecuter(
-            background=self.background, pkg=pkg, scheduler=scheduler, settings=settings
+            background=self.background,
+            pkg=self.pkg,
+            scheduler=self.scheduler,
+            settings=self.settings,
         )
         self._start_task(build, self._build_exit)
 
@@ -448,7 +467,16 @@ class EbuildBuild(CompositeTask):
             self.returncode = returncode
             self._async_wait()
 
+    def _return_job_token(self):
+        if self._jobserver_token is not None:
+            self.scheduler.jobserver_file.write(self._jobserver_token)
+            self.scheduler.jobserver_file.flush()
+            self._jobserver_token = None
+
     def _build_exit(self, build):
+        # TODO: hold it past binpkg?
+        self._return_job_token()
+
         if self._default_exit(build) != os.EX_OK:
             self._async_unlock_builddir(returncode=self.returncode)
             return

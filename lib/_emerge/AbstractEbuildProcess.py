@@ -28,6 +28,7 @@ class AbstractEbuildProcess(SpawnProcess):
         "_exit_command",
         "_exit_timeout_id",
         "_start_future",
+        "_jobserver_token",
     )
 
     _phases_without_builddir = (

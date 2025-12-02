@@ -65,6 +65,8 @@ FAILURE = 1
 
 
 class Scheduler(PollScheduler):
+    _jobserver_file = None
+
     # max time between loadavg checks (seconds)
     _loadavg_latency = 30
 
@@ -82,7 +84,7 @@ class Scheduler(PollScheduler):
     )
 
     class _iface_class(SchedulerInterface):
-        __slots__ = ("fetch", "scheduleSetup", "scheduleUnpack")
+        __slots__ = ("fetch", "jobserver_file", "scheduleSetup", "scheduleUnpack")
 
     class _fetch_iface_class(SlotObject):
         __slots__ = ("log_file", "schedule")
@@ -241,6 +243,23 @@ class Scheduler(PollScheduler):
         for root in self.trees:
             self._config_pool[root] = []
 
+        features = self.settings.features
+        if "jobserver-token" in features:
+            makeflags = self.settings.get("MAKEFLAGS", "").split()
+            jobserver_path = None
+            for flag in makeflags:
+                if flag.startswith("--jobserver-auth="):
+                    flag = flag.removeprefix("--jobserver-auth=")
+                    if flag.startswith("fifo:"):
+                        jobserver_path = flag.removeprefix("fifo:")
+                    else:
+                        # TODO: print a warning?
+                        jobserver_path = None
+            if jobserver_path is not None:
+                # TODO: print a warning otherwise?
+                # TODO: where to close it?
+                self._jobserver_file = open(jobserver_path, "r+b")
+
         self._fetch_log = os.path.join(
             _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
         )
@@ -251,6 +270,7 @@ class Scheduler(PollScheduler):
             self._event_loop,
             is_background=self._is_background,
             fetch=fetch_iface,
+            jobserver_file=self._jobserver_file,
             scheduleSetup=self._schedule_setup,
             scheduleUnpack=self._schedule_unpack,
         )
@@ -298,7 +318,6 @@ class Scheduler(PollScheduler):
         # jobs completes.
         self._choose_pkg_return_early = False
 
-        features = self.settings.features
         if "parallel-fetch" in features and not (
             "--pretend" in self.myopts
             or "--fetch-all-uri" in self.myopts
