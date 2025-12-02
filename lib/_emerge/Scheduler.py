@@ -245,6 +245,25 @@ class Scheduler(PollScheduler):
         for root in self.trees:
             self._config_pool[root] = []
 
+        features = self.settings.features
+        self._jobserver_fd = None
+        self._jobserver_tokens = {}
+        if "jobserver-token" in features:
+            makeflags = self.settings.get("MAKEFLAGS", "").split()
+            jobserver_path = None
+            for flag in makeflags:
+                if flag.startswith("--jobserver-auth="):
+                    flag = flag.removeprefix("--jobserver-auth=")
+                    if flag.startswith("fifo:"):
+                        jobserver_path = flag.removeprefix("fifo:")
+                    else:
+                        # TODO: print a warning?
+                        jobserver_path = None
+            if jobserver_path is not None:
+                # TODO: print a warning otherwise?
+                # TODO: where to close it?
+                self._jobserver_fd = os.open(jobserver_path, os.O_RDWR | os.O_NONBLOCK)
+
         self._fetch_log = os.path.join(
             _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
         )
@@ -263,6 +282,7 @@ class Scheduler(PollScheduler):
         self._pkg_queue = []
         self._jobs = 0
         self._running_tasks = {}
+        self._job_tokens = {}
         self._completed_tasks = set()
         self._main_exit = None
         self._main_loadavg_handle = None
@@ -302,7 +322,6 @@ class Scheduler(PollScheduler):
         # jobs completes.
         self._choose_pkg_return_early = False
 
-        features = self.settings.features
         if "parallel-fetch" in features and not (
             "--pretend" in self.myopts
             or "--fetch-all-uri" in self.myopts
@@ -384,6 +403,7 @@ class Scheduler(PollScheduler):
                 # will never be started, so purged it from
                 # self._running_tasks so that it won't keep the main
                 # loop running.
+                self._release_job_token(id(task))
                 del self._running_tasks[id(task)]
 
         for q in self._task_queues.values():
@@ -1469,6 +1489,7 @@ class Scheduler(PollScheduler):
         self._merge_exit(task)
 
     def _merge_exit(self, merge):
+        self._release_job_token(id(merge))
         self._running_tasks.pop(id(merge), None)
         self._do_merge_exit(merge)
         self._deallocate_config(merge.merge.settings)
@@ -1543,6 +1564,7 @@ class Scheduler(PollScheduler):
         if build.returncode == os.EX_OK and self._terminated_tasks:
             # We've been interrupted, so we won't
             # add this to the merge queue.
+            self._release_job_token(id(build))
             self.curval += 1
             self._deallocate_config(build.settings)
         elif build.returncode == os.EX_OK:
@@ -1552,6 +1574,8 @@ class Scheduler(PollScheduler):
                 merge=build,
                 scheduler=self._sched_iface,
             )
+            # move the job token to the merge task
+            self._jobserver_tokens[id(merge)] = self._jobserver_tokens.pop(id(build))
             self._running_tasks[id(merge)] = merge
             # By default, merge-wait only allows merge when no builds are executing.
             # As a special exception, dependencies on system packages are frequently
@@ -1567,6 +1591,7 @@ class Scheduler(PollScheduler):
                 merge.addExitListener(self._merge_exit)
                 self._status_display.merges = len(self._task_queues.merge)
         else:
+            self._release_job_token(id(build))
             settings = build.settings
             build_dir = settings.get("PORTAGE_BUILDDIR")
             build_log = settings.get("PORTAGE_LOG_FILE")
@@ -2052,6 +2077,42 @@ class Scheduler(PollScheduler):
 
         return False
 
+    def _acquire_job_token(self) -> str:
+        """
+        Acquire a job token. Returns the token if available, or an empty value
+        if no jobserver is used (or the jobserver died). Raises BlockingIOError
+        if no tokens are available.
+        """
+        if self._jobserver_fd is None:
+            return b""
+        try:
+            return os.read(self._jobserver_fd, 1)
+        except BlockingIOError:
+            raise
+        except OSError:
+            # If something failed (say, jobserver died), just continue without it.
+            # TODO: print a warning
+            self._jobserver_fd = None
+            return b""
+
+    def _release_job_token(self, task_id: int) -> None:
+        """
+        Release a job token for given task. If no jobserver is running, does
+        nothing.
+        """
+        token = self._jobserver_tokens.pop(task_id)
+        if self._jobserver_fd is not None:
+            try:
+                os.write(self._jobserver_fd, token)
+            except OSError:
+                # If something failed (say, jobserver died), just continue without it.
+                # TODO: print a warning
+                self._jobserver_fd = None
+
+    def _unblock_jobs(self) -> None:
+        self._sched_iface.remove_reader(self._jobserver_fd)
+        self._schedule()
+
     def _schedule_tasks_imp(self):
         """
         @rtype: bool
@@ -2077,6 +2138,14 @@ class Scheduler(PollScheduler):
             if pkg is None:
                 return state_change
 
+            try:
+                token = self._acquire_job_token()
+            except BlockingIOError:
+                # no job tokens available right now
+                self._pkg_queue.insert(0, pkg)
+                self._sched_iface.add_reader(self._jobserver_fd, self._unblock_jobs)
+                return state_change
+
             state_change = True
 
             if not pkg.installed:
@@ -2086,6 +2155,7 @@ class Scheduler(PollScheduler):
 
             if pkg.installed:
                 merge = PackageMerge(merge=task, scheduler=self._sched_iface)
+                self._jobserver_tokens[id(merge)] = token
                 self._running_tasks[id(merge)] = merge
                 self._task_queues.merge.addFront(merge)
                 merge.addExitListener(self._merge_exit)
@@ -2094,6 +2164,7 @@ class Scheduler(PollScheduler):
                 self._jobs += 1
                 self._previous_job_start_time = time.time()
                 self._status_display.running = self._jobs
+                self._jobserver_tokens[id(task)] = token
                 self._running_tasks[id(task)] = task
                 task.scheduler = self._sched_iface
                 self._task_queues.jobs.add(task)
