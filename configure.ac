@@ -61,30 +61,22 @@ AS_HELP_STRING([--with-portage-group=mygroup],[use group 'mygroup' as portage us
 esac],
 [portagegroup="portage"])
 
-AC_ARG_WITH(root-user,
-AS_HELP_STRING([--with-root-user=myuser],[uses 'myuser' as owner of installed files (default is portage-user)]),
-[case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-root-user);;
-  *) rootuser="${withval}";;
-esac],
-[rootuser="${portageuser}"])
-
-AC_MSG_CHECKING([for user id of ${rootuser}])
-dnl grab uid of rootuser
-rootuid=`${XCU_ID} -u "${rootuser}"`
+AC_MSG_CHECKING([for user id of ${portageuser}])
+dnl grab uid of portageuser
+rootuid=`${XCU_ID} -u "${portageuser}"`
 if test "x`echo ${rootuid} | ${EGREP} '^[[0-9]]+$'`" != "x"
 then
 	AC_MSG_RESULT([${rootuid}])
 else
-	AC_MSG_ERROR([error finding the user id of ${rootuser}])
+	AC_MSG_ERROR([error finding the user id of ${portageuser}])
 fi
-AC_MSG_CHECKING([for group id of ${rootuser}])
-rootgid=`${XCU_ID} -g "${rootuser}"`
+AC_MSG_CHECKING([for group id of ${portagegroup}])
+rootgid=`${PREFIX_PORTAGE_PYTHON} -c "import grp; print(grp.getgrnam('${portagegroup}').gr_gid)"`
 if test "x`echo ${rootgid} | ${EGREP} '^[[0-9]]+$'`" != "x"
 then
 	AC_MSG_RESULT([${rootgid}])
 else
-	AC_MSG_ERROR([error finding the group id of ${rootuser}])
+	AC_MSG_ERROR([error finding the group id of ${portagegroup}])
 fi
 
 AC_ARG_WITH(offset-prefix, 
@@ -99,7 +91,6 @@ fi
 
 AC_SUBST(portageuser)
 AC_SUBST(portagegroup)
-AC_SUBST(rootuser)
 AC_SUBST(rootuid)
 AC_SUBST(rootgid)
 AC_SUBST(PORTAGE_EPREFIX)

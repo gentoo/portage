@@ -9,10 +9,8 @@ exec_prefix="@exec_prefix@"
 # be a backreference) and hence escape those.  Eventually in strings we
 # need to escape the backslash too, such that the single backslash
 # doesn't get lost when considered an invalid escape
-rootuser='@rootuser@'
 portagegroup='@portagegroup@'
 portageuser='@portageuser@'
-rootuser=${rootuser//\\/\\\\}
 portagegroup=${portagegroup//\\/\\\\\\\\}
 portageuser=${portageuser//\\/\\\\\\\\}
 
@@ -35,7 +33,6 @@ sedexp=(
 	-e "s,${at}portageuser${at},${portageuser},g"
 	-e "s,${at}rootgid${at},@rootgid@,g"
 	-e "s,${at}rootuid${at},@rootuid@,g"
-	-e "s,${at}rootuser${at},${rootuser},g"
 	-e "s,${at}sysconfdir${at},@sysconfdir@,g"
 )
 
