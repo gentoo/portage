@@ -392,11 +392,6 @@ def _doebuild_path(settings, eapi=None):
                 path.append(p)
                 pathset.add(p)
 
-    # BEGIN PREFIX LOCAL: append EXTRA_PATH from make.globals
-    extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
-    path.extend(extrapath)
-    # END PREFIX LOCAL
-
     settings["PATH"] = ":".join(path)
 
 
