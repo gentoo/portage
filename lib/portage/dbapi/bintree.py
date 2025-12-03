@@ -26,6 +26,7 @@ from portage.exception import (
     PortagePackageException,
     SignatureException,
 )
+from portage._sets.base import WildcardPackageSet
 from portage.localization import _
 from portage.output import colorize
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
@@ -903,6 +904,8 @@ class binarytree:
     def populate(
         self,
         getbinpkgs=False,
+        getbinpkg_exclude=None,
+        getbinpkg_include=None,
         getbinpkg_refresh=False,
         verbose=False,
         add_repos=(),
@@ -915,6 +918,8 @@ class binarytree:
 
         @param getbinpkgs: include remote packages
         @type getbinpkgs: bool
+        @param getbinpkg_exclude: list of remote atoms to exclude
+        @param getbinpkg_include: list of remote atoms to include
         @param getbinpkg_refresh: attempt to refresh the cache
                 of remote package metadata if getbinpkgs is also True
         @type getbinpkg_refresh: bool
@@ -986,6 +991,8 @@ class binarytree:
                         getbinpkg_refresh=getbinpkg_refresh,
                         pretend=pretend,
                         verbose=verbose,
+                        getbinpkg_exclude=getbinpkg_exclude,
+                        getbinpkg_include=getbinpkg_include,
                     )
 
         finally:
@@ -1383,7 +1390,16 @@ class binarytree:
             return
         ret.check_returncode()
 
-    def _populate_remote(self, getbinpkg_refresh=True, pretend=False, verbose=False):
+    def _populate_remote(
+        self,
+        getbinpkg_refresh=True,
+        pretend=False,
+        verbose=False,
+        getbinpkg_exclude=None,
+        getbinpkg_include=None,
+    ):
+        from portage.util import writemsg
+
         self._remote_has_index = False
         self._remotepkgs = {}
 
@@ -1398,10 +1414,21 @@ class binarytree:
         else:
             gpkg_only = False
 
+        atoms = " ".join(getbinpkg_exclude or []).split()
+        getbinpkg_exclude = WildcardPackageSet(atoms)
+        atoms = " ".join(getbinpkg_include or []).split()
+        getbinpkg_include = WildcardPackageSet(atoms)
+
         # Order by descending priority.
         for repo in reversed(list(self._binrepos_conf.values())):
             self._populate_remote_repo(
-                repo, getbinpkg_refresh, pretend, verbose, gpkg_only
+                repo,
+                getbinpkg_refresh,
+                pretend,
+                verbose,
+                gpkg_only,
+                getbinpkg_exclude,
+                getbinpkg_include,
             )
 
     def _populate_remote_repo(
@@ -1411,6 +1438,8 @@ class binarytree:
         pretend: bool,
         verbose: bool,
         gpkg_only: bool,
+        getbinpkg_exclude: WildcardPackageSet,
+        getbinpkg_include: WildcardPackageSet,
     ):
         from portage.package.ebuild.fetch import _hide_url_passwd
         from portage.util import atomic_ofstream, writemsg
@@ -1765,6 +1794,8 @@ class binarytree:
                 # The current user doesn't have permission to cache the
                 # file, but that's alright.
         if pkgindex:
+            have_getbinpkg_exclude = not getbinpkg_exclude.isEmpty()
+            have_getbinpkg_include = not getbinpkg_include.isEmpty()
             remote_base_uri = pkgindex.header.get("URI", base_url)
             for d in pkgindex.packages:
                 cpv = _pkg_str(
@@ -1774,6 +1805,17 @@ class binarytree:
                     db=self.dbapi,
                     repoconfig=repo,
                 )
+
+                # Respect remote binary exclude and include lists if defined
+                in_getbinpkg_exclude = (
+                    have_getbinpkg_exclude and getbinpkg_exclude.containsCPV(cpv)
+                )
+                in_getbinpkg_include = (
+                    not have_getbinpkg_include or getbinpkg_include.containsCPV(cpv)
+                )
+                if in_getbinpkg_exclude or not in_getbinpkg_include:
+                    continue
+
                 # Local package instances override remote instances
                 # with the same instance_key.
                 if self.dbapi.cpv_exists(cpv):

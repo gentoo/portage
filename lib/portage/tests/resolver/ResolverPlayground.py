@@ -44,6 +44,27 @@ from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
 
+def _combine_repo_config(conf, lines):
+    merged = lines.copy()
+    for section in reversed(conf):
+        header = f"[{section}]"
+        if header in merged:
+            index = merged.index(header) + 1
+            conflicts = [any(l.startswith(k) for l in lines) for k in conf[section]]
+            if any(conflicts):
+                reserved = ",".join(conf[section].keys())
+                raise AssertionError(
+                    f"cannot override config attributes [{reserved}] set by ResolverPlayground"
+                )
+        else:
+            merged.insert(0, header)
+            index = 1
+        for entry in conf[section].items():
+            merged.insert(index, ("%s = %s" % entry))
+            index += 1
+    return merged
+
+
 class ResolverPlayground:
     """
     This class helps to create the necessary files on disk and
@@ -77,7 +98,6 @@ class ResolverPlayground:
             "use.force",
             "use.mask",
             "use.stable",
-            "layout.conf",
         )
     )
 
@@ -120,6 +140,7 @@ class ResolverPlayground:
         self,
         ebuilds={},
         binpkgs={},
+        binrepos={},
         installed={},
         profile={},
         repo_configs={},
@@ -234,6 +255,10 @@ class ResolverPlayground:
         # Make sure the main repo is always created
         self._get_repo_dir("test_repo")
 
+        self._binrepos = {}
+        for binrepo in binrepos:
+            self._get_binrepo_dir(binrepo)
+
         self._create_distfiles(distfiles)
         self._create_ebuilds(ebuilds)
         self._create_installed(installed)
@@ -245,8 +270,12 @@ class ResolverPlayground:
         self.settings, self.trees = self._load_config()
 
         self.gpg = None
-        self._create_binpkgs(binpkgs)
+        self._create_binpkgs(self.pkgdir, binpkgs)
         self._create_ebuild_manifests(ebuilds)
+
+        for binrepo, binpkgs in binrepos.items():
+            binrepo_dir = self._get_binrepo_dir(binrepo)
+            self._create_binpkgs(binrepo_dir, binpkgs)
 
         portage.util.noiselimit = 0
 
@@ -282,6 +311,23 @@ class ResolverPlayground:
                 f.write(f"{repo}\n")
 
         return self._repositories[repo]["location"]
+
+    def _get_binrepo_dir(self, binrepo):
+        """
+        Create the binrepo directory if needed.
+        """
+        if binrepo not in self._binrepos:
+            self._binrepos["DEFAULT"] = {"frozen": "yes"}
+
+            repo_path = os.path.join(self.eroot, "var", "binrepos", binrepo)
+            self._binrepos[binrepo] = {"sync-uri": repo_path}
+
+            try:
+                os.makedirs(repo_path)
+            except OSError:
+                pass
+
+        return self._binrepos[binrepo]["sync-uri"]
 
     def _create_distfiles(self, distfiles):
         os.makedirs(self.distdir)
@@ -352,7 +398,7 @@ class ResolverPlayground:
                     f"command failed with returncode {result.returncode}: {egencache_cmd}"
                 )
 
-    def _create_binpkgs(self, binpkgs):
+    def _create_binpkgs(self, repo_dir, binpkgs):
         # When using BUILD_ID, there can be multiple instances for the
         # same cpv. Therefore, binpkgs may be an iterable instead of
         # a dict.
@@ -382,7 +428,6 @@ class ResolverPlayground:
             metadata["PF"] = pf
             metadata["BINPKG_FORMAT"] = binpkg_format
 
-            repo_dir = self.pkgdir
             category_dir = os.path.join(repo_dir, cat)
             if "BUILD_ID" in metadata:
                 if binpkg_format == "xpak":
@@ -415,8 +460,8 @@ class ResolverPlayground:
             else:
                 raise InvalidBinaryPackageFormat(binpkg_format)
 
-            bintree = binarytree(pkgdir=self.pkgdir, settings=self.settings)
-            bintree.populate(force_reindex=True)
+        bintree = binarytree(pkgdir=repo_dir, settings=self.settings)
+        bintree.populate(force_reindex=True)
 
     def _create_installed(self, installed):
         for cpv in installed:
@@ -633,6 +678,12 @@ class ResolverPlayground:
         configs = user_config.copy()
         configs["make.conf"] = make_conf_lines
 
+        if self._binrepos:
+            binrepos_conf_lines = list(user_config.get("binrepos.conf", ()))
+            configs["binrepos.conf"] = _combine_repo_config(
+                self._binrepos, binrepos_conf_lines
+            )
+
         for config_file, lines in configs.items():
             if config_file not in self.config_files:
                 raise ValueError(f"Unknown config file: '{config_file}'")
@@ -738,6 +789,13 @@ class ResolverPlayground:
             elif options.get("--prune"):
                 action = "prune"
 
+        if "--getbinpkgonly" in options:
+            options["--getbinpkg"] = True
+            options["--usepkgonly"] = True
+
+        if "--getbinpkg" in options:
+            options["--usepkg"] = True
+
         if "--usepkgonly" in options:
             options["--usepkg"] = True
 
@@ -749,6 +807,14 @@ class ResolverPlayground:
             if not self.debug:
                 portage.util.noiselimit = -2
             _emerge.emergelog._disable = True
+
+            if self._binrepos:
+                self.trees[self.eroot]["bintree"].populate(
+                    getbinpkgs=options.get("--getbinpkg", False),
+                    getbinpkg_exclude=options.get("--getbinpkg-exclude", None),
+                    getbinpkg_include=options.get("--getbinpkg-include", None),
+                    pretend=options.get("--pretend", False),
+                )
 
             # NOTE: frozen_config could be cached and reused if options and params were constant.
             params_action = (
@@ -1020,9 +1086,12 @@ def _mergelist_str(x, depgraph):
         mergelist_str = x.cpv + build_id_str + repo_str
         if x.built:
             if x.operation == "merge":
-                desc = x.type_name
+                desc = [x.type_name]
             else:
-                desc = x.operation
+                desc = [x.operation]
+            if x.remote:
+                desc.append("remote")
+            desc = ",".join(desc)
             mergelist_str = f"[{desc}]{mergelist_str}"
         if x.root != depgraph._frozen_config._running_root.root:
             mergelist_str += "{targetroot}"
