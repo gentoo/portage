@@ -632,6 +632,22 @@ merging.)
 This option is identical to \fB\-g\fR, as above, except binaries from the
 remote server are preferred over local packages if they are not identical.
 .TP
+.BR "\-\-getbinpkg\-exclude " ATOMS
+A space separated list of package names or slot atoms. Emerge will not fetch
+matching remote binary packages. This option only influences fetching of
+remote binary packages, local binary packages are still considered even if
+listed here. To define an explicit binary package blacklist use
+\fB\-\-usepkg\-exclude\fR instead, which also affects remote binaries when
+\fB-g\fR is used.
+.TP
+.BR "\-\-getbinpkg\-include " ATOMS
+A space separated list of package names or slot atoms. Emerge will not fetch
+non-matching remote binary packages. This option only influences fetching of
+remote binary packages, local binary packages are still considered even if
+not listed here. To define an explicit binary package whitelist use
+\fB\-\-usepkg\-include\fR instead, which also affects remote binaries when
+\fB-g\fR is used.
+.TP
 .BR \-\-ignore-default-opts
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
