@@ -52,7 +52,7 @@ from portage.output import colorize, create_color_func, darkgreen, green
 bad = create_color_func("BAD")
 from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
-from portage._sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet, WildcardPackageSet
 from portage.dep._slot_operator import evaluate_slot_operator_equal_deps
 from portage.util import ConfigProtect, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
@@ -131,17 +131,6 @@ class _scheduler_graph_config:
         self.mergelist = mergelist
 
 
-def _wildcard_set(atoms):
-    pkgs = InternalPackageSet(allow_wildcard=True)
-    for x in atoms:
-        try:
-            x = Atom(x, allow_wildcard=True, allow_repo=False)
-        except portage.exception.InvalidAtom:
-            x = Atom("*/" + x, allow_wildcard=True, allow_repo=False)
-        pkgs.add(x)
-    return pkgs
-
-
 class _frozen_depgraph_config:
     def __init__(self, settings, trees, myopts, params, spinner):
         self.settings = settings
@@ -204,19 +193,19 @@ class _frozen_depgraph_config:
             self._required_set_names = {"world"}
 
         atoms = " ".join(myopts.get("--exclude", [])).split()
-        self.excluded_pkgs = _wildcard_set(atoms)
+        self.excluded_pkgs = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--reinstall-atoms", [])).split()
-        self.reinstall_atoms = _wildcard_set(atoms)
+        self.reinstall_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--usepkg-exclude", [])).split()
-        self.usepkg_exclude = _wildcard_set(atoms)
+        self.usepkg_exclude = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--usepkg-include", [])).split()
-        self.usepkg_include = _wildcard_set(atoms)
+        self.usepkg_include = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--useoldpkg-atoms", [])).split()
-        self.useoldpkg_atoms = _wildcard_set(atoms)
+        self.useoldpkg_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-exclude", [])).split()
-        self.rebuild_exclude = _wildcard_set(atoms)
+        self.rebuild_exclude = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-ignore", [])).split()
-        self.rebuild_ignore = _wildcard_set(atoms)
+        self.rebuild_ignore = WildcardPackageSet(atoms)
 
         self.rebuild_if_new_rev = "--rebuild-if-new-rev" in myopts
         self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts
