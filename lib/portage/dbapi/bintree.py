@@ -1740,7 +1740,16 @@ class binarytree:
             error_msg = str(err)
             writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
             del err
-            pkgindex = None
+            if pretend:
+                writemsg(
+                    _(
+                        "[%s] Local copy of unavailable remote index will be "
+                        "used due to --pretend\n"
+                    )
+                    % (binrepo_name)
+                )
+            else:
+                pkgindex = None
 
         if pkgindex is rmt_idx and changed:
             pkgindex.modified = False  # don't update the header
