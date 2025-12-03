@@ -61,6 +61,10 @@ class PackageSet:
         self._load()
         return self._nonatoms.copy()
 
+    def isEmpty(self):
+        self._load()
+        return len(self._atoms) == 0 and len(self._nonatoms) == 0
+
     def _setAtoms(self, atoms):
         self._atoms.clear()
         self._nonatoms.clear()

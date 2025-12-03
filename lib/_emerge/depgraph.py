@@ -5315,6 +5315,9 @@ class depgraph:
         onlydeps = "--onlydeps" in self._frozen_config.myopts
         args = self._dynamic_config._initial_arg_list[:]
 
+        if "--nobindeps" in self._frozen_config.myopts:
+            self._frozen_config.usepkg_include.update(myfavorites)
+
         for arg in self._expand_set_args(args, add_to_digraph=True):
             myroot = arg.root_config.root
             pkgsettings = self._frozen_config.pkgsettings[myroot]
@@ -7626,8 +7629,8 @@ class depgraph:
         reinstall_atoms = self._frozen_config.reinstall_atoms
         usepkg_exclude = self._frozen_config.usepkg_exclude
         usepkg_include = self._frozen_config.usepkg_include
-        have_usepkg_exclude = "--usepkg-exclude" in self._frozen_config.myopts
-        have_usepkg_include = "--usepkg-include" in self._frozen_config.myopts
+        have_usepkg_exclude = not usepkg_exclude.isEmpty()
+        have_usepkg_include = not usepkg_include.isEmpty()
         useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
         matched_oldpkg = []
         # Behavior of the "selective" parameter depends on
