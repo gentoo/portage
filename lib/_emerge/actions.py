@@ -2811,6 +2811,23 @@ def binpkg_selection_config(opts, settings):
             usepkg_exclude.remove(a)
             usepkg_include.remove(a)
 
+    # --nobindeps ignores all usepkg-include and usepkg-exclude settings
+    if "--nobindeps" in opts:
+        if not usepkg_exclude.isEmpty():
+            writemsg(
+                "\n!!! The following --usepkg-exclude atoms are ignored due "
+                "to use of --nobindeps:\n"
+                "\n    %s\n" % ("\n    ".join(usepkg_exclude.getAtoms()))
+            )
+            usepkg_exclude.clear()
+        if not usepkg_include.isEmpty():
+            writemsg(
+                "\n!!! The following --usepkg-include atoms are ignored due "
+                "to use of --nobindeps:\n"
+                "\n    %s\n" % ("\n    ".join(usepkg_include.getAtoms()))
+            )
+            usepkg_include.clear()
+
     if not usepkg_exclude.isEmpty():
         opts["--usepkg-exclude"] = list(usepkg_exclude)
     if not usepkg_include.isEmpty():

@@ -31,6 +31,7 @@ options = [
     "--noconfmem",
     "--newrepo",
     "--newuse",
+    "--nobindeps",
     "--nodeps",
     "--noreplace",
     "--nospinner",

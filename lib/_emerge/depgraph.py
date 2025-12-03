@@ -5271,6 +5271,14 @@ class depgraph:
         # is to allow the user to force a specific merge order.
         self._dynamic_config._initial_arg_list = args[:]
 
+        # set usepkg-include set to expanded args if --nobindeps is
+        # in effect, both usepkg-include and usepkg-exclude should
+        # be assumed empty at this point
+        if "--nobindeps" in self._frozen_config.myopts:
+            for arg in self._expand_set_args(args):
+                arg_cp = (a.cp for a in arg.pset.getAtoms())
+                self._frozen_config.usepkg_include.update(arg_cp)
+
         return self._resolve(myfavorites)
 
     def _gen_reinstall_sets(self):

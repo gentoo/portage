@@ -741,6 +741,12 @@ been added to or removed from IUSE, see the related
 \fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
 specific packages, see the \fB\-\-exclude\fR option.
 .TP
+.BR \-\-nobindeps
+Prefer ebuilds for any dependencies and select binary packages only for the
+atoms or sets requested for install, i.e. those named on the command line. Has
+no effect unless \fB-k\fR is also used or implied. Both \fB--usepkg-exclude\fR
+and \fB--usepkg-include\fR are ignored when this option is used.
+.TP
 .BR \-\-noconfmem
 Causes portage to disregard merge records indicating that a config file
 inside of a \fBCONFIG_PROTECT\fR directory has been merged already.  Portage

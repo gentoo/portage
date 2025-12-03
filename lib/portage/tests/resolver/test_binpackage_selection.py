@@ -253,6 +253,65 @@ class UsePkgExcludeTestCase(BinPkgSelectionTestCase):
                     "[binary]app-misc/foo-1.0",
                 ],
             ),
+            # exclude all binary dependencies using --nobindeps
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkg": True, "--nobindeps": True},
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
+                ],
+            ),
+            # --usebinpkg-exclude to have no effect on --nobindeps
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={
+                    "--usepkg": True,
+                    "--nobindeps": True,
+                    "--usepkg-exclude": ["foo"],
+                },
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
+                ],
+            ),
+            # --nobindeps should work for arguments that cannot normally be put
+            # on the --usepkg-include list, e.g. versions operators, repo, etc,
+            # and also sets, for which see testUsePkgExcludeUpdate().
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0"],
+                success=True,
+                options={"--usepkg": True, "--nobindeps": True},
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
+                ],
+            ),
+            ResolverPlaygroundTestCase(
+                [">app-misc/foo-0.9"],
+                success=True,
+                options={"--usepkg": True, "--nobindeps": True},
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
+                ],
+            ),
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo::test_repo"],
+                success=True,
+                options={"--usepkg": True, "--nobindeps": True},
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
+                ],
+            ),
         )
 
         self.runBinPkgSelectionTest(test_cases, binpkgs=binpkgs, ebuilds=ebuilds)
@@ -334,6 +393,22 @@ class UsePkgExcludeTestCase(BinPkgSelectionTestCase):
                     "--deep": True,
                     "--usepkg": True,
                     "--usepkg-exclude": ["app-misc/b*"],
+                },
+                mergelist=[
+                    "app-misc/baz-1.1",
+                    "app-misc/bar-1.1",
+                    "[binary]app-misc/foo-1.1",
+                ],
+            ),
+            # world update with --nobindeps
+            ResolverPlaygroundTestCase(
+                ["@world"],
+                success=True,
+                options={
+                    "--update": True,
+                    "--deep": True,
+                    "--usepkg": True,
+                    "--nobindeps": True,
                 },
                 mergelist=[
                     "app-misc/baz-1.1",
@@ -535,6 +610,21 @@ class UsePkgIncludeTestCase(BinPkgSelectionTestCase):
                     "[binary]app-misc/baz-1.0",
                     "[binary]app-misc/bar-1.0",
                     "app-misc/foo-1.0",
+                ],
+            ),
+            # --usebinpkg-include to have no effect on --nobindeps
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={
+                    "--usepkg": True,
+                    "--nobindeps": True,
+                    "--usepkg-include": ["app-misc/b*"],
+                },
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
                 ],
             ),
         )
