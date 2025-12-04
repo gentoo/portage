@@ -3,8 +3,6 @@
 
 # all vars that are to wind up in portage_const must have their name listed in __all__
 
-__all__ = ["EPREFIX", "rootgid"]
+__all__ = ["EPREFIX"]
 
 EPREFIX      = "@PORTAGE_EPREFIX@"
-
-rootgid      = @rootgid@

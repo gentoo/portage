@@ -45,40 +45,6 @@ GENTOO_PATH_GNUPROG(PORTAGE_FIND, [find])
 GENTOO_PATH_GNUPROG(PORTAGE_XARGS, [xargs])
 GENTOO_PATH_GNUPROG(PORTAGE_GREP, [grep])
 
-AC_ARG_WITH(portage-user,
-AS_HELP_STRING([--with-portage-user=myuser],[use user 'myuser' as portage owner (default portage)]),
-[case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-portage-user);;
-  *) portageuser="${withval}";;
-esac],
-[portageuser="portage"])
-
-AC_ARG_WITH(portage-group,
-AS_HELP_STRING([--with-portage-group=mygroup],[use group 'mygroup' as portage users group (default portage)]),
-[case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-portage-group);;
-  *) portagegroup="${withval}";;
-esac],
-[portagegroup="portage"])
-
-AC_MSG_CHECKING([for user id of ${portageuser}])
-dnl grab uid of portageuser
-rootuid=`${XCU_ID} -u "${portageuser}"`
-if test "x`echo ${rootuid} | ${EGREP} '^[[0-9]]+$'`" != "x"
-then
-	AC_MSG_RESULT([${rootuid}])
-else
-	AC_MSG_ERROR([error finding the user id of ${portageuser}])
-fi
-AC_MSG_CHECKING([for group id of ${portagegroup}])
-rootgid=`${PREFIX_PORTAGE_PYTHON} -c "import grp; print(grp.getgrnam('${portagegroup}').gr_gid)"`
-if test "x`echo ${rootgid} | ${EGREP} '^[[0-9]]+$'`" != "x"
-then
-	AC_MSG_RESULT([${rootgid}])
-else
-	AC_MSG_ERROR([error finding the group id of ${portagegroup}])
-fi
-
 AC_ARG_WITH(offset-prefix, 
 AS_HELP_STRING([--with-offset-prefix],[specify the installation prefix for all packages, defaults to an empty string]),
 			   [PORTAGE_EPREFIX=$withval],
@@ -89,10 +55,6 @@ then
 	PORTAGE_EPREFIX=`${PREFIX_PORTAGE_PYTHON} -c "import os; print(os.path.normpath('$PORTAGE_EPREFIX'))"`
 fi
 
-AC_SUBST(portageuser)
-AC_SUBST(portagegroup)
-AC_SUBST(rootuid)
-AC_SUBST(rootgid)
 AC_SUBST(PORTAGE_EPREFIX)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
 

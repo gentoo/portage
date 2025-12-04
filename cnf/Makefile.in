@@ -8,9 +8,6 @@ srcdir = @srcdir@
 top_builddir = @top_builddir@
 PORTAGE_CONF = $(datadir)/portage/config
 
-portageuser = @portageuser@
-portagegroup = @portagegroup@
-
 INSTALL = @INSTALL@
 INSTALL_subst = ${top_builddir}/subst-install --hprefixify
 LN_S = @LN_S@
@@ -18,22 +15,18 @@ LN_S = @LN_S@
 all:
 
 install:
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_CONF)
+	$(INSTALL) -d -m 755 $(DESTDIR)$(PORTAGE_CONF)
 	$(INSTALL_subst) \
-		-o "$(portageuser)" -g "$(portagegroup)" \
 		-t "$(DESTDIR)$(PORTAGE_CONF)" \
 		"$(srcdir)"/make.globals "$(srcdir)"/repos.conf
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_CONF)/sets
+	$(INSTALL) -d -m 755 $(DESTDIR)$(PORTAGE_CONF)/sets
 	$(INSTALL_subst) \
-		-o "$(portageuser)" -g "$(portagegroup)" \
 		-t "$(DESTDIR)$(PORTAGE_CONF)/sets" \
 		"$(srcdir)"/sets/portage.conf
 	$(INSTALL_subst) \
-		-o "$(portageuser)" -g "$(portagegroup)" \
 		"$(srcdir)"/make.conf.example "$(DESTDIR)$(PORTAGE_CONF)"/make.conf.example
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(sysconfdir)
+	$(INSTALL) -d -m 755 $(DESTDIR)$(sysconfdir)
 	$(INSTALL_subst) \
-		-o "$(portageuser)" -g "$(portagegroup)" \
 		-t "$(DESTDIR)$(sysconfdir)" \
 		"$(srcdir)"/dispatch-conf.conf \
 		"$(srcdir)"/etc-update.conf

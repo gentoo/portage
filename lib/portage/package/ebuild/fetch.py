@@ -52,8 +52,6 @@ from portage.checksum import (
     checksum_str,
 )
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, GLOBAL_CONFIG_PATH
-# PREFIX LOCAL
-from portage.const import rootgid
 from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.exception import (
     FileNotFound,
@@ -270,8 +268,7 @@ async def _ensure_distdir(settings, distdir):
         # to have root's gid. Therefore, use root's gid instead of
         # portage's gid to avoid spurious permissions adjustments
         # when inside fakeroot.
-        # PREFIX LOCAL: do not assume root to be 0
-        dir_gid = rootgid
+        dir_gid = 0
 
     userfetch = portage.data.secpass >= 2 and "userfetch" in settings.features
     userpriv = portage.data.secpass >= 2 and "userpriv" in settings.features

@@ -140,15 +140,6 @@ CONFIG_PROTECT_MASK="/etc/env.d"
 # Disable auto-use
 USE_ORDER="env:pkg:conf:defaults:pkginternal:features:repo:env.d"
 
-# PREFIX LOCAL: additional vars set during install
-# Default portage user/group
-PORTAGE_USERNAME='@portageuser@'
-PORTAGE_GRPNAME='@portagegroup@'
-
-# Default ownership of installed files.
-PORTAGE_INST_UID="@rootuid@"
-PORTAGE_INST_GID="@rootgid@"
-
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"
 
@@ -156,9 +147,10 @@ PORTAGE_WORKDIR_MODE="0700"
 PORTAGE_ELOG_CLASSES="log warn error"
 PORTAGE_ELOG_SYSTEM="save_summary:log,warn,error,qa echo"
 
-PORTAGE_ELOG_MAILURI="@portageuser@"
+# PREFIX LOCAL: don't use hardwired root/portage
+PORTAGE_ELOG_MAILURI="\${PORTAGE_USERNAME:-root}"
 PORTAGE_ELOG_MAILSUBJECT="[portage] ebuild log for \${PACKAGE} on \${HOST}"
-PORTAGE_ELOG_MAILFROM="@portageuser@@localhost"
+PORTAGE_ELOG_MAILFROM="\${PORTAGE_USERNAME:-portage}@localhost"
 # END PREFIX LOCAL
 
 # Signing command used by egencache

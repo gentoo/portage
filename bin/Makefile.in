@@ -8,9 +8,6 @@ libdir = @libdir@
 srcdir = @srcdir@
 top_builddir = @top_builddir@
 
-portageuser = @portageuser@
-portagegroup = @portagegroup@
-
 PORTAGE_BIN = @PORTAGE_BASE@/bin
 LN_S = @LN_S@
 INSTALL = @INSTALL@
@@ -40,7 +37,7 @@ hprefixify_progs = \
 all:
 
 install:
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_BIN)
+	$(INSTALL) -d -m 755 $(DESTDIR)$(PORTAGE_BIN)
 	( cd "$(srcdir)" && find . -type d ) | while read f ; do \
 		files=( ) ; \
 		shopt -s nullglob ; \
@@ -50,21 +47,18 @@ install:
 			files=( "$${files[@]}" "$${t}" ) ; \
 		done ; \
 		$(INSTALL) -d -m 755 \
-			-o "$(portageuser)" -g "$(portagegroup)" \
 			"$(DESTDIR)$(PORTAGE_BIN)/$${f}" && \
 		[[ $${files[0]} ]] || continue ; \
 		$(INSTALL_subst) -m 755 \
-			-o "$(portageuser)" -g "$(portagegroup)" \
 			-t "$(DESTDIR)$(PORTAGE_BIN)/$${f}" \
 			"$${files[@]}" ; \
 	done ; \
 	for f in $(hprefixify_progs) ; do \
 		$(INSTALL_subst) --hprefixify -m 755 \
-			-o "$(portageuser)" -g "$(portagegroup)" \
 			-t "$(DESTDIR)$(PORTAGE_BIN)" \
 			"$(srcdir)/$${f}" ; \
 	done
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/bin
+	$(INSTALL) -d -m 755 $(DESTDIR)$(prefix)/bin
 	cd $(DESTDIR)$(prefix)/bin \
 	; for p in $(usr_binprogs) \
 	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
@@ -72,7 +66,7 @@ install:
 	   ; rm -f $(DESTDIR)$(prefix)/bin/$${p} \
 	   ; $(LN_S) ../lib/portage/bin/$${p} $${p} || exit 1 \
 	; done
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/sbin
+	$(INSTALL) -d -m 755 $(DESTDIR)$(prefix)/sbin
 	cd $(DESTDIR)$(prefix)/sbin \
 	; for p in $(usr_sbinprogs) \
 	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
