@@ -5,7 +5,9 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from hashlib import md5
 
+from portage._sets.base import WildcardPackageSet
 from portage.localization import _
+from portage.repository.config import _find_bad_atoms
 from portage.util import _recursive_file_list, writemsg
 from portage.util.configparser import SafeConfigParser, ConfigParserError, read_configs
 
@@ -16,6 +18,8 @@ class BinRepoConfig:
         "name",
         "name_fallback",
         "fetchcommand",
+        "getbinpkg_exclude",
+        "getbinpkg_include",
         "location",
         "priority",
         "resumecommand",
@@ -33,6 +37,40 @@ class BinRepoConfig:
         for k in self._bool_opts:
             if isinstance(getattr(self, k, None), str):
                 setattr(self, k, getattr(self, k).lower() in ("true", "yes"))
+
+        # getbinpkg-exclude and getbinpkg-include validation
+        for opt in ("getbinpkg-exclude", "getbinpkg-include"):
+            attr = opt.replace("-", "_")
+            if self.name == "DEFAULT":
+                setattr(self, attr, None)
+                continue
+            getbinpkg_atoms = opts.get(opt, "").split()
+            bad_atoms = _find_bad_atoms(getbinpkg_atoms)
+            if bad_atoms:
+                writemsg(
+                    "\n!!! The following atoms are invalid in %s attribute for "
+                    "binrepo [%s] (only package names and slot atoms allowed):\n"
+                    "\n    %s\n" % (opt, self.name, "\n    ".join(bad_atoms))
+                )
+                for a in bad_atoms:
+                    getbinpkg_atoms.remove(a)
+            getbinpkg_set = WildcardPackageSet(getbinpkg_atoms, allow_repo=True)
+            setattr(self, attr, getbinpkg_set)
+        conflicted_atoms = (
+            self.getbinpkg_exclude
+            and self.getbinpkg_exclude.getAtoms().intersection(
+                self.getbinpkg_include.getAtoms()
+            )
+        )
+        if conflicted_atoms:
+            writemsg(
+                "\n!!! The following atoms appear in both the getbinpkg-exclude "
+                "getbinpkg-include lists for binrepo [%s]:\n"
+                "\n    %s\n" % (self.name, "\n    ".join(conflicted_atoms))
+            )
+            for a in conflicted_atoms:
+                self.getbinpkg_exclude.remove(a)
+                self.getbinpkg_include.remove(a)
 
     def info_string(self):
         """
