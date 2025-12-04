@@ -8,6 +8,11 @@ from portage.tests.resolver.ResolverPlayground import (
 )
 
 
+# attach build-ids to existing package collection
+def with_build_id(pkgs, build):
+    return [(cpv, meta | {"BUILD_ID": build}) for cpv, meta in pkgs.items()]
+
+
 # base class for unit tests of binary package selection options
 class BinPkgSelectionTestCase(TestCase):
     pkgs_no_deps = {
@@ -26,6 +31,12 @@ class BinPkgSelectionTestCase(TestCase):
         "app-misc/foo-1.1": {"RDEPEND": "app-misc/bar"},
         "app-misc/bar-1.1": {"RDEPEND": "app-misc/baz"},
         "app-misc/baz-1.1": {},
+    }
+
+    pkgs_other_repo = {
+        "app-misc/foo-1.0::other_repo": {},
+        "app-misc/bar-1.0::other_repo": {},
+        "app-misc/baz-1.0::other_repo": {},
     }
 
     pkgs_with_deps = {
@@ -56,6 +67,15 @@ class BinPkgSelectionTestCase(TestCase):
                     self.assertEqual(test_case.test_success, True, test_case.fail_msg)
         finally:
             playground.cleanup()
+
+    # runs multiple test cases in multiple playgrounds with different config
+    def runBinPkgSelectionTestUserConfig(self, config, test_cases, **kwargs):
+        for n, test_case in enumerate(test_cases.items()):
+            lines, tests = test_case
+            kwargs.setdefault("user_config", {})[config] = lines
+
+            with self.subTest(f"Playground {n+1}/{len(test_cases)}"):
+                self.runBinPkgSelectionTest(tests, **kwargs)
 
 
 # test --getbinpkg-exclude option
@@ -954,6 +974,278 @@ class UsePkgExcludeTestCase(BinPkgSelectionTestCase):
             world=world,
         )
 
+    def testUsePkgExcludeReposConf(self):
+        binpkgs = self.pkgs_no_deps
+        ebuilds = self.pkgs_no_deps
+
+        test_cases = {
+            (
+                "[test_repo]",
+                "usepkg-exclude = foo",
+            ): (
+                # reposconf.conf attributes to have no effect without --usepkg
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+                # request all packages with usepkg-exclude in repos.conf
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True},
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # suppliment repos.conf with --usepkg-exclude on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True, "--usepkg-exclude": ["bar"]},
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # override repos.conf with --usepkg-include on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True, "--usepkg-include": ["foo"]},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+            (
+                "[test_repo]",
+                "usepkg-exclude = foo",
+                "usepkg-include = foo",
+            ): (
+                # conflicted repos.conf attributes to have no effect
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+            (
+                "[test_repo]",
+                "usepkg-exclude = foo bar",
+                "usepkg-include = foo",
+            ): (
+                # conflicted repos.conf attributes to not interfere with
+                # non-overlapping usepkg-exclude
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # remaining atoms in repos.conf sourced lists after conflicting
+                # attributes have been filtered still to be overridable using
+                # --usepkg-include on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True, "--usepkg-include": ["bar"]},
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+        }
+
+        self.runBinPkgSelectionTestUserConfig(
+            "repos.conf",
+            test_cases,
+            binpkgs=binpkgs,
+            ebuilds=ebuilds,
+        )
+
+    def testUsePkgExcludeReposConfDeps(self):
+        binpkgs = self.pkgs_with_deps
+        ebuilds = self.pkgs_with_deps
+
+        user_config = {
+            "repos.conf": (
+                "[test_repo]",
+                "usepkg-exclude = foo",
+            )
+        }
+
+        test_cases = (
+            # usepkg-exclude in repos.conf to have no effect on --nobindeps
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkg": True, "--nobindeps": True},
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
+                ],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases,
+            binpkgs=binpkgs,
+            ebuilds=ebuilds,
+            user_config=user_config,
+        )
+
+    def testUsePkgExcludeMultiRepo(self):
+        # see commentary in testGetBinPkgExcludeMultiBinrepo()
+        pkgs_no_deps = with_build_id(self.pkgs_no_deps, "1")
+        pkgs_other_repo = with_build_id(self.pkgs_other_repo, "2")
+
+        ebuilds = self.pkgs_no_deps | self.pkgs_other_repo
+        binpkgs = pkgs_no_deps + pkgs_other_repo
+
+        user_config = {
+            "repos.conf": (
+                "[test_repo]",
+                "usepkg-exclude = foo",
+                "[other_repo]",
+                "usepkg-exclude = bar",
+            )
+        }
+
+        # note that repository priority order is not well defined *within* pkgdir
+        # and so test cases which assume a plan c/p atom will resolve to a binary
+        # for any given repo implicitly can spuriously fail, regardless of priority
+        # set in repos.conf.
+        #
+        # TL;DR = all atoms in these tests cases *must* be ::repo qualified!
+        test_cases = (
+            # request test_repo for which only app-misc/foo is excluded in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::test_repo",
+                    "app-misc/bar::test_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "app-misc/foo-1.0",
+                    "[binary]app-misc/bar-1.0-1",
+                    "[binary]app-misc/baz-1.0-1",
+                ],
+            ),
+            # request other_repo for which only app-misc/bar is excluded in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::other_repo",
+                    "app-misc/bar::other_repo",
+                    "app-misc/baz::other_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-2::other_repo",
+                    "app-misc/bar-1.0::other_repo",
+                    "[binary]app-misc/baz-1.0-2::other_repo",
+                ],
+            ),
+            # use repo qualifier to request packages from repos for which both
+            # app-misc/foo and app-misc/bar are excluded in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::test_repo",
+                    "app-misc/bar::other_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "app-misc/foo-1.0",
+                    "app-misc/bar-1.0::other_repo",
+                    "[binary]app-misc/baz-1.0-1",
+                ],
+            ),
+            # use repo qualifier to request packages from repos for which neither
+            # app-misc/foo nor app-misc/bar are excluded in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::other_repo",
+                    "app-misc/bar::test_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-2::other_repo",
+                    "[binary]app-misc/bar-1.0-1",
+                    "[binary]app-misc/baz-1.0-1",
+                ],
+            ),
+            # use repo qualifier to arrange for neither app-misc/foo nor app-misc/bar
+            # to be binary, but override repos.conf for foo using --usepkg-include
+            # which implicitly excludes app-misc/baz as the command line option
+            # applies to all repositories
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::test_repo",
+                    "app-misc/bar::other_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True, "--usepkg-include": ["foo"]},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-1",
+                    "app-misc/bar-1.0::other_repo",
+                    "app-misc/baz-1.0",
+                ],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases,
+            binpkgs=binpkgs,
+            ebuilds=ebuilds,
+            user_config=user_config,
+        )
+
 
 # test --usepkg-include option
 class UsePkgIncludeTestCase(BinPkgSelectionTestCase):
@@ -1251,4 +1543,253 @@ class UsePkgIncludeTestCase(BinPkgSelectionTestCase):
             ebuilds=ebuilds,
             installed=installed,
             world=world,
+        )
+
+    def testUsePkgIncludeReposConf(self):
+        binpkgs = self.pkgs_no_deps
+        ebuilds = self.pkgs_no_deps
+
+        test_cases = {
+            (
+                "[test_repo]",
+                "usepkg-include = foo",
+            ): (
+                # repos.conf attribute to have no effect without --usepkg
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+                # request all packages with usepkg-include in repos.conf
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+                # suppliment repos.conf with --usepkg-include on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True, "--usepkg-include": ["bar"]},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+                # override repos.conf with --usepkg-exclude on  command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True, "--usepkg-exclude": ["foo"]},
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+            (
+                "[test_repo]",
+                "usepkg-exclude = foo",
+                "usepkg-include = foo bar",
+            ): (
+                # conflicted repos.conf attributes to not interfere with
+                # non-overlapping usepkg-include
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True},
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+                # remaining atoms in repos.conf sourced lists after conflicting
+                # attributes have been filtered still to be overridable using
+                # --usepkg-exclude on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkg": True, "--usepkg-exclude": ["bar"]},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+        }
+
+        self.runBinPkgSelectionTestUserConfig(
+            "repos.conf",
+            test_cases,
+            binpkgs=binpkgs,
+            ebuilds=ebuilds,
+        )
+
+    def testUsePkgIncludeReposConfDeps(self):
+        binpkgs = self.pkgs_with_deps
+        ebuilds = self.pkgs_with_deps
+
+        user_config = {
+            "repos.conf": (
+                "[test_repo]",
+                "usepkg-include = bar",
+            )
+        }
+
+        test_cases = (
+            # usepkg-include in repos.conf to have no effect on --nobindeps
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkg": True, "--nobindeps": True},
+                mergelist=[
+                    "app-misc/baz-1.0",
+                    "app-misc/bar-1.0",
+                    "[binary]app-misc/foo-1.0",
+                ],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases,
+            binpkgs=binpkgs,
+            ebuilds=ebuilds,
+            user_config=user_config,
+        )
+
+    def testUsePkgIncludeMultiRepo(self):
+        # see commentary in testGetBinPkgExcludeMultiBinrepo()
+        pkgs_no_deps = with_build_id(self.pkgs_no_deps, "1")
+        pkgs_other_repo = with_build_id(self.pkgs_other_repo, "2")
+
+        ebuilds = self.pkgs_no_deps | self.pkgs_other_repo
+        binpkgs = pkgs_no_deps + pkgs_other_repo
+
+        user_config = {
+            "repos.conf": (
+                "[test_repo]",
+                "usepkg-include = foo",
+                "[other_repo]",
+                "usepkg-include = bar",
+            )
+        }
+
+        # all atoms in these tests cases *must* be ::repo qualified! see comments
+        # in testUsePkgExcludeMultiRepo()
+        test_cases = (
+            # request test_repo for which only app-misc/foo is included in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::test_repo",
+                    "app-misc/bar::test_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-1",
+                    "app-misc/bar-1.0",
+                    "app-misc/baz-1.0",
+                ],
+            ),
+            # request other_repo for which only app-misc/bar is included in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::other_repo",
+                    "app-misc/bar::other_repo",
+                    "app-misc/baz::other_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "app-misc/foo-1.0::other_repo",
+                    "[binary]app-misc/bar-1.0-2::other_repo",
+                    "app-misc/baz-1.0::other_repo",
+                ],
+            ),
+            # use repo qualifier to request packages from repos for which both
+            # app-misc/foo and app-misc/bar are included in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::test_repo",
+                    "app-misc/bar::other_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-1",
+                    "[binary]app-misc/bar-1.0-2::other_repo",
+                    "app-misc/baz-1.0",
+                ],
+            ),
+            # use repo qualifier to request packages from repos for which neither
+            # app-misc/foo nor app-misc/bar are included in repos.conf
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::other_repo",
+                    "app-misc/bar::test_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True},
+                mergelist=[
+                    "app-misc/foo-1.0::other_repo",
+                    "app-misc/bar-1.0",
+                    "app-misc/baz-1.0",
+                ],
+            ),
+            # use repo qualifier to arrange for both app-misc/foo and app-misc/bar
+            # to be binary, but override repos.conf for foo using --usepkg-exclude
+            # which has no effect on app-misc/baz
+            ResolverPlaygroundTestCase(
+                [
+                    "app-misc/foo::test_repo",
+                    "app-misc/bar::other_repo",
+                    "app-misc/baz::test_repo",
+                ],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--usepkg": True, "--usepkg-exclude": ["foo"]},
+                mergelist=[
+                    "app-misc/foo-1.0",
+                    "[binary]app-misc/bar-1.0-2::other_repo",
+                    "app-misc/baz-1.0",
+                ],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases,
+            binpkgs=binpkgs,
+            ebuilds=ebuilds,
+            user_config=user_config,
         )

@@ -1303,6 +1303,20 @@ Require the detached tarball signature to contain a good OpenPGP
 signature. This uses the OpenPGP key(ring) specified by the
 sync\-openpgp\-key\-path setting. Defaults to no, false.
 .TP
+.B usepkg\-exclude
+A space separated list of package names or slot atoms. Emerge will ignore
+matching binary packages except where overridden by the \-\-usepkg\-include
+command line option (see \fBemerge\fR(1)).
+
+This is an experimental option subject to change.
+.TP
+.B usepkg\-include
+A space separated list of package names or slot names. Emerge will ignore
+non-matching binary packages except where overridden by the \-\-usepkg\-exclude
+command line option (see \fBemerge\fR(1)).
+
+This is an experimental option subject to change.
+.TP
 .B volatile = yes|no|true|false
 Specifies whether a repository is volatile.  Volatile repositories
 are assumed to contain changes made outside of Portage.  This prohibits
