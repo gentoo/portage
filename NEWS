@@ -6,6 +6,8 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+* fetch: Only fetch from GENTOO_MIRRORS if ebuild is in ::gentoo (bug #967090).
+
 portage-3.0.72 (2025-11-17)
 --------------
 
