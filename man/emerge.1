@@ -761,7 +761,8 @@ specific packages, see the \fB\-\-exclude\fR option.
 Prefer ebuilds for any dependencies and select binary packages only for the
 atoms or sets requested for install, i.e. those named on the command line. Has
 no effect unless \fB-k\fR is also used or implied. Both \fB--usepkg-exclude\fR
-and \fB--usepkg-include\fR are ignored when this option is used.
+and \fB--usepkg-include\fR are ignored when this option is used, as are the
+usepkg-exclude and usepkg-include attributes in \fBrepos.conf\fR.
 .TP
 .BR \-\-noconfmem
 Causes portage to disregard merge records indicating that a config file

@@ -94,6 +94,7 @@ class ResolverPlayground:
             "package.use.stable",
             "package.use.stable.force",
             "package.use.stable.mask",
+            "repos.conf",
             "soname.provided",
             "use.force",
             "use.mask",
@@ -678,6 +679,11 @@ class ResolverPlayground:
         configs = user_config.copy()
         configs["make.conf"] = make_conf_lines
 
+        repos_conf_lines = list(user_config.get("repos.conf", ()))
+        configs["repos.conf"] = _combine_repo_config(
+            self._repositories, repos_conf_lines
+        )
+
         if self._binrepos:
             binrepos_conf_lines = list(user_config.get("binrepos.conf", ()))
             configs["binrepos.conf"] = _combine_repo_config(
@@ -750,17 +756,10 @@ class ResolverPlayground:
         if self.target_root != os.sep:
             create_trees_kwargs["target_root"] = self.target_root
 
-        env = {
-            "PATH": f"{self.eprefix}/usr/sbin:{self.eprefix}/usr/bin:{os.environ['PATH']}",
-            "PORTAGE_REPOSITORIES": "\n".join(
-                "[%s]\n%s"
-                % (
-                    repo_name,
-                    "\n".join(f"{k} = {v}" for k, v in repo_config.items()),
-                )
-                for repo_name, repo_config in self._repositories.items()
-            ),
-        }
+        path = f"{self.eprefix}/usr/sbin:{self.eprefix}/usr/bin:{os.environ['PATH']}"
+        env = {"PATH": path}
+        with open(os.path.join(self.eprefix, USER_CONFIG_PATH, "repos.conf")) as f:
+            env["PORTAGE_REPOSITORIES"] = f.read()
 
         if self.debug:
             env["PORTAGE_DEBUG"] = "1"

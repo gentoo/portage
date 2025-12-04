@@ -2838,6 +2838,48 @@ def binpkg_selection_config(opts, settings):
                 "\n    %s\n" % ("\n    ".join(usepkg_include.getAtoms()))
             )
             usepkg_include.clear()
+        for repo in settings.repositories:
+            if not repo.usepkg_exclude.isEmpty():
+                writemsg(
+                    "\n!!! The following usepkg-exclude atoms for [%s] are "
+                    "ignored due to use of --nobindeps:\n"
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(repo.usepkg_exclude.getAtoms()))
+                )
+                repo.usepkg_exclude.clear()
+            if not repo.usepkg_include.isEmpty():
+                writemsg(
+                    "\n!!! The following usepkg-include atoms for [%s] are "
+                    "ignored due to use of --nobindeps:\n"
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(repo.usepkg_include.getAtoms()))
+                )
+                repo.usepkg_include.clear()
+
+    # --usepkg-exclude and --usepkg-include override repos.conf
+    for repo in settings.repositories:
+        conflicted_exclude = repo.usepkg_exclude.getAtoms().intersection(
+            usepkg_include.getAtoms()
+        )
+        if conflicted_exclude:
+            writemsg(
+                "\n!!! The following usepkg-exclude atoms for [%s] have "
+                "been overridden by the --usepkg-include option:\n"
+                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+            )
+            for a in conflicted_exclude:
+                repo.usepkg_exclude.remove(a)
+        conflicted_include = repo.usepkg_include.getAtoms().intersection(
+            usepkg_exclude.getAtoms()
+        )
+        if conflicted_include:
+            writemsg(
+                "\n!!! The following usepkg-include atoms for [%s] have "
+                "been overridden by the --usepkg-exclude option:\n"
+                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+            )
+            for a in conflicted_include:
+                repo.usepkg_include.remove(a)
 
     # --getbinpkg-include and --getbinpkg-exclude may not overlap
     conflicted_atoms = getbinpkg_exclude.getAtoms().intersection(
