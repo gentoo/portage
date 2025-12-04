@@ -353,6 +353,266 @@ class GetBinPkgExcludeTestCase(BinPkgSelectionTestCase):
             test_cases, binpkgs=binpkgs, binrepos=binrepos, ebuilds=ebuilds
         )
 
+    def testGetBinPkgExcludeBinreposConf(self):
+        binpkgs = self.pkgs_no_deps
+        ebuilds = self.pkgs_no_deps
+
+        binrepos = {"test_binrepo": self.pkgs_no_deps}
+
+        test_cases = {
+            (
+                "[test_binrepo]",
+                "getbinpkg-exclude = foo",
+            ): (
+                # binrepos.conf attributes to have no effect without --getbinpkg
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkgonly": True},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # request all packages with getbinpkg-exclude in binrepos.conf
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary,remote]app-misc/bar-1.0",
+                        "[binary,remote]app-misc/baz-1.0",
+                    ],
+                ),
+                # suppliment binrepos.conf with --getbinpkg-exclude on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True, "--getbinpkg-exclude": ["bar"]},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary,remote]app-misc/baz-1.0",
+                    ],
+                ),
+                # override binrepos.conf with --getbinpkg-include on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True, "--getbinpkg-include": ["foo"]},
+                    mergelist=[
+                        "[binary,remote]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+            (
+                "[test_binrepo]",
+                "getbinpkg-exclude = foo",
+                "getbinpkg-include = foo",
+            ): (
+                # conflicted repos.conf attributes to have no effect
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True},
+                    mergelist=[
+                        "[binary,remote]app-misc/foo-1.0",
+                        "[binary,remote]app-misc/bar-1.0",
+                        "[binary,remote]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+            (
+                "[test_binrepo]",
+                "getbinpkg-exclude = foo bar",
+                "getbinpkg-include = foo",
+            ): (
+                # conflicted binrepos.conf attributes to not interfere with
+                # non-overlapping usepkg-exclude
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True},
+                    mergelist=[
+                        "[binary,remote]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary,remote]app-misc/baz-1.0",
+                    ],
+                ),
+                # remaining atoms in binrepos.conf sourced lists after conflicting
+                # attributes have been filtered still to be overridable using
+                # --getbinpkg-include on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True, "--getbinpkg-include": ["bar"]},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary,remote]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+        }
+
+        self.runBinPkgSelectionTestUserConfig(
+            "binrepos.conf",
+            test_cases,
+            binpkgs=binpkgs,
+            binrepos=binrepos,
+            ebuilds=ebuilds,
+        )
+
+    def testGetBinPkgExcludeMultiBinrepo(self):
+        # here things get a bit more complicated... to interpret test results we
+        # need to know from which binrepo a package came, which is not something
+        # the resolver can tell us. instead we will put binaries with build-id
+        # of 1 into the binhost 'test_binrepo', and binaries with build-id of 2
+        # into the binhost 'other_binrepo', the build-id being something we can
+        # check in the mergelist of each test case. the binaries are otherwise
+        # identical in each binrepo.
+        #
+        # to make tests outcomes easier to follow we also want both binhosts to
+        # fallback on local binaries rather than ebuilds when fetching is blocked
+        # by getbinpkg-exclude, which means pkgdir needs to contain the packages
+        # from *both* binhosts.
+        pkgs_no_deps_b1 = with_build_id(self.pkgs_no_deps, "1")
+        pkgs_no_deps_b2 = with_build_id(self.pkgs_no_deps, "2")
+
+        ebuilds = self.pkgs_no_deps
+        binpkgs = pkgs_no_deps_b1 + pkgs_no_deps_b2
+
+        binrepos = {
+            "test_binrepo": pkgs_no_deps_b1,
+            "other_binrepo": pkgs_no_deps_b2,
+        }
+
+        user_config = {
+            "binrepos.conf": (
+                "[test_binrepo]",
+                "getbinpkg-exclude = foo",
+                "[other_binrepo]",
+                "getbinpkg-exclude = bar",
+            ),
+        }
+
+        test_cases = (
+            # no build-id allows the resolver to work around explicit exclusions
+            # by using the binrepo with no applicable getbinpkg-exclude as these
+            # builds are identical in the test environment.
+            #
+            # still requesting a specific build-id for app-misc/baz as how the
+            # resolver disambiguates equivalent binaries is not under test here.
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo", "app-misc/bar", "=app-misc/baz-1.0-2"],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary,remote]app-misc/foo-1.0-2",
+                    "[binary,remote]app-misc/bar-1.0-1",
+                    "[binary,remote]app-misc/baz-1.0-2",
+                ],
+            ),
+            # explicitly request build-id 1 from test_binrepo such that the
+            # getbinpkg-exclude=foo entry in binrepos.conf applies
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-1", "=app-misc/bar-1.0-1", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-1",
+                    "[binary,remote]app-misc/bar-1.0-1",
+                    "[binary,remote]app-misc/baz-1.0-1",
+                ],
+            ),
+            # explicitly request build-id 2 from other_binrepo such that the
+            # getbinpkg-exclude=bar entry in binrepos.conf applies
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-2", "=app-misc/bar-1.0-2", "=app-misc/baz-1.0-2"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary,remote]app-misc/foo-1.0-2",
+                    "[binary]app-misc/bar-1.0-2",
+                    "[binary,remote]app-misc/baz-1.0-2",
+                ],
+            ),
+            # explicitly request the build-ids for the repositories where each
+            # of app-misc/foo and app-misc/bar are excluded
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-1", "=app-misc/bar-1.0-2", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-1",
+                    "[binary]app-misc/bar-1.0-2",
+                    "[binary,remote]app-misc/baz-1.0-1",
+                ],
+            ),
+            # explicitly request the build-ids for the repositories where neither
+            # of app-misc/foo and app-misc/bar are excluded
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-2", "=app-misc/bar-1.0-1", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary,remote]app-misc/foo-1.0-2",
+                    "[binary,remote]app-misc/bar-1.0-1",
+                    "[binary,remote]app-misc/baz-1.0-1",
+                ],
+            ),
+            # explicitly request the build-ids for the repositories where each
+            # of app-misc/foo and app-misc/bar are excluded, but override this
+            # for app-misc/foo using --getbinpkg-include. this will implicitly
+            # exclude app-misc/baz.
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-1", "=app-misc/bar-1.0-2", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True, "--getbinpkg-include": ["foo"]},
+                mergelist=[
+                    "[binary,remote]app-misc/foo-1.0-1",
+                    "[binary]app-misc/bar-1.0-2",
+                    "[binary]app-misc/baz-1.0-1",
+                ],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases,
+            binpkgs=binpkgs,
+            binrepos=binrepos,
+            ebuilds=ebuilds,
+            user_config=user_config,
+        )
+
 
 # test --getbinpkg-include option
 class GetBinPkgIncludeTestCase(BinPkgSelectionTestCase):
@@ -597,6 +857,237 @@ class GetBinPkgIncludeTestCase(BinPkgSelectionTestCase):
 
         self.runBinPkgSelectionTest(
             test_cases, binpkgs=binpkgs, binrepos=binrepos, ebuilds=ebuilds
+        )
+
+    def testGetBinPkgIncludeBinreposConf(self):
+        binpkgs = self.pkgs_no_deps
+        ebuilds = self.pkgs_no_deps
+
+        binrepos = {"test_binrepo": self.pkgs_no_deps}
+
+        test_cases = {
+            (
+                "[test_binrepo]",
+                "getbinpkg-include = foo",
+            ): (
+                # binrepos.conf attributes to have no effect without --getbinpkg
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    mergelist=[
+                        "app-misc/foo-1.0",
+                        "app-misc/bar-1.0",
+                        "app-misc/baz-1.0",
+                    ],
+                ),
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--usepkgonly": True},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # request all packages with getbinpkg-include in binrepos.conf
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True},
+                    mergelist=[
+                        "[binary,remote]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # suppliment binrepos.conf with --getbinpkg-include on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True, "--getbinpkg-include": ["bar"]},
+                    mergelist=[
+                        "[binary,remote]app-misc/foo-1.0",
+                        "[binary,remote]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # override binrepos.conf with --getbinpkg-exclude on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True, "--getbinpkg-exclude": ["foo"]},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary,remote]app-misc/bar-1.0",
+                        "[binary,remote]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+            (
+                "[test_binrepo]",
+                "getbinpkg-exclude = foo",
+                "getbinpkg-include = foo bar",
+            ): (
+                # conflicted binrepos.conf attributes to not interfere with
+                # non-overlapping usepkg-include
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True},
+                    mergelist=[
+                        "[binary]app-misc/foo-1.0",
+                        "[binary,remote]app-misc/bar-1.0",
+                        "[binary]app-misc/baz-1.0",
+                    ],
+                ),
+                # remaining atoms in binrepos.conf sourced lists after conflicting
+                # attributes have been filtered still to be overridable using
+                # --getbinpkg-exclude on command line
+                ResolverPlaygroundTestCase(
+                    self.pkg_atoms,
+                    success=True,
+                    ignore_mergelist_order=True,
+                    options={"--getbinpkg": True, "--getbinpkg-exclude": ["bar"]},
+                    mergelist=[
+                        "[binary,remote]app-misc/foo-1.0",
+                        "[binary]app-misc/bar-1.0",
+                        "[binary,remote]app-misc/baz-1.0",
+                    ],
+                ),
+            ),
+        }
+
+        self.runBinPkgSelectionTestUserConfig(
+            "binrepos.conf",
+            test_cases,
+            binpkgs=binpkgs,
+            binrepos=binrepos,
+            ebuilds=ebuilds,
+        )
+
+    def testGetBinPkgIncludeMultiBinrepo(self):
+        # see commentary in testGetBinPkgExcludeMultiBinrepo()
+        pkgs_no_deps_b1 = with_build_id(self.pkgs_no_deps, "1")
+        pkgs_no_deps_b2 = with_build_id(self.pkgs_no_deps, "2")
+
+        ebuilds = self.pkgs_no_deps
+        binpkgs = pkgs_no_deps_b1 + pkgs_no_deps_b2
+
+        binrepos = {
+            "test_binrepo": pkgs_no_deps_b1,
+            "other_binrepo": pkgs_no_deps_b2,
+        }
+
+        user_config = {
+            "binrepos.conf": (
+                "[test_binrepo]",
+                "getbinpkg-include = foo",
+                "[other_binrepo]",
+                "getbinpkg-include = bar",
+            ),
+        }
+
+        test_cases = (
+            # no build-id allows the resolver to work around implicit exclusions
+            # by using the binrepo with no applicable getbinpkg-include as these
+            # builds are identical in the test environment.
+            #
+            # still requesting a specific build-id for app-misc/baz as how the
+            # resolver disambiguates equivalent binaries is not under test here.
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo", "app-misc/bar", "=app-misc/baz-1.0-2"],
+                success=True,
+                ignore_mergelist_order=True,
+                check_repo_names=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary,remote]app-misc/foo-1.0-1",
+                    "[binary,remote]app-misc/bar-1.0-2",
+                    "[binary]app-misc/baz-1.0-2",
+                ],
+            ),
+            # explicitly request build-id 1 from test_binrepo such that the
+            # getbinpkg-include=foo entry in binrepos.conf applies
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-1", "=app-misc/bar-1.0-1", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary,remote]app-misc/foo-1.0-1",
+                    "[binary]app-misc/bar-1.0-1",
+                    "[binary]app-misc/baz-1.0-1",
+                ],
+            ),
+            # explicitly request build-id 2 from other_binrepo such that the
+            # getbinpkg-include=bar entry in binrepos.conf applies
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-2", "=app-misc/bar-1.0-2", "=app-misc/baz-1.0-2"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-2",
+                    "[binary,remote]app-misc/bar-1.0-2",
+                    "[binary]app-misc/baz-1.0-2",
+                ],
+            ),
+            # explicitly request the build-ids for the repositories where each
+            # of app-misc/foo and app-misc/bar are included
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-1", "=app-misc/bar-1.0-2", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary,remote]app-misc/foo-1.0-1",
+                    "[binary,remote]app-misc/bar-1.0-2",
+                    "[binary]app-misc/baz-1.0-1",
+                ],
+            ),
+            # explicitly request the build-ids for the repositories where neither
+            # of app-misc/foo and app-misc/bar are included
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-2", "=app-misc/bar-1.0-1", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-2",
+                    "[binary]app-misc/bar-1.0-1",
+                    "[binary]app-misc/baz-1.0-1",
+                ],
+            ),
+            # explicitly request the build-ids for the repositories where each
+            # of app-misc/foo and app-misc/bar are included, but override this
+            # for app-misc/foo using --getbinpkg-exclude. this will implicitly
+            # include app-misc/baz.
+            ResolverPlaygroundTestCase(
+                ["=app-misc/foo-1.0-1", "=app-misc/bar-1.0-2", "=app-misc/baz-1.0-1"],
+                success=True,
+                ignore_mergelist_order=True,
+                options={"--getbinpkg": True, "--getbinpkg-exclude": ["foo"]},
+                mergelist=[
+                    "[binary]app-misc/foo-1.0-1",
+                    "[binary,remote]app-misc/bar-1.0-2",
+                    "[binary,remote]app-misc/baz-1.0-1",
+                ],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases,
+            binpkgs=binpkgs,
+            binrepos=binrepos,
+            ebuilds=ebuilds,
+            user_config=user_config,
         )
 
 
