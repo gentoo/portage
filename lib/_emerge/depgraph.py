@@ -197,15 +197,23 @@ class _frozen_depgraph_config:
         atoms = " ".join(myopts.get("--reinstall-atoms", [])).split()
         self.reinstall_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--usepkg-exclude", [])).split()
-        self.usepkg_exclude = WildcardPackageSet(atoms)
+        self.usepkg_exclude = WildcardPackageSet(atoms, allow_repo=True)
         atoms = " ".join(myopts.get("--usepkg-include", [])).split()
-        self.usepkg_include = WildcardPackageSet(atoms)
+        self.usepkg_include = WildcardPackageSet(atoms, allow_repo=True)
         atoms = " ".join(myopts.get("--useoldpkg-atoms", [])).split()
         self.useoldpkg_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-exclude", [])).split()
         self.rebuild_exclude = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-ignore", [])).split()
         self.rebuild_ignore = WildcardPackageSet(atoms)
+
+        for repo in settings.repositories:
+            if repo.usepkg_include:
+                atoms = [x + "::" + repo.name for x in repo.usepkg_include]
+                self.usepkg_include.update(atoms)
+            if repo.usepkg_exclude:
+                atoms = [x + "::" + repo.name for x in repo.usepkg_exclude]
+                self.usepkg_exclude.update(atoms)
 
         self.rebuild_if_new_rev = "--rebuild-if-new-rev" in myopts
         self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts

@@ -161,6 +161,8 @@ class RepoConfig:
         "sync_user",
         "thin_manifest",
         "update_changelog",
+        "usepkg_exclude",
+        "usepkg_include",
         "user_location",
         "volatile",
         "_eapis_banned",
@@ -215,6 +217,16 @@ class RepoConfig:
 
         # The main-repo key makes only sense for the 'DEFAULT' section.
         self.main_repo = repo_opts.get("main-repo")
+
+        usepkg_exclude = repo_opts.get("usepkg-exclude")
+        if usepkg_exclude is not None:
+            usepkg_exclude = usepkg_exclude.split()
+        self.usepkg_exclude = usepkg_exclude
+
+        usepkg_include = repo_opts.get("usepkg-include")
+        if usepkg_include is not None:
+            usepkg_include = usepkg_include.split()
+        self.usepkg_include = usepkg_include
 
         priority = repo_opts.get("priority")
         if priority is not None:
@@ -769,6 +781,8 @@ class RepoConfigLoader:
                             "sync_umask",
                             "sync_uri",
                             "sync_user",
+                            "usepkg_exclude",
+                            "usepkg_include",
                             "volatile",
                         ):
                             v = getattr(repos_conf_opts, k, None)
