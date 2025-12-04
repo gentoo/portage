@@ -249,6 +249,8 @@ class _EbuildFetcherProcess(ForkProcess):
         if nocolor is not None:
             settings["NOCOLOR"] = nocolor
 
+        use_gentoo_mirrors = self.pkg.repo == "gentoo"
+
         self._settings = settings
         self.log_filter_file = settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
         self.target = functools.partial(
@@ -258,6 +260,7 @@ class _EbuildFetcherProcess(ForkProcess):
             self._uri_map,
             self.fetchonly,
             self.pre_exec,
+            use_gentoo_mirrors,
         )
         ForkProcess._start(self)
 
@@ -268,7 +271,7 @@ class _EbuildFetcherProcess(ForkProcess):
         self._settings = None
 
     @staticmethod
-    def _target(settings, manifest, uri_map, fetchonly, pre_exec):
+    def _target(settings, manifest, uri_map, fetchonly, pre_exec, use_gentoo_mirrors):
         if pre_exec is not None:
             pre_exec()
 
@@ -299,6 +302,7 @@ class _EbuildFetcherProcess(ForkProcess):
                     fetchonly=fetchonly,
                     digests=copy.deepcopy(manifest.getTypeDigests("DIST")),
                     allow_missing_digests=allow_missing,
+                    use_gentoo_mirrors=use_gentoo_mirrors,
                 )
             )
 

@@ -857,6 +857,7 @@ async def async_fetch(
     digests=None,
     allow_missing_digests=True,
     force=False,
+    use_gentoo_mirrors=True,
 ):
     from portage.package.ebuild.config import check_config_instance
 
@@ -1020,13 +1021,14 @@ async def async_fetch(
                 fsmirrors.append(x)
             else:
                 local_mirrors.append(x)
-        for x in mysettings["GENTOO_MIRRORS"].split():
-            if not x:
-                continue
-            if x.startswith("/"):
-                fsmirrors.append(x.rstrip("/"))
-            else:
-                public_mirrors.append(x.rstrip("/"))
+        if use_gentoo_mirrors:
+            for x in mysettings["GENTOO_MIRRORS"].split():
+                if not x:
+                    continue
+                if x.startswith("/"):
+                    fsmirrors.append(x.rstrip("/"))
+                else:
+                    public_mirrors.append(x.rstrip("/"))
 
     hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
     if hash_filter.transparent:
