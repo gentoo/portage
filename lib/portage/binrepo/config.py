@@ -16,6 +16,8 @@ class BinRepoConfig:
         "name",
         "name_fallback",
         "fetchcommand",
+        "getbinpkg_exclude",
+        "getbinpkg_include",
         "location",
         "priority",
         "resumecommand",

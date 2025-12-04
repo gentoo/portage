@@ -1399,14 +1399,20 @@ class binarytree:
 
         # Order by descending priority.
         for repo in reversed(list(self._binrepos_conf.values())):
+            excluded = repo.getbinpkg_exclude or ""
+            getbinpkg_exclude_repo = WildcardPackageSet(excluded.split())
+            getbinpkg_exclude_repo.update(getbinpkg_exclude)
+            included = repo.getbinpkg_include or ""
+            getbinpkg_include_repo = WildcardPackageSet(included.split())
+            getbinpkg_include_repo.update(getbinpkg_include)
             self._populate_remote_repo(
                 repo,
                 getbinpkg_refresh,
                 pretend,
                 verbose,
                 gpkg_only,
-                getbinpkg_exclude,
-                getbinpkg_include,
+                getbinpkg_exclude_repo,
+                getbinpkg_include_repo,
             )
 
     def _populate_remote_repo(

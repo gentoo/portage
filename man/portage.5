@@ -663,6 +663,14 @@ overriding the value from \fBmake.conf\fR(5).
 .I Attributes supported in sections of repositories:
 .RS
 .TP
+.B getbinpkg-exclude
+A space separated list of package names or slot atoms. Emerge will not
+fetch matching remote binary packages. See also \fBemerge\fR(1).
+.TP
+.B getbinpkg-include
+A space separated list of package names or slot atoms. Emerge will not
+fetch non-matching remote binary packages. See also \fBemerge\fR(1).
+.TP
 .B priority
 Specifies priority of given repository. When a package exists in multiple
 repositories, those with higher priority are preferred.
