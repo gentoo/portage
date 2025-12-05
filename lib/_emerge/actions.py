@@ -3555,6 +3555,20 @@ def run_action(emerge_config):
     if "getbinpkg" in emerge_config.target_config.settings.features:
         emerge_config.opts["--getbinpkg"] = True
 
+    if "--getbinpkg" not in emerge_config.opts:
+        penvdict = emerge_config.target_config.settings._penvdict
+        pkgsettings = portage.config(clone=emerge_config.target_config.settings)
+        for cp in penvdict:
+            for atom, env in penvdict[cp].items():
+                pkgsettings.setcpv(atom)
+                if "getbinpkg" in pkgsettings.features:
+                    emerge_config.opts["--getbinpkg"] = True
+                    getbinpkg_include = emerge_config.opts.get(
+                        "--getbinpkg-include", []
+                    )
+                    getbinpkg_include.append(atom.cp)
+                    emerge_config.opts["--getbinpkg-include"] = getbinpkg_include
+
     if "--getbinpkgonly" in emerge_config.opts:
         emerge_config.opts["--getbinpkg"] = True
 
