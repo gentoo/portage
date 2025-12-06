@@ -143,7 +143,11 @@ class BinarytreeTestCase(TestCase):
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
         ppopulate_remote.assert_called_once_with(
-            getbinpkg_refresh=refresh, pretend=False, verbose=False
+            getbinpkg_refresh=refresh,
+            pretend=False,
+            verbose=False,
+            getbinpkg_exclude=None,
+            getbinpkg_include=None,
         )
 
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
@@ -189,7 +193,11 @@ class BinarytreeTestCase(TestCase):
         bt = binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"), settings=settings)
         bt.populate(getbinpkgs=True)
         ppopulate_remote.assert_called_once_with(
-            getbinpkg_refresh=False, pretend=False, verbose=False
+            getbinpkg_refresh=False,
+            pretend=False,
+            verbose=False,
+            getbinpkg_exclude=None,
+            getbinpkg_include=None,
         )
 
     @patch("portage.data.secpass", 2)
