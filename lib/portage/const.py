@@ -193,6 +193,7 @@ SUPPORTED_FEATURES = frozenset(
         "icecream",
         "installsources",
         "ipc-sandbox",
+        "jobserver-token",
         "keeptemp",
         "keepwork",
         "lmirror",
