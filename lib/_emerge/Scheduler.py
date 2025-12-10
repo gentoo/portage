@@ -1489,7 +1489,6 @@ class Scheduler(PollScheduler):
         self._merge_exit(task)
 
     def _merge_exit(self, merge):
-        self._release_job_token(id(merge))
         self._running_tasks.pop(id(merge), None)
         self._do_merge_exit(merge)
         self._deallocate_config(merge.merge.settings)
@@ -1561,10 +1560,10 @@ class Scheduler(PollScheduler):
 
     def _build_exit(self, build):
         self._running_tasks.pop(id(build), None)
+        self._release_job_token(id(build))
         if build.returncode == os.EX_OK and self._terminated_tasks:
             # We've been interrupted, so we won't
             # add this to the merge queue.
-            self._release_job_token(id(build))
             self.curval += 1
             self._deallocate_config(build.settings)
         elif build.returncode == os.EX_OK:
@@ -1575,7 +1574,6 @@ class Scheduler(PollScheduler):
                 scheduler=self._sched_iface,
             )
             # move the job token to the merge task
-            self._jobserver_tokens[id(merge)] = self._jobserver_tokens.pop(id(build))
             self._running_tasks[id(merge)] = merge
             # By default, merge-wait only allows merge when no builds are executing.
             # As a special exception, dependencies on system packages are frequently
@@ -1591,7 +1589,6 @@ class Scheduler(PollScheduler):
                 merge.addExitListener(self._merge_exit)
                 self._status_display.merges = len(self._task_queues.merge)
         else:
-            self._release_job_token(id(build))
             settings = build.settings
             build_dir = settings.get("PORTAGE_BUILDDIR")
             build_log = settings.get("PORTAGE_LOG_FILE")
@@ -2100,8 +2097,8 @@ class Scheduler(PollScheduler):
         Release a job token for given task. If no jobserver is running, does
         nothing.
         """
-        token = self._jobserver_tokens.pop(task_id)
-        if self._jobserver_fd is not None:
+        token = self._jobserver_tokens.pop(task_id, None)
+        if token is not None and self._jobserver_fd is not None:
             try:
                 os.write(self._jobserver_fd, token)
             except OSError:
@@ -2138,13 +2135,14 @@ class Scheduler(PollScheduler):
             if pkg is None:
                 return state_change
 
-            try:
-                token = self._acquire_job_token()
-            except BlockingIOError:
-                # no job tokens available right now
-                self._pkg_queue.insert(0, pkg)
-                self._sched_iface.add_reader(self._jobserver_fd, self._unblock_jobs)
-                return state_change
+            if not pkg.installed:
+                try:
+                    token = self._acquire_job_token()
+                except BlockingIOError:
+                    # no job tokens available right now
+                    self._pkg_queue.insert(0, pkg)
+                    self._sched_iface.add_reader(self._jobserver_fd, self._unblock_jobs)
+                    return state_change
 
             state_change = True
 
@@ -2155,7 +2153,6 @@ class Scheduler(PollScheduler):
 
             if pkg.installed:
                 merge = PackageMerge(merge=task, scheduler=self._sched_iface)
-                self._jobserver_tokens[id(merge)] = token
                 self._running_tasks[id(merge)] = merge
                 self._task_queues.merge.addFront(merge)
                 merge.addExitListener(self._merge_exit)
