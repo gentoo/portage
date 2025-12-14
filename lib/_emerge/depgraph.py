@@ -208,12 +208,50 @@ class _frozen_depgraph_config:
         self.rebuild_ignore = WildcardPackageSet(atoms)
 
         for repo in settings.repositories:
-            if repo.usepkg_include:
-                atoms = [x + "::" + repo.name for x in repo.usepkg_include]
-                self.usepkg_include.update(atoms)
-            if repo.usepkg_exclude:
-                atoms = [x + "::" + repo.name for x in repo.usepkg_exclude]
-                self.usepkg_exclude.update(atoms)
+            excluded = [x + "::" + repo.name for x in (repo.usepkg_exclude or [])]
+            usepkg_exclude_repo = WildcardPackageSet(excluded, allow_repo=True)
+            included = [x + "::" + repo.name for x in (repo.usepkg_include or [])]
+            usepkg_include_repo = WildcardPackageSet(included, allow_repo=True)
+
+            # warn if include/exclude lists overlap in repos.conf
+            conflicted_atoms = usepkg_exclude_repo.getAtoms().intersection(
+                usepkg_include_repo.getAtoms()
+            )
+            if conflicted_atoms:
+                writemsg(
+                    "\n!!! The following atoms appear in both the exclude and "
+                    "include getbinpkg lists for [%s]:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_atoms))
+                )
+
+            # --usepkg-include overrides usepkg-exclude in repos.conf
+            conflicted_exclude = usepkg_exclude_repo.getAtoms().intersection(
+                (a + "::" + repo.name for a in self.usepkg_include.getAtoms())
+            )
+            if conflicted_exclude:
+                writemsg(
+                    "\n!!! The following usepkg-exclude atoms for [%s] have "
+                    "been overridden by the --usepkg-include option:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+                )
+                for a in conflicted_exclude:
+                    usepkg_exclude_repo.remove(a)
+
+            # --usepkg-exclude overrides usepkg-include in repos.conf
+            conflicted_include = usepkg_include_repo.getAtoms().intersection(
+                (a + "::" + repo.name for a in self.usepkg_exclude.getAtoms())
+            )
+            if conflicted_include:
+                writemsg(
+                    "\n!!! The following usepkg-include atoms for [%s] have "
+                    "been overridden by the --usepkg-exclude option:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+                )
+                for a in conflicted_include:
+                    usepkg_include_repo.remove(a)
+
+            self.usepkg_exclude.update(usepkg_exclude_repo)
+            self.usepkg_include.update(usepkg_include_repo)
 
         self.rebuild_if_new_rev = "--rebuild-if-new-rev" in myopts
         self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts
