@@ -1378,6 +1378,8 @@ class binarytree:
         getbinpkg_exclude=None,
         getbinpkg_include=None,
     ):
+        from portage.util import writemsg
+
         self._remote_has_index = False
         self._remotepkgs = {}
 
@@ -1401,10 +1403,49 @@ class binarytree:
         for repo in reversed(list(self._binrepos_conf.values())):
             excluded = repo.getbinpkg_exclude or ""
             getbinpkg_exclude_repo = WildcardPackageSet(excluded.split())
-            getbinpkg_exclude_repo.update(getbinpkg_exclude)
             included = repo.getbinpkg_include or ""
             getbinpkg_include_repo = WildcardPackageSet(included.split())
+
+            # warn if include/exclude lists overlap in binrepos.conf
+            conflicted_atoms = getbinpkg_exclude_repo.getAtoms().intersection(
+                getbinpkg_include_repo.getAtoms()
+            )
+            if conflicted_atoms:
+                writemsg(
+                    "\n!!! The following atoms appear in both the exclude and "
+                    "include getbinpkg lists for [%s]:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_atoms))
+                )
+
+            getbinpkg_exclude_repo.update(getbinpkg_exclude)
             getbinpkg_include_repo.update(getbinpkg_include)
+
+            # --getbinpkg-include overrides getbinpkg-exclude in binrepos.conf
+            conflicted_exclude = getbinpkg_exclude_repo.getAtoms().intersection(
+                getbinpkg_include.getAtoms()
+            )
+            if conflicted_exclude:
+                writemsg(
+                    "\n!!! The following getbinpkg-exclude atoms for [%s] have "
+                    "been overridden by the --getbinpkg-include option:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+                )
+                for a in conflicted_exclude:
+                    getbinpkg_exclude_repo.remove(a)
+
+            # --getbinpkg-exclude overrides getbinpkg-include in binrepos.conf
+            conflicted_include = getbinpkg_include_repo.getAtoms().intersection(
+                getbinpkg_exclude.getAtoms()
+            )
+            if conflicted_include:
+                writemsg(
+                    "\n!!! The following getbinpkg-include atoms for [%s] have "
+                    "been overridden by the --getbinpkg-exclude option:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+                )
+                for a in conflicted_include:
+                    getbinpkg_include_repo.remove(a)
+
             self._populate_remote_repo(
                 repo,
                 getbinpkg_refresh,
