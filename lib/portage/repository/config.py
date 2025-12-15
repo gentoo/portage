@@ -13,6 +13,7 @@ import portage
 from pathlib import Path
 from portage import eclass_cache, os
 from portage.checksum import get_valid_checksum_keys
+from portage.dep import Atom
 from portage.const import PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH
 from portage.eapi import (
     eapi_allows_directories_on_profile_level_and_repository_level,
@@ -101,6 +102,28 @@ def _find_invalid_path_char(path, pos=0, endpos=None):
         return m.start()
 
     return -1
+
+
+def _validate_usepkg_list(atoms):
+    """
+    Check a list of atom strings are valid for to use in the usepkg_exclude or
+    usepkg_include package lists. Such atoms are restricted to category, package,
+    slots, and wildcards (no operators, repository, etc).
+
+    Should accept None as the atom list to be checked.
+    """
+    invalid = []
+    for a in atoms or []:
+        valid = True
+        try:
+            atom = a if "/" in a.split(":")[0] else "*/" + a
+            atom = Atom(atom, allow_wildcard=True, allow_repo=False)
+        except:
+            valid = False
+
+        if not valid or (atom.operator or atom.blocker or atom.use):
+            invalid.append(a)
+    return invalid
 
 
 class RepoConfig:
@@ -861,6 +884,18 @@ class RepoConfigLoader:
 
             # Perform repos.conf sync variable validation
             portage.sync.validate_config(repo, logging)
+
+            # Perform usepkg variable validation
+            for opt in ("usepkg_exclude", "usepkg_include"):
+                bad_atoms = _validate_usepkg_list(getattr(repo, opt))
+                if bad_atoms:
+                    writemsg(
+                        "\n!!! Repository %s has invalid atoms(s) in %s attribute:"
+                        " '%s' (only package names and slot atoms allowed)\n"
+                        % (repo.name, opt.replace("_", "-"), ",".join(bad_atoms))
+                    )
+                    for a in bad_atoms:
+                        getattr(repo, opt).remove(a)
 
             # For backward compatibility with locations set via PORTDIR and
             # PORTDIR_OVERLAY, delay validation of the location and repo.name
