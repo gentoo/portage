@@ -1401,10 +1401,10 @@ class binarytree:
 
         # Order by descending priority.
         for repo in reversed(list(self._binrepos_conf.values())):
-            excluded = repo.getbinpkg_exclude or ""
-            getbinpkg_exclude_repo = WildcardPackageSet(excluded.split())
-            included = repo.getbinpkg_include or ""
-            getbinpkg_include_repo = WildcardPackageSet(included.split())
+            excluded = repo.getbinpkg_exclude or []
+            getbinpkg_exclude_repo = WildcardPackageSet(excluded)
+            included = repo.getbinpkg_include or []
+            getbinpkg_include_repo = WildcardPackageSet(included)
 
             # warn if include/exclude lists overlap in binrepos.conf
             conflicted_atoms = getbinpkg_exclude_repo.getAtoms().intersection(
