@@ -26,6 +26,7 @@ from portage.proxy.objectproxy import ObjectProxy
 # This remains constant when the real value is a mock.
 EPREFIX_ORIG = portage.const.EPREFIX
 
+
 @dataclass
 class CommandStep:
     returncode: int
@@ -37,6 +38,7 @@ class CommandStep:
 @dataclass
 class FunctionStep:
     function: Callable[[int], Any]  # called with step index as argument
+
 
 class lazy_value(ObjectProxy):
     __slots__ = ("_func",)

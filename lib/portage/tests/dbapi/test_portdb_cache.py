@@ -102,7 +102,8 @@ class PortdbCacheTestCase(TestCase):
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent("""
+                    textwrap.dedent(
+                        """
 					import os, sys, portage
 					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
 						sys.exit(1)
