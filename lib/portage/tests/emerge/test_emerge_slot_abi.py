@@ -1,4 +1,4 @@
-# Copyright 2012-2019, 2023 Gentoo Authors
+# Copyright 2012-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import shlex
@@ -7,10 +7,9 @@ import sys
 
 import portage
 from portage import os
-from portage import _unicode_decode
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
-from portage.tests import TestCase
+from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 
@@ -72,37 +71,52 @@ class SlotAbiEmergeTestCase(TestCase):
         self.assertFalse(test_ebuild is None)
 
         test_commands = (
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/glib",
-            ),
-            (
-                lambda: "dev-libs/glib:2/2.32="
-                in vardb.aux_get("dev-libs/dbus-glib-0.98", ["RDEPEND"])[0],
-            ),
-            (
-                BASH_BINARY,
-                "-c",
-                "echo %s >> %s"
-                % tuple(
-                    map(
-                        shlex.quote,
-                        (
-                            ">=dev-libs/glib-2.32",
-                            package_mask_path,
-                        ),
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/glib",
                 ),
             ),
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/glib",
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    "dev-libs/glib:2/2.32="
+                    in vardb.aux_get("dev-libs/dbus-glib-0.98", ["RDEPEND"])[0],
+                    f"step {i}",
+                )
             ),
-            (
-                lambda: "dev-libs/glib:2/2.30="
-                in vardb.aux_get("dev-libs/dbus-glib-0.98", ["RDEPEND"])[0],
+            CommandStep(
+                returncode=os.EX_OK,
+                command=(BASH_BINARY,)
+                + (
+                    "-c",
+                    "echo %s >> %s"
+                    % tuple(
+                        map(
+                            shlex.quote,
+                            (
+                                ">=dev-libs/glib-2.32",
+                                package_mask_path,
+                            ),
+                        )
+                    ),
+                ),
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/glib",
+                ),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    "dev-libs/glib:2/2.30="
+                    in vardb.aux_get("dev-libs/dbus-glib-0.98", ["RDEPEND"])[0],
+                    f"step {i}",
+                )
             ),
         )
 
@@ -173,12 +187,24 @@ class SlotAbiEmergeTestCase(TestCase):
                 # triggered by python -Wd will be visible.
                 stdout = subprocess.PIPE
 
-            for i, args in enumerate(test_commands):
-                if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), f"callable at index {i} failed")
+            for i, step in enumerate(test_commands):
+                if isinstance(step, FunctionStep):
+                    try:
+                        step.function(i)
+                    except Exception as e:
+                        if isinstance(e, AssertionError) and f"step {i}" in str(e):
+                            raise
+                        raise AssertionError(
+                            f"step {i} raised {e.__class__.__name__}"
+                        ) from e
                     continue
 
-                proc = subprocess.Popen(args, env=env, stdout=stdout)
+                proc = subprocess.Popen(
+                    step.command,
+                    env=dict(env.items(), **(step.env or {})),
+                    cwd=step.cwd,
+                    stdout=stdout,
+                )
 
                 if debug:
                     proc.wait()
@@ -186,12 +212,14 @@ class SlotAbiEmergeTestCase(TestCase):
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(portage._unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
+                    step.returncode,
+                    proc.returncode,
+                    f"{step.command} (step {i}) failed with exit code {proc.returncode}",
                 )
         finally:
             playground.cleanup()
