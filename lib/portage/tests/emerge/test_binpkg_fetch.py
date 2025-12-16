@@ -13,7 +13,7 @@ from portage.const import (
     USER_CONFIG_PATH,
 )
 from portage.process import find_binary
-from portage.tests import TestCase
+from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 
@@ -55,53 +55,45 @@ class BinpkgFetchtestCase(TestCase):
 
         test_commands = (
             # Create a trivial binpkg first.
-            emerge_cmd
-            + (
-                "--oneshot",
-                "--verbose",
-                "--buildpkg",
-                "dev-libs/A",
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + ("--oneshot", "--verbose", "--buildpkg", "dev-libs/A"),
             ),
-            # Copy to a new PKGDIR which we'll use as PORTAGE_BINHOST then delete the old PKGDIR.
-            (
-                (
-                    lambda: shutil.copytree(bindb.bintree.pkgdir, tmppkgdir_suffix)
-                    or True,
+            # Copy to a new PKGDIR which we'll use as PORTAGE_BINHOST
+            # then delete the old PKGDIR.
+            FunctionStep(
+                function=lambda _: shutil.copytree(
+                    bindb.bintree.pkgdir, tmppkgdir_suffix
                 )
+                or True,
             ),
-            (
-                (
-                    lambda: os.unlink(
-                        os.path.join(
-                            bindb.bintree.pkgdir, "dev-libs", "A", "A-1-1.gpkg.tar"
-                        )
-                    )
-                    or True,
-                )
-            ),
-        )
-        test_commands_nonfatal = (
-            # This should succeed if we've correctly saved it as A-1-1.gpkg.tar, not
-            # A-1-2.gpkg.tar, and then also try to unpack the right filename, but
-            # we defer checking the exit code to get a better error if the binpkg
-            # was downloaded with the wrong filename.
-            emerge_cmd
-            + (
-                "--oneshot",
-                "--verbose",
-                "--getbinpkgonly",
-                "dev-libs/A",
-            ),
-        )
-        test_commands_final = (
-            # Check whether the downloaded binpkg in PKGDIR has the correct
-            # filename (-1) or an unnecessarily-incremented one (-2).
-            (
-                lambda: os.path.exists(
+            FunctionStep(
+                function=lambda _: os.unlink(
                     os.path.join(
                         bindb.bintree.pkgdir, "dev-libs", "A", "A-1-1.gpkg.tar"
                     )
-                ),
+                )
+                or True,
+            ),
+            # This should succeed if we've correctly saved it as A-1-1.gpkg.tar, not
+            # A-1-2.gpkg.tar, and then also try to unpack the right filename.
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + ("--oneshot", "--verbose", "--getbinpkgonly", "dev-libs/A"),
+            ),
+            # Check whether the downloaded binpkg in PKGDIR has the correct
+            # filename (-1) or an unnecessarily-incremented one (-2).
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    os.path.exists(
+                        os.path.join(
+                            bindb.bintree.pkgdir, "dev-libs", "A", "A-1-1.gpkg.tar"
+                        )
+                    ),
+                    f"step {i}",
+                )
             ),
         )
 
@@ -155,45 +147,6 @@ class BinpkgFetchtestCase(TestCase):
             "true": (find_binary("true"), True),
         }
 
-        def run_commands(test_commands, require_success=True):
-            all_successful = True
-
-            for i, args in enumerate(test_commands):
-                if hasattr(args[0], "__call__"):
-                    if require_success:
-                        self.assertTrue(args[0](), f"callable at index {i} failed")
-                    continue
-
-                if isinstance(args[0], dict):
-                    local_env = env.copy()
-                    local_env.update(args[0])
-                    args = args[1:]
-                else:
-                    local_env = env
-
-                local_env["PORTAGE_BINHOST"] = f"file:///{tmppkgdir_suffix}"
-                proc = subprocess.Popen(args, env=local_env, stdout=stdout)
-
-                if debug:
-                    proc.wait()
-                else:
-                    output = proc.stdout.readlines()
-                    proc.wait()
-                    proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
-                        for line in output:
-                            sys.stderr.write(_unicode_decode(line))
-
-                if all_successful and proc.returncode != os.EX_OK:
-                    all_successful = False
-
-                if require_success:
-                    self.assertEqual(
-                        os.EX_OK, proc.returncode, f"emerge failed with args {args}"
-                    )
-
-            return all_successful
-
         try:
             for d in dirs:
                 ensure_dirs(d)
@@ -212,14 +165,41 @@ class BinpkgFetchtestCase(TestCase):
                 # triggered by python -Wd will be visible.
                 stdout = subprocess.PIPE
 
-            run_commands(test_commands)
-            deferred_success = run_commands(test_commands_nonfatal, False)
-            run_commands(test_commands_final)
+            for i, step in enumerate(test_commands):
+                if isinstance(step, FunctionStep):
+                    try:
+                        step.function(i)
+                    except Exception as e:
+                        if isinstance(e, AssertionError) and f"step {i}" in str(e):
+                            raise
+                        raise AssertionError(
+                            f"step {i} raised {e.__class__.__name__}"
+                        ) from e
+                    continue
 
-            # Check the return value of test_commands_nonfatal later on so
-            # we can get a better error message from test_commands_final
-            # if possible.
-            self.assertTrue(deferred_success, f"{test_commands_nonfatal} failed")
+                env["PORTAGE_BINHOST"] = f"file:///{tmppkgdir_suffix}"
+                proc = subprocess.Popen(
+                    step.command,
+                    env=dict(env.items(), **(step.env or {})),
+                    cwd=step.cwd,
+                    stdout=stdout,
+                )
+
+                if debug:
+                    proc.wait()
+                else:
+                    output = proc.stdout.readlines()
+                    proc.wait()
+                    proc.stdout.close()
+                    if proc.returncode != step.returncode:
+                        for line in output:
+                            sys.stderr.write(portage._unicode_decode(line))
+
+                self.assertEqual(
+                    step.returncode,
+                    proc.returncode,
+                    f"{step.command} (step {i}) failed with exit code {proc.returncode}",
+                )
         finally:
             playground.debug = False
             playground.cleanup()
