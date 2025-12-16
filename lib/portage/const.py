@@ -2,13 +2,6 @@
 # Copyright 1998-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-# BEGIN PREFIX LOCAL
-# ===========================================================================
-# autotool supplied constants.
-# ===========================================================================
-from portage.const_autotool import *
-# END PREFIX LOCAL
-
 import os
 
 from portage import installation

@@ -24,8 +24,6 @@ class LazyImportPortageBaselineTestCase(TestCase):
             "portage.proxy.lazyimport",
             "portage.proxy.objectproxy",
             "portage._selinux",
-            # PREFIX LOCAL
-            "portage.const_autotool",
         ]
     )
 
