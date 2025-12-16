@@ -6,6 +6,48 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.73 (UNRELEASED)
+--------------
+
+Final EAPI 9 features and conversion to function-local imports (rather
+than our own lazyimport mechanism) which aids code completion and friends
+for working on Portage.
+
+Features:
+
+* make.globals: Enable FEATURES="compress-index" by default (bug #248089,
+  bug #965753).
+
+* EAPI 9: Update Bash requirement to bash-5.3 (bug #946193).
+
+* EAPI 9: Do not export profile-specific variables (bug #948001).
+
+* EAPI 9: Do not export profile-specific USE_EXPAND_* variables (bug #948001).
+
+Bug fixes:
+
+* EAPI 9: Fix internal use of assert.
+
+* _parse_build_id: Handle valid versions correctly (bug #966349).
+
+* emaint binhost: Fix stale Packages.gz (bug #966251).
+
+* emaint binhost: Create missing Packages.gz if requested (bug #966251).
+
+* emaint binhost: Delete Packages.gz if not enabled (bug #966251).
+
+* install-qa-check.d: 60pkgconfig: Refine library match (bug #964413).
+
+* src_test: Apply MAKEFLAGS tweak to respect jobserver (bug #692576).
+
+* man: make.conf: Document that FEATURES="pkgdir-index-trusted" is enabled
+  by default (bug #889300).
+
+Cleanups:
+
+* Remove Portage's lazyimport mechanism and replace it with function-local
+  imports (bug #951146).
+
 portage-3.0.72 (2025-11-17)
 --------------
 
