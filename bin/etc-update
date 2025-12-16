@@ -45,7 +45,7 @@ else
 		*:suse:*|*:opensuse:*|*:opensuse-tumbleweed:*) OS_FAMILY='rpm';;
 		*:fedora:*|*:rhel:*) OS_FAMILY='rpm';;
 		*:debian:*|*:ubuntu:*) OS_FAMILY='dpkg';;
-		*:arch:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
+		*:arch:*|*:artix:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
 		*) OS_FAMILY='gentoo';;
 	esac
 fi
