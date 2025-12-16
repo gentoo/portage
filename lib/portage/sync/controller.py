@@ -8,11 +8,6 @@ import pwd
 import warnings
 
 import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.sync.revision_history:get_repo_revision_history",
-)
 from portage import os
 from portage.progress import ProgressBar
 
@@ -141,6 +136,8 @@ class SyncManager:
         )
 
     def sync(self, emerge_config=None, repo=None, master_hooks=True):
+        from portage.sync.revision_history import get_repo_revision_history
+
         self.callback = None
         self.repo = repo
         self.exitcode = 1

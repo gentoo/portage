@@ -1,15 +1,10 @@
 # config.py -- Portage Config
-# Copyright 2007-2020 Gentoo Authors
+# Copyright 2007-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import stat
-import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util:writemsg",
-)
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -151,6 +146,8 @@ class FileLoader(DataLoader):
         @return:
         Returns (data,errors), both may be empty dicts or populated.
         """
+        from portage.util import writemsg
+
         data = {}
         errors = {}
         # I tried to save a nasty lookup on lineparser by doing the lookup

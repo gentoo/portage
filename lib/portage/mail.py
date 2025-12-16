@@ -1,14 +1,9 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Since python ebuilds remove the 'email' module when USE=build
-# is enabled, use a local import so that
-# portage.proxy.lazyimport._preload_portage_submodules()
-# can load this module even though the 'email' module is missing.
-# The elog mail modules won't work, but at least an ImportError
-# won't cause portage to crash during stage builds. Since the
-# 'smtlib' module imports the 'email' module, that's imported
-# locally as well.
+# is enabled, use a local import so that this module can still be
+# imported even though the 'email' module is missing.
 
 import sys
 

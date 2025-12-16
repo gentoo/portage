@@ -7,10 +7,9 @@ import textwrap
 
 import portage
 from portage import os
-from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
-from portage.tests import TestCase
+from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.util import ensure_dirs
 
 from portage.tests.resolver.ResolverPlayground import (
@@ -90,95 +89,142 @@ class LibcDepInjectEmergeTestCase(TestCase):
         )
 
         test_commands = (
-            # If we install a package with an ELF but no libc provider is installed,
-            # make sure we don't inject anything (we don't want to have some bare RDEPEND with
-            # literally "[]").
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/C",
+            # If we install a package with an ELF but no libc provider is
+            # installed, make sure we don't inject anything (we don't want
+            # to have some bare RDEPEND with literally "[]").
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/C",
+                ),
             ),
-            (
-                lambda: not portage.util.grablines(
-                    os.path.join(
-                        eprefix, "var", "db", "pkg", "dev-libs", "C-1", "RDEPEND"
-                    )
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    portage.util.grablines(
+                        os.path.join(
+                            eprefix, "var", "db", "pkg", "dev-libs", "C-1", "RDEPEND"
+                        )
+                    ),
+                    f"step {i}",
                 ),
             ),
             # (We need sys-libs/glibc pulled in and virtual/libc installed)
-            emerge_cmd
-            + (
-                "--oneshot",
-                "virtual/libc",
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "virtual/libc",
+                ),
             ),
             # A package NOT installing an ELF binary shouldn't have an injected libc dep
             # Let's check the virtual/libc one as we already have to merge it to pull in
             # sys-libs/glibc, but we'll do a better check after too.
-            (
-                lambda: ">=sys-libs/glibc-2.38\n"
-                not in portage.util.grablines(
-                    os.path.join(
-                        eprefix, "var", "db", "pkg", "virtual", "libc-1", "RDEPEND"
-                    )
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    ">=sys-libs/glibc-2.38\n"
+                    in portage.util.grablines(
+                        os.path.join(
+                            eprefix, "var", "db", "pkg", "virtual", "libc-1", "RDEPEND"
+                        )
+                    ),
+                    f"step {i}",
                 ),
             ),
             # A package NOT installing an ELF binary shouldn't have an injected libc dep
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/B",
-            ),
-            (
-                lambda: not portage.util.grablines(
-                    os.path.join(
-                        eprefix, "var", "db", "pkg", "dev-libs", "B-1", "RDEPEND"
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/B",
                 ),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    portage.util.grablines(
+                        os.path.join(
+                            eprefix, "var", "db", "pkg", "dev-libs", "B-1", "RDEPEND"
+                        )
+                    ),
+                    f"step {i}",
+                )
             ),
             # A package installing an ELF binary should have an injected libc dep
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/A",
-            ),
-            (lambda: os.path.exists(os.path.join(eroot, "usr/bin/A")),),
-            (
-                lambda: ">=sys-libs/glibc-2.38\n"
-                in portage.util.grablines(
-                    os.path.join(
-                        eprefix, "var", "db", "pkg", "dev-libs", "A-1", "RDEPEND"
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/A",
                 ),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    os.path.exists(os.path.join(eroot, "usr/bin/A")), f"step {i}"
+                )
+            ),
+            FunctionStep(
+                lambda i: self.assertTrue(
+                    ">=sys-libs/glibc-2.38\n"
+                    in portage.util.grablines(
+                        os.path.join(
+                            eprefix, "var", "db", "pkg", "dev-libs", "A-1", "RDEPEND"
+                        )
+                    ),
+                    f"step {i}",
+                )
             ),
             # Install glibc again because earlier, no libc was installed, so the injection
             # wouldn't have fired even if the "are we libc?" check was broken.
-            emerge_cmd
-            + (
-                "--oneshot",
-                "sys-libs/glibc",
-            ),
-            # We don't want the libc (sys-libs/glibc is the provider here) to have an injected dep on itself
-            (
-                lambda: ">=sys-libs/glibc-2.38\n"
-                not in portage.util.grablines(
-                    os.path.join(
-                        eprefix, "var", "db", "pkg", "sys-libs", "glibc-2.38", "RDEPEND"
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "sys-libs/glibc",
                 ),
+            ),
+            # We don't want the libc (sys-libs/glibc is the provider here)
+            # to have an injected dep on itself
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    ">=sys-libs/glibc-2.38\n"
+                    in portage.util.grablines(
+                        os.path.join(
+                            eprefix,
+                            "var",
+                            "db",
+                            "pkg",
+                            "sys-libs",
+                            "glibc-2.38",
+                            "RDEPEND",
+                        )
+                    ),
+                    f"step {i}",
+                )
             ),
             # Make sure we append to, not clobber, RDEPEND
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/E",
-            ),
-            (
-                lambda: [">=dev-libs/D-1 >=sys-libs/glibc-2.38\n"]
-                == portage.util.grablines(
-                    os.path.join(
-                        eprefix, "var", "db", "pkg", "dev-libs", "E-1", "RDEPEND"
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/E",
                 ),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertEqual(
+                    [">=dev-libs/D-1 >=sys-libs/glibc-2.38\n"],
+                    portage.util.grablines(
+                        os.path.join(
+                            eprefix, "var", "db", "pkg", "dev-libs", "E-1", "RDEPEND"
+                        )
+                    ),
+                    f"step {i}",
+                )
             ),
         )
 
@@ -270,19 +316,24 @@ class LibcDepInjectEmergeTestCase(TestCase):
                 # triggered by python -Wd will be visible.
                 stdout = subprocess.PIPE
 
-            for i, args in enumerate(test_commands):
-                if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), f"callable at index {i} failed")
+            for i, step in enumerate(test_commands):
+                if isinstance(step, FunctionStep):
+                    try:
+                        step.function(i)
+                    except Exception as e:
+                        if isinstance(e, AssertionError) and f"step {i}" in str(e):
+                            raise
+                        raise AssertionError(
+                            f"step {i} raised {e.__class__.__name__}"
+                        ) from e
                     continue
 
-                if isinstance(args[0], dict):
-                    local_env = env.copy()
-                    local_env.update(args[0])
-                    args = args[1:]
-                else:
-                    local_env = env
-
-                proc = subprocess.Popen(args, env=local_env, stdout=stdout)
+                proc = subprocess.Popen(
+                    step.command,
+                    env=dict(env.items(), **(step.env or {})),
+                    cwd=step.cwd,
+                    stdout=stdout,
+                )
 
                 if debug:
                     proc.wait()
@@ -290,12 +341,14 @@ class LibcDepInjectEmergeTestCase(TestCase):
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(portage._unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
+                    step.returncode,
+                    proc.returncode,
+                    f"{step.command} (step {i}) failed with exit code {proc.returncode}",
                 )
 
             # Check that dev-libs/A doesn't get re-emerged via --changed-deps
@@ -384,35 +437,51 @@ class LibcDepInjectEmergeTestCase(TestCase):
 
         test_commands = (
             # (We need sys-libs/glibc pulled in and virtual/libc installed)
-            emerge_cmd
-            + (
-                "--oneshot",
-                "virtual/libc",
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "virtual/libc",
+                ),
             ),
             # A package installing an ELF binary should have an injected libc dep
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/A",
-            ),
-            (lambda: os.path.exists(os.path.join(eroot, "usr/bin/A")),),
-            (
-                lambda: ">=sys-libs/glibc-2.38\n"
-                in portage.util.grablines(
-                    os.path.join(
-                        eprefix, "var", "db", "pkg", "dev-libs", "A-1", "RDEPEND"
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/A",
                 ),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    os.path.exists(os.path.join(eroot, "usr/bin/A")), f"step {i}"
+                )
+            ),
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    ">=sys-libs/glibc-2.38\n"
+                    in portage.util.grablines(
+                        os.path.join(
+                            eprefix, "var", "db", "pkg", "dev-libs", "A-1", "RDEPEND"
+                        )
+                    ),
+                    f"step {i}",
+                )
             ),
             # Downgrade glibc to a version (2.37) older than the version
             # that dev-libs/A's binpkg was built against (2.38). Below,
             # we check that it pulls in a newer glibc via a ResolverPlayground
             # testcase.
-            emerge_cmd
-            + (
-                "--oneshot",
-                "--nodeps",
-                "<sys-libs/glibc-2.38",
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "--nodeps",
+                    "<sys-libs/glibc-2.38",
+                ),
             ),
         )
 
@@ -504,19 +573,24 @@ class LibcDepInjectEmergeTestCase(TestCase):
                 # triggered by python -Wd will be visible.
                 stdout = subprocess.PIPE
 
-            for i, args in enumerate(test_commands):
-                if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), f"callable at index {i} failed")
+            for i, step in enumerate(test_commands):
+                if isinstance(step, FunctionStep):
+                    try:
+                        step.function(i)
+                    except Exception as e:
+                        if isinstance(e, AssertionError) and f"step {i}" in str(e):
+                            raise
+                        raise AssertionError(
+                            f"step {i} raised {e.__class__.__name__}"
+                        ) from e
                     continue
 
-                if isinstance(args[0], dict):
-                    local_env = env.copy()
-                    local_env.update(args[0])
-                    args = args[1:]
-                else:
-                    local_env = env
-
-                proc = subprocess.Popen(args, env=local_env, stdout=stdout)
+                proc = subprocess.Popen(
+                    step.command,
+                    env=dict(env.items(), **(step.env or {})),
+                    cwd=step.cwd,
+                    stdout=stdout,
+                )
 
                 if debug:
                     proc.wait()
@@ -524,12 +598,14 @@ class LibcDepInjectEmergeTestCase(TestCase):
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(portage._unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
+                    step.returncode,
+                    proc.returncode,
+                    f"{step.command} (step {i}) failed with exit code {proc.returncode}",
                 )
 
             # Now check that glibc gets upgraded to the right version

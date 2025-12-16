@@ -1,14 +1,7 @@
 # elog/__init__.py - elog core functions
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util:writemsg",
-)
 
 from portage.const import EBUILD_PHASES
 from portage.exception import AlarmSignal, PortageException
@@ -17,21 +10,6 @@ from portage.elog.messages import collect_ebuild_messages, collect_messages
 from portage.elog.filtering import filter_loglevels
 from portage.localization import _
 from portage import os
-
-
-def _preload_elog_modules(settings):
-    logsystems = settings.get("PORTAGE_ELOG_SYSTEM", "").split()
-    for s in logsystems:
-        # allow per module overrides of PORTAGE_ELOG_CLASSES
-        if ":" in s:
-            s, levels = s.split(":", 1)
-            levels = levels.split(",")
-        # - is nicer than _ for module names, so allow people to use it.
-        s = s.replace("-", "_")
-        try:
-            _load_mod("portage.elog.mod_" + s)
-        except ImportError:
-            pass
 
 
 def _merge_logentries(a, b):
@@ -104,6 +82,8 @@ _elog_atexit_handlers = []
 
 
 def elog_process(cpv, mysettings, phasefilter=None):
+    from portage.util import writemsg
+
     global _elog_atexit_handlers
 
     logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM", "").split()

@@ -28,6 +28,14 @@ if ! contains_word strip "${PORTAGE_RESTRICT}"; then
         PORTAGE_DOSTRIP+=( / )
 fi
 
+assert() {
+	local x pipestatus=( "${PIPESTATUS[@]}" )
+	___eapi_has_assert || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
+	for x in "${pipestatus[@]}"; do
+		[[ ${x} -eq 0 ]] || die "$@"
+	done
+}
+
 into() {
 	if [[ "$1" == "/" ]]; then
 		export __E_DESTTREE=""
@@ -744,6 +752,9 @@ __eapi0_src_compile() {
 }
 
 __eapi0_src_test() {
+	# Prevent MAKEOPTS from resetting MAKEFLAGS jobserver mode for bug 692576.
+	[[ -n ${MAKEFLAGS} ]] && local MAKEOPTS=""
+
 	# Since we don't want emake's automatic die
 	# support (EAPI 4 and later), and we also don't
 	# want the warning messages that it produces if

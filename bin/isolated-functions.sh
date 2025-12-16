@@ -22,12 +22,13 @@ fi
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
 
-assert() {
-	local x pipestatus=( "${PIPESTATUS[@]}" )
-	___eapi_has_assert || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
-	for x in "${pipestatus[@]}"; do
-		[[ ${x} -eq 0 ]] || die "$@"
+# Simplified version of pipestatus() for internal use
+__pipestatus() {
+	local status=( "${PIPESTATUS[@]}" ) s ret=0
+	for s in "${status[@]}"; do
+		[[ ${s} -ne 0 ]] && ret=${s}
 	done
+	return "${ret}"
 }
 
 shopt -s extdebug

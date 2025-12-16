@@ -42,7 +42,7 @@ class _Handler(BaseHTTPRequestHandler):
             return None
 
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        self.send_header("Content-Type", "text/plain")
         self.send_header("Content-Length", len(doc))
         self.send_header("Last-Modified", self.date_time_string(time.time()))
         self.end_headers()
@@ -88,17 +88,12 @@ class AsyncHTTPServer:
 class AsyncHTTPServerTestCase(TestCase):
     @staticmethod
     def _fetch_directly(host, port, path):
-        # NOTE: python2.7 does not have context manager support here
-        try:
-            f = urlopen(
-                "http://{host}:{port}{path}".format(  # nosec
-                    host=host, port=port, path=path
-                )
+        with urlopen(
+            "http://{host}:{port}{path}".format(  # nosec
+                host=host, port=port, path=path
             )
+        ) as f:
             return f.read()
-        finally:
-            if f is not None:
-                f.close()
 
     async def _test_http_server(self):
         asyncio.run(self._test_http_server())
@@ -109,9 +104,9 @@ class AsyncHTTPServerTestCase(TestCase):
         path = "/index.html"
 
         loop = asyncio.get_running_loop()
-        for i in range(2):
+        for _ in range(2):
             with AsyncHTTPServer(host, {path: content}, loop) as server:
-                for j in range(2):
+                for _ in range(2):
                     result = await loop.run_in_executor(
                         None, self._fetch_directly, host, server.server_port, path
                     )
@@ -153,7 +148,7 @@ class _socket_file_wrapper(portage.proxy.objectproxy.ObjectProxy):
 
 def socks5_http_get_ipv4(proxy, host, port, path):
     """
-    Open http GET request via socks5 proxy listening on a unix socket,
+    Open HTTP GET request via SOCKS5 proxy listening on a UNIX socket,
     and return a file to read the response body from.
     """
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

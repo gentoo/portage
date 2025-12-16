@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2128
 
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -713,7 +713,8 @@ __dyn_package() {
 
 		gtar ${tar_options} -cf - ${PORTAGE_BINPKG_TAR_OPTS} -C "${D}" . | \
 			${PORTAGE_COMPRESSION_COMMAND} > "${PORTAGE_BINPKG_TMPFILE}"
-		assert "failed to pack binary package: '${PORTAGE_BINPKG_TMPFILE}'"
+		__pipestatus \
+			|| die "failed to pack binary package: '${PORTAGE_BINPKG_TMPFILE}'"
 
 		# BEGIN PREFIX LOCAL: use PREFIX_PORTAGE_PYTHON fallback
 		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \

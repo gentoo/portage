@@ -946,6 +946,9 @@ Also supported is a \fBPKG_INSTALL_MASK\fR variable that behaves
 exactly like \fBINSTALL_MASK\fR except that it is processed just
 before creation of a binary package.
 
+Exclusions are supported via \fI[-pattern]\fR.  For exclusions, the last
+matching pattern determines whether the file is removed (masked) or kept.
+
 \fB***warning***\fR
 .br
 This does not place nice with filenames containing spaces. If you

@@ -10,14 +10,6 @@ import pwd
 import portage
 from portage.localization import _
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.output:colorize",
-    "portage.util:writemsg",
-    "portage.util.path:first_existing",
-    "subprocess",
-)
-
 ostype = platform.system()
 userland = "GNU"
 # PREFIX LOCAL: Prefix always has USERLAND=GNU
@@ -35,6 +27,9 @@ if not lchown:
     else:
 
         def lchown(*_args, **_kwargs):
+            from portage.output import colorize
+            from portage.util import writemsg
+
             writemsg(
                 colorize("BAD", "!!!")
                 + _(
@@ -81,6 +76,9 @@ def _target_root():
 
 
 def portage_group_warning():
+    from portage.output import colorize
+    from portage.util import writemsg
+
     warn_prefix = colorize("BAD", "*** WARNING ***  ")
     mylines = (
         "For security reasons, only system administrators should be",
@@ -135,6 +133,11 @@ _initialized_globals = set()
 
 
 def _get_global(k):
+    import subprocess
+    from portage.output import colorize
+    from portage.util import writemsg
+    from portage.util.path import first_existing
+
     if k in _initialized_globals:
         return globals()[k]
 

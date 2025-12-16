@@ -34,14 +34,21 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
-OS_RELEASE_POSSIBLE_IDS=$(source /etc/os-release >/dev/null 2>&1; echo ":${ID}:${ID_LIKE//[[:space:]]/:}:")
+# Allow overriding the detected os family using an environment variable.
+# The primary use is for the CI runner to force a specific behaviour for tests.
+if [[ -n ${ETC_UPDATE_OS_FAMILY} ]]; then
+	OS_FAMILY="${ETC_UPDATE_OS_FAMILY}"
+else
+	OS_RELEASE_POSSIBLE_IDS=$(source /etc/os-release >/dev/null 2>&1; echo ":${ID}:${ID_LIKE//[[:space:]]/:}:")
 
-case ${OS_RELEASE_POSSIBLE_IDS} in
-	*:suse:*|*:opensuse:*|*:opensuse-tumbleweed:*) OS_FAMILY='rpm';;
-	*:fedora:*|*:rhel:*) OS_FAMILY='rpm';;
-	*:arch:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
-	*) OS_FAMILY='gentoo';;
-esac
+	case ${OS_RELEASE_POSSIBLE_IDS} in
+		*:suse:*|*:opensuse:*|*:opensuse-tumbleweed:*) OS_FAMILY='rpm';;
+		*:fedora:*|*:rhel:*) OS_FAMILY='rpm';;
+		*:debian:*|*:ubuntu:*) OS_FAMILY='dpkg';;
+		*:arch:*|*:artix:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
+		*) OS_FAMILY='gentoo';;
+	esac
+fi
 
 if [[ ${OS_FAMILY} == 'gentoo' ]]; then
 	get_basename() {
@@ -82,6 +89,20 @@ elif [[ ${OS_FAMILY} == 'rpm' ]]; then
 	}
 	get_live_file() {
 		printf -- '%s\n' "${cfg_file}" |sed -e 's/\.rpmsave$//' -e 's/\.rpmnew$//' -e 's/\.rpmorig$//'
+	}
+# In dpkg we have dpkg-old, dpkg-dist, dpkg-new.
+elif [[ ${OS_FAMILY} == 'dpkg' ]]; then
+	get_basename() {
+		printf -- '%s\n' "${1}" |sed -e 's/\.dpkg-old$//' -e 's/\.dpkg-new$//' -e 's/\.dpkg-dist$//'
+	}
+	get_basename_find_opt() {
+		printf -- '%s\n' "${1}.dpkg-???*"
+	}
+	get_scan_regexp() {
+		echo "s:\(^.*/\)\(.*\)\(\.\(dpkg-old|dpkg-new|dpkg-dist\)\):\1\2\3$b\1$b\3$b\2:"
+	}
+	get_live_file() {
+		printf -- '%s\n' "${cfg_file}" |sed -e 's/\.dpkg-old$//' -e 's/\.dpkg-new$//' -e 's/\.dpkg-dist$//'
 	}
 fi
 
@@ -784,6 +805,12 @@ if [[ ${OS_FAMILY} == 'rpm' ]]; then
 	CONFIG_PROTECT='/etc /usr/share'
 	CONFIG_PROTECT_MASK=''
 	[[ -f /etc/sysconfig/etc-update ]] && . /etc/sysconfig/etc-update
+elif [[ ${OS_FAMILY} == 'dpkg' ]]; then
+	PORTAGE_CONFIGROOT='/'
+	PORTAGE_TMPDIR='/tmp'
+	CONFIG_PROTECT='/etc /usr/share'
+	CONFIG_PROTECT_MASK=''
+	[[ -f /etc/default/etc-update ]] && . /etc/default/etc-update
 elif [[ ${OS_FAMILY} == 'arch' ]]; then
 	PORTAGE_CONFIGROOT='/'
 	PORTAGE_TMPDIR='/tmp'

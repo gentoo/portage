@@ -1,14 +1,9 @@
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
 
-import portage
-
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.util.futures:asyncio",
-)
+from portage.proxy.objectproxy import ObjectProxy
 
 
 def _sync_decorator(func, loop=None):
@@ -20,6 +15,8 @@ def _sync_decorator(func, loop=None):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        from portage.util.futures import asyncio
+
         return (loop or asyncio.get_event_loop()).run_until_complete(
             func(*args, **kwargs)
         )
@@ -36,6 +33,8 @@ def _sync_methods(obj, loop=None):
     code, eliminating clutter that might otherwise discourage the
     proliferation of coroutine usage for I/O bound tasks.
     """
+    from portage.util.futures import asyncio
+
     loop = asyncio._wrap_loop(loop)
     return _ObjectAttrWrapper(
         obj,
@@ -47,7 +46,7 @@ def _sync_methods(obj, loop=None):
     )
 
 
-class _ObjectAttrWrapper(portage.proxy.objectproxy.ObjectProxy):
+class _ObjectAttrWrapper(ObjectProxy):
     __slots__ = ("_obj", "_attr_wrapper")
 
     def __init__(self, obj, attr_wrapper):

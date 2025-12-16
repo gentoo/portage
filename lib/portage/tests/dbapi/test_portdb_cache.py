@@ -1,4 +1,4 @@
-# Copyright 2012-2024 Gentoo Authors
+# Copyright 2012-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import shlex
@@ -9,9 +9,8 @@ import textwrap
 
 import portage
 from portage import os
-from portage import _unicode_decode
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
-from portage.tests import TestCase
+from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 
@@ -65,150 +64,214 @@ class PortdbCacheTestCase(TestCase):
         python_cmd = (portage_python, "-b", "-Wd", "-c")
 
         test_commands = (
-            (lambda: shutil.rmtree(md5_cache_dir) or True,),
-            (lambda: not os.path.exists(pms_cache_dir),),
-            (lambda: not os.path.exists(md5_cache_dir),),
-            python_cmd
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				if portage.portdb.repositories['test_repo'].location in portage.portdb._pregen_auxdb:
-					sys.exit(1)
-			"""
+            FunctionStep(function=lambda _: shutil.rmtree(md5_cache_dir) or True),
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    os.path.exists(pms_cache_dir), f"step {i}"
+                )
+            ),
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    os.path.exists(md5_cache_dir), f"step {i}"
+                )
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=python_cmd
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					if portage.portdb.repositories['test_repo'].location in portage.portdb._pregen_auxdb:
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
-            egencache_cmd + ("--update",),
-            (lambda: not os.path.exists(pms_cache_dir),),
-            (lambda: os.path.exists(md5_cache_dir),),
-            python_cmd
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=egencache_cmd + ("--update",),
+            ),
+            FunctionStep(
+                lambda i: self.assertFalse(os.path.exists(pms_cache_dir), f"step {i}")
+            ),
+            FunctionStep(
+                lambda i: self.assertTrue(os.path.exists(md5_cache_dir), f"step {i}")
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=python_cmd
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
-            python_cmd
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				from portage.cache.flat_hash import md5_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=python_cmd
+                + (
+                    textwrap.dedent(
+                        """
+						import os, sys, portage
+						from portage.cache.flat_hash import md5_database
+						if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
+							sys.exit(1)
+			        """
+                    ),
                 ),
             ),
-            (
-                BASH_BINARY,
-                "-c",
-                "echo %s > %s"
-                % tuple(
-                    map(
-                        shlex.quote,
-                        (
-                            "cache-formats = md5-dict pms",
-                            layout_conf_path,
-                        ),
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=(BASH_BINARY,)
+                + (
+                    "-c",
+                    "echo %s > %s"
+                    % tuple(
+                        map(
+                            shlex.quote,
+                            (
+                                "cache-formats = md5-dict pms",
+                                layout_conf_path,
+                            ),
+                        )
+                    ),
                 ),
             ),
-            egencache_cmd + ("--update",),
-            (lambda: os.path.exists(md5_cache_dir),),
-            python_cmd
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=egencache_cmd + ("--update",),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    os.path.exists(md5_cache_dir), f"step {i}"
+                )
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=python_cmd
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
-            python_cmd
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				from portage.cache.flat_hash import md5_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=python_cmd
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					from portage.cache.flat_hash import md5_database
+					if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
             # Disable DeprecationWarnings, since the pms format triggers them
             # in portdbapi._create_pregen_cache().
-            (
-                BASH_BINARY,
-                "-c",
-                "echo %s > %s"
-                % tuple(
-                    map(
-                        shlex.quote,
-                        (
-                            "cache-formats = pms md5-dict",
-                            layout_conf_path,
-                        ),
-                    )
+            CommandStep(
+                returncode=os.EX_OK,
+                command=(BASH_BINARY,)
+                + (
+                    "-c",
+                    "echo %s > %s"
+                    % tuple(
+                        map(
+                            shlex.quote,
+                            (
+                                "cache-formats = pms md5-dict",
+                                layout_conf_path,
+                            ),
+                        )
+                    ),
                 ),
             ),
-            (portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c")
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=(portage_python,)
+                + ("-b", "-Wd", "-Wi::DeprecationWarning", "-c")
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
-            (portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c")
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				from portage.cache.metadata import database as pms_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], pms_database):
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=(portage_python,)
+                + ("-b", "-Wd", "-Wi::DeprecationWarning", "-c")
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					from portage.cache.metadata import database as pms_database
+					if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], pms_database):
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
-            (portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c")
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				location = portage.portdb.repositories['test_repo'].location
-				if not portage.portdb._pregen_auxdb[location]["sys-apps/C-1"]['IDEPEND']:
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=(portage_python,)
+                + ("-b", "-Wd", "-Wi::DeprecationWarning", "-c")
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					location = portage.portdb.repositories['test_repo'].location
+					if not portage.portdb._pregen_auxdb[location]["sys-apps/C-1"]['IDEPEND']:
+						sys.exit(1)
+					"""
+                    ),
                 ),
             ),
             # Test auto-detection and preference for md5-cache when both
             # cache formats are available but layout.conf is absent.
-            (BASH_BINARY, "-c", f"rm {shlex.quote(layout_conf_path)}"),
-            python_cmd
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=(BASH_BINARY,) + ("-c", f"rm {shlex.quote(layout_conf_path)}"),
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=python_cmd
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
-            python_cmd
-            + (
-                textwrap.dedent(
-                    """
-				import os, sys, portage
-				from portage.cache.flat_hash import md5_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
-					sys.exit(1)
-			"""
+            CommandStep(
+                returncode=os.EX_OK,
+                command=python_cmd
+                + (
+                    textwrap.dedent(
+                        """
+					import os, sys, portage
+					from portage.cache.flat_hash import md5_database
+					if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
+						sys.exit(1)
+			        """
+                    ),
                 ),
             ),
         )
@@ -254,12 +317,24 @@ class PortdbCacheTestCase(TestCase):
                 # triggered by python -Wd will be visible.
                 stdout = subprocess.PIPE
 
-            for i, args in enumerate(test_commands):
-                if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), f"callable at index {i} failed")
+            for i, step in enumerate(test_commands):
+                if isinstance(step, FunctionStep):
+                    try:
+                        step.function(i)
+                    except Exception as e:
+                        if isinstance(e, AssertionError) and f"step {i}" in str(e):
+                            raise
+                        raise AssertionError(
+                            f"step {i} raised {e.__class__.__name__}"
+                        ) from e
                     continue
 
-                proc = subprocess.Popen(args, env=env, stdout=stdout)
+                proc = subprocess.Popen(
+                    step.command,
+                    env=dict(env.items(), **(step.env or {})),
+                    cwd=step.cwd,
+                    stdout=stdout,
+                )
 
                 if debug:
                     proc.wait()
@@ -267,18 +342,14 @@ class PortdbCacheTestCase(TestCase):
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(portage._unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK,
+                    step.returncode,
                     proc.returncode,
-                    "command %d failed with args %s"
-                    % (
-                        i,
-                        args,
-                    ),
+                    f"{step.command} (step {i}) failed with exit code {proc.returncode}",
                 )
         finally:
             playground.cleanup()

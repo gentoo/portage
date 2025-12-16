@@ -1,4 +1,4 @@
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -87,9 +87,56 @@ class BinhostHandler:
         errors = [f"'{cpv}' is not in Packages" for cpv in missing]
         for cpv in stale:
             errors.append(f"'{cpv}' is not in the repository")
+
+        errors.extend(self._check_compressed_index())
+
         if errors:
             return (False, errors)
         return (True, None)
+
+    def _check_compressed_index(self):
+        """Check the compressed index file for consistency. Return a list of error
+        messages, or an empty list if no errors were found.
+        """
+        errors = []
+        bintree = self._bintree
+        timestamps = {}
+        for suffix in ("", ".gz"):
+            pkgindex_file = self._pkgindex_file + suffix
+            try:
+                st = os.stat(pkgindex_file)
+            except OSError as e:
+                timestamps[suffix] = None
+                if e.errno == errno.ENOENT:
+                    if suffix == "":
+                        errors.append(f"Missing index file: {pkgindex_file}")
+                    elif (
+                        suffix == ".gz"
+                        and "compress-index" in bintree.settings.features
+                    ):
+                        errors.append(f"Missing index file: {pkgindex_file}")
+                else:
+                    raise
+            else:
+                timestamps[suffix] = st[stat.ST_MTIME]
+
+        if "compress-index" in bintree.settings.features and len(timestamps) == 2:
+            if (
+                timestamps[""] is not None
+                and timestamps[".gz"] is not None
+                and timestamps[""] != timestamps[".gz"]
+            ):
+                errors.append(
+                    f"Uncompressed index timestamp '{timestamps['']}' is not equal to compressed index timestamp '{timestamps['.gz']}'"
+                )
+
+        if "compress-index" not in bintree.settings.features:
+            if timestamps[".gz"] is not None:
+                errors.append(
+                    f"Compressed index exists but 'compress-index' feature is disabled: {self._pkgindex_file}.gz"
+                )
+
+        return errors
 
     def fix(self, **kwargs):
         onProgress = kwargs.get("onProgress", None)
@@ -119,7 +166,7 @@ class BinhostHandler:
             if not d or self._need_update(cpv, d):
                 missing.append(cpv)
 
-        if missing or stale:
+        if missing or stale or self._check_compressed_index():
             from portage import locks
 
             pkgindex_lock = locks.lockfile(self._pkgindex_file, wantnewlockfile=1)

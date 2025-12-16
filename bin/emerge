@@ -22,11 +22,6 @@ def debug_signal(_signum, _frame):
     pdb.set_trace()
 
 
-# Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
-signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-signal.signal(signal.SIGTERM, signal_interrupt)
-signal.signal(signal.SIGUSR1, debug_signal)
-
 from os import path as osp
 
 if osp.isfile(
@@ -46,6 +41,11 @@ from _emerge.main import emerge_main
 
 
 def main():
+    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal_interrupt)
+    signal.signal(signal.SIGUSR1, debug_signal)
+
     portage.process.sanitize_fds()
     try:
         retval = emerge_main()

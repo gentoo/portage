@@ -18,6 +18,12 @@ See \fBmake.conf\fR(5) for more information.
 .PP
 \fIetc\-update\fR respects the normal \fIPORTAGE_CONFIGROOT\fR and
 \fIEROOT\fR variables for finding the aforementioned config protect variables.
+.PP
+Multiple target distributions are supported, including \fIportage\fR(5),
+\fIrpm\fR(1), \fIpacman\fR(1), and \fIdpkg\fR(1) based systems.  Detection of
+the target package management system is done by inspecting
+\fI/etc/os\-release\fR. \fIETC_UPDATE_OS_FAMILY\fR can be used to override this
+detection.
 .SH "OPTIONS"
 .TP
 .BR \-d ", " \-\-debug

@@ -5,19 +5,6 @@ __all__ = ["close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "portage.checksum",
-    "portage.data:portage_gid,secpass",
-    "portage.dbapi.dep_expand:dep_expand",
-    "portage.dep:Atom,dep_getkey,match_from_list,use_reduce,_match_slot",
-    "portage.package.ebuild.doebuild:doebuild",
-    "portage.package.ebuild.fetch:get_mirror_url,_download_suffix",
-    "portage.util:ensure_dirs,writemsg,writemsg_level",
-    "portage.util.listdir:listdir",
-    "portage.versions:best,catsplit,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp,_pkg_str",
-)
-
 from portage.cache import volatile
 from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
@@ -144,6 +131,8 @@ class _better_cache:
         ]
 
     def __getitem__(self, catpkg):
+        from portage.versions import catsplit
+
         result = self._items.get(catpkg)
         if result is not None:
             return result
@@ -154,6 +143,8 @@ class _better_cache:
         return self._items[catpkg]
 
     def _scan_cat(self, cat):
+        from portage.dep import Atom
+
         for repo in self._repo_list:
             cat_dir = repo.location + "/" + cat
             try:
@@ -213,15 +204,16 @@ class portdbapi(dbapi):
         @param mysettings: an immutable config instance
         @type mysettings: portage.config
         """
+        from portage.package.ebuild.config import config
 
-        from portage import config
+        # Support portage.data reload for unit tests.
+        portage_gid = portage.data.portage_gid
+        secpass = portage.data.secpass
 
         if mysettings:
             self.settings = mysettings
         else:
-            from portage import settings
-
-            self.settings = config(clone=settings)
+            self.settings = config(clone=portage.settings)
 
         if _unused_param is not DeprecationWarning:
             warnings.warn(
@@ -422,6 +414,10 @@ class portdbapi(dbapi):
     def _init_cache_dirs(self):
         """Create /var/cache/edb/dep and adjust permissions for the portage
         group."""
+        from portage.util import ensure_dirs
+
+        # Support portage.data reload for unit tests.
+        portage_gid = portage.data.portage_gid
 
         dirmode = 0o2070
         modemask = 0o2
@@ -525,6 +521,8 @@ class portdbapi(dbapi):
         the file we wanted.
         If myrepo is not None it will find packages from this repository(overlay)
         """
+        from portage.versions import pkgsplit
+
         if not mycpv:
             return (None, 0)
 
@@ -611,6 +609,8 @@ class portdbapi(dbapi):
                 traceback.print_exc()
 
     def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
+        from portage.util import writemsg
+
         try:
             ebuild_hash = eclass_cache.hashed_path(ebuild_path)
             # snag mtime since we use it later, and to trigger stat failure
@@ -702,6 +702,8 @@ class portdbapi(dbapi):
         @return: list of metadata values
         @rtype: asyncio.Future (or compatible)
         """
+        from portage.util import writemsg
+
         # Don't default to self._event_loop here, since that creates a
         # local event loop for thread safety, and that could easily lead
         # to simultaneous instantiation of multiple event loops here.
@@ -976,6 +978,9 @@ class portdbapi(dbapi):
         return result
 
     def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
+        from portage.package.ebuild.fetch import _download_suffix
+        from portage.util import writemsg
+
         # returns a filename:size dictionary of remaining downloads
         myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
         if myebuild is None:
@@ -1097,6 +1102,8 @@ class portdbapi(dbapi):
         return True
 
     def cpv_exists(self, mykey, myrepo=None):
+        from portage.versions import catpkgsplit
+
         "Tells us whether an actual ebuild exists on disk (no masking)"
         cps2 = mykey.split("/")
         cps = catpkgsplit(mykey, silent=0)
@@ -1118,6 +1125,9 @@ class portdbapi(dbapi):
         @param sort: return sorted results (default is True)
         @rtype list of [cat/pkg,...]
         """
+        from portage.dep import Atom
+        from portage.util.listdir import listdir
+
         d = {}
         if categories is None:
             categories = self.settings.categories
@@ -1141,6 +1151,9 @@ class portdbapi(dbapi):
         return l
 
     def cp_list(self, mycp, use_cache=1, mytree=None):
+        from portage.util import writemsg
+        from portage.versions import pkgsplit, ver_regexp, _pkg_str
+
         # NOTE: Cache can be safely shared with the match cache, since the
         # match cache uses the result from dep_expand for the cache_key.
         if (
@@ -1323,6 +1336,10 @@ class portdbapi(dbapi):
         @rtype: asyncio.Future (or compatible), which results in a _pkg_str
                 or list of _pkg_str (depends on level)
         """
+        from portage.dbapi.dep_expand import dep_expand
+        from portage.dep import match_from_list, _match_slot
+        from portage.versions import _pkg_str
+
         mydep = dep_expand(origdep, mydb=self, settings=self.settings)
         mykey = mydep.cp
 
@@ -1477,6 +1494,8 @@ class portdbapi(dbapi):
         """
         Return a new list containing only visible packages.
         """
+        from portage.util import writemsg
+
         aux_keys = list(self._aux_cache_keys)
         metadata = {}
 
@@ -1649,6 +1668,8 @@ class portagetree:
 
     def getname(self, pkgname):
         """Deprecated. Use the portdbapi findname method instead."""
+        from portage.versions import pkgsplit
+
         warnings.warn(
             "The getname method of "
             "portage.dbapi.porttree.portagetree is deprecated. "
@@ -1795,6 +1816,8 @@ def _async_manifest_fetchlist(
 
 
 def _parse_uri_map(cpv, metadata, use=None):
+    from portage.dep import use_reduce
+
     myuris = use_reduce(
         metadata.get("SRC_URI", ""),
         uselist=use,

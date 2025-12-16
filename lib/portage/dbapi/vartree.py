@@ -5,52 +5,6 @@ __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
 import portage
 
-portage.proxy.lazyimport.lazyimport(
-    globals(),
-    "hashlib:md5",
-    "portage.checksum:_perform_md5_merge@perform_md5",
-    "portage.data:portage_gid,portage_uid,secpass",
-    "portage.dbapi.dep_expand:dep_expand",
-    "portage.dbapi._MergeProcess:MergeProcess",
-    "portage.dbapi._SyncfsProcess:SyncfsProcess",
-    "portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,"
-    + "use_reduce,_slot_separator,_repo_separator",
-    "portage.eapi:_get_eapi_attrs,eapi_rewrites_symlinks",
-    "portage.elog:collect_ebuild_messages,collect_messages,"
-    + "elog_process,_merge_logentries",
-    "portage.locks:lockdir,unlockdir,lockfile,unlockfile",
-    "portage.output:bold,colorize",
-    "portage.package.ebuild.doebuild:doebuild_environment," + "_merge_unicode_error",
-    "portage.package.ebuild.prepare_build_dirs:prepare_build_dirs",
-    "portage.package.ebuild._ipc.QueryCommand:QueryCommand",
-    "portage.process:find_binary",
-    "portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,"
-    + "writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,"
-    + "grabdict,normalize_path,new_protect_filename",
-    "portage.util._compare_files:compare_files",
-    "portage.util.digraph:digraph",
-    "portage.util.env_update:env_update",
-    "portage.util.install_mask:install_mask_dir,InstallMask,_raise_exc",
-    "portage.util.listdir:dircache,listdir",
-    "portage.util.movefile:movefile,_cmpxattr",
-    "portage.util.path:first_existing,iter_parents",
-    "portage.util.writeable_check:get_ro_checker",
-    "portage.util._xattr:xattr",
-    "portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry",
-    "portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap",
-    # BEGIN PREFIX LOCAL
-    'portage.util._dyn_libs.LinkageMapMachO:LinkageMapMachO',
-    # END PREFIX LOCAL
-    "portage.util._dyn_libs.NeededEntry:NeededEntry",
-    "portage.util._async.SchedulerInterface:SchedulerInterface",
-    "portage.util._eventloop.global_event_loop:global_event_loop",
-    "portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,"
-    + "_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo",
-    "portage.gpkg",
-    "subprocess",
-    "tarfile",
-)
-
 from portage.const import (
     CACHE_PATH,
     CONFIG_MEMORY_FILE,
@@ -152,6 +106,9 @@ class vardbapi(dbapi):
         now has a categories property that is generated from the
         available packages.
         """
+        from portage.util._dyn_libs.PreservedLibsRegistry import PreservedLibsRegistry
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        from portage.util._dyn_libs.LinkageMapMachO import LinkageMapMachO as LinkageMapMachO
 
         # Used by emerge to check whether any packages
         # have been added or removed.
@@ -262,6 +219,8 @@ class vardbapi(dbapi):
         @return: True if var/db/pkg is writable or can be created,
                 False otherwise
         """
+        from portage.util.path import first_existing
+
         return os.access(first_existing(self._dbroot), os.W_OK)
 
     @property
@@ -293,6 +252,9 @@ class vardbapi(dbapi):
         to reenter a lock that was acquired by a parent process. However,
         a lock can be released only by the same process that acquired it.
         """
+        from portage.util import ensure_dirs
+        from portage.locks import lockdir
+
         if self._lock_count:
             self._lock_count += 1
         else:
@@ -309,6 +271,8 @@ class vardbapi(dbapi):
         must be matched with a prior lock() call, or else an AssertionError
         will be raised if unlock() is called while not locked.
         """
+        from portage.locks import unlockdir
+
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
@@ -323,6 +287,8 @@ class vardbapi(dbapi):
         Acquire a reentrant lock, blocking, for cooperation with concurrent
         processes.
         """
+        from portage.locks import lockfile
+
         if self._fs_lock_count < 1:
             if self._fs_lock_obj is not None:
                 raise AssertionError("already locked")
@@ -337,6 +303,8 @@ class vardbapi(dbapi):
         """
         Release a lock, decrementing the recursion level.
         """
+        from portage.locks import unlockfile
+
         if self._fs_lock_count <= 1:
             if self._fs_lock_obj is None:
                 raise AssertionError("not locked")
@@ -355,6 +323,9 @@ class vardbapi(dbapi):
         of problem, this method should be called in a subprocess
         (typically spawned by the MergeProcess class).
         """
+        from portage.util import ensure_dirs
+        from portage.locks import lockfile
+
         lock, counter = self._slot_locks.get(slot_atom, (None, 0))
         if lock is None:
             lock_path = self.getpath(f"{slot_atom.cp}:{slot_atom.slot}")
@@ -366,6 +337,8 @@ class vardbapi(dbapi):
         """
         Release a slot lock (or decrementing recursion level).
         """
+        from portage.locks import unlockfile
+
         lock, counter = self._slot_locks.get(slot_atom, (None, 0))
         if lock is None:
             raise AssertionError("not locked")
@@ -381,6 +354,9 @@ class vardbapi(dbapi):
         This is called before an after any modifications, so that consumers
         can use directory mtimes to validate caches. See bug #290428.
         """
+        from portage.util import ensure_dirs
+        from portage.versions import catsplit
+
         base = self._eroot + VDB_PATH
         cat = catsplit(cpv)[0]
         catdir = base + _os.sep + cat
@@ -398,6 +374,8 @@ class vardbapi(dbapi):
 
     def cpv_counter(self, mycpv):
         "This method will grab the COUNTER. Returns a counter value."
+        from portage.util import writemsg_level
+
         try:
             return int(self.aux_get(mycpv, ["COUNTER"])[0])
         except (KeyError, ValueError):
@@ -412,6 +390,8 @@ class vardbapi(dbapi):
 
     def cpv_inject(self, mycpv):
         "injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
+        from portage.util import ensure_dirs, write_atomic
+
         ensure_dirs(self.getpath(mycpv))
         counter = self.counter_tick()
         # write local package counter so that emerge clean does the right thing
@@ -426,6 +406,10 @@ class vardbapi(dbapi):
         return False
 
     def move_ent(self, mylist, repo_match=None):
+        from portage.dep import isjustname, isvalidatom
+        from portage.versions import catsplit
+        from portage.util import ensure_dirs, write_atomic
+
         origcp = mylist[1]
         newcp = mylist[2]
 
@@ -486,6 +470,8 @@ class vardbapi(dbapi):
         return moves
 
     def cp_list(self, mycp, use_cache=1):
+        from portage.versions import catsplit, pkgsplit, _pkg_str
+
         mysplit = catsplit(mycp)
         if mysplit[0] == "*":
             mysplit[0] = mysplit[0][1:]
@@ -545,6 +531,8 @@ class vardbapi(dbapi):
         return list(self._iter_cpv_all(use_cache=use_cache))
 
     def _iter_cpv_all(self, use_cache=True, sort=False):
+        from portage.versions import _pkg_str
+
         returnme = []
         basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
@@ -591,6 +579,8 @@ class vardbapi(dbapi):
                 yield subpath
 
     def cp_all(self, use_cache=1, sort=False):
+        from portage.versions import catpkgsplit
+
         mylist = self.cpv_all(use_cache=use_cache)
         d = {}
         for y in mylist:
@@ -625,6 +615,8 @@ class vardbapi(dbapi):
         self._clear_pkg_cache(pkg_dblink)
 
     def _clear_pkg_cache(self, pkg_dblink):
+        from portage.util.listdir import dircache
+
         # Due to 1 second mtime granularity in <python-2.5, mtime checks
         # are not always sufficient to invalidate vardbapi caches. Therefore,
         # the caches need to be actively invalidated here.
@@ -635,6 +627,10 @@ class vardbapi(dbapi):
 
     def match(self, origdep, use_cache=1):
         "caching match function"
+        from portage.dbapi.dep_expand import dep_expand
+        from portage.dep import dep_getkey
+        from portage.versions import catsplit
+
         mydep = dep_expand(
             origdep, mydb=self, use_cache=use_cache, settings=self.settings
         )
@@ -665,6 +661,8 @@ class vardbapi(dbapi):
         return self.matchcache[mycat][cache_key][:]
 
     def findname(self, mycpv, myrepo=None):
+        from portage.versions import catsplit
+
         return self.getpath(str(mycpv), filename=catsplit(mycpv)[1] + ".ebuild")
 
     def flush_cache(self):
@@ -675,6 +673,9 @@ class vardbapi(dbapi):
         superuser privileges (since that's required to obtain a lock), but all
         users have read access and benefit from faster metadata lookups (as
         long as at least part of the cache is still valid)."""
+        from portage.data import secpass
+        from portage.util import ensure_dirs, atomic_ofstream, apply_secpass_permissions
+
         if (
             self._flush_cache_enabled
             and self._aux_cache is not None
@@ -712,6 +713,8 @@ class vardbapi(dbapi):
         return self._aux_cache_obj
 
     def _aux_cache_init(self):
+        from portage.util import writemsg
+
         aux_cache = None
         open_kwargs = {}
         try:
@@ -786,6 +789,9 @@ class vardbapi(dbapi):
         unrecognized, the cache will simple be recreated from scratch (it is
         completely disposable).
         """
+        from portage.eapi import _get_eapi_attrs
+        from portage.versions import _get_slot_re
+
         cache_these_wants = self._aux_cache_keys.intersection(wants)
         for x in wants:
             if self._aux_cache_keys_re.match(x) is not None:
@@ -940,6 +946,8 @@ class vardbapi(dbapi):
         ${A}, which are not saved in separate files but are available
         in environment.bz2 (see bug #395463).
         """
+        import subprocess
+
         env_file = self.getpath(cpv, filename="environment.bz2")
         if not os.path.isfile(env_file):
             return {}
@@ -1021,6 +1029,8 @@ class vardbapi(dbapi):
 
     @staticmethod
     def _async_copy(dbdir, dest_dir):
+        from portage.util.install_mask import _raise_exc
+
         for parent, dirs, files in os.walk(dbdir, onerror=_raise_exc):
             for key in files:
                 shutil.copy(os.path.join(parent, key), os.path.join(dest_dir, key))
@@ -1078,6 +1088,9 @@ class vardbapi(dbapi):
                 by QUICKPKG_DEFAULT_OPTS).
         @type include_unmodified_config: bool
         """
+        from portage.exception import PortageException
+        from portage.util._async.SchedulerInterface import SchedulerInterface
+
         loop = asyncio._wrap_loop(loop)
         if not isinstance(pkg, portage.config):
             settings = self.settings
@@ -1179,6 +1192,8 @@ class vardbapi(dbapi):
         installation actions that have occurred in
         the history of this package database.
         """
+        from portage.util import writemsg
+
         counter = -1
         try:
             with open(
@@ -1239,6 +1254,8 @@ class vardbapi(dbapi):
 
         @return: new counter value
         """
+        from portage.util import write_atomic
+
         self.lock()
         try:
             counter = self.get_counter_tick_core() - 1
@@ -1264,6 +1281,8 @@ class vardbapi(dbapi):
         return counter
 
     def _dblink(self, cpv):
+        from portage.versions import catsplit
+
         category, pf = catsplit(cpv)
         return dblink(
             category,
@@ -1280,6 +1299,10 @@ class vardbapi(dbapi):
         @param paths: paths of files to remove from contents
         @type paths: iterable
         """
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        from portage.util._dyn_libs.NeededEntry import NeededEntry
+        from portage.util import normalize_path, writemsg_level
+
         if not hasattr(pkg, "getcontents"):
             pkg = self._dblink(pkg)
         root = self.settings["ROOT"]
@@ -1350,6 +1373,9 @@ class vardbapi(dbapi):
         @param new_needed: new NEEDED entries
         @type new_needed: list of NeededEntry
         """
+        from portage.util import atomic_ofstream
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+
         root = self.settings["ROOT"]
         self._bump_mtime(pkg.mycpv)
         if new_needed is not None:
@@ -1370,6 +1396,8 @@ class vardbapi(dbapi):
         packages that own it. This is used to optimize owner lookups
         by narrowing the search down to a smaller number of packages.
         """
+
+        from hashlib import md5
 
         _new_hash = md5
         _hash_bits = 16
@@ -1705,6 +1733,9 @@ class vartree:
         return {}
 
     def dep_bestmatch(self, mydep, use_cache=1):
+        from portage.versions import best
+        from portage.dbapi.dep_expand import dep_expand
+
         "compatibility method -- all matches, not just visible ones"
         # mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
         mymatch = best(
@@ -1739,6 +1770,8 @@ class vartree:
         return self.dbapi.cp_all()
 
     def getebuildpath(self, fullpackage):
+        from portage.versions import catsplit
+
         cat, package = catsplit(fullpackage)
         return self.getpath(fullpackage, filename=package + ".ebuild")
 
@@ -1816,6 +1849,8 @@ class dblink:
         @param vartree: an instance of vartree corresponding to myroot.
         @type vartree: vartree
         """
+        from portage.versions import _pkg_str
+        from portage.util import normalize_path
 
         if settings is None:
             raise TypeError("settings argument is required")
@@ -1872,6 +1907,8 @@ class dblink:
         return isinstance(other, dblink) and self._hash_key == other._hash_key
 
     def _get_protect_obj(self):
+        from portage.util import ConfigProtect
+
         if self._protect_obj is None:
             self._protect_obj = ConfigProtect(
                 self._eroot,
@@ -1958,6 +1995,8 @@ class dblink:
         """
         Remove this entry from the database
         """
+        from portage.util import writemsg
+
         try:
             os.lstat(self.dbdir)
         except OSError as e:
@@ -2016,6 +2055,9 @@ class dblink:
         """
         Get the installed files of a given package (aka what that package installed)
         """
+        from portage.util import normalize_path
+        from portage.util import writemsg
+
         if self.contentscache is not None:
             return self.contentscache
         contents_file = os.path.join(self.dbdir, "CONTENTS")
@@ -2141,6 +2183,10 @@ class dblink:
         @rtype: list
         @return: Paths of protected configuration files which have been omitted.
         """
+        import tarfile
+        from portage.checksum import _perform_md5_merge as perform_md5
+        from portage.util import ConfigProtect
+
         settings = self.settings
         cpv = self.mycpv
         xattrs = "xattr" in settings.features
@@ -2197,6 +2243,8 @@ class dblink:
 
     def _prune_plib_registry(self, unmerge=False, needed=None, preserve_paths=None):
         # remove preserved libraries that don't have any consumers left
+        from portage.versions import _pkg_str
+
         if not (
             self._linkmap_broken
             or self.vartree.dbapi._linkmap is None
@@ -2309,6 +2357,14 @@ class dblink:
         1. os.EX_OK if everything went well.
         2. return code of the failed phase (for prerm, postrm, cleanrm)
         """
+        from portage.package.ebuild.doebuild import (
+            doebuild_environment,
+            prepare_build_dirs,
+        )
+        from portage.util import write_atomic
+        from portage.util._async.SchedulerInterface import SchedulerInterface
+        from portage.util.env_update import env_update
+        from portage.versions import catsplit, cpv_getkey
 
         if trimworld is not None:
             warnings.warn(
@@ -2350,9 +2406,7 @@ class dblink:
         # replacement or unmerge operation.
         if others_in_slot is None:
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
-            slot_matches = self.vartree.dbapi.match(
-                f"{portage.cpv_getkey(self.mycpv)}:{slot}"
-            )
+            slot_matches = self.vartree.dbapi.match(f"{cpv_getkey(self.mycpv)}:{slot}")
             others_in_slot = []
             for cur_cpv in slot_matches:
                 if cur_cpv == self.mycpv:
@@ -2624,6 +2678,8 @@ class dblink:
         return os.EX_OK
 
     def _display_merge(self, msg, level=0, noiselevel=0):
+        from portage.util import writemsg_level
+
         if not self._verbose and noiselevel >= 0 and level < logging.WARN:
             return
         if self._scheduler is None:
@@ -2661,6 +2717,9 @@ class dblink:
         @type others_in_slot: list
         @rtype: None
         """
+        from portage.checksum import _perform_md5_merge as perform_md5
+        from portage.util import grabdict, normalize_path, writedict
+        from portage.versions import catsplit, cpv_getkey
 
         os = _os_merge
         perf_md5 = perform_md5
@@ -2672,9 +2731,7 @@ class dblink:
         if others_in_slot is None:
             others_in_slot = []
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
-            slot_matches = self.vartree.dbapi.match(
-                f"{portage.cpv_getkey(self.mycpv)}:{slot}"
-            )
+            slot_matches = self.vartree.dbapi.match(f"{cpv_getkey(self.mycpv)}:{slot}")
             for cur_cpv in slot_matches:
                 if cur_cpv == self.mycpv:
                     continue
@@ -3331,6 +3388,7 @@ class dblink:
         @return: the contents entry corresponding to the given path, or False
                 if the file is not owned by this package.
         """
+        from portage.util import normalize_path
 
         filename = _unicode_decode(
             filename, encoding=_encodings["content"], errors="strict"
@@ -3514,6 +3572,9 @@ class dblink:
         self._installed_instance. Otherwise, paths are selected from
         self.
         """
+        from portage.util.digraph import digraph
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+
         if (
             self._linkmap_broken
             or self.vartree.dbapi._linkmap is None
@@ -3650,6 +3711,7 @@ class dblink:
         """
         Preserve libs returned from _find_libs_to_preserve().
         """
+        from portage.util import atomic_ofstream
 
         if not preserve_paths:
             return
@@ -3702,6 +3764,8 @@ class dblink:
         """
         Find preserved libraries that don't have any consumers left.
         """
+        from portage.util.digraph import digraph
+        from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
 
         if (
             self._linkmap_broken
@@ -3879,6 +3943,11 @@ class dblink:
         self.vartree.dbapi._plib_registry.pruneNonExisting()
 
     def _collision_protect(self, srcroot, destroot, mypkglist, file_list, symlink_list):
+        from portage.output import colorize
+        from portage.util import normalize_path
+        from portage.util.path import iter_parents
+        from portage.util._compare_files import compare_files
+
         os = _os_merge
 
         real_relative_paths = {}
@@ -4189,6 +4258,9 @@ class dblink:
             self._scheduler.output(msg, background=background, log_path=log_path)
 
     def _elog_process(self, phasefilter=None):
+        from portage.elog import elog_process, collect_ebuild_messages, collect_messages
+        from portage.elog import _merge_logentries
+
         cpv = self.mycpv
         if self._pipe is None:
             elog_process(cpv, self.settings, phasefilter=phasefilter)
@@ -4280,6 +4352,28 @@ class dblink:
         secondhand is a list of symlinks that have been skipped due to their target
         not existing; we will merge these symlinks at a later time.
         """
+        from portage.dep import match_from_list, _slot_separator, _repo_separator
+        from portage.package.ebuild.doebuild import (
+            doebuild_environment,
+            _merge_unicode_error,
+        )
+        from portage.util import (
+            ensure_dirs,
+            grabdict,
+            normalize_path,
+            write_atomic,
+        )
+        from portage.util.env_update import env_update
+        from portage.util.install_mask import InstallMask, install_mask_dir
+        from portage.util.writeable_check import get_ro_checker
+        from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
+        from portage.versions import (
+            _pkg_str,
+            _unknown_repo,
+            catsplit,
+            cpv_getkey,
+            vercmp,
+        )
 
         os = _os_merge
 
@@ -5303,6 +5397,8 @@ class dblink:
         return backup_p
 
     def _merge_contents(self, srcroot, destroot, cfgfiledict):
+        from portage.util import atomic_ofstream, writedict
+
         cfgfiledict_orig = cfgfiledict.copy()
 
         # open CONTENTS file (possibly overwriting old one) for recording
@@ -5431,6 +5527,12 @@ class dblink:
         2. None otherwise
 
         """
+        from hashlib import md5
+        from portage.checksum import _perform_md5_merge as perform_md5
+        from portage.eapi import eapi_rewrites_symlinks
+        from portage.util import normalize_path
+        from portage.util.movefile import movefile
+        from portage.versions import pkgsplit
 
         showMessage = self._display_merge
         writemsg = self._display_merge
@@ -5934,6 +6036,8 @@ class dblink:
         dest_md5,
         dest_link,
     ):
+        from portage.util import new_protect_filename
+
         move_me = True
         protected = True
         force = False
@@ -6025,6 +6129,9 @@ class dblink:
         disk and avoid data-loss in the event of a power failure. This method
         does nothing if FEATURES=merge-sync is disabled.
         """
+        import subprocess
+        from portage.dbapi._SyncfsProcess import SyncfsProcess
+
         if not self._device_path_map or "merge-sync" not in self.settings.features:
             return
 
@@ -6065,6 +6172,9 @@ class dblink:
         """
         @param myroot: ignored, self._eroot is used instead
         """
+        from portage.package.ebuild.doebuild import doebuild_environment
+        from portage.util._async.SchedulerInterface import SchedulerInterface
+
         myroot = None
         retval = -1
         parallel_install = "parallel-install" in self.settings.features
@@ -6174,6 +6284,8 @@ class dblink:
             return f.read()
 
     def setfile(self, fname, data):
+        from portage.util import write_atomic
+
         kwargs = {}
         if fname == "environment.bz2" or not isinstance(data, str):
             kwargs["mode"] = "wb"
@@ -6237,6 +6349,9 @@ class dblink:
         return os.EX_OK
 
     def _quickpkg_dblink(self, backup_dblink, background, logfile):
+        from portage.package.ebuild._ipc.QueryCommand import QueryCommand
+        from portage.process import find_binary
+
         build_time = backup_dblink.getfile("BUILD_TIME")
         try:
             build_time = int(build_time.strip())
@@ -6307,6 +6422,9 @@ class dblink:
         Takes file mode and extended attributes into account.
         Should only be used for regular files.
         """
+        from portage.util import writemsg
+        from portage.util.movefile import _cmpxattr
+
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
@@ -6352,6 +6470,9 @@ def merge(
     """
     @param myroot: ignored, settings['EROOT'] is used instead
     """
+    from portage.dbapi._MergeProcess import MergeProcess
+    from portage.util import writemsg
+
     myroot = None
     if settings is None:
         raise TypeError("settings argument is required")
@@ -6455,6 +6576,10 @@ def write_contents(contents, root, f):
 
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=False):
+    import tarfile
+    from portage.util import normalize_path
+    from portage.util._xattr import xattr
+
     os = _os_merge
     encoding = _encodings["merge"]
 

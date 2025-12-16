@@ -754,7 +754,7 @@ __dyn_install() {
 	__save_ebuild_env --exclude-init-phases | __filter_readonly_variables \
 		--filter-path --filter-sandbox --allow-extra-vars > \
 		"${PORTAGE_BUILDDIR}"/build-info/environment
-	assert "__save_ebuild_env failed"
+	__pipestatus || die "__save_ebuild_env failed"
 	cd "${PORTAGE_BUILDDIR}"/build-info || die
 
 	${PORTAGE_BZIP2_COMMAND} -f9 environment
@@ -1073,7 +1073,7 @@ __ebuild_main() {
 				__filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
 				| ${PORTAGE_BZIP2_COMMAND} -c -f9 > "${PORTAGE_UPDATE_ENV}"
-			assert "__save_ebuild_env failed"
+			__pipestatus || die "__save_ebuild_env failed"
 		fi
 		;;
 	unpack|prepare|configure|compile|test|clean|install)
@@ -1167,7 +1167,8 @@ __ebuild_main() {
 		cd "${PORTAGE_PYM_PATH}"
 		__save_ebuild_env | __filter_readonly_variables \
 			--filter-features > "${T}/environment"
-		assert "__save_ebuild_env failed"
+		__pipestatus || die "__save_ebuild_env failed"
+
 		chgrp "${PORTAGE_GRPNAME:-portage}" "${T}/environment"
 		chmod g+w "${T}/environment"
 	fi
