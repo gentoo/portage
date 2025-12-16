@@ -1,4 +1,4 @@
-# Copyright 2016, 2023 Gentoo Foundation
+# Copyright 2016-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -6,10 +6,9 @@ import sys
 
 import portage
 from portage import os
-from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
-from portage.tests import TestCase
+from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 
@@ -60,38 +59,73 @@ src_install() {
         file_collision = os.path.join(eroot, "usr/lib/file-collision")
 
         test_commands = (
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/A",
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/A",
+                ),
             ),
-            (lambda: portage.util.grablines(file_collision) == ["A\n"],),
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/B",
+            FunctionStep(
+                function=lambda i: self.assertEqual(
+                    portage.util.grablines(file_collision), ["A\n"], f"step {i}"
+                ),
             ),
-            (lambda: portage.util.grablines(file_collision) == ["B\n"],),
-            emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/A",
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/B",
+                ),
             ),
-            (lambda: portage.util.grablines(file_collision) == ["A\n"],),
-            ({"FEATURES": "parallel-install"},)
-            + emerge_cmd
-            + (
-                "--oneshot",
-                "dev-libs/B",
+            FunctionStep(
+                function=lambda i: self.assertEqual(
+                    portage.util.grablines(file_collision), ["B\n"], f"step {i}"
+                )
             ),
-            (lambda: portage.util.grablines(file_collision) == ["B\n"],),
-            ({"FEATURES": "parallel-install"},)
-            + emerge_cmd
-            + (
-                "-Cq",
-                "dev-libs/B",
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/A",
+                ),
             ),
-            (lambda: not os.path.exists(file_collision),),
+            FunctionStep(
+                function=lambda i: self.assertEqual(
+                    portage.util.grablines(file_collision), ["A\n"], f"step {i}"
+                )
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                env={"FEATURES": "parallel-install"},
+                command=emerge_cmd
+                + (
+                    "--oneshot",
+                    "dev-libs/B",
+                ),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertEqual(
+                    portage.util.grablines(file_collision), ["B\n"], f"step {i}"
+                )
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                env={"FEATURES": "parallel-install"},
+                command=emerge_cmd
+                + (
+                    "-Cq",
+                    "dev-libs/B",
+                ),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    os.path.exists(file_collision), f"step {i}"
+                )
+            ),
         )
 
         fake_bin = os.path.join(eprefix, "bin")
@@ -165,19 +199,24 @@ src_install() {
                 # triggered by python -Wd will be visible.
                 stdout = subprocess.PIPE
 
-            for i, args in enumerate(test_commands):
-                if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), f"callable at index {i} failed")
+            for i, step in enumerate(test_commands):
+                if isinstance(step, FunctionStep):
+                    try:
+                        step.function(i)
+                    except Exception as e:
+                        if isinstance(e, AssertionError) and f"step {i}" in str(e):
+                            raise
+                        raise AssertionError(
+                            f"step {i} raised {e.__class__.__name__}"
+                        ) from e
                     continue
 
-                if isinstance(args[0], dict):
-                    local_env = env.copy()
-                    local_env.update(args[0])
-                    args = args[1:]
-                else:
-                    local_env = env
-
-                proc = subprocess.Popen(args, env=local_env, stdout=stdout)
+                proc = subprocess.Popen(
+                    step.command,
+                    env=dict(env.items(), **(step.env or {})),
+                    cwd=step.cwd,
+                    stdout=stdout,
+                )
 
                 if debug:
                     proc.wait()
@@ -185,12 +224,14 @@ src_install() {
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(portage._unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, f"emerge failed with args {args}"
+                    step.returncode,
+                    proc.returncode,
+                    f"{step.command} (step {i}) failed with exit code {proc.returncode}",
                 )
         finally:
             playground.debug = False
