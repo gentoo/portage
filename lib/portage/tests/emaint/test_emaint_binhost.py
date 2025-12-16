@@ -5,25 +5,10 @@ import os
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
-from typing import Any, Callable, Optional
 
 import portage
-from portage.tests import TestCase
+from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-
-
-@dataclass
-class CommandStep:
-    returncode: int
-    command: tuple[str, ...]
-    env: Optional[dict] = None
-    cwd: Optional[str] = None
-
-
-@dataclass
-class FunctionStep:
-    function: Callable[[int], Any]  # called with step index as argument
 
 
 class EmainBinhostTestCase(TestCase):
@@ -83,7 +68,7 @@ class EmainBinhostTestCase(TestCase):
                     os.path.exists(bintree._pkgindex_file), f"step {i}"
                 ),
             ),
-            # The compressed index should not exist yet becuase compress-index is disabled in make.conf.
+            # The compressed index should not exist yet because compress-index is disabled in make.conf.
             FunctionStep(
                 function=lambda i: self.assertFalse(
                     os.path.exists(bintree._pkgindex_file + ".gz"), f"step {i}"

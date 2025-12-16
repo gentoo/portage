@@ -8,6 +8,8 @@ import sys
 import time
 import unittest
 from pathlib import Path
+from dataclasses import dataclass
+from typing import Any, Callable, Optional
 
 from unittest.runner import TextTestResult as _TextTestResult
 
@@ -24,6 +26,17 @@ from portage.proxy.objectproxy import ObjectProxy
 # This remains constant when the real value is a mock.
 EPREFIX_ORIG = portage.const.EPREFIX
 
+@dataclass
+class CommandStep:
+    returncode: int
+    command: tuple[str, ...]
+    env: Optional[dict] = None
+    cwd: Optional[str] = None
+
+
+@dataclass
+class FunctionStep:
+    function: Callable[[int], Any]  # called with step index as argument
 
 class lazy_value(ObjectProxy):
     __slots__ = ("_func",)
