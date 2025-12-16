@@ -7,7 +7,7 @@ import sys
 import tempfile
 
 import portage
-from portage import _unicode_decode, os
+from portage import os
 from portage.const import (
     PORTAGE_PYM_PATH,
     USER_CONFIG_PATH,
