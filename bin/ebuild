@@ -22,11 +22,6 @@ def debug_signal(_signum, _frame):
     pdb.set_trace()
 
 
-# Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
-signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-signal.signal(signal.SIGTERM, signal_interrupt)
-signal.signal(signal.SIGUSR1, debug_signal)
-
 import argparse
 from os import path as osp
 import shlex
@@ -61,6 +56,11 @@ from _emerge.RootConfig import RootConfig
 
 
 def main():
+    # Prevent "[Errno 32] Broken pipe" exceptions when writing to a pipe.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal_interrupt)
+    signal.signal(signal.SIGUSR1, debug_signal)
+
     portage.process.sanitize_fds()
     description = "See the ebuild(1) man page for more info"
     usage = "Usage: ebuild <ebuild file> <command> [command] ..."
