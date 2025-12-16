@@ -24,6 +24,14 @@ Features:
 
 * EAPI 9: Do not export profile-specific USE_EXPAND_* variables (bug #948001).
 
+* etc-update: Support Debian.
+
+* etc-update: Support Artix Linux (bug #864565).
+
+* save-build-env: Strip out MAKEOPTS and NINJAOPTS (bug #736794, bug #914441).
+
+* save-build-env: Strip out non-reproducible variables (bug #914441).
+
 Bug fixes:
 
 * EAPI 9: Fix internal use of assert.
@@ -42,6 +50,8 @@ Bug fixes:
 
 * man: make.conf: Document that FEATURES="pkgdir-index-trusted" is enabled
   by default (bug #889300).
+
+* man: make.conf: Document that INSTALL_MASK supports negations (bug #651214).
 
 Cleanups:
 
