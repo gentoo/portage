@@ -185,6 +185,43 @@ class ConfigTestCase(TestCase):
             portage.util.noiselimit = 0
             playground.cleanup()
 
+    def testLicenseManagerProfile(self):
+        profile_config = {
+            "package.license": self._testLicenseManagerPackageLicense,
+        }
+
+        playground = ResolverPlayground(profile=profile_config)
+        settings = config(clone=playground.settings)
+        try:
+            portage.util.noiselimit = -2
+
+            lic_man = LicenseManager(settings._locations_manager)
+            self._testLicenseManager(lic_man)
+
+        finally:
+            portage.util.noiselimit = 0
+            playground.cleanup()
+
+    def testLicenseManagerMixed(self):
+        profile_config = {
+            "package.license": self._testLicenseManagerPackageLicense[:4],
+        }
+        user_config = {
+            "package.license": self._testLicenseManagerPackageLicense[4:],
+        }
+
+        playground = ResolverPlayground(user_config=user_config, profile=profile_config)
+        settings = config(clone=playground.settings)
+        try:
+            portage.util.noiselimit = -2
+
+            lic_man = LicenseManager(settings._locations_manager)
+            self._testLicenseManager(lic_man)
+
+        finally:
+            portage.util.noiselimit = 0
+            playground.cleanup()
+
     def testPackageMaskOrder(self):
         ebuilds = {
             "dev-libs/A-1": {},
