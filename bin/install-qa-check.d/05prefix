@@ -43,7 +43,8 @@ install_qa_check_prefix() {
 	# this is hell expensive, but how else?
 	# PREFIX LOCAL: use grep -I to skip binary files, allow POSIX space
 	#               between # and !
-	find "${ED}" -executable \! -type d -print0 \
+	#               use -L so we follow links, bug #826986
+	find -L "${ED}" -executable \! -type d -print0 \
 			| xargs -0 grep -H -n -m1 -I '^# \?!' \
 			| while read f ;
 	do
