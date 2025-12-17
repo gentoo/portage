@@ -847,8 +847,7 @@ class config:
 
             # Read license_groups and optionally license_groups and package.license from user config
             self._license_manager = LicenseManager(
-                locations_manager.profile_locations,
-                abs_user_config,
+                locations_manager,
                 user_config=local_config,
             )
             # Extract '*/*' entries from package.license

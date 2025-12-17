@@ -7,6 +7,7 @@ import portage
 from portage import os, shutil, _encodings
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom
+from portage.package.ebuild._config.LocationsManager import LocationsManager
 from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.tests import TestCase
@@ -95,17 +96,13 @@ class ConfigTestCase(TestCase):
         }
 
         playground = ResolverPlayground(user_config=user_config)
+        settings = config(clone=playground.settings)
         try:
             portage.util.noiselimit = -2
 
-            license_group_locations = (
-                os.path.join(
-                    playground.settings.repositories["test_repo"].location, "profiles"
-                ),
-            )
             pkg_license = os.path.join(playground.eroot, "etc", "portage")
 
-            lic_man = LicenseManager(license_group_locations, pkg_license)
+            lic_man = LicenseManager(settings._locations_manager, pkg_license)
 
             self.assertEqual(lic_man._accept_license_str, None)
             self.assertEqual(lic_man._accept_license, None)
