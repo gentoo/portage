@@ -136,7 +136,7 @@ class LicenseManager:
                     accept_license.extend(x)
         return accept_license
 
-    def get_prunned_accept_license(self, cpv, use, lic, slot, repo):
+    def get_pruned_accept_license(self, cpv, use, lic, slot, repo):
         """
         Generate a pruned version of ACCEPT_LICENSE, by intersection with
         LICENSE. This is required since otherwise ACCEPT_LICENSE might be

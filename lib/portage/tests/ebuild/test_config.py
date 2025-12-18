@@ -116,25 +116,25 @@ class ConfigTestCase(TestCase):
         )
 
         self.assertEqual(
-            lic_man.get_prunned_accept_license("dev-libs/B-1", [], "TEST", "0", None),
+            lic_man.get_pruned_accept_license("dev-libs/B-1", [], "TEST", "0", None),
             "TEST",
         )
         self.assertEqual(
-            lic_man.get_prunned_accept_license("dev-libs/A-1", [], "-TEST2", "0", None),
+            lic_man.get_pruned_accept_license("dev-libs/A-1", [], "-TEST2", "0", None),
             "",
         )
         self.assertEqual(
-            lic_man.get_prunned_accept_license(
+            lic_man.get_pruned_accept_license(
                 "dev-libs/A-2", [], "|| ( TEST TEST2 )", "0", None
             ),
             "TEST",
         )
         self.assertEqual(
-            lic_man.get_prunned_accept_license("dev-libs/C-1", [], "TEST5", "0", None),
+            lic_man.get_pruned_accept_license("dev-libs/C-1", [], "TEST5", "0", None),
             "TEST5",
         )
         self.assertEqual(
-            lic_man.get_prunned_accept_license("dev-libs/C-2", [], "TEST2", "0", None),
+            lic_man.get_pruned_accept_license("dev-libs/C-2", [], "TEST2", "0", None),
             "",
         )
 

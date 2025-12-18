@@ -1676,7 +1676,7 @@ class config:
                 use = frozenset(settings["PORTAGE_USE"].split())
 
             values["ACCEPT_LICENSE"] = (
-                settings._license_manager.get_prunned_accept_license(
+                settings._license_manager.get_pruned_accept_license(
                     settings.mycpv,
                     use,
                     settings.get("LICENSE", ""),
