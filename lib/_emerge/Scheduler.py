@@ -447,9 +447,9 @@ class Scheduler(PollScheduler):
         @rtype: bool
         @return: True if background mode is enabled, False otherwise.
         """
+        parallel_jobs = self._max_jobs is True or self._max_jobs > 1
         background = (
-            self._max_jobs is True
-            or self._max_jobs > 1
+            parallel_jobs
             or "--quiet" in self.myopts
             or self.myopts.get("--quiet-build") == "y"
         ) and not bool(self._opts_no_background.intersection(self.myopts))
@@ -476,7 +476,7 @@ class Scheduler(PollScheduler):
                     level=logging.INFO,
                     noiselevel=-1,
                 )
-                if self._max_jobs is True or self._max_jobs > 1:
+                if parallel_jobs:
                     self._set_max_jobs(1)
                     writemsg_level(
                         ">>> Setting --jobs=1 due "
