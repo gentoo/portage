@@ -186,11 +186,18 @@ class ConfigTestCase(TestCase):
             playground.cleanup()
 
     def testLicenseManagerProfile(self):
-        profile_config = {
+        repo_configs = {
+            "test_repo": {
+                "layout.conf": ("profile-formats = profile-license",),
+            }
+        }
+        profile_configs = {
             "package.license": self._testLicenseManagerPackageLicense,
         }
 
-        playground = ResolverPlayground(profile=profile_config)
+        playground = ResolverPlayground(
+            repo_configs=repo_configs, profile=profile_configs
+        )
         settings = config(clone=playground.settings)
         try:
             portage.util.noiselimit = -2
@@ -203,14 +210,21 @@ class ConfigTestCase(TestCase):
             playground.cleanup()
 
     def testLicenseManagerMixed(self):
-        profile_config = {
+        profile_configs = {
             "package.license": self._testLicenseManagerPackageLicense[:4],
         }
-        user_config = {
+        user_configs = {
             "package.license": self._testLicenseManagerPackageLicense[4:],
         }
+        repo_configs = {
+            "test_repo": {
+                "layout.conf": ("profile-formats = profile-license",),
+            }
+        }
 
-        playground = ResolverPlayground(user_config=user_config, profile=profile_config)
+        playground = ResolverPlayground(
+            user_config=user_configs, repo_configs=repo_configs, profile=profile_configs
+        )
         settings = config(clone=playground.settings)
         try:
             portage.util.noiselimit = -2

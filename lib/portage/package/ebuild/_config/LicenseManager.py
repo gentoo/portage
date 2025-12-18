@@ -28,8 +28,9 @@ class LicenseManager:
         self._read_license_groups(license_group_locations)
 
         if user_config:
-            for profile in locations_manager.profiles:
-                self._read_user_config(profile)
+            for profile in locations_manager.profiles_complex:
+                if "profile-license" in profile.profile_formats:
+                    self._read_user_config(profile.location)
             self._read_user_config(locations_manager.abs_user_config)
 
     def _read_user_config(self, abs_user_config):
