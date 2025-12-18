@@ -446,11 +446,10 @@ class Scheduler(PollScheduler):
         @return: True if background mode is enabled, False otherwise.
         """
         parallel_jobs = self._max_jobs is True or self._max_jobs > 1
-        background = (
-            parallel_jobs
-            or "--quiet" in self.myopts
-            or self.myopts.get("--quiet-build") == "y"
-        ) and not bool(self._opts_no_background.intersection(self.myopts))
+        quiet = "--quiet" in self.myopts or self.myopts.get("--quiet-build") == "y"
+        background = (parallel_jobs or quiet) and not bool(
+            self._opts_no_background.intersection(self.myopts)
+        )
 
         if background:
             interactive_tasks = self._get_interactive_tasks()
@@ -489,6 +488,10 @@ class Scheduler(PollScheduler):
                         level=logging.INFO,
                         noiselevel=-1,
                     )
+            elif len(self._mergelist) <= 1 and not quiet:
+                self._set_max_jobs(1)
+                background = False
+
         self._status_display.quiet = not background or (
             "--quiet" in self.myopts and "--verbose" not in self.myopts
         )
