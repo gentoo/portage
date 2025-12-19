@@ -1908,7 +1908,7 @@ class Scheduler(PollScheduler):
                         required_free_inodes = scale_to_jobs(required_free_inodes)
 
                         if vfs_stat.f_favail < required_free_inodes:
-                            if not self._warned_tmpdir_free_idnoes:
+                            if not self._warned_tmpdir_free_inodes:
                                 msg = f"--- {tmpdir} has not enough free inodes, emerge job parallelism reduced. free: {vfs_stat.f_favail} inodes, required: {required_free_inodes} inodes"
                                 portage.writemsg_stdout(
                                     colorize("WARN", f"\n{msg}\n"), noiselevel=-1
