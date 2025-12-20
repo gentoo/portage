@@ -1025,12 +1025,14 @@ def parse_opts(tmpcmdline, silent=False):
             try:
                 jobs = int(myoptions.jobs)
             except ValueError:
-                jobs = -1
+                jobs = None
 
-        if jobs is not True and jobs < 1:
-            jobs = None
-            if not silent:
-                parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
+        if jobs is None and not silent:
+            parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
+        elif jobs == 0:
+            from portage.util.cpuinfo import get_cpu_count
+
+            jobs = get_cpu_count()
 
         myoptions.jobs = jobs
 

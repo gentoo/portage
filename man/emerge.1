@@ -684,7 +684,8 @@ in the \fBmake.conf\fR(5) man page.
 .BR \-j\ [JOBS] ", "  \-\-jobs[=JOBS]
 Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can
-run simultaneously. Also see the related \fB\-\-load\-average\fR option.
+run simultaneously.  If 0 is given as argument, emerge will limit the jobs to
+the number of processors.  Also see the related \fB\-\-load\-average\fR option.
 Similarly to the \-\-quiet\-build option, the \-\-jobs option causes all
 build output to be redirected to logs.
 Note that interactive packages currently force a setting
