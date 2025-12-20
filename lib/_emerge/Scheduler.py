@@ -229,9 +229,7 @@ class Scheduler(PollScheduler):
             xterm_titles=("notitles" not in settings.features)
         )
         self._max_load = myopts.get("--load-average")
-        max_jobs = myopts.get("--jobs")
-        if max_jobs is None:
-            max_jobs = 1
+        max_jobs = myopts.get("--jobs", 1)
         self._set_max_jobs(max_jobs)
         self._running_root = trees[trees._running_eroot]["root_config"]
         self._jobs_tmpdir_require_free_gb = myopts.get("--jobs-tmpdir-require-free-gb")
