@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
@@ -27,7 +27,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
-from portage.util.path import first_existing
+from portage.util.path import first_existing, get_fs_type_cached
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
@@ -1901,6 +1901,8 @@ class Scheduler(PollScheduler):
                     if (
                         self._jobs_tmpdir_require_free_kilo_inodes
                         and self._jobs_tmpdir_require_free_kilo_inodes != 0
+                        # Only check free inode count on filesystems with a static inode count
+                        and get_fs_type_cached(tmpdir) in ("ext4", "ext3", "ext2")
                     ):
                         required_free_inodes = (
                             self._jobs_tmpdir_require_free_kilo_inodes * 1000
