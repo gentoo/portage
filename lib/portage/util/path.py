@@ -1,12 +1,8 @@
-# Copyright 2014-2025 Gentoo Authors
+# Copyright 2014-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import os
-import platform
 
-from functools import lru_cache
-from typing import Optional
 from portage import os
 
 
@@ -54,36 +50,3 @@ def iter_parents(path):
         if not path:
             break
         yield path
-
-
-@lru_cache(32)
-def get_fs_type_cached(path: str) -> Optional[str]:
-    return get_fs_type(path)
-
-
-def get_fs_type(path: str) -> Optional[str]:
-    if platform.system() == "Linux":
-        return get_fs_type_linux(path)
-
-    return None
-
-
-def get_fs_type_linux(path: str) -> Optional[str]:
-    real_path = os.path.realpath(path)
-    best_match_len = -1
-    fs_type = None
-
-    with open("/proc/mounts") as f:
-        for line in f:
-            parts = line.split()
-            mount_point = parts[1]
-
-            if not real_path.startswith(mount_point):
-                continue
-
-            mount_point_len = len(mount_point)
-            if mount_point_len > best_match_len:
-                best_match_len = mount_point_len
-                fs_type = parts[2]
-
-    return fs_type

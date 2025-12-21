@@ -1,4 +1,4 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
@@ -27,7 +27,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
-from portage.util.path import first_existing, get_fs_type_cached
+from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
@@ -237,13 +237,6 @@ class Scheduler(PollScheduler):
             # dev-lang/rust-1.77.1: ~16 GiB
             # www-client/chromium-126.0.6478.57: ~18 GiB
             self._jobs_tmpdir_require_free_gb = 18
-        self._jobs_tmpdir_require_free_kilo_inodes = myopts.get(
-            "--jobs-tmpdir-require-free-kilo-inodes"
-        )
-        if not self._jobs_tmpdir_require_free_kilo_inodes:
-            # dev-lang/rust-1.77.1: ~ 450k inodes
-            # www-client/chromium-126.0.6478.57: ~1011K
-            self._jobs_tmpdir_require_free_kilo_inodes = 1100
         self.edebug = 0
         if settings.get("PORTAGE_DEBUG", "") == "1":
             self.edebug = 1
@@ -1829,7 +1822,6 @@ class Scheduler(PollScheduler):
         return self._jobs
 
     _warned_tmpdir_free_space = False
-    _warned_tmpdir_free_inodes = False
 
     def _can_add_job(self):
         if not super()._can_add_job():
@@ -1841,10 +1833,7 @@ class Scheduler(PollScheduler):
             # jobs and no jobs in the _merge_wait_queue.
             return True
 
-        if (
-            self._jobs_tmpdir_require_free_gb is not None
-            or self._jobs_tmpdir_require_free_kilo_inodes is not None
-        ) and hasattr(os, "statvfs"):
+        if (self._jobs_tmpdir_require_free_gb is not None) and hasattr(os, "statvfs"):
             tmpdirs = set()
             for root in self.trees:
                 settings = self.trees[root]["root_config"].settings
@@ -1894,28 +1883,6 @@ class Scheduler(PollScheduler):
                                 self._logger.log(msg)
 
                                 self._warned_tmpdir_free_space = True
-                            return False
-
-                    if (
-                        self._jobs_tmpdir_require_free_kilo_inodes
-                        and self._jobs_tmpdir_require_free_kilo_inodes != 0
-                        # Only check free inode count on filesystems with a static inode count
-                        and get_fs_type_cached(tmpdir) in ("ext4", "ext3", "ext2")
-                    ):
-                        required_free_inodes = (
-                            self._jobs_tmpdir_require_free_kilo_inodes * 1000
-                        )
-                        required_free_inodes = scale_to_jobs(required_free_inodes)
-
-                        if vfs_stat.f_favail < required_free_inodes:
-                            if not self._warned_tmpdir_free_inodes:
-                                msg = f"--- {tmpdir} has not enough free inodes, emerge job parallelism reduced. free: {vfs_stat.f_favail} inodes, required: {required_free_inodes} inodes"
-                                portage.writemsg_stdout(
-                                    colorize("WARN", f"\n{msg}\n"), noiselevel=-1
-                                )
-                                self._logger.log(msg)
-
-                                self._warned_tmpdir_free_inodes = True
                             return False
 
         return True
