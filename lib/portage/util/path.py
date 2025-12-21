@@ -73,7 +73,7 @@ def get_fs_type_linux(path: str) -> Optional[str]:
     best_match_len = -1
     fs_type = None
 
-    with open("/proc/mounts", "r") as f:
+    with open("/proc/mounts") as f:
         for line in f:
             parts = line.split()
             mount_point = parts[1]
