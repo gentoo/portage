@@ -15,7 +15,7 @@ def show_lru_cache_info():
         portage.process._encoded_length: "encoded_length",
         portage.versions.catpkgsplit: "catpkgsplit",
         portage.versions.vercmp: "vercmp",
-        portate.util.path.get_fs_type_cached: "get_fs_type_cached",
+        portage.util.path.get_fs_type_cached: "get_fs_type_cached",
     }
 
     print("Portage @lru_cache information")
