@@ -2089,11 +2089,17 @@ class Scheduler(PollScheduler):
             return os.read(self._jobserver_fd, 1)
         except BlockingIOError:
             raise
-        except OSError:
-            # If something failed (say, jobserver died), just continue without it.
-            # TODO: print a warning
+        except OSError as exception:
+            # If something failed (say, jobserver died), disable its usage
+            # and terminate the build (as sub-builds will likely fail too).
             os.close(self._jobserver_fd)
             self._jobserver_fd = None
+            out = portage.output.EOutput()
+            print()
+            out.eerror("")
+            out.eerror(f"Jobserver I/O failed, terminating: {exception}")
+            out.eerror("")
+            self.terminate()
             return b""
 
     def _release_job_token(self, task_id: int) -> None:
@@ -2105,11 +2111,16 @@ class Scheduler(PollScheduler):
         if token is not None and self._jobserver_fd is not None:
             try:
                 os.write(self._jobserver_fd, token)
-            except OSError:
-                # If something failed (say, jobserver died), just continue without it.
-                # TODO: print a warning
+            except OSError as exception:
+                # If something failed (say, jobserver died), disable its usage
+                # and terminate the build (as sub-builds will likely fail too).
                 os.close(self._jobserver_fd)
                 self._jobserver_fd = None
+                out = portage.output.EOutput()
+                out.eerror("")
+                out.eerror(f"Jobserver I/O failed, terminating: {exception}")
+                out.eerror("")
+                self.terminate()
 
     def _unblock_jobs(self) -> None:
         self._sched_iface.remove_reader(self._jobserver_fd)
