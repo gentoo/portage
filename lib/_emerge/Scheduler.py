@@ -1620,8 +1620,17 @@ class Scheduler(PollScheduler):
                         # TODO: print a warning?
                         jobserver_path = None
             if jobserver_path is not None:
-                # TODO: print a warning otherwise?
-                self._jobserver_fd = os.open(jobserver_path, os.O_RDWR | os.O_NONBLOCK)
+                try:
+                    self._jobserver_fd = os.open(
+                        jobserver_path, os.O_RDWR | os.O_NONBLOCK
+                    )
+                except OSError as exception:
+                    out = portage.output.EOutput()
+                    print()
+                    out.eerror("")
+                    out.eerror(f"Unable to connect to jobserver: {exception}")
+                    out.eerror("")
+                    self.terminate()
 
         if (
             self._max_load is not None
