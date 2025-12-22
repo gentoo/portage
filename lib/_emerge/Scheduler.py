@@ -248,21 +248,6 @@ class Scheduler(PollScheduler):
         features = self.settings.features
         self._jobserver_fd = None
         self._jobserver_tokens = {}
-        if "jobserver-token" in features:
-            makeflags = self.settings.get("MAKEFLAGS", "").split()
-            jobserver_path = None
-            for flag in makeflags:
-                if flag.startswith("--jobserver-auth="):
-                    flag = flag.removeprefix("--jobserver-auth=")
-                    if flag.startswith("fifo:"):
-                        jobserver_path = flag.removeprefix("fifo:")
-                    else:
-                        # TODO: print a warning?
-                        jobserver_path = None
-            if jobserver_path is not None:
-                # TODO: print a warning otherwise?
-                # TODO: where to close it?
-                self._jobserver_fd = os.open(jobserver_path, os.O_RDWR | os.O_NONBLOCK)
 
         self._fetch_log = os.path.join(
             _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
@@ -1623,6 +1608,21 @@ class Scheduler(PollScheduler):
     def _main_loop(self):
         self._main_exit = self._event_loop.create_future()
 
+        if "jobserver-token" in self.settings.features:
+            makeflags = self.settings.get("MAKEFLAGS", "").split()
+            jobserver_path = None
+            for flag in makeflags:
+                if flag.startswith("--jobserver-auth="):
+                    flag = flag.removeprefix("--jobserver-auth=")
+                    if flag.startswith("fifo:"):
+                        jobserver_path = flag.removeprefix("fifo:")
+                    else:
+                        # TODO: print a warning?
+                        jobserver_path = None
+            if jobserver_path is not None:
+                # TODO: print a warning otherwise?
+                self._jobserver_fd = os.open(jobserver_path, os.O_RDWR | os.O_NONBLOCK)
+
         if (
             self._max_load is not None
             and self._loadavg_latency is not None
@@ -1714,6 +1714,9 @@ class Scheduler(PollScheduler):
         if self._schedule_merge_wakeup_task is not None:
             self._schedule_merge_wakeup_task.cancel()
             self._schedule_merge_wakeup_task = None
+        if self._jobserver_fd is not None:
+            os.close(self._jobserver_fd)
+            self._jobserver_fd = None
 
     def _choose_pkg(self):
         """
@@ -2089,6 +2092,7 @@ class Scheduler(PollScheduler):
         except OSError:
             # If something failed (say, jobserver died), just continue without it.
             # TODO: print a warning
+            os.close(self._jobserver_fd)
             self._jobserver_fd = None
             return b""
 
@@ -2104,6 +2108,7 @@ class Scheduler(PollScheduler):
             except OSError:
                 # If something failed (say, jobserver died), just continue without it.
                 # TODO: print a warning
+                os.close(self._jobserver_fd)
                 self._jobserver_fd = None
 
     def _unblock_jobs(self) -> None:
