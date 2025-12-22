@@ -1613,12 +1613,14 @@ class Scheduler(PollScheduler):
             jobserver_path = None
             for flag in makeflags:
                 if flag.startswith("--jobserver-auth="):
-                    flag = flag.removeprefix("--jobserver-auth=")
-                    if flag.startswith("fifo:"):
-                        jobserver_path = flag.removeprefix("fifo:")
+                    value = flag.removeprefix("--jobserver-auth=")
+                    if value.startswith("fifo:"):
+                        jobserver_path = value.removeprefix("fifo:")
                     else:
-                        # TODO: print a warning?
                         jobserver_path = None
+                        print()
+                        out = portage.output.EOutput()
+                        out.ewarn(f"Unsupported jobserver type: {flag}")
             if jobserver_path is not None:
                 try:
                     self._jobserver_fd = os.open(
