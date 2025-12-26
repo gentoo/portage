@@ -1547,7 +1547,7 @@ class gpkg:
         manifest: add to manifest
         """
         if checksum_info.gpg_output is None:
-            raise GPGException("GnuPG signature does not exists")
+            raise GPGException("GnuPG signature does not exist")
 
         signature = io.BytesIO(checksum_info.gpg_output)
         signature_tarinfo = tarfile.TarInfo(f"{tarinfo.name}.sig")
