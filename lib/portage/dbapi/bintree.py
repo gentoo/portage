@@ -428,7 +428,7 @@ class bindbapi(fakedbapi):
                 extractor.start()
                 await extractor.async_wait()
                 if extractor.returncode != os.EX_OK:
-                    raise PortageException(f"Error Extracting '{pkg_path}'")
+                    raise PortageException(f"Error extracting '{pkg_path}'")
             elif binpkg_format == "gpkg":
                 gpkg_args = {}
                 repoconfig = self.bintree.get_local_repo(cpv)
