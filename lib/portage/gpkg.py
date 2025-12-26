@@ -555,11 +555,16 @@ class checksum_helper:
                 trust_signature = True
 
         if (not good_signature) or (not trust_signature):
-            writemsg(
-                colorize(
-                    "BAD", f"!!!\n{self.gpg_result.decode('UTF-8', errors='replace')}"
-                )
+            msg = ["Binary package is not usable:"]
+            msg.extend(
+                "\t" + line
+                for line in self.gpg_result.decode(
+                    "UTF-8", errors="replace"
+                ).splitlines()
             )
+            out = portage.output.EOutput()
+            [out.eerror(line) for line in msg]
+
             raise InvalidSignature("GPG verify failed")
 
     def update(self, data):
@@ -599,18 +604,25 @@ class checksum_helper:
                 if self.gpg_operation == checksum_helper.VERIFY:
                     self._check_gpg_status(self.gpg_result)
             else:
-                writemsg(
-                    colorize(
-                        "BAD",
-                        f"!!!\n{self.gpg_result.decode('UTF-8', errors='replace')}",
-                    )
+                msg = ["Binary package is not usable:"]
+                msg.extend(
+                    "\t" + line
+                    for line in self.gpg_result.decode(
+                        "UTF-8", errors="replace"
+                    ).splitlines()
                 )
+                out = portage.output.EOutput()
+                [out.eerror(line) for line in msg]
+
                 if self.gpg_operation == checksum_helper.SIGNING:
-                    writemsg(
-                        colorize(
-                            "BAD", self.gpg_output.decode("UTF-8", errors="replace")
-                        )
+                    msg = ["Binary package is not usable (signing failed):"]
+                    msg.extend(
+                        "\t" + line
+                        for line in self.gpg_output.decode(
+                            "UTF-8", errors="replace"
+                        ).splitlines()
                     )
+                    [out.eerror(line) for line in msg]
                     raise GPGException("GPG signing failed")
                 elif self.gpg_operation == checksum_helper.VERIFY:
                     raise InvalidSignature("GPG verify failed")

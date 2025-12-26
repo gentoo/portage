@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
+import io
 import gc
 import gzip
 import logging
@@ -1001,19 +1002,35 @@ class Scheduler(PollScheduler):
                     if fetched and bintree.get_local_repo_location(x.cpv):
                         os.rename(fetched, fetcher.pkg_allocated_path)
                     elif fetched:
-                        if not bintree.inject(
-                            x.cpv,
-                            current_pkg_path=fetched,
-                            allocated_pkg_path=fetcher.pkg_allocated_path,
-                        ):
-                            eerror(
-                                "Binary package is not usable",
-                                phase="pretend",
-                                key=x.cpv,
+                        injected_pkg = None
+                        stdout_orig = sys.stdout
+                        stderr_orig = sys.stderr
+                        out = io.StringIO()
+                        try:
+                            sys.stdout = out
+                            sys.stderr = out
+
+                            injected_pkg = bintree.inject(
+                                x.cpv,
+                                current_pkg_path=fetched,
+                                allocated_pkg_path=fetcher.pkg_allocated_path,
                             )
-                            failures += 1
-                            self._record_pkg_failure(x, settings, 1)
-                            continue
+                        finally:
+                            sys.stdout = stdout_orig
+                            sys.stderr = stderr_orig
+
+                        output_value = out.getvalue()
+                        if output_value:
+                            if injected_pkg is None:
+                                msg = ["Binary package is not usable:"]
+                                msg.extend(
+                                    "\t" + line for line in output_value.splitlines()
+                                )
+                                self._elog("eerror", msg)
+
+                        failures += 1
+                        self._record_pkg_failure(x, settings, 1)
+                        continue
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
