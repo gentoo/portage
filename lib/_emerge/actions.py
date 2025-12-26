@@ -602,7 +602,7 @@ def action_build(
                     )
                     return 1
 
-                # unlock GPG if needed
+                # Unlock GnuPG if needed
                 if (
                     need_write_bindb
                     and (eroot in ebuild_eroots)
@@ -627,7 +627,7 @@ def action_build(
                             )
                             return 1
 
-                    portage.writemsg_stdout(">>> Unlocking GPG... ")
+                    portage.writemsg_stdout(">>> Unlocking GnuPG... ")
                     sys.stdout.flush()
                     gpg = GPG(trees[eroot]["root_config"].settings)
                     try:

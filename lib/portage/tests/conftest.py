@@ -67,7 +67,7 @@ def prepare_environment():
         os.environ["PATH"] = ":".join(path)
 
     try:
-        # Copy GPG test keys to temporary directory
+        # Copy GnuPG test keys to temporary directory
         gpg_path = tempfile.mkdtemp(prefix="gpg_")
 
         shutil.copytree(

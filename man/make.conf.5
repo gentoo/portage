@@ -157,7 +157,7 @@ This variable is used to add additional arguments only for the specified \
 BINPKG_COMPRESS_FLAGS_ZSTD="-9"
 .fi
 .TP
-\fBBINPKG_GPG_SIGNING_BASE_COMMAND\fR = \fI"GPG command and arguments \
+\fBBINPKG_GPG_SIGNING_BASE_COMMAND\fR = \fI"GnuPG command and arguments \
 [PORTAGE_CONFIG]"\fR
 The base command will be used for all signing operations.
 Portage will replace \fB[PORTAGE_CONFIG]\fR under different operations.
@@ -167,20 +167,20 @@ Defaults to "/usr/bin/flock /run/lock/portage-binpkg-gpg.lock /usr/bin/gpg \
 --sign --armor [PORTAGE_CONFIG]".
 .br
 .TP
-\fBBINPKG_GPG_SIGNING_DIGEST=\fR = \fI"GPG supported digest"\fR
+\fBBINPKG_GPG_SIGNING_DIGEST=\fR = \fI"GnuPG supported digest"\fR
 The digest that will be used for signature.
 .br
 Defaults to "SHA512"
 .br
 .TP
 \fBBINPKG_GPG_SIGNING_GPG_HOME\fR = \fI[path]\fR
-The GPG home where the signing private key located.
+The GnuPG home where the signing private key located.
 .br
 Defaults to "/root/.gnupg"
 .br
 .TP
-\fBBINPKG_GPG_SIGNING_KEY\fR = \fI"GPG key ID"\fR
-GPG key ID used to sign binary packages, must exists in \
+\fBBINPKG_GPG_SIGNING_KEY\fR = \fI"GnuPG key ID"\fR
+GnuPG key ID used to sign binary packages, must exists in \
 \fBBINPKG_GPG_SIGNING_GPG_HOME\fR.
 .br
 Defaults to ""
@@ -188,7 +188,7 @@ Defaults to ""
 Example: "0x40DCF18E97150795!"
 .br
 .TP
-\fBBINPKG_GPG_VERIFY_BASE_COMMAND=\fR = \fI"GPG command and arguments"\fR
+\fBBINPKG_GPG_VERIFY_BASE_COMMAND=\fR = \fI"GnuPG command and arguments"\fR
 The base command will be used for all verify operations.
 Portage will replace \fB[PORTAGE_CONFIG]\fR and \fB[SIGNATURE]\fR under \
 different operations.
@@ -199,7 +199,7 @@ Defaults to "/usr/bin/gpg --verify --batch --no-tty --no-auto-check-trustdb \
 .br
 .TP
 \fBBINPKG_GPG_VERIFY_GPG_HOME\fR = \fI[path]\fR
-The GPG home where the trusted keys located. Please make sure the target \
+The GnuPG home where the trusted keys located. Please make sure the target \
 directory is globally readable, as the user will be dropped to \fBnobody\fR \
 during verification.
 .br
@@ -358,7 +358,7 @@ strips (or splits) them before installing.
 \fBbinpkg\-dostrip\fR must be enabled for \fBinstallsources\fR to work.
 .TP
 .B binpkg-ignore-signature
-This will disable GPG signature check for all binary packages. Enable this
+This will disable GnuPG signature checks for all binary packages. Enabling this
 could be dangerous if you get binary packages from remote site or use third
 party packages.  If enabled, takes precedence over \fBbinrepos.conf\fR.
 .TP
@@ -395,13 +395,13 @@ It is also possible to remove packages manually, and then run
 This feature is enabled by default.
 .TP
 .B binpkg-request-signature
-Binary packages are requested to be signed by trusted GPG signature.
-Portage will reject to process any binary package without a valid GPG
+Binary packages are requested to be signed by a trusted GnuPG signature.
+Portage will reject to process any binary package without a valid GnuPG
 signature. The verify command is defined in \fBBINPKG_GPG_VERIFY_COMMAND\fR
 variable.  If enabled, takes precedence over \fBbinrepos.conf\fR.
 .TP
 .B binpkg-signing
-Binary packages will be signed by given GPG command. The signing command
+Binary packages will be signed by given GnuPG command. The signing command
 is defined in \fBBINPKG_GPG_SIGNING_COMMAND\fR variable.
 .TP
 .B buildpkg
@@ -535,8 +535,8 @@ Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
 \fBmake.conf\fR(5) for more information.
 .TP
 .B gpg-keepalive
-Run GPG unlock command every 5 mins to avoid the passphrase expired.
-If your GPG is auto unlocked on login, you do not need this.
+Run GnuPG unlock command every 5 mins to avoid passphrase expiry.
+If your GnuPG keyring is auto unlocked on login, you do not need this.
 .TP
 .B home\-dir\-template\-copy
 As part of the ebuild environment setup, copy the PORTAGE_USERNAME (default
@@ -765,7 +765,7 @@ See also \fIsuidctl\fR below.
 .TP
 .B sign
 When committing work to cvs with \fBrepoman\fR(1), sign the Manifest with
-a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in
+a GnuPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in
 \fBmake.conf\fR(5).
 .TP
 .B skiprocheck
@@ -867,7 +867,7 @@ operation.
 Warn if portage is about to execute a child process with a large environment.
 .TP
 .B webrsync-gpg
-Enable GPG verification when using \fIemerge\-webrsync\fR. This feature is
+Enable GnuPG verification when using \fIemerge\-webrsync\fR. This feature is
 deprecated and has been replaced by the \fBrepos.conf\fR
 \fIsync\-webrsync\-verify\-signature\fR setting, see \fBportage\fR(5).
 .TP
