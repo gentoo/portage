@@ -475,7 +475,7 @@ class checksum_helper:
                 except OSError:
                     pass
             else:
-                raise CommandNotFound("GPG signing command is not set")
+                raise CommandNotFound("GnuPG signing command is not set")
 
             self.gpg_proc = subprocess.Popen(
                 gpg_signing_command,
@@ -495,7 +495,7 @@ class checksum_helper:
             gpg_home = self.settings.get("BINPKG_GPG_VERIFY_GPG_HOME")
 
             if not gpg_verify_base_command:
-                raise CommandNotFound("GPG verify command is not set")
+                raise CommandNotFound("GnuPG verify command is not set")
 
             gpg_verify_command = gpg_verify_base_command.replace(
                 "[PORTAGE_CONFIG]", f"--homedir {gpg_home} "
@@ -565,7 +565,7 @@ class checksum_helper:
             out = portage.output.EOutput()
             [out.eerror(line) for line in msg]
 
-            raise InvalidSignature("GPG verify failed")
+            raise InvalidSignature("GnuPG verify failed")
 
     def update(self, data):
         """
@@ -623,9 +623,9 @@ class checksum_helper:
                         ).splitlines()
                     )
                     [out.eerror(line) for line in msg]
-                    raise GPGException("GPG signing failed")
+                    raise GPGException("GnuPG signing failed")
                 elif self.gpg_operation == checksum_helper.VERIFY:
-                    raise InvalidSignature("GPG verify failed")
+                    raise InvalidSignature("GnuPG verification failed")
 
 
 class tar_safe_extract:
@@ -1547,7 +1547,7 @@ class gpkg:
         manifest: add to manifest
         """
         if checksum_info.gpg_output is None:
-            raise GPGException("GPG signature is not exists")
+            raise GPGException("GnuPG signature does not exists")
 
         signature = io.BytesIO(checksum_info.gpg_output)
         signature_tarinfo = tarfile.TarInfo(f"{tarinfo.name}.sig")
