@@ -53,7 +53,7 @@ class tar_stream_writer:
     One-pass helper function that return a file-like object
     for create a file inside of a tar container.
 
-    This helper allowed streaming add a new file to tar
+    This helper allows streaming add a new file to tar
     without prior knows the file size.
 
     With optional call and pipe data through external program,
@@ -149,7 +149,7 @@ class tar_stream_writer:
 
     def kill(self):
         """
-        kill external program if any error happened in python
+        Kill external program if any error happened in Python
         """
         if self.proc is not None:
             self.killed = True
@@ -162,7 +162,7 @@ class tar_stream_writer:
 
     def _cmd_read_thread(self):
         """
-        Use thread to avoid block.
+        Use a thread to avoid block.
         Read stdout from external compressor, then write to the file
         in container, and to checksum helper if needed.
         """
@@ -176,7 +176,7 @@ class tar_stream_writer:
                 self.proc.stdout.close()
                 writemsg(colorize("BAD", f"GPKG subprocess failed: {self.cmd} \n"))
                 if not self.killed:
-                    # Do not raise error if killed by portage
+                    # Do not raise error if killed by Portage
                     raise CompressorOperationFailed("PIPE broken")
             try:
                 self.container.fileobj.write(buffer)
@@ -210,12 +210,12 @@ class tar_stream_writer:
 
     def close(self):
         """
-        Update the new file tar header when close
+        Update the new file's tar header on close
         """
         if self.closed:
             return
 
-        # Wait compressor exit
+        # Wait for compressor exit
         if self.proc is not None:
             self.proc.stdin.close()
             if self.proc.wait() != os.EX_OK:
@@ -260,10 +260,10 @@ class tar_stream_writer:
 
 class tar_stream_reader:
     """
-    helper function that return a file-like object
-    for read a file inside of a tar container.
+    Helper function that returns a file-like object
+    for reading a file inside of a tar container.
 
-    This helper allowed transparently streaming read a compressed
+    This helper allows transparently streaming read a compressed
     file in tar.
 
     With optional call and pipe compressed data through external
@@ -326,7 +326,7 @@ class tar_stream_reader:
 
     def _write_thread(self):
         """
-        writing thread to avoid full buffer blocking
+        Writing thread to avoid full buffer blocking
         """
         try:
             while True:
@@ -350,7 +350,7 @@ class tar_stream_reader:
 
     def kill(self):
         """
-        kill external program if any error happened in python
+        Kill external program if any error happened in python
         """
         if self.proc is not None:
             self.killed = True
@@ -363,7 +363,7 @@ class tar_stream_reader:
 
     def read(self, bufsize=-1):
         """
-        return decompressor stdout data
+        Return decompressor stdout data
         """
         if self.closed:
             raise OSError("writer closed")
@@ -372,7 +372,7 @@ class tar_stream_reader:
 
     def close(self):
         """
-        wait external program complete and do clean up
+        Wait external program complete and do cleanup
         """
         if self.closed:
             return
@@ -569,7 +569,7 @@ class checksum_helper:
 
     def update(self, data):
         """
-        Write data to hash libs and GnuPG stdin.
+        Write data to both hash libs and GnuPG stdin.
         """
         for c in self.libs:
             self.libs[c].update(data)
@@ -579,7 +579,7 @@ class checksum_helper:
 
     def finish(self):
         """
-        Tell GnuPG file is EOF, and get results, then do clean up.
+        Tell GnuPG that the file is EOF, then get results, then cleanup.
         """
         if self.finished:
             return
@@ -630,7 +630,7 @@ class checksum_helper:
 
 class tar_safe_extract:
     """
-    A safer version of tar extractall that doing sanity check.
+    A safer version of TarFile's extractall that performs a sanity check.
     Note that this does not solve all security problems.
     """
 
@@ -724,9 +724,9 @@ class gpkg:
 
     def __init__(self, settings, basename=None, gpkg_file=None, verify_signature=None):
         """
-        gpkg class handle all gpkg operations for one package.
+        gpkg class handles all gpkg operations for one package.
         basename is the package basename.
-        gpkg_file should be exists file path for read or will create.
+        gpkg_file should exist as a file path for reads or will be created.
         """
         self.settings = settings
         self.gpkg_version = "gpkg-1"
@@ -831,7 +831,7 @@ class gpkg:
 
     def get_metadata(self, want=None):
         """
-        get package metadata.
+        Get package metadata.
         if want is list, return all want key-values in dict
         if want is str, return the want key value
         """
@@ -849,12 +849,12 @@ class gpkg:
     def get_metadata_url(self, url, want=None):
         """
         Return the requested metadata from url gpkg.
-        Default return all meta data.
+        Default return all metadata.
         Use 'want' to get specific name from metadata.
         This method only support the correct package format.
         Wrong files order or incorrect basename will be considered invalid
         to reduce potential attacks.
-        Only signature will be check if the signature file is the next file.
+        Signatures will only be checked if the signature file is the next file.
         Manifest will be ignored since it will be at the end of package.
         """
         # The init download file head size
@@ -1022,7 +1022,7 @@ class gpkg:
 
     def decompress(self, decompress_dir):
         """
-        decompress current gpkg to decompress_dir
+        Decompress current gpkg to decompress_dir
         """
         decompress_dir = normalize_path(
             _unicode_decode(decompress_dir, encoding=_encodings["fs"], errors="strict")
@@ -1142,7 +1142,7 @@ class gpkg:
     def update_signature(self, keep_current_signature=False):
         """
         Add / update signature in the gpkg file.
-        if keep_current_signature is True, keep the current signature, otherwise, re-signing it.
+        if keep_current_signature is True, keep the current signature, otherwise re-sign it.
         """
         self.create_signature = True
         self._verify_binpkg()
@@ -1238,7 +1238,7 @@ class gpkg:
 
     def _add_metadata(self, container, metadata, compression_cmd):
         """
-        add metadata to container
+        Add metadata to container
         """
         if metadata is None:
             metadata = {}
@@ -1462,7 +1462,7 @@ class gpkg:
     def _record_checksum(self, checksum_info, tarinfo):
         """
         Record checksum result for the given file.
-        Replace old checksum if already exists.
+        Replace old checksum if it already exists.
         """
 
         # Remove prefix directory from the filename
@@ -1784,7 +1784,7 @@ class gpkg:
 
     def _generate_metadata_from_dir(self, metadata_dir):
         """
-        read all files in metadata_dir and return as dict
+        Read all files in metadata_dir and return as dict
         """
         metadata = {}
         metadata_dir = normalize_path(
@@ -1802,7 +1802,7 @@ class gpkg:
 
     def _get_binary_cmd(self, compression, mode):
         """
-        get command list from portage and try match compressor
+        Get command list from portage and try to match compressor
         """
         if compression not in _compressors:
             raise InvalidCompressionMethod(compression)
@@ -1843,7 +1843,7 @@ class gpkg:
 
     def _get_compression_cmd(self, compression=None):
         """
-        return compression command for Popen
+        Return compression command for Popen
         """
         if compression is None:
             compression = self.compression
@@ -1854,7 +1854,7 @@ class gpkg:
 
     def _get_decompression_cmd(self, compression=None):
         """
-        return decompression command for Popen
+        Return decompression command for Popen
         """
         if compression is None:
             compression = self.compression
@@ -2035,7 +2035,7 @@ class gpkg:
         self, contents, root, image_prefix="image", ignore_missing=False
     ):
         """
-        Check the pre quickpkg files size and path, return the longest
+        Check the pre-quickpkg files size and path, return the longest
         path length, largest single file size, and total files size.
         """
         image_prefix_length = len(image_prefix) + 1
@@ -2164,7 +2164,7 @@ class gpkg:
         """
         Get inner tarinfo from given container.
         Will try get file_name from correct basename first,
-        if it fail, try any file that have same name as file_name, and
+        if it fails, try any file that have same name as file_name, and
         return the first one.
         """
         if self.gpkg_version not in (os.path.basename(f) for f in tar.getnames()):
