@@ -44,6 +44,11 @@ Bug fixes:
 
   This in particular fixes support with Python 3.14.2.
 
+* gpkg: Always wrap GnuPG verification failures in 'eerror' (bug #927632,
+  bug #936322, bug #941770).
+
+* gpkg: Tweak and cleanup phrasing of error messages.
+
 Cleanups:
 
 * tests: Use CommandStep, FunctionStep where external commands are run.
