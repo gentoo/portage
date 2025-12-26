@@ -6,6 +6,51 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.74 (UNRELEASED)
+--------------
+
+Features:
+
+* binrepos.conf: Support 'verify-signature' to control PGP verification
+  of binpkgs per binhost.
+
+* System jobserver support via FEATURES="jobserver-token" (bug #966879).
+
+  This is to be used with dev-build/steve (https://wiki.gentoo.org/wiki/Steve)
+  or dev-build/guildmaster https://wiki.gentoo.org/wiki/guildmaster).
+
+  Support is still experimental and its semantics may change.
+
+* profiles: Support 'profile-license' extension for package.license files.
+
+* Monitor free space in PORTAGE_TMPDIR (bug #934382).
+
+  Introduce a new option --jobs-tmpdir-require-free-gb= to control the
+  free space required in PORTAGE_TMPDIR.
+
+  This is needed to better support FEATURES="merge-wait" which results in
+  more packages in a pending state in PORTAGE_TMPDIR.
+
+  If the limit is reached, parallelism is reduced and the merge-wait
+  queue is flushed.
+
+* Support `emerge --jobs=0`.
+
+  The special value '0' will use the processor count.
+
+Bug fixes:
+
+* bin: Don't define signal handlers in global scope (bug #941956, bug #967199).
+
+  This in particular fixes support with Python 3.14.2.
+
+Cleanups:
+
+* tests: Use CommandStep, FunctionStep where external commands are run.
+
+* save-build-env: Revert earlier change which became obsolete by intermediate
+  changes from the change being submitted vs being merged (bug #914441).
+
 portage-3.0.73 (2025-12-16)
 --------------
 
