@@ -189,35 +189,39 @@
 #PORTAGE_BINHOST="ftp://login:pass@grp.mirror.site:21*/pub/grp/i686/athlon-xp/"
 
 # Binary packages GnuPG commands
-# ============================
+# ==============================
 #
 # Only works with GPKG format.
-# "binpkg-signing" needed to be set in FEATURES if need signing packages.
-# "binpkg-request-signature" needed to be set in FEATURES if you want all
-# binpkgs must have signature.
-# You need uncomment related commands and set "USER" and "SIGN_KEY" to yours.
+#
+# "binpkg-signing" needs to be set in FEATURES if need signing packages.
+# "binpkg-request-signature" needs to be set in FEATURES if you want all
+# binpkgs installed to have signatures.
+#
+# You need to uncomment related commands and set "USER" and "SIGN_KEY" to yours.
 #
 # Binary package GnuPG signing base command
 # Basic command for all signature operations.
-# You need change this if you want to use other configurations,
-# Note that some configurations are configured separately below,
-# please do not add duplicate configurations
+# You need to change this if you want to use other configurations,
+#
+# Note that some options are configured separately below for the sake of
+# example, but please do not add duplicate or conflicting configurations!
+#
 #BINPKG_GPG_SIGNING_BASE_COMMAND="/usr/bin/flock /run/lock/portage-binpkg-gpg.lock /usr/bin/gpg --sign --armor [PORTAGE_CONFIG]"
 
 # Binary package GnuPG signature digests algorithm.
 #BINPKG_GPG_SIGNING_DIGEST="SHA512"
 
-# gnupg home directory used for signing.
+# GnuPG home directory used for signing.
 #BINPKG_GPG_SIGNING_GPG_HOME="/root/.gnupg"
 
 # GnuPG key ID used for signing.
 #BINPKG_GPG_SIGNING_KEY="0x1234567890ABCD!"
 
-# Binary package GnuPG verify base command.
-# Basic command for all verify operations.
+# Binary package GnuPG verification base command.
+# Basic command for all verification operations.
 #BINPKG_GPG_VERIFY_BASE_COMMAND="/usr/bin/gpg --verify --batch --no-tty --no-auto-check-trustdb --status-fd 2 [PORTAGE_CONFIG] [SIGNATURE]"
 
-# GPG home directory where all trusted public keys for binary packages are stored.
+# GnuPG home directory where all trusted public keys for binary packages are stored.
 #BINPKG_GPG_VERIFY_GPG_HOME="/etc/portage/gnupg"
 
 # This user and group will be used for dropping root privileges during GnuPG verification
