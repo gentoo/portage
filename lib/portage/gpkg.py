@@ -384,7 +384,11 @@ class tar_stream_reader:
             try:
                 if self.proc.wait() != os.EX_OK:
                     if not self.killed:
-                        writemsg(colorize("BAD", "GPKG decompressor (external program) failed.\n"))
+                        writemsg(
+                            colorize(
+                                "BAD", "GPKG decompressor (external program) failed.\n"
+                            )
+                        )
                         raise CompressorOperationFailed("decompression failed")
             finally:
                 self.proc.stdout.close()
