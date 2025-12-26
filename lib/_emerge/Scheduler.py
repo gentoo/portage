@@ -233,7 +233,7 @@ class Scheduler(PollScheduler):
         self._set_max_jobs(max_jobs)
         self._running_root = trees[trees._running_eroot]["root_config"]
         self._jobs_tmpdir_require_free_gb = myopts.get("--jobs-tmpdir-require-free-gb")
-        if not self._jobs_tmpdir_require_free_gb:
+        if self._jobs_tmpdir_require_free_gb is None:
             # dev-lang/rust-1.77.1: ~16 GiB
             # www-client/chromium-126.0.6478.57: ~18 GiB
             self._jobs_tmpdir_require_free_gb = 18
@@ -1833,7 +1833,7 @@ class Scheduler(PollScheduler):
             # jobs and no jobs in the _merge_wait_queue.
             return True
 
-        if (self._jobs_tmpdir_require_free_gb is not None) and hasattr(os, "statvfs"):
+        if self._jobs_tmpdir_require_free_gb and hasattr(os, "statvfs"):
             tmpdirs = set()
             for root in self.trees:
                 settings = self.trees[root]["root_config"].settings
