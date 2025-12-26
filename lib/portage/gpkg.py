@@ -280,8 +280,8 @@ class tar_stream_reader:
 
     def __init__(self, fileobj, cmd=None, uid=None, gid=None):
         """
-        fileobj should be a file-like object that have read().
-        cmd is optional external decompressor command.
+        fileobj should be a file-like object that has read().
+        cmd is an optional external decompressor command.
         """
         self.closed = False
         self.cmd = cmd
@@ -326,7 +326,7 @@ class tar_stream_reader:
 
     def _write_thread(self):
         """
-        Writing thread to avoid full buffer blocking
+        Write thread to avoid full buffer blocking
         """
         try:
             while True:
@@ -350,7 +350,7 @@ class tar_stream_reader:
 
     def kill(self):
         """
-        Kill external program if any error happened in python
+        Kill external program if any error happened in Python
         """
         if self.proc is not None:
             self.killed = True
@@ -372,7 +372,7 @@ class tar_stream_reader:
 
     def close(self):
         """
-        Wait external program complete and do cleanup
+        Wait for the external program to complete and do cleanup
         """
         if self.closed:
             return
@@ -384,7 +384,7 @@ class tar_stream_reader:
             try:
                 if self.proc.wait() != os.EX_OK:
                     if not self.killed:
-                        writemsg(colorize("BAD", "GPKG external program failed.\n"))
+                        writemsg(colorize("BAD", "GPKG decompressor (external program) failed.\n"))
                         raise CompressorOperationFailed("decompression failed")
             finally:
                 self.proc.stdout.close()
@@ -392,7 +392,7 @@ class tar_stream_reader:
 
 class checksum_helper:
     """
-    Do checksum generation and GnuPG signature generation and verification
+    Do checksum generation, GnuPG signature generation, and verification
     """
 
     SIGNING = 0
@@ -441,7 +441,7 @@ class checksum_helper:
         for hash_name in MANIFEST2_HASH_DEFAULTS:
             self.libs[hash_name] = checksum.hashfunc_map[hash_name]._hashobject()
 
-        # GPG
+        # GnuPG
         env = self.settings.environ()
         if self.gpg_operation == checksum_helper.SIGNING:
             gpg_signing_base_command = self.settings.get(
@@ -510,7 +510,7 @@ class checksum_helper:
                     "[SIGNATURE]", f"{self.sign_file_path} -"
                 )
 
-                # Create signature file and allow everyone read
+                # Create signature file and allow everyone to read
                 with open(self.sign_file_fd, "wb") as sign:
                     sign.write(signature)
                 os.chmod(self.sign_file_path, 0o644)
