@@ -15,12 +15,13 @@ from portage.util import varexpand, writemsg, writemsg_stdout
 
 class GPG:
     """
-    Unlock GPG, must call dircetly from main program for get correct TTY
+    Unlock GnuPG. Must called directly from main program for
+    getting the correct TTY.
     """
 
     def __init__(self, settings):
         """
-        Portage settings are needed to run GPG unlock command.
+        Portage settings are needed to run the GnuPG unlock command.
         """
         self.settings = settings
         self.thread = None
@@ -46,7 +47,7 @@ class GPG:
 
     def unlock(self):
         """
-        Set GPG_TTY and run GPG unlock command.
+        Set GPG_TTY and run GnuPG unlock command.
         If gpg-keepalive is set, start keepalive thread.
         """
         if self.GPG_unlock_command and (
@@ -57,8 +58,8 @@ class GPG:
                 os.environ["GPG_TTY"] = os.ttyname(sys.stdout.fileno())
             except OSError as e:
                 # When run with no input/output tty, this will fail.
-                # However, if the password is given by command,
-                # GPG does not need to ask password, so can be ignored.
+                # However, if the password is given by a command,
+                # GnuPG does not need to ask password, so can be ignored.
                 writemsg(f"{colorize('WARN', str(e))}\n")
 
             cmd = shlex.split(varexpand(self.GPG_unlock_command, mydict=self.settings))
@@ -68,7 +69,7 @@ class GPG:
                 writemsg_stdout(f"{colorize('GOOD', 'unlocked')}\n")
                 sys.stdout.flush()
             else:
-                raise GPGException("GPG unlock failed")
+                raise GPGException("GnuPG unlock failed")
 
             if self.keepalive:
                 self.GPG_unlock_command = shlex.split(
@@ -87,7 +88,8 @@ class GPG:
 
     def gpg_keepalive(self):
         """
-        Call GPG unlock command every 5 mins to avoid the passphrase expired.
+        Call GnuPG unlock command every 5 mins to avoid 'passphrase expired'
+        error.
         """
         count = 0
         while not self._terminated.is_set():
@@ -106,4 +108,4 @@ class GPG:
                 stderr=subprocess.STDOUT,
             )
             if proc.wait() != os.EX_OK and not self._terminated.is_set():
-                raise GPGException("GPG keepalive failed")
+                raise GPGException("GnuPG keepalive failed")
