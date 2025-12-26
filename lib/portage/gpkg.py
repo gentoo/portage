@@ -60,7 +60,7 @@ class tar_stream_writer:
     the helper can transparently save compressed data.
 
     With optional checksum helper, this helper can create
-    corresponding checksum and GPG signature.
+    corresponding checksum and GnuPG signature.
 
     Example:
 
@@ -392,7 +392,7 @@ class tar_stream_reader:
 
 class checksum_helper:
     """
-    Do checksum generation and GPG Signature generation and verification
+    Do checksum generation and GnuPG signature generation and verification
     """
 
     SIGNING = 0
@@ -400,9 +400,9 @@ class checksum_helper:
 
     def __init__(self, settings, gpg_operation=None, detached=True, signature=None):
         """
-        settings         # portage settings
+        settings         # Portage settings
         gpg_operation    # either SIGNING or VERIFY
-        signature        # GPG signature string used for GPG verify only
+        signature        # GnuPG signature string used for GnuPG verification only
         """
         self.settings = settings
         self.gpg_operation = gpg_operation
@@ -539,8 +539,8 @@ class checksum_helper:
 
     def _check_gpg_status(self, gpg_status: bytes) -> None:
         """
-        Check GPG status log for extra info.
-        GPG will return OK even if the signature owner is not trusted.
+        Check GnuPG status log for extra info.
+        GnuPG will return OK even if the signature owner is not trusted.
         """
         good_signature = False
         trust_signature = False
@@ -569,7 +569,7 @@ class checksum_helper:
 
     def update(self, data):
         """
-        Write data to hash libs and GPG stdin.
+        Write data to hash libs and GnuPG stdin.
         """
         for c in self.libs:
             self.libs[c].update(data)
@@ -579,13 +579,13 @@ class checksum_helper:
 
     def finish(self):
         """
-        Tell GPG file is EOF, and get results, then do clean up.
+        Tell GnuPG file is EOF, and get results, then do clean up.
         """
         if self.finished:
             return
 
         if self.gpg_proc is not None:
-            # Tell GPG EOF
+            # Tell GnuPG EOF
             self.gpg_proc.stdin.close()
 
             return_code = self.gpg_proc.wait()
@@ -1483,7 +1483,7 @@ class gpkg:
     def _add_manifest(self, container):
         """
         Add Manifest to the container based on current checksums.
-        Creare GPG signatue if needed.
+        Create GnuPG signature if needed.
         """
         manifest = io.BytesIO()
 
@@ -1543,7 +1543,7 @@ class gpkg:
 
     def _add_signature(self, checksum_info, tarinfo, container, manifest=True):
         """
-        Add GPG signature for the given tarinfo file.
+        Add GnuPG signature for the given tarinfo file.
         manifest: add to manifest
         """
         if checksum_info.gpg_output is None:
