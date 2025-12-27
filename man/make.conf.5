@@ -670,6 +670,34 @@ Prevents the stripping of binaries that are merged to the live filesystem.
 .B notitles
 Disables xterm titlebar updates (which contains status info).
 .TP
+.B packdebug
+Create a tarball of debug information and source files for use with
+debuginfod.  Debug tarballs are placed at
+\fI/usr/lib/debug/.tarball/${CATEGORY}/${PF}-${BUILD_ID}.tar.xz\fR.
+The debug tarball is installed but is not included in binary packages.
+
+\fIUNINSTALL_IGNORE\fR is automatically modified to leave old debug
+tarballs around to allow debuginfod to serve them after upgrades. See
+\fBsplitdebug\fR for general split debug information (upon which this
+feature depends). Similarly, \fICOLLISION_IGNORE\fR is automatically
+modified to ignore collisions on these files.
+
+Setting \fBpackdebug\fR temporarily on the command-line or per\-package is
+discouraged because the new (unset) value will take effect when the package
+is removed, meaning the automatic adjustments made to accommodate
+\fBpackdebug\fR cannot apply.
+
+Users may wish to avoid double storage of both the live debug information
+in \fI/usr/lib/debug\fR and \fI/usr/src/debug\fR as well as inside of
+the \fIpackdebug\fR tarballs at \fI/usr/lib/debug/.tarball\fR. This can
+be done by setting \fIINSTALL_MASK\fR:
+
+.nf
+# Debug information is inside of packdebug tarballs already, don't install
+# twice.
+INSTALL_MASK="${INSTALL_MASK} /usr/lib/debug/ /usr/src/debug/ -/usr/lib/debug/.tarball"
+.fi
+.TP
 .B parallel\-fetch
 Fetch in the background while compiling. Run
 `tail \-f /var/log/emerge\-fetch.log` in a
