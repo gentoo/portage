@@ -13,6 +13,7 @@ py.install_sources(
         'file_copy.py',
         'formatter.py',
         'hooks.py',
+        'human_readable.py',
         'install_mask.py',
         'lafilefixer.py',
         'listdir.py',

@@ -1929,7 +1929,24 @@ class Scheduler(PollScheduler):
 
                         if actual_free_bytes < required_free_bytes:
                             if not self._warned_tmpdir_free_space:
-                                msg = f"--- {tmpdir} has not enough free space, emerge job parallelism reduced. free: {actual_free_bytes} bytes, required {required_free_bytes} bytes"
+                                from portage.util.human_readable import bytes_to_human
+
+                                actual_free_bytes_hr = bytes_to_human(actual_free_bytes)
+                                required_free_bytes_hr = bytes_to_human(
+                                    required_free_bytes
+                                )
+
+                                actual_free_bytes_debug = ""
+                                required_free_bytes_debug = ""
+                                if "--debug" in self.myopts:
+                                    actual_free_bytes_debug = (
+                                        f" ({actual_free_bytes} bytes)"
+                                    )
+                                    required_free_bytes_debug = (
+                                        f" ({required_free_bytes} bytes)"
+                                    )
+
+                                msg = f"--- {tmpdir} has not enough free space, emerge job parallelism reduced. free: {actual_free_bytes_hr}{actual_free_bytes_debug}, required {required_free_bytes_hr}{required_free_bytes_debug}"
                                 portage.writemsg_stdout(
                                     colorize("WARN", f"\n{msg}\n"), noiselevel=-1
                                 )
