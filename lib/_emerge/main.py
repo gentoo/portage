@@ -31,6 +31,7 @@ options = [
     "--noconfmem",
     "--newrepo",
     "--newuse",
+    "--nobindeps",
     "--nodeps",
     "--noreplace",
     "--nospinner",
@@ -570,9 +571,24 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "fetch binary packages only",
             "choices": true_y_or_n,
         },
+        "--getbinpkg-exclude": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will not fetch matching remote binary packages. ",
+            "action": "append",
+        },
+        "--getbinpkg-include": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will not fetch non-matching remote binary packages. ",
+            "action": "append",
+        },
         "--usepkg-exclude": {
             "help": "A space separated list of package names or slot atoms. "
             + "Emerge will ignore matching binary packages. ",
+            "action": "append",
+        },
+        "--usepkg-include": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will ignore non-matching binary packages. ",
             "action": "append",
         },
         "--onlydeps-with-ideps": {
@@ -884,10 +900,13 @@ def parse_opts(tmpcmdline, silent=False):
 
     candidate_bad_options = (
         (myoptions.exclude, "exclude"),
+        (myoptions.getbinpkg_exclude, "getbinpkg-exclude"),
+        (myoptions.getbinpkg_include, "getbinpkg-include"),
         (myoptions.reinstall_atoms, "reinstall-atoms"),
         (myoptions.rebuild_exclude, "rebuild-exclude"),
         (myoptions.rebuild_ignore, "rebuild-ignore"),
         (myoptions.usepkg_exclude, "usepkg-exclude"),
+        (myoptions.usepkg_include, "usepkg-include"),
         (myoptions.useoldpkg_atoms, "useoldpkg-atoms"),
     )
     bad_options = (
