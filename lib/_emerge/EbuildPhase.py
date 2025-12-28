@@ -130,6 +130,7 @@ class EbuildPhase(CompositeTask):
         "nostrip",
         "preserve-libs",
         "sandbox",
+        "sccache",
         "selinux",
         "sesandbox",
         "splitdebug",
