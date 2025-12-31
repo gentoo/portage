@@ -56,6 +56,13 @@ Bug fixes:
 
 * gpkg: Tweak and cleanup phrasing of error messages.
 
+* estrip: Fix typo in debugedit call for FEATURES="-installsources".
+
+* estrip: Salt build ID for splitdebug file with FEATURES="-installsources"
+  (bug #968220).
+
+* emerge: --with-test-deps now respects masked 'test' USE flags (bug #968199).
+
 Cleanups:
 
 * tests: Use CommandStep, FunctionStep where external commands are run.
