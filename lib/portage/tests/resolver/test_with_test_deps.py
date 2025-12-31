@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -10,6 +10,11 @@ from portage.tests.resolver.ResolverPlayground import (
 
 class WithTestDepsTestCase(TestCase):
     def testWithTestDeps(self):
+        profile = {
+            "eapi": "8",
+            "package.use.mask": ("=app-misc/H-0 test",),
+        }
+
         ebuilds = {
             "app-misc/A-0": {
                 "EAPI": "5",
@@ -44,6 +49,12 @@ class WithTestDepsTestCase(TestCase):
                 "IUSE": "+test",
                 "DEPEND": "test? ( app-misc/F )",
             },
+            # The test flag is masked in package.use.mask.
+            "app-misc/H-0": {
+                "EAPI": "8",
+                "IUSE": "+test",
+                "DEPEND": "test? ( app-misc/C )",
+            },
         }
 
         test_cases = (
@@ -74,9 +85,16 @@ class WithTestDepsTestCase(TestCase):
                     "app-misc/F-0": {frozenset({("test", False)})},
                 },
             ),
+            # Test that --with-test-deps respects package.use.mask.
+            ResolverPlaygroundTestCase(
+                ["app-misc/H"],
+                success=True,
+                options={"--with-test-deps": True},
+                mergelist=[("app-misc/H-0")],
+            ),
         )
 
-        playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
+        playground = ResolverPlayground(ebuilds=ebuilds, profile=profile, debug=False)
         try:
             for test_case in test_cases:
                 playground.run_TestCase(test_case)
