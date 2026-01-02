@@ -1,4 +1,4 @@
-# Copyright 1998-2025 Gentoo Authors
+# Copyright 1998-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -1562,8 +1562,11 @@ class binarytree:
                             raise UseCachedCopyOfRemoteIndex("up-to-date", extra_info)
                         if (
                             remote_pkgindex_file == "Packages.gz"
-                            and isinstance(err, urllib.error.HTTPError)
-                            and err.code == 404
+                            and isinstance(err, FileNotFoundError)
+                            or (
+                                isinstance(err, urllib.error.HTTPError)
+                                and err.code == 404
+                            )
                         ):
                             # Ignore 404s for Packages.gz, as the file is
                             # not guaranteed to exist.
