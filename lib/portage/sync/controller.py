@@ -273,7 +273,7 @@ class SyncManager:
                         try:
                             gp = grp.getgrnam(groupname)
                         except KeyError:
-                            pw = grp.getgrgid(int(groupname))
+                            gp = grp.getgrgid(int(groupname))
                     except (ValueError, KeyError):
                         writemsg(
                             f"!!! Group '{groupname}' invalid or does not exist\n",
