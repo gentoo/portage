@@ -50,6 +50,7 @@ class ResolverPlayground:
     config_files = frozenset(
         (
             "eapi",
+            "binrepos.conf",
             "layout.conf",
             "make.conf",
             "modules",

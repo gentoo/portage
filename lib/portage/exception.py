@@ -241,7 +241,7 @@ class DigestException(SignatureException):
 
 
 class GPGException(SignatureException):
-    """GPG operation failed"""
+    """GnuPG operation failed"""
 
 
 class MissingSignature(SignatureException):

@@ -82,113 +82,155 @@ class ConfigTestCase(TestCase):
         finally:
             playground.cleanup()
 
+    _testLicenseManagerPackageLicense = (
+        "dev-libs/* TEST",
+        "dev-libs/A -TEST2",
+        "=dev-libs/A-2 TEST3 @TEST",
+        "*/* @EULA TEST2",
+        "=dev-libs/C-1 *",
+        "=dev-libs/C-2 -*",
+    )
+
+    def _testLicenseManager(self, lic_man):
+        self.assertEqual(lic_man._accept_license_str, None)
+        self.assertEqual(lic_man._accept_license, None)
+        self.assertEqual(lic_man._license_groups, {"EULA": frozenset(["TEST"])})
+        self.assertEqual(lic_man._undef_lic_groups, {"TEST"})
+
+        self.assertEqual(lic_man.extract_global_changes(), "TEST TEST2")
+        self.assertEqual(lic_man.extract_global_changes(), "")
+
+        lic_man.set_accept_license_str("TEST TEST2")
+        self.assertEqual(
+            lic_man._getPkgAcceptLicense("dev-libs/B-1", "0", None),
+            ["TEST", "TEST2", "TEST"],
+        )
+        self.assertEqual(
+            lic_man._getPkgAcceptLicense("dev-libs/A-1", "0", None),
+            ["TEST", "TEST2", "TEST", "-TEST2"],
+        )
+        self.assertEqual(
+            lic_man._getPkgAcceptLicense("dev-libs/A-2", "0", None),
+            ["TEST", "TEST2", "TEST", "-TEST2", "TEST3", "@TEST"],
+        )
+
+        self.assertEqual(
+            lic_man.get_pruned_accept_license("dev-libs/B-1", [], "TEST", "0", None),
+            "TEST",
+        )
+        self.assertEqual(
+            lic_man.get_pruned_accept_license("dev-libs/A-1", [], "-TEST2", "0", None),
+            "",
+        )
+        self.assertEqual(
+            lic_man.get_pruned_accept_license(
+                "dev-libs/A-2", [], "|| ( TEST TEST2 )", "0", None
+            ),
+            "TEST",
+        )
+        self.assertEqual(
+            lic_man.get_pruned_accept_license("dev-libs/C-1", [], "TEST5", "0", None),
+            "TEST5",
+        )
+        self.assertEqual(
+            lic_man.get_pruned_accept_license("dev-libs/C-2", [], "TEST2", "0", None),
+            "",
+        )
+
+        self.assertEqual(
+            lic_man.getMissingLicenses("dev-libs/B-1", [], "TEST", "0", None), []
+        )
+        self.assertEqual(
+            lic_man.getMissingLicenses("dev-libs/A-1", [], "-TEST2", "0", None),
+            ["-TEST2"],
+        )
+        self.assertEqual(
+            lic_man.getMissingLicenses(
+                "dev-libs/A-2", [], "|| ( TEST TEST2 )", "0", None
+            ),
+            [],
+        )
+        self.assertEqual(
+            lic_man.getMissingLicenses(
+                "dev-libs/A-3", [], "|| ( TEST2 || ( TEST3 TEST4 ) )", "0", None
+            ),
+            ["TEST2", "TEST3", "TEST4"],
+        )
+        self.assertEqual(
+            lic_man.getMissingLicenses("dev-libs/C-1", [], "TEST5", "0", None), []
+        )
+        self.assertEqual(
+            lic_man.getMissingLicenses("dev-libs/C-2", [], "TEST2", "0", None),
+            ["TEST2"],
+        )
+        self.assertEqual(
+            lic_man.getMissingLicenses("dev-libs/D-1", [], "", "0", None), []
+        )
+
     def testLicenseManager(self):
         user_config = {
-            "package.license": (
-                "dev-libs/* TEST",
-                "dev-libs/A -TEST2",
-                "=dev-libs/A-2 TEST3 @TEST",
-                "*/* @EULA TEST2",
-                "=dev-libs/C-1 *",
-                "=dev-libs/C-2 -*",
-            ),
+            "package.license": self._testLicenseManagerPackageLicense,
         }
 
         playground = ResolverPlayground(user_config=user_config)
+        settings = config(clone=playground.settings)
         try:
             portage.util.noiselimit = -2
 
-            license_group_locations = (
-                os.path.join(
-                    playground.settings.repositories["test_repo"].location, "profiles"
-                ),
-            )
-            pkg_license = os.path.join(playground.eroot, "etc", "portage")
+            lic_man = LicenseManager(settings._locations_manager)
+            self._testLicenseManager(lic_man)
 
-            lic_man = LicenseManager(license_group_locations, pkg_license)
+        finally:
+            portage.util.noiselimit = 0
+            playground.cleanup()
 
-            self.assertEqual(lic_man._accept_license_str, None)
-            self.assertEqual(lic_man._accept_license, None)
-            self.assertEqual(lic_man._license_groups, {"EULA": frozenset(["TEST"])})
-            self.assertEqual(lic_man._undef_lic_groups, {"TEST"})
+    def testLicenseManagerProfile(self):
+        repo_configs = {
+            "test_repo": {
+                "layout.conf": ("profile-formats = profile-license",),
+            }
+        }
+        profile_configs = {
+            "package.license": self._testLicenseManagerPackageLicense,
+        }
 
-            self.assertEqual(lic_man.extract_global_changes(), "TEST TEST2")
-            self.assertEqual(lic_man.extract_global_changes(), "")
+        playground = ResolverPlayground(
+            repo_configs=repo_configs, profile=profile_configs
+        )
+        settings = config(clone=playground.settings)
+        try:
+            portage.util.noiselimit = -2
 
-            lic_man.set_accept_license_str("TEST TEST2")
-            self.assertEqual(
-                lic_man._getPkgAcceptLicense("dev-libs/B-1", "0", None),
-                ["TEST", "TEST2", "TEST"],
-            )
-            self.assertEqual(
-                lic_man._getPkgAcceptLicense("dev-libs/A-1", "0", None),
-                ["TEST", "TEST2", "TEST", "-TEST2"],
-            )
-            self.assertEqual(
-                lic_man._getPkgAcceptLicense("dev-libs/A-2", "0", None),
-                ["TEST", "TEST2", "TEST", "-TEST2", "TEST3", "@TEST"],
-            )
+            lic_man = LicenseManager(settings._locations_manager)
+            self._testLicenseManager(lic_man)
 
-            self.assertEqual(
-                lic_man.get_prunned_accept_license(
-                    "dev-libs/B-1", [], "TEST", "0", None
-                ),
-                "TEST",
-            )
-            self.assertEqual(
-                lic_man.get_prunned_accept_license(
-                    "dev-libs/A-1", [], "-TEST2", "0", None
-                ),
-                "",
-            )
-            self.assertEqual(
-                lic_man.get_prunned_accept_license(
-                    "dev-libs/A-2", [], "|| ( TEST TEST2 )", "0", None
-                ),
-                "TEST",
-            )
-            self.assertEqual(
-                lic_man.get_prunned_accept_license(
-                    "dev-libs/C-1", [], "TEST5", "0", None
-                ),
-                "TEST5",
-            )
-            self.assertEqual(
-                lic_man.get_prunned_accept_license(
-                    "dev-libs/C-2", [], "TEST2", "0", None
-                ),
-                "",
-            )
+        finally:
+            portage.util.noiselimit = 0
+            playground.cleanup()
 
-            self.assertEqual(
-                lic_man.getMissingLicenses("dev-libs/B-1", [], "TEST", "0", None), []
-            )
-            self.assertEqual(
-                lic_man.getMissingLicenses("dev-libs/A-1", [], "-TEST2", "0", None),
-                ["-TEST2"],
-            )
-            self.assertEqual(
-                lic_man.getMissingLicenses(
-                    "dev-libs/A-2", [], "|| ( TEST TEST2 )", "0", None
-                ),
-                [],
-            )
-            self.assertEqual(
-                lic_man.getMissingLicenses(
-                    "dev-libs/A-3", [], "|| ( TEST2 || ( TEST3 TEST4 ) )", "0", None
-                ),
-                ["TEST2", "TEST3", "TEST4"],
-            )
-            self.assertEqual(
-                lic_man.getMissingLicenses("dev-libs/C-1", [], "TEST5", "0", None), []
-            )
-            self.assertEqual(
-                lic_man.getMissingLicenses("dev-libs/C-2", [], "TEST2", "0", None),
-                ["TEST2"],
-            )
-            self.assertEqual(
-                lic_man.getMissingLicenses("dev-libs/D-1", [], "", "0", None), []
-            )
+    def testLicenseManagerMixed(self):
+        profile_configs = {
+            "package.license": self._testLicenseManagerPackageLicense[:4],
+        }
+        user_configs = {
+            "package.license": self._testLicenseManagerPackageLicense[4:],
+        }
+        repo_configs = {
+            "test_repo": {
+                "layout.conf": ("profile-formats = profile-license",),
+            }
+        }
+
+        playground = ResolverPlayground(
+            user_config=user_configs, repo_configs=repo_configs, profile=profile_configs
+        )
+        settings = config(clone=playground.settings)
+        try:
+            portage.util.noiselimit = -2
+
+            lic_man = LicenseManager(settings._locations_manager)
+            self._testLicenseManager(lic_man)
+
         finally:
             portage.util.noiselimit = 0
             playground.cleanup()

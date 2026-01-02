@@ -64,6 +64,7 @@ _valid_profile_formats = frozenset(
         "profile-default-eapi",
         "build-id",
         "profile-repo-deps",
+        "profile-license",
     ]
 )
 

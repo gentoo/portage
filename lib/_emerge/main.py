@@ -154,6 +154,7 @@ def insert_optional_args(args):
         "--getbinpkgonly": y_or_n,
         "--ignore-world": y_or_n,
         "--jobs": valid_integers,
+        "--jobs-tmpdir-require-free-gb": valid_integers,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
         "--onlydeps-with-ideps": y_or_n,
@@ -512,6 +513,10 @@ def parse_opts(tmpcmdline, silent=False):
         "--jobs": {
             "shortopt": "-j",
             "help": "Specifies the number of packages to build " + "simultaneously.",
+            "action": "store",
+        },
+        "--jobs-tmpdir-require-free-gb": {
+            "help": "Specifies the required remaining capacity (in GiB) of PORTAGE_TMPDIR before a new emerge job is started. Set to 0 to disable this check",
             "action": "store",
         },
         "--keep-going": {
@@ -1015,14 +1020,28 @@ def parse_opts(tmpcmdline, silent=False):
             try:
                 jobs = int(myoptions.jobs)
             except ValueError:
-                jobs = -1
+                jobs = None
 
-        if jobs is not True and jobs < 1:
-            jobs = None
-            if not silent:
-                parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
+        if jobs is None and not silent:
+            parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
+        elif jobs == 0:
+            from portage.util.cpuinfo import get_cpu_count
+
+            jobs = get_cpu_count()
 
         myoptions.jobs = jobs
+
+    if myoptions.jobs_tmpdir_require_free_gb:
+        try:
+            jobs_tmpdir_require_free_gb = int(myoptions.jobs_tmpdir_require_free_gb)
+        except ValueError:
+            jobs_tmpdir_require_free_gb = 0
+            if not silent:
+                parser.error(
+                    f"Invalid --jobs-tmpdir-require-free-gb parameter: '{myoptions.jobs_tmpdir_require_free_gb}'\n"
+                )
+
+        myoptions.jobs_tmpdir_require_free_gb = jobs_tmpdir_require_free_gb
 
     if myoptions.load_average == "True":
         myoptions.load_average = None

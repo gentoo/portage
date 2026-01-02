@@ -14,20 +14,24 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
 
 class LicenseManager:
-    def __init__(self, license_group_locations, abs_user_config, user_config=True):
+    def __init__(self, locations_manager, user_config=True):
         self._accept_license_str = None
         self._accept_license = None
         self._license_groups = {}
         self._plicensedict = ExtendedAtomDict(dict)
         self._undef_lic_groups = set()
 
+        license_group_locations = list(locations_manager.profile_locations)
         if user_config:
-            license_group_locations = list(license_group_locations) + [abs_user_config]
+            license_group_locations.append(locations_manager.abs_user_config)
 
         self._read_license_groups(license_group_locations)
 
         if user_config:
-            self._read_user_config(abs_user_config)
+            for profile in locations_manager.profiles_complex:
+                if "profile-license" in profile.profile_formats:
+                    self._read_user_config(profile.location)
+            self._read_user_config(locations_manager.abs_user_config)
 
     def _read_user_config(self, abs_user_config):
         licdict = grabdict_package(
@@ -132,7 +136,7 @@ class LicenseManager:
                     accept_license.extend(x)
         return accept_license
 
-    def get_prunned_accept_license(self, cpv, use, lic, slot, repo):
+    def get_pruned_accept_license(self, cpv, use, lic, slot, repo):
         """
         Generate a pruned version of ACCEPT_LICENSE, by intersection with
         LICENSE. This is required since otherwise ACCEPT_LICENSE might be

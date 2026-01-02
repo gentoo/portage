@@ -423,7 +423,7 @@ class Binpkg(CompositeTask):
                 self._writemsg_level(
                     colorize(
                         "BAD",
-                        f"!!! Error Extracting '{self._pkg_path}', {e}\n",
+                        f"!!! Error extracting '{self._pkg_path}', {e}\n",
                     ),
                     noiselevel=-1,
                     level=logging.ERROR,
@@ -465,7 +465,7 @@ class Binpkg(CompositeTask):
                 self._writemsg_level(
                     colorize(
                         "BAD",
-                        f"!!! Error Extracting '{self._pkg_path}', {e}\n",
+                        f"!!! Error extracting '{self._pkg_path}', {e}\n",
                     ),
                     noiselevel=-1,
                     level=logging.ERROR,

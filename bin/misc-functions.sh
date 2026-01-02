@@ -675,6 +675,37 @@ preinst_selinux_labels() {
 	fi
 }
 
+# Generate a separate tarball with debug information (and sources) for
+# use with debuginfod.
+__generate_packdebug() {
+	local debugpath="${T}"/.tarball
+	if ! [[ -d "${ED}"/usr/src/debug || -d "${ED}"/usr/lib/debug ]]; then
+		return
+	fi
+
+	install -d "${debugpath}"/"${CATEGORY}"{,/"${PN}"} \
+		|| die "Failed to generate target debug directory"
+
+	(
+		unset IFS
+		local tarfile="${debugpath}/${CATEGORY}/${PN}/${PF}-${BUILD_ID}-debug.tar.xz"
+		cd "${ED}" || die
+		tar -cJf - > "${tarfile}" \
+			$([[ -d ./usr/src/debug ]] && echo ./usr/src/debug) \
+			$([[ -d ./usr/lib/debug ]] && echo ./usr/lib/debug) \
+		|| die "Failed to pack up debug info for FEATURES=packdebug"
+	)
+
+	# The package may not have any splitdebug info available, but still
+	# have sources.
+	mkdir -p "${PORTAGE_TMPDIR}"/portage/${CATEGORY}/${PF}/image/${EPREFIX}/usr/lib/debug || die
+	# We don't use ${D} here because __generate_packdebug is called from
+	# __dyn_package where ${D} points to a pretend ${D}. We want these files
+	# in the real image but not in the binpkg. Unfortunately, we can't
+	# easily leverage PKG_INSTALL_MASK because of when it runs.
+	mv "${debugpath}" "${PORTAGE_BUILDDIR}/image/${EPREFIX}/usr/lib/debug/". || die
+}
+
 __dyn_package() {
 	if ! ___eapi_has_prefix_variables; then
 		local EPREFIX=
@@ -697,6 +728,24 @@ __dyn_package() {
 
 	if [[ ! -z "${BUILD_ID}" ]]; then
 		echo -n "${BUILD_ID}" > "${PORTAGE_BUILDDIR}"/build-info/BUILD_ID
+
+		# We generate the packdebug tarball at this point as we need
+		# the BUILD_ID, but it's not installed as part of the binpkg
+		# by design. We install it later when merging.
+		if contains_word packdebug "${FEATURES}" ; then
+			__generate_packdebug
+
+			# The injected PKG_INSTALL_MASK combined with us
+			# having splitdebug/installsources on may mean we
+			# have an empty /usr/src or /usr/lib left. Prune those.
+			#
+			# XXX: We use ${D}/${EPREFIX} here because we don't set
+			# ${ED} to the fake ${D}.
+			(cd "${D}/${EPREFIX}"/usr && find \
+				./lib \
+				./src \
+				-type d -empty -exec rmdir -p {} 2>/dev/null)
+		fi
 	fi
 
 	if [[ "${BINPKG_FORMAT}" == "xpak" ]]; then

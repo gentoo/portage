@@ -26,6 +26,7 @@ packages.build
 package.accept_keywords
 package.bashrc
 package.keywords
+package.license
 package.mask
 package.provided
 package.unmask
@@ -674,6 +675,10 @@ remote repository. If unset then the effective default is PKGDIR
 .TP
 .B sync\-uri
 Specifies URI of repository used for `emerge \-\-getbinpkg`.
+.TP
+.B verify\-signature
+Controls whether PGP signatures should be verified for binary packages
+from this repository.
 .RE
 .RE
 
@@ -1557,7 +1562,8 @@ The EAPI to use for profiles when unspecified. This attribute is
 supported only if profile-default-eapi is included in profile-formats.
 .TP
 .BR profile\-formats " = [pms] [portage-1] [portage-2] [profile-bashrcs] \
-[profile-set] [profile-default-eapi] [build-id] [profile-repo-deps]"
+[profile-set] [profile-default-eapi] [build-id] [profile-repo-deps] \
+[profile-license]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
 unsure.  The default is "portage-1-compat" mode which is meant to be compatible
@@ -1574,6 +1580,8 @@ build\-id atom is identical to a version-specific atom, except that the
 version is followed by a hyphen and an integer build\-id.
 Setting profile\-repo\-deps allows dependency atoms in the profile to
 refer to specific repositories.
+Setting profile\-license allows \fBpackage.license\fR to be used in
+profiles.
 .RE
 .RE
 

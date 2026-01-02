@@ -130,6 +130,7 @@ class EbuildPhase(CompositeTask):
         "network-sandbox",
         "network-sandbox-proxy",
         "nostrip",
+        "packdebug",
         "preserve-libs",
         "sandbox",
         "selinux",

@@ -167,7 +167,13 @@ save_elf_debug() {
 					# bundled libraries.
 					buildid=$("${name_of[debugedit]}" -i \
 						-s "${CATEGORY}/${PF}:${SLOT}" \
-						"${x}")
+						"${src}")
+
+					# We need to process the splitdebug file too
+					# if we're doing it at this late juncture (bug #968220)
+					"${name_of[debugedit]}" -i \
+						-s "${CATEGORY}/${PF}:${SLOT}" \
+						"${dst}"
 				elif ! contains_word buildid "${warned_for[debugedit]}"; then
 					warned_for[debugedit]+=" buildid"
 					stash_warning <<-'EOF'

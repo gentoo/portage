@@ -3992,6 +3992,7 @@ class depgraph:
             and pkg.depth == 0
             and "test" not in use_enabled
             and pkg.iuse.is_valid_flag("test")
+            and "test" not in pkg.use.mask
             and self._is_argument(pkg)
         )
 

@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
+import io
 import gc
 import gzip
 import logging
@@ -27,6 +28,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
+from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
@@ -65,7 +67,7 @@ FAILURE = 1
 
 
 class Scheduler(PollScheduler):
-    # max time between loadavg checks (seconds)
+    # max time between loadavg and tmpdir statvfs checks (seconds)
     _loadavg_latency = 30
 
     # max time between display status updates (seconds)
@@ -228,11 +230,14 @@ class Scheduler(PollScheduler):
             xterm_titles=("notitles" not in settings.features)
         )
         self._max_load = myopts.get("--load-average")
-        max_jobs = myopts.get("--jobs")
-        if max_jobs is None:
-            max_jobs = 1
+        max_jobs = myopts.get("--jobs", 1)
         self._set_max_jobs(max_jobs)
         self._running_root = trees[trees._running_eroot]["root_config"]
+        self._jobs_tmpdir_require_free_gb = myopts.get("--jobs-tmpdir-require-free-gb")
+        if self._jobs_tmpdir_require_free_gb is None:
+            # dev-lang/rust-1.77.1: ~16 GiB
+            # www-client/chromium-126.0.6478.57: ~18 GiB
+            self._jobs_tmpdir_require_free_gb = 18
         self.edebug = 0
         if settings.get("PORTAGE_DEBUG", "") == "1":
             self.edebug = 1
@@ -240,6 +245,10 @@ class Scheduler(PollScheduler):
         self._config_pool = {}
         for root in self.trees:
             self._config_pool[root] = []
+
+        features = self.settings.features
+        self._jobserver_fd = None
+        self._jobserver_tokens = {}
 
         self._fetch_log = os.path.join(
             _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
@@ -259,6 +268,7 @@ class Scheduler(PollScheduler):
         self._pkg_queue = []
         self._jobs = 0
         self._running_tasks = {}
+        self._job_tokens = {}
         self._completed_tasks = set()
         self._main_exit = None
         self._main_loadavg_handle = None
@@ -298,7 +308,6 @@ class Scheduler(PollScheduler):
         # jobs completes.
         self._choose_pkg_return_early = False
 
-        features = self.settings.features
         if "parallel-fetch" in features and not (
             "--pretend" in self.myopts
             or "--fetch-all-uri" in self.myopts
@@ -380,6 +389,7 @@ class Scheduler(PollScheduler):
                 # will never be started, so purged it from
                 # self._running_tasks so that it won't keep the main
                 # loop running.
+                self._release_job_token(id(task))
                 del self._running_tasks[id(task)]
 
         for q in self._task_queues.values():
@@ -434,9 +444,9 @@ class Scheduler(PollScheduler):
         @rtype: bool
         @return: True if background mode is enabled, False otherwise.
         """
+        parallel_jobs = self._max_jobs is True or self._max_jobs > 1
         background = (
-            self._max_jobs is True
-            or self._max_jobs > 1
+            parallel_jobs
             or "--quiet" in self.myopts
             or self.myopts.get("--quiet-build") == "y"
         ) and not bool(self._opts_no_background.intersection(self.myopts))
@@ -463,7 +473,7 @@ class Scheduler(PollScheduler):
                     level=logging.INFO,
                     noiselevel=-1,
                 )
-                if self._max_jobs is True or self._max_jobs > 1:
+                if parallel_jobs:
                     self._set_max_jobs(1)
                     writemsg_level(
                         ">>> Setting --jobs=1 due "
@@ -992,19 +1002,35 @@ class Scheduler(PollScheduler):
                     if fetched and bintree.get_local_repo_location(x.cpv):
                         os.rename(fetched, fetcher.pkg_allocated_path)
                     elif fetched:
-                        if not bintree.inject(
-                            x.cpv,
-                            current_pkg_path=fetched,
-                            allocated_pkg_path=fetcher.pkg_allocated_path,
-                        ):
-                            eerror(
-                                "Binary package is not usable",
-                                phase="pretend",
-                                key=x.cpv,
+                        injected_pkg = None
+                        stdout_orig = sys.stdout
+                        stderr_orig = sys.stderr
+                        out = io.StringIO()
+                        try:
+                            sys.stdout = out
+                            sys.stderr = out
+
+                            injected_pkg = bintree.inject(
+                                x.cpv,
+                                current_pkg_path=fetched,
+                                allocated_pkg_path=fetcher.pkg_allocated_path,
                             )
-                            failures += 1
-                            self._record_pkg_failure(x, settings, 1)
-                            continue
+                        finally:
+                            sys.stdout = stdout_orig
+                            sys.stderr = stderr_orig
+
+                        output_value = out.getvalue()
+                        if output_value:
+                            if injected_pkg is None:
+                                msg = ["Binary package is not usable:"]
+                                msg.extend(
+                                    "\t" + line for line in output_value.splitlines()
+                                )
+                                self._elog("eerror", msg)
+
+                        failures += 1
+                        self._record_pkg_failure(x, settings, 1)
+                        continue
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
@@ -1536,6 +1562,7 @@ class Scheduler(PollScheduler):
 
     def _build_exit(self, build):
         self._running_tasks.pop(id(build), None)
+        self._release_job_token(id(build))
         if build.returncode == os.EX_OK and self._terminated_tasks:
             # We've been interrupted, so we won't
             # add this to the merge queue.
@@ -1548,6 +1575,7 @@ class Scheduler(PollScheduler):
                 merge=build,
                 scheduler=self._sched_iface,
             )
+            # move the job token to the merge task
             self._running_tasks[id(merge)] = merge
             # By default, merge-wait only allows merge when no builds are executing.
             # As a special exception, dependencies on system packages are frequently
@@ -1596,6 +1624,32 @@ class Scheduler(PollScheduler):
 
     def _main_loop(self):
         self._main_exit = self._event_loop.create_future()
+
+        if "jobserver-token" in self.settings.features:
+            makeflags = self.settings.get("MAKEFLAGS", "").split()
+            jobserver_path = None
+            for flag in makeflags:
+                if flag.startswith("--jobserver-auth="):
+                    value = flag.removeprefix("--jobserver-auth=")
+                    if value.startswith("fifo:"):
+                        jobserver_path = value.removeprefix("fifo:")
+                    else:
+                        jobserver_path = None
+                        print()
+                        out = portage.output.EOutput()
+                        out.ewarn(f"Unsupported jobserver type: {flag}")
+            if jobserver_path is not None:
+                try:
+                    self._jobserver_fd = os.open(
+                        jobserver_path, os.O_RDWR | os.O_NONBLOCK
+                    )
+                except OSError as exception:
+                    out = portage.output.EOutput()
+                    print()
+                    out.eerror("")
+                    out.eerror(f"Unable to connect to jobserver: {exception}")
+                    out.eerror("")
+                    self.terminate()
 
         if (
             self._max_load is not None
@@ -1688,6 +1742,9 @@ class Scheduler(PollScheduler):
         if self._schedule_merge_wakeup_task is not None:
             self._schedule_merge_wakeup_task.cancel()
             self._schedule_merge_wakeup_task = None
+        if self._jobserver_fd is not None:
+            os.close(self._jobserver_fd)
+            self._jobserver_fd = None
 
     def _choose_pkg(self):
         """
@@ -1816,6 +1873,89 @@ class Scheduler(PollScheduler):
 
     def _running_job_count(self):
         return self._jobs
+
+    _warned_tmpdir_free_space = False
+
+    def _can_add_job(self):
+        if not super()._can_add_job():
+            return False
+
+        running_job_count = self._running_job_count()
+        if running_job_count == 0 and not self._merge_wait_queue:
+            # Ensure there is forward progress if there are no running
+            # jobs and no jobs in the _merge_wait_queue.
+            return True
+
+        if self._jobs_tmpdir_require_free_gb and hasattr(os, "statvfs"):
+            tmpdirs = set()
+            for root in self.trees:
+                settings = self.trees[root]["root_config"].settings
+                if settings["PORTAGE_TMPDIR"] in tmpdirs:
+                    continue
+                tmpdirs.add(settings["PORTAGE_TMPDIR"])
+                tmpdir = first_existing(
+                    os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+                )
+                try:
+                    vfs_stat = os.statvfs(tmpdir)
+                except OSError as e:
+                    writemsg_level(
+                        f"!!! statvfs('{tmpdir}'): {e}\n",
+                        noiselevel=-1,
+                        level=logging.ERROR,
+                    )
+                else:
+                    # Use a decaying function to take potential future PORTAGE_TMPDIR consumption
+                    # of currently running jobs and the new job into account.
+                    def scale_to_jobs(num):
+                        # The newly started job is fully taken into account.
+                        res = num
+                        # All currently running jobs are taken into account with less weight,
+                        # since it is likely that they are already using space in PORTAGE_TMPDIR.
+                        for i in range(2, running_job_count + 2):
+                            res += (1 / i) * num
+                        return res
+
+                    if (
+                        self._jobs_tmpdir_require_free_gb
+                        and self._jobs_tmpdir_require_free_gb != 0
+                    ):
+                        required_free_bytes = (
+                            self._jobs_tmpdir_require_free_gb * 1024 * 1024 * 1024
+                        )
+                        required_free_bytes = scale_to_jobs(required_free_bytes)
+
+                        actual_free_bytes = vfs_stat.f_bsize * vfs_stat.f_bavail
+
+                        if actual_free_bytes < required_free_bytes:
+                            if not self._warned_tmpdir_free_space:
+                                from portage.util.human_readable import bytes_to_human
+
+                                actual_free_bytes_hr = bytes_to_human(actual_free_bytes)
+                                required_free_bytes_hr = bytes_to_human(
+                                    required_free_bytes
+                                )
+
+                                actual_free_bytes_debug = ""
+                                required_free_bytes_debug = ""
+                                if "--debug" in self.myopts:
+                                    actual_free_bytes_debug = (
+                                        f" ({actual_free_bytes} bytes)"
+                                    )
+                                    required_free_bytes_debug = (
+                                        f" ({required_free_bytes} bytes)"
+                                    )
+
+                                msg = f"--- {tmpdir} has not enough free space, emerge job parallelism reduced. free: {actual_free_bytes_hr}{actual_free_bytes_debug}, required {required_free_bytes_hr}{required_free_bytes_debug}"
+                                portage.writemsg_stdout(
+                                    colorize("WARN", f"\n{msg}\n"), noiselevel=-1
+                                )
+                                self._logger.log(msg)
+
+                                self._warned_tmpdir_free_space = True
+                            return False
+
+        return True
 
     def _schedule_tasks(self):
         while True:
@@ -1982,6 +2122,55 @@ class Scheduler(PollScheduler):
 
         return False
 
+    def _acquire_job_token(self) -> str:
+        """
+        Acquire a job token. Returns the token if available, or an empty value
+        if no jobserver is used (or the jobserver died). Raises BlockingIOError
+        if no tokens are available.
+        """
+        if self._jobserver_fd is None:
+            return b""
+        try:
+            return os.read(self._jobserver_fd, 1)
+        except BlockingIOError:
+            raise
+        except OSError as exception:
+            # If something failed (say, jobserver died), disable its usage
+            # and terminate the build (as sub-builds will likely fail too).
+            os.close(self._jobserver_fd)
+            self._jobserver_fd = None
+            out = portage.output.EOutput()
+            print()
+            out.eerror("")
+            out.eerror(f"Jobserver I/O failed, terminating: {exception}")
+            out.eerror("")
+            self.terminate()
+            return b""
+
+    def _release_job_token(self, task_id: int) -> None:
+        """
+        Release a job token for given task. If no jobserver is running, does
+        nothing.
+        """
+        token = self._jobserver_tokens.pop(task_id, None)
+        if token is not None and self._jobserver_fd is not None:
+            try:
+                os.write(self._jobserver_fd, token)
+            except OSError as exception:
+                # If something failed (say, jobserver died), disable its usage
+                # and terminate the build (as sub-builds will likely fail too).
+                os.close(self._jobserver_fd)
+                self._jobserver_fd = None
+                out = portage.output.EOutput()
+                out.eerror("")
+                out.eerror(f"Jobserver I/O failed, terminating: {exception}")
+                out.eerror("")
+                self.terminate()
+
+    def _unblock_jobs(self) -> None:
+        self._sched_iface.remove_reader(self._jobserver_fd)
+        self._schedule()
+
     def _schedule_tasks_imp(self):
         """
         @rtype: bool
@@ -2007,6 +2196,15 @@ class Scheduler(PollScheduler):
             if pkg is None:
                 return state_change
 
+            if not pkg.installed:
+                try:
+                    token = self._acquire_job_token()
+                except BlockingIOError:
+                    # no job tokens available right now
+                    self._pkg_queue.insert(0, pkg)
+                    self._sched_iface.add_reader(self._jobserver_fd, self._unblock_jobs)
+                    return state_change
+
             state_change = True
 
             if not pkg.installed:
@@ -2024,6 +2222,7 @@ class Scheduler(PollScheduler):
                 self._jobs += 1
                 self._previous_job_start_time = time.time()
                 self._status_display.running = self._jobs
+                self._jobserver_tokens[id(task)] = token
                 self._running_tasks[id(task)] = task
                 task.scheduler = self._sched_iface
                 self._task_queues.jobs.add(task)
