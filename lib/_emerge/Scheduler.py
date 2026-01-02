@@ -1946,7 +1946,7 @@ class Scheduler(PollScheduler):
                                         f" ({required_free_bytes} bytes)"
                                     )
 
-                                msg = f"--- {tmpdir} has not enough free space, emerge job parallelism reduced. free: {actual_free_bytes_hr}{actual_free_bytes_debug}, required {required_free_bytes_hr}{required_free_bytes_debug}"
+                                msg = f"--- {tmpdir} has insufficient free space, emerge job parallelism reduced. free: {actual_free_bytes_hr}{actual_free_bytes_debug}, required {required_free_bytes_hr}{required_free_bytes_debug}"
                                 portage.writemsg_stdout(
                                     colorize("WARN", f"\n{msg}\n"), noiselevel=-1
                                 )
