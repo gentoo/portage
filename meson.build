@@ -47,14 +47,18 @@ if portage_datadir == ''
                                   : datadir / 'share' / 'portage'
 endif
 
-# hprefixify is copied from prefix.eclass.
+# BEGIN PREFIX_LOCAL
+# hprefixify is copied from prefix.eclass, modified for Prefix to
+# exclude CONFIG_PROTEXT lines (from make.globals)
 dirs = '/(usr|lib(|[onx]?32|n?64)|etc|bin|sbin|var|opt|run)'
+exclude = '/^CONFIG_PROTECT/!'
 hprefixify = [
     sed, '-r',
-    '-e', 's,([^[:alnum:]}\\)\\.])' + dirs + ',\\1' + eprefix.replace(',', '\\,') + '/\\2,g',
-    '-e', 's,^' + dirs + ',' + eprefix.replace(',', '\\,') + '/\\1,',
+    '-e', exclude + 's,([^[:alnum:]}\\)\\.])' + dirs + ',\\1' + eprefix.replace(',', '\\,') + '/\\2,g',
+    '-e', exclude + 's,^' + dirs + ',' + eprefix.replace(',', '\\,') + '/\\1,',
     '@INPUT@'
 ]
+# END PREFIX_LOCAL
 
 # Use Portage's own code to determine the version from git, if possible.
 version = run_command(

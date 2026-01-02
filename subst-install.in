@@ -22,9 +22,10 @@ sedexp=(
 if [[ $1 == --hprefixify ]] ; then
 	shift
 	dirs='/(usr|lib(|[onx]?32|n?64)|etc|bin|sbin|var|opt|run)'
+	exclude='/^CONFIG_PROTECT/!'  # make.globals, don't prefix these
 	sedexp+=(
-		-e 's,([^[:alnum:]}\)\.])'"${dirs}"',\1@PORTAGE_EPREFIX@/\2,g'
-		-e 's,^'"${dirs}"',@PORTAGE_EPREFIX@/\1,'
+		-e "${exclude}"'s,([^[:alnum:]}\)\.])'"${dirs}"',\1@PORTAGE_EPREFIX@/\2,g'
+		-e "${exclude}"'s,^'"${dirs}"',@PORTAGE_EPREFIX@/\1,'
 	)
 fi
 
