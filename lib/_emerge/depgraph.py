@@ -109,6 +109,8 @@ if TYPE_CHECKING:
     import _emerge.stdout_spinner.stdout_spinner
 
 
+_NO_MERGE_OPTS = ("--buildpkgonly", "--fetchonly", "--fetch-all-uri")
+
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
     "_dep_check_graph_interface",
@@ -1945,7 +1947,9 @@ class depgraph:
         for conflict in self._dynamic_config._package_tracker.slot_conflicts():
             self._process_slot_conflict(conflict)
 
-        if self._dynamic_config._allow_backtracking:
+        if self._dynamic_config._allow_backtracking and not any(
+            opt in self._frozen_config.myopts for opt in _NO_MERGE_OPTS
+        ):
             self._slot_operator_trigger_reinstalls()
 
     def _process_slot_conflict(self, conflict):
@@ -9002,7 +9006,7 @@ class depgraph:
         if self._dynamic_config._allow_backtracking:
             return False
         acceptable = False
-        for x in ("--buildpkgonly", "--fetchonly", "--fetch-all-uri", "--nodeps"):
+        for x in _NO_MERGE_OPTS + ("--nodeps",):
             if x in self._frozen_config.myopts:
                 acceptable = True
                 break
