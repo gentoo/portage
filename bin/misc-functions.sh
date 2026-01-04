@@ -513,6 +513,8 @@ __generate_packdebug() {
 	install -d "${debugpath}"/"${CATEGORY}"{,/"${PN}"} \
 		|| die "Failed to generate target debug directory"
 
+	# xz is hardcoded here as it's the only format that supports random
+	# access.
 	(
 		unset IFS
 		local tarfile="${debugpath}/${CATEGORY}/${PN}/${PF}-${BUILD_ID}-debug.tar.xz"
