@@ -569,7 +569,7 @@ class checksum_helper:
             out = portage.output.EOutput()
             [out.eerror(line) for line in msg]
 
-            raise InvalidSignature("GnuPG verify failed")
+            raise InvalidSignature("GnuPG verification failed")
 
     def update(self, data):
         """
