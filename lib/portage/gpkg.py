@@ -608,27 +608,20 @@ class checksum_helper:
                 if self.gpg_operation == checksum_helper.VERIFY:
                     self._check_gpg_status(self.gpg_result)
             else:
-                msg = ["Binary package is not usable:"]
-                msg.extend(
-                    "\t" + line
-                    for line in self.gpg_result.decode(
-                        "UTF-8", errors="replace"
-                    ).splitlines()
-                )
+                gpg_error_lines = self.gpg_result.decode(
+                    "UTF-8", errors="replace"
+                ).splitlines()
                 out = portage.output.EOutput()
-                [out.eerror(line) for line in msg]
 
                 if self.gpg_operation == checksum_helper.SIGNING:
                     msg = ["Binary package is not usable (signing failed):"]
-                    msg.extend(
-                        "\t" + line
-                        for line in self.gpg_output.decode(
-                            "UTF-8", errors="replace"
-                        ).splitlines()
-                    )
+                    msg.extend("\t" + line for line in gpg_error_lines)
                     [out.eerror(line) for line in msg]
                     raise GPGException("GnuPG signing failed")
                 elif self.gpg_operation == checksum_helper.VERIFY:
+                    msg = ["Binary package is not usable (verification failed):"]
+                    msg.extend("\t" + line for line in gpg_error_lines)
+                    [out.eerror(line) for line in msg]
                     raise InvalidSignature("GnuPG verification failed")
 
 
