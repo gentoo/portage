@@ -1,4 +1,4 @@
-# Copyright 2001-2025 Gentoo Authors
+# Copyright 2001-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tarfile
@@ -9,6 +9,7 @@ import subprocess
 import errno
 import pwd
 import grp
+import re
 import shlex
 import stat
 import sys
@@ -541,6 +542,50 @@ class checksum_helper:
     def __del__(self):
         self.finish()
 
+    def show_gpg_error(self, operation, gpg_error_lines):
+        """
+        Interpret GnuPG output to give a pretty error message
+        with a summary if possible.
+        """
+        if operation == checksum_helper.VERIFY:
+            operation_blurb = "verification failed"
+        elif operation == checksum_helper.SIGNING:
+            operation_blurb = "signing failed"
+
+        # Attempt to give a nicer error the sniffing the status output.
+        error_summaries = []
+        portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "")
+
+        def _match_list(regex: re.Pattern, msgs: list) -> list[re.Match]:
+            return list(filter(lambda s: re.match(regex, s), msgs))
+
+        if _match_list(r"^\[GNUPG:\] NODATA", gpg_error_lines):
+            error_summaries.append("binpkg appears unsigned (missing any signature)")
+        if _match_list(r"^\[GNUPG:\] NO_PUBKEY", gpg_error_lines):
+            error_summaries.append(
+                "binpkg signed with at least one unknown key "
+                + f"(try running PORTAGE_TRUST_HELPER={portage_trust_helper}?)"
+            )
+        if _match_list(r"^\[GNUPG:\] TRUST_UNDEFINED", gpg_error_lines):
+            error_summaries.append(
+                f"binpkg signed with a known key of undefined trust "
+                + f"(try running PORTAGE_TRUST_HELPER={portage_trust_helper}?)"
+            )
+
+        # Don't show any summary if it's ambiguous, in case of
+        # a malformed signature.
+        if len(error_summaries) > 1 or not error_summaries:
+            error_summaries = ["(none available)"]
+
+        out = portage.output.EOutput()
+        msg = [f"Binary package is not usable ({operation_blurb}):"]
+        msg.append(" Summary:")
+        msg.extend("\t" + line for line in error_summaries)
+        msg.append("")
+        msg.append(" Raw GnuPG output:")
+        msg.extend("\t" + line for line in gpg_error_lines)
+        [out.eerror(line) for line in msg]
+
     def _check_gpg_status(self, gpg_status: bytes) -> None:
         """
         Check GnuPG status log for extra info.
@@ -559,16 +604,10 @@ class checksum_helper:
                 trust_signature = True
 
         if (not good_signature) or (not trust_signature):
-            msg = ["Binary package is not usable:"]
-            msg.extend(
-                "\t" + line
-                for line in self.gpg_result.decode(
-                    "UTF-8", errors="replace"
-                ).splitlines()
-            )
-            out = portage.output.EOutput()
-            [out.eerror(line) for line in msg]
-
+            gpg_error_lines = self.gpg_result.decode(
+                "UTF-8", errors="replace"
+            ).splitlines()
+            self.show_gpg_error(checksum_helper.VERIFY, gpg_error_lines)
             raise InvalidSignature("GnuPG verification failed")
 
     def update(self, data):
@@ -611,17 +650,12 @@ class checksum_helper:
                 gpg_error_lines = self.gpg_result.decode(
                     "UTF-8", errors="replace"
                 ).splitlines()
-                out = portage.output.EOutput()
 
                 if self.gpg_operation == checksum_helper.SIGNING:
-                    msg = ["Binary package is not usable (signing failed):"]
-                    msg.extend("\t" + line for line in gpg_error_lines)
-                    [out.eerror(line) for line in msg]
+                    self.show_gpg_error(checksum_helper.SIGNING, gpg_error_lines)
                     raise GPGException("GnuPG signing failed")
                 elif self.gpg_operation == checksum_helper.VERIFY:
-                    msg = ["Binary package is not usable (verification failed):"]
-                    msg.extend("\t" + line for line in gpg_error_lines)
-                    [out.eerror(line) for line in msg]
+                    self.show_gpg_error(checksum_helper.VERIFY, gpg_error_lines)
                     raise InvalidSignature("GnuPG verification failed")
 
 
