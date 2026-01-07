@@ -555,26 +555,32 @@ class checksum_helper:
         # Attempt to give a nicer error the sniffing the status output.
         error_summaries = []
         portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "")
+        portage_trust_helper_msg = [
+            # fmt: off
+            "\t" + "Possible fix:",
+            "\t" + f"Try running '{portage_trust_helper}', i.e., $PORTAGE_TRUST_HELPER, as root",
+            # fmt: on
+        ]
 
         def _match_list(regex: re.Pattern, msgs: list) -> list[re.Match]:
             return list(filter(lambda s: re.match(regex, s), msgs))
 
+        errors = 0
         if _match_list(r"^\[GNUPG:\] NODATA", gpg_error_lines):
+            errors += 1
             error_summaries.append("binpkg appears unsigned (missing any signature)")
         if _match_list(r"^\[GNUPG:\] NO_PUBKEY", gpg_error_lines):
-            error_summaries.append(
-                "binpkg signed with at least one unknown key "
-                + f"(try running PORTAGE_TRUST_HELPER={portage_trust_helper}?)"
-            )
+            errors += 1
+            error_summaries.append("binpkg signed with at least one unknown key.")
+            error_summaries.extend(portage_trust_helper_msg)
         if _match_list(r"^\[GNUPG:\] TRUST_UNDEFINED", gpg_error_lines):
-            error_summaries.append(
-                f"binpkg signed with a known key of undefined trust "
-                + f"(try running PORTAGE_TRUST_HELPER={portage_trust_helper}?)"
-            )
+            errors += 1
+            error_summaries.append("binpkg signed with a known key of undefined trust.")
+            error_summaries.extend(portage_trust_helper_msg)
 
         # Don't show any summary if it's ambiguous, in case of
         # a malformed signature.
-        if len(error_summaries) > 1 or not error_summaries:
+        if errors > 1 or not errors:
             error_summaries = ["(none available)"]
 
         out = portage.output.EOutput()
