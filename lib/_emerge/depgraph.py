@@ -12232,6 +12232,23 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
         if not pkgsettings._accept_chost(pkg.cpv, pkg._metadata):
             mreasons.append(_MaskReason("CHOST", f"CHOST: {pkg._metadata['CHOST']}"))
 
+    # check EPREFIX is compatible to be adjusted (chpathtool)
+    eprefix = pkgsettings["EPREFIX"]
+    if (
+        eprefix is not None
+        and len(eprefix.rstrip("/")) > 0
+        and pkg.built
+        and not pkg.installed
+    ):
+        if not "EPREFIX" in pkg._metadata:
+            mreasons.append(_MaskReason("EPREFIX", "missing EPREFIX"))
+        elif len(pkg._metadata["EPREFIX"].strip()) < len(eprefix):
+            mreasons.append(
+                _MaskReason(
+                    "EPREFIX", "EPREFIX: '%s' too small" % pkg._metadata["EPREFIX"]
+                )
+            )
+
     if pkg.invalid:
         for msgs in pkg.invalid.values():
             for msg in msgs:
