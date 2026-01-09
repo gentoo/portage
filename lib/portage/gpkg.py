@@ -580,7 +580,7 @@ class checksum_helper:
 
         # Don't show any summary if it's ambiguous, in case of
         # a malformed signature.
-        if errors > 1 or not errors:
+        if errors != 1:
             error_summaries = ["(none available)"]
 
         out = portage.output.EOutput()
