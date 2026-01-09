@@ -642,7 +642,6 @@ class checksum_helper:
             os.remove(self.sign_file_path)
 
         self.finished = True
-
         self.gpg_result = self.gpg_proc.stderr.read()
         self.gpg_output = self.gpg_proc.stdout.read()
         self.gpg_proc.stdout.close()
@@ -651,17 +650,18 @@ class checksum_helper:
         if return_code == os.EX_OK:
             if self.gpg_operation == checksum_helper.VERIFY:
                 self._check_gpg_status(self.gpg_result)
-        else:
-            gpg_error_lines = self.gpg_result.decode(
-                "UTF-8", errors="replace"
-            ).splitlines()
+            return
 
-            if self.gpg_operation == checksum_helper.SIGNING:
-                self.show_gpg_error(checksum_helper.SIGNING, gpg_error_lines)
-                raise GPGException("GnuPG signing failed")
-            elif self.gpg_operation == checksum_helper.VERIFY:
-                self.show_gpg_error(checksum_helper.VERIFY, gpg_error_lines)
-                raise InvalidSignature("GnuPG verification failed")
+        gpg_error_lines = self.gpg_result.decode(
+            "UTF-8", errors="replace"
+        ).splitlines()
+
+        if self.gpg_operation == checksum_helper.SIGNING:
+            self.show_gpg_error(checksum_helper.SIGNING, gpg_error_lines)
+            raise GPGException("GnuPG signing failed")
+        elif self.gpg_operation == checksum_helper.VERIFY:
+            self.show_gpg_error(checksum_helper.VERIFY, gpg_error_lines)
+            raise InvalidSignature("GnuPG verification failed")
 
 
 class tar_safe_extract:
