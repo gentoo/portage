@@ -649,12 +649,12 @@ class checksum_helper:
 
         if return_code == os.EX_OK:
             if self.gpg_operation == checksum_helper.VERIFY:
+                # os.EX_OK isn't a guarantee of everything being fine,
+                # so do more checks with `status-fd` output.
                 self._check_gpg_status(self.gpg_result)
             return
 
-        gpg_error_lines = self.gpg_result.decode(
-            "UTF-8", errors="replace"
-        ).splitlines()
+        gpg_error_lines = self.gpg_result.decode("UTF-8", errors="replace").splitlines()
 
         if self.gpg_operation == checksum_helper.SIGNING:
             self.show_gpg_error(checksum_helper.SIGNING, gpg_error_lines)
