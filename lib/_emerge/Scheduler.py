@@ -248,6 +248,7 @@ class Scheduler(PollScheduler):
 
         features = self.settings.features
         self._jobserver_fd = None
+        self._jobserver_has_implicit_token = False
         self._jobserver_tokens = {}
 
         self._fetch_log = os.path.join(
@@ -1639,6 +1640,13 @@ class Scheduler(PollScheduler):
                         out = portage.output.EOutput()
                         out.ewarn(f"Unsupported jobserver type: {flag}")
             if jobserver_path is not None:
+                # If MAKEFLAGS were passed via environment, we're likely running
+                # under a jobserver client (make, stevie) and a token was acquired
+                # for us, so use an implicit slot. If they were set via make.conf,
+                # we are the top-level process and need to acquire tokens for all
+                # jobs.
+                if "MAKEFLAGS" in os.environ:
+                    self._jobserver_has_implicit_token = True
                 try:
                     self._jobserver_fd = os.open(
                         jobserver_path, os.O_RDWR | os.O_NONBLOCK
@@ -2130,6 +2138,10 @@ class Scheduler(PollScheduler):
         """
         if self._jobserver_fd is None:
             return b""
+        if self._jobserver_has_implicit_token:
+            # If our implicit slot is free, use it.
+            self._jobserver_has_implicit_token = False
+            return b""
         try:
             return os.read(self._jobserver_fd, 1)
         except BlockingIOError:
@@ -2154,6 +2166,11 @@ class Scheduler(PollScheduler):
         """
         token = self._jobserver_tokens.pop(task_id, None)
         if token is not None and self._jobserver_fd is not None:
+            if token == b"":
+                # This job was running in our implicit slot.
+                assert not self._jobserver_has_implicit_token
+                self._jobserver_has_implicit_token = True
+                return
             try:
                 os.write(self._jobserver_fd, token)
             except OSError as exception:
