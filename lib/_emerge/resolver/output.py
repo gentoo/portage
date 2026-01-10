@@ -677,6 +677,9 @@ class Display:
                 if pkg_info.ebuild_path is not None:
                     self.restrict_fetch_list[pkg] = pkg_info
 
+        if pkg.type_name == "binary":
+            pkg_info.attr_display.remote_binary = pkg.remote
+
         if self.vardb.cpv_exists(pkg.cpv):
             # Do a cpv match first, in case the SLOT has changed.
             pkg_info.previous_pkg = self.vardb.match_pkgs(Atom("=" + pkg.cpv))[0]

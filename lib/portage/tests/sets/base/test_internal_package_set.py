@@ -1,5 +1,4 @@
-# testConfigFileSet.py -- Portage Unit Testing Functionality
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.dep import Atom
@@ -14,13 +13,20 @@ class InternalPackageSetTestCase(TestCase):
     def testInternalPackageSet(self):
         i1_atoms = {"dev-libs/A", ">=dev-libs/A-1", "dev-libs/B"}
         i2_atoms = {"dev-libs/A", "dev-libs/*", "dev-libs/C"}
+        i3_sets = {"@world", "@installed", "@system"}
 
         i1 = InternalPackageSet(initial_atoms=i1_atoms)
         i2 = InternalPackageSet(initial_atoms=i2_atoms, allow_wildcard=True)
+        i3 = InternalPackageSet(initial_atoms=i3_sets)
         self.assertRaises(InvalidAtom, InternalPackageSet, initial_atoms=i2_atoms)
+
+        self.assertFalse(i1.isEmpty())
+        self.assertFalse(i2.isEmpty())
+        self.assertFalse(i3.isEmpty())
 
         self.assertEqual(i1.getAtoms(), i1_atoms)
         self.assertEqual(i2.getAtoms(), i2_atoms)
+        self.assertEqual(i3.getNonAtoms(), i3_sets)
 
         new_atom = Atom("*/*", allow_wildcard=True)
         self.assertRaises(InvalidAtom, i1.add, new_atom)
@@ -60,3 +66,8 @@ class InternalPackageSetTestCase(TestCase):
         i2_atoms = set(replace_atoms)
 
         self.assertEqual(i2.getAtoms(), i2_atoms)
+
+        i2.clear()
+        self.assertEqual(i2.getAtoms(), set())
+        self.assertEqual(i2.getNonAtoms(), set())
+        self.assertTrue(i2.isEmpty())

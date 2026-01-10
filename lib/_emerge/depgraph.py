@@ -52,7 +52,7 @@ from portage.output import colorize, create_color_func, darkgreen, green
 bad = create_color_func("BAD")
 from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
-from portage._sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet, WildcardPackageSet
 from portage.dep._slot_operator import evaluate_slot_operator_equal_deps
 from portage.util import ConfigProtect, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
@@ -131,17 +131,6 @@ class _scheduler_graph_config:
         self.mergelist = mergelist
 
 
-def _wildcard_set(atoms):
-    pkgs = InternalPackageSet(allow_wildcard=True)
-    for x in atoms:
-        try:
-            x = Atom(x, allow_wildcard=True, allow_repo=False)
-        except portage.exception.InvalidAtom:
-            x = Atom("*/" + x, allow_wildcard=True, allow_repo=False)
-        pkgs.add(x)
-    return pkgs
-
-
 class _frozen_depgraph_config:
     def __init__(self, settings, trees, myopts, params, spinner):
         self.settings = settings
@@ -204,17 +193,65 @@ class _frozen_depgraph_config:
             self._required_set_names = {"world"}
 
         atoms = " ".join(myopts.get("--exclude", [])).split()
-        self.excluded_pkgs = _wildcard_set(atoms)
+        self.excluded_pkgs = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--reinstall-atoms", [])).split()
-        self.reinstall_atoms = _wildcard_set(atoms)
+        self.reinstall_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--usepkg-exclude", [])).split()
-        self.usepkg_exclude = _wildcard_set(atoms)
+        self.usepkg_exclude = WildcardPackageSet(atoms, allow_repo=True)
+        atoms = " ".join(myopts.get("--usepkg-include", [])).split()
+        self.usepkg_include = WildcardPackageSet(atoms, allow_repo=True)
         atoms = " ".join(myopts.get("--useoldpkg-atoms", [])).split()
-        self.useoldpkg_atoms = _wildcard_set(atoms)
+        self.useoldpkg_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-exclude", [])).split()
-        self.rebuild_exclude = _wildcard_set(atoms)
+        self.rebuild_exclude = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-ignore", [])).split()
-        self.rebuild_ignore = _wildcard_set(atoms)
+        self.rebuild_ignore = WildcardPackageSet(atoms)
+
+        for repo in settings.repositories:
+            excluded = [x + "::" + repo.name for x in (repo.usepkg_exclude or [])]
+            usepkg_exclude_repo = WildcardPackageSet(excluded, allow_repo=True)
+            included = [x + "::" + repo.name for x in (repo.usepkg_include or [])]
+            usepkg_include_repo = WildcardPackageSet(included, allow_repo=True)
+
+            # warn if include/exclude lists overlap in repos.conf
+            conflicted_atoms = usepkg_exclude_repo.getAtoms().intersection(
+                usepkg_include_repo.getAtoms()
+            )
+            if conflicted_atoms:
+                writemsg(
+                    "\n!!! The following atoms appear in both the exclude and "
+                    "include getbinpkg lists for [%s]:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_atoms))
+                )
+
+            # --usepkg-include overrides usepkg-exclude in repos.conf
+            conflicted_exclude = usepkg_exclude_repo.getAtoms().intersection(
+                (a + "::" + repo.name for a in self.usepkg_include.getAtoms())
+            )
+            if conflicted_exclude:
+                writemsg(
+                    "\n!!! The following usepkg-exclude atoms for [%s] have "
+                    "been overridden by the --usepkg-include option:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+                )
+                for a in conflicted_exclude:
+                    usepkg_exclude_repo.remove(a)
+
+            # --usepkg-exclude overrides usepkg-include in repos.conf
+            conflicted_include = usepkg_include_repo.getAtoms().intersection(
+                (a + "::" + repo.name for a in self.usepkg_exclude.getAtoms())
+            )
+            if conflicted_include:
+                writemsg(
+                    "\n!!! The following usepkg-include atoms for [%s] have "
+                    "been overridden by the --usepkg-exclude option:\n"
+                    "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+                )
+                for a in conflicted_include:
+                    usepkg_include_repo.remove(a)
+
+            self.usepkg_exclude.update(usepkg_exclude_repo)
+            self.usepkg_include.update(usepkg_include_repo)
 
         self.rebuild_if_new_rev = "--rebuild-if-new-rev" in myopts
         self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts
@@ -5306,6 +5343,9 @@ class depgraph:
         onlydeps = "--onlydeps" in self._frozen_config.myopts
         args = self._dynamic_config._initial_arg_list[:]
 
+        if "--nobindeps" in self._frozen_config.myopts:
+            self._frozen_config.usepkg_include.update(myfavorites)
+
         for arg in self._expand_set_args(args, add_to_digraph=True):
             myroot = arg.root_config.root
             pkgsettings = self._frozen_config.pkgsettings[myroot]
@@ -7616,6 +7656,9 @@ class depgraph:
         )
         reinstall_atoms = self._frozen_config.reinstall_atoms
         usepkg_exclude = self._frozen_config.usepkg_exclude
+        usepkg_include = self._frozen_config.usepkg_include
+        have_usepkg_exclude = not usepkg_exclude.isEmpty()
+        have_usepkg_include = not usepkg_include.isEmpty()
         useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
         matched_oldpkg = []
         # Behavior of the "selective" parameter depends on
@@ -7686,14 +7729,21 @@ class depgraph:
                     ):
                         continue
 
-                    if (
-                        built
-                        and not installed
-                        and usepkg_exclude.findAtomForPackage(
-                            pkg, modified_use=self._pkg_use_enabled(pkg)
+                    if built and not installed:
+                        in_usepkg_exclude = (
+                            have_usepkg_exclude
+                            and usepkg_exclude.findAtomForPackage(
+                                pkg, modified_use=self._pkg_use_enabled(pkg)
+                            )
                         )
-                    ):
-                        break
+                        in_usepkg_include = (
+                            not have_usepkg_include
+                            or usepkg_include.findAtomForPackage(
+                                pkg, modified_use=self._pkg_use_enabled(pkg)
+                            )
+                        )
+                        if in_usepkg_exclude or not in_usepkg_include:
+                            break
 
                     # We can choose not to install a live package from using binary
                     # cache by disabling it with option --usepkg-exclude-live in the

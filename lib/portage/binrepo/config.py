@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from hashlib import md5
 
 from portage.localization import _
+from portage.repository.config import _validate_usepkg_list
 from portage.util import _recursive_file_list, writemsg
 from portage.util.configparser import SafeConfigParser, ConfigParserError, read_configs
 
@@ -16,6 +17,8 @@ class BinRepoConfig:
         "name",
         "name_fallback",
         "fetchcommand",
+        "getbinpkg_exclude",
+        "getbinpkg_include",
         "location",
         "priority",
         "resumecommand",
@@ -88,6 +91,20 @@ class BinRepoConfigLoader(Mapping):
                     noiselevel=-1,
                 )
                 continue
+
+            for opt in ("getbinpkg_exclude", "getbinpkg_include"):
+                value = getattr(repo, opt)
+                if value is not None:
+                    setattr(repo, opt, value.split())
+                bad_atoms = _validate_usepkg_list(getattr(repo, opt))
+                if bad_atoms:
+                    writemsg(
+                        "\n!!! Binrepo %s has invalid atoms(s) in %s attribute:"
+                        " '%s' (only package names and slot atoms allowed)\n"
+                        % (repo.name, opt.replace("_", "-"), ",".join(bad_atoms))
+                    )
+                    for a in bad_atoms:
+                        getattr(repo, opt).remove(a)
 
             sync_uri = self._normalize_uri(repo.sync_uri)
             sync_uris.append(sync_uri)
