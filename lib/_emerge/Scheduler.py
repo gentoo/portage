@@ -2130,7 +2130,7 @@ class Scheduler(PollScheduler):
 
         return False
 
-    def _acquire_job_token(self) -> str:
+    def _acquire_job_token(self) -> bytes:
         """
         Acquire a job token. Returns the token if available, or an empty value
         if no jobserver is used (or the jobserver died). Raises BlockingIOError
