@@ -254,7 +254,7 @@ SUPPORTED_FEATURES = frozenset(
     )
 )
 
-EAPI = 8
+EAPI = 9
 
 HASHING_BLOCKSIZE = 32768
 
