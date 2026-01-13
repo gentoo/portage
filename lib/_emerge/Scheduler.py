@@ -1021,17 +1021,17 @@ class Scheduler(PollScheduler):
                             sys.stderr = stderr_orig
 
                         output_value = out.getvalue()
-                        if output_value:
-                            if injected_pkg is None:
-                                msg = ["Binary package is not usable:"]
+                        if injected_pkg is None:
+                            msg = ["Binary package is not usable:"]
+                            if output_value:
                                 msg.extend(
                                     "\t" + line for line in output_value.splitlines()
                                 )
-                                self._elog("eerror", msg)
+                            self._elog("eerror", msg)
 
-                        failures += 1
-                        self._record_pkg_failure(x, settings, 1)
-                        continue
+                            failures += 1
+                            self._record_pkg_failure(x, settings, 1)
+                            continue
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
