@@ -6,6 +6,31 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.76 (UNRELEASED)
+--------------
+
+First release with EAPI 9 support declared!
+
+Features:
+
+* Enable EAPI 9!
+
+* Scheduler: implicit jobserver slot support (bug #692576)
+
+  Followup to previous FEATURES="jobserver-token" support.
+
+Bug fixes:
+
+* gpkg: Improve the PORTAGE_TRUST_HELPER hint in error messages.
+
+* meson: Fix warning for configure_file.
+
+* Scheduler: Fix pkg_pretend bug with binpkgs.
+
+Cleanups:
+
+* gpkg: Minor readability refactoring and commentary.
+
 portage-3.0.75 (2026-01-07)
 --------------
 
