@@ -162,6 +162,10 @@ def action_build(
         kwargs["add_repos"] = (quickpkg_vardb,)
         try:
             kwargs["pretend"] = "--pretend" in emerge_config.opts
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
             emerge_config.target_config.trees["bintree"].populate(
                 getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
             )
@@ -425,6 +429,14 @@ def action_build(
                         kwargs["add_repos"] = (
                             emerge_config.running_config.trees["vartree"].dbapi,
                         )
+                    if "--getbinpkg-exclude" in emerge_config.opts:
+                        kwargs["getbinpkg_exclude"] = emerge_config.opts[
+                            "--getbinpkg-exclude"
+                        ]
+                    if "--getbinpkg-include" in emerge_config.opts:
+                        kwargs["getbinpkg_include"] = emerge_config.opts[
+                            "--getbinpkg-include"
+                        ]
 
                     try:
                         root_trees["bintree"].populate(
@@ -3543,6 +3555,20 @@ def run_action(emerge_config):
     if "getbinpkg" in emerge_config.target_config.settings.features:
         emerge_config.opts["--getbinpkg"] = True
 
+    if "--getbinpkg" not in emerge_config.opts:
+        penvdict = emerge_config.target_config.settings._penvdict
+        pkgsettings = portage.config(clone=emerge_config.target_config.settings)
+        for cp in penvdict:
+            for atom, env in penvdict[cp].items():
+                pkgsettings.setcpv(atom)
+                if "getbinpkg" in pkgsettings.features:
+                    emerge_config.opts["--getbinpkg"] = True
+                    getbinpkg_include = emerge_config.opts.get(
+                        "--getbinpkg-include", []
+                    )
+                    getbinpkg_include.append(atom.cp)
+                    emerge_config.opts["--getbinpkg-include"] = getbinpkg_include
+
     if "--getbinpkgonly" in emerge_config.opts:
         emerge_config.opts["--getbinpkg"] = True
 
@@ -3573,6 +3599,10 @@ def run_action(emerge_config):
                 )
 
             kwargs["pretend"] = "--pretend" in emerge_config.opts
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
 
             try:
                 mytrees["bintree"].populate(
