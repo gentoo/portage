@@ -9,6 +9,7 @@ from portage.const import (
     CACHE_PATH,
     CONFIG_MEMORY_FILE,
     MERGING_IDENTIFIER,
+    PACKDEBUG_PATH,
     PORTAGE_PACKAGE_ATOM,
     PRIVATE_PATH,
     VDB_PATH,
@@ -2755,7 +2756,7 @@ class dblink:
                 # For packdebug, we don't want to clean up old debuginfo
                 # tarballs that we made, as we want to keep serving them
                 # to binhost clients for some time.
-                uninstall_ignore += " /usr/lib/debug/.tarball/*"
+                uninstall_ignore += f" {PACKDEBUG_PATH}/*"
 
             uninstall_ignore = shlex.split(uninstall_ignore)
 
@@ -3950,7 +3951,7 @@ class dblink:
         # packdebug tarballs are orphaned for management outside of Portage,
         # so it's expected that we may collide with an orphaned file. Ignore it.
         if "packdebug" in self.settings.features:
-            x = "/usr/lib/debug/.tarball"
+            x = PACKDEBUG_PATH
             if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
                 x = normalize_path(x)
                 x += "/*"
