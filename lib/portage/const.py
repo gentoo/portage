@@ -107,6 +107,7 @@ PRELINK_BINARY = f"{BINARY_PREFIX}/usr/sbin/prelink"
 
 INVALID_ENV_FILE = "/etc/spork/is/not/valid/profile.env"
 MERGING_IDENTIFIER = "-MERGING-"
+PACKDEBUG_PATH = "/usr/lib/debug/.tarball"
 REPO_NAME_FILE = "repo_name"
 REPO_NAME_LOC = f"profiles/{REPO_NAME_FILE}"
 
