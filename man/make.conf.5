@@ -531,8 +531,9 @@ Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
 except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
 .TP
 .B getbinpkg
-Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
-\fBmake.conf\fR(5) for more information.
+Force emerges to always try to fetch files from the remote binhosts configured
+in \fBbinrepos.conf\fR or \fIPORTAGE_BINHOST\fR.  See \fBmake.conf\fR(5)
+for more information.
 .TP
 .B gpg-keepalive
 Run GnuPG unlock command every 5 mins to avoid passphrase expiry.
