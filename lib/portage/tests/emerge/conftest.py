@@ -817,7 +817,11 @@ def _generate_all_baseline_commands(playground, binhost):
 
         # Remove binrepos.conf and test PORTAGE_BINHOST.
         def _rm_pkgdir_and_rm_binrepos_conf_file():
-            shutil.rmtree(pkgdir)
+            shutil.rmtree(pkgdir, ignore_errors=True)
+            shutil.rmtree(
+                f"{settings['EPREFIX']}/var/cache/binhost/test-binhost",
+                ignore_errors=True,
+            )
             os.unlink(binrepos_conf_file)
 
         getbinpkgonly_fetchonly = Emerge(
@@ -830,7 +834,11 @@ def _generate_all_baseline_commands(playground, binhost):
 
         # Test bug 920537 binrepos.conf with local file src-uri.
         def _rm_pkgdir_and_create_binrepos_conf_with_file_uri():
-            shutil.rmtree(pkgdir)
+            shutil.rmtree(pkgdir, ignore_errors=True)
+            shutil.rmtree(
+                f"{settings['EPREFIX']}/var/cache/binhost/test-binhost",
+                ignore_errors=True,
+            )
             with open(binrepos_conf_file, "w") as f:
                 f.write("[test-binhost]\n")
                 f.write(f"sync-uri = file://{binhost_dir}\n")

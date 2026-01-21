@@ -57,6 +57,7 @@ class BinRepoConfig:
 class BinRepoConfigLoader(Mapping):
     def __init__(self, paths, settings):
         """Load config from files in paths"""
+        import os
 
         # Defaults for value interpolation.
         parser_defaults = {
@@ -116,6 +117,15 @@ class BinRepoConfigLoader(Mapping):
                         }
                     )
                 )
+
+        # With PORTAGE_BINHOST, it's not clear what the implicit name would
+        # be, so treat it like local.
+        if not settings.get("PORTAGE_BINHOST", ""):
+            for repo in repos:
+                if repo.location is None:
+                    repo.location = (
+                        f"{settings['EPREFIX']}/var/cache/binhost/{repo.name}"
+                    )
 
         self._data = OrderedDict(
             (repo.name or repo.name_fallback, repo)

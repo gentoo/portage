@@ -670,8 +670,8 @@ repositories, those with higher priority are preferred.
 .TP
 .B location
 Specify a cache location which serves as a partial local mirror of a
-remote repository. If unset then the effective default is PKGDIR
-(see \fBmake.conf\fR(5)).
+remote repository. If unset then the default is /var/cache/binhost/repository_name.
+It was previously PKGDIR (see \fBmake.conf\fR(5)).
 .TP
 .B sync\-uri
 Specifies URI of repository used for `emerge \-\-getbinpkg`.
