@@ -57,7 +57,6 @@ class BinRepoConfig:
 class BinRepoConfigLoader(Mapping):
     def __init__(self, paths, settings):
         """Load config from files in paths"""
-        import os
 
         # Defaults for value interpolation.
         parser_defaults = {
