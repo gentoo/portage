@@ -1,0 +1,194 @@
+# Detect 32-bit builds that are using legacy 32-bit file interfaces.
+# https://en.wikipedia.org/wiki/Large_file_support
+#
+# We want to make sure everyone is using the 64-bit interfaces.
+# https://bugs.gentoo.org/471102
+
+# Lists gleaned from headers and this doc:
+# https://people.redhat.com/berrange/notes/largefile.html
+# https://www.opengroup.org/platform/lfs.html
+SYMBOLS=(
+	# aio.h
+	aio_cancel
+	aio_error
+	aio_fsync
+	aio_read
+	aio_return
+	aio_suspend
+	aio_write
+	lio_listio
+
+	# dirent.h
+	alphasort
+	getdirentries
+	readdir
+	readdir_r
+	scandir
+	scandirat
+	versionsort
+
+	# fcntl.h
+	creat
+	fallocate
+	fopen
+	fopenat
+	freopen
+	open
+	openat
+	posix_fadvise
+	posix_fallocate
+	__open
+	__open_2
+	__openat_2
+
+	# ftw.h
+	ftw
+	nftw
+
+	# glob.h
+	glob
+	globfree
+
+	# stdio.h
+	fgetpos
+	fopen
+	freopen
+	fseeko
+	fsetpos
+	ftello
+	tmpfile
+
+	# stdlib.h
+	mkostemp
+	mkostemps
+	mkstemp
+	mkstemps
+
+	# sys/mman.h
+	mmap
+
+	# sys/resource.h
+	getrlimit
+	prlimit
+	setrlimit
+
+	# sys/sendfile.h
+	sendfile
+
+	# sys/stat.h
+	fstat
+	fstatat
+	lstat
+	stat
+	__fxstat
+	__fxstatat
+	__lxstat
+	__xstat
+
+	# sys/statfs.h
+	fstatfs
+	statfs
+
+	# sys/statvfs.h
+	statvfs
+	fstatvfs
+
+	# sys/uio.h
+	preadv
+	preadv2
+	pwritev
+	pwritev2
+
+	# unistd.h
+	lockf
+	lseek
+	ftruncate
+	pread
+	preadv
+	pwrite
+	pwritev
+	truncate
+	__pread_chk
+)
+
+SYMBOLS_REGEX=$(printf '%s|' "${SYMBOLS[@]}")
+# The @@ part is to workaround a limitation in pax-utils w/versioned symbols.
+SYMBOLS_REGEX="^(${SYMBOLS_REGEX%|})(@@.*)?$"
+
+check_lfs() {
+	local dir="$@"
+	if [[ ! -d "${dir}" && -n "${ED}" ]] ; then
+		dir="${ED}"
+	fi
+
+	local files=$(scanelf -F '%p:%s' -qyRgs "-${SYMBOLS_REGEX}" "${dir}")
+
+	if [[ -n ${files} ]]; then
+		eqawarn "QA Notice: The following files were not built with LFS support:"
+		eqawarn " Please see https://bugs.gentoo.org/471102 for details."
+		eqawarn "Affected files:"
+		eqatag -v lfs.missing ${files[@]}
+	fi
+}
+
+filtered_check_lfs() {
+	if ! type -P scanelf >/dev/null || has binchecks ${RESTRICT}; then
+		return
+	fi
+
+	# Only check glibc & uClibc libraries.  Others are presumed to use LFS by
+	# default (e.g. musl), or it's not relevant (e.g. newlib).
+	case ${CHOST} in
+		*-gnu*|*-uclibc*)
+			;;
+		*)
+			return
+			;;
+	esac
+
+	# Only check on 32-bit systems.  Filtering by $ARCH here isn't perfect, but
+	# it should be good enough for our needs.
+	case ${ARCH} in
+		arm|mips|hppa|m68k|ppc|sh|x86)
+			;;
+		s390)
+			# s390x is 64-bit, but s390 is 32-bit.
+			# We use the same keyword for both.
+			if [[ ${CHOST} == s390x-* ]] ; then
+				return
+			fi
+			;;
+		sparc)
+			# sparc and sparc64 share the same keyword.
+			if [[ ${CHOST} == sparc64* ]] ; then
+				return
+			fi
+			;;
+		*)
+			return
+			;;
+	esac
+
+	# Obviously filter out C libraries themselves :).
+	# The sandbox has to capture all symbols by design.
+	case ${CATEGORY}/${PN} in
+		*/glibc|*/uclibc|*/gcc|sys-apps/sandbox)
+			;;
+		*)
+			check_lfs "${ED}"
+			;;
+	esac
+}
+
+# Allow for people to run manually for testing/debugging.
+if [[ $# -ne 0 ]]; then
+	eqawarn() { echo " * $*"; }
+	eqatag() { eqawarn "$@";  }
+	check_lfs "$@"
+else
+	filtered_check_lfs
+fi
+
+: # guarantee successful exit
+
+# vim:ft=sh
