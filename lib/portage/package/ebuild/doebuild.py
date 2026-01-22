@@ -2004,9 +2004,9 @@ def spawn(
 ):
     """
     Spawn a subprocess with extra portage-specific options.
-    Optiosn include:
+    Options include:
 
-    Sandbox: Sandbox means the spawned process will be limited in its ability t
+    Sandbox: Sandbox means the spawned process will be limited in its ability to
     read and write files (normally this means it is restricted to ${D}/)
     SElinux Sandbox: Enables sandboxing on SElinux
     Reduced Privileges: Drops privileges such that the process runs as portage:portage
