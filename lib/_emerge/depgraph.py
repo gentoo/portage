@@ -5582,7 +5582,13 @@ class depgraph:
         # set below is reserved for cases where there are *zero* other
         # problems. For reference, see backtrack_depgraph, where it skips the
         # get_best_run() call when success_without_autounmask is True.
-        if self._have_autounmask_changes():
+
+        if onlydeps and self._dynamic_config._needed_license_changes:
+            # needed license changes should only be fatal for packages that
+            # would actually be installed
+            return True, myfavorites
+
+        elif self._have_autounmask_changes():
             # We failed if the user needs to change the configuration
             self._dynamic_config._success_without_autounmask = True
             if (
@@ -7345,7 +7351,9 @@ class depgraph:
 
         return pkg, existing
 
-    def _pkg_visibility_check(self, pkg, autounmask_level=None, trust_graph=True):
+    def _pkg_visibility_check(
+        self, pkg, autounmask_level=None, trust_graph=True, onlydeps=False
+    ):
         if pkg.visible:
             return True
 
@@ -7384,7 +7392,11 @@ class depgraph:
             elif hint.key == "p_mask":
                 masked_by_p_mask = True
             elif hint.key == "license":
-                missing_licenses = hint.value
+                if not onlydeps:
+                    # onlydeps should only be set to True for top level packages
+                    # don't block an onlydeps merge when the package blocked it
+                    # would not be merged
+                    missing_licenses = hint.value
             else:
                 masked_by_something_else = True
 
@@ -7420,7 +7432,11 @@ class depgraph:
                 and not autounmask_level.allow_missing_keywords
             )
             or (masked_by_p_mask and not autounmask_level.allow_unmasks)
-            or (missing_licenses and not autounmask_level.allow_license_changes)
+            or (
+                missing_licenses
+                and not autounmask_level.allow_license_changes
+                and not onlydeps
+            )
         ):
             # We are not allowed to do the needed changes.
             return False
@@ -7762,7 +7778,11 @@ class depgraph:
                         # _dep_check_composite_db, in order to prevent
                         # incorrect choices in || deps like bug #351828.
 
-                        if not self._pkg_visibility_check(pkg, autounmask_level):
+                        # We pass onlydeps here so that masks on packages
+                        # that would not be installed are not fatal
+                        if not self._pkg_visibility_check(
+                            pkg, autounmask_level, onlydeps=onlydeps
+                        ):
                             continue
 
                         # Enable upgrade or downgrade to a version
