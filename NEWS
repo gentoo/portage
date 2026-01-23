@@ -6,6 +6,41 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.77 (2026-01-23)
+--------------
+
+Breaking changes:
+
+* binrepo: Default to /var/cache/binhost/${NAME} for `location` (bug #945385)
+
+  This is needed to cleanly separate locally-created binpkgs vs
+  remote fetched binpkgs, which is important for allowing per-repository
+  PGP verification, but also e.g. deploying your own binhost without
+  (re-)serving other binpkgs unintentionally.
+
+  Support for `location` was introduced for bug #934784. gentoolkit's
+  eclean-pkg supports multiple binpkg locations rather than just `PKGDIR`
+  since gentoolkit-0.7 (bug #947694).
+
+Bug fixes:
+
+* doebuild: Fix unexported_env_vars call to chown.
+
+  This affects egencache when called with an alternative PORTAGE_USERNAME
+  and PORTAGE_GRPNAME w/ >= EAPI 9.
+
+* man: make.conf(5): Mention in another place (--getbinpkg) the existence
+  of binrepos.conf.
+
+* man: make.conf(5): Document in another place (--getbinpkg) that PORTAGE_BINHOST
+  is deprecated.
+
+  Use binrepos.conf instead.
+
+Cleanups:
+
+* doebuild: Fix typos in docstring.
+
 portage-3.0.76 (2026-01-18)
 --------------
 
