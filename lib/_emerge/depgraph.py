@@ -78,7 +78,7 @@ from _emerge.DepPriority import DepPriority
 from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-from _emerge.FakeVartree import FakeVartree
+from _emerge.FakeVartree import FakeVartree, grab_global_updates
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge.is_valid_package_atom import (
     insert_category_into_atom,
@@ -5094,6 +5094,7 @@ class depgraph:
                     )
                     self._dynamic_config._skip_restart = True
                     return (0, [])
+
                 # Don't expand categories or old-style virtuals here unless
                 # necessary. Expansion of old-style virtuals here causes at
                 # least the following problems:
@@ -5102,10 +5103,12 @@ class depgraph:
                 #   2) It takes away freedom from the resolver to choose other
                 #      possible expansions when necessary.
                 if "/" in x.split(":")[0]:
+                    atomarg_atom = Atom(x, allow_repo=True)
+
                     args.append(
                         AtomArg(
                             arg=x,
-                            atom=Atom(x, allow_repo=True),
+                            atom=atomarg_atom,
                             root_config=root_config,
                         )
                     )
@@ -5149,6 +5152,7 @@ class depgraph:
                     )
                     self._dynamic_config._skip_restart = True
                     return False, myfavorites
+
                 if expanded_atoms:
                     atom = expanded_atoms[0]
                 else:
@@ -5321,6 +5325,7 @@ class depgraph:
                         # A provided package has been specified on the command line.
                         self._dynamic_config._pprovided_args.append((arg, atom))
                         continue
+
                     if isinstance(arg, PackageArg):
                         if (
                             not self._add_pkg(arg.package, dep)
@@ -5333,6 +5338,28 @@ class depgraph:
                                 )
                             return 0, myfavorites
                         continue
+                    elif isinstance(arg, AtomArg):
+                        # If we're still an AtomArg at this point, it might mean we're
+                        # a candidate for pkgmove-fixing up.
+                        pkg = next(
+                            self._iter_match_pkgs_any(
+                                self._frozen_config.roots[myroot],
+                                atom,
+                                pkgmoves_only=True,
+                            ),
+                            None,
+                        )
+
+                        if pkg:
+                            atom = Atom(atom.replace(atom.cp, pkg.cp))
+
+                            if not self._add_pkg(pkg, dep):
+                                writemsg(
+                                    f"\n\n!!! Problem resolving dependencies for {arg.arg=}, {arg.atom=}\n",
+                                    noiselevel=-1,
+                                )
+                                return False, myfavorites
+
                     if debug:
                         writemsg_level(
                             f"\n      Arg: {arg}\n     Atom: {atom}\n",
@@ -5342,6 +5369,8 @@ class depgraph:
                     pkg, existing_node = self._select_package(
                         myroot, atom, onlydeps=onlydeps
                     )
+                    if not arg:
+                        arg = AtomArg(pkg.slot_atom)
 
                     # Is the package installed (at any version)?
                     if pkg and "update_if_installed" in self._dynamic_config.myparams:
@@ -6868,7 +6897,9 @@ class depgraph:
             show_mask_docs()
             writemsg("\n", noiselevel=-1)
 
-    def _iter_match_pkgs_any(self, root_config, atom, onlydeps=False):
+    def _iter_match_pkgs_any(
+        self, root_config, atom, onlydeps=False, pkgmoves_only=False
+    ):
         for (
             db,
             pkg_type,
@@ -6877,13 +6908,35 @@ class depgraph:
             db_keys,
         ) in self._dynamic_config._filtered_trees[root_config.root]["dbs"]:
             yield from self._iter_match_pkgs(
-                root_config, pkg_type, atom, onlydeps=onlydeps
+                root_config,
+                pkg_type,
+                atom,
+                onlydeps=onlydeps,
+                pkgmoves_only=pkgmoves_only,
             )
 
-    def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
+    def _iter_match_pkgs_pkgmoves(self, root_config, atom, onlydeps=False):
+        for (
+            db,
+            pkg_type,
+            built,
+            installed,
+            db_keys,
+        ) in self._dynamic_config._filtered_trees[root_config.root]["dbs"]:
+            yield from self._iter_match_pkgs(
+                root_config, pkg_type, atom, onlydeps=onlydeps, pkgmoves_only=True
+            )
+
+    def _iter_match_pkgs(
+        self, root_config, pkg_type, atom, onlydeps=False, pkgmoves_only=False
+    ):
         if atom.package:
             return self._iter_match_pkgs_atom(
-                root_config, pkg_type, atom, onlydeps=onlydeps
+                root_config,
+                pkg_type,
+                atom,
+                onlydeps=onlydeps,
+                pkgmoves_only=pkgmoves_only,
             )
         return self._iter_match_pkgs_soname(
             root_config, pkg_type, atom, onlydeps=onlydeps
@@ -6900,7 +6953,9 @@ class depgraph:
                     cpv, pkg_type, root_config, installed=installed, onlydeps=onlydeps
                 )
 
-    def _iter_match_pkgs_atom(self, root_config, pkg_type, atom, onlydeps=False):
+    def _iter_match_pkgs_atom(
+        self, root_config, pkg_type, atom, onlydeps=False, pkgmoves_only=False
+    ):
         """
         Iterate over Package instances of pkg_type matching the given atom.
         This does not check visibility and it also does not match USE for
@@ -6910,11 +6965,12 @@ class depgraph:
 
         db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
         atom_exp = dep_expand(atom, mydb=db, settings=root_config.settings)
+
         cp_list = db.cp_list(atom_exp.cp)
         matched_something = False
         installed = pkg_type == "installed"
 
-        if cp_list:
+        if not pkgmoves_only and cp_list:
             atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
 
             # descending order
@@ -6954,6 +7010,44 @@ class depgraph:
                         matched_something = True
                         yield pkg
 
+        if pkgmoves_only or not matched_something:
+            # Try lookup the supplied atom in known updates instead to ease
+            # use in scripts (bug #910572).
+            try:
+                updates = self._frozen_config.trees[root_config.root][
+                    "porttree"
+                ]._update_cache
+            except AttributeError:
+                self._frozen_config.trees[root_config.root][
+                    "porttree"
+                ]._update_cache = grab_global_updates(
+                    root_config.trees["porttree"].dbapi
+                )
+
+                updates = self._frozen_config.trees[root_config.root][
+                    "porttree"
+                ]._update_cache
+
+            found_match = False
+            for repo, quarter in updates.items():
+                for _, source, dest in [
+                    update for update in quarter if update[0] == "move"
+                ]:
+                    if found_match or atom == dest:
+                        # No point in carrying on if we already have a post-update name.
+                        break
+
+                    if source == atom:
+                        # TODO: Warn when we're doing this, so people can update their scripts.
+                        print(f"Found a match for {atom=} with {source=}, {dest=}")
+                        found_match = True
+                        matched_something = True
+
+                        atom = Atom(atom.replace(source, dest))
+                        yield from self._iter_match_pkgs_atom(
+                            root_config, pkg_type, atom, onlydeps=onlydeps
+                        )
+
         # USE=multislot can make an installed package appear as if
         # it doesn't satisfy a slot dependency. Rebuilding the ebuild
         # won't do any good as long as USE=multislot is enabled since
@@ -6961,7 +7055,8 @@ class depgraph:
         # Therefore, assume that such SLOT dependencies are already
         # satisfied rather than forcing a rebuild.
         if (
-            not matched_something
+            not pkgmoves_only
+            and not matched_something
             and installed
             and atom.slot is not None
             and not atom.slot_operator_built
@@ -9708,7 +9803,7 @@ class depgraph:
                         continue
 
                     if heuristic_overlap and running_root == task.root:
-                        # Never uninstall sys-apps/portage or it's essential
+                        # Never uninstall sys-apps/portage or its essential
                         # dependencies, except through replacement.
                         try:
                             runtime_dep_atoms = list(
