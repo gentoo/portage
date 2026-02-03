@@ -1738,7 +1738,7 @@ class binarytree:
                 % (binrepo_name, _hide_url_passwd(base_url))
             )
             error_msg = str(err)
-            writemsg(f"!!!{binrepo_name} {error_msg}\n\n")
+            writemsg(f"!!! [{binrepo_name}] {error_msg}\n\n")
             del err
             pkgindex = None
 
