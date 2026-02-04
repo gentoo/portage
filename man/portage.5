@@ -691,6 +691,12 @@ priority = 9999
 # packages are fetched from here
 sync-uri = https://example.com/binhost
 
+# Introduced in portage-3.0.74 for per-repo verification choices
+verify-signature = true
+
+# Defaults to /var/cache/binhost/$NAME with >=portage-3.0.77
+# Stores downloaded binpkgs separately rather than comingling in PKGDIR.
+#location = /var/cache/binhost/example-binhost
 .fi
 .TP
 .BR categories
