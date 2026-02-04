@@ -702,15 +702,30 @@ if installation.TYPE == installation.TYPES.SOURCE:
             if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
                 try:
                     result = subprocess.run(
-                        ["git", "describe", "--dirty", "--match", "portage-*"],
+                        [
+                            "git",
+                            "describe",
+                            "--dirty",
+                            "--long",
+                            "--match",
+                            "portage-*",
+                        ],
                         capture_output=True,
                         cwd=PORTAGE_BASE_PATH,
                         encoding=_encodings["stdio"],
                     )
                     if result.returncode == 0:
-                        VERSION = (
-                            result.stdout.lstrip("portage-").strip().replace("-g", "+g")
-                        )
+                        # https://peps.python.org/pep-0440/
+                        VERSION, commits_since_tag, commit, dirty = re.fullmatch(
+                            "portage-([0-9.]*)-([0-9]*)-(g[0-9a-z]*)(-dirty)?",
+                            result.stdout.strip(),
+                        ).groups()
+                        if commits_since_tag != "0":
+                            VERSION += f".dev{commits_since_tag}+{commit}"
+                            if dirty is not None:
+                                VERSION += "-dirty"
+                        elif dirty is not None:
+                            VERSION += "+dirty"
                 except OSError:
                     pass
             return VERSION
