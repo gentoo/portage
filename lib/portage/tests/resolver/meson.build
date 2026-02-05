@@ -95,6 +95,7 @@ py.install_sources(
         'test_virtual_slot.py',
         'test_virtual_cycle.py',
         'test_with_test_deps.py',
+        'test_world_warning.py',
         '__init__.py',
         '__test__.py',
     ],
