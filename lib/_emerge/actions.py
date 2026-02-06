@@ -2067,6 +2067,23 @@ def action_info(settings, trees, myopts, myfiles):
             ccache_str += " [disabled]"
         append(ccache_str)
 
+    try:
+        proc = subprocess.Popen(
+            ["sccache", "-V"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+    except OSError:
+        output = (1, None)
+    else:
+        output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+        output = (proc.wait(), output)
+    if output[0] == os.EX_OK:
+        sccache_str = output[1].split("\n", 1)[0]
+        if "sccache" in settings.features:
+            sccache_str += " [enabled]"
+        else:
+            sccache_str += " [disabled]"
+        append(sccache_str)
+
     myvars = [
         "dev-build/autoconf",
         "dev-build/automake",
