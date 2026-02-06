@@ -632,6 +632,22 @@ merging.)
 This option is identical to \fB\-g\fR, as above, except binaries from the
 remote server are preferred over local packages if they are not identical.
 .TP
+.BR "\-\-getbinpkg\-exclude " ATOMS
+A space separated list of package names or slot atoms. Emerge will not fetch
+matching remote binary packages. This option only influences fetching of
+remote binary packages, local binary packages are still considered even if
+listed here. To define an explicit binary package blacklist use
+\fB\-\-usepkg\-exclude\fR instead, which also affects remote binaries when
+\fB-g\fR is used.
+.TP
+.BR "\-\-getbinpkg\-include " ATOMS
+A space separated list of package names or slot atoms. Emerge will not fetch
+non-matching remote binary packages. This option only influences fetching of
+remote binary packages, local binary packages are still considered even if
+not listed here. To define an explicit binary package whitelist use
+\fB\-\-usepkg\-include\fR instead, which also affects remote binaries when
+\fB-g\fR is used.
+.TP
 .BR \-\-ignore-default-opts
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
@@ -741,6 +757,13 @@ been added to or removed from IUSE, see the related
 \fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
 specific packages, see the \fB\-\-exclude\fR option.
 .TP
+.BR \-\-nobindeps
+Prefer ebuilds for any dependencies and select binary packages only for the
+atoms or sets requested for install, i.e. those named on the command line. Has
+no effect unless \fB-k\fR is also used or implied. Both \fB--usepkg-exclude\fR
+and \fB--usepkg-include\fR are ignored when this option is used, as are the
+usepkg-exclude and usepkg-include attributes in \fBrepos.conf\fR.
+.TP
 .BR \-\-noconfmem
 Causes portage to disregard merge records indicating that a config file
 inside of a \fBCONFIG_PROTECT\fR directory has been merged already.  Portage
@@ -768,6 +791,10 @@ terminal device is determined to be a TTY.  This flag disables it regardless.
 .BR "\-\-usepkg\-exclude " ATOMS
 A space separated list of package names or slot atoms. Emerge will ignore
 matching binary packages.
+.TP
+.BR "\-\-usepkg\-include " ATOMS
+A space separated list of package names or slot names. Emerge will ignore
+non\-matching binary packages.
 .TP
 .BR "\-\-rebuild\-exclude " ATOMS
 A space separated list of package names or slot atoms. Emerge will not rebuild
@@ -851,6 +878,7 @@ r	reinstall (forced for some reason, possibly due to slot or sub\-slot)
 R	replacing (remerging same version)
 F	fetch restricted (must be manually downloaded)
 f	fetch restricted (already downloaded)
+g	remote binary (automatically download from binhost)
 I	interactive (requires user input)
 B	blocked by another package (unresolved conflict)
 b	blocked by another package (automatically resolved conflict)

@@ -11,6 +11,7 @@ import sys
 import portage
 
 from portage import os
+from portage.repository.config import _find_bad_atoms
 from portage.sync import _SUBMODULE_PATH_MAP
 
 from typing import Optional
@@ -31,6 +32,7 @@ options = [
     "--noconfmem",
     "--newrepo",
     "--newuse",
+    "--nobindeps",
     "--nodeps",
     "--noreplace",
     "--nospinner",
@@ -278,35 +280,6 @@ def insert_optional_args(args):
             arg_stack.append("-" + saved_opts)
 
     return new_args
-
-
-def _find_bad_atoms(atoms, less_strict=False):
-    """
-    Declares all atoms as invalid that have an operator,
-    a use dependency, a blocker or a repo spec.
-    It accepts atoms with wildcards.
-    In less_strict mode it accepts operators and repo specs.
-    """
-    from _emerge.is_valid_package_atom import insert_category_into_atom
-    from portage.dep import Atom
-
-    bad_atoms = []
-    for x in " ".join(atoms).split():
-        atom = x
-        if "/" not in x.split(":")[0]:
-            x_cat = insert_category_into_atom(x, "dummy-category")
-            if x_cat is not None:
-                atom = x_cat
-
-        bad_atom = False
-        try:
-            atom = Atom(atom, allow_wildcard=True, allow_repo=less_strict)
-        except portage.exception.InvalidAtom:
-            bad_atom = True
-
-        if bad_atom or (atom.operator and not less_strict) or atom.blocker or atom.use:
-            bad_atoms.append(x)
-    return bad_atoms
 
 
 def parse_opts(tmpcmdline, silent=False):
@@ -570,9 +543,24 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "fetch binary packages only",
             "choices": true_y_or_n,
         },
+        "--getbinpkg-exclude": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will not fetch matching remote binary packages. ",
+            "action": "append",
+        },
+        "--getbinpkg-include": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will not fetch non-matching remote binary packages. ",
+            "action": "append",
+        },
         "--usepkg-exclude": {
             "help": "A space separated list of package names or slot atoms. "
             + "Emerge will ignore matching binary packages. ",
+            "action": "append",
+        },
+        "--usepkg-include": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will ignore non-matching binary packages. ",
             "action": "append",
         },
         "--onlydeps-with-ideps": {
@@ -884,10 +872,13 @@ def parse_opts(tmpcmdline, silent=False):
 
     candidate_bad_options = (
         (myoptions.exclude, "exclude"),
+        (myoptions.getbinpkg_exclude, "getbinpkg-exclude"),
+        (myoptions.getbinpkg_include, "getbinpkg-include"),
         (myoptions.reinstall_atoms, "reinstall-atoms"),
         (myoptions.rebuild_exclude, "rebuild-exclude"),
         (myoptions.rebuild_ignore, "rebuild-ignore"),
         (myoptions.usepkg_exclude, "usepkg-exclude"),
+        (myoptions.usepkg_include, "usepkg-include"),
         (myoptions.useoldpkg_atoms, "useoldpkg-atoms"),
     )
     bad_options = (

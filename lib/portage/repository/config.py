@@ -12,7 +12,9 @@ import typing
 import portage
 from pathlib import Path
 from portage import eclass_cache, os
+from portage._sets.base import WildcardPackageSet
 from portage.checksum import get_valid_checksum_keys
+from portage.dep import Atom
 from portage.const import PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH
 from portage.eapi import (
     eapi_allows_directories_on_profile_level_and_repository_level,
@@ -89,6 +91,34 @@ def _gen_valid_repo(name):
     return name
 
 
+def _find_bad_atoms(atoms, less_strict=False):
+    """
+    Declares all atoms as invalid that have an operator,
+    a use dependency, a blocker or a repo spec.
+    It accepts atoms with wildcards.
+    In less_strict mode it accepts operators and repo specs.
+    """
+    from _emerge.is_valid_package_atom import insert_category_into_atom
+
+    bad_atoms = []
+    for x in " ".join(atoms or []).split():
+        atom = x
+        if "/" not in x.split(":")[0]:
+            x_cat = insert_category_into_atom(x, "dummy-category")
+            if x_cat is not None:
+                atom = x_cat
+
+        bad_atom = False
+        try:
+            atom = Atom(atom, allow_wildcard=True, allow_repo=less_strict)
+        except portage.exception.InvalidAtom:
+            bad_atom = True
+
+        if bad_atom or (atom.operator and not less_strict) or atom.blocker or atom.use:
+            bad_atoms.append(x)
+    return bad_atoms
+
+
 def _find_invalid_path_char(path, pos=0, endpos=None):
     """
     Returns the position of the first invalid character found in basename,
@@ -162,6 +192,8 @@ class RepoConfig:
         "sync_user",
         "thin_manifest",
         "update_changelog",
+        "usepkg_exclude",
+        "usepkg_include",
         "user_location",
         "volatile",
         "_eapis_banned",
@@ -216,6 +248,40 @@ class RepoConfig:
 
         # The main-repo key makes only sense for the 'DEFAULT' section.
         self.main_repo = repo_opts.get("main-repo")
+
+        # usepkg-exclude and usepkg-include validation
+        for opt in ("usepkg-exclude", "usepkg-include"):
+            attr = opt.replace("-", "_")
+            if name == "DEFAULT":
+                setattr(self, attr, None)
+                continue
+            usepkg_atoms = repo_opts.get(opt, "").split()
+            bad_atoms = _find_bad_atoms(usepkg_atoms)
+            if bad_atoms:
+                writemsg(
+                    "\n!!! The following atoms are invalid in %s attribute for "
+                    "repo [%s] (only package names and slot atoms allowed):\n"
+                    "\n    %s\n" % (opt, name, "\n    ".join(bad_atoms))
+                )
+                for a in bad_atoms:
+                    usepkg_atoms.remove(a)
+            usepkg_set = WildcardPackageSet(usepkg_atoms)
+            setattr(self, attr, usepkg_set)
+        conflicted_atoms = (
+            self.usepkg_exclude
+            and self.usepkg_exclude.getAtoms().intersection(
+                self.usepkg_include.getAtoms()
+            )
+        )
+        if conflicted_atoms:
+            writemsg(
+                "\n!!! The following atoms appear in both the usepkg-exclude "
+                "usepkg-include lists for repo [%s]:\n"
+                "\n    %s\n" % (name, "\n    ".join(conflicted_atoms))
+            )
+            for a in conflicted_atoms:
+                self.usepkg_exclude.remove(a)
+                self.usepkg_include.remove(a)
 
         priority = repo_opts.get("priority")
         if priority is not None:
@@ -770,6 +836,8 @@ class RepoConfigLoader:
                             "sync_umask",
                             "sync_uri",
                             "sync_user",
+                            "usepkg_exclude",
+                            "usepkg_include",
                             "volatile",
                         ):
                             v = getattr(repos_conf_opts, k, None)
@@ -1334,6 +1402,8 @@ class RepoConfigLoader:
             "aliases",
             "eclass_overrides",
             "force",
+            "usepkg_exclude",
+            "usepkg_include",
         )
         repo_config_tuple_keys = ("masters",)
         keys = bool_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
