@@ -1,4 +1,4 @@
-# Copyright 2007-2020 Gentoo Authors
+# Copyright 2007-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.dep import Atom, ExtendedAtomDict, best_match_to_list, match_from_list
@@ -91,7 +91,7 @@ class PackageSet:
 
     def containsCPV(self, cpv):
         self._load()
-        for a in self._atoms:
+        for a in self._atommap.get(cpv_getkey(cpv), []):
             if match_from_list(a, [cpv]):
                 return True
         return False
