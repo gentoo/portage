@@ -171,7 +171,7 @@ save_elf_debug() {
 
 					# We need to process the splitdebug file too
 					# if we're doing it at this late juncture (bug #968220)
-					"${name_of[objcopy]}" --dump-section .note.gnu.build-id="${inode_link}_buildid" "${src}" \
+					"${name_of[objcopy]}" --dump-section .note.gnu.build-id="${inode_link}_buildid" "${src}" 2>/dev/null \
 						&& "${name_of[objcopy]}" --update-section .note.gnu.build-id="${inode_link}_buildid" "${dst}"
 					rm -f "${inode_link}_buildid"
 				elif ! contains_word buildid "${warned_for[debugedit]}"; then
