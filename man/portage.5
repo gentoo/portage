@@ -121,6 +121,7 @@ use.stable.force
 .TP
 .BR /usr/share/portage/config/
 .nf
+binrepos.conf
 make.globals
 repos.conf
 sets
@@ -1855,6 +1856,12 @@ games\-emulation/xmess:net \- Adds network support
 .TP
 .BR /usr/share/portage/config/
 .RS
+.TP
+.BR binrepos.conf
+The default configuration of binary repositories for Portage.  This comes from
+the portage package itself.  Settings in \fB/etc/portage/binrepos.conf\fR
+override values set here. The format is described extensively in section
+for \fB/etc/portage/binrepos.conf\fR.
 .TP
 .BR make.globals
 The global default settings for Portage.  This comes from the portage package

@@ -10,6 +10,7 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import (
     BINREPOS_CONF_FILE,
     CACHE_PATH,
+    PORTAGE_BASE_PATH,
     SUPPORTED_XPAK_EXTENSIONS,
     SUPPORTED_GPKG_EXTENSIONS,
     SUPPORTED_GENTOO_BINPKG_FORMATS,
@@ -969,14 +970,27 @@ class binarytree:
                 self._populate_additional(add_repos)
 
             if getbinpkgs:
-                config_path = os.path.join(
-                    self.settings["PORTAGE_CONFIGROOT"], BINREPOS_CONF_FILE
+                config_paths = []
+                if portage._not_installed:
+                    config_paths.append(
+                        os.path.join(PORTAGE_BASE_PATH, "cnf", "binrepos.conf")
+                    )
+                else:
+                    config_paths.append(
+                        os.path.join(self.settings.global_config_path, "binrepos.conf")
+                    )
+
+                config_paths.append(
+                    os.path.join(
+                        self.settings["PORTAGE_CONFIGROOT"], BINREPOS_CONF_FILE
+                    )
                 )
-                self._binrepos_conf = BinRepoConfigLoader((config_path,), self.settings)
+
+                self._binrepos_conf = BinRepoConfigLoader(config_paths, self.settings)
                 if not self._binrepos_conf:
                     writemsg(
                         _(
-                            f"!!! {config_path} is missing (or PORTAGE_BINHOST is unset), "
+                            f"!!! binrepos.conf is missing (or PORTAGE_BINHOST is unset), "
                             "but use is requested.\n"
                         ),
                         noiselevel=-1,

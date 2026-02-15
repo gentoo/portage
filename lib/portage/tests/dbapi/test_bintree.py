@@ -170,7 +170,7 @@ class BinarytreeTestCase(TestCase):
         ppopulate_remote.assert_not_called()
         self.assertEqual(
             out.getvalue(),
-            f"!!! {conf_file} is missing (or PORTAGE_BINHOST is unset), but use is requested.\n",
+            f"!!! binrepos.conf is missing (or PORTAGE_BINHOST is unset), but use is requested.\n",
         )
 
     @patch("portage.dbapi.bintree.BinRepoConfigLoader")
