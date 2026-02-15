@@ -1,4 +1,4 @@
-# Copyright 2020-2024 Gentoo Authors
+# Copyright 2020-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import OrderedDict
@@ -101,6 +101,7 @@ class BinRepoConfigLoader(Mapping):
 
         sync_uris = set(sync_uris)
         current_priority = 0
+        # Convert PORTAGE_BINHOST entries into implicit binrepos.conf ones
         for sync_uri in reversed(settings.get("PORTAGE_BINHOST", "").split()):
             sync_uri = self._normalize_uri(sync_uri)
             if sync_uri not in sync_uris:
