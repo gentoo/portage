@@ -1387,11 +1387,10 @@ class binarytree:
         self._remote_has_index = False
         self._remotepkgs = {}
 
-        if "binpkg-request-signature" in self.settings.features:
-            # This is somewhat broken, we *should* run the trust helper always
-            # when binpackages are involved, not only when we refuse unsigned
-            # ones. (If the keys have expired we end up refusing signed but
-            # technically invalid packages...)
+        need_trust_helper = "binpkg-request-signature" in self.settings.features or any(
+            repo.verify_signature for repo in self._binrepos_conf.values()
+        )
+        if need_trust_helper:
             if not pretend and self.dbapi.writable and portage.data.secpass >= 2:
                 self._run_trust_helper()
             gpkg_only = True
