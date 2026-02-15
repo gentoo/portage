@@ -9,6 +9,7 @@ install_data(
 extra_features = []
 make_globals = 'make.globals'
 repos_conf = 'repos.conf'
+binrepos_conf = 'binrepos.conf'
 
 if get_option('gentoo-dev')
     extra_features += [
@@ -114,6 +115,7 @@ install_data(
         make_conf_example,
         make_globals,
         repos_conf,
+        binrepos_conf,
     ],
     install_dir : portage_datadir / 'config'
 )
