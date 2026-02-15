@@ -218,6 +218,12 @@ install_qa_check() {
 				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 				echo "${arch#EM_};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 			done <<< ${scanelf_output}
+
+			# scanelf's output ordering is non-deterministic.
+			local needed
+			for needed in "${PORTAGE_BUILDDIR}"/build-info/NEEDED{,.ELF.2}; do
+				LC_ALL=C sort -o "${needed}" "${needed}"
+			done
 		fi
 
 		[[ -n "${QA_SONAME_NO_SYMLINK}" ]] && \
