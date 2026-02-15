@@ -271,3 +271,53 @@ class WorldWarningTestCase(TestCase):
             )
         finally:
             playground.cleanup()
+
+    def testExcludedInWorldEmerge(self):
+        """
+        Test that we do not warn about a package in @world that we
+        are --exclude-ing on the command line.
+        """
+
+        installed = {
+            "app-misc/foo-1": {},
+        }
+        ebuilds = {
+            "app-misc/foo-1": {},
+        }
+
+        playground = ResolverPlayground(
+            world=["app-misc/foo"],
+            ebuilds=ebuilds,
+            installed=installed,
+        )
+
+        test_case = ResolverPlaygroundTestCase(
+            ["@world"],
+            mergelist=[],
+            options={
+                "--exclude": ["app-misc/foo"],
+                "--update": True,
+                "--deep": True,
+            },
+            success=True,
+        )
+
+        try:
+            # Just to make sure we don't freak out on the general case
+            # without worrying about the specific output first.
+            playground.run_TestCase(test_case)
+            self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+
+            # We need access to the depgraph object to check for missing_args
+            # so we run again manually.
+            depgraph = playground.run(
+                ["@world"], test_case.options, test_case.action
+            ).depgraph
+
+            self.assertIsNotNone(depgraph._dynamic_config._missing_args)
+            self.assertTrue(
+                len(depgraph._dynamic_config._missing_args) == 0,
+                "Package with an ebuild that was reachable from world but --excluded was incorrectly flagged",
+            )
+        finally:
+            playground.cleanup()

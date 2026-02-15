@@ -5366,6 +5366,9 @@ class depgraph:
                         and isinstance(arg, SetArg)
                         and arg.name in ("selected, world")
                         and not self._replace_installed_atom(pkg)
+                        and not self._frozen_config.excluded_pkgs.findAtomForPackage(
+                            pkg
+                        )
                     ):
                         self._dynamic_config._missing_args.append((arg, atom))
 
