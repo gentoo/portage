@@ -476,7 +476,7 @@ def getcwd():
 getcwd()
 
 
-def abssymlink(symlink, target=None):
+def abssymlink(symlink, target=None, srcroot=None):
     """
     This reads symlinks, resolving the relative symlinks,
     and returning the absolute.
@@ -484,6 +484,8 @@ def abssymlink(symlink, target=None):
     @param target: the target of the symlink (as returned
             by readlink)
     @rtype: str
+    @param srcroot: chroot like root for symlink dereferencing (usually ${D})
+    @type srcroot: String (Path)
     @return: the absolute path of the symlink target
     """
     if target is not None:
@@ -493,7 +495,35 @@ def abssymlink(symlink, target=None):
     if mylink[0] != "/":
         mydir = os.path.dirname(symlink)
         mylink = f"{mydir}/{mylink}"
-    return os.path.normpath(mylink)
+    if srcroot is None:
+        return os.path.normpath(mylink)
+
+    srcroot = os.path.normpath(srcroot)
+    if not os.path.isabs(srcroot):
+        raise ValueError(f"{srcroot}: is not an absolute path")
+
+    try:
+        prefix = os.path.commonpath([os.path.normpath(symlink), srcroot])
+    except:
+        raise ValueError(f"commonpath failed for `{symlink}' and `{srcroot}'")
+
+    if prefix != srcroot:
+        raise ValueError(f"symlink: {symlink} is not inside srcroot: `{srcroot}'")
+
+    rel = os.path.relpath(mylink, srcroot)
+    parts = []
+    for p in rel.split(os.sep):
+        if p == "" or p == ".":  # "//" or "/./"
+            continue
+        elif p == "..":
+            if parts:
+                parts.pop()
+            # else: ignore .. at root
+        else:
+            parts.append(p)
+
+    safe_path = os.path.join(srcroot, *parts)
+    return safe_path
 
 
 _doebuild_manifest_exempt_depend = 0
