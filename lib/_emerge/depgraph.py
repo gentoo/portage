@@ -8973,15 +8973,7 @@ class depgraph:
 
                 if not unresolved_blocks and depends_on_order:
                     for inst_pkg, inst_task in depends_on_order:
-                        uninst_task = Package(
-                            built=inst_pkg.built,
-                            cpv=inst_pkg.cpv,
-                            installed=inst_pkg.installed,
-                            metadata=inst_pkg._metadata,
-                            operation="uninstall",
-                            root_config=inst_pkg.root_config,
-                            type_name=inst_pkg.type_name,
-                        )
+                        uninst_task = inst_pkg.copy(operation="uninstall")
                         # Enforce correct merge order with a hard dep.
                         self._dynamic_config.digraph.addnode(
                             uninst_task, inst_task, priority=BlockerDepPriority.instance
@@ -9269,6 +9261,7 @@ class depgraph:
         complete = "complete" in self._dynamic_config.myparams
         ignore_world = self._dynamic_config.myparams.get("ignore_world", False)
         asap_nodes = []
+        changed_pkgs = {}
 
         def get_nodes(**kwargs):
             """
@@ -9946,8 +9939,6 @@ class depgraph:
                     continue
 
             if not selected_nodes:
-                self._dynamic_config._circular_deps_for_display = mygraph
-
                 unsolved_cycle = False
                 if self._dynamic_config._allow_backtracking:
                     backtrack_infos = self._dynamic_config._backtrack_infos
@@ -9972,11 +9963,55 @@ class depgraph:
                             )
 
                 if unsolved_cycle or not self._dynamic_config._allow_backtracking:
+                    self._dynamic_config._circular_deps_for_display = mygraph
                     self._dynamic_config._skip_restart = True
+                    raise self._unknown_internal_error()
                 else:
-                    self._dynamic_config._need_restart = True
+                    uniq_selected_nodes = set()
+                    while True:
+                        changed_pkg = None
+                        handler = circular_dependency_handler(self, mygraph)
 
-                raise self._unknown_internal_error()
+                        if handler.solutions:
+                            pkg = list(handler.solutions.keys())[0]
+                            parent, solution = list(handler.solutions[pkg])[0]
+                            solution = list(solution)[0]
+                            changed_pkg = changed_pkgs.get(parent, parent)
+                            enabled = set(changed_pkg.use.enabled)
+
+                            if solution[1]:
+                                enabled.add(solution[0])
+                            else:
+                                enabled.remove(solution[0])
+
+                            # To avoid unnecessarily complexity, only try to
+                            # automatically resolve the conflict if the solution
+                            # does not pull in additional dependencies.
+                            before = self._flatten_atoms(parent, parent.use.enabled)
+                            after  = self._flatten_atoms(changed_pkg, frozenset(enabled))
+
+                            if before.issuperset(after):
+                                changed_pkgs[parent] = changed_pkg.with_use(enabled)
+                                uniq_selected_nodes.update((pkg, parent))
+                                mygraph.remove_edge(pkg, parent)
+                                ignored_uninstall_tasks = set(
+                                    uninst_task
+                                    for uninst_task in ignored_uninstall_tasks
+                                    if uninst_task.cp != pkg.cp or uninst_task.slot != pkg.slot
+                                )
+                            else:
+                                changed_pkg = None
+
+                        if changed_pkg is not None:
+                            pass
+                        elif uniq_selected_nodes:
+                            break
+                        else:
+                            self._dynamic_config._circular_deps_for_display = mygraph
+                            self._dynamic_config._need_restart = True
+                            raise self._unknown_internal_error()
+
+                    selected_nodes = list(changed_pkgs.values()) + list(uniq_selected_nodes)
 
             # At this point, we've succeeded in selecting one or more nodes, so
             # reset state variables for leaf node selection.
@@ -10002,20 +10037,8 @@ class depgraph:
                     if inst_pkg:
                         # The package will be replaced by this one, so remove
                         # the corresponding Uninstall task if necessary.
-                        inst_pkg = inst_pkg[0]
-                        uninst_task = Package(
-                            built=inst_pkg.built,
-                            cpv=inst_pkg.cpv,
-                            installed=inst_pkg.installed,
-                            metadata=inst_pkg._metadata,
-                            operation="uninstall",
-                            root_config=inst_pkg.root_config,
-                            type_name=inst_pkg.type_name,
-                        )
-                        try:
-                            mygraph.remove(uninst_task)
-                        except KeyError:
-                            pass
+                        uninst_task = inst_pkg[0].copy(operation="uninstall")
+                        mygraph.discard(uninst_task)
 
                 if (
                     uninst_task is not None
