@@ -55,7 +55,7 @@ warn = create_color_func("WARN")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.fetch import _hide_url_passwd
 from portage._sets import load_default_config, SETPREFIX
-from portage._sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet, WildcardPackageSet
 from portage.util import (
     cmp_sort_key,
     normalize_path,
@@ -166,6 +166,10 @@ def action_build(
         kwargs["add_repos"] = (quickpkg_vardb,)
         try:
             kwargs["pretend"] = "--pretend" in emerge_config.opts
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
             emerge_config.target_config.trees["bintree"].populate(
                 getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
             )
@@ -429,6 +433,14 @@ def action_build(
                         kwargs["add_repos"] = (
                             emerge_config.running_config.trees["vartree"].dbapi,
                         )
+                    if "--getbinpkg-exclude" in emerge_config.opts:
+                        kwargs["getbinpkg_exclude"] = emerge_config.opts[
+                            "--getbinpkg-exclude"
+                        ]
+                    if "--getbinpkg-include" in emerge_config.opts:
+                        kwargs["getbinpkg_include"] = emerge_config.opts[
+                            "--getbinpkg-include"
+                        ]
 
                     try:
                         root_trees["bintree"].populate(
@@ -2798,6 +2810,113 @@ def adjust_config(myopts, settings):
         settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]
         settings.backup_changes("PORTAGE_BINPKG_FORMAT")
 
+    binpkg_selection_config(myopts, settings)
+
+
+def binpkg_selection_config(opts, settings):
+    atoms = " ".join(opts.pop("--getbinpkg-exclude", [])).split()
+    getbinpkg_exclude = WildcardPackageSet(atoms)
+    atoms = " ".join(opts.pop("--getbinpkg-include", [])).split()
+    getbinpkg_include = WildcardPackageSet(atoms)
+    atoms = " ".join(opts.pop("--usepkg-exclude", [])).split()
+    usepkg_exclude = WildcardPackageSet(atoms)
+    atoms = " ".join(opts.pop("--usepkg-include", [])).split()
+    usepkg_include = WildcardPackageSet(atoms)
+
+    # --usepkg-include and --usepkg-exclude may not overlap
+    conflicted_atoms = usepkg_exclude.getAtoms().intersection(usepkg_include.getAtoms())
+    if conflicted_atoms:
+        writemsg(
+            "\n!!! The following atoms appear in both the --usepkg-exclude "
+            "and --usepkg-include command line arguments:\n"
+            "\n    %s\n" % ("\n    ".join(conflicted_atoms))
+        )
+        for a in conflicted_atoms:
+            usepkg_exclude.remove(a)
+            usepkg_include.remove(a)
+
+    # --nobindeps ignores all usepkg-include and usepkg-exclude settings
+    if "--nobindeps" in opts:
+        if not usepkg_exclude.isEmpty():
+            writemsg(
+                "\n!!! The following --usepkg-exclude atoms are ignored due "
+                "to use of --nobindeps:\n"
+                "\n    %s\n" % ("\n    ".join(usepkg_exclude.getAtoms()))
+            )
+            usepkg_exclude.clear()
+        if not usepkg_include.isEmpty():
+            writemsg(
+                "\n!!! The following --usepkg-include atoms are ignored due "
+                "to use of --nobindeps:\n"
+                "\n    %s\n" % ("\n    ".join(usepkg_include.getAtoms()))
+            )
+            usepkg_include.clear()
+        for repo in settings.repositories:
+            if not repo.usepkg_exclude.isEmpty():
+                writemsg(
+                    "\n!!! The following usepkg-exclude atoms for [%s] are "
+                    "ignored due to use of --nobindeps:\n"
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(repo.usepkg_exclude.getAtoms()))
+                )
+                repo.usepkg_exclude.clear()
+            if not repo.usepkg_include.isEmpty():
+                writemsg(
+                    "\n!!! The following usepkg-include atoms for [%s] are "
+                    "ignored due to use of --nobindeps:\n"
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(repo.usepkg_include.getAtoms()))
+                )
+                repo.usepkg_include.clear()
+
+    # --usepkg-exclude and --usepkg-include override repos.conf
+    for repo in settings.repositories:
+        conflicted_exclude = repo.usepkg_exclude.getAtoms().intersection(
+            usepkg_include.getAtoms()
+        )
+        if conflicted_exclude:
+            writemsg(
+                "\n!!! The following usepkg-exclude atoms for [%s] have "
+                "been overridden by the --usepkg-include option:\n"
+                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+            )
+            for a in conflicted_exclude:
+                repo.usepkg_exclude.remove(a)
+        conflicted_include = repo.usepkg_include.getAtoms().intersection(
+            usepkg_exclude.getAtoms()
+        )
+        if conflicted_include:
+            writemsg(
+                "\n!!! The following usepkg-include atoms for [%s] have "
+                "been overridden by the --usepkg-exclude option:\n"
+                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+            )
+            for a in conflicted_include:
+                repo.usepkg_include.remove(a)
+
+    # --getbinpkg-include and --getbinpkg-exclude may not overlap
+    conflicted_atoms = getbinpkg_exclude.getAtoms().intersection(
+        getbinpkg_include.getAtoms()
+    )
+    if conflicted_atoms:
+        writemsg(
+            "\n!!! The following atoms appear in both the --getbinpkg-exclude "
+            "and --getbinpkg-include command line arguments:\n"
+            "\n    %s\n" % ("\n    ".join(conflicted_atoms))
+        )
+        for a in conflicted_atoms:
+            getbinpkg_exclude.remove(a)
+            getbinpkg_include.remove(a)
+
+    if not getbinpkg_exclude.isEmpty():
+        opts["--getbinpkg-exclude"] = list(getbinpkg_exclude)
+    if not getbinpkg_include.isEmpty():
+        opts["--getbinpkg-include"] = list(getbinpkg_include)
+    if not usepkg_exclude.isEmpty():
+        opts["--usepkg-exclude"] = list(usepkg_exclude)
+    if not usepkg_include.isEmpty():
+        opts["--usepkg-include"] = list(usepkg_include)
+
 
 def display_missing_pkg_set(root_config, set_name):
     msg = []
@@ -3586,6 +3705,10 @@ def run_action(emerge_config):
                 )
 
             kwargs["pretend"] = "--pretend" in emerge_config.opts
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
 
             try:
                 mytrees["bintree"].populate(

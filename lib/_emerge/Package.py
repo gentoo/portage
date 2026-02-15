@@ -41,6 +41,7 @@ class Package(Task):
         "iuse",
         "mtime",
         "pf",
+        "remote",
         "root",
         "slot",
         "sub_slot",
@@ -115,6 +116,11 @@ class Package(Task):
                 # for built packages.
                 raise
             db = self.root_config.trees["porttree"].dbapi
+
+        if self.type_name == "binary":
+            self.remote = db.bintree.isremote(self.cpv)
+        else:
+            self.remote = False
 
         self.cpv = _pkg_str(
             self.cpv, metadata=self._metadata, settings=self.root_config.settings, db=db
