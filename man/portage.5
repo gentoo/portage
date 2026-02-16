@@ -665,6 +665,10 @@ overriding the value from \fBmake.conf\fR(5).
 .I Attributes supported in sections of repositories:
 .RS
 .TP
+.B openpgp\-key\-package
+Portage will check if the named package has an update available after
+syncing and notify the user to update it immediately if so.
+.TP
 .B priority
 Specifies priority of given repository. When a package exists in multiple
 repositories, those with higher priority are preferred.

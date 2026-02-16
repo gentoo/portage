@@ -13,6 +13,7 @@ from portage.util.configparser import SafeConfigParser, ConfigParserError, read_
 class BinRepoConfig:
     __slots__ = (
         "frozen",
+        "openpgp_key_package",
         "name",
         "name_fallback",
         "fetchcommand",

@@ -8,6 +8,8 @@ import portage
 
 portage._internal_caller = True
 portage._sync_mode = True
+from portage.binrepo.config import BinRepoConfigLoader
+from portage.const import PORTAGE_BASE_PATH, BINREPOS_CONF_FILE
 from portage.output import bold, red, create_color_func
 from portage._global_updates import _global_updates
 from portage.sync.controller import SyncManager
@@ -298,9 +300,11 @@ class SyncRepos:
         """
         from _emerge.chk_updated_cfg_files import chk_updated_cfg_files
 
+        target_config = self.emerge_config.target_config
+
         chk_updated_cfg_files(
-            self.emerge_config.target_config.root,
-            self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "").split(),
+            target_config.root,
+            target_config.settings.get("CONFIG_PROTECT", "").split(),
         )
 
         msgs = []
@@ -308,23 +312,55 @@ class SyncRepos:
             return msgs
 
         early_update_packages = {
-            "Portage": portage.const.PORTAGE_PACKAGE_ATOM,
+            portage.const.PORTAGE_PACKAGE_ATOM: "Portage",
         }
 
-        repos = self.emerge_config.target_config.settings.repositories
+        # A special OpenPGP key package can be defined in either
+        # repos.conf (sync-openpgp-key-package) or in
+        # binrepos.conf (openpgp-key-package)
+        repos = target_config.settings.repositories
         for repo in repos:
             try:
                 key_package = repo.sync_openpgp_key_package
                 if not key_package:
                     continue
-                early_update_packages[f"OpenPGP keys ({repo.name})"] = key_package
+                early_update_packages[key_package] = f"OpenPGP keys ({repo.name})"
             except AttributeError:
                 continue
+        #
+        binrepos_config_paths = []
+        if portage._not_installed:
+            binrepos_config_paths.append(
+                os.path.join(PORTAGE_BASE_PATH, "cnf", "binrepos.conf")
+            )
+        else:
+            binrepos_config_paths.append(
+                os.path.join(target_config.settings.global_config_path, "binrepos.conf")
+            )
+        binrepos_config_paths.append(
+            os.path.join(
+                target_config.settings["PORTAGE_CONFIGROOT"], BINREPOS_CONF_FILE
+            )
+        )
+        binrepos_conf = BinRepoConfigLoader(
+            binrepos_config_paths, target_config.settings
+        )
+        if binrepos_conf:
+            for repo in binrepos_conf.values():
+                try:
+                    key_package = repo.openpgp_key_package
+                    if not key_package:
+                        continue
+                    early_update_packages[key_package] = (
+                        f"OpenPGP binhost keys ({repo.name})"
+                    )
+                except AttributeError:
+                    continue
 
-        porttree = self.emerge_config.target_config.trees["porttree"]
-        vartree = self.emerge_config.target_config.trees["vartree"]
+        porttree = target_config.trees["porttree"]
+        vartree = target_config.trees["vartree"]
 
-        for early_name, early_pkg in early_update_packages.items():
+        for early_pkg, early_name in early_update_packages.items():
             best_pv = porttree.dbapi.xmatch("bestmatch-visible", early_pkg)
             installed_pv = portage.best(vartree.dbapi.match(early_pkg))
 
