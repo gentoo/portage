@@ -1636,9 +1636,8 @@ class binarytree:
                                 extra_info = f" (local: {local_iso_time}, remote: {remote_iso_time})"
 
                             raise UseCachedCopyOfRemoteIndex("up-to-date", extra_info)
-                        if (
-                            remote_pkgindex_file == "Packages.gz"
-                            and isinstance(err, FileNotFoundError)
+                        if remote_pkgindex_file == "Packages.gz" and (
+                            isinstance(err, FileNotFoundError)
                             or (
                                 isinstance(err, urllib.error.HTTPError)
                                 and err.code == 404
