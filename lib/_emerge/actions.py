@@ -2261,7 +2261,6 @@ def action_info(settings, trees, myopts, myfiles):
         # the current config)
         mydesiredvars = ["CHOST", "CFLAGS", "CXXFLAGS", "FEATURES", "LDFLAGS"]
         auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
-        auxkeys.append("DEFINED_PHASES")
         pkgsettings = portage.config(clone=settings)
 
         # Loop through each package
