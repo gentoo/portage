@@ -2260,7 +2260,7 @@ def action_info(settings, trees, myopts, myfiles):
         # Get our global settings (we only print stuff if it varies from
         # the current config)
         mydesiredvars = ["CHOST", "CFLAGS", "CXXFLAGS", "FEATURES", "LDFLAGS"]
-        auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
+        auxkeys = list(vardb._aux_cache_keys)
         pkgsettings = portage.config(clone=settings)
 
         # Loop through each package
@@ -2315,9 +2315,17 @@ def action_info(settings, trees, myopts, myfiles):
 
             append(f"{pkg_use_display(pkg, myopts)}")
             if pkg_type == "installed":
+                unset_var = []
+                env_results = vardb._aux_env_search(cpv, mydesiredvars)
                 for myvar in mydesiredvars:
-                    if metadata[myvar].split() != settings.get(myvar, "").split():
-                        append(f'{myvar}="{metadata[myvar]}"')
+                    myval = env_results.get(myvar)
+                    if myval is None:
+                        unset_var.append(myvar)
+                    elif myval.split() != settings.get(myvar, "").split():
+                        append(f'{myvar}="{myval}"')
+                if len(unset_var) > 0:
+                    unset_var_string = ", ".join(unset_var)
+                    append(f"Unset: {unset_var_string}")
             append("")
             append("")
             writemsg_stdout("\n".join(output_buffer), noiselevel=-1)
