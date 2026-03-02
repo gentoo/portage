@@ -3,6 +3,8 @@
 
 import warnings
 
+from typing import TYPE_CHECKING
+
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
@@ -16,6 +18,10 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
 from portage.update import grab_updates, parse_updates, update_dbentries
 from portage.versions import _pkg_str
+
+if TYPE_CHECKING:
+    from portage.dep import Atom
+    import portage.dbapi.porttree
 
 
 class FakeVardbGetPath:
@@ -296,7 +302,18 @@ class FakeVartree(vartree):
         return pkg
 
 
-def grab_global_updates(portdb):
+def grab_global_updates(
+    portdb: portage.dbapi.porttree.portdbapi,
+) -> dict[str, list[tuple[str, "Atom", "Atom"]]]:
+    """
+    Parse the repository's updates/ directory and return
+    its contents.
+
+    @param portdb: Repository whose updates we are fetching
+    @type portdb: portdbapi
+    @return: Parsed updates
+    @rtype: dict
+    """
     retupdates = {}
 
     for repo_name in portdb.getRepositories():
