@@ -1,0 +1,245 @@
+# Detect 32-bit builds that are using legacy 32-bit time interfaces.
+# This is closely related to "Large File Support" (LFS) but not
+# quite the same.
+#
+# We want to make sure everyone is using the 64-bit interfaces.
+# https://bugs.gentoo.org/471102
+#
+# Lists gleaned from headers, roughly:
+# `grep -rsin "#.*define" /usr/include/ | grep time | grep 64 | grep -v asm | grep -v syscalls | sort -u`
+
+# TODO: check for icky legacy interfaces in pre-built binaries?
+# obviously we can't fix them, but we can warn stuff will break.
+
+# There are various surprising symbols in this list, like recvmsg.
+# * Often, it's either quite hidden through indirection:
+#   e.g. https://github.com/bminor/glibc/commit/4b93a93e407308000ee6a1c3fec3715127c2c4c5
+# * Or it's because there's a relationship with LFS (note that glibc
+#   requires LFS to be enabled for time64), like a symbol had to be fixed
+#   up for LFS, and then it had to be again.
+
+SYMBOLS=(
+	# aio.h
+	aio_suspend
+
+	# bits/time.h
+	clock_adjtime
+
+	# fcntl.h
+	fcntl
+	fcntl64
+
+	# fts.h
+	fts_children
+	fts_close
+	fts_open
+	fts_read
+	fts_set
+
+	# ftw.h
+	ftw
+	nftw64
+	nftw
+	nftw64
+
+	# mqueue.h
+	mq_timedreceive
+	mq_timedsend
+
+	# netdb.h
+	gai_suspend
+
+	# pthread.h
+	pthread_cond_clockwait
+	pthread_clockjoin_np
+	pthread_timedjoin_np
+	pthread_mutex_clocklock
+	pthread_mutex_timedlock
+	pthread_rwlock_clockrdlock
+	pthread_rwlock_clockwrlock
+	pthread_rwlock_timedrdlock
+	pthread_rwlock_timedwrlock
+	pthread_cond_timedwait
+
+	# semaphore.h
+	sem_clockwait
+	sem_timedwait
+
+	# signal.h
+	sigtimedwait
+
+	# utime.h
+	utime
+
+	# sys/epoll.h
+	epoll_pwait2
+
+	# sys/ioctl.h
+	ioctl
+
+	# sys/msg.h
+	msgctl
+
+	# sys/poll.h
+	ppoll
+
+	# sys/sem.h
+	semtimedop
+
+	# sys/shm.h
+	shmctl
+
+	# sys/socket.h
+	recvmmsg
+	sendmmsg
+	getsockopt
+	recvmsg
+	sendmsg
+	setsockopt
+
+	# sys/stat.h
+	stat
+	fstat
+	stat64
+	fstat64
+	fstatat
+	fstatat64
+	lstat
+	utimensat
+	futimens
+
+	# sys/time.h
+	gettimeofday
+	settimeofday
+	adjtime
+	getitimer
+	setitimer
+	utimes
+	lutimes
+	futimes
+	futimesat
+
+	# sys/timerfd.h
+	timerfd_settime
+	timerfd_gettime
+
+	# sys/timex.h
+	adjtimex
+	ntp_adjtime
+	ntp_gettime
+	ntp_gettimex
+
+	# sys/wait.h
+	wait3
+	wait4
+
+	# threads.h
+	mtx_timedlock
+	cnd_timedwait
+
+	# time.h
+	time
+	difftime
+	mktime
+	gmtime
+	localtime
+	gmtime_r
+	ctime
+	ctime_r
+	timegm
+	nanosleep
+	clock_getres
+	clock_gettime
+	clock_settime
+	clock_nanosleep
+	timer_settime
+	timer_gettime
+	timespec_get
+	timespec_getres
+
+	# utime.h
+	utime
+)
+
+SYMBOLS_REGEX=$(printf '%s|' "${SYMBOLS[@]}")
+# _r.* to allow reentrant variants
+# The @@ part is to workaround a limitation in pax-utils w/versioned symbols.
+SYMBOLS_REGEX="^[^_].*(${SYMBOLS_REGEX%|})(_r)?(@@.*)?$"
+
+check_time() {
+	local dir="$@"
+	if [[ ! -d "${dir}" && -n "${ED}" ]] ; then
+		dir="${ED}"
+	fi
+
+	local files=$(scanelf -F '%p:%s' -qyRgs "-${SYMBOLS_REGEX}" "${dir}")
+
+	if [[ -n ${files} ]]; then
+		eqawarn "QA Notice: Some installed files are missing 64-bit time_t support!"
+		eqawarn " Please see https://wiki.gentoo.org/wiki/Project:Toolchain/time64_migration for details."
+		eqawarn "Affected files:"
+		eqatag -v time64.missing ${files[@]}
+	fi
+}
+
+filtered_check_time() {
+        if ! type -P scanelf >/dev/null || has binchecks ${RESTRICT}; then
+                return
+        fi
+
+        # Only check glibc & uClibc libraries.  Others are presumed to use LFS by
+        # default (e.g. musl), or it's not relevant (e.g. newlib).
+        case ${CHOST} in
+                *-gnu*|*-uclibc*)
+                        ;;
+                *)
+                        return
+                        ;;
+        esac
+
+        # Only check on 32-bit systems.  Filtering by $ARCH here isn't perfect, but
+        # it should be good enough for our needs.
+        case ${ARCH} in
+                arm|mips|hppa|m68k|ppc|sh|x86)
+                        ;;
+                s390)
+                        # s390x is 64-bit, but s390 is 32-bit.
+                        # We use the same keyword for both.
+                        if [[ ${CHOST} == s390-* ]] ; then
+                                return
+                        fi
+                        ;;
+                sparc)
+                        # sparc and sparc64 share the same keyword.
+                        if [[ ${CHOST} == sparc64* ]] ; then
+                                return
+                        fi
+                        ;;
+                *)
+                        return
+                        ;;
+        esac
+
+        # Obviously filter out C libraries themselves :).
+        # The sandbox has to capture all symbols by design.
+        case ${CATEGORY}/${PN} in
+                */glibc|*/uclibc|*/gcc|sys-apps/sandbox)
+                        ;;
+                *)
+                        check_time "${ED}"
+                        ;;
+        esac
+}
+
+# Allow for people to run manually for testing/debugging.
+if [[ $# -ne 0 ]]; then
+	eqawarn() { echo " * $*"; }
+	eqatag() { eqawarn "$@";  }
+	check_time "$@"
+else
+	filtered_check_time
+fi
+
+: # guarantee successful exit
+
+# vim:ft=sh
