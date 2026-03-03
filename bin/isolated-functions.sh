@@ -107,7 +107,7 @@ die() {
 	if ___eapi_die_can_respect_nonfatal && [[ $1 == -n ]]; then
 		shift
 		if [[ ${PORTAGE_NONFATAL} == 1 ]]; then
-			[[ $# -gt 0 ]] && eerror "$*"
+			[[ $# -gt 0 ]] && echo -e "$@" >&2
 			return 1
 		fi
 	fi
