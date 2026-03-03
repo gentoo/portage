@@ -92,11 +92,13 @@ __helpers_die() {
 		die "$@"
 	else
 		echo -e "$@" >&2
-		return "$(( retval || 1 ))"
+		return "$(( retval ? retval : 1 ))"
 	fi
 }
 
 die() {
+	local retval=$?
+
 	# restore PATH since die calls basename & sed
 	# TODO: make it pure bash
 	[[ -n ${_PORTAGE_ORIG_PATH} ]] && PATH=${_PORTAGE_ORIG_PATH}
@@ -108,7 +110,7 @@ die() {
 		shift
 		if [[ ${PORTAGE_NONFATAL} == 1 ]]; then
 			[[ $# -gt 0 ]] && echo -e "$@" >&2
-			return 1
+			return "$(( retval ? retval : 1 ))"
 		fi
 	fi
 
@@ -221,7 +223,7 @@ die() {
 	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID} != "${EBUILD_MASTER_PID}" ]] ; then
 		kill -s SIGTERM "${EBUILD_MASTER_PID}"
 	fi
-	exit 1
+	exit "$(( retval ? retval : 1 ))"
 }
 
 __quiet_mode() {
