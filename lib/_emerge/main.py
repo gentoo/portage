@@ -187,6 +187,7 @@ def insert_optional_args(args):
         "--usepkgonly": y_or_n,
         "--usepkg-exclude-live": y_or_n,
         "--verbose": y_or_n,
+        "--verbose-missing-ebuilds": y_or_n,
         "--verbose-slot-rebuilds": y_or_n,
         "--with-test-deps": y_or_n,
     }
@@ -731,6 +732,10 @@ def parse_opts(tmpcmdline, silent=False):
         "--verbose": {
             "shortopt": "-v",
             "help": "verbose output",
+            "choices": true_y_or_n,
+        },
+        "--verbose-missing-ebuilds": {
+            "help": "verbose missing ebuild output",
             "choices": true_y_or_n,
         },
         "--verbose-slot-rebuilds": {

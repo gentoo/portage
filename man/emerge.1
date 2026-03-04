@@ -1137,6 +1137,10 @@ Symbol	Location	Meaning
 Make slot conflicts more verbose. Note that this may in some cases output
 hundreds of packages for slot conflicts.
 .TP
+.BR "\-\-verbose\-missing\-ebuilds [ y | n ]"
+Warn on packages in the world flie with no ebuild available, which can
+prevent subslot rebuilds.  The default is set to "y" (on).
+.TP
 .BR "\-\-verbose\-slot\-rebuilds [ y | n ]"
 Turns on/off the extra emerge output to list which packages are causing rebuilds.
 The default is set to "y" (on).

@@ -5375,7 +5375,9 @@ class depgraph:
                     # If we're emerging @selected or @world, we want to loudly warn about
                     # no ebuilds being available for packages (bug #911180).
                     if (
-                        pkg
+                        self._frozen_config.myopts.get("--verbose-missing-ebuilds", "y")
+                        != "n"
+                        and pkg
                         and pkg.installed
                         and pkg.operation == "nomerge"
                         and isinstance(arg, SetArg)
