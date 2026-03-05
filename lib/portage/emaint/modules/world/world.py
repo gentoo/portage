@@ -14,6 +14,8 @@ class WorldHandler:
 
     def __init__(self):
         self.invalid = []
+        self.masked = []
+        self.missing = []
         self.not_installed = []
         self.okay = []
         from portage._sets import load_default_config
@@ -28,8 +30,10 @@ class WorldHandler:
         self.world_file = os.path.join(eroot, portage.const.WORLD_FILE)
         self.found = os.access(self.world_file, os.R_OK)
         vardb = portage.db[eroot]["vartree"].dbapi
+        portdb = portage.db[eroot]["porttree"].dbapi
 
         from portage._sets import SETPREFIX
+        from portage.package.ebuild.getmaskingstatus import getmaskingstatus
 
         sets = self._sets
         world_atoms = list(sets["selected"])
@@ -50,7 +54,17 @@ class WorldHandler:
                     onProgress(maxval, i + 1)
                 continue
             okay = True
-            if not vardb.match(atom):
+            installed = vardb.match(atom)
+            if not portdb.xmatch("match-all", atom):
+                self.missing.append(atom)
+                okay = False
+            if okay and not portdb.xmatch("match-visible", atom):
+                reasons = ", ".join(
+                    {r for cpv in installed for r in getmaskingstatus(cpv)}
+                )
+                self.masked.append((atom, reasons))
+                okay = False
+            if okay and not installed:
                 self.not_installed.append(atom)
                 okay = False
             if okay:
@@ -63,6 +77,8 @@ class WorldHandler:
         self._check_world(onProgress)
         errors = []
         if self.found:
+            errors += [f"'{x}' has no visible ebuilds [{r}]" for x, r in self.masked]
+            errors += [f"'{x}' has no available ebuilds" for x in self.missing]
             errors += [f"'{x}' is not a valid atom" for x in self.invalid]
             errors += [f"'{x}' is not installed" for x in self.not_installed]
         else:
