@@ -411,7 +411,7 @@ class Package(Task):
             except InvalidData as e:
                 self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
-    def copy(self):
+    def copy(self, operation=None):
         return Package(
             built=self.built,
             cpv=self.cpv,
@@ -419,7 +419,7 @@ class Package(Task):
             installed=self.installed,
             metadata=self._raw_metadata,
             onlydeps=self.onlydeps,
-            operation=self.operation,
+            operation=operation or self.operation,
             root_config=self.root_config,
             type_name=self.type_name,
         )
