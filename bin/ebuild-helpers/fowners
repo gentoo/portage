@@ -12,12 +12,18 @@ __resolve_owner() {
 	local owner="${1}"
 	local user group uid gid pgid pwdb_path
 
-	if [[ ${EBUILD_PHASE_FUNC} == pkg_* ]]; then
-		# for pkg_preinst
-		pwdb_path="${EROOT}"/etc
+	if [[ ${EBUILD_PHASE} == preinst ]]; then
+		if ___eapi_has_prefix_variables; then
+			pwdb_path="${EROOT%/}"/etc
+		else
+			pwdb_path="${ROOT%/}"/etc
+		fi
 	else
-		# for src_install
-		pwdb_path="${ESYSROOT}"/etc
+		if ___eapi_has_SYSROOT; then
+			pwdb_path="${ESYSROOT}"/etc
+		else
+			pwdb_path="${ROOT%/}"/etc
+		fi
 	fi
 
 	IFS=':' read -r user group <<< "${owner}"
@@ -60,7 +66,7 @@ for arg; do
 		# the first non-option is the owner and must not be prefixed
 		got_owner=1
 		# use numeric-uid-gid from the custom target root
-		if ___eapi_has_SYSROOT && [[ -n "${SYSROOT}" || -n "${ROOT}" ]]; then
+		if [[ -n "${SYSROOT%/}" || -n "${ROOT%/}" ]]; then
 			args+=( "$(__resolve_owner "${arg}")" )
 		else
 			args+=( "${arg}" )
