@@ -6,25 +6,21 @@ source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 if ! ___eapi_has_prefix_variables; then
 	ED=${D}
+	EROOT=${ROOT}
+fi
+
+if ___eapi_has_SYSROOT && [[ ${EBUILD_PHASE} == install ]]; then
+	PWDB_ROOT=${SYSROOT}
+	PWDB_EROOT=${ESYSROOT}
+else
+	PWDB_ROOT=${ROOT%/}
+	PWDB_EROOT=${EROOT%/}
 fi
 
 __resolve_owner() {
 	local owner="${1}"
-	local user group uid gid pgid pwdb_path
-
-	if [[ ${EBUILD_PHASE} == preinst ]]; then
-		if ___eapi_has_prefix_variables; then
-			pwdb_path="${EROOT%/}"/etc
-		else
-			pwdb_path="${ROOT%/}"/etc
-		fi
-	else
-		if ___eapi_has_SYSROOT; then
-			pwdb_path="${ESYSROOT}"/etc
-		else
-			pwdb_path="${ROOT%/}"/etc
-		fi
-	fi
+	local pwdb_path="${PWDB_EROOT}/etc"
+	local user group uid gid pgid
 
 	IFS=':' read -r user group <<< "${owner}"
 
@@ -66,7 +62,7 @@ for arg; do
 		# the first non-option is the owner and must not be prefixed
 		got_owner=1
 		# use numeric-uid-gid from the custom target root
-		if [[ -n "${SYSROOT%/}" || -n "${ROOT%/}" ]]; then
+		if [[ -n ${PWDB_ROOT} ]]; then
 			args+=( "$(__resolve_owner "${arg}")" )
 		else
 			args+=( "${arg}" )
