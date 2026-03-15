@@ -123,6 +123,15 @@ try:
 except KeyError:
     pass
 
+_attr_env_vars = {
+    # TODO: Migrate all internals to use the build user/group
+    # instead of the "portage" user/group where appropriate.
+    "_build_group": "PORTAGE_BUILD_GROUP",
+    "_build_user": "PORTAGE_BUILD_USER",
+    "_portage_grpname": "PORTAGE_GRPNAME",
+    "_portage_username": "PORTAGE_USERNAME",
+}
+
 # The portage_uid and portage_gid global constants, and others that
 # depend on them are initialized lazily, in order to allow configuration
 # via make.conf. Eventually, these constants may be deprecated in favor
@@ -162,6 +171,38 @@ def _get_global(k):
             v = 2
         elif _get_global("portage_gid") in os.getgroups():
             v = 1
+
+    elif k in ("_build_gid", "_build_uid"):
+        keyerror = False
+        try:
+            build_uid = pwd.getpwnam(_get_global("_build_user")).pw_uid
+        except KeyError:
+            writemsg(
+                '!!! PORTAGE_BUILD_USER refers to nonexistent user "%s"\n'
+                % _get_global("_build_user"),
+                noiselevel=-1,
+            )
+            build_uid = 0
+
+        try:
+            build_gid = grp.getgrnam(_get_global("_build_group")).gr_gid
+        except KeyError:
+            writemsg(
+                '!!! PORTAGE_BUILD_GROUP refers to nonexistent group "%s"\n'
+                % _get_global("_build_group"),
+                noiselevel=-1,
+            )
+            build_gid = 0
+
+        globals()["_build_gid"] = build_gid
+        _initialized_globals.add("_build_gid")
+        globals()["_build_uid"] = build_uid
+        _initialized_globals.add("_build_uid")
+
+        if k == "_build_gid":
+            return build_gid
+        else:
+            return build_uid
 
     elif k in ("portage_gid", "portage_uid"):
         # Discover the uid and gid of the portage user/group
@@ -229,7 +270,7 @@ def _get_global(k):
             encoding = portage._encodings["content"]
             cmd = (
                 portage._unicode_encode(x, encoding=encoding, errors="strict")
-                for x in ("id", "-G", _portage_username)
+                for x in ("id", "-G", _get_global("_build_user"))
             )
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
@@ -253,11 +294,9 @@ def _get_global(k):
 
     # Avoid instantiating portage.settings when the desired
     # variable is set in os.environ.
-    elif k in ("_portage_grpname", "_portage_username"):
-        v = "portage"
-        env_key = "PORTAGE_USERNAME"
-        if k == "_portage_grpname":
-            env_key = "PORTAGE_GRPNAME"
+    elif k in _attr_env_vars:
+        v = None
+        env_key = _attr_env_vars[k]
 
         if env_key in os.environ:
             v = os.environ[env_key]
@@ -275,7 +314,7 @@ def _get_global(k):
                 pass
             else:
                 if _unprivileged_mode(eroot_or_parent, eroot_st):
-                    if k == "_portage_grpname":
+                    if k in ("_build_group", "_portage_grpname"):
                         try:
                             grp_struct = grp.getgrgid(eroot_st.st_gid)
                         except KeyError:
@@ -289,6 +328,14 @@ def _get_global(k):
                             pass
                         else:
                             v = pwd_struct.pw_name
+        if v is None:
+            if k == "_build_group":
+                v = _get_global("_portage_grpname")
+            elif k == "_build_user":
+                v = _get_global("_portage_username")
+            else:
+                v = "portage"
+
     else:
         raise AssertionError(f"unknown name: {k}")
 
@@ -309,6 +356,10 @@ class _GlobalProxy(portage.proxy.objectproxy.ObjectProxy):
 
 
 for k in (
+    "_build_gid",
+    "_build_group",
+    "_build_uid",
+    "_build_user",
     "portage_gid",
     "portage_uid",
     "secpass",
