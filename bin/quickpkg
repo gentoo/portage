@@ -420,9 +420,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--include-unmodified-config",
         choices=["y", "n"],
-        default="n",
+        default="y",
         metavar="<y|n>",
-        help="include files protected by CONFIG_PROTECT that have not been modified since installation (as a security precaution, default is 'n')",
+        help="include files protected by CONFIG_PROTECT that have not been modified since installation",
     )
     options, args = parser.parse_known_args(sys.argv[1:])
     if not options.ignore_default_opts:
