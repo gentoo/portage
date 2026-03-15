@@ -121,7 +121,7 @@ export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
-# with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
+# with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them
 # when they are done.
 
 __qa_source() {
@@ -731,6 +731,13 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 				fi
 
 				[[ -n ${CCACHE_SIZE} ]] && ccache -M ${CCACHE_SIZE} &> /dev/null
+			fi
+
+			if contains_word sccache "${FEATURES}"; then
+				if [[ -n ${SCCACHE_DIR} ]] ; then
+					addread "${SCCACHE_DIR}"
+					addwrite "${SCCACHE_DIR}"
+				fi
 			fi
 		fi
 	fi
