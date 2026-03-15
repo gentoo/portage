@@ -56,11 +56,11 @@ async def _setup_locale(settings):
     eapi_attrs = _get_eapi_attrs(settings["EAPI"])
     if eapi_attrs.posixish_locale:
         split_LC_ALL(settings)
-        settings["LC_COLLATE"] = "C"
         # check_locale() returns None when check can not be executed.
         if await async_check_locale(silent=True, env=settings.environ()) is False:
             # try another locale
-            for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
+            for l in ("C.UTF-8", "C"):
+                settings["LC_COLLATE"] = l
                 settings["LC_CTYPE"] = l
                 if await async_check_locale(silent=True, env=settings.environ()):
                     # TODO: output the following only once
