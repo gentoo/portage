@@ -278,6 +278,7 @@ environ_filter = frozenset(
         "AUTOCLEAN",
         "BINPKG_COMPRESS",
         "BINPKG_COMPRESS_FLAGS",
+        "CHECKSUMCOMMAND",
         "CLEAN_DELAY",
         "COLLISION_IGNORE",
         "CONFIG_PROTECT",

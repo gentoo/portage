@@ -906,6 +906,39 @@ files (see \fBattr\fR(1)). The \fBPORTAGE_XATTR_EXCLUDE\fR variable may be
 used to exclude specific attributes from being preserved.
 .RE
 .TP
+.B CHECKSUMCOMMAND
+This variable contains a command used to compute checksums of distfiles.
+When set, Portage delegates digest computation to this command instead of
+reading the file locally.  This is useful when \fBDISTDIR\fR is a remote
+filesystem (e.g., NFS) and you want to avoid reading large files across
+the network for checksum verification.
+.br
+The command must print one line per hash type in the format
+"HASHTYPE hexdigest", followed by a line "size filesize".
+The \fBportage\-checksum\fR helper implements this protocol using
+Portage's own checksum API.
+.RS
+.TP
+.B CHECKSUMCOMMAND Placeholders
+.TS
+l l l
+___
+l l l.
+Placeholder	Meaning	Example
+\\${FILE}	Full path to the file	/var/cache/distfiles/foo\-1.0.tar.gz
+\\${DISTFILE}	Basename of the file	foo\-1.0.tar.gz
+\\${HASHTYPE}	Comma\-separated hash types	BLAKE2B,SHA512
+\\${DISTDIR}	The distfiles directory	/var/cache/distfiles
+\\${PORTAGE_SSH_OPTS}	SSH options (if set)	\-o ConnectTimeout=30
+.TE
+.RE
+.RS
+.I Example:
+.nf
+CHECKSUMCOMMAND="ssh portage@fileserver portage\-checksum \\${HASHTYPE} \\${DISTDIR}/\\${DISTFILE}"
+.fi
+.RE
+.TP
 .B FETCHCOMMAND
 This variable contains the command used for fetching package sources from
 the internet.  It must contain the full path to the executable as well as the
