@@ -143,8 +143,7 @@ save_elf_debug() {
 			if (( has_feature[compressdebug] )); then
 				objcopy_flags+=( --compress-debug-sections )
 			fi
-			"${name_of[objcopy]}" "${objcopy_flags[@]}" "${src}" "${dst}" \
-			&& "${name_of[objcopy]}" --add-gnu-debuglink="${dst}" "${src}"
+			"${name_of[objcopy]}" "${objcopy_flags[@]}" "${src}" "${dst}"
 		fi
 
 		# Only do the following if the debug file was
@@ -198,6 +197,11 @@ save_elf_debug() {
 				__try_symlink "${dst_buildid_rel}" "${buildid_file}.debug"
 				__try_symlink "${src_buildid_rel}" "${buildid_file}"
 			fi
+		fi
+
+		if [[ -z ${splitdebug} ]] ; then
+			# Add debuglink last to avoid the salted build ID breaking the CRC.
+			"${name_of[objcopy]}" --add-gnu-debuglink="${dst}" "${src}"
 		fi
 	fi
 }
