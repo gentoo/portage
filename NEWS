@@ -70,6 +70,8 @@ Bug fixes:
 
 * estrip: Silence noise from objcopy when no build ID section exists (bug #968220).
 
+* estrip: Don't break the debuglink CRC with the salted build ID (bug #971641).
+
 portage-3.0.77 (2026-01-23)
 --------------
 
