@@ -6,6 +6,7 @@ import logging
 import locale
 import platform
 import shlex
+import stat
 import sys
 
 import portage
@@ -1254,13 +1255,13 @@ def emerge_main(args: Optional[list[str]] = None):
         # loading to allow new repos with non-existent directories
         portage._sync_mode = True
 
-    # Verify that /dev/null exists and is a device file as a cheap early
-    # filter for obviously broken /dev/s.
+    # Verify that /dev/null exists and is a character device as a
+    # cheap early filter for obviously broken /dev/s.
     try:
-        if os.stat(os.devnull).st_rdev == 0:
+        if not stat.S_ISCHR(os.stat(os.devnull).st_mode):
             writemsg_level(
                 "Failed to validate a sane '/dev'.\n"
-                "'/dev/null' is not a device file.\n",
+                "'/dev/null' is not a character device.\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
