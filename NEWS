@@ -9,6 +9,9 @@ Release notes take the form of the following optional categories:
 portage-3.0.82 (UNRELEASED)
 --------------
 
+Bug fixes:
+* Fix /dev/null device check for the Hurd.
+
 portage-3.0.81 (2026-06-23)
 --------------
 
