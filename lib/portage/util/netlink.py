@@ -31,7 +31,7 @@ nlmsghdr = Struct("=IHHII")
 nlmsgerr = Struct("i")
 rtattr = Struct("HH")
 ifinfomsg = Struct("BHiII")
-ifaddrmsg = Struct("BBBBi")
+ifaddrmsg = Struct("BBBBI")
 
 
 def create_nlmsg(nlmsg_type, nlmsg_flags, nlmsg_seq, nlmsg_pid, data):
