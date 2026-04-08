@@ -9,6 +9,7 @@ import socket
 from socket import (
     AF_NETLINK,
     AF_UNSPEC,
+    MSG_PEEK,
     NETLINK_ROUTE,
     SOCK_DGRAM,
     inet_pton,
@@ -62,9 +63,10 @@ def parse_message(msg):
 class RtNetlink:
     def __init__(self):
         self.sock = socket.socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE)
-        self.addr = (0, 0)
         try:
-            self.sock.bind(self.addr)
+            addr = (0, 0)
+            self.sock.bind(addr)
+            self.sock.connect(addr)
         except OSError:
             self.sock.close()
             raise
@@ -76,9 +78,11 @@ class RtNetlink:
         self.sock.close()
 
     def send_message(self, msg):
-        self.sock.sendto(msg, self.addr)
-        # Messages are variable length, but 128 is enough for the ones we care about.
-        resp = self.sock.recv(128)
+        self.sock.send(msg)
+        peek = self.sock.recv(nlmsghdr.size, MSG_PEEK)
+        hdr = nlmsghdr.unpack(peek)
+        size = hdr[0]
+        resp = self.sock.recv(size)
         return parse_message(resp)
 
     def get_link_ifindex(self, ifname):
