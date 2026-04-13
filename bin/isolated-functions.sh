@@ -474,6 +474,55 @@ ___makeopts_jobs() {
 	printf '%s\n' "${jobs}"
 }
 
+# convert any chown-compatible user[:group] literal into numeric-uid-gid
+__resolve_owner() {
+	if ! ___eapi_has_prefix_variables; then
+		EROOT=${ROOT}
+	fi
+
+	if ___eapi_has_SYSROOT && [[ ${EBUILD_PHASE} == install ]]; then
+		PWDB_ROOT=${SYSROOT}
+		PWDB_EROOT=${ESYSROOT}
+	else
+		PWDB_ROOT=${ROOT%/}
+		PWDB_EROOT=${EROOT%/}
+	fi
+
+	local owner="${1}"
+	local pwdb_path="${PWDB_EROOT}/etc"
+	local user group uid gid pgid
+
+	IFS=':' read -r user group <<< "${owner}"
+
+	if [[ -n "${user}" ]]; then
+		if [[ "${user}" =~ ^[0-9]+$ ]]; then
+			uid="${user}"
+		else
+			read -r uid pgid <<< "$(awk -F: -v u="${user}" '$1==u { print $3, $4 }' "${pwdb_path}"/passwd)"
+			[[ "${uid}" =~ ^[0-9]+$ ]] || die "'${FUNCNAME}': invalid user in ${pwdb_path}/passwd: ${owner}"
+		fi
+	fi
+
+	if [[ -n "${group}" ]]; then
+		if [[ "${group}" =~ ^[0-9]+$ ]]; then
+			gid="${group}"
+		else
+			gid=$(awk -F: -v g="${group}" '$1==g{print $3}' "${pwdb_path}"/group)
+			[[ "${gid}" =~ ^[0-9]+$ ]] || die "'${FUNCNAME}': invalid group in ${pwdb_path}/group: ${owner}"
+		fi
+		gid=":${gid}"
+	elif [[ "${owner}" == *: ]]; then
+		# `chown uid:` is invalid with numeric-uid-gid, use the primary group defined above
+		if [[ "${pgid}" =~ ^[0-9]+$ ]]; then
+			gid=":${pgid}"
+		else
+			die "'${FUNCNAME}': invalid primary group for ${user} in ${pwdb_path}/passwd: ${owner}"
+		fi
+	fi
+
+	printf '%s%s' "${uid}" "${gid}"
+}
+
 # Considers the positional parameters as comprising a simple command, which
 # shall be executed for each null-terminated record read from the standard
 # input. For each record processed, its value shall be taken as an additional
