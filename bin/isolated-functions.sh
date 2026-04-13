@@ -474,6 +474,70 @@ ___makeopts_jobs() {
 	printf '%s\n' "${jobs}"
 }
 
+# from a list of args using -o/--owner/-g/--group, replace literal user/group with numeric-uid-gid
+# a group must be prefixed by ':'
+__normalize_owner() {
+	local lopt normalized_opts num_uid_gid value
+	while (( $# )); do
+		num_uid_gid=
+		lopt=
+		value=
+		case "${1}" in
+			-o|--owner)
+				lopt="--owner"
+				if [[ -n "${2}" && "${2}" != -* ]]; then
+					value="${2}"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			-o*)
+				lopt="--owner"
+				value="${1#-o}"
+				shift
+				;;
+			--owner=*)
+				lopt="--owner"
+				value="${1#*=}"
+				shift
+				;;
+			-g|--group)
+				lopt="--group"
+				if [[ -n "${2}" && "${2}" != -* ]]; then
+					value=":${2}"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			-g*)
+				lopt="--group"
+				value=":${1#-g}"
+				shift
+				;;
+			--group=*)
+				lopt="--group"
+				value=":${1#*=}"
+				shift
+				;;
+			*)
+				normalized_opts+=" ${1}"
+				shift
+				continue
+				;;
+		esac
+
+		# pass all args even without value to get errors from do*.py
+		normalized_opts+=" ${lopt}"
+		num_uid_gid=$(__resolve_owner "${value}")
+		[[ -n "${num_uid_gid}" ]] && normalized_opts+=" ${num_uid_gid#:}"
+
+	done
+
+	printf '%s' "${normalized_opts}"
+}
+
 # convert any chown-compatible user[:group] literal into numeric-uid-gid
 __resolve_owner() {
 	if ! ___eapi_has_prefix_variables; then
