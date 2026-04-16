@@ -15,6 +15,7 @@ from portage.tests.resolver.ResolverPlayground import (
     ResolverPlaygroundTestCase,
 )
 from portage.util import normalize_path
+from portage.versions import _pkg_str
 
 
 class ConfigTestCase(TestCase):
@@ -448,3 +449,39 @@ class ConfigTestCase(TestCase):
                 shutil.rmtree(eprefix)
             else:
                 playground.cleanup()
+
+    def testUserPatches(self):
+        files = ["user.patch", "random.diff"]
+        patches = {
+            "dev-libs/A": files,
+            "dev-libs/B-1": files,
+            "dev-libs/C:1": files,
+            "dev-libs/D-1:2": files,
+        }
+
+        playground = ResolverPlayground(patches=patches)
+        settings = config(clone=playground.settings)
+
+        # patches under ${PN} only applied for all versions and slots
+        self.assertTrue(_pkg_str("dev-libs/A-1") in settings._user_patches)
+        self.assertTrue(_pkg_str("dev-libs/A-1", slot="3") in settings._user_patches)
+        self.assertTrue(_pkg_str("dev-libs/A-2") in settings._user_patches)
+        self.assertTrue(_pkg_str("dev-libs/A-1", slot="3") in settings._user_patches)
+
+        # patches under ${P} applied to specified version regardless of slot
+        self.assertTrue(_pkg_str("dev-libs/B-1") in settings._user_patches)
+        self.assertTrue(_pkg_str("dev-libs/B-1", slot="3") in settings._user_patches)
+        self.assertFalse(_pkg_str("dev-libs/B-2") in settings._user_patches)
+        self.assertFalse(_pkg_str("dev-libs/B-2", slot="3") in settings._user_patches)
+
+        # ${PN}:${SLOT} applies to all versions of slot
+        self.assertFalse(_pkg_str("dev-libs/C-1") in settings._user_patches)
+        self.assertFalse(_pkg_str("dev-libs/C-1", slot="2") in settings._user_patches)
+        self.assertTrue(_pkg_str("dev-libs/C-1", slot="1") in settings._user_patches)
+        self.assertTrue(_pkg_str("dev-libs/C-2", slot="1") in settings._user_patches)
+
+        # patches under ${P}:${SLOT} applied to specific version and slot
+        self.assertTrue(_pkg_str("dev-libs/D-1", slot="2") in settings._user_patches)
+        self.assertFalse(_pkg_str("dev-libs/D-2", slot="2") in settings._user_patches)
+        self.assertFalse(_pkg_str("dev-libs/D-2", slot="1") in settings._user_patches)
+        self.assertFalse(_pkg_str("dev-libs/D-1") in settings._user_patches)

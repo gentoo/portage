@@ -7741,6 +7741,10 @@ class depgraph:
                         if in_usepkg_exclude or not in_usepkg_include:
                             break
 
+                        # do not select binpkgs if user patches exist (see bug #917047)
+                        if pkg.cpv in pkgsettings._user_patches:
+                            break
+
                     # We can choose not to install a live package from using binary
                     # cache by disabling it with option --usepkg-exclude-live in the
                     # emerge call.
