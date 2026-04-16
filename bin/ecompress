@@ -5,6 +5,8 @@
 
 source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
+program=${0##*/}
+
 do_ignore() {
 	local -x LC_ALL= LC_COLLATE=C
 	local -a skip_dirs
@@ -106,7 +108,7 @@ do_queue() {
 	wait "$!" || die
 
 	if (( ${#collision_by[@]} )); then
-		eqawarn "QA Notice: Colliding files found by ecompress:"
+		eqawarn "QA Notice: Colliding files found by ${program}:"
 		eqawarn
 		while IFS= read -r path; do
 			eqawarn "  ${path@Q}"
@@ -189,7 +191,7 @@ fix_symlinks() (
 			break
 		elif (( ++i >= 100 )); then
 			# Protect against possibility of a bug triggering an endless loop.
-			eerror "ecompress: too many levels of indirection for" \
+			eerror "${program}: too many levels of indirection for" \
 				"'${something_changed#"${ED%/}"}'"
 			break
 		fi
@@ -197,7 +199,7 @@ fix_symlinks() (
 )
 
 if [[ -z $1 ]] ; then
-	__helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${program}: at least one argument needed"
 	exit 1
 fi
 
@@ -218,17 +220,17 @@ while (( $# )); do
 		exit
 		;;
 	--dequeue)
-		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		[[ -n ${2} ]] && die "${program}: --dequeue takes no additional arguments"
 		break
 		;;
 	*)
-		die "${0##*/}: unknown arguments '$*'"
+		die "${program}: unknown arguments '$*'"
 		exit 1
 	esac
 done
 
 if [[ ! ${PORTAGE_COMPRESS} ]]; then
-	die "${0##*/}: aborting because PORTAGE_COMPRESS is either empty or unset"
+	die "${program}: aborting because PORTAGE_COMPRESS is either empty or unset"
 fi
 
 if [[ ! -v PORTAGE_COMPRESS_FLAGS ]] ; then
@@ -252,7 +254,7 @@ fi
 
 # figure out the new suffix
 if ! PORTAGE_COMPRESS_SUFFIX=${ guess_suffix; }; then
-	error="${0##*/}: failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
+	error="${program}: failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
 	if [[ ${PORTAGE_COMPRESS##*/} == @(true|:) ]]; then
 		error+=' (to disable compression, set PORTAGE_COMPRESS="" instead)'
 	fi
@@ -282,7 +284,7 @@ if [[ -s ${T}/.ecompress_had_precompressed ]]; then
 fi
 
 if (( ! all_compressed )); then
-	__helpers_die "${0##*/}: one or more files coudn't be compressed"
+	__helpers_die "${program}: one or more files coudn't be compressed"
 elif ! fix_symlinks; then
-	__helpers_die "${0##*/}: one or more symlinks couldn't be repaired"
+	__helpers_die "${program}: one or more symlinks couldn't be repaired"
 fi
