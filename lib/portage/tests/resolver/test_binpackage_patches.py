@@ -6,14 +6,14 @@ from portage.tests.resolver.test_binpackage_selection import BinPkgSelectionTest
 
 
 class BinPkgPatchTestCaseWithPatches(BinPkgSelectionTestCase):
+    files = ["user.patch", "random.diff"]
 
     def testBinPkgWithPatches(self):
         pkgs = self.pkgs_no_deps | self.pkgs_no_deps_newer | self.pkgs_with_slots
-        files = ["user.patch", "random.diff"]
         patches = {
-            "app-misc/foo": files,
-            "app-misc/bar-1.1": files,
-            "app-misc/baz:2": files,
+            "app-misc/foo": self.files,
+            "app-misc/bar-1.1": self.files,
+            "app-misc/baz:2": self.files,
         }
 
         test_cases = (
@@ -86,6 +86,39 @@ class BinPkgPatchTestCaseWithPatches(BinPkgSelectionTestCase):
                 success=True,
                 options={"--usepkg": True, "--usepkg-include": ["foo"]},
                 mergelist=["app-misc/foo-2.0"],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases, binpkgs=pkgs, ebuilds=pkgs, patches=patches
+        )
+
+    def testBinPkgExcludePatches(self):
+        pkgs = self.pkgs_no_deps
+        patches = {
+            "app-misc/foo": self.files,
+        }
+
+        test_cases = (
+            # --usepkg-exclude-patches=n overrides default of respecting patches
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkg": True, "--usepkg-exclude-patches": False},
+                mergelist=["[binary]app-misc/foo-1.0"],
+            ),
+            # patches to be ignored with --usepkgonly
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkgonly": True},
+                mergelist=["[binary]app-misc/foo-1.0"],
+            ),
+            # --usepkg-exclude-patches=y to re-assert default even when it breaks
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=False,
+                options={"--usepkgonly": True, "--usepkg-exclude-patches": True},
             ),
         )
 
