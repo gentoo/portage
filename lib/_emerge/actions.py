@@ -2024,6 +2024,25 @@ def action_info(settings, trees, myopts, myfiles):
 
     append(f"sh {sh_str}")
 
+    try:
+        proc = subprocess.Popen(
+            ["install", "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError:
+        pass
+    else:
+        output = proc.communicate()[0].splitlines()
+        if proc.wait() == os.EX_OK and output:
+            pos = output[0].find("install ")
+            if pos == -1:
+                append(f"coreutils: {output[0]}")
+            else:
+                append(f"coreutils: {output[0][pos+8:]}")
+
     ld_names = []
     if chost:
         ld_names.append(chost + "-ld")
