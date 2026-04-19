@@ -92,3 +92,42 @@ class BinPkgUserPatchTestCase(BinPkgSelectionTestCase):
         self.runBinPkgSelectionTest(
             test_cases, binpkgs=pkgs, ebuilds=pkgs, patches=patches
         )
+
+    def testBinPkgUserPatchesOption(self):
+        pkgs = self.pkgs_no_deps
+        patches = {
+            "app-misc/foo": self.files,
+        }
+
+        test_cases = (
+            # --usepkgonly has no solution when user patches mask binpkgs
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=False,
+                options={"--usepkgonly": True},
+            ),
+            # --binpkg-respect-user-patches=y is default and behaves as above
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=False,
+                options={"--usepkgonly": True, "--binpkg-respect-user-patches": "y"},
+            ),
+            # --binpkg-respect-user-patches=n overrides above behaviour
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkgonly": True, "--binpkg-respect-user-patches": "n"},
+                mergelist=["[binary]app-misc/foo-1.0"],
+            ),
+            # --binpkg-respect-user-patches=n permits unpatched binpkg with plain --usepkg
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkg": True, "--binpkg-respect-user-patches": "n"},
+                mergelist=["[binary]app-misc/foo-1.0"],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases, binpkgs=pkgs, ebuilds=pkgs, patches=patches
+        )
