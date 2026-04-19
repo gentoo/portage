@@ -460,6 +460,12 @@ If \fB\-\-binpkg\-respect\-use\fR is given explicitly,
 then it implies \fB\-\-autounmask\-use=n\fR, because these options
 naturally oppose each other.
 .TP
+.BR "\-\-binpkg\-user\-patches [ y | n ]"
+Tells emerge to ignore binary packages when the corresponding ebuild has
+user patches configured (see \fBportage\fR(5)). Enabled by default (even
+with \fB\-\-usepkgonly\fR) to prevent binary packages from potentially
+reverting user patches.
+.TP
 .BR "\-\-buildpkg [ y | n ]" ", " \-b
 Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers

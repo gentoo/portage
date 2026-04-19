@@ -1384,6 +1384,11 @@ class config:
             )
         return self._soname_provided
 
+    def userPatchFiles(self, pkg):
+        """Return the patch filenames of user patches applicable to pkg, where
+        pkg is any suitable type with cp, cpv, and slot attributes."""
+        return self._user_patches.patches(pkg)
+
     def expandLicenseTokens(self, tokens):
         """Take a token from ACCEPT_LICENSE or package.license and expand it
         if it's a group token (indicated by @) or just return it if it's not a

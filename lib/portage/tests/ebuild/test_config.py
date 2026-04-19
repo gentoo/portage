@@ -450,6 +450,7 @@ class ConfigTestCase(TestCase):
             else:
                 playground.cleanup()
 
+    # exercise UserPatches.__contains__() directly to detect user patches
     def testUserPatchesExist(self):
         files = ["user.patch", "random.diff"]
         patches = {
@@ -489,3 +490,63 @@ class ConfigTestCase(TestCase):
 
         # empty user patch folder to not be visible
         self.assertNotIn(_pkg_str("dev-libs/E-1"), user_patches)
+
+    # exercise UserPatches.patches() to query applicable user patch files
+    def testUserPatchesFiles(self):
+        patches = {
+            "dev-libs/A": ["user.patch", "random.diff"],
+            "dev-libs/B": ["user.patch"],
+            "dev-libs/B-1": ["random.diff"],
+            "dev-libs/C": ["random.diff"],
+            "dev-libs/C:3": ["user.patch"],
+        }
+
+        playground = ResolverPlayground(patches=patches)
+        settings = config(clone=playground.settings)
+
+        files = lambda d: {os.path.join(d, f) for f in patches[d]}
+
+        # dev-libs/A has the same patches for all versions and slots
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/A-1")),
+            files("dev-libs/A"),
+        )
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/A-1", slot="3")),
+            files("dev-libs/A"),
+        )
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/A-2")),
+            files("dev-libs/A"),
+        )
+
+        # dev-libs/B has extra patches for that version 1 only (all slots)
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/B-1")),
+            files("dev-libs/B") | files("dev-libs/B-1"),
+        )
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/B-1", slot="2")),
+            files("dev-libs/B") | files("dev-libs/B-1"),
+        )
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/B-2")),
+            files("dev-libs/B"),
+        )
+
+        # dev-libs/C has extra patches for slot 3 only
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/C-1")),
+            files("dev-libs/C"),
+        )
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/C-1", slot="3")),
+            files("dev-libs/C") | files("dev-libs/C:3"),
+        )
+        self.assertSetEqual(
+            settings.userPatchFiles(_pkg_str("dev-libs/C-2", slot="3")),
+            files("dev-libs/C") | files("dev-libs/C:3"),
+        )
+
+        # expect empty set where no user patches exists
+        self.assertSetEqual(settings.userPatchFiles(_pkg_str("dev-libs/E-1")), set())
