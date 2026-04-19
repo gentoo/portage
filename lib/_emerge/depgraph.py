@@ -35,6 +35,7 @@ from portage.dep import (
     human_readable_required_use,
     match_from_list,
     _repo_separator,
+    _slot_separator,
 )
 from portage.dep.libc import find_libc_deps, strip_libc_deps
 from portage.dep._slot_operator import ignore_built_slot_operator_deps, strip_slots
@@ -1233,6 +1234,9 @@ class depgraph:
         if self._dynamic_config.myparams.get("binpkg_changed_deps") in ("y", "n"):
             ignored_binaries.pop("changed_deps", None)
 
+        if self._frozen_config.myopts.get("--binpkg-user-patches") in ("y", "n"):
+            ignored_binaries.pop("user_patches", None)
+
         if not ignored_binaries:
             return
 
@@ -1243,6 +1247,9 @@ class depgraph:
 
         if "changed_deps" in ignored_binaries:
             self._show_ignored_binaries_changed_deps(ignored_binaries["changed_deps"])
+
+        if "user_patches" in ignored_binaries:
+            self._show_ignored_binaries_user_patches(ignored_binaries["user_patches"])
 
     def _show_ignored_binaries_respect_use(self, respect_use):
         seen = {}
@@ -1335,6 +1342,59 @@ class depgraph:
             "NOTE: The --binpkg-changed-deps=n option will prevent emerge",
             "      from ignoring these binary packages if possible.",
             "      Using --binpkg-changed-deps=y will silence this warning.",
+        ]
+
+        for line in msg:
+            if line:
+                line = colorize("INFORM", line)
+            writemsg(line + "\n", noiselevel=-1)
+
+    def _show_ignored_binaries_user_patches(self, user_patches):
+        merging = {
+            (pkg.root, pkg.cpv)
+            for pkg in self._dynamic_config._displayed_list or ()
+            if isinstance(pkg, Package)
+        }
+
+        messages = []
+        patchset = set()
+
+        for pkg, patches in user_patches.items():
+            msg = f"     {pkg.cpv}"
+            if hasattr(pkg.cpv, "slot") and pkg.slot != "0":
+                msg += _slot_separator + pkg.cpv.slot
+            if hasattr(pkg, "build_id") and pkg.build_id:
+                msg += f"-{pkg.build_id}"  # FIXME: build-id-sep?
+            if pkg.root_config.settings["ROOT"] != "/":
+                msg += f" for {pkg.root}"
+            messages.append(f"{msg}\n")
+            if patches:
+                patchset.update(patches)
+
+        if not messages:
+            return
+
+        writemsg(
+            "\n!!! The following binary packages have been "
+            "ignored due to user patches:\n\n",
+            noiselevel=-1,
+        )
+        for line in sorted(messages):
+            writemsg(line, noiselevel=-1)
+
+        if "--verbose" in self._frozen_config.myopts and patchset:
+            writemsg(
+                "\n!!! These user patches are triggering this warning:\n\n",
+                noiselevel=-1,
+            )
+            for line in sorted(patchset):
+                writemsg(f"    {line}\n", noiselevel=-1)
+
+        msg = [
+            "",
+            "NOTE: The --binpkg-user-patches=n option will prevent emerge",
+            "      from ignoring these binary packages.",
+            "      Using --binpkg-user-patches=y will silence this warning.",
         ]
 
         for line in msg:
@@ -6472,7 +6532,6 @@ class depgraph:
                             ):
                                 required_use_unsatisfied.append(pkg)
                                 continue
-
                         root_slot = (pkg.root, pkg.slot_atom)
                         if pkg.built and root_slot in self._rebuild.rebuild_list:
                             mreasons = ["need to rebuild from source"]
@@ -6496,6 +6555,14 @@ class depgraph:
                             )
                         ):
                             mreasons = ["changed deps"]
+                        elif (
+                            pkg.built
+                            and not mreasons
+                            and self._dynamic_config.ignored_binaries.get(pkg, {}).get(
+                                "user_patches"
+                            )
+                        ):
+                            mreasons = ["user patches"]
                         elif (
                             pkg.built
                             and use_ebuild_visibility
@@ -6812,16 +6879,22 @@ class depgraph:
                 )
 
         elif masked_packages:
+            writemsg("\n!!! ")
+            if self._frozen_config.myopts.get("--usepkgonly", False):
+                writemsg(
+                    colorize("BAD", "All binary packages that could satisfy "),
+                    noiselevel=-1,
+                )
+            else:
+                writemsg(
+                    colorize("BAD", "All ebuilds that could satisfy "),
+                    noiselevel=-1,
+                )
             writemsg(
-                "\n!!! "
-                + colorize("BAD", "All ebuilds that could satisfy ")
-                + colorize("INFORM", xinfo)
+                colorize("INFORM", xinfo)
                 + colorize("BAD", " have been masked.")
-                + "\n",
-                noiselevel=-1,
-            )
-            writemsg(
-                "!!! One of the following masked packages is required to complete your request:\n",
+                + "\n"
+                + "!!! One of the following masked packages is required to complete your request:\n",
                 noiselevel=-1,
             )
             have_eapi_mask = show_masked_packages(masked_packages)
@@ -7650,6 +7723,9 @@ class depgraph:
         use_ebuild_visibility = (
             self._frozen_config.myopts.get("--use-ebuild-visibility", "n") != "n"
         )
+        binpkg_user_patches = (
+            self._frozen_config.myopts.get("--binpkg-user-patches", "y") != "n"
+        )
         reinstall_atoms = self._frozen_config.reinstall_atoms
         usepkg_exclude = self._frozen_config.usepkg_exclude
         usepkg_include = self._frozen_config.usepkg_include
@@ -7742,8 +7818,13 @@ class depgraph:
                             break
 
                         # do not select binpkgs if user patches exist (see bug #917047)
-                        if pkg in pkgsettings._user_patches:
-                            break
+                        if binpkg_user_patches and pkg in pkgsettings._user_patches:
+                            self._dynamic_config.ignored_binaries.setdefault(
+                                pkg, {}
+                            ).setdefault(
+                                "user_patches", pkgsettings.userPatchFiles(pkg)
+                            )
+                            continue
 
                     # We can choose not to install a live package from using binary
                     # cache by disabling it with option --usepkg-exclude-live in the
