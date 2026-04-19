@@ -71,3 +71,25 @@ class UserPatches:
             files.append(filename.encode())
 
         return files
+
+    # query using the rules in portage(5) for matching user patches
+    def _query(self, func, key):
+        result = func(key.cp).copy()  # copy() so as not to mutate
+        result |= func(key.cpv)
+        if hasattr(key.cpv, "slot"):
+            slot = _slot_separator + key.cpv.slot
+            result |= func(key.cp + slot)
+            result |= func(key.cpv + slot)
+
+        return result
+
+    # return the files that would be applied as user patches
+    def patches(self, key, default=set()):
+        if not self.__contains__(key):
+            return default
+
+        files = lambda x: {
+            os.path.join(x, f.decode()) for f in self._patch_sets.get(x, {})
+        }
+
+        return self._query(files, key)
