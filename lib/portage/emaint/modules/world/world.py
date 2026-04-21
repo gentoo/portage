@@ -40,7 +40,7 @@ class WorldHandler:
         maxval = len(world_atoms)
         if onProgress:
             onProgress(maxval, 0)
-        for i, atom in enumerate(world_atoms):
+        for i, atom in enumerate(sorted(world_atoms)):
             if not isinstance(atom, portage.dep.Atom):
                 if atom.startswith(SETPREFIX):
                     s = atom[len(SETPREFIX) :]
@@ -53,22 +53,24 @@ class WorldHandler:
                 if onProgress:
                     onProgress(maxval, i + 1)
                 continue
-            okay = True
+
             installed = vardb.match(atom)
             if not portdb.xmatch("match-all", atom):
                 self.missing.append(atom)
-                okay = False
-            if okay and not portdb.xmatch("match-visible", atom):
-                reasons = ", ".join(
-                    {r for cpv in installed for r in getmaskingstatus(cpv)}
-                )
-                self.masked.append((atom, reasons))
-                okay = False
-            if okay and not installed:
+            elif not installed:
                 self.not_installed.append(atom)
-                okay = False
-            if okay:
+            elif not portdb.xmatch("match-visible", atom):
+                try:
+                    reasons = ", ".join(
+                        {r for cpv in installed for r in getmaskingstatus(cpv)}
+                    )
+                    reasons = f" [{reasons}]"
+                except:
+                    reasons = ""
+                self.masked.append((atom, reasons))
+            else:
                 self.okay.append(atom)
+
             if onProgress:
                 onProgress(maxval, i + 1)
 
@@ -77,7 +79,7 @@ class WorldHandler:
         self._check_world(onProgress)
         errors = []
         if self.found:
-            errors += [f"'{x}' has no visible ebuilds [{r}]" for x, r in self.masked]
+            errors += [f"'{x}' has no visible ebuilds{r}" for x, r in self.masked]
             errors += [f"'{x}' has no available ebuilds" for x in self.missing]
             errors += [f"'{x}' is not a valid atom" for x in self.invalid]
             errors += [f"'{x}' is not installed" for x in self.not_installed]
