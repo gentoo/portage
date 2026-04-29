@@ -9,6 +9,12 @@ Release notes take the form of the following optional categories:
 portage-3.0.78 (UNRELEASED)
 --------------
 
+This release has several big changes to binary package support: signature
+verification is enabled by default, and there are new EXPERIMENTAL configuration
+options for controlling binpkg use per repository and binary repository.
+
+There are many miscellaneous improvements as well.
+
 Breaking changes:
 
 * cnf: enable verify-signature by default in binrepos.conf (bug #945384,
@@ -39,6 +45,27 @@ Breaking changes:
 
 Features:
 
+* config: binrepos.conf: Add 'getbinpkg-exclude', 'getbinpkg-include' (bug #463964).
+
+  NOTE: This feature is considered experimental and subject to change
+  based on feedback.
+
+* config: repos.conf: Add 'usepkg-exclude', 'usepkg-include' (bug #463964).
+
+  NOTE: This feature is considered experimental and subject to change
+  based on feedback.
+
+* emerge: Add --getbinpkg-include, --getbinpkg-exclude (bug #463964).
+
+* emerge: Add --nobindeps.
+
+  This only has an effect with --usepkg.
+
+* emerge: Add --usepkg-include (inverse of --usepkg-exclude).
+
+* emerge: Add 'g' symbol to package list display for remote binpkgs with
+  --getbinpkg.
+
 * Read binrepos.conf from /usr/share/portage/config as well.
 
 * bintree: Run trust helper when any binrepos.conf configuration has
@@ -46,8 +73,14 @@ Features:
 
 * Scheduler: No background mode if there is just one merge job (bug #339579)
 
+  The old behaviour can be restored with --quiet-build.
+
+* Scheduler: Improved heuristics for --jobs-tmpdir-require-free-gb.
+
 * emerge: Warn on installed packages in @world without ebuilds available
   (bug #911180).
+
+  This can be suppressed with --verbose-missing-ebuilds=n.
 
 * repos.conf: Implement sync-openpgp-key-package (bug #968578).
 
@@ -58,7 +91,11 @@ Features:
 
   Behaves the same way as the aforementioned repos.conf option.
 
-* cnf: repos.conf: Set sync-openpgp-key-package for ::gentoo.
+* cnf: repos.conf: Set sync-openpgp-key-package for ::gentoo (bug #968578).
+
+* ELF: Add entry for Elbrus.
+
+* fowners: Better support ROOT use by inspecting the database inside (bug #971120).
 
 Bug fixes:
 
@@ -71,6 +108,28 @@ Bug fixes:
 * estrip: Silence noise from objcopy when no build ID section exists (bug #968220).
 
 * estrip: Don't break the debuglink CRC with the salted build ID (bug #971641).
+
+* bintree: Keep local pkgindex with --pretend when remote binhost is unreachable.
+
+* bintree: Discard local pkgindex when remote index could not be found (bug #970223).
+
+  Otherwise, we may try to fetch binpkgs which have been removed on the
+  other side.
+
+* emerge: Support "--jobs 1" to disable parallel jobs when EMERGE_DEFAULT_OPTS
+  contains "--jobs 0" for automatic detection.
+
+* emerge: Differentiate between unset and empty variables in --info.
+
+* bin/isolated-functions.sh: Make nonfatal `die -n` log to stderr (bug #970844).
+
+* lib: Follow PEP440 more closely, handle '-dirty' version suffix.
+
+Cleanups:
+
+* actions: Drop DEFINED_PHASES use when unnecessary.
+
+* netlink: Modernise.
 
 portage-3.0.77 (2026-01-23)
 --------------
