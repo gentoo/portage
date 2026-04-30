@@ -1,5 +1,5 @@
 # checksum.py -- core Portage functionality
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -15,7 +15,7 @@ from portage import _encodings, _unicode_decode, _unicode_encode
 from portage import os
 from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
 from portage.localization import _
-
+from portage.util.io_uring import IoUring, is_available as is_uring_available
 
 # Summary of all available hashes and their implementations,
 # most preferred first. Please keep this in sync with logic below.
@@ -55,6 +55,64 @@ def _open_file(filename):
             raise
 
 
+def _data_reader(f):
+    """
+    An efficient data reader that uses io_uring for double-buffering when available.
+    It overlaps kernel-side I/O with user-side hash computations.
+    """
+    blocksize = HASHING_BLOCKSIZE
+    if is_uring_available():
+        try:
+            fd = f.fileno()
+            # Use a small ring for double-buffering (2 buffers are enough for throughput)
+            with IoUring(entries=4) as ring:
+                bufs = [bytearray(blocksize), bytearray(blocksize)]
+                offset = 0
+                active_reads = 0
+
+                # Batch submission: submit initial two read requests at once
+                for i in range(2):
+                    ring.prep_read(fd, bufs[i], blocksize, offset, user_data=i)
+                    offset += blocksize
+                    active_reads += 1
+                ring.submit()
+
+                while active_reads > 0:
+                    # Wait for at least one read to complete
+                    res, buf_idx = ring.wait_cqe()
+                    active_reads -= 1
+
+                    if res > 0:
+                        # Yield the data read into the current buffer as a memoryview
+                        # to avoid creating a copy of the slice.
+                        # While the hasher processes this, the kernel is filling the other buffer.
+                        yield memoryview(bufs[buf_idx])[:res]
+
+                        if res == blocksize:
+                            # If we read a full block, there might be more data.
+                            # Re-prep this buffer for the next chunk and submit.
+                            ring.prep_read(
+                                fd, bufs[buf_idx], blocksize, offset, user_data=buf_idx
+                            )
+                            ring.submit()
+                            offset += blocksize
+                            active_reads += 1
+                    elif res < 0:
+                        # res is negative errno
+                        raise OSError(-res, os.strerror(-res))
+            return
+        except (ImportError, OSError, AttributeError):
+            # Fallback to standard synchronous reading if io_uring fails
+            pass
+
+    # Standard reading fallback for non-Linux or missing liburing-py
+    while True:
+        data = f.read(blocksize)
+        if not data:
+            break
+        yield data
+
+
 class _generate_hash_function:
     __slots__ = ("_hashobject",)
 
@@ -84,14 +142,11 @@ class _generate_hash_function:
         @return: The hash and size of the data
         """
         with _open_file(filename) as f:
-            blocksize = HASHING_BLOCKSIZE
             size = 0
             checksum = self._hashobject()
-            data = f.read(blocksize)
-            while data:
+            for data in _data_reader(f):
                 checksum.update(data)
-                size = size + len(data)
-                data = f.read(blocksize)
+                size += len(data)
 
         return (checksum.hexdigest(), size)
 
@@ -108,11 +163,11 @@ class _generate_hash_function:
 # - https://github.com/python/cpython/issues/91257
 # - https://github.com/python/cpython/issues/92876
 # - https://bugs.gentoo.org/846389
-_generate_hash_function("MD5", hashlib.md5, origin="hashlib")
-_generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
-_generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
-_generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
 for local_name, hash_name in (
+    ("MD5", "md5"),
+    ("SHA1", "sha1"),
+    ("SHA256", "sha256"),
+    ("SHA512", "sha512"),
     ("RMD160", "ripemd160"),
     ("WHIRLPOOL", "whirlpool"),
     ("BLAKE2B", "blake2b"),
@@ -121,14 +176,12 @@ for local_name, hash_name in (
     ("SHA3_512", "sha3_512"),
 ):
     try:
-        hashlib.new(hash_name)
-    except ValueError:
+        hash_factory = functools.partial(hashlib.new, hash_name)
+        hash_factory()
+    except (ValueError, AttributeError, TypeError):
         pass
     else:
-        _generate_hash_function(
-            local_name, functools.partial(hashlib.new, hash_name), origin="hashlib"
-        )
-
+        _generate_hash_function(local_name, hash_factory, origin="hashlib")
 
 # Use pycrypto when available, prefer it over the internal fallbacks
 # Check for 'new' attributes, since they can be missing if the module
@@ -161,7 +214,6 @@ if "RMD160" not in hashfunc_map:
                     )
         except ImportError:
             pass
-
 
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
@@ -290,7 +342,7 @@ def _apply_hash_filter(digests, hash_filter):
     """
     Return a new dict containing the filtered digests, or the same
     dict if no changes are necessary. This will always preserve at
-    at least one digest, in order to ensure that they are not all
+    least one digest, in order to ensure that they are not all
     discarded.
     @param digests: dictionary of digests
     @type digests: dict
@@ -391,8 +443,8 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 def perform_checksum(filename, hashname="MD5", calc_prelink=0):
     """
     Run a specific checksum against a file. The filename can
-    be either unicode or an encoded byte string. If filename
-    is unicode then a UnicodeDecodeError will be raised if
+    be either Unicode or an encoded byte string. If filename
+    is Unicode then a UnicodeDecodeError will be raised if
     necessary.
 
     @param filename: File to run the checksum against
@@ -465,14 +517,70 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
             return_value[hash_name] = (hash_result,size)
             for each given checksum
     """
-    rVal = {}
-    for x in hashes:
-        if x not in hashfunc_keys:
-            raise portage.exception.DigestException(
-                f"{x} hash function not available (needs dev-python/pycrypto)"
-            )
-        rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
-    return rVal
+    # Make sure filename is encoded with the correct encoding before
+    # it is passed to spawn (for prelink) and/or the hash function.
+    filename = _unicode_encode(filename, encoding=_encodings["fs"], errors="strict")
+    myfilename = filename
+    prelink_tmpfile = None
+    try:
+        global prelink_capable
+        if calc_prelink and prelink_capable and is_prelinkable_elf(filename):
+            # Create non-prelinked temporary file to checksum.
+            # Files rejected by prelink are summed in place.
+            try:
+                tmpfile_fd, prelink_tmpfile = tempfile.mkstemp()
+                try:
+                    retval = portage.process.spawn(
+                        [PRELINK_BINARY, "--verify", filename], fd_pipes={1: tmpfile_fd}
+                    )
+                finally:
+                    os.close(tmpfile_fd)
+                if retval == os.EX_OK:
+                    myfilename = prelink_tmpfile
+            except portage.exception.CommandNotFound:
+                # This happens during uninstallation of prelink.
+                prelink_capable = False
+
+        real_hashes = [h for h in hashes if h != "size"]
+        for x in real_hashes:
+            if x not in hashfunc_map:
+                raise portage.exception.DigestException(
+                    f"{x} hash function not available (needs dev-python/pycrypto)"
+                )
+
+        if not real_hashes:
+            rVal = {}
+            if "size" in hashes:
+                rVal["size"] = os.stat(myfilename).st_size
+            return rVal
+
+        hash_objs = {h: hashfunc_map[h]._hashobject() for h in real_hashes}
+        size = 0
+        try:
+            with _open_file(myfilename) as f:
+                for data in _data_reader(f):
+                    for obj in hash_objs.values():
+                        obj.update(data)
+                    size += len(data)
+        except OSError as e:
+            if e.errno in (errno.ENOENT, errno.ESTALE):
+                raise portage.exception.FileNotFound(myfilename)
+            elif e.errno == portage.exception.PermissionDenied.errno:
+                raise portage.exception.PermissionDenied(myfilename)
+            raise
+
+        rVal = {h: hash_objs[h].hexdigest() for h in real_hashes}
+        if "size" in hashes:
+            rVal["size"] = size
+        return rVal
+    finally:
+        if prelink_tmpfile:
+            try:
+                os.unlink(prelink_tmpfile)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
+                del e
 
 
 def checksum_str(data, hashname="MD5"):
