@@ -55,16 +55,20 @@ class WorldHandler:
                 continue
 
             installed = vardb.match(atom)
-            if not portdb.xmatch("match-all", atom):
+            existing = portdb.xmatch("match-all", atom)
+            if not existing:
                 self.missing.append(atom)
             elif not installed:
                 self.not_installed.append(atom)
             elif not portdb.xmatch("match-visible", atom):
                 try:
-                    reasons = ", ".join(
-                        {r for cpv in installed for r in getmaskingstatus(cpv)}
-                    )
-                    reasons = f" [{reasons}]"
+                    reasons = {
+                        r
+                        for cpv in existing
+                        for r in getmaskingstatus(cpv)
+                        if "live" not in cpv._metadata.get("PROPERTIES", "").split()
+                    }
+                    reasons = f" [{', '.join(sorted(reasons))}]"
                 except:
                     reasons = ""
                 self.masked.append((atom, reasons))

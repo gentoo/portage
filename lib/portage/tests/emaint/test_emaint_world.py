@@ -70,7 +70,15 @@ class EmaintWorldTestCase(EmaintTestCase):
         ebuilds = {
             "app-misc/A-1.0": {},
             "app-misc/B-1.0": {"KEYWORDS": "x86~"},
+            # same masking reason - to be reported only once for all ebuilds
             "app-misc/C-1.0": {"LICENSE": "TEST"},
+            "app-misc/C-2.0": {"LICENSE": "TEST"},
+            # live ebuild - to be omitted from reported masking reasons
+            "app-misc/C-9999": {"KEYWORDS": "", "PROPERTIES": "live"},
+        }
+
+        user_config = {
+            "package.mask": (">=app-misc/C-2.0",),
         }
 
         world = (
@@ -82,6 +90,7 @@ class EmaintWorldTestCase(EmaintTestCase):
         playground = ResolverPlayground(
             ebuilds=ebuilds,
             installed=ebuilds,
+            user_config=user_config,
             world=world,
         )
 
@@ -92,7 +101,7 @@ class EmaintWorldTestCase(EmaintTestCase):
                 command=emaint + ("world", "--check"),
                 output=[
                     "'app-misc/B' has no visible ebuilds [missing keyword]",
-                    "'app-misc/C' has no visible ebuilds [TEST license(s)]",
+                    "'app-misc/C' has no visible ebuilds [TEST license(s), package.mask]",
                 ],
             ),
             CommandStep(
