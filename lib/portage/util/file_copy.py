@@ -1,4 +1,4 @@
-# Copyright 2024 Gentoo Authors
+# Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -9,6 +9,7 @@ import platform
 import shutil
 import sys
 
+from portage.util.io_uring import IoUring, is_available as is_uring_available
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,41 @@ def _do_sendfile(src, dst, offset, count):
         count -= written
 
 
+def _io_uring_copy(srcfd, dstfd):
+    """
+    Perform a fast file copy using io_uring's copy_file_range if available.
+    """
+    try:
+        with IoUring(entries=4) as ring:
+            for offset, count in _get_chunks(srcfd):
+                if count == 0:
+                    os.ftruncate(dstfd, offset)
+                else:
+                    # We try to use copy_file_range via io_uring
+                    remaining = count
+                    curr_offset = offset
+                    while remaining > 0:
+                        chunk = min(remaining, 1024 * 1024 * 1024)  # 1GB max per op
+                        ring.prep_copy_file_range(
+                            srcfd, curr_offset, dstfd, curr_offset, chunk, 0
+                        )
+                        ring.submit()
+                        res, _ = ring.wait_cqe()
+                        if res < 0:
+                            # If io_uring copy_file_range fails with something like
+                            # ENOSYS or EXDEV, we raise to fall back.
+                            raise OSError(-res, os.strerror(-res))
+                        if res == 0:
+                            raise OSError(
+                                errno.EOPNOTSUPP, os.strerror(errno.EOPNOTSUPP)
+                            )
+                        curr_offset += res
+                        remaining -= res
+        return True
+    except (ImportError, OSError, AttributeError):
+        return False
+
+
 def _fastcopy(src, dst):
     with (
         open(src, "rb", buffering=0) as srcf,
@@ -105,6 +141,10 @@ def _fastcopy(src, dst):
                 return
             except OSError:
                 pass
+
+        if is_uring_available():
+            if _io_uring_copy(srcfd, dstfd):
+                return
 
         try_cfr = hasattr(os, "copy_file_range")
 
