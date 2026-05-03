@@ -409,6 +409,20 @@ _internal_caller = False
 
 _sync_mode = False
 
+import multiprocessing
+
+# Prefer the environment variable if set. Otherwise, change away from
+# forkserver if in use.
+_multiprocessing_method = os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD")
+if not _multiprocessing_method:
+    _multiprocessing_method = multiprocessing.get_start_method(allow_none=False)
+    if _multiprocessing_method == "forkserver":
+        # Undo the Python 3.14 default change on Linux from fork->forkserver
+        # because of various problems (bug #973043, bug #973571).
+        _multiprocessing_method = "fork"
+if _multiprocessing_method:
+    multiprocessing.set_start_method(_multiprocessing_method, force=True)
+
 
 class _ForkWatcher:
     @staticmethod
