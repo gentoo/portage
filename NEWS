@@ -6,7 +6,7 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.78 (UNRELEASED)
+portage-3.0.78 (2026-05-03)
 --------------
 
 This release has several big changes to binary package support: signature
