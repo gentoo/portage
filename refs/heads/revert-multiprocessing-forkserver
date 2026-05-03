@@ -1,0 +1,16 @@
+certificate version 0.1
+pusher Sam James <sam@gentoo.org> 1777793023 +0100
+pushee git+ssh://git.gentoo.org/proj/portage.git
+nonce 1777793023-411d25c5022ee86dc17cb0e28ae86ee9ac5e330a
+
+0000000000000000000000000000000000000000 528916ea3ed1692bfef378c441ef73a7f9057480 refs/heads/revert-multiprocessing-forkserver
+-----BEGIN PGP SIGNATURE-----
+
+iQEBBAAWCgCpFiEEJaa7iN2bdkxrVUHCc4QJ9SDfkZAFAmn29/8bFIAAAAAABAAO
+bWFudTIsMi41KzEuMTIsMiwyXxSAAAAAAC4AKGlzc3Vlci1mcHJAbm90YXRpb25z
+Lm9wZW5wZ3AuZmlmdGhob3JzZW1hbi5uZXQyNUE2QkI4OEREOUI3NjRDNkI1NTQx
+QzI3Mzg0MDlGNTIwREY5MTkwDxxzYW1AZ2VudG9vLm9yZwAKCRBzhAn1IN+RkL+0
+AQDv+/jFWtSKphHT38DdBiglnO2BYloZl2F3yAaWeocWDgD/bT1RFtRjtmBu61U3
+SeBG+9Juzk7h7Iz0Lidw7Ya2+Ak=
+=tnSa
+-----END PGP SIGNATURE-----
