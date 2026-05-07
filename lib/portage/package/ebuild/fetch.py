@@ -13,6 +13,7 @@ import random
 import re
 import shlex
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -33,6 +34,7 @@ from portage import (
 )
 from portage.checksum import (
     get_valid_checksum_keys,
+    hashfunc_keys,
     perform_md5,
     verify_all,
     _filter_unaccelarated_hashes,
@@ -339,12 +341,17 @@ def _checksum_failure_temp_file(settings, distdir, basename):
     return temp_filename
 
 
-def _check_digests(filename, digests, show_errors=1):
+def _check_digests(filename, digests, show_errors=1, settings=None):
     """
     Check digests and display a message if an error occurs.
     @return True if all digests match, False otherwise.
     """
-    verified_ok, reason = verify_all(filename, digests)
+    result = None
+    if settings is not None:
+        result = _checksumcommand_verify(settings, filename, digests)
+    if result is None:
+        result = verify_all(filename, digests)
+    verified_ok, reason = result
     if not verified_ok:
         if show_errors:
             writemsg(
@@ -359,7 +366,9 @@ def _check_digests(filename, digests, show_errors=1):
     return True
 
 
-def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
+def _check_distfile(
+    filename, digests, eout, show_errors=1, hash_filter=None, settings=None
+):
     """
     @return a tuple of (match, stat_obj) where match is True if filename
     matches all given digests (if any) and stat_obj is a stat result, or
@@ -388,12 +397,106 @@ def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
         digests = _filter_unaccelarated_hashes(digests)
         if hash_filter is not None:
             digests = _apply_hash_filter(digests, hash_filter)
-        if _check_digests(filename, digests, show_errors=show_errors):
+        if _check_digests(
+            filename, digests, show_errors=show_errors, settings=settings
+        ):
             eout.ebegin(f"{os.path.basename(filename)} {' '.join(sorted(digests))} ;-)")
             eout.eend(0)
         else:
             return (False, st)
     return (True, st)
+
+
+def _checksumcommand_verify(settings, filename, digests):
+    """
+    Verify file checksums using CHECKSUMCOMMAND if configured.
+
+    Runs an external command to compute digests (e.g., on a remote system
+    hosting distfiles via NFS), then compares the results locally.
+
+    @param settings: portage config
+    @param filename: path to the file to verify
+    @param digests: dict of expected hash values (e.g., {"BLAKE2B": "abc...", "size": 12345})
+    @return: (verified_ok, reason) tuple, same as verify_all(),
+             or None if CHECKSUMCOMMAND is not configured.
+    """
+    checksumcommand = settings.get("CHECKSUMCOMMAND")
+    if not checksumcommand:
+        return None
+
+    hash_types = sorted(k for k in digests if k != "size" and k in hashfunc_keys)
+    if not hash_types:
+        # No verifiable hash types; fall through to local verify_all.
+        return None
+
+    variables = {
+        "FILE": filename,
+        "DISTFILE": os.path.basename(filename),
+        "HASHTYPE": ",".join(hash_types),
+    }
+    for k in ("DISTDIR", "PORTAGE_SSH_OPTS"):
+        v = settings.get(k)
+        if v is not None:
+            variables[k] = v
+
+    cmd = varexpand(checksumcommand, mydict=variables)
+    cmd = shlex.split(cmd)
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as e:
+        return False, (f"CHECKSUMCOMMAND failed: {e}", None, None)
+
+    if proc.returncode != os.EX_OK:
+        stderr = proc.stderr.strip()
+        return False, (
+            f"CHECKSUMCOMMAND exited with status {proc.returncode}: {stderr}",
+            None,
+            None,
+        )
+
+    # Parse output: lines of "HASHTYPE hexdigest" and "size filesize"
+    results = {}
+    for line in proc.stdout.splitlines():
+        parts = line.split(None, 1)
+        if len(parts) == 2:
+            results[parts[0]] = parts[1]
+
+    # Check size first, if available.
+    remote_size = results.get("size")
+    expected_size = digests.get("size")
+    if remote_size is not None and expected_size is not None:
+        try:
+            if int(remote_size) != expected_size:
+                return False, (
+                    _("Filesize does not match recorded size"),
+                    int(remote_size),
+                    expected_size,
+                )
+        except ValueError:
+            pass
+
+    # Compare each hash.
+    for hash_type in hash_types:
+        remote_hash = results.get(hash_type)
+        if remote_hash is None:
+            return False, (
+                f"CHECKSUMCOMMAND did not return {hash_type} digest",
+                None,
+                digests[hash_type],
+            )
+        if remote_hash != digests[hash_type]:
+            return False, (
+                f"Failed on {hash_type} verification",
+                remote_hash,
+                digests[hash_type],
+            )
+
+    return True, "Reason unknown"
 
 
 _fetch_resume_size_re = re.compile(r"(^[\d]+)([KMGTPEZY]?$)")
@@ -1335,7 +1438,11 @@ async def async_fetch(
                 eout = EOutput()
                 eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
                 match, mystat = _check_distfile(
-                    myfile_path, pruned_digests, eout, hash_filter=hash_filter
+                    myfile_path,
+                    pruned_digests,
+                    eout,
+                    hash_filter=hash_filter,
+                    settings=mysettings,
                 )
                 if match and not force:
                     # Skip permission adjustment for symlinks, since we don't
@@ -1459,7 +1566,11 @@ async def async_fetch(
                     for x in ro_distdirs:
                         filename = await async_mirror_url(x, myfile, mysettings)
                         match, mystat = _check_distfile(
-                            filename, pruned_digests, eout, hash_filter=hash_filter
+                            filename,
+                            pruned_digests,
+                            eout,
+                            hash_filter=hash_filter,
+                            settings=mysettings,
                         )
                         if match:
                             readonly_file = filename
@@ -1574,7 +1685,12 @@ async def async_fetch(
                             digests = _filter_unaccelarated_hashes(mydigests[myfile])
                             if hash_filter is not None:
                                 digests = _apply_hash_filter(digests, hash_filter)
-                            verified_ok, reason = verify_all(download_path, digests)
+                            result = _checksumcommand_verify(
+                                mysettings, download_path, digests
+                            )
+                            if result is None:
+                                result = verify_all(download_path, digests)
+                            verified_ok, reason = result
                             if not verified_ok:
                                 writemsg(
                                     _("!!! Previously fetched" " file: '%s'\n")
@@ -1944,7 +2060,12 @@ async def async_fetch(
                                 )
                                 if hash_filter is not None:
                                     digests = _apply_hash_filter(digests, hash_filter)
-                                verified_ok, reason = verify_all(download_path, digests)
+                                result = _checksumcommand_verify(
+                                    mysettings, download_path, digests
+                                )
+                                if result is None:
+                                    result = verify_all(download_path, digests)
+                                verified_ok, reason = result
                                 if not verified_ok:
                                     writemsg(
                                         _("!!! Fetched file: %s VERIFY FAILED!\n")
