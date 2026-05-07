@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ("LocationsManager",)
@@ -64,6 +64,8 @@ class LocationsManager:
         self.target_root = target_root
         self.sysroot = sysroot
         self._user_config = local_config
+        self.profiles = []
+        self.profiles_complex = []
 
         if self.eprefix is None:
             self.eprefix = portage.const.EPREFIX
