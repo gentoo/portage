@@ -7642,6 +7642,9 @@ class depgraph:
         usepkg = "--usepkg" in self._frozen_config.myopts
         usepkgonly = "--usepkgonly" in self._frozen_config.myopts
         usepkg_exclude_live = "--usepkg-exclude-live" in self._frozen_config.myopts
+        usepkg_exclude_patches = self._frozen_config.myopts.get(
+            "--usepkg-exclude-patches", not usepkgonly
+        )
         empty = "empty" in self._dynamic_config.myparams
         selective = "selective" in self._dynamic_config.myparams
         reinstall = False
@@ -7739,6 +7742,13 @@ class depgraph:
                             )
                         )
                         if in_usepkg_exclude or not in_usepkg_include:
+                            break
+
+                        # do not select binpkgs if user patches exist (see bug #917047)
+                        if (
+                            usepkg_exclude_patches
+                            and pkg.cpv in pkgsettings._user_patches
+                        ):
                             break
 
                     # We can choose not to install a live package from using binary

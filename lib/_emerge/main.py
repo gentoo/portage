@@ -186,6 +186,7 @@ def insert_optional_args(args):
         "--usepkg": y_or_n,
         "--usepkgonly": y_or_n,
         "--usepkg-exclude-live": y_or_n,
+        "--usepkg-exclude-patches": y_or_n,
         "--verbose": y_or_n,
         "--verbose-missing-ebuilds": y_or_n,
         "--verbose-slot-rebuilds": y_or_n,
@@ -729,6 +730,10 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "do not install from binary packages for live ebuilds",
             "choices": true_y_or_n,
         },
+        "--usepkg-exclude-patches": {
+            "help": "do not install from binary packages if user patches exist",
+            "choices": y_or_n,
+        },
         "--verbose": {
             "shortopt": "-v",
             "help": "verbose output",
@@ -1116,6 +1121,12 @@ def parse_opts(tmpcmdline, silent=False):
         myoptions.usepkg_exclude_live = True
     else:
         myoptions.usepkg_exclude_live = None
+
+    if myoptions.usepkg_exclude_patches is not None:
+        if myoptions.usepkg_exclude_patches in true_y:
+            myoptions.usepkg_exclude_patches = True
+        else:
+            myoptions.usepkg_exclude_patches = False
 
     if myoptions.verbose in true_y:
         myoptions.verbose = True
