@@ -767,7 +767,6 @@ class depgraph:
         portdb = fake_vartree._portdb
         config_pool = []
         for pkg in fake_vartree.dbapi:
-            self._spinner_update()
             self._dynamic_config._package_tracker.add_installed_pkg(pkg)
             self._add_installed_sonames(pkg)
             ebuild_path, repo_path = portdb.findname2(pkg.cpv, myrepo=pkg.repo)
@@ -812,10 +811,6 @@ class depgraph:
             if proc.returncode == os.EX_OK:
                 metadata = proc.metadata
             self._fake_vartree.dynamic_deps_preload(self._pkg, metadata)
-
-    def _spinner_update(self):
-        if self._frozen_config.spinner:
-            self._frozen_config.spinner.update()
 
     def _compute_abi_rebuild_info(self):
         """
@@ -3080,7 +3075,6 @@ class depgraph:
         dep_stack = self._dynamic_config._dep_stack
         dep_disjunctive_stack = self._dynamic_config._dep_disjunctive_stack
         while dep_stack or dep_disjunctive_stack:
-            self._spinner_update()
             while dep_stack:
                 dep = dep_stack.pop()
                 if isinstance(dep, Package):
@@ -3648,8 +3642,6 @@ class depgraph:
             return 1
         if pkg.installed and not recurse:
             dep_stack = self._dynamic_config._ignored_deps
-
-        self._spinner_update()
 
         if not previously_added:
             dep_stack.append(pkg)
@@ -4828,17 +4820,7 @@ class depgraph:
                 yield arg, atom
 
     def select_files(self, args):
-        # Use the global event loop for spinner progress
-        # indication during file owner lookups (bug #461412).
-        def spinner_cb():
-            self._frozen_config.spinner.update()
-            spinner_cb.handle = self._event_loop.call_soon(spinner_cb)
-
-        spinner_cb.handle = None
         try:
-            spinner = self._frozen_config.spinner
-            if spinner is not None and spinner.update is not spinner.update_quiet:
-                spinner_cb.handle = self._event_loop.call_soon(spinner_cb)
             return self._select_files(args)
         except self._virtual_cycle_error as e:
             self._virtual_cycle = e.value
@@ -4852,9 +4834,6 @@ class depgraph:
                 writemsg(chunk, noiselevel=-1)
             self._dynamic_config._skip_restart = True
             return 0, []
-        finally:
-            if spinner_cb.handle is not None:
-                spinner_cb.handle.cancel()
 
     def _select_files(self, myfiles):
         """Given a list of .tbz2s, .ebuilds sets, and deps, populate
@@ -5343,7 +5322,6 @@ class depgraph:
             virtuals = pkgsettings.getvirtuals()
 
             for atom in sorted(arg.pset.getAtoms(), key=str):
-                self._spinner_update()
                 dep = Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg)
                 try:
                     pprovided = pprovideddict.get(atom.cp)
@@ -8817,7 +8795,6 @@ class depgraph:
 
                     # If this node has any blockers, create a "nomerge"
                     # node for it so that they can be enforced.
-                    self._spinner_update()
                     blocker_data = blocker_cache.get(cpv)
                     if blocker_data is not None and blocker_data.counter != pkg.counter:
                         blocker_data = None
@@ -8924,7 +8901,6 @@ class depgraph:
         self._dynamic_config._unsolvable_blockers.clear()
 
         for blocker in self._dynamic_config._blocker_parents.leaf_nodes():
-            self._spinner_update()
             root_config = self._frozen_config.roots[blocker.root]
             virtuals = root_config.settings.getvirtuals()
             myroot = blocker.root
@@ -9332,7 +9308,6 @@ class depgraph:
                 if not isinstance(node, Package) or node.installed or node.onlydeps:
                     removed_nodes.add(node)
             if removed_nodes:
-                self._spinner_update()
                 mygraph.difference_update(removed_nodes)
             if not removed_nodes:
                 break
@@ -9505,7 +9480,6 @@ class depgraph:
         # unresolved blockers or circular dependencies.
 
         while mygraph:
-            self._spinner_update()
             selected_nodes = None
             ignore_priority = None
             cycle_digraph = None
@@ -9911,7 +9885,6 @@ class depgraph:
                     # best possible choice, but the current algorithm
                     # is simple and should be near optimal for most
                     # common cases.
-                    self._spinner_update()
                     mergeable_parent = False
                     parent_deps = {task}
                     for parent in mygraph.parent_nodes(task):
@@ -11278,7 +11251,6 @@ class depgraph:
 
             self._dynamic_config._package_tracker.add_pkg(pkg)
             serialized_tasks.append(pkg)
-            self._spinner_update()
 
         if self._dynamic_config._unsatisfied_deps_for_display:
             return False
@@ -11904,10 +11876,16 @@ def _spinner_start(spinner, myopts):
             portage.writemsg_stdout(spinner.scroll_prefix)
             spinner.hide_cursor()
     spinner.start_time = time.monotonic()
+    spinner.start()
 
 
 def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
-    if spinner is None or spinner.update == spinner.update_quiet:
+    if spinner is None:
+        return
+
+    spinner.stop()
+
+    if spinner.update == spinner.update_quiet:
         return
 
     if spinner.update != spinner.update_static:

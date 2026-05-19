@@ -3,10 +3,43 @@
 
 import platform
 import sys
+import threading
 import time
 
 from portage.output import darkgreen, green
 from portage.process import atexit_register
+
+
+# Drive stdout_spinner animation from a daemon thread at a steady cadence.
+class _SpinnerDriver:
+    def __init__(self, spinner, interval):
+        self._spinner = spinner
+        self._interval = interval
+        self._stop_event = threading.Event()
+        self._thread = None
+
+    def start(self):
+        if self._thread is None:
+            self._stop_event.clear()
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+
+    def stop(self):
+        if self._thread is not None:
+            self._stop_event.set()
+            self._thread.join()
+            self._thread = None
+
+    def _run(self):
+        next_update = time.monotonic()
+        while True:
+            next_update += self._interval
+            now = time.monotonic()
+            while next_update <= now:
+                next_update += self._interval
+            if self._stop_event.wait(next_update - now):
+                break
+            self._spinner.update()
 
 
 class stdout_spinner:
@@ -45,6 +78,14 @@ class stdout_spinner:
         self.start_time = time.monotonic()
         self.last_frame = -1
         self.scroll_prefix = ""
+        self.driver = _SpinnerDriver(self, self.min_display_latency)
+
+    def start(self):
+        if self.update in (self.update_twirl, self.update_scroll):
+            self.driver.start()
+
+    def stop(self):
+        self.driver.stop()
 
     def _frame_index(self):
         return int((time.monotonic() - self.start_time) / self.min_display_latency)
