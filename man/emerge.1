@@ -544,10 +544,12 @@ version will change (upgrade or downgrade). This option is enabled by default.
 Set the \fBPORTAGE_CONFIGROOT\fR environment variable.
 .TP
 .BR \-\-debug ", " \-d
-Tells emerge to run the emerge command in \fB\-\-debug\fR mode.  In this
-mode the bash build environment will run with the \-x option, causing
-it to output verbose debugging information to stdout.  This also enables
-a plethora of other output (mostly dependency resolution messages).
+Tells emerge to run the emerge command in \fB\-\-debug\fR mode.  In this mode
+the bash build environment will run with the \-x option, causing it to output
+verbose debugging information to stdout.  It also enables a plethora of other
+output (mostly dependency resolution messages), and suppresses the
+\%dependency-\:\%calculation spinner, including the static notice that is
+otherwise displayed by \fB\-\-nospinner\fR.
 .TP
 .BR "\-\-deep [DEPTH]" ", " \-D
 This flag forces

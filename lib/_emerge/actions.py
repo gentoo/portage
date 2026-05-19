@@ -3905,8 +3905,9 @@ def run_action(emerge_config):
         )
         return 1
 
-    if emerge_config.target_config.settings.get("PORTAGE_DEBUG", "") == "1":
-        spinner.update = spinner.update_quiet
+    debug = emerge_config.target_config.settings.get("PORTAGE_DEBUG", "") == "1"
+
+    if debug:
         portage.util.noiselimit = 0
         if "python-trace" in emerge_config.target_config.settings.features:
             portage.debug.set_trace(True)
@@ -3922,6 +3923,9 @@ def run_action(emerge_config):
     if "--debug" in emerge_config.opts:
         print("myaction", emerge_config.action)
         print("myopts", emerge_config.opts)
+
+    if debug:
+        spinner.update = spinner.update_quiet
 
     if (
         not emerge_config.action
