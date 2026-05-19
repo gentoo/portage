@@ -29,29 +29,19 @@ class stdout_spinner:
         "Inaccuracy saves a world of explanation.",
     ]
 
-    twirl_sequence = "/-\\|/-\\|/-\\|/-\\|\\-/|\\-/|\\-/|\\-/|"
+    twirl_sequence = r"/-\|"
 
     def __init__(self):
-        self.spinpos = 0
         self.update = self.update_twirl
         self.scroll_sequence = self.scroll_msgs[
             int(time.time() * 100) % len(self.scroll_msgs)
         ]
-        self.last_update = 0
-        self.min_display_latency = 0.05
-        self.start_time = None
+        self.min_display_latency = 0.08
+        self.start_time = time.monotonic()
+        self.last_frame = -1
 
-    def _return_early(self):
-        """
-        Flushing ouput to the tty too frequently wastes cpu time. Therefore,
-        each update* method should return without doing any output when this
-        method returns True.
-        """
-        cur_time = time.time()
-        if cur_time - self.last_update < self.min_display_latency:
-            return True
-        self.last_update = cur_time
-        return False
+    def _frame_index(self):
+        return int((time.monotonic() - self.start_time) / self.min_display_latency)
 
     def update_static(self):
         # No animation required. This is used when --nospinner is specified,
@@ -60,30 +50,38 @@ class stdout_spinner:
         return True
 
     def update_scroll(self):
-        if self._return_early():
+        frame = self._frame_index()
+        if frame == self.last_frame:
             return True
-        if self.spinpos >= len(self.scroll_sequence):
-            sys.stdout.write(
-                darkgreen(
-                    " \b\b\b"
-                    + self.scroll_sequence[
-                        len(self.scroll_sequence)
-                        - 1
-                        - (self.spinpos % len(self.scroll_sequence))
-                    ]
+        cycle_len = 2 * len(self.scroll_sequence)
+        start = min(frame, max(self.last_frame + 1, frame - cycle_len + 1))
+        for f in range(start, frame + 1):
+            pos = f % cycle_len
+            if pos >= len(self.scroll_sequence):
+                sys.stdout.write(
+                    darkgreen(
+                        " \b\b\b"
+                        + self.scroll_sequence[
+                            len(self.scroll_sequence)
+                            - 1
+                            - (pos % len(self.scroll_sequence))
+                        ]
+                    )
                 )
-            )
-        else:
-            sys.stdout.write(green("\b " + self.scroll_sequence[self.spinpos]))
+            else:
+                sys.stdout.write(green("\b " + self.scroll_sequence[pos]))
+        self.last_frame = frame
         sys.stdout.flush()
-        self.spinpos = (self.spinpos + 1) % (2 * len(self.scroll_sequence))
         return True
 
     def update_twirl(self):
-        self.spinpos = (self.spinpos + 1) % len(self.twirl_sequence)
-        if self._return_early():
+        frame = self._frame_index()
+        if frame == self.last_frame:
             return True
-        sys.stdout.write("\b\b " + self.twirl_sequence[self.spinpos])
+        self.last_frame = frame
+        sys.stdout.write(
+            "\b\b " + self.twirl_sequence[frame % len(self.twirl_sequence)]
+        )
         sys.stdout.flush()
         return True
 

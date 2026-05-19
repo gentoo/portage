@@ -11901,7 +11901,7 @@ def _spinner_start(spinner, myopts):
             portage.writemsg_stdout("Calculating dependencies ...")
         else:
             portage.writemsg_stdout("Calculating dependencies  ")
-    spinner.start_time = time.time()
+    spinner.start_time = time.monotonic()
 
 
 def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
@@ -11914,7 +11914,7 @@ def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
     else:
         portage.writemsg_stdout(" done!\n")
 
-    stop_time = time.time()
+    stop_time = time.monotonic()
     time_fmt = f"{stop_time - spinner.start_time:.2f}"
 
     backtrack_info = ""
