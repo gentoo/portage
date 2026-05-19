@@ -53,16 +53,10 @@ class stdout_spinner:
         self.last_update = cur_time
         return False
 
-    def update_basic(self):
-        self.spinpos = (self.spinpos + 1) % 500
-        if self._return_early():
-            return True
-        if (self.spinpos % 100) == 0:
-            if self.spinpos == 0:
-                sys.stdout.write(". ")
-            else:
-                sys.stdout.write(".")
-        sys.stdout.flush()
+    def update_static(self):
+        # No animation required. This is used when --nospinner is specified,
+        # TERM has a value of "dumb", or sys.stdout.isatty() is false. Kept
+        # distinct from update_quiet(), which suppresses the notice altogether.
         return True
 
     def update_scroll(self):

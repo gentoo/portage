@@ -21,6 +21,11 @@ Bug fixes:
 * Fix xpak binary package creation for files with non-UTF-8 xattr values.
   Previously, the process could abort or silently corrupt those values.
 
+Cleanups:
+
+* emerge: Make --nospinner suppress spinner output entirely, instead of printing
+  repeated dots in place of the animated spinner.
+
 portage-3.0.81 (2026-06-23)
 --------------
 

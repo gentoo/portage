@@ -11897,7 +11897,10 @@ def _spinner_start(spinner, myopts):
         spinner.update = spinner.update_quiet
 
     if show_spinner:
-        portage.writemsg_stdout("Calculating dependencies  ")
+        if spinner.update == spinner.update_static:
+            portage.writemsg_stdout("Calculating dependencies ...")
+        else:
+            portage.writemsg_stdout("Calculating dependencies  ")
     spinner.start_time = time.time()
 
 
@@ -11905,12 +11908,11 @@ def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
     if spinner is None or spinner.update == spinner.update_quiet:
         return
 
-    if spinner.update != spinner.update_basic:
-        # update_basic is used for non-tty output,
-        # so don't output backspaces in that case.
+    if spinner.update != spinner.update_static:
         portage.writemsg_stdout("\b\b")
-
-    portage.writemsg_stdout("... done!\n")
+        portage.writemsg_stdout("... done!\n")
+    else:
+        portage.writemsg_stdout(" done!\n")
 
     stop_time = time.time()
     time_fmt = f"{stop_time - spinner.start_time:.2f}"

@@ -3917,7 +3917,7 @@ def run_action(emerge_config):
             or emerge_config.target_config.settings.get("TERM") == "dumb"
             or not sys.stdout.isatty()
         ):
-            spinner.update = spinner.update_basic
+            spinner.update = spinner.update_static
 
     if "--debug" in emerge_config.opts:
         print("myaction", emerge_config.action)
