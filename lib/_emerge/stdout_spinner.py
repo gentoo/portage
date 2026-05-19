@@ -6,6 +6,7 @@ import sys
 import time
 
 from portage.output import darkgreen, green
+from portage.process import atexit_register
 
 
 class stdout_spinner:
@@ -30,6 +31,10 @@ class stdout_spinner:
     ]
 
     twirl_sequence = r"/-\|"
+
+    # DECTCEM sequences for controlling cursor visibility.
+    hide_cursor_sequence = "\x1b[?25l"
+    show_cursor_sequence = "\x1b[?25h"
 
     def __init__(self):
         self.update = self.update_twirl
@@ -80,3 +85,13 @@ class stdout_spinner:
 
     def update_quiet(self):
         return True
+
+    def hide_cursor(self):
+        if self.update in (self.update_twirl, self.update_scroll):
+            atexit_register(self.show_cursor)
+            sys.stdout.write(self.hide_cursor_sequence)
+            sys.stdout.flush()
+
+    def show_cursor(self):
+        sys.stdout.write(self.show_cursor_sequence)
+        sys.stdout.flush()
