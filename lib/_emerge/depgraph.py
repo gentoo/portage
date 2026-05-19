@@ -11900,7 +11900,8 @@ def _spinner_start(spinner, myopts):
         if spinner.update == spinner.update_static:
             portage.writemsg_stdout("Calculating dependencies ...")
         else:
-            portage.writemsg_stdout("Calculating dependencies  ")
+            spinner.scroll_prefix = "Calculating dependencies  "
+            portage.writemsg_stdout(spinner.scroll_prefix)
     spinner.start_time = time.monotonic()
 
 

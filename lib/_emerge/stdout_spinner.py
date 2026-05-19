@@ -39,6 +39,7 @@ class stdout_spinner:
         self.min_display_latency = 0.08
         self.start_time = time.monotonic()
         self.last_frame = -1
+        self.scroll_prefix = ""
 
     def _frame_index(self):
         return int((time.monotonic() - self.start_time) / self.min_display_latency)
@@ -53,23 +54,15 @@ class stdout_spinner:
         frame = self._frame_index()
         if frame == self.last_frame:
             return True
-        cycle_len = 2 * len(self.scroll_sequence)
-        start = min(frame, max(self.last_frame + 1, frame - cycle_len + 1))
-        for f in range(start, frame + 1):
-            pos = f % cycle_len
-            if pos >= len(self.scroll_sequence):
-                sys.stdout.write(
-                    darkgreen(
-                        " \b\b\b"
-                        + self.scroll_sequence[
-                            len(self.scroll_sequence)
-                            - 1
-                            - (pos % len(self.scroll_sequence))
-                        ]
-                    )
-                )
-            else:
-                sys.stdout.write(green("\b " + self.scroll_sequence[pos]))
+        seq_len = len(self.scroll_sequence)
+        cycle_len = 2 * seq_len
+        pos = frame % cycle_len
+        if pos >= seq_len:
+            pos = cycle_len - pos - 1
+            char = darkgreen(self.scroll_sequence[pos])
+        else:
+            char = green(self.scroll_sequence[pos])
+        sys.stdout.write(f"\r{self.scroll_prefix}{' ' * pos}{char}\x1b[K")
         self.last_frame = frame
         sys.stdout.flush()
         return True
