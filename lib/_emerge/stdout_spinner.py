@@ -71,10 +71,10 @@ class stdout_spinner:
         frame = self._frame_index()
         if frame == self.last_frame:
             return True
+        if self.last_frame >= 0:
+            sys.stdout.write("\b")
         self.last_frame = frame
-        sys.stdout.write(
-            "\b\b " + self.twirl_sequence[frame % len(self.twirl_sequence)]
-        )
+        sys.stdout.write(self.twirl_sequence[frame % len(self.twirl_sequence)])
         sys.stdout.flush()
         return True
 

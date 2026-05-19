@@ -11900,7 +11900,7 @@ def _spinner_start(spinner, myopts):
         if spinner.update == spinner.update_static:
             portage.writemsg_stdout("Calculating dependencies ...")
         else:
-            spinner.scroll_prefix = "Calculating dependencies  "
+            spinner.scroll_prefix = "Calculating dependencies "
             portage.writemsg_stdout(spinner.scroll_prefix)
     spinner.start_time = time.monotonic()
 
@@ -11910,8 +11910,7 @@ def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
         return
 
     if spinner.update != spinner.update_static:
-        portage.writemsg_stdout("\b\b")
-        portage.writemsg_stdout("... done!\n")
+        portage.writemsg_stdout("\rCalculating dependencies ... done!\x1b[K\n")
     else:
         portage.writemsg_stdout(" done!\n")
 
