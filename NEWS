@@ -6,6 +6,22 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.79 (2026-05-22)
+--------------
+
+Bug fixes:
+
+* Use 'fork' multiprocessing start method if 'forkserver' is in effect (bug #973043)
+
+  If PORTAGE_MULTIPROCESSING_START_METHOD is set, change the multiprocessing
+  start method to its value.
+
+  If it is not set, check if the current start method is forkserver. If it is,
+  change to fork. We can't do that unconditionally as not all platforms
+  defaulted to fork before Python 3.14.
+
+* LocationsManager: Initialize profiles and profiles_complex
+
 portage-3.0.78 (2026-05-03)
 --------------
 
