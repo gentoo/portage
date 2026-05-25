@@ -116,6 +116,7 @@ class bindbapi(fakedbapi):
             "SIZE",
             "SLOT",
             "USE",
+            "USER_PATCHES",
             "_mtime_",
         }
         # Keys required only when initially adding a package.

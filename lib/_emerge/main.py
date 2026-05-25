@@ -397,7 +397,9 @@ def parse_opts(tmpcmdline, silent=False):
             "choices": true_y_or_n,
         },
         "--binpkg-respect-user-patches": {
-            "help": "ignore binary packages for which user patches exist",
+            "help": "ignore binary packages that would revert user patches "
+            + "in the current configuration or were built with user patches "
+            + "not in the current configuration.",
             "choices": true_y_or_n,
         },
         "--buildpkg": {

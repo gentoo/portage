@@ -1509,6 +1509,10 @@ If package ebuild uses \fBEAPI\fR <= \fB5\fR, it must explicitly invoke
 \fBsrc_prepare\fR for apply patches. Otherwise, patches are silently
 ignored. If package ebuild uses \fBEAPI\fR >= \fB6\fR, applying user
 patches is mandatory.
+
+Digests of user patches are saved in the metadata of locally built binary
+packages, both with `emerge \-\-buildpkg` (or similar) and with
+\fBquickpkg\fR(1).
 .RE
 .TP
 .BR /var/db/repos/gentoo/

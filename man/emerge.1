@@ -468,8 +468,8 @@ then it implies \fB\-\-autounmask\-use=n\fR, because these options
 naturally oppose each other.
 .TP
 .BR "\-\-binpkg\-respect\-user\-patches [ y | n ]"
-Tells emerge to ignore binary packages when the corresponding ebuild has
-user patches configured (see \fBportage\fR(5)). Enabled by default (even
+Tells emerge to ignore binary packages for which user patches do not match
+the current configuration (see \fBportage\fR(5)). Enabled by default (even
 with \fB\-\-usepkgonly\fR) to prevent binary packages from potentially
 reverting user patches. If disabled, emerge can use both binary packages
 which revert user patches and those built with user patches not in the

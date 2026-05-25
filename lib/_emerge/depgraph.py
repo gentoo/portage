@@ -7994,7 +7994,7 @@ class depgraph:
                         # do not select binpkgs if user patches exist (see bug #917047)
                         if (
                             binpkg_respect_user_patches
-                            and pkg in pkgsettings._user_patches
+                            and pkg.user_patches != pkgsettings.userPatchDigest(pkg)
                         ):
                             self._dynamic_config.ignored_binaries.setdefault(
                                 pkg, {}
