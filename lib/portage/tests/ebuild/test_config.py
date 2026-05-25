@@ -12,6 +12,7 @@ from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.tests import TestCase
+from portage.tests.ebuild.MockUserPatches import MockUserPatches
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
     ResolverPlaygroundTestCase,
@@ -452,13 +453,14 @@ class ConfigTestCase(TestCase):
 
     # exercise UserPatches.__contains__() directly to detect user patches
     def testUserPatchesExist(self):
-        files = ["user.patch", "random.diff"]
+        # do not care about the content of patche files *or* their hashes
+        files = {"user.patch": b"foo", "random.diff": b"bar"}
         patches = {
             "dev-libs/A": files,
             "dev-libs/B-1": files,
             "dev-libs/C:1": files,
             "dev-libs/D-1:2": files,
-            "dev-libs/E": [],
+            "dev-libs/E": {},
         }
 
         playground = ResolverPlayground(patches=patches)
@@ -489,16 +491,17 @@ class ConfigTestCase(TestCase):
         self.assertNotIn(_pkg_str("dev-libs/D-1"), user_patches)
 
         # empty user patch folder to not be visible
+
         self.assertNotIn(_pkg_str("dev-libs/E-1"), user_patches)
 
     # exercise UserPatches.patches() to query applicable user patch files
     def testUserPatchesFiles(self):
         patches = {
-            "dev-libs/A": ["user.patch", "random.diff"],
-            "dev-libs/B": ["user.patch"],
-            "dev-libs/B-1": ["random.diff"],
-            "dev-libs/C": ["random.diff"],
-            "dev-libs/C:3": ["user.patch"],
+            "dev-libs/A": {"user.patch": b"foo", "random.diff": b"bar"},
+            "dev-libs/B": {"user.patch": b"foo"},
+            "dev-libs/B-1": {"random.diff": b"bar"},
+            "dev-libs/C": {"random.diff": b"bar"},
+            "dev-libs/C:3": {"user.patch": b"foo"},
         }
 
         playground = ResolverPlayground(patches=patches)
@@ -550,3 +553,88 @@ class ConfigTestCase(TestCase):
 
         # expect empty set where no user patches exists
         self.assertSetEqual(settings.userPatchFiles(_pkg_str("dev-libs/E-1")), set())
+
+    # exercise UserPatches.__getitem__() via digest()
+    def testUserPatchesMatch(self):
+        patches = {
+            "dev-libs/A": {
+                "A.patch": MockUserPatches.Patch1,
+                "A.diff": MockUserPatches.Patch2,
+            },
+            "dev-libs/A-1": {
+                "A-1.patch": MockUserPatches.Patch3,
+            },
+            "dev-libs/A:13": {
+                "A:13.diff": MockUserPatches.Patch4,
+            },
+            "dev-libs/B": {
+                "B.diff": MockUserPatches.Patch1,
+                "B.patch": MockUserPatches.Patch5,
+            },
+            "dev-libs/B-1": {
+                "B.diff": MockUserPatches.NullPatch,
+            },
+            "dev-libs/B-1:foo": {
+                "B-1:foo.patch": MockUserPatches.Patch6,
+            },
+        }
+
+        playground = ResolverPlayground(patches=patches)
+        settings = config(clone=playground.settings)
+
+        # application of non-versioned patches only (no v2 patches)
+        self.assertEqual(
+            settings.userPatchDigest(_pkg_str("dev-libs/A-2")),
+            MockUserPatches.expected_hash(
+                patches,
+                ["dev-libs/A/A.patch", "dev-libs/A/A.diff"],
+            ),
+        )
+        self.assertEqual(
+            settings.userPatchDigest(_pkg_str("dev-libs/B-2")),
+            MockUserPatches.expected_hash(
+                patches,
+                ["dev-libs/B/B.patch", "dev-libs/B/B.diff"],
+            ),
+        )
+
+        # composition of non-versioned patches and versioned (v1) patches
+        self.assertEqual(
+            settings.userPatchDigest(_pkg_str("dev-libs/A-1")),
+            MockUserPatches.expected_hash(
+                patches,
+                ["dev-libs/A/A.patch", "dev-libs/A/A.diff", "dev-libs/A-1/A-1.patch"],
+            ),
+        )
+        self.assertEqual(
+            settings.userPatchDigest(_pkg_str("dev-libs/A-1", slot="1")),
+            MockUserPatches.expected_hash(
+                patches,
+                ["dev-libs/A/A.patch", "dev-libs/A/A.diff", "dev-libs/A-1/A-1.patch"],
+            ),
+        )
+        self.assertEqual(
+            settings.userPatchDigest(_pkg_str("dev-libs/A-1", slot="13")),
+            MockUserPatches.expected_hash(
+                patches,
+                [
+                    "dev-libs/A/A.patch",
+                    "dev-libs/A/A.diff",
+                    "dev-libs/A-1/A-1.patch",
+                    "dev-libs/A:13/A:13.diff",
+                ],
+            ),
+        )
+        self.assertEqual(
+            settings.userPatchDigest(_pkg_str("dev-libs/B-1", slot="foo")),
+            MockUserPatches.expected_hash(
+                patches,
+                ["dev-libs/B/B.patch", "dev-libs/B-1:foo/B-1:foo.patch"],
+            ),
+        )
+
+        # omission of non-versioned patches for empty versioned patch of matching basename
+        self.assertEqual(
+            settings.userPatchDigest(_pkg_str("dev-libs/B-1")),
+            MockUserPatches.expected_hash(patches, ["dev-libs/B/B.patch"]),
+        )

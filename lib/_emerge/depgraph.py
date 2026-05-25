@@ -7820,7 +7820,10 @@ class depgraph:
                             break
 
                         # do not select binpkgs if user patches exist (see bug #917047)
-                        if binpkg_user_patches and pkg in pkgsettings._user_patches:
+                        if (
+                            binpkg_user_patches
+                            and pkg.user_patches != pkgsettings.userPatchDigest(pkg)
+                        ):
                             self._dynamic_config.ignored_binaries.setdefault(
                                 pkg, {}
                             ).setdefault(

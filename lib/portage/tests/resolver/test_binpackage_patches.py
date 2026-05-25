@@ -1,12 +1,16 @@
 # Copyright 2026 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from portage.tests.ebuild.MockUserPatches import MockUserPatches
 from portage.tests.resolver.ResolverPlayground import ResolverPlaygroundTestCase
 from portage.tests.resolver.test_binpackage_selection import BinPkgSelectionTestCase
 
 
 class BinPkgUserPatchTestCase(BinPkgSelectionTestCase):
-    files = ["user.patch", "random.diff"]
+    files = {
+        "user.patch": ("foo"),
+        "random.diff": ("foobaz not a patch"),
+    }
 
     def testBinPkgUserPatchMasking(self):
         pkgs = self.pkgs_no_deps | self.pkgs_no_deps_newer | self.pkgs_with_slots
@@ -123,4 +127,70 @@ class BinPkgUserPatchTestCase(BinPkgSelectionTestCase):
 
         self.runBinPkgSelectionTest(
             test_cases, binpkgs=pkgs, ebuilds=pkgs, patches=patches
+        )
+
+    def testBinPkgUserPatchedBinPkgs(self):
+        ebuilds = self.pkgs_no_deps
+        patches = {
+            "app-misc/foo": {
+                "user.patch": MockUserPatches.Patch1,
+                "random.diff": MockUserPatches.Patch2,
+            },
+            "app-misc/bar": {
+                "user.patch": MockUserPatches.Patch3,
+                "random.diff": MockUserPatches.Patch4,
+            },
+            "app-misc/bar-1.0": {
+                "user.patch": b"",
+            },
+        }
+
+        # add USER_PATCHES hash values to binpkg metadata, such that:
+        #  - app-misc/foo-1.0 matches playground user patches
+        #  - app-misc/bar-1.0 is missing one user patch
+        #  - app-misc/baz-1.0 has extra user patches
+        binpkgs = self.pkgs_no_deps.copy() | {
+            "app-misc/foo-1.0": {
+                "USER_PATCHES": MockUserPatches.expected_hash(
+                    patches,
+                    ["app-misc/foo/user.patch", "app-misc/foo/random.diff"],
+                ),
+            },
+            "app-misc/bar-1.0": {
+                "USER_PATCHES": MockUserPatches.expected_hash(
+                    patches,
+                    ["app-misc/bar/user.patch", "app-misc/bar/random.diff"],
+                ),
+            },
+            "app-misc/baz-1.0": {
+                "USER_PATCHES": "eca0a060b489636225b4fa64d267dabbe44273067ac679f20820bddc6b6a90ac",
+            },
+        }
+
+        test_cases = (
+            # app-misc/foo-1.0 from binpkg as binary has correct user patches
+            ResolverPlaygroundTestCase(
+                ["app-misc/foo"],
+                success=True,
+                options={"--usepkg": True},
+                mergelist=["[binary]app-misc/foo-1.0"],
+            ),
+            # app-misc/bar-1.0 from ebuild as binary has different patches
+            ResolverPlaygroundTestCase(
+                ["app-misc/bar"],
+                success=True,
+                options={"--usepkg": True},
+                mergelist=["app-misc/bar-1.0"],
+            ),
+            # app-misc/baz-1.0 from ebuild as binary has patches (config has none)
+            ResolverPlaygroundTestCase(
+                ["app-misc/baz"],
+                success=True,
+                options={"--usepkg": True},
+                mergelist=["app-misc/baz-1.0"],
+            ),
+        )
+
+        self.runBinPkgSelectionTest(
+            test_cases, binpkgs=binpkgs, ebuilds=ebuilds, patches=patches
         )

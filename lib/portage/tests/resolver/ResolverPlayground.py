@@ -733,8 +733,11 @@ class ResolverPlayground:
             os.makedirs(patch_dir)
             for patch in files:
                 patch_file = os.path.join(patch_dir, patch)
-                with open(patch_file, "w"):
-                    pass
+                with open(patch_file, "wb") as f:
+                    text = files[patch]
+                    if isinstance(text, str):
+                        text = text.encode()
+                    f.write(text)
 
         try:
             os.makedirs(default_sets_conf_dir)

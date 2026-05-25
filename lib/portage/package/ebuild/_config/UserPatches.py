@@ -1,11 +1,13 @@
 # Copyright 2026 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import hashlib
 import os
 
 from portage.dep import _slot_separator
 
 # must match filtering done by eapply_user() (see bin/phase-helpers.sh)
+_empty_hash = hashlib.sha256(b"").hexdigest()
 _extensions = (".diff", ".patch")
 
 """
@@ -14,7 +16,8 @@ any type exposing cp, cpv, and (optionally) slot attributes, e.g. _pkg_str,
 Atom, Package, etc. The key need not exactly match a userpatch config path.
 
 Use 'in' operator to test for existence of user patches which would be applied
-to the corresponding ebuild.
+to the corresponding ebuild. Use dict '[]' syntax to retrieve a hash over all
+applicable patches.
 
 """
 
@@ -59,18 +62,32 @@ class UserPatches:
 
         return False
 
+    def __getitem__(self, key):
+        if self._patch_sets is None:
+            raise KeyError
+
+        patches = self._query(lambda x: self._patch_sets.get(x, {}), key)
+        hashes = [patches[p] for p in sorted(patches)]
+        combined = "".join(h for h in hashes if h != _empty_hash).encode()
+        if len(combined) == 0:
+            return ""
+
+        return hashlib.sha256(combined).hexdigest()
+
     # load a set of user patches from config directory
     def _load(self, location):
-        files = []
+        hashes = {}
+
         for filename in os.listdir(location):
             if not any(filename.endswith(e) for e in _extensions):
                 continue
 
-            # store file basenames as bytes as they need to sort in the same way
-            # as "LC_ALL=C sort" would (see phase-helpers.sh)
-            files.append(filename.encode())
+            with open(os.path.join(location, filename), "rb") as f:
+                # store file basenames as bytes as they need to sort in the same
+                # way as "LC_ALL=C sort" would (see phase-helpers.sh)
+                hashes[filename.encode()] = hashlib.sha256(f.read()).hexdigest()
 
-        return files
+        return hashes
 
     # query using the rules in portage(5) for matching user patches
     def _query(self, func, key):
@@ -82,6 +99,13 @@ class UserPatches:
             result |= func(key.cpv + slot)
 
         return result
+
+    # return digest over files that would be applied as user patches
+    def digest(self, key, default=None):
+        if not self.__contains__(key):
+            return default
+        else:
+            return self.__getitem__(key)
 
     # return the files that would be applied as user patches
     def patches(self, key, default=set()):
