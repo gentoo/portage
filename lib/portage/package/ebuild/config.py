@@ -1394,6 +1394,11 @@ class config:
             )
         return self._soname_provided
 
+    def userPatchDigest(self, pkg):
+        """Return the digest over all user patches applicable to pkg, where pkg
+        is any suitable type with cp, cpv, and slot attributes."""
+        return self._user_patches.digest(pkg, default="")
+
     def userPatchFiles(self, pkg):
         """Return the patch filenames of user patches applicable to pkg, where
         pkg is any suitable type with cp, cpv, and slot attributes."""
