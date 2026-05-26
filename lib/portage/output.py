@@ -656,6 +656,20 @@ class EOutput:
                 % ((self.term_columns - self.__last_e_len - 7), "", status_brackets),
             )
 
+    def ebinfo(self, msg):
+        """
+        Shows an informative message about a binary package operation
+
+        @param msg: A very brief (shorter than one line) informative message.
+        @type msg: StringType
+        """
+        out = sys.stdout
+        if not self.quiet:
+            if self.__last_e_cmd == "ebegin":
+                self._write(out, "\n")
+            self._write(out, colorize("PKG_BINARY_MERGE", " * ") + msg + "\n")
+        self.__last_e_cmd = "einfo"
+
     def ebegin(self, msg):
         """
         Shows a message indicating the start of a process.

@@ -388,6 +388,49 @@ class Binpkg(CompositeTask):
             finally:
                 f.close()
 
+        # report any user patches applied when binary was built
+        user_patch_digests = os.path.join(infloc, "user_patch.digests")
+        if os.path.exists(user_patch_digests):
+            horiz_term_bar = lambda: out.ebinfo(
+                colorize("PKG_BINARY_MERGE", (out.term_columns - 3) * "=")
+            )
+
+            out = portage.output.EOutput()
+            out.ebinfo("This binary package was built with user patches applied:")
+            horiz_term_bar()
+
+            min_digest = 8
+            min_basename = 25
+            max_basename = max(out.term_columns - min_digest - 6, min_basename)
+            with open(user_patch_digests) as f:
+                digests = f.readlines()
+            for d in digests:
+                digest, basename = d.strip().split(maxsplit=1)
+                max_digest = max(out.term_columns - len(basename) - 6, min_digest)
+                basename = basename[:max_basename]
+                digest = digest[:max_digest]
+                out.ebinfo(
+                    "%s%*s%s"
+                    % (
+                        basename,
+                        out.term_columns - len(basename) - len(digest) - 4,
+                        "",
+                        digest,
+                    )
+                )
+            horiz_term_bar()
+
+            if (
+                self.pkg not in self.settings._user_patches
+                or self.settings._user_patches[self.pkg] != pkg.user_patches
+            ):
+                out.ewarn("")
+                out.ewarn(
+                    "Different user patches used by binpkg than would be applied to ebuild!!!"
+                )
+                out.ewarn("")
+            out.ebinfo("")
+
         # Store the md5sum in the vdb.
         if pkg_path is not None:
             (md5sum,) = self._bintree.dbapi.aux_get(self.pkg.cpv, ["MD5"])
