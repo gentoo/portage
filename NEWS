@@ -15,6 +15,10 @@ Features:
   well as emirrordist, in order to avoid blocking by some web servers,
   particularly crates.io. (bug #682610)
 
+* Add FEATURES="buildpkg-proactive" to proactively rebuild matching packages
+  that have no (usable) binary package, even if those packages are already
+  installed. (bug #976083)
+
 portage-3.0.79 (2026-05-22)
 --------------
 

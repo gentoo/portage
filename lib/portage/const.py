@@ -167,6 +167,7 @@ SUPPORTED_FEATURES = frozenset(
         "binpkg-signing",
         "buildpkg",
         "buildpkg-live",
+        "buildpkg-proactive",
         "buildsyspkg",
         "candy",
         "case-insensitive-fs",
