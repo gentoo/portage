@@ -19,6 +19,7 @@ py.install_sources(
         'test_blocker.py',
         'test_broken_deps.py',
         'test_bootstrap_deps.py',
+        'test_buildpkg.py',
         'test_changed_deps.py',
         'test_circular_choices.py',
         'test_circular_choices_rust.py',

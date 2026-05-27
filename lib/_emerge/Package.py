@@ -607,6 +607,34 @@ class Package(Task):
         s += ")"
         return s
 
+    def syspkg_wanted(self):
+        """Tests whether this is a system package to build a binary package for
+        (buildsyspkg), assuming it isn't already covered by buildpkg."""
+        features = self.root_config.settings.features
+        return (
+            "buildsyspkg" in features
+            and "buildpkg" not in features
+            and self.root_config.sets["system"].findAtomForPackage(self)
+        )
+
+    def binpkg_wanted(self, exclude):
+        """Tests whether this is a package to build a binary package for, taking
+        account of FEATURES, PROPERTIES, and the given excluded set."""
+        # Do not build binary cache for packages from volatile sources.
+        # For volatile sources (eg., git), the PROPERTIES parameter in
+        # the ebuild is set to 'live'.
+        #
+        # The default behavior is to build binary cache for all pkgs.
+        # "buildpkg-live" is a FEATURE that is enabled by default.
+        # To not build binary cache for live pkgs, we disable it by
+        # specifying FEATURES="-buildpkg-live"
+        features = self.root_config.settings.features
+        return (
+            ("buildpkg-live" in features or not "live" in self.properties)
+            and not exclude.findAtomForPackage(self)
+            and ("buildpkg" in features or self.syspkg_wanted())
+        )
+
     class _use_class:
         __slots__ = ("enabled", "_expand", "_expand_hidden", "_force", "_pkg", "_mask")
 

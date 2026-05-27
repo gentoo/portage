@@ -414,6 +414,12 @@ When this option is enabled (the default), \fBbuildpkg\fR will exhibit
 the default behavior of building binary cache for all packages. When
 it is disabled, binary packages will not be created for live ebuilds.
 .TP
+.B buildpkg\-proactive
+Proactively rebuild packages that have no (usable) binary package. This only
+applies to installed packages that Portage is already checking but would
+otherwise not consider rebuilding, e.g. because they're already up-to-date.
+This does nothing unless \fBbuildpkg\fR or \fBbuildsyspkg\fR is also enabled.
+.TP
 .B buildsyspkg
 Build binary packages for just packages in the system set.
 .TP

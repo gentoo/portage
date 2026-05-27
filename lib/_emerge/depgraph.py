@@ -207,6 +207,12 @@ class _frozen_depgraph_config:
         atoms = " ".join(myopts.get("--rebuild-ignore", [])).split()
         self.rebuild_ignore = WildcardPackageSet(atoms)
 
+        self.buildpkg_exclude = InternalPackageSet(
+            initial_atoms=" ".join(myopts.get("--buildpkg-exclude", [])).split(),
+            allow_wildcard=True,
+            allow_repo=True,
+        )
+
         for repo in settings.repositories:
             self.usepkg_exclude.update(
                 a + _repo_separator + repo.name for a in repo.usepkg_exclude.getAtoms()
@@ -7850,6 +7856,24 @@ class depgraph:
                                 pkg, autounmask_level=autounmask_level
                             ):
                                 continue
+                            # Also reject built instances if we want a binary
+                            # package, but none exist or all the existing ones
+                            # are now masked (e.g. accepted keywords changed).
+                            elif (
+                                myeb
+                                and "buildpkg-proactive"
+                                in root_config.settings.features
+                                and myeb.binpkg_wanted(
+                                    self._frozen_config.buildpkg_exclude
+                                )
+                            ):
+                                for binpkg in self._iter_match_pkgs_atom(
+                                    root_config, "binary", Atom(f"={myeb.cpv}")
+                                ):
+                                    if not binpkg.masks:
+                                        break
+                                else:
+                                    continue
 
                     # Calculation of USE for unbuilt ebuilds is relatively
                     # expensive, so it is only performed lazily, after the
