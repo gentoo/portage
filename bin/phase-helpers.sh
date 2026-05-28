@@ -1230,16 +1230,17 @@ fi
 
 if ___eapi_has_edo; then
 	edo() {
-		# list of special characters taken from sh_contains_shell_metas
-		# in shquote.c (bash-5.2)
-		local a out regex='[] '\''"\|&;()<>!{}*[?^$`]|^[#~]|[=:]~'
+		local out qa a
 
 		[[ $# -ge 1 ]] || die "edo: at least one argument needed"
 
 		for a; do
 			# quote if (and only if) necessary
-			[[ ${a} =~ ${regex} || ! ${a} =~ ^[[:print:]]+$ ]] && a=${a@Q}
-			out+=" ${a}"
+			if printf -v qa %q "${a}"; [[ ${qa} == "${a}" ]]; then
+				out+=" ${a}"
+			else
+				out+=" ${a@Q}"
+			fi
 		done
 
 		einfon
