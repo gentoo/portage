@@ -7,6 +7,7 @@ import errno
 import math
 import shlex
 import signal
+import stat
 import subprocess
 import sys
 
@@ -402,8 +403,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(usage=usage)
     parser.add_argument(
         "--umask",
-        default="0077",
-        help="umask used during package creation (default is 0077)",
+        default="0022",
+        help="umask used during package creation (default is 0022)",
     )
     parser.add_argument(
         "--ignore-default-opts",
@@ -437,6 +438,16 @@ if __name__ == "__main__":
     # We need to ensure a sane umask for the packages that will be created.
     old_umask = os.umask(umask)
     eout = portage.output.EOutput()
+
+    if (
+        options.include_unmodified_config == "n"
+        and options.include_config == "y"
+        and int(options.umask) & stat.S_IROTH
+    ):
+        eout.ewarn(
+            "Creating world-readable binpkgs with system's config files, "
+            "this might leak secrets into binary packages!"
+        )
 
     def sigwinch_handler(signum, frame):
         lines, eout.term_columns = portage.output.get_term_size()
