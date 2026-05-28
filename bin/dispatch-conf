@@ -156,11 +156,12 @@ class dispatch:
             if not os.path.isdir(os.path.dirname(path)):
                 continue
 
+
             basename = "*"
             find_opts = ["-name", ".*", "-type", "d", "-prune", "-o"]
             if not os.path.isdir(path):
                 path, basename = os.path.split(path)
-                find_opts = ["-maxdepth", "1"]
+            	find_opts = ["-maxdepth", "1"]
             if "case-insensitive-fs" in portage.settings.features:
                 find_opts += ["-iname"]
             else:
