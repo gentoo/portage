@@ -1,4 +1,4 @@
-# Copyright 2013-2025 Gentoo Authors
+# Copyright 2013-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -25,7 +25,7 @@ default_hash_name = portage.const.MANIFEST2_HASH_DEFAULT
 
 # Use --no-check-certificate since Manifest digests should provide
 # enough security, and certificates can be self-signed or whatnot.
-default_fetchcommand = 'wget -c -v -t 1 --passive-ftp --no-check-certificate --timeout=60 -O "${DISTDIR}/${FILE}" "${URI}"'
+default_fetchcommand = 'wget -c -v -t 1 --passive-ftp --no-check-certificate --timeout=60 -U "Portage (Gentoo, https://www.gentoo.org) emirrordist" -O "${DISTDIR}/${FILE}" "${URI}"'
 
 
 class FetchTask(CompositeTask):

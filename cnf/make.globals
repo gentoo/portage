@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # System-wide defaults for the Portage system
 
@@ -60,8 +60,8 @@ GPG_VERIFY_USER_DROP="nobody"
 GPG_VERIFY_GROUP_DROP="nogroup"
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
-FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
-RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -U \"Portage (Gentoo, https://www.gentoo.org) distfile-fetch\" -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -U \"Portage (Gentoo, https://www.gentoo.org) distfile-fetch\" -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
 FETCHCOMMAND_RSYNC="rsync -LtvP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 RESUMECOMMAND_RSYNC="rsync -LtvP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
