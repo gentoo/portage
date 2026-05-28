@@ -154,12 +154,12 @@
 # at \${DISTDIR}/\${FILE}.
 #
 # Default fetch command (3 tries, passive ftp for firewall compatibility)
-#FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
-#RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+#FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -U \"Portage (Gentoo, https://www.gentoo.org) distfile-fetch\" -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+#RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -U \"Portage (Gentoo, https://www.gentoo.org) distfile-fetch\" -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 #
 # Using wget, ratelimiting downloads
-#FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp --limit-rate=200k -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
-#RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp --limit-rate=200k -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+#FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -U \"Portage (Gentoo, https://www.gentoo.org) distfile-fetch\" --limit-rate=200k -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+#RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -U \"Portage (Gentoo, https://www.gentoo.org) distfile-fetch\" --limit-rate=200k -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 #
 # Lukemftp (BSD ftp):
 #FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \"\${DISTDIR}/\${FILE}\" \"\${URI}\""

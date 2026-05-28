@@ -6,6 +6,15 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.80 (UNRELEASED)
+--------------
+
+Features:
+
+* Add User-Agent to default wget FETCHCOMMAND and RESUMECOMMAND settings, as
+  well as emirrordist, in order to avoid blocking by some web servers,
+  particularly crates.io. (bug #682610)
+
 portage-3.0.79 (2026-05-22)
 --------------
 
