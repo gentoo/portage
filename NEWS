@@ -9,6 +9,14 @@ Release notes take the form of the following optional categories:
 portage-3.0.80 (UNRELEASED)
 --------------
 
+Breaking changes:
+
+* Drop the @unavailable-binaries set in favour of FEATURES="buildpkg-proactive"
+  (see below) because the former cannot check whether an existing binary package
+  is usable or whether a given ebuild will actually produce a binary package or
+  not. This set is broken anyway and probably has been for 11 years since
+  Portage 2.2.19. (bug #976083)
+
 Features:
 
 * Add User-Agent to default wget FETCHCOMMAND and RESUMECOMMAND settings, as
