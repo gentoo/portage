@@ -1,14 +1,14 @@
 # Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import asyncio
+import fcntl
 import platform
 import pty
+import struct
 import termios
-from typing import Optional, Union
+from typing import Optional
 
 import os
-from portage.output import get_term_size, set_term_size
 from portage.util import writemsg
 
 # Disable the use of openpty on Solaris as it seems Python's openpty
@@ -20,23 +20,52 @@ _disable_openpty = platform.system() in ("SunOS",)
 
 _fbsd_test_pty = platform.system() == "FreeBSD"
 
+_USHRT_MAX = (1 << (struct.calcsize("H") * 8)) - 1
+
+
+def _get_term_size(given_fd: Optional[int]) -> tuple[int, int]:
+    """
+    Return non-zero terminal dimensions for a newly allocated pty.
+
+    Python's pty module leaves new ptys at 0x0. Try to determine the
+    dimensions from the given descriptor, the standard descriptors and
+    COLUMNS/LINES before settling for a conventional default.
+    """
+    for fd in (given_fd, 0, 1, 2):
+        if fd is None:
+            continue
+        try:
+            size = os.get_terminal_size(fd)
+        except OSError:
+            continue
+        if 0 < size.columns <= _USHRT_MAX and 0 < size.lines <= _USHRT_MAX:
+            return size.lines, size.columns
+
+    try:
+        columns = int(os.environ.get("COLUMNS") or 0)
+    except ValueError:
+        columns = 0
+    if 0 < columns <= _USHRT_MAX:
+        try:
+            lines = int(os.environ.get("LINES") or 0)
+        except ValueError:
+            lines = 0
+        return (lines if 0 < lines <= _USHRT_MAX else 24), columns
+
+    return 24, 80
+
 
 def _create_pty_or_pipe(
     copy_term_size: Optional[int] = None,
-) -> tuple[Union[asyncio.Future, bool], int, int]:
+) -> tuple[int, int]:
     """
-    Try to create a pty and if then fails then create a normal
-    pipe instead. If a Future is returned for pty_ready, then the
-    caller should wait for it (which comes from set_term_size
-    because it spawns stty).
+    Try to create a pty, falling back to a normal pipe if that fails.
 
-    @param copy_term_size: If a tty file descriptor is given
-            then the term size will be copied to the pty.
+    @param copy_term_size: If this is a tty descriptor, defer to its
+            dimensions during pty initialisation.
     @type copy_term_size: int
     @rtype: tuple
-    @return: A tuple of (pty_ready, master_fd, slave_fd) where
-            pty_ready is asyncio.Future or True if a pty was successfully allocated, and
-            False if a normal pipe was allocated.
+    @return: A tuple of (master_fd, slave_fd).
     """
 
     got_pty = False
@@ -75,11 +104,14 @@ def _create_pty_or_pipe(
         mode[1] &= ~termios.OPOST
         termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
 
-    pty_ready = None
-    if got_pty and copy_term_size is not None and os.isatty(copy_term_size):
-        rows, columns = get_term_size()
-        pty_ready = set_term_size(rows, columns, slave_fd)
+        # A pty allocated by Python has a default window size of 0x0. Setting
+        # the dimensions directly prevents child processes from observing that
+        # value, and avoids set_term_size(), which would otherwise spawn
+        # stty(1). The ioctl is issued directly because termios.tcsetwinsize()
+        # requires at least Python 3.11.
+        rows, columns = _get_term_size(copy_term_size)
+        fcntl.ioctl(
+            slave_fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0)
+        )
 
-    # The future only exists when got_pty is True, so we can
-    # return the future in lieu of got_pty when it exists.
-    return (got_pty if pty_ready is None else pty_ready, master_fd, slave_fd)
+    return master_fd, slave_fd

@@ -437,10 +437,8 @@ class _EbuildFetcherProcess(ForkProcess):
         stdout_pipe = None
         if not self.background:
             stdout_pipe = fd_pipes.get(1)
-        self._pty_ready, master_fd, slave_fd = _create_pty_or_pipe(
-            copy_term_size=stdout_pipe
-        )
-        return (master_fd, slave_fd)
+        master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
+        return master_fd, slave_fd
 
     def _eerror(self, lines):
         out = io.StringIO()

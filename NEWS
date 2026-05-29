@@ -53,6 +53,9 @@ Bug fixes:
 
 * env_update: Call ldconfig in more cases by considering ld.so.conf.d files. (bug #961463).
 
+* Set a non-zero window size for newly allocated ptys, so build processes
+  can more reliably query their terminal dimensions (bug #978222).
+
 Cleanups:
 
 * Atom: De-stringify, add type annotations, use proper attributes at
