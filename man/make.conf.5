@@ -419,6 +419,8 @@ Proactively rebuild packages that have no (usable) binary package. This only
 applies to installed packages that Portage is already checking but would
 otherwise not consider rebuilding, e.g. because they're already up-to-date.
 This does nothing unless \fBbuildpkg\fR or \fBbuildsyspkg\fR is also enabled.
+When \fBemerge\fR(1) \fB--binpkg-respect-use\fR is enabled (it usually is),
+binary packages will also be rebuilt if the USE flags have changed.
 .TP
 .B buildsyspkg
 Build binary packages for just packages in the system set.
