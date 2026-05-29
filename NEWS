@@ -37,6 +37,11 @@ Breaking changes:
 * XARGS is no longer exported to the ebuild environment. Its value was
   invariably equivalent to "xargs -r".
 
+Security:
+
+* isolated-functions.sh: Validate the terminal width before using it in an
+  arithmetic context, so as to protect against code injection.
+
 Features:
 
 * emerge: Solve a circular dependency with an autounmask USE change when the

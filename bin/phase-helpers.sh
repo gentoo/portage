@@ -1157,10 +1157,6 @@ if ___eapi_has_eapply_user; then
 
 		basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
 
-		columns=${COLUMNS:-0}
-		[[ ${columns} == 0 ]] && columns=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
-		(( columns > 0 )) || (( columns = 80 ))
-
 		# Patches from all matched directories are combined into a
 		# sorted (POSIX order) list of the patch basenames. Patches
 		# in more-specific directories override patches of the same
@@ -1196,8 +1192,10 @@ if ___eapi_has_eapply_user; then
 			local userpatch_digests="${PORTAGE_BUILDDIR}"/build-info/user_patch.digests
 			local userpatches_hash="${PORTAGE_BUILDDIR}"/build-info/USER_PATCHES
 
-			printf -v hr "%$(( columns - 3 ))s"
+			columns=${| __get_columns; }
+			printf -v hr "%$(( columns > 3 ? columns - 3 : 0 ))s"
 			hr=${hr//?/=}
+
 			einfo "${PORTAGE_COLOR_INFO}${hr}${PORTAGE_COLOR_NORMAL}"
 			einfo "Applying user patches from ${basedir} ..."
 

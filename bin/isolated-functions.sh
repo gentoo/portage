@@ -308,7 +308,8 @@ ebegin() {
 }
 
 __eend() {
-	local retval=${1:-0} efunc=${2:-eerror} msg
+	local retval=${1:-0} efunc=${2:-eerror}
+	local columns msg
 	shift 2
 
 	if [[ ${retval} == "0" ]] ; then
@@ -325,7 +326,8 @@ __eend() {
 		# to where the indicator belongs. This presumes that the ebegin
 		# message occupied one line, and that the cursor is at the first
 		# column, neither of which is guaranteed.
-		printf '\e[A\e[%dC %b\n' "$(( COLS > 8 ? COLS - 8 : 0 ))" "${msg}" >&2
+		columns=${| __get_columns; }
+		printf '\e[A\e[%dC %b\n' "$(( columns > 8 ? columns - 8 : 0 ))" "${msg}" >&2
 	else
 		printf ' %b\n' "${msg}" >&2
 	fi
@@ -348,8 +350,6 @@ eend() {
 }
 
 __unset_colors() {
-	COLS=80
-
 	PORTAGE_COLOR_BAD=
 	PORTAGE_COLOR_BRACKET=
 	PORTAGE_COLOR_ERR=
@@ -369,19 +369,29 @@ __is_uint() {
 	[[ $1 == @(0|[1-9]*([0-9])) ]]
 }
 
+# Attempts to determine the width of the terminal presumed to be attached to
+# standard error. The value of the COLUMNS variable shall be considered first,
+# followed by the number of columns reported by the stty(1) utility. The first
+# of these to be a positive integer shall be assigned to REPLY. If there is no
+# such value, REPLY shall be assigned 80.
+__get_columns() {
+	local - IFS
+
+	if __is_uint "${COLUMNS}" && (( COLUMNS > 0 )); then
+		REPLY=${COLUMNS}
+	else
+		set -f
+		# shellcheck disable=2046
+		set -- $(stty size <&2 2>/dev/null)
+		if __is_uint "$2" && (( $2 > 0 )); then
+			REPLY=$2
+		else
+			REPLY=80
+		fi
+	fi
+}
+
 __set_colors() {
-	# bash's internal COLUMNS variable
-	COLS=${COLUMNS:-0}
-
-	# Avoid wasteful stty calls during the "depend" phases.
-	# If stdout is a pipe, the parent process can export COLUMNS
-	# if it's relevant. Use an extra subshell for stty calls, in
-	# order to redirect "/dev/tty: No such device or address"
-	# error from bash to /dev/null.
-	[[ ${COLS} == 0 && ${EBUILD_PHASE} != depend ]] && \
-		COLS=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
-	(( COLS > 0 )) || (( COLS = 80 ))
-
 	# shellcheck disable=2034
 	if [[ ${PORTAGE_COLORMAP} ]]; then
 		# The PORTAGE_COLORMAP environment variable is defined by the
