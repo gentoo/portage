@@ -7857,8 +7857,9 @@ class depgraph:
                             ):
                                 continue
                             # Also reject built instances if we want a binary
-                            # package, but none exist or all the existing ones
-                            # are now masked (e.g. accepted keywords changed).
+                            # package, but none exist, all the existing ones are
+                            # now masked (e.g. accepted keywords changed), or we
+                            # care that the USE flags have changed.
                             elif (
                                 myeb
                                 and "buildpkg-proactive"
@@ -7870,7 +7871,24 @@ class depgraph:
                                 for binpkg in self._iter_match_pkgs_atom(
                                     root_config, "binary", Atom(f"={myeb.cpv}")
                                 ):
-                                    if not binpkg.masks:
+                                    forced_flags = set(
+                                        chain(myeb.use.force, myeb.use.mask)
+                                    )
+                                    bin_use = binpkg.use.enabled
+                                    bin_iuse = binpkg.iuse.all
+                                    pkg_use = self._pkg_use_enabled(myeb)
+                                    pkg_iuse = myeb.iuse.all
+                                    if (
+                                        not binpkg.masks
+                                        and not self._reinstall_for_flags(
+                                            binpkg,
+                                            forced_flags,
+                                            bin_use,
+                                            bin_iuse,
+                                            pkg_use,
+                                            pkg_iuse,
+                                        )
+                                    ):
                                         break
                                 else:
                                     continue

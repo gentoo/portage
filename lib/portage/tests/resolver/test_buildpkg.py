@@ -15,12 +15,20 @@ class BuildPkgTestCase(TestCase):
             "dev-libs/B-1": {},
             "dev-libs/C-1": {},
             "dev-libs/D-1": {"KEYWORDS": "amd64"},
+            "dev-libs/E-1": {"IUSE": "static"},
+            "dev-libs/F-1": {"IUSE": "static"},
+            "dev-libs/G-1": {"IUSE": "static"},
+            "dev-libs/H-1": {"IUSE": "doc"},
         }
 
         installed = {
             "dev-libs/B-1": {},
             "dev-libs/C-1": {},
             "dev-libs/D-1": {},
+            "dev-libs/E-1": {"IUSE": "static"},
+            "dev-libs/F-1": {"IUSE": "static"},
+            "dev-libs/G-1": {"IUSE": "static", "USE": "static"},
+            "dev-libs/H-1": {"IUSE": "static", "USE": "static"},
         }
 
         binpkgs = {
@@ -33,6 +41,28 @@ class BuildPkgTestCase(TestCase):
                 "BUILD_TIME": "1",
                 "KEYWORDS": "~amd64",
             },
+            "dev-libs/E-1": {
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
+                "IUSE": "static",
+            },
+            "dev-libs/F-1": {
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
+                "IUSE": "static",
+                "USE": "static",
+            },
+            "dev-libs/G-1": {
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
+                "IUSE": "static",
+            },
+            "dev-libs/H-1": {
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
+                "IUSE": "static",
+                "USE": "static",
+            },
             "dev-libs/X-1": {
                 "BUILD_ID": "1",
                 "BUILD_TIME": "1",
@@ -40,7 +70,7 @@ class BuildPkgTestCase(TestCase):
         }
 
         user_config = {
-            "make.conf": ('FEATURES="buildpkg buildpkg-proactive"',),
+            "make.conf": ('FEATURES="buildpkg buildpkg-proactive"', 'USE="static"'),
             "package.accept_keywords": ("dev-libs/D amd64",),
         }
 
@@ -68,6 +98,54 @@ class BuildPkgTestCase(TestCase):
                 success=True,
                 options={"--update": True},
                 mergelist=["dev-libs/D-1"],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/E"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "y"},
+                mergelist=["dev-libs/E-1"],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/E"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "n"},
+                mergelist=[],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/F"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "y"},
+                mergelist=[],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/F"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "n"},
+                mergelist=[],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/G"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "y"},
+                mergelist=["dev-libs/G-1"],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/G"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "n"},
+                mergelist=[],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/H"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "y"},
+                mergelist=["dev-libs/H-1"],
+            ),
+            ResolverPlaygroundTestCase(
+                ["dev-libs/H"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-use": "n"},
+                mergelist=[],
             ),
         )
 
