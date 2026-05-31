@@ -43,6 +43,10 @@ from portage import _unicode_encode
 from portage.util.futures.executor.fork import ForkExecutor
 from ._VdbMetadataDelta import VdbMetadataDelta
 
+# Made global to fix importing on Python version upgrade:
+# https://bugs.gentoo.org/970375
+from ._SyncfsProcess import SyncfsProcess
+
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
@@ -6128,7 +6132,6 @@ class dblink:
         does nothing if FEATURES=merge-sync is disabled.
         """
         import subprocess
-        from portage.dbapi._SyncfsProcess import SyncfsProcess
 
         if not self._device_path_map or "merge-sync" not in self.settings.features:
             return
