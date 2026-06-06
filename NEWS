@@ -46,6 +46,8 @@ Bug fixes:
 
 * emerge: Suppress world file warning for missing ebuilds with usepkgonly (bug #976362)
 
+* emerge: Fix typo in world file warning check.
+
 portage-3.0.80 (2026-06-17)
 --------------
 

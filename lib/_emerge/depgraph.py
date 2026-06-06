@@ -5389,7 +5389,7 @@ class depgraph:
                         and pkg.installed
                         and pkg.operation == "nomerge"
                         and isinstance(arg, SetArg)
-                        and arg.name in ("selected, world")
+                        and arg.name in ("selected", "world")
                         and not self._replace_installed_atom(pkg)
                         and not self._frozen_config.excluded_pkgs.findAtomForPackage(
                             pkg
