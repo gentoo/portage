@@ -44,6 +44,8 @@ Bug fixes:
 * Respect --usepkg=n and --getbinpkg=n on command line if the user has set
   FEATURES=getbinpkg (bug #759067)
 
+* emerge: Suppress world file warning for missing ebuilds with usepkgonly (bug #976362)
+
 portage-3.0.80 (2026-06-17)
 --------------
 
