@@ -19,6 +19,10 @@ Bug fixes:
   config_string() from emitting duplicate options in PORTAGE_REPOSITORIES
   (bug #965876).
 
+* Include sync-hooks-only-on-change in PORTAGE_REPOSITORIES, so processes that
+  reparse repository configuration honour the configured value instead of
+  falling back to false (bug #970768).
+
 portage-3.0.80 (2026-06-17)
 --------------
 

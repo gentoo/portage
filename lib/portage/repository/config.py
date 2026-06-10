@@ -753,6 +753,7 @@ class RepoConfig:
 _bool_keys = (
     "strict_misc_digests",
     "sync_allow_hardlinks",
+    "sync_hooks_only_on_change",
     "sync_rcu",
     "volatile",
 )
