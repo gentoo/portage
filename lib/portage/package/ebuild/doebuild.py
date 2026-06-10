@@ -1,4 +1,4 @@
-# Copyright 2010-2025 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
@@ -196,9 +196,9 @@ _unexported_pms_vars = frozenset(
         "ECLASSDIR",
         "ROOT",
         "EROOT",
-        "SYSROOT",
-        "ESYSROOT",
-        "BROOT",
+#        "SYSROOT",       # EXPORTED: used by crossdev's cross-pkg-config
+#        "ESYSROOT",      # EXPORTED: used by a Gentoo GCC patch and crossdev's cross-pkg-config
+#        "BROOT",         # EXPORTED: used by a Gentoo GCC patch
         "T",
 #        "TMPDIR",        # EXPORTED: often assumed to be exported and available to child processes
 #        "HOME",          # EXPORTED: often assumed to be exported and available to child processes
