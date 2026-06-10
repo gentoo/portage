@@ -27,6 +27,12 @@ Features:
   that have no (usable) binary package, even if those packages are already
   installed. (bug #976083)
 
+Bug fixes:
+
+* Allow BROOT, ESYSROOT, and SYSROOT to be exported again under EAPI 9 because
+  they are required by crossdev's cross-pkg-config and a Gentoo GCC patch when
+  cross-compiling with a SYSROOT other than /usr/${CHOST}. (bug #977170)
+
 portage-3.0.79 (2026-05-22)
 --------------
 
