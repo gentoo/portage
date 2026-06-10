@@ -86,6 +86,7 @@ class Package(Task):
         "SIZE",
         "SLOT",
         "USE",
+        "USER_PATCHES",
         "_mtime_",
     ]
 
@@ -224,6 +225,10 @@ class Package(Task):
         if self._masks is None:
             self._masks = self._eval_masks()
         return self._masks
+
+    @property
+    def user_patches(self):
+        return self._metadata["USER_PATCHES"]
 
     @property
     def visible(self):
