@@ -604,8 +604,9 @@ def doebuild_environment(
         ccache = "ccache" in mysettings.features
         distcc = "distcc" in mysettings.features
         icecream = "icecream" in mysettings.features
+        sccache = "sccache" in mysettings.features
 
-        if ccache or distcc or icecream:
+        if ccache or distcc or icecream or sccache:
             libdir = None
             default_abi = mysettings.get("DEFAULT_ABI")
             if default_abi:
@@ -623,6 +624,8 @@ def doebuild_environment(
                 masquerades.append(("icecream", "icecc"))
             if ccache:
                 masquerades.append(("ccache", "ccache"))
+            if sccache:
+                masquerades.append(("sccache", "sccache"))
 
             for feature, m in masquerades:
                 for l in possible_libexecdirs:
@@ -642,6 +645,13 @@ def doebuild_environment(
                         % (m, m)
                     )
                     mysettings.features.remove(feature)
+
+        if sccache:
+            # Set to a custom default port (not the upstream default) to avoid conflicts with other users
+            # and avoid permission issue when other server has non-writable SCCACHE_DIR.
+            mysettings.setdefault("SCCACHE_SERVER_PORT", "6224")
+            mysettings["RUSTC_WRAPPER"] = "sccache"
+            mysettings["SCCACHE_BASEDIRS"] = mysettings["PORTAGE_BUILDDIR"]
 
         # MAKEOPTS conflicts with MAKEFLAGS, so skip this if MAKEFLAGS exists.
         if "MAKEOPTS" not in mysettings and "MAKEFLAGS" not in mysettings:
