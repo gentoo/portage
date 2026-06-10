@@ -1374,7 +1374,6 @@ class RepoConfigLoader:
         bool_keys = (
             "strict_misc_digests",
             "sync_allow_hardlinks",
-            "sync_openpgp_key_refresh",
             "sync_rcu",
             "volatile",
         )
@@ -1389,6 +1388,7 @@ class RepoConfigLoader:
             "sync_openpgp_keyserver",
             "sync_openpgp_key_package",
             "sync_openpgp_key_path",
+            "sync_openpgp_key_refresh",
             "sync_openpgp_key_refresh_retry_count",
             "sync_openpgp_key_refresh_retry_delay_exp_base",
             "sync_openpgp_key_refresh_retry_delay_max",
