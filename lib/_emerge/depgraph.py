@@ -7859,7 +7859,7 @@ class depgraph:
                             # Also reject built instances if we want a binary
                             # package, but none exist, all the existing ones are
                             # now masked (e.g. accepted keywords changed), or we
-                            # care that the USE flags have changed.
+                            # care that the USE flags or deps have changed.
                             elif (
                                 myeb
                                 and "buildpkg-proactive"
@@ -7887,6 +7887,10 @@ class depgraph:
                                             bin_iuse,
                                             pkg_use,
                                             pkg_iuse,
+                                        )
+                                        and not (
+                                            binpkg_changed_deps
+                                            and self._changed_deps(binpkg)
                                         )
                                     ):
                                         break
