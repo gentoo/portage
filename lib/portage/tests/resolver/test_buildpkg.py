@@ -19,6 +19,11 @@ class BuildPkgTestCase(TestCase):
             "dev-libs/F-1": {"IUSE": "static"},
             "dev-libs/G-1": {"IUSE": "static"},
             "dev-libs/H-1": {"IUSE": "doc"},
+            "app-misc/A-0": {
+                "DEPEND": "app-misc/B",
+                "RDEPEND": "app-misc/B",
+            },
+            "app-misc/B-0": {},
         }
 
         installed = {
@@ -29,6 +34,7 @@ class BuildPkgTestCase(TestCase):
             "dev-libs/F-1": {"IUSE": "static"},
             "dev-libs/G-1": {"IUSE": "static", "USE": "static"},
             "dev-libs/H-1": {"IUSE": "static", "USE": "static"},
+            "app-misc/A-0": {},
         }
 
         binpkgs = {
@@ -64,6 +70,10 @@ class BuildPkgTestCase(TestCase):
                 "USE": "static",
             },
             "dev-libs/X-1": {
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
+            },
+            "app-misc/A-0": {
                 "BUILD_ID": "1",
                 "BUILD_TIME": "1",
             },
@@ -146,6 +156,18 @@ class BuildPkgTestCase(TestCase):
                 success=True,
                 options={"--update": True, "--binpkg-respect-use": "n"},
                 mergelist=[],
+            ),
+            ResolverPlaygroundTestCase(
+                ["app-misc/A"],
+                success=True,
+                options={"--update": True, "--binpkg-changed-deps": "n"},
+                mergelist=[],
+            ),
+            ResolverPlaygroundTestCase(
+                ["app-misc/A"],
+                success=True,
+                options={"--update": True, "--binpkg-changed-deps": "y"},
+                mergelist=["app-misc/B-0", "app-misc/A-0"],
             ),
         )
 
