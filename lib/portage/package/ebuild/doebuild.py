@@ -196,9 +196,9 @@ _unexported_pms_vars = frozenset(
         "ECLASSDIR",
         "ROOT",
         "EROOT",
-        "SYSROOT",
-        "ESYSROOT",
-        "BROOT",
+#        "SYSROOT",       # EXPORTED: required for cross-compiling
+#        "ESYSROOT",      # EXPORTED: required for cross-compiling
+#        "BROOT",         # EXPORTED: required for cross-compiling
         "T",
 #        "TMPDIR",        # EXPORTED: often assumed to be exported and available to child processes
 #        "HOME",          # EXPORTED: often assumed to be exported and available to child processes
