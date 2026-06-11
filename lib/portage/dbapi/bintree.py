@@ -1884,7 +1884,7 @@ class binarytree:
                             writemsg(
                                 colorize(
                                     "WARN",
-                                    f"[{binrepo_name} Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
+                                    f"[{binrepo_name}] Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
                                 ),
                                 noiselevel=-1,
                             )
