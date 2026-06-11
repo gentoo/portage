@@ -474,6 +474,119 @@ ___makeopts_jobs() {
 	printf '%s\n' "${jobs}"
 }
 
+# from a list of args using -o/--owner/-g/--group, replace literal user/group with numeric-uid-gid
+# a group must be prefixed by ':'
+__normalize_owner() {
+	local lopt normalized_opts num_uid_gid value
+	while (( $# )); do
+		num_uid_gid=
+		lopt=
+		value=
+		case "${1}" in
+			-o|--owner)
+				lopt="--owner"
+				if [[ -n "${2}" && "${2}" != -* ]]; then
+					value="${2}"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			-o*)
+				lopt="--owner"
+				value="${1#-o}"
+				shift
+				;;
+			--owner=*)
+				lopt="--owner"
+				value="${1#*=}"
+				shift
+				;;
+			-g|--group)
+				lopt="--group"
+				if [[ -n "${2}" && "${2}" != -* ]]; then
+					value=":${2}"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			-g*)
+				lopt="--group"
+				value=":${1#-g}"
+				shift
+				;;
+			--group=*)
+				lopt="--group"
+				value=":${1#*=}"
+				shift
+				;;
+			*)
+				normalized_opts+=" ${1}"
+				shift
+				continue
+				;;
+		esac
+
+		# pass all args even without value to get errors from do*.py
+		normalized_opts+=" ${lopt}"
+		num_uid_gid=$(__resolve_owner "${value}")
+		[[ -n "${num_uid_gid}" ]] && normalized_opts+=" ${num_uid_gid#:}"
+
+	done
+
+	printf '%s' "${normalized_opts}"
+}
+
+# convert any chown-compatible user[:group] literal into numeric-uid-gid
+__resolve_owner() {
+	if ! ___eapi_has_prefix_variables; then
+		EROOT=${ROOT}
+	fi
+
+	if ___eapi_has_SYSROOT && [[ ${EBUILD_PHASE} == install ]]; then
+		PWDB_ROOT=${SYSROOT}
+		PWDB_EROOT=${ESYSROOT}
+	else
+		PWDB_ROOT=${ROOT%/}
+		PWDB_EROOT=${EROOT%/}
+	fi
+
+	local owner="${1}"
+	local pwdb_path="${PWDB_EROOT}/etc"
+	local user group uid gid pgid
+
+	IFS=':' read -r user group <<< "${owner}"
+
+	if [[ -n "${user}" ]]; then
+		if [[ "${user}" =~ ^[0-9]+$ ]]; then
+			uid="${user}"
+		else
+			read -r uid pgid <<< "$(awk -F: -v u="${user}" '$1==u { print $3, $4 }' "${pwdb_path}"/passwd)"
+			[[ "${uid}" =~ ^[0-9]+$ ]] || die "'${FUNCNAME}': invalid user in ${pwdb_path}/passwd: ${owner}"
+		fi
+	fi
+
+	if [[ -n "${group}" ]]; then
+		if [[ "${group}" =~ ^[0-9]+$ ]]; then
+			gid="${group}"
+		else
+			gid=$(awk -F: -v g="${group}" '$1==g{print $3}' "${pwdb_path}"/group)
+			[[ "${gid}" =~ ^[0-9]+$ ]] || die "'${FUNCNAME}': invalid group in ${pwdb_path}/group: ${owner}"
+		fi
+		gid=":${gid}"
+	elif [[ "${owner}" == *: ]]; then
+		# `chown uid:` is invalid with numeric-uid-gid, use the primary group defined above
+		if [[ "${pgid}" =~ ^[0-9]+$ ]]; then
+			gid=":${pgid}"
+		else
+			die "'${FUNCNAME}': invalid primary group for ${user} in ${pwdb_path}/passwd: ${owner}"
+		fi
+	fi
+
+	printf '%s%s' "${uid}" "${gid}"
+}
+
 # Considers the positional parameters as comprising a simple command, which
 # shall be executed for each null-terminated record read from the standard
 # input. For each record processed, its value shall be taken as an additional
