@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2025 Gentoo Authors
+# Copyright 1998-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -957,6 +957,19 @@ def _exec_wrapper(
         raise
 
 
+_FORWARD_SIGNALS = (
+    signal.SIGINT,
+    signal.SIGTERM,
+    signal.SIGHUP,
+    signal.SIGTSTP,
+    signal.SIGCONT,
+)
+
+
+def _forward_signal(pid, signum, frame):
+    os.kill(pid, signum)
+
+
 def _exec(
     binary,
     mycommand,
@@ -1131,6 +1144,9 @@ def _exec(
         groups = None
         umask = None
 
+        # Mask signals until we can set up our handlers
+        signal_mask = signal.pthread_sigmask(signal.SIG_BLOCK, _FORWARD_SIGNALS)
+
         # Use _start_fork for os.fork() error handling, ensuring
         # that if exec fails then the child process will display
         # a traceback before it exits via os._exit to suppress any
@@ -1155,21 +1171,24 @@ def _exec(
             ),
             fd_pipes=None,
             close_fds=False,
+            signal_mask=signal_mask,
         )
 
-        # Execute a supervisor process which will forward
-        # signals to init and forward exit status to the
-        # parent process. The supervisor process runs in
-        # the global pid namespace, so skip /proc remount
-        # and other setup that's intended only for the
-        # init process.
-        binary, myargs = portage._python_interpreter, [
-            portage._python_interpreter,
-            os.path.join(portage._bin_path, "pid-ns-init"),
-            str(main_child_pid),
-        ]
+        # Forward signals to child
+        handler = partial(_forward_signal, main_child_pid)
+        for signum in _FORWARD_SIGNALS:
+            signal.signal(signum, handler)
+        signal.pthread_sigmask(signal.SIG_SETMASK, signal_mask)
 
-        os.execve(binary, myargs, env)
+        # Wait for child, exit with same result
+        pid, status = os.wait()
+        ec = os.waitstatus_to_exitcode(status)
+        if ec < 0:
+            signum = -ec
+            signal.signal(signum, signal.SIG_DFL)
+            os.kill(os.getpid(), signum)
+            os._exit(127)
+        os._exit(ec)
 
     # Reachable only if unshare_pid is False.
     _exec2(
@@ -1489,6 +1508,7 @@ def _start_fork(
     kwargs: Optional[dict[str, Any]] = {},
     fd_pipes: Optional[dict[int, int]] = None,
     close_fds: Optional[bool] = True,
+    signal_mask=None,
 ) -> int:
     """
     Execute the target function in a fork. The fd_pipes and
@@ -1513,6 +1533,8 @@ def _start_fork(
         if pid == 0:
             try:
                 _setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
+                if signal_mask is not None:
+                    signal.pthread_sigmask(signal.SIG_SETMASK, signal_mask)
                 target(*args, **kwargs)
             except Exception:
                 # We need to catch _any_ exception and display it since the child
