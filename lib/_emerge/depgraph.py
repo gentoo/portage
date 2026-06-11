@@ -5325,6 +5325,7 @@ class depgraph:
         a favorite list."""
         debug = "--debug" in self._frozen_config.myopts
         onlydeps = "--onlydeps" in self._frozen_config.myopts
+        usepkgonly = self._frozen_config.myopts.get("--usepkgonly", False)
         args = self._dynamic_config._initial_arg_list[:]
 
         for arg in self._expand_set_args(args, add_to_digraph=True):
@@ -5383,11 +5384,12 @@ class depgraph:
                     if (
                         self._frozen_config.myopts.get("--verbose-missing-ebuilds", "y")
                         != "n"
+                        and not usepkgonly
                         and pkg
                         and pkg.installed
                         and pkg.operation == "nomerge"
                         and isinstance(arg, SetArg)
-                        and arg.name in ("selected, world")
+                        and arg.name in ("selected", "world")
                         and not self._replace_installed_atom(pkg)
                         and not self._frozen_config.excluded_pkgs.findAtomForPackage(
                             pkg

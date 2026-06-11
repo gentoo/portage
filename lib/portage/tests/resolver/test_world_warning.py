@@ -54,6 +54,52 @@ class WorldWarningTestCase(TestCase):
         finally:
             playground.cleanup()
 
+    def testNoWorldWarningEmergeBinpkgOnly(self):
+        """
+        Test that we do not warn about a package in @world with no ebuild.
+        """
+        installed = {
+            "app-misc/i-do-not-exist-1": {},
+        }
+        ebuilds = {}
+
+        playground = ResolverPlayground(
+            world=["app-misc/i-do-not-exist"],
+            ebuilds=ebuilds,
+            installed=installed,
+        )
+
+        test_case = ResolverPlaygroundTestCase(
+            ["@world"],
+            mergelist=[],
+            options={
+                "--update": True,
+                "--deep": True,
+                "--usepkgonly": True,
+            },
+            success=True,
+        )
+
+        try:
+            # Just to make sure we don't freak out on the general case
+            # without worrying about the specific output first.
+            playground.run_TestCase(test_case)
+            self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+
+            # We need access to the depgraph object to check for missing_args
+            # so we run again manually.
+            depgraph = playground.run(
+                ["@world"], test_case.options, test_case.action
+            ).depgraph
+
+            self.assertIsNotNone(depgraph._dynamic_config._missing_args)
+            self.assertTrue(
+                len(depgraph._dynamic_config._missing_args) == 0,
+                "Wrongly warned with --usepkgonly",
+            )
+        finally:
+            playground.cleanup()
+
     def testWorldWarningVsSubslotRebuildEmerge(self):
         """
         Test that we warn about a package in @world with no ebuild
