@@ -11,7 +11,7 @@ fi
 
 if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
 	source "${PORTAGE_EBUILD_EXTRA_SOURCE}" || exit 1
-	# We deliberately do not unset PORTABE_EBUILD_EXTRA_SOURCE, so
+	# We deliberately do not unset PORTAGE_EBUILD_EXTRA_SOURCE, so
 	# that it keeps being exported in the environment of this
 	# process and its child processes. There, for example portage
 	# helper like doins, can pick it up and set the PMS variables
