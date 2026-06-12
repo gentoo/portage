@@ -80,6 +80,7 @@ from portage.exception import (
     InvalidData,
     InvalidDependString,
     PermissionDenied,
+    PortageException,
     UnsupportedAPIException,
 )
 from portage.localization import _
@@ -2244,8 +2245,25 @@ def spawn(
         else:  # case B and C
             global _emerge_tmpdir
             if _emerge_tmpdir is None:
+                # Keep this directory beneath ${PORTAGE_TMPDIR}/portage so that
+                # dropped-privilege phases can traverse the path and source
+                # PORTAGE_EBUILD_EXTRA_SOURCE (bug #977245).
+                build_prefix = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
+                portage.util.ensure_dirs(build_prefix)
+                try:
+                    apply_secpass_permissions(
+                        build_prefix,
+                        gid=portage_gid,
+                        uid=portage_uid,
+                        mode=0o700,
+                        mask=0,
+                    )
+                except PortageException:
+                    if not os.path.isdir(build_prefix):
+                        raise
                 _emerge_tmpdir = tempfile.mkdtemp(
-                    prefix=f"portage-tmpdir-{portage.getpid()}-"
+                    prefix=f"portage-tmpdir-{portage.getpid()}-",
+                    dir=build_prefix,
                 )
                 os.chmod(_emerge_tmpdir, 0o1775)
                 os.chown(_emerge_tmpdir, -1, int(portage_build_gid))

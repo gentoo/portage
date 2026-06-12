@@ -33,6 +33,10 @@ Bug fixes:
   they are required by crossdev's cross-pkg-config and a Gentoo GCC patch when
   cross-compiling with a SYSROOT other than /usr/${CHOST}. (bug #977170)
 
+* Create EAPI 9 PORTAGE_EBUILD_EXTRA_SOURCE files under PORTAGE_TMPDIR, so
+  reduced-privilege phases can source them where the process TMPDIR is not
+  traversable by the portage user. (bug #977245)
+
 portage-3.0.79 (2026-05-22)
 --------------
 
