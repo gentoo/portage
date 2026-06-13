@@ -160,7 +160,7 @@ def normalize_path(mypath) -> str:
     return os.path.normpath(mypath)
 
 
-def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False):
+def grabfile(myfilename, recursive=0, remember_source_file=False):
     """This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
     begins with a #, it is ignored, as are empty lines"""
 
@@ -184,19 +184,7 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
         if not myline:
             continue
         if myline[0] == "#":
-            # Check if we have a compat-level string. BC-integration data.
-            # '##COMPAT==>N<==' 'some string attached to it'
-            mylinetest = myline.split("<==", 1)
-            if len(mylinetest) == 2:
-                myline_potential = mylinetest[1]
-                mylinetest = mylinetest[0].split("##COMPAT==>")
-                if len(mylinetest) == 2:
-                    if compat_level >= int(mylinetest[1]):
-                        # It's a compat line, and the key matches.
-                        newlines.append(myline_potential)
-                continue
-            else:
-                continue
+            continue
         if remember_source_file:
             newlines.append((myline, source_file))
         else:
@@ -565,7 +553,6 @@ def grabdict_package(
 
 def grabfile_package(
     myfilename,
-    compatlevel=0,
     recursive=0,
     allow_wildcard=False,
     allow_repo=False,
@@ -578,7 +565,7 @@ def grabfile_package(
     from portage.dep import Atom
 
     pkgs = grabfile(
-        myfilename, compatlevel, recursive=recursive, remember_source_file=True
+        myfilename, recursive=recursive, remember_source_file=True
     )
     if not pkgs:
         return pkgs
