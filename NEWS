@@ -12,6 +12,9 @@ portage-3.0.82 (UNRELEASED)
 Bug fixes:
 * Fix /dev/null device check for the Hurd.
 
+* man: make.conf(5): Improve man text about disabling tests to not wrongly
+  refer to USE=test.
+
 portage-3.0.81 (2026-06-23)
 --------------
 
