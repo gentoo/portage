@@ -15,6 +15,9 @@ Bug fixes:
 * man: make.conf(5): Improve man text about disabling tests to not wrongly
   refer to USE=test.
 
+* env_update: Consider ld.so.conf includes too, so as to call ldconfig
+  in more cases (bug #961463).
+
 portage-3.0.81 (2026-06-23)
 --------------
 
