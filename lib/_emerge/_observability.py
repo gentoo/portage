@@ -24,6 +24,8 @@ from portage import os
 from portage.const import PORTAGE_RUN_PATH
 from portage.util import atomic_ofstream, ensure_dirs, writemsg_level
 
+from _emerge.PackageMerge import PackageMerge as _PackageMerge
+
 _SCHEMA_VERSION = 1
 
 
@@ -58,6 +60,8 @@ def build_snapshot(monitor):
     scheduler = monitor._scheduler
     now = time.time()
 
+    merge_wait_ids = {id(t) for t in getattr(scheduler, "_merge_wait_queue", ())}
+
     tasks = []
     for task in scheduler._running_tasks.values():
         pkg = _task_pkg(task)
@@ -65,23 +69,42 @@ def build_snapshot(monitor):
             continue
         # PackageMerge installs an already-built package; everything else
         # represents an in-progress build/extract.
-        kind = "merge" if task.__class__.__name__ == "PackageMerge" else "build"
-        start = monitor._task_start.get(id(task))
-        tasks.append(
-            {
-                "cpv": str(pkg.cpv),
-                "category": pkg.category,
-                "pf": pkg.pf,
-                "root": pkg.root,
-                "operation": getattr(pkg, "operation", None),
-                "binary": bool(getattr(pkg, "built", False)),
-                "kind": kind,
-                "phase": monitor._phases.get(str(pkg.cpv)),
-                "pid": _task_pid(task),
-                "start_time": start,
-                "elapsed": (now - start) if start is not None else None,
-            }
-        )
+        cpv = str(pkg.cpv)
+        kind = "merge" if isinstance(task, _PackageMerge) else "build"
+        waiting = id(task) in merge_wait_ids
+
+        # Prefer the build's own start/finish times (continuous across the
+        # build -> merge hand-off) over the per-task start time.
+        times = monitor._build_times.get(cpv)
+        if times is not None:
+            start, build_finished = times[0], times[1]
+        else:
+            start, build_finished = monitor._task_start.get(id(task)), None
+
+        # A package waiting to merge is done building: freeze its elapsed time at
+        # build completion rather than letting the wait inflate it.
+        if waiting and build_finished is not None and start is not None:
+            elapsed = build_finished - start
+        elif start is not None:
+            elapsed = now - start
+        else:
+            elapsed = None
+
+        entry = {
+            "cpv": cpv,
+            "category": pkg.category,
+            "pf": pkg.pf,
+            "root": pkg.root,
+            "operation": getattr(pkg, "operation", None),
+            "binary": bool(getattr(pkg, "built", False)),
+            "kind": kind,
+            "phase": "merge-wait" if waiting else monitor._phases.get(cpv),
+            "merge_wait": waiting,
+            "pid": _task_pid(task),
+            "start_time": start,
+            "elapsed": elapsed,
+        }
+        tasks.append(entry)
 
     tasks.sort(key=lambda t: (t["start_time"] is None, t["start_time"] or 0))
 
@@ -189,6 +212,8 @@ class ObservabilityMonitor:
         # id(task) -> epoch start time; str(cpv) -> current phase name.
         self._task_start = {}
         self._phases = {}
+        # str(cpv) -> [build_start, build_finished or None]
+        self._build_times = {}
 
         self._status_path = None
         self._last_write = 0
@@ -204,16 +229,28 @@ class ObservabilityMonitor:
     def note_task_started(self, task):
         if not self.enabled:
             return
-        self._task_start[id(task)] = time.time()
+        now = time.time()
+        self._task_start[id(task)] = now
+        if not isinstance(task, _PackageMerge):
+            pkg = _task_pkg(task)
+            if pkg is not None:
+                self._build_times[str(pkg.cpv)] = [now, None]
 
     def note_task_finished(self, task):
         if not self.enabled:
             return
         self._task_start.pop(id(task), None)
         pkg = _task_pkg(task)
-        # Only forget the phase once nothing is running for this cpv.
-        if pkg is not None and task.__class__.__name__ == "PackageMerge":
-            self._phases.pop(str(pkg.cpv), None)
+        if pkg is None:
+            return
+        cpv = str(pkg.cpv)
+        if isinstance(task, _PackageMerge):
+            self._phases.pop(cpv, None)
+            self._build_times.pop(cpv, None)
+        else:
+            times = self._build_times.get(cpv)
+            if times is not None:
+                times[1] = time.time()
 
     def note_phase(self, cpv, phase):
         if not self.enabled:
