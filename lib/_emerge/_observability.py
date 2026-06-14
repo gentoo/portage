@@ -70,6 +70,7 @@ def build_snapshot(monitor):
     scheduler = monitor._scheduler
     now = time.time()
 
+    cgroup = getattr(scheduler, "_cgroup", None)
     merge_wait_ids = {id(t) for t in getattr(scheduler, "_merge_wait_queue", ())}
 
     tasks = []
@@ -114,6 +115,10 @@ def build_snapshot(monitor):
             "start_time": start,
             "elapsed": elapsed,
         }
+        if cgroup is not None:
+            res = cgroup.read_stats(str(pkg.cpv))
+            if res:
+                entry["resources"] = res
         tasks.append(entry)
 
     tasks.sort(key=lambda t: (t["start_time"] is None, t["start_time"] or 0))

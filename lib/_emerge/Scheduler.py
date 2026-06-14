@@ -24,15 +24,17 @@ from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
+from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util.cgroup import CgroupManager, DEFAULT_CGROUP_ROOT
+from portage.util.futures import asyncio
+from portage.util.human_readable import bytes_to_human
+from portage.util.path import first_existing
+from portage.util.SlotObject import SlotObject
+from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir, _prepare_self_update
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
-from portage.util import ensure_dirs, writemsg, writemsg_level
-from portage.util._async.SchedulerInterface import SchedulerInterface
-from portage.util.futures import asyncio
-from portage.util.path import first_existing
-from portage.util.SlotObject import SlotObject
 
 import _emerge
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
@@ -229,6 +231,18 @@ class Scheduler(PollScheduler):
             xterm_titles=("notitles" not in settings.features)
         )
         self._observability = ObservabilityMonitor(self)
+        self._cgroup = None
+        if "cgroup" in settings.features:
+            cg = CgroupManager(
+                settings.get("PORTAGE_CGROUP_ROOT", DEFAULT_CGROUP_ROOT),
+                verbose="--verbose" in myopts,
+            )
+            if cg.setup():
+                self._cgroup = cg
+                settings.unlock()
+                settings["PORTAGE_CGROUP_ROOT"] = cg.emerge_root
+                settings.backup_changes("PORTAGE_CGROUP_ROOT")
+                settings.lock()
         self._max_load = myopts.get("--load-average")
         max_jobs = myopts.get("--jobs", 1)
         self._set_max_jobs(max_jobs)
@@ -404,6 +418,36 @@ class Scheduler(PollScheduler):
         callback so the observability snapshot reflects the live phase.
         """
         self._observability.note_phase(cpv, phase)
+
+    def _cgroup_finish(self, build):
+        """Log the final cgroup resource summary for a build and remove it."""
+        if self._cgroup is None:
+            return
+        cpv = build.pkg.cpv
+        stats = self._cgroup.read_stats(cpv)
+        if stats:
+            parts = []
+            if "cpu_usec" in stats:
+                parts.append(f"cpu {stats['cpu_usec'] / 1e6:.1f}s")
+            if "mem_peak" in stats:
+                parts.append(f"peak-mem {bytes_to_human(stats['mem_peak'])}")
+            if "mem_swap_peak" in stats and stats["mem_swap_peak"]:
+                parts.append(f"peak-swap {bytes_to_human(stats['mem_swap_peak'])}")
+            if "mem_zswap_current" in stats and stats["mem_zswap_current"]:
+                parts.append(f"zswap {bytes_to_human(stats['mem_zswap_current'])}")
+            if "io_read_bytes" in stats:
+                parts.append(
+                    "io {} / {} r/w".format(
+                        bytes_to_human(stats["io_read_bytes"]),
+                        bytes_to_human(stats.get("io_write_bytes", 0)),
+                    )
+                )
+            if parts:
+                msg = f"=== Resource usage for {cpv}: {', '.join(parts)}"
+                log_path = build.settings.get("PORTAGE_LOG_FILE")
+                self._sched_iface.output(f"{msg}\n", log_path=log_path)
+                self._logger.log(f" {msg}")
+        self._cgroup.destroy(cpv)
 
     def _init_graph(self, graph_config):
         """
@@ -1576,6 +1620,7 @@ class Scheduler(PollScheduler):
     def _build_exit(self, build):
         self._running_tasks.pop(id(build), None)
         self._observability.note_task_finished(build)
+        self._cgroup_finish(build)
         self._release_job_token(id(build))
         if build.returncode == os.EX_OK and self._terminated_tasks:
             # We've been interrupted, so we won't
@@ -1737,6 +1782,8 @@ class Scheduler(PollScheduler):
         finally:
             self._main_loop_cleanup()
             self._observability.close()
+            if self._cgroup is not None:
+                self._cgroup.close()
             portage.locks._quiet = False
             portage.elog.remove_listener(self._elog_listener)
             if display_callback.handle is not None:
@@ -1955,8 +2002,6 @@ class Scheduler(PollScheduler):
 
                         if actual_free_bytes < required_free_bytes:
                             if not self._warned_tmpdir_free_space:
-                                from portage.util.human_readable import bytes_to_human
-
                                 actual_free_bytes_hr = bytes_to_human(actual_free_bytes)
                                 required_free_bytes_hr = bytes_to_human(
                                     required_free_bytes

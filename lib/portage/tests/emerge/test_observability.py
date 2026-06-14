@@ -62,6 +62,7 @@ def _make_scheduler(features=("observability",), eprefix="", tasks=None):
         _task_queues=SimpleNamespace(merge=[]),
         _status_display=SimpleNamespace(curval=1, maxval=5),
         _event_loop=None,
+        _cgroup=None,
     )
 
 
@@ -92,6 +93,23 @@ class ObservabilitySnapshotTestCase(TestCase):
         self.assertEqual(by_cpv["dev-libs/foo-1.2"]["pid"], 4321)
         self.assertEqual(by_cpv["dev-libs/foo-1.2"]["kind"], "build")
         self.assertEqual(by_cpv["sys-apps/bar-3"]["kind"], "merge")
+
+    def test_snapshot_includes_cgroup_resources(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=7)
+        sched = _make_scheduler(tasks=[build])
+
+        class _Cg:
+            def read_stats(self, cpv):
+                return {"cpu_usec": 2_000_000, "mem_peak": 1234} if cpv else None
+
+        sched._cgroup = _Cg()
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(build)
+
+        snap = build_snapshot(monitor)
+        res = snap["tasks"][0]["resources"]
+        self.assertEqual(res["cpu_usec"], 2_000_000)
+        self.assertEqual(res["mem_peak"], 1234)
 
     def test_snapshot_marks_merge_wait(self):
         # A merge sitting in the merge-wait queue is reported as waiting, with
