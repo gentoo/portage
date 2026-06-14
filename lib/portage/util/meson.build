@@ -4,6 +4,7 @@ py.install_sources(
         'SlotObject.py',
         'backoff.py',
         'bin_entry_point.py',
+        'cgroup.py',
         'changelog.py',
         'compression_probe.py',
         'configparser.py',
