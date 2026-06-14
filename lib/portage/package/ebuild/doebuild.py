@@ -2071,6 +2071,15 @@ def spawn(
         keywords["unshare_ipc"] = not ipc
         keywords["unshare_mount"] = mountns
         keywords["unshare_pid"] = pidns
+        if "cgroup" in features and mysettings.mycpv is not None:
+            from portage.util.cgroup import ensure_leaf, DEFAULT_CGROUP_ROOT
+
+            leaf = ensure_leaf(
+                mysettings.get("PORTAGE_CGROUP_ROOT", DEFAULT_CGROUP_ROOT),
+                str(mysettings.mycpv),
+            )
+            if leaf:
+                keywords["cgroup"] = leaf
 
         if (
             not networked

@@ -547,6 +547,7 @@ def spawn(
     unshare_ipc=False,
     unshare_mount=False,
     unshare_pid=False,
+    cgroup=None,
     warn_on_large_env=False,
 ) -> Union[int, MultiprocessingProcess, list[int]]:
     """
@@ -739,6 +740,7 @@ def spawn(
             unshare_pid,
             unshare_flags,
             env_stats,
+            cgroup,
         ),
         fd_pipes=fd_pipes,
         close_fds=close_fds,
@@ -887,6 +889,7 @@ def _exec_wrapper(
     unshare_pid,
     unshare_flags,
     env_stats,
+    cgroup=None,
 ):
     """
     Calls _exec with the given args and handles any raised Exception.
@@ -894,6 +897,16 @@ def _exec_wrapper(
     other process cloning implementations besides _start_fork.
     """
     from portage.util import writemsg
+
+    if cgroup:
+        try:
+            with open(os.path.join(cgroup, "cgroup.procs"), "w", encoding="ascii") as f:
+                f.write(str(os.getpid()))
+        except OSError as e:
+            writemsg(
+                f"!!! cgroup: cannot add pid {os.getpid()} to {cgroup}: {e}\n",
+                noiselevel=-1,
+            )
 
     try:
         _exec(
