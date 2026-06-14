@@ -54,6 +54,7 @@ from _emerge.getloadavg import getloadavg
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
+from _emerge._observability import ObservabilityMonitor
 from _emerge.MergeListItem import MergeListItem
 from _emerge.Package import Package
 from _emerge.PackageMerge import PackageMerge
@@ -82,7 +83,7 @@ class Scheduler(PollScheduler):
     )
 
     class _iface_class(SchedulerInterface):
-        __slots__ = ("fetch", "scheduleSetup", "scheduleUnpack")
+        __slots__ = ("fetch", "scheduleSetup", "scheduleUnpack", "notifyPhase")
 
     class _fetch_iface_class(SlotObject):
         __slots__ = ("log_file", "schedule")
@@ -227,6 +228,7 @@ class Scheduler(PollScheduler):
         self._status_display = JobStatusDisplay(
             xterm_titles=("notitles" not in settings.features)
         )
+        self._observability = ObservabilityMonitor(self)
         self._max_load = myopts.get("--load-average")
         max_jobs = myopts.get("--jobs", 1)
         self._set_max_jobs(max_jobs)
@@ -261,6 +263,7 @@ class Scheduler(PollScheduler):
             fetch=fetch_iface,
             scheduleSetup=self._schedule_setup,
             scheduleUnpack=self._schedule_unpack,
+            notifyPhase=self._observability_phase,
         )
 
         self._prefetchers = weakref.WeakValueDictionary()
@@ -393,6 +396,14 @@ class Scheduler(PollScheduler):
 
         for q in self._task_queues.values():
             q.clear()
+
+    def _observability_phase(self, cpv, phase):
+        """Record that the given package has entered the named ebuild phase.
+
+        Invoked by EbuildPhase via the scheduler interface's notifyPhase
+        callback so the observability snapshot reflects the live phase.
+        """
+        self._observability.note_phase(cpv, phase)
 
     def _init_graph(self, graph_config):
         """
@@ -1492,11 +1503,13 @@ class Scheduler(PollScheduler):
 
     def _merge_exit(self, merge):
         self._running_tasks.pop(id(merge), None)
+        self._observability.note_task_finished(merge)
         self._do_merge_exit(merge)
         self._deallocate_config(merge.merge.settings)
         if merge.returncode == os.EX_OK and not merge.merge.pkg.installed:
             self._status_display.curval += 1
         self._status_display.merges = len(self._task_queues.merge)
+        self._observability.update()
         self._schedule()
 
     def _do_merge_exit(self, merge):
@@ -1562,6 +1575,7 @@ class Scheduler(PollScheduler):
 
     def _build_exit(self, build):
         self._running_tasks.pop(id(build), None)
+        self._observability.note_task_finished(build)
         self._release_job_token(id(build))
         if build.returncode == os.EX_OK and self._terminated_tasks:
             # We've been interrupted, so we won't
@@ -1577,6 +1591,7 @@ class Scheduler(PollScheduler):
             )
             # move the job token to the merge task
             self._running_tasks[id(merge)] = merge
+            self._observability.note_task_started(merge)
             # By default, merge-wait only allows merge when no builds are executing.
             # As a special exception, dependencies on system packages are frequently
             # unspecified and will therefore force merge-wait.
@@ -1610,6 +1625,7 @@ class Scheduler(PollScheduler):
         self._jobs -= 1
         self._status_display.running = self._jobs
         self._status_display.merge_wait = len(self._merge_wait_queue)
+        self._observability.update()
         self._schedule()
 
     def _extract_exit(self, build):
@@ -1720,6 +1736,7 @@ class Scheduler(PollScheduler):
             self._main_loop()
         finally:
             self._main_loop_cleanup()
+            self._observability.close()
             portage.locks._quiet = False
             portage.elog.remove_listener(self._elog_listener)
             if display_callback.handle is not None:
@@ -2233,6 +2250,7 @@ class Scheduler(PollScheduler):
             if pkg.installed:
                 merge = PackageMerge(merge=task, scheduler=self._sched_iface)
                 self._running_tasks[id(merge)] = merge
+                self._observability.note_task_started(merge)
                 self._task_queues.merge.addFront(merge)
                 merge.addExitListener(self._merge_exit)
 
@@ -2242,6 +2260,7 @@ class Scheduler(PollScheduler):
                 self._status_display.running = self._jobs
                 self._jobserver_tokens[id(task)] = token
                 self._running_tasks[id(task)] = task
+                self._observability.note_task_started(task)
                 task.scheduler = self._sched_iface
                 self._task_queues.jobs.add(task)
 
@@ -2249,6 +2268,8 @@ class Scheduler(PollScheduler):
                     task.addExitListener(self._extract_exit)
                 else:
                     task.addExitListener(self._build_exit)
+
+            self._observability.update()
 
     def _get_prefetcher(self, pkg):
         try:
