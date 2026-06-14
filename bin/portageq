@@ -219,6 +219,25 @@ try:
 		"""
     mass_best_version.__doc__ = docstrings["mass_best_version"]
 
+    def jobs(argv):
+        import json as _json
+        from _emerge._observability import read_snapshots, format_snapshots
+        from portage.const import EPREFIX
+
+        snapshots = read_snapshots(EPREFIX)
+        if "--json" in argv:
+            print(_json.dumps(snapshots, sort_keys=True, indent=2))
+        else:
+            sys.stdout.write(format_snapshots(snapshots))
+        return 0
+
+    docstrings["jobs"] = """[--json]
+		Show packages currently being built/merged by running emerge
+		processes (requires FEATURES="observability").  With --json, emit
+		the raw status snapshots.
+		"""
+    jobs.__doc__ = docstrings["jobs"]
+
     @uses_eroot
     def metadata(argv):
         if len(argv) < 4:
