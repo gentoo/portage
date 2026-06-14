@@ -310,6 +310,7 @@ def parse_opts(tmpcmdline, silent=False):
             "rage-clean",
             "regen",
             "search",
+            "status",
             "sync",
             "unmerge",
             "version",
@@ -1248,6 +1249,14 @@ def emerge_main(args: Optional[list[str]] = None):
         return os.EX_OK
     if myaction == "moo":
         print(COWSAY_MOO.format(platform.system()))
+        return os.EX_OK
+    if myaction == "status":
+        # Report what running emerge processes are currently building.
+        # (For machine-readable output, use `portageq jobs --json`.)
+        from _emerge._observability import read_snapshots, format_snapshots
+        from portage.const import EPREFIX
+
+        sys.stdout.write(format_snapshots(read_snapshots(EPREFIX)))
         return os.EX_OK
     if myaction == "sync":
         # need to set this to True now in order for the repository config
