@@ -15,6 +15,7 @@ from _emerge._observability import (
     read_snapshots,
     status_dir,
 )
+from _emerge.PackageMerge import PackageMerge as _RealPackageMerge
 
 
 class _Pkg:
@@ -32,10 +33,11 @@ class EbuildBuild:
         self.pid = pid
 
 
-class PackageMerge:
+class PackageMerge(_RealPackageMerge):
+    __slots__ = ()
+
     def __init__(self, build):
         self.merge = build
-        self.pkg = build.pkg
 
 
 class _Settings(dict):
@@ -89,6 +91,40 @@ class ObservabilitySnapshotTestCase(TestCase):
         self.assertEqual(by_cpv["dev-libs/foo-1.2"]["pid"], 4321)
         self.assertEqual(by_cpv["dev-libs/foo-1.2"]["kind"], "build")
         self.assertEqual(by_cpv["sys-apps/bar-3"]["kind"], "merge")
+
+    def test_snapshot_marks_merge_wait(self):
+        # A merge sitting in the merge-wait queue is reported as waiting, with
+        # its phase surfaced as "merge-wait".
+        waiting = PackageMerge(EbuildBuild(_Pkg("dev-libs/foo-1.2")))
+        active = EbuildBuild(_Pkg("sys-apps/bar-3"))
+        sched = _make_scheduler(tasks=[waiting, active])
+        sched._merge_wait_queue = [waiting]
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(waiting)
+        monitor.note_task_started(active)
+
+        snap = build_snapshot(monitor)
+        by_cpv = {t["cpv"]: t for t in snap["tasks"]}
+        self.assertTrue(by_cpv["dev-libs/foo-1.2"]["merge_wait"])
+        self.assertEqual(by_cpv["dev-libs/foo-1.2"]["phase"], "merge-wait")
+        self.assertFalse(by_cpv["sys-apps/bar-3"]["merge_wait"])
+
+    def test_merge_wait_freezes_elapsed_at_build_done(self):
+        waiting = PackageMerge(EbuildBuild(_Pkg("dev-libs/foo-1.2")))
+        sched = _make_scheduler(tasks=[waiting])
+        sched._merge_wait_queue = [waiting]
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(waiting)
+        # Build started 100s ago and finished building 40s ago: elapsed should
+        # freeze at the 60s build duration, not the ~100s since it started.
+        import time as _t
+
+        now = _t.time()
+        monitor._build_times["dev-libs/foo-1.2"] = [now - 100, now - 40]
+
+        entry = build_snapshot(monitor)["tasks"][0]
+        self.assertEqual(entry["start_time"], now - 100)
+        self.assertAlmostEqual(entry["elapsed"], 60, delta=1)
 
     def test_disabled_when_feature_absent(self):
         sched = _make_scheduler(features=(), tasks=[])
