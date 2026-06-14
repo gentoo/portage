@@ -680,6 +680,15 @@ Prevents the stripping of binaries that are merged to the live filesystem.
 .B notitles
 Disables xterm titlebar updates (which contains status info).
 .TP
+.B observability
+Publish a machine\-readable snapshot of the running \fBemerge\fR(1)
+process to \fI/run/portage/emerge\-<pid>.json\fR, listing the packages
+currently being built or merged, their current ebuild phase, and elapsed
+time. The file is updated on every job state change and removed when
+emerge exits. Query it with \fBportageq jobs\fR or \fBemerge \-\-status\fR.
+This feature degrades silently when the runtime directory is not writable
+(for example, for an unprivileged emerge).
+.TP
 .B packdebug
 Create a tarball of debug information and source files for use with
 debuginfod.  Debug tarballs are placed at
