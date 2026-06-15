@@ -1212,8 +1212,9 @@ Use \fBSYSROOT\fR to specify the target root filesystem to be used for
 merging the build dependencies satisfied by \fBDEPEND\fR.  This
 variable can be set via the \fB\-\-sysroot\fR option or in
 \fBmake.conf\fR(5) (the command line overrides other settings).  The
-value must either be / or equal to \fBROOT\fR.  When cross-compiling,
-only the latter is valid.
+value must be / (or empty) when \fBROOT\fR is / (or empty), although it
+should only be set to something other than / or \fBROOT\fR when
+cross-bootstrapping a new system from scratch.
 .br
 Defaults to /.
 .TP
