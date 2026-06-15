@@ -220,7 +220,7 @@ and commit.
 	git tag -a -s portage-3.0.30
 
 3. Create the tarball and run the tests:
-     - meson setup -Dmodules-only=true build
+     - meson setup -Dcode-only=true build
      - meson test -C build --verbose
    Use meson setup's --native-file to override the Python version. See
    Python versions listed in tox.ini.
