@@ -2267,7 +2267,9 @@ def spawn(
                 )
                 os.chmod(_emerge_tmpdir, 0o1775)
                 os.chown(_emerge_tmpdir, -1, int(portage_build_gid))
-                portage.process.atexit_register(shutil.rmtree, _emerge_tmpdir)
+                portage.process.atexit_register(
+                    shutil.rmtree, _emerge_tmpdir, ignore_errors=True
+                )
             ebuild_extra_source_fd, ebuild_extra_source_path = tempfile.mkstemp(
                 prefix=f"portage-ebuild-extra-source-{phase}-",
                 dir=_emerge_tmpdir,
