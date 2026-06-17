@@ -245,13 +245,13 @@ Releases
 	- pip install build twine
 	- python -m build # build the sdist and arch/Python-specific wheel
 	- python -m build --wheel -Csetup-args="-Dnative-extensions=false" # build the pure wheel
-	- twine upload dist/<filenames>
+	- twine upload dist/portage-3.0.30.tar.gz dist/portage-3.0.30-py3-none-any.whl
 
 8. Bugzilla wrangling:
 	- Close the bugs blocked by the tracker bug for this release and
           the tracker itself.
 
-	- File a new bug in Portage Development > Core named
+	- File a new bug in Portage Development > Trackers named
 		"[TRACKER] sys-apps/portage-${NEW_VERSION}"
 	  with the 'Tracker' Bugzilla Keyword and the following text:
 	"""
@@ -260,5 +260,7 @@ Releases
 	'Depends on' now means 'we want to fix this before release'
 	'Blocks' means 'fixed in this release'
 	"""
+
+	- Move unclosed dependencies from the old tracker to the new tracker.
 
 9. Done! Congratulations!
