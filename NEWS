@@ -15,6 +15,10 @@ Bug fixes:
   PORTAGE_REPOSITORIES, so values such as "wkd", "keyserver", "false", and
   "false-nowarn" survive reparsing by child processes (bug #977915).
 
+* Ignore sync module declarations for built-in repos.conf options, preventing
+  config_string() from emitting duplicate options in PORTAGE_REPOSITORIES
+  (bug #965876).
+
 portage-3.0.80 (2026-06-17)
 --------------
 
