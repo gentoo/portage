@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+"""Single-pass VDB metadata read. Intended for use with hyperfine."""
+
+import sys
+from os import path as osp
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
+
+import portage
+
+portage._internal_caller = True
+
+vardb = portage.db[portage.settings["EROOT"]]["vartree"].dbapi
+keys = list(vardb._aux_cache_keys)
+for cpv in vardb.cpv_all():
+    vardb._aux_get(cpv, keys)

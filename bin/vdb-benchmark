@@ -1,0 +1,180 @@
+#!/usr/bin/env python
+# Copyright 2025 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+"""Benchmark VDB metadata read performance.
+
+Reads metadata for every installed package N times and reports
+wall-clock time and (optionally) open() syscall counts via strace.
+
+Usage:
+  vdb-benchmark               # 3 iterations, all cache keys
+  vdb-benchmark --iterations 10
+  vdb-benchmark --strace      # count open() syscalls via strace (slow)
+"""
+
+import argparse
+import os as _os
+import subprocess
+import sys
+import time
+
+from os import path as osp
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
+
+import portage
+
+portage._internal_caller = True
+
+from portage.const import VDB_PATH
+from portage.dbapi.vartree import _METADATA_FILE
+
+
+def _count_metadata_files(dbroot):
+    """Return (with_metadata, without_metadata) package counts."""
+    with_meta = 0
+    without_meta = 0
+    try:
+        for cat in _os.listdir(dbroot):
+            catdir = _os.path.join(dbroot, cat)
+            if not _os.path.isdir(catdir):
+                continue
+            for pkg in _os.listdir(catdir):
+                pkgdir = _os.path.join(catdir, pkg)
+                if not _os.path.isdir(pkgdir):
+                    continue
+                if _os.path.exists(_os.path.join(pkgdir, _METADATA_FILE)):
+                    with_meta += 1
+                else:
+                    without_meta += 1
+    except OSError:
+        pass
+    return with_meta, without_meta
+
+
+def _run_read_benchmark(vardb, keys, iterations):
+    """
+    Read all metadata keys for every installed package, repeated
+    `iterations` times. Calls _aux_get() directly to bypass the pickle
+    cache so results reflect actual file-read performance.
+    Returns (cpvs, list-of-per-iteration-durations-in-seconds).
+    """
+    cpvs = vardb.cpv_all()
+    durations = []
+    for _ in range(iterations):
+        t0 = time.perf_counter()
+        for cpv in cpvs:
+            vardb._aux_get(cpv, keys)
+        durations.append(time.perf_counter() - t0)
+    return cpvs, durations
+
+
+def _strace_open_count(script_body):
+    """Run script_body via strace and return the openat() call count."""
+    strace_cmd = [
+        "strace",
+        "-e",
+        "trace=openat",
+        "-c",
+        "-q",
+        sys.executable,
+        "-c",
+        script_body,
+    ]
+    try:
+        result = subprocess.run(
+            strace_cmd,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None
+
+    # strace -c summary goes to stderr; look for the openat line.
+    for line in result.stderr.splitlines():
+        if "openat" in line:
+            parts = line.split()
+            # columns: % time  seconds  usecs/call  calls  errors  syscall
+            for i, p in enumerate(parts):
+                if p == "openat":
+                    try:
+                        return int(parts[i - 2])
+                    except (IndexError, ValueError):
+                        pass
+    return None
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(
+        description="Benchmark VDB metadata read performance.",
+    )
+    parser.add_argument(
+        "--iterations",
+        "-n",
+        type=int,
+        default=3,
+        help="Number of full-VDB read passes (default: 3)",
+    )
+    parser.add_argument(
+        "--strace",
+        action="store_true",
+        default=False,
+        help="Also count open() syscalls via strace (requires strace, slow)",
+    )
+    parser.add_argument(
+        "--root",
+        default=None,
+        help="Override EROOT",
+    )
+    opts = parser.parse_args(argv)
+
+    eroot = opts.root if opts.root else portage.settings["EROOT"]
+    dbroot = _os.path.join(eroot, VDB_PATH)
+    vardb = portage.db[eroot]["vartree"].dbapi
+    keys = list(vardb._aux_cache_keys)
+
+    with_meta, without_meta = _count_metadata_files(dbroot)
+    total = with_meta + without_meta
+    print(
+        f"VDB: {total} packages  "
+        f"({with_meta} with metadata file, {without_meta} without)"
+    )
+    print(f"Reading {len(keys)} keys × {opts.iterations} iterations\n")
+
+    cpvs, durations = _run_read_benchmark(vardb, keys, opts.iterations)
+    npkgs = len(cpvs)
+
+    best = min(durations)
+    avg = sum(durations) / len(durations)
+    print(f"Packages:    {npkgs}")
+    print(f"Best run:    {best:.3f}s  ({best / npkgs * 1000:.2f} ms/pkg)")
+    print(f"Average:     {avg:.3f}s  ({avg / npkgs * 1000:.2f} ms/pkg)")
+
+    if opts.strace:
+        print("\nCounting openat() syscalls via strace (single pass)…")
+        # Build a self-contained script for strace to execute.
+        script = f"""\
+import sys
+sys.path.insert(0, {repr(_os.path.join(_os.path.dirname(_os.path.dirname(_os.path.realpath(__file__))), "lib"))})
+import portage
+portage._internal_caller = True
+vardb = portage.db[{repr(eroot)}]["vartree"].dbapi
+keys = list(vardb._aux_cache_keys)
+for cpv in vardb.cpv_all():
+    vardb._aux_get(cpv, keys)
+"""
+        count = _strace_open_count(script)
+        if count is None:
+            print("strace not available or failed to parse output.")
+        else:
+            print(f"openat() calls: {count}  ({count / npkgs:.1f} per package)")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
