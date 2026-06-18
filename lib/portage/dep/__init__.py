@@ -1860,6 +1860,13 @@ class Atom:
         """
         return self.slot_operator == "=" and self.sub_slot is not None
 
+    def with_cp(self, cp: str) -> "Atom":
+        return Atom(
+            str(self).replace(self.cp, cp, 1),
+            allow_wildcard=True,
+            allow_repo=self.repo is not None,
+        )
+
     @property
     def without_repo(self) -> "Atom":
         if self.repo is None:

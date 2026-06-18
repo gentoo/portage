@@ -5411,9 +5411,7 @@ class depgraph:
                     if not pkg:
                         pprovided_match = False
                         for virt_choice in virtuals.get(atom.cp, []):
-                            expanded_atom = portage.dep.Atom(
-                                str(atom).replace(atom.cp, virt_choice.cp, 1)
-                            )
+                            expanded_atom = atom.with_cp(virt_choice.cp)
                             pprovided = pprovideddict.get(expanded_atom.cp)
                             if pprovided and portage.match_from_list(
                                 expanded_atom, pprovided
@@ -5452,7 +5450,7 @@ class depgraph:
                     if atom.cp != pkg.cp:
                         # For old-style virtuals, we need to repeat the
                         # package.provided check against the selected package.
-                        expanded_atom = str(atom).replace(atom.cp, pkg.cp)
+                        expanded_atom = atom.with_cp(pkg.cp)
                         pprovided = pprovideddict.get(pkg.cp)
                         if pprovided and portage.match_from_list(
                             expanded_atom, pprovided
