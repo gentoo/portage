@@ -1480,8 +1480,10 @@ class Atom:
         return f"Atom({self._string!r})"
 
     def __eq__(self, value: object) -> bool:
-        if isinstance(value, (str, Atom)):
-            return str(self) == str(value)
+        if isinstance(value, Atom):
+            return self._string == value._string
+        if isinstance(value, str):
+            return self._string == value
         return super().__eq__(value)
 
     def __hash__(self) -> int:
@@ -1490,7 +1492,7 @@ class Atom:
     @property
     def category(self) -> str:
         """Return the category part of the atom (e.g., 'dev-libs' from 'dev-libs/foo')."""
-        return self._cp.split("/")[0]
+        return self._cp.partition("/")[0]
 
     @property
     def package_name(self) -> str:
