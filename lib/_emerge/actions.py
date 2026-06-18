@@ -1183,17 +1183,11 @@ def _calc_depclean(
                 # visible in the unevaluated form of the atom. In this
                 # case, we must display the unevaluated atom, so that
                 # the user can see the conditional USE deps that would
-                # otherwise be invisible. Use Atom(str(atom)) to
-                # test for a package where this case would matter. This
-                # is not necessarily the same as atom.without_use,
-                # since Atom(str(atom)) may still contain some
-                # USE dependencies that remain after evaluation of
+                # otherwise be invisible. This is not necessarily the same as
+                # atom.without_use, since the evaluated atom may still contain
+                # some USE dependencies that remain after evaluation of
                 # conditionals.
-                if (
-                    atom.package
-                    and atom != atom.unevaluated_atom
-                    and vardb.match(Atom(str(atom)))
-                ):
+                if atom.package and atom != atom.unevaluated_atom and vardb.match(atom):
                     msg.append(f"  {atom.unevaluated_atom} ({atom}) pulled in by:")
                 else:
                     msg.append(f"  {atom} pulled in by:")
