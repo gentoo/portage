@@ -47,6 +47,7 @@ from portage.versions import (
     _unknown_repo,
     _vr,
     catpkgsplit,
+    cpv_getversion,
     vercmp,
     ververify,
 )
@@ -1749,14 +1750,13 @@ class Atom:
         else:
             raise AssertionError(_("required group not found in atom: '%s'") % self)
         self._cp = cp
-        try:
-            cpv_obj = _pkg_str(cpv)
-            self._cpv = cpv_obj
-            self._version = cpv_obj.version
-        except InvalidData:
-            # plain cp, wildcard, or something
-            self._cpv = cpv
+        self._cpv = cpv
+        if cpv == cp:
+            # unversioned: simple cp or extended-syntax wildcard
             self._version = extended_version
+        else:
+            # versioned: strip "cp-" prefix to get the version string
+            self._version = cpv[len(cp) + 1 :]
         self._repo = repo
         if slot is None:
             self._slot = None
@@ -2575,7 +2575,9 @@ def best_match_to_list(mypkg: Union[str, Atom], mylist: list) -> Optional[Atom]:
                 cpv_list = [bestm.cpv, mypkg_cpv, x.cpv]
 
                 def cmp_cpv(cpv1, cpv2):
-                    return vercmp(cpv1.version, cpv2.version)
+                    v1 = getattr(cpv1, "version", None) or cpv_getversion(str(cpv1))
+                    v2 = getattr(cpv2, "version", None) or cpv_getversion(str(cpv2))
+                    return vercmp(v1, v2)
 
                 cpv_list.sort(key=cmp_sort_key(cmp_cpv))
                 if cpv_list[0] is mypkg_cpv or cpv_list[-1] is mypkg_cpv:
