@@ -35,6 +35,7 @@ from portage.const import (
     USER_CONFIG_PATH,
 )
 from portage.dbapi.bintree import binarytree
+from portage.dbapi.vartree import _in_metadata_file, _write_metadata_file
 from portage.dep import Atom, _repo_separator
 from portage.exception import InvalidBinaryPackageFormat
 from portage.gpg import GPG
@@ -513,9 +514,20 @@ class ResolverPlayground:
                 )
 
             metadata["repository"] = repo
+            metadata_kv = {}
             for k, v in metadata.items():
+                # Write the individual file for every field, the way a real
+                # merge does. The metadata file is a read optimization layered
+                # on top of them, not a replacement: both portage consumers
+                # (e.g. quickpkg, xpak binpkgs) and non-portage consumers
+                # (e.g. portage-utils, pkgcore) still read the per-field files
+                # directly.
                 with open(os.path.join(vdb_pkg_dir, k), "w") as f:
                     f.write(f"{v}\n")
+                if _in_metadata_file(k):
+                    metadata_kv[k] = str(v)
+            if metadata_kv:
+                _write_metadata_file(vdb_pkg_dir, metadata_kv)
 
             ebuild_path = os.path.join(vdb_pkg_dir, a.cpv.split("/")[1] + ".ebuild")
             with open(ebuild_path, "w") as f:

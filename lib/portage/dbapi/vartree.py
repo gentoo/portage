@@ -71,6 +71,110 @@ from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 from ._SyncfsProcess import SyncfsProcess
 from ._VdbMetadataDelta import VdbMetadataDelta
 
+_METADATA_FILE = "metadata"
+# The exact set of fields the consolidated metadata file carries, and the set
+# vardbapi caches. Membership is bounded by what _aux_get() may serve as "" on
+# a missing individual file: a field outside this set and outside
+# _aux_cache_keys_re falls back to an environment.bz2 search instead (see
+# bug 395463), which the file must not silently replace with "". Keeping the
+# two sets identical is what makes that bound hold by construction.
+#
+# Line-oriented fields (CONTENTS, NEEDED, NEEDED.ELF.2) are absent, which the
+# one-line-per-field format requires anyway.
+_METADATA_FILE_FIELDS = frozenset(
+    (
+        "BDEPEND",
+        "BUILD_ID",
+        "BUILD_TIME",
+        "CHOST",
+        "COUNTER",
+        "DEFINED_PHASES",
+        "DEPEND",
+        "DESCRIPTION",
+        "EAPI",
+        "HOMEPAGE",
+        "IDEPEND",
+        "IUSE",
+        "KEYWORDS",
+        "LICENSE",
+        "PDEPEND",
+        "PROPERTIES",
+        "PROVIDES",
+        "RDEPEND",
+        "REQUIRES",
+        "RESTRICT",
+        "SLOT",
+        "USE",
+        "repository",
+    )
+)
+
+
+def _in_metadata_file(fname):
+    """True if fname is a field the consolidated metadata file carries."""
+    return fname in _METADATA_FILE_FIELDS
+
+
+def _read_metadata_file(path):
+    """Parse KEY=value\\n metadata file. Returns dict[str, str]."""
+    from portage import _encodings
+
+    result = {}
+    with open(path, encoding=_encodings["repo.content"], errors="replace") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if "=" in line:
+                k, v = line.split("=", 1)
+                result[k] = v
+    return result
+
+
+def _write_metadata_file(dbdir, data):
+    """Atomically write metadata dict to dbdir/metadata.
+
+    The one-line-per-field format cannot represent an embedded newline, so
+    values are whitespace-normalized here (the same normalization _aux_get
+    applies to single-line fields). Doing it here stops a caller that passes a
+    raw multi-line value from silently truncating the file.
+    """
+    from portage import _encodings
+    from portage.util import write_atomic
+
+    content = "".join(f"{k}={' '.join(v.split())}\n" for k, v in sorted(data.items()))
+    write_atomic(
+        os.path.join(dbdir, _METADATA_FILE),
+        content,
+        mode="w",
+        encoding=_encodings["repo.content"],
+    )
+
+
+def _consolidate_to_metadata_file(dbdir):
+    """Build the metadata file from individual per-field VDB files.
+
+    Reads every file in dbdir that _in_metadata_file() accepts and writes them
+    to the metadata file. Individual files are kept for backward compatibility
+    with tools that read the VDB directly.
+    """
+    from portage import _encodings
+
+    data = {}
+    for fname in os.listdir(dbdir):
+        if not _in_metadata_file(fname):
+            continue
+        fpath = os.path.join(dbdir, fname)
+        try:
+            with open(
+                fpath, encoding=_encodings["repo.content"], errors="replace"
+            ) as f:
+                # Normalize whitespace to match what _aux_get previously did
+                # for single-line fields via " ".join(myd.split()).
+                data[fname] = " ".join(f.read().split())
+        except OSError:
+            pass
+    if data:
+        _write_metadata_file(dbdir, data)
+
 
 class vardbapi(dbapi):
     _excluded_dirs = ["CVS", "lost+found"]
@@ -151,31 +255,10 @@ class vardbapi(dbapi):
         if vartree is None:
             vartree = portage.db[settings["EROOT"]]["vartree"]
         self.vartree = vartree
-        self._aux_cache_keys = {
-            "BDEPEND",
-            "BUILD_TIME",
-            "CHOST",
-            "COUNTER",
-            "DEPEND",
-            "DESCRIPTION",
-            "EAPI",
-            "HOMEPAGE",
-            "BUILD_ID",
-            "IDEPEND",
-            "IUSE",
-            "KEYWORDS",
-            "LICENSE",
-            "PDEPEND",
-            "PROPERTIES",
-            "RDEPEND",
-            "repository",
-            "RESTRICT",
-            "SLOT",
-            "USE",
-            "DEFINED_PHASES",
-            "PROVIDES",
-            "REQUIRES",
-        }
+        # Same set as the consolidated metadata file carries; see
+        # _METADATA_FILE_FIELDS for why the two must not drift apart. Copied
+        # because callers such as FakeVartree replace it per instance.
+        self._aux_cache_keys = set(_METADATA_FILE_FIELDS)
         self._aux_cache_obj = None
         self._aux_cache_filename = os.path.join(
             self._eroot, CACHE_PATH, "vdb_metadata.pickle"
@@ -847,12 +930,35 @@ class vardbapi(dbapi):
                     raise
         if not stat.S_ISDIR(st.st_mode):
             raise KeyError(mycpv)
+
+        metadata_data = None
+        try:
+            metadata_data = _read_metadata_file(os.path.join(mydir, _METADATA_FILE))
+        except OSError:
+            pass
+
         results = {}
         env_keys = []
         for x in wants:
             if x == "_mtime_":
                 results[x] = st[stat.ST_MTIME]
                 continue
+
+            # Only fields actually present in the metadata file may be served
+            # from it. A field missing there is not known to be empty. The file
+            # is written at merge time and is not updated by later writes to the
+            # individual files, and one written by an older portage may predate
+            # the field entirely. In both cases the individual file holds the
+            # real value, so fall through to the per-field read and let those
+            # keep resolving exactly as they do without a metadata file.
+            if (
+                metadata_data is not None
+                and x in metadata_data
+                and _in_metadata_file(x)
+            ):
+                results[x] = metadata_data[x]
+                continue
+
             try:
                 with open(
                     os.path.join(mydir, x),
@@ -975,6 +1081,15 @@ class vardbapi(dbapi):
             else:
                 try:
                     os.unlink(os.path.join(self.getpath(cpv), k))
+                except OSError:
+                    pass
+                # Remove from metadata file if present.
+                metadata_path = os.path.join(self.getpath(cpv), _METADATA_FILE)
+                try:
+                    existing = _read_metadata_file(metadata_path)
+                    if k in existing:
+                        del existing[k]
+                        _write_metadata_file(self.getpath(cpv), existing)
                 except OSError:
                     pass
         self._bump_mtime(cpv)
@@ -4923,6 +5038,9 @@ class dblink:
         ) as f:
             f.write(f"{counter}")
 
+        # Consolidate all per-field metadata files into a single metadata file.
+        _consolidate_to_metadata_file(self.dbtmpdir)
+
         self.updateprotect()
 
         # if we have a file containing previously-merged config file md5sums, grab it.
@@ -6082,6 +6200,16 @@ class dblink:
             kwargs["mode"] = "w"
             kwargs["encoding"] = "utf-8"
         write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
+
+        # Keep the metadata file in sync if it exists.
+        if isinstance(data, str) and _in_metadata_file(fname):
+            metadata_path = os.path.join(self.dbdir, _METADATA_FILE)
+            try:
+                existing = _read_metadata_file(metadata_path)
+            except OSError:
+                return
+            existing[fname] = " ".join(data.split())
+            _write_metadata_file(self.dbdir, existing)
 
     def getelements(self, ename):
         if not os.path.exists(self.dbdir + "/" + ename):
