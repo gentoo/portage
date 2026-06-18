@@ -240,10 +240,10 @@ class VdbConsolidateTestCase(TestCase):
 
     def test_uncached_field_excluded(self):
         # An all-caps VDB field vardbapi does not cache. It stays in its own
-        # file, and consolidation must not claim it.
+        # file, and consolidation must not claim or remove it.
         self._write_field("EAPI", "8")
         self._write_field("FEATURES", "buildpkg parallel-install")
-        _consolidate_to_metadata_file(self._tmpdir)
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
         path = os.path.join(self._tmpdir, _METADATA_FILE)
         result = _read_metadata_file(path)
         self.assertNotIn("FEATURES", result)
@@ -273,9 +273,71 @@ class VdbConsolidateTestCase(TestCase):
         _consolidate_to_metadata_file(self._tmpdir)
         self.assertTrue(os.path.exists(os.path.join(self._tmpdir, "EAPI")))
 
+    def test_delete_individual_files(self):
+        self._write_field("EAPI", "8")
+        self._write_field("SLOT", "0")
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
+        self.assertFalse(os.path.exists(os.path.join(self._tmpdir, "EAPI")))
+        self.assertFalse(os.path.exists(os.path.join(self._tmpdir, "SLOT")))
+        # metadata file itself must exist
+        self.assertTrue(os.path.exists(os.path.join(self._tmpdir, _METADATA_FILE)))
+
+    def test_delete_individual_leaves_readable_file(self):
+        # The unlinks change the directory, so the file has to be stamped
+        # after them. Stamping first would leave the package with neither its
+        # individual files nor a metadata file the reader accepts.
+        self._write_field("EAPI", "8")
+        self._write_field("SLOT", "0")
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
+        result = _read_metadata_file(os.path.join(self._tmpdir, _METADATA_FILE))
+        self.assertIsNotNone(result)
+        self.assertEqual(result["EAPI"], "8")
+        self.assertEqual(result["SLOT"], "0")
+
+    def test_delete_individual_preserves_contents(self):
+        self._write_field("EAPI", "8")
+        contents = "obj /usr/bin/foo abc123 1234567890\n"
+        with open(os.path.join(self._tmpdir, "CONTENTS"), "w") as f:
+            f.write(contents)
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
+        # CONTENTS not in metadata file, not deleted
+        self.assertTrue(os.path.exists(os.path.join(self._tmpdir, "CONTENTS")))
+
     def test_empty_dir_no_metadata_file(self):
         _consolidate_to_metadata_file(self._tmpdir)
         self.assertFalse(os.path.exists(os.path.join(self._tmpdir, _METADATA_FILE)))
+
+    def test_skips_when_file_is_already_current(self):
+        # A file that still validates describes dbdir exactly, so a second
+        # call must not rewrite it. write_atomic() renames a new file into
+        # place, so a rewrite would change the inode.
+        self._write_field("EAPI", "8")
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        _consolidate_to_metadata_file(self._tmpdir)
+        ino = os.stat(path).st_ino
+        _consolidate_to_metadata_file(self._tmpdir)
+        self.assertEqual(os.stat(path).st_ino, ino)
+
+    def test_rebuilds_when_file_is_stale(self):
+        self._write_field("EAPI", "8")
+        _consolidate_to_metadata_file(self._tmpdir)
+        # A changed directory invalidates the file, so it is rebuilt rather
+        # than skipped, and picks up the field added along the way.
+        self._write_field("SLOT", "0/0")
+        _consolidate_to_metadata_file(self._tmpdir)
+        result = _read_metadata_file(os.path.join(self._tmpdir, _METADATA_FILE))
+        self.assertEqual(result["SLOT"], "0/0")
+
+    def test_delete_individual_not_skipped_by_current_file(self):
+        # The plain call leaves the individual files in place, so the
+        # delete_individual call after it still has work despite finding a
+        # metadata file that validates.
+        self._write_field("EAPI", "8")
+        _consolidate_to_metadata_file(self._tmpdir)
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
+        self.assertFalse(os.path.exists(os.path.join(self._tmpdir, "EAPI")))
+        result = _read_metadata_file(os.path.join(self._tmpdir, _METADATA_FILE))
+        self.assertEqual(result["EAPI"], "8")
 
 
 class VdbMetadataAuxGetTestCase(TestCase):

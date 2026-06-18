@@ -191,7 +191,27 @@ def _read_metadata_file(path, dir_st=None):
     return result
 
 
-def _write_metadata_file(dbdir, data):
+def _stamp_metadata_file(dbdir):
+    """Append the "#dir_mtime=" line the reader validates against.
+
+    Kept separate from writing the body because it has to happen after the
+    last change to dbdir's contents: write_atomic() renames into place, and
+    that rename bumps dbdir's mtime, so a value recorded before it would never
+    match. Appending does not create or remove a directory entry, so it leaves
+    dbdir's mtime alone and the recorded value stays true.
+
+    A caller that changes dbdir further between the body write and this call
+    must call it afterwards, or it will stamp an mtime its own later change
+    invalidates.
+    """
+    from portage import _encodings
+
+    path = os.path.join(dbdir, _METADATA_FILE)
+    with open(path, mode="a", encoding=_encodings["repo.content"]) as f:
+        f.write(f"{_METADATA_DIR_MTIME_PREFIX}{os.stat(dbdir).st_mtime_ns}\n")
+
+
+def _write_metadata_file(dbdir, data, stamp=True):
     """Atomically write metadata dict to dbdir/metadata.
 
     The one-line-per-field format cannot represent an embedded newline, so
@@ -199,11 +219,10 @@ def _write_metadata_file(dbdir, data):
     applies to single-line fields). Doing it here stops a caller that passes a
     raw multi-line value from silently truncating the file.
 
-    The "#dir_mtime=" line the reader validates against is appended after the
-    atomic write rather than included in it: write_atomic() renames into
-    place, and that rename bumps dbdir's mtime, so a value recorded before it
-    would never match. Appending does not create or remove a directory entry,
-    so it leaves dbdir's mtime alone and the recorded value stays true.
+    Pass stamp=False when the caller still has to change dbdir before the file
+    can be stamped; it must then call _stamp_metadata_file() itself. Until it
+    does, the file lacks "#dir_mtime=" and the reader rejects it, so an
+    interrupted sequence falls back rather than serving a stale snapshot.
     """
     from portage import _encodings
     from portage.util import write_atomic
@@ -212,18 +231,38 @@ def _write_metadata_file(dbdir, data):
     content = f"{_METADATA_FORMAT_PREFIX}{_METADATA_FILE_FORMAT_VERSION}\n"
     content += "".join(f"{k}={' '.join(v.split())}\n" for k, v in sorted(data.items()))
     write_atomic(path, content, mode="w", encoding=_encodings["repo.content"])
-    with open(path, mode="a", encoding=_encodings["repo.content"]) as f:
-        f.write(f"{_METADATA_DIR_MTIME_PREFIX}{os.stat(dbdir).st_mtime_ns}\n")
+    if stamp:
+        _stamp_metadata_file(dbdir)
 
 
-def _consolidate_to_metadata_file(dbdir):
+def _consolidate_to_metadata_file(dbdir, delete_individual=False):
     """Build the metadata file from individual per-field VDB files.
 
     Reads every file in dbdir that _in_metadata_file() accepts and writes them
-    to the metadata file. Individual files are kept for backward compatibility
-    with tools that read the VDB directly.
+    to the metadata file. By default individual files are kept for backward
+    compatibility with tools that read the VDB directly. Pass
+    delete_individual=True to remove them after writing.
+
+    The deletions change dbdir, so the metadata file is stamped after them
+    rather than as part of writing it; stamping first would record an mtime
+    the unlinks immediately invalidate, leaving the package with neither its
+    individual files nor a usable metadata file. The body is written before
+    the unlinks so no field is ever absent from disk.
+
+    A metadata file that still validates is an accurate snapshot of dbdir, so
+    rewriting it would produce the same content and there is nothing to do.
+    That shortcut does not apply to delete_individual, which has work left
+    whenever the per-field files are still present.
     """
     from portage import _encodings
+
+    if not delete_individual:
+        try:
+            current = _read_metadata_file(os.path.join(dbdir, _METADATA_FILE))
+        except OSError:
+            current = None
+        if current is not None:
+            return
 
     data = {}
     for fname in os.listdir(dbdir):
@@ -240,7 +279,14 @@ def _consolidate_to_metadata_file(dbdir):
         except OSError:
             pass
     if data:
-        _write_metadata_file(dbdir, data)
+        _write_metadata_file(dbdir, data, stamp=not delete_individual)
+        if delete_individual:
+            for fname in data:
+                try:
+                    os.unlink(os.path.join(dbdir, fname))
+                except OSError:
+                    pass
+            _stamp_metadata_file(dbdir)
 
 
 class vardbapi(dbapi):
