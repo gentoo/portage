@@ -10,7 +10,7 @@ from portage.dep import check_required_use
 from portage.output import colorize
 from portage._sets.base import InternalPackageSet
 from portage.util import writemsg
-from portage.versions import cpv_getversion, vercmp
+from portage.versions import vercmp
 
 
 class slot_conflict_handler:
@@ -410,8 +410,8 @@ class slot_conflict_handler:
                             for ppkg, atom, other_pkg in parents:
                                 if atom.cp in best_matches:
                                     cmp = vercmp(
-                                        cpv_getversion(atom.cpv),
-                                        cpv_getversion(best_matches[atom.cp][1].cpv),
+                                        atom.version,
+                                        best_matches[atom.cp][1].version,
                                     )
 
                                     if (
@@ -519,9 +519,7 @@ class slot_conflict_handler:
                         colored_idx = set()
                         if version:
                             op = atom.operator
-                            ver = None
-                            if atom.cp != atom.cpv:
-                                ver = cpv_getversion(atom.cpv)
+                            ver = atom.version
                             slot = atom.slot
                             sub_slot = atom.sub_slot
                             slot_operator = atom.slot_operator

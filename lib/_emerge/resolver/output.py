@@ -28,7 +28,7 @@ from portage.output import (
 bad = create_color_func("BAD")
 from portage._sets.base import InternalPackageSet
 from portage.util import writemsg_stdout
-from portage.versions import best, cpv_getversion
+from portage.versions import best
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
@@ -982,9 +982,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
 
     if highlight_version:
         op = atom.operator
-        ver = None
-        if atom.cp != atom.cpv:
-            ver = cpv_getversion(atom.cpv)
+        ver = atom.version
 
         if op == "=*":
             op = "="

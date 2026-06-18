@@ -1476,6 +1476,9 @@ class Atom:
     def __str__(self) -> str:
         return self._string
 
+    def __repr__(self) -> str:
+        return f"Atom({self._string!r})"
+
     def __eq__(self, value: object) -> bool:
         if isinstance(value, (str, Atom)):
             return str(self) == str(value)
@@ -1503,6 +1506,11 @@ class Atom:
     def cpv(self) -> str:
         """Category/Package-Version string."""
         return self._cpv
+
+    @property
+    def is_versioned(self) -> bool:
+        """True if atom specifies a version."""
+        return self._version is not None
 
     @property
     def version(self) -> Optional[str]:
