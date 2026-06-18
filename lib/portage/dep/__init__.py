@@ -2159,7 +2159,15 @@ def get_operator(mydep: Union[str, Atom]) -> Optional[str]:
     @param mydep: The dep string to check
     @return: The operator. One of:
             '~', '=', '>', '<', '=*', '>=', or '<='
+
+    .. deprecated::
+        Use ``Atom.operator`` directly.
     """
+    warnings.warn(
+        "get_operator() is deprecated, use Atom.operator instead",
+        UserWarning,
+        stacklevel=2,
+    )
     if not isinstance(mydep, Atom):
         mydep = Atom(mydep)
 
@@ -2176,7 +2184,15 @@ def dep_getcpv(mydep: Union[str, Atom]) -> str:
 
     @param mydep: The depstring
     @return: The depstring with the operator removed
+
+    .. deprecated::
+        Use ``Atom.cpv`` directly.
     """
+    warnings.warn(
+        "dep_getcpv() is deprecated, use Atom.cpv instead",
+        UserWarning,
+        stacklevel=2,
+    )
     if not isinstance(mydep, Atom):
         mydep = Atom(mydep)
 
@@ -2264,7 +2280,15 @@ def dep_getusedeps(depend: Union[str, Atom]) -> tuple[str, ...]:
     Example usage:
             >>> dep_getusedeps('app-misc/test:3[foo,-bar]')
             ('foo', '-bar')
+
+    .. deprecated::
+        Use ``Atom.use.tokens`` directly.
     """
+    warnings.warn(
+        "dep_getusedeps() is deprecated, use Atom.use.tokens instead",
+        UserWarning,
+        stacklevel=2,
+    )
     depend_str = str(depend)
     use_list = []
     open_bracket = depend_str.find("[")
