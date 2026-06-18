@@ -56,7 +56,7 @@ def _expand_new_virtuals(
     # example, atoms that appear identical may behave differently
     # in USE matching, depending on their unevaluated form. Also,
     # specially generated virtual atoms may appear identical while
-    # having different _orig_atom attributes.
+    # having different orig_atom attributes.
     atom_graph = mytrees.get("atom_graph")
     parent = mytrees.get("parent")
     virt_parent = mytrees.get("virt_parent")
@@ -192,10 +192,11 @@ def _expand_new_virtuals(
 
         a = []
         for pkg in pkgs:
-            virt_atom = "=" + pkg.cpv
+            virt_atom_str = "=" + pkg.cpv
             if x.unevaluated_atom.use:
-                virt_atom += str(x.unevaluated_atom.use)
-                virt_atom = Atom(virt_atom)
+                virt_atom_str += str(x.unevaluated_atom.use)
+                # orig_atom is propagated through evaluate_conditionals
+                virt_atom = Atom(virt_atom_str, orig_atom=x)
                 if parent is None:
                     if myuse is None:
                         virt_atom = virt_atom.evaluate_conditionals(
@@ -206,12 +207,10 @@ def _expand_new_virtuals(
                 else:
                     virt_atom = virt_atom.evaluate_conditionals(pkg_use_enabled(parent))
             else:
-                virt_atom = Atom(virt_atom)
-
-            # Allow the depgraph to map this atom back to the
-            # original, in order to avoid distortion in places
-            # like display or conflict resolution code.
-            virt_atom.__setattr__("_orig_atom", x)
+                # Allow the depgraph to map this atom back to the
+                # original, in order to avoid distortion in places
+                # like display or conflict resolution code.
+                virt_atom = Atom(virt_atom_str, orig_atom=x)
 
             # According to GLEP 37, RDEPEND is the only dependency
             # type that is valid for new-style virtuals. Repoman
@@ -255,7 +254,7 @@ def _expand_new_virtuals(
 
             # Replace the original atom "x" with "virt_atom" which refers
             # to the specific version of the virtual whose deps we're
-            # expanding. The virt_atom._orig_atom attribute is used
+            # expanding. The virt_atom.orig_atom attribute is used
             # by depgraph to map virt_atom back to the original atom.
             # We specifically exclude the original atom "x" from the
             # the expanded output here, since otherwise it could trigger
