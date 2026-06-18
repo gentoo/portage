@@ -108,6 +108,8 @@ _METADATA_FILE_FIELDS = frozenset(
         "repository",
     )
 )
+_METADATA_FILE_FORMAT_VERSION = 1
+_METADATA_FORMAT_PREFIX = "#format="
 
 
 def _in_metadata_file(fname):
@@ -116,16 +118,49 @@ def _in_metadata_file(fname):
 
 
 def _read_metadata_file(path):
-    """Parse KEY=value\\n metadata file. Returns dict[str, str]."""
+    """Parse KEY=value\\n metadata file.
+
+    Returns dict[str, str], or None if the file is not a snapshot this
+    portage version can use.
+
+    A returned dict is treated as a *complete* snapshot: every field matching
+    _METADATA_FIELD_RE that existed when the file was written is present, so a
+    field missing from it is served as empty rather than falling back to a
+    per-field read.  That holds only while reader and writer agree on which
+    fields get written, so a file whose "#format=" header is absent or does
+    not match _METADATA_FILE_FORMAT_VERSION is rejected, and the caller falls
+    back to the individual files.
+
+    The field set is therefore part of the format: bump
+    _METADATA_FILE_FORMAT_VERSION on any change to _METADATA_FILE_FIELDS, in
+    either direction. Adding a field would otherwise make an older file
+    lacking it read as saying it is empty, and dropping one would do the same
+    to an older portage reading a newer file. A version this portage does not
+    know is rejected, so both skews fall back to the individual files rather
+    than serving a wrong answer.
+
+    Other lines beginning with '#' are ignored.
+    """
     from portage import _encodings
 
     result = {}
+    version = None
     with open(path, encoding=_encodings["repo.content"], errors="replace") as f:
         for line in f:
             line = line.rstrip("\n")
-            if "=" in line:
-                k, v = line.split("=", 1)
-                result[k] = v
+            if line.startswith("#"):
+                if line.startswith(_METADATA_FORMAT_PREFIX):
+                    try:
+                        version = int(line[len(_METADATA_FORMAT_PREFIX) :])
+                    except ValueError:
+                        return None
+                continue
+            if "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            result[k] = v
+    if version != _METADATA_FILE_FORMAT_VERSION:
+        return None
     return result
 
 
@@ -140,7 +175,8 @@ def _write_metadata_file(dbdir, data):
     from portage import _encodings
     from portage.util import write_atomic
 
-    content = "".join(f"{k}={' '.join(v.split())}\n" for k, v in sorted(data.items()))
+    content = f"#format={_METADATA_FILE_FORMAT_VERSION}\n"
+    content += "".join(f"{k}={' '.join(v.split())}\n" for k, v in sorted(data.items()))
     write_atomic(
         os.path.join(dbdir, _METADATA_FILE),
         content,
@@ -944,19 +980,13 @@ class vardbapi(dbapi):
                 results[x] = st[stat.ST_MTIME]
                 continue
 
-            # Only fields actually present in the metadata file may be served
-            # from it. A field missing there is not known to be empty. The file
-            # is written at merge time and is not updated by later writes to the
-            # individual files, and one written by an older portage may predate
-            # the field entirely. In both cases the individual file holds the
-            # real value, so fall through to the per-field read and let those
-            # keep resolving exactly as they do without a metadata file.
-            if (
-                metadata_data is not None
-                and x in metadata_data
-                and _in_metadata_file(x)
-            ):
-                results[x] = metadata_data[x]
+            # _read_metadata_file only returns a dict for a file whose format
+            # version matches, and such a file is a complete snapshot of the
+            # matching fields. A field missing from it therefore had no
+            # individual file either, so serve it as empty instead of paying
+            # an open() that would just fail.
+            if metadata_data is not None and _in_metadata_file(x):
+                results[x] = metadata_data.get(x, "")
                 continue
 
             try:
@@ -1087,7 +1117,12 @@ class vardbapi(dbapi):
                 metadata_path = os.path.join(self.getpath(cpv), _METADATA_FILE)
                 try:
                     existing = _read_metadata_file(metadata_path)
-                    if k in existing:
+                    if existing is None:
+                        # Rejected: rebuild the whole snapshot rather than
+                        # patching one written under a field set we no longer
+                        # agree on.
+                        _consolidate_to_metadata_file(self.getpath(cpv))
+                    elif k in existing:
                         del existing[k]
                         _write_metadata_file(self.getpath(cpv), existing)
                 except OSError:
@@ -6207,6 +6242,12 @@ class dblink:
             try:
                 existing = _read_metadata_file(metadata_path)
             except OSError:
+                return
+            if existing is None:
+                # Stale format: the individual file above is already current,
+                # so rebuild the snapshot instead of patching one written
+                # under a field set we no longer agree on.
+                _consolidate_to_metadata_file(self.dbdir)
                 return
             existing[fname] = " ".join(data.split())
             _write_metadata_file(self.dbdir, existing)

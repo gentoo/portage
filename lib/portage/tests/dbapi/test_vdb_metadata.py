@@ -8,6 +8,7 @@ from portage.tests import TestCase
 from portage.dbapi.vartree import (
     _METADATA_FILE,
     _METADATA_FILE_FIELDS,
+    _METADATA_FILE_FORMAT_VERSION,
     _consolidate_to_metadata_file,
     _in_metadata_file,
     _read_metadata_file,
@@ -64,6 +65,55 @@ class VdbMetadataReadWriteTestCase(TestCase):
         self.assertTrue(os.path.exists(path))
         result = _read_metadata_file(path)
         self.assertEqual(result, data)
+
+    def _write_raw(self, content):
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        with open(path, "w") as f:
+            f.write(content)
+        return path
+
+    def test_rejects_missing_format_header(self):
+        # A file written before format versioning existed cannot be trusted as
+        # a complete snapshot, so it is rejected instead of read as complete.
+        path = self._write_raw("EAPI=8\nSLOT=0\n")
+        self.assertIsNone(_read_metadata_file(path))
+
+    def test_rejects_other_format_version(self):
+        path = self._write_raw(f"#format={_METADATA_FILE_FORMAT_VERSION + 1}\nEAPI=8\n")
+        self.assertIsNone(_read_metadata_file(path))
+
+    def test_rejects_non_integer_format_version(self):
+        path = self._write_raw("#format=bogus\nEAPI=8\n")
+        self.assertIsNone(_read_metadata_file(path))
+
+    def test_other_comments_ignored(self):
+        path = self._write_raw(
+            f"#format={_METADATA_FILE_FORMAT_VERSION}\n# a comment\nEAPI=8\n"
+        )
+        self.assertEqual(_read_metadata_file(path), {"EAPI": "8"})
+
+    def test_format_version_header_written(self):
+        _write_metadata_file(self._tmpdir, {"EAPI": "8"})
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        with open(path) as f:
+            first_line = f.readline().rstrip("\n")
+        self.assertEqual(first_line, f"#format={_METADATA_FILE_FORMAT_VERSION}")
+
+    def test_format_version_header_ignored_on_read(self):
+        _write_metadata_file(self._tmpdir, {"EAPI": "8", "SLOT": "0"})
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        result = _read_metadata_file(path)
+        self.assertNotIn(f"#format={_METADATA_FILE_FORMAT_VERSION}", result)
+        self.assertEqual(result["EAPI"], "8")
+
+    def test_comment_lines_ignored(self):
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        with open(path, "w") as f:
+            f.write("#format=1\n")
+            f.write("# another comment\n")
+            f.write("EAPI=8\n")
+        result = _read_metadata_file(path)
+        self.assertEqual(result, {"EAPI": "8"})
 
     def test_keys_sorted_in_file(self):
         data = {"SLOT": "0", "EAPI": "8", "USE": "foo"}
