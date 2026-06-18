@@ -1561,7 +1561,29 @@ class Atom:
     @property
     def without_use(self) -> "Atom":
         """Atom without USE dependencies."""
-        return self._without_use
+        try:
+            return self._without_use
+        except AttributeError:
+            pass
+        if self._use is None:
+            if (
+                self._unevaluated_atom is not self
+                and self._unevaluated_atom.use is not None
+                # unevaluated_atom.use is used for IUSE checks when matching
+                # packages, so it must not propagate to without_use
+            ):
+                result = Atom(
+                    str(self),
+                    allow_wildcard=self._extended_syntax,
+                    allow_repo=self.repo is not None,
+                )
+            else:
+                result = self
+        else:
+            s = str(self)
+            result = Atom(s[: s.index("[")], allow_repo=self.repo is not None)
+        self._without_use = result
+        return result
 
     @property
     def unevaluated_atom(self) -> "Atom":
@@ -1770,25 +1792,10 @@ class Atom:
                 use = _use
             else:
                 use = _use_dep(use_str[1:-1].split(","), eapi_attrs)
-            without_use = Atom(
-                blocker_prefix + m.group("without_use"), allow_repo=allow_repo
-            )
         else:
             use = None
-            if unevaluated_atom is not None and unevaluated_atom.use is not None:
-                # unevaluated_atom.use is used for IUSE checks when matching
-                # packages, so it must not propagate to without_use
-                without_use = Atom(
-                    str(self),
-                    allow_wildcard=allow_wildcard,
-                    allow_repo=allow_repo,
-                    eapi=eapi,
-                )
-            else:
-                without_use = self
 
         self._use = use
-        self._without_use = without_use
 
         if unevaluated_atom:
             self._unevaluated_atom = unevaluated_atom
