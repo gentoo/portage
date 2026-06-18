@@ -1469,7 +1469,7 @@ class Atom:
         "_use",
         "_without_use",
         "_unevaluated_atom",
-        "_orig_atom",  # currently used by depgraph.py
+        "_orig_atom",
     )
 
     def __str__(self) -> str:
@@ -1568,6 +1568,11 @@ class Atom:
         """The original unevaluated atom."""
         return self._unevaluated_atom
 
+    @property
+    def orig_atom(self) -> Optional["Atom"]:
+        """For virtual-expanded atoms, the original pre-expansion atom."""
+        return self._orig_atom
+
     # Type discrimination properties
     @property
     def package(self) -> bool:
@@ -1601,6 +1606,7 @@ class Atom:
         eapi=None,
         is_valid_flag=None,
         allow_build_id=None,
+        orig_atom=None,
     ):
         if isinstance(s, Atom):
             # This is an efficiency assertion, to ensure that the Atom
@@ -1789,6 +1795,8 @@ class Atom:
         else:
             self._unevaluated_atom = self
 
+        self._orig_atom = orig_atom
+
         if eapi is not None:
             if not isinstance(eapi, str):
                 raise TypeError(
@@ -1950,6 +1958,7 @@ class Atom:
             unevaluated_atom=self,
             allow_repo=(self.repo is not None),
             _use=use_dep,
+            orig_atom=self._orig_atom,
         )
 
     def violated_conditionals(
@@ -1985,6 +1994,7 @@ class Atom:
             unevaluated_atom=self,
             allow_repo=(self.repo is not None),
             _use=use_dep,
+            orig_atom=self._orig_atom,
         )
 
     def _eval_qa_conditionals(self, use_mask, use_force):
@@ -2006,6 +2016,7 @@ class Atom:
             unevaluated_atom=self,
             allow_repo=(self.repo is not None),
             _use=use_dep,
+            orig_atom=self._orig_atom,
         )
 
     def __copy__(self):

@@ -2311,12 +2311,12 @@ class depgraph:
         for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
             if isinstance(parent, Package):
                 if parent in built_slot_operator_parents:
-                    if hasattr(atom, "_orig_atom"):
+                    if getattr(atom, "orig_atom", False):
                         # If atom is the result of virtual expansion, then
-                        # dereference it to _orig_atom so that it will be correctly
+                        # dereference it to orig_atom so that it will be correctly
                         # handled as a built slot operator dependency when
                         # appropriate (see bug 764764).
-                        atom = atom._orig_atom
+                        atom = atom.orig_atom
                     # This parent may need to be rebuilt, therefore
                     # discard its soname and built slot operator
                     # dependency components which are not necessarily
@@ -4357,8 +4357,8 @@ class depgraph:
             # from dep_check, map it back to the original, in
             # order to avoid distortion in places like display
             # or conflict resolution code.
-            is_virt = hasattr(atom, "_orig_atom")
-            atom = getattr(atom, "_orig_atom", atom)
+            is_virt = getattr(atom, "orig_atom", False)
+            atom = atom.orig_atom if is_virt else atom
 
             if atom.blocker and (dep_priority.optional or dep_priority.ignored):
                 # For --with-bdeps, ignore build-time only blockers
@@ -4499,8 +4499,8 @@ class depgraph:
                 # from dep_check, map it back to the original, in
                 # order to avoid distortion in places like display
                 # or conflict resolution code.
-                is_virt = hasattr(atom, "_orig_atom")
-                atom = getattr(atom, "_orig_atom", atom)
+                is_virt = atom.orig_atom is not None
+                atom = atom.orig_atom if is_virt else atom
 
                 # This is a GLEP 37 virtual, so its deps are all runtime.
                 mypriority = self._priority(cross=self._cross(pkg.root), runtime=True)
@@ -5953,9 +5953,9 @@ class depgraph:
                 chain(
                     (id(atom) for atom in mycheck[1]),
                     (
-                        id(atom._orig_atom)
+                        id(atom.orig_atom)
                         for atom in mycheck[1]
-                        if hasattr(atom, "_orig_atom")
+                        if getattr(atom, "orig_atom", False)
                     ),
                 )
             )
@@ -6039,7 +6039,7 @@ class depgraph:
 
             for atoms in rdepend.values():
                 for atom in atoms:
-                    if hasattr(atom, "_orig_atom"):
+                    if getattr(atom, "orig_atom", False):
                         # Ignore virtual atoms since we're only
                         # interested in expanding the real atoms.
                         continue
