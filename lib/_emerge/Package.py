@@ -610,7 +610,7 @@ class Package(Task):
     def syspkg_wanted(self):
         """Tests whether this is a system package to build a binary package for
         (buildsyspkg), assuming it isn't already covered by buildpkg."""
-        features = self.root_config.settings.features
+        features = self._get_pkgsettings().features
         return (
             "buildsyspkg" in features
             and "buildpkg" not in features
@@ -628,7 +628,7 @@ class Package(Task):
         # "buildpkg-live" is a FEATURE that is enabled by default.
         # To not build binary cache for live pkgs, we disable it by
         # specifying FEATURES="-buildpkg-live"
-        features = self.root_config.settings.features
+        features = self._get_pkgsettings().features
         return (
             ("buildpkg-live" in features or not "live" in self.properties)
             and not exclude.findAtomForPackage(self)

@@ -2703,17 +2703,18 @@ def adjust_configs(myopts, trees):
         # For --usepkgonly mode, propagate settings from the binary package
         # database, so that it's possible to operate without dependence on
         # a local ebuild repository and profile.
-        if "--usepkgonly" in myopts and mytrees["bintree"]._propagate_config(
-            mysettings
-        ):
-            # Also propagate changes to the portdbapi doebuild_settings
-            # attribute which is used by Package instances for USE
-            # calculations (in support of --binpkg-respect-use).
-            mytrees["porttree"].dbapi.doebuild_settings = portage.config(
-                clone=mysettings
-            )
+        if "--usepkgonly" in myopts:
+            mytrees["bintree"]._propagate_config(mysettings)
 
         adjust_config(myopts, mysettings)
+
+        # Propagate additional changes to portdbapi doebuild_settings attribute
+        # used by Package instances to determine whether binary packages should
+        # be built (--buildpkg) and for USE calculations (--binpkg-respect-use).
+        mytrees["porttree"].dbapi.doebuild_settings = portage.config(
+            clone=mysettings
+        )
+
         mysettings.lock()
 
 

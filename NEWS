@@ -38,6 +38,9 @@ Bug fixes:
 * gpkg: Fix binpkg creation where emerge is invoked from a directory that
   undergoes removal (bug #975132).
 
+* Fix selectively building binary packages via packages.env. This was broken by
+  the refactoring done for buildpkg-proactive in 3.0.80. (bug #977741)
+
 portage-3.0.80 (2026-06-17)
 --------------
 
