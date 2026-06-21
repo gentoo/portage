@@ -3253,8 +3253,9 @@ def apply_priorities(settings):
 
 def nice(settings, pids):
 
+    priority = settings.get("PORTAGE_NICENESS", "0")
     for name, pid in pids:
-        cmd = f"renice -n {settings.get('PORTAGE_NICENESS', '0')} {pid}".split()
+        cmd = ["renice", "-n", priority, str(pid)]
         try:
             with open(os.devnull, "wb", 0) as dev_null:
                 rval = portage.process.spawn(
