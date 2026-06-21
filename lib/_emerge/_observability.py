@@ -10,6 +10,10 @@ building/merging, in which phase, for how long) to a JSON status file
 under PORTAGE_RUN_PATH (e.g. /run/portage/emerge-<pid>.json).  External
 consumers can poll this file (see ``portageq jobs`` / ``emerge --status``).
 
+A Unix-domain socket at /run/portage/emerge-<pid>.sock additionally streams
+newline-delimited JSON snapshots: the current snapshot on connect, then one
+line per update.
+
 Everything here degrades silently: if the runtime directory is not
 writable (e.g. unprivileged, no /run) emerge proceeds unaffected.
 """
@@ -18,11 +22,14 @@ import json
 import os as _os
 import time
 
+import asyncio as _asyncio
+
 import portage
 import portage.exception
 from portage import os
 from portage.const import PORTAGE_RUN_PATH
 from portage.util import atomic_ofstream, ensure_dirs, writemsg_level
+from portage.util.futures import asyncio
 
 from _emerge.PackageMerge import PackageMerge as _PackageMerge
 
@@ -192,7 +199,7 @@ def format_snapshots(snapshots):
 
 
 class ObservabilityMonitor:
-    """Owns the status file for one Scheduler.
+    """Owns the status file and streaming socket for one Scheduler.
 
     All public methods are no-ops when the feature is disabled, so the
     Scheduler can call them unconditionally.
@@ -216,7 +223,12 @@ class ObservabilityMonitor:
         self._build_times = {}
 
         self._status_path = None
+        self._socket_path = None
+        self._server = None
+        self._writers = []
+        self._server_started = False
         self._last_write = 0
+        self._last_snapshot = None
 
         if not self.enabled:
             return
@@ -225,6 +237,7 @@ class ObservabilityMonitor:
         pid = _os.getpid()
         self._run_dir = run_dir
         self._status_path = os.path.join(run_dir, f"emerge-{pid}.json")
+        self._socket_path = os.path.join(run_dir, f"emerge-{pid}.sock")
 
     def note_task_started(self, task):
         if not self.enabled:
@@ -278,7 +291,10 @@ class ObservabilityMonitor:
             self.enabled = False
             return
 
+        self._last_snapshot = snapshot
         self._write_status_file(snapshot)
+        self._ensure_server()
+        self._broadcast(snapshot)
 
     def _write_status_file(self, snapshot):
         try:
@@ -297,9 +313,84 @@ class ObservabilityMonitor:
             self._status_path = None
             self.enabled = False
 
-    def close(self):
-        if self._status_path:
+    def _ensure_server(self):
+        if self._server_started:
+            return
+        self._server_started = True
+        try:
+            ensure_dirs(self._run_dir, mode=0o755)
             try:
-                _os.unlink(self._status_path)
+                _os.unlink(self._socket_path)
+            except FileNotFoundError:
+                pass
+            coro = _asyncio.start_unix_server(self._client_connected, self._socket_path)
+            future = asyncio.ensure_future(coro)
+            future.add_done_callback(self._server_ready)
+        except Exception as e:
+            writemsg_level(
+                f"!!! observability: socket setup failed: {e}\n",
+                level=30,
+                noiselevel=-1,
+            )
+
+    def _server_ready(self, future):
+        try:
+            self._server = future.result()
+            try:
+                _os.chmod(self._socket_path, 0o600)
             except OSError:
                 pass
+        except Exception as e:
+            writemsg_level(
+                f"!!! observability: socket server failed: {e}\n",
+                level=30,
+                noiselevel=-1,
+            )
+
+    def _client_connected(self, reader, writer):
+        self._writers.append(writer)
+        if self._last_snapshot is not None:
+            data = (json.dumps(self._last_snapshot, sort_keys=True) + "\n").encode(
+                "utf_8"
+            )
+            self._send(writer, data)
+
+    def _broadcast(self, snapshot):
+        if not self._writers:
+            return
+        data = (json.dumps(snapshot, sort_keys=True) + "\n").encode("utf_8")
+        for writer in list(self._writers):
+            if not self._send(writer, data):
+                self._writers.remove(writer)
+
+    @staticmethod
+    def _send(writer, data):
+        try:
+            writer.write(data)
+            return True
+        except Exception:
+            try:
+                writer.close()
+            except Exception:
+                pass
+            return False
+
+    def close(self):
+        for writer in self._writers:
+            try:
+                writer.close()
+            except Exception:
+                pass
+        self._writers = []
+        if self._server is not None:
+            try:
+                self._server.close()
+            except Exception:
+                pass
+            self._server = None
+        for path in (self._status_path, self._socket_path):
+            if path:
+                try:
+                    _os.unlink(path)
+                except OSError:
+                    pass
