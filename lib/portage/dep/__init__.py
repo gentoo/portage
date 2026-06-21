@@ -35,7 +35,6 @@ import warnings
 
 from functools import lru_cache
 
-from portage import _unicode_decode
 from portage.eapi import _eapi_attrs, _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
@@ -1646,9 +1645,8 @@ class Atom:
             # constructor is not called redundantly.
             raise TypeError(_("Expected %s, got %s") % (str, type(s)))
 
-        if not isinstance(s, str):
-            # Avoid TypeError from str.__init__ with PyPy.
-            s = _unicode_decode(s)
+        if isinstance(s, bytes):
+            s = s.decode("utf-8", "replace")
 
         self._string = s
 

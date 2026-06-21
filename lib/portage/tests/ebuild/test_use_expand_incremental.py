@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 
-from portage import os, _encodings
+from portage import os_unicode_fs as os
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -101,7 +101,7 @@ class UseExpandIncrementalTestCase(TestCase):
                     with open(
                         os.path.join(prof_path, k),
                         mode="w",
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                     ) as f:
                         for line in v:
                             f.write(f"{line}\n")

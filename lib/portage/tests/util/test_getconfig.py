@@ -3,9 +3,8 @@
 
 import tempfile
 
-from portage import os
-from portage import shutil
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.tests import TestCase
 from portage.util import getconfig
 from portage.exception import ParseError
@@ -74,7 +73,7 @@ class GetConfigTestCase(TestCase):
                     line = f"export {k}=$'{v[1:]}'\n"
                 else:
                     line = f"export {k}='{v}'\n"
-                f.write(_unicode_encode(line))
+                f.write(line.encode("utf-8", "backslashreplace"))
             f.flush()
 
             d = getconfig(f.name, expand=False)

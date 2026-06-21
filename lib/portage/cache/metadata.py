@@ -9,9 +9,7 @@ import tempfile
 from operator import attrgetter
 
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
@@ -111,14 +109,12 @@ class database(flat_hash.database):
         for i in range(magic_line_count - len(self.auxdbkey_order)):
             new_content.append("\n")
         new_content = "".join(new_content)
-        new_content = _unicode_encode(
-            new_content, _encodings["repo.content"], errors="backslashreplace"
-        )
+        new_content = new_content.encode("utf-8", "backslashreplace")
 
         new_fp = os.path.join(self.location, cpv)
         try:
             f = open(
-                _unicode_encode(new_fp, encoding=_encodings["fs"], errors="strict"),
+                new_fp.encode("utf-8", "strict"),
                 "rb",
             )
         except OSError:
@@ -151,16 +147,8 @@ class database(flat_hash.database):
 
         s = cpv.rfind("/")
         tempfile_kwargs = dict(
-            prefix=_unicode_encode(
-                f".update.{portage.getpid()}.{cpv[s + 1:]}",
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            dir=_unicode_encode(
-                os.path.join(self.location, cpv[:s]),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
+            prefix=f".update.{portage.getpid()}.{cpv[s + 1:]}",
+            dir=os.path.join(self.location, cpv[:s]),
             delete=False,
             mode="wb",
         )

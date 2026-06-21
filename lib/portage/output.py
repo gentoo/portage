@@ -15,10 +15,7 @@ from typing import Optional
 import portage
 import portage.util.formatter as formatter
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
-from portage import _unicode_decode
+from portage import os_unicode_fs as os
 from portage.const import COLOR_MAP_FILE
 from portage.exception import (
     CommandNotFound,
@@ -186,8 +183,8 @@ def _parse_color_map(config_root="/", onerror=None):
 
     try:
         with open(
-            _unicode_encode(myfile, encoding=_encodings["fs"], errors="strict"),
-            encoding=_encodings["content"],
+            myfile.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             lines = f.readlines()
@@ -288,9 +285,7 @@ def xtermTitle(mystr, raw=False):
             mystr = f"\x1b]0;{mystr}\x07"
 
         # avoid potential UnicodeEncodeError
-        mystr = _unicode_encode(
-            mystr, encoding=_encodings["stdio"], errors="backslashreplace"
-        )
+        mystr = mystr.encode("utf-8", "backslashreplace")
         f = sys.stderr.buffer
         f.write(mystr)
         f.flush()
@@ -456,7 +451,7 @@ class ConsoleStyleFile:
         # non-unicode '\n' which fails with TypeError if self._file
         # is a text stream such as io.StringIO. Therefore, make sure
         # input is converted to unicode when necessary.
-        s = _unicode_decode(s)
+        if isinstance(s, bytes): s = s.decode("utf-8", "replace")
         global havecolor
         if havecolor and self._styles:
             styled_s = []
@@ -473,9 +468,7 @@ class ConsoleStyleFile:
     def _write(self, f, s):
         # avoid potential UnicodeEncodeError
         if f in (sys.stdout, sys.stderr):
-            s = _unicode_encode(
-                s, encoding=_encodings["stdio"], errors="backslashreplace"
-            )
+            s = s.encode("utf-8", "backslashreplace")
             f = f.buffer
         f.write(s)
 
@@ -546,7 +539,7 @@ def get_term_size(fd=None):
         # stty command not found
         return (0, 0)
 
-    out = _unicode_decode(proc.communicate()[0])
+    out = proc.communicate()[0].decode("utf-8", "replace")
     if proc.wait() == os.EX_OK:
         out = out.split()
         if len(out) == 2:
@@ -973,10 +966,10 @@ def _init(config_root="/"):
     _styles = object.__getattribute__(_styles, "_attr")
 
     for k, v in codes.items():
-        codes[k] = _unicode_decode(v)
+        codes[k] = v.decode("utf-8", "replace") if isinstance(v, bytes) else v
 
     for k, v in _styles.items():
-        _styles[k] = _unicode_decode(v)
+        _styles[k] = v.decode("utf-8", "replace") if isinstance(v, bytes) else v
 
     try:
         _parse_color_map(

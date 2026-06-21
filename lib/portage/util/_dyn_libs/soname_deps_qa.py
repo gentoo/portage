@@ -3,9 +3,7 @@
 
 
 from portage import (
-    _encodings,
-    _unicode_encode,
-    os,
+    os_unicode_fs as os,
 )
 from portage.dep.soname.parse import parse_soname_deps
 from portage.util._dyn_libs.NeededEntry import NeededEntry
@@ -60,12 +58,8 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
     """
     try:
         with open(
-            _unicode_encode(
-                os.path.join(metadata_dir, "REQUIRES"),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+            os.path.join(metadata_dir, "REQUIRES").encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="strict",
         ) as f:
             requires = frozenset(parse_soname_deps(f.read()))
@@ -81,8 +75,8 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
 
     needed_filename = os.path.join(metadata_dir, "NEEDED.ELF.2")
     with open(
-        _unicode_encode(needed_filename, encoding=_encodings["fs"], errors="strict"),
-        encoding=_encodings["repo.content"],
+        needed_filename.encode("utf-8", "strict"),
+        encoding="utf-8",
         errors="strict",
     ) as f:
         needed = f.readlines()

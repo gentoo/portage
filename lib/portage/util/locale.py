@@ -15,7 +15,7 @@ import textwrap
 import traceback
 
 import portage
-from portage.util import _unicode_decode, writemsg_level
+from portage.util import writemsg_level
 from portage.util._ctypes import load_libc
 from portage.util.futures import asyncio
 
@@ -69,7 +69,7 @@ def _check_locale(silent):
         )
         msg = [l for l in textwrap.wrap(msg, 70)]
         msg.append("")
-        chars = lambda l: "".join(_unicode_decode(chr(x)) for x in l)
+        chars = lambda l: "".join(chr(x) for x in l)
         if uc != ruc:
             msg.extend(
                 [
@@ -135,7 +135,7 @@ async def async_check_locale(silent=False, env=None):
 
     proc = multiprocessing.Process(
         target=_set_and_check_locale,
-        args=(silent, env, None if env is None else portage._native_string(mylocale)),
+        args=(silent, env, None if env is None else mylocale),
     )
     proc.start()
     proc = portage.process.MultiprocessingProcess(proc)

@@ -6,10 +6,7 @@ from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
@@ -56,18 +53,12 @@ def make_metadata_dict(data):
     metadata = (
         (
             k_bytes,
-            _unicode_decode(
-                k_bytes, encoding=_encodings["repo.content"], errors="replace"
-            ),
+            (k_bytes.decode("utf-8", "replace") if isinstance(k_bytes, bytes) else k_bytes),
         )
         for k_bytes in portage.xpak.getindex_mem(myid)
     )
     mydict = {
-        k: _unicode_decode(
-            portage.xpak.getitem(data, k_bytes),
-            encoding=_encodings["repo.content"],
-            errors="replace",
-        )
+        k: portage.xpak.getitem(data, k_bytes).decode("utf-8", "replace")
         for k_bytes, k in metadata
         if k in _all_metadata_keys or k == "CATEGORY"
     }
@@ -165,7 +156,7 @@ def create_conn(baseurl, conn=None):
     http_params = {}
     if username and password:
         encodebytes = base64.encodebytes
-        unicode_bytes = encodebytes(_unicode_encode(f"{username}:{password}")).replace(
+        unicode_bytes = encodebytes(f"{username}:{password}".encode("utf-8", "backslashreplace")).replace(
             b"\012", b""
         )
         http_headers = {b"Authorization": f"Basic {unicode_bytes}"}
@@ -395,7 +386,7 @@ def dir_get_list(baseurl, conn=None):
 
         if page:
             parser = ParseLinks()
-            parser.feed(_unicode_decode(page))
+            parser.feed((page.decode("utf-8", "replace") if isinstance(page, bytes) else page))
             del page
             listing = parser.get_anchors()
         else:
@@ -617,9 +608,7 @@ def dir_get_metadata(
     out = sys.stdout
     try:
         metadatafile = open(
-            _unicode_encode(
-                metadatafilename, encoding=_encodings["fs"], errors="strict"
-            ),
+            metadatafilename.encode("utf-8", "strict"),
             "rb",
         )
         mypickle = pickle.Unpickler(metadatafile)
@@ -722,9 +711,7 @@ def dir_get_metadata(
                     sys.stderr.flush()
             try:
                 metadatafile = open(
-                    _unicode_encode(
-                        metadatafilename, encoding=_encodings["fs"], errors="strict"
-                    ),
+                    metadatafilename.encode("utf-8", "strict"),
                     "wb",
                 )
                 pickle.dump(metadata, metadatafile, protocol=2)
@@ -828,16 +815,14 @@ def dir_get_metadata(
         if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
             metadata[baseurl]["timestamp"] = int(time.time())
             metadatafile = open(
-                _unicode_encode(
-                    metadatafilename, encoding=_encodings["fs"], errors="strict"
-                ),
+                metadatafilename.encode("utf-8", "strict"),
                 "wb",
             )
             pickle.dump(metadata, metadatafile, protocol=2)
             metadatafile.close()
         if makepickle:
             metadatafile = open(
-                _unicode_encode(makepickle, encoding=_encodings["fs"], errors="strict"),
+                makepickle.encode("utf-8", "strict"),
                 "wb",
             )
             pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)

@@ -8,9 +8,7 @@ from _emerge.EbuildProcess import EbuildProcess
 from _emerge.SpawnProcess import SpawnProcess
 
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage.util.install_mask import install_mask_dir, InstallMask
 
@@ -40,16 +38,12 @@ class PackagePhase(CompositeTask):
 
         try:
             with open(
-                _unicode_encode(
-                    os.path.join(
+                os.path.join(
                         self.settings["PORTAGE_BUILDDIR"],
                         "build-info",
                         "PKG_INSTALL_MASK",
-                    ),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
-                encoding=_encodings["repo.content"],
+                    ).encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 self._pkg_install_mask = InstallMask(f.read() + packdebug_maskstr)

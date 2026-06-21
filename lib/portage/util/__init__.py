@@ -15,11 +15,8 @@ from portage.exception import (
     ReadOnlyFileSystem,
 )
 from portage.const import VCS_DIRS
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage import _os_merge
-from portage import _encodings
-from portage import os
+from portage import os_unicode_merge as _os_merge
+from portage import os_unicode_fs as os
 
 __all__ = [
     "apply_permissions",
@@ -105,13 +102,10 @@ def writemsg(mystr: str, noiselevel: int = 0, fd: Optional[TextIO] = None) -> No
     if noiselevel <= noiselimit:
         # avoid potential UnicodeEncodeError
         if isinstance(fd, io.TextIOBase):
-            mystr = _unicode_decode(
-                mystr, encoding=_encodings["content"], errors="replace"
-            )
+            if isinstance(mystr, bytes):
+                if isinstance(mystr, bytes): mystr = mystr.decode("utf-8", "replace")
         else:
-            mystr = _unicode_encode(
-                mystr, encoding=_encodings["stdio"], errors="backslashreplace"
-            )
+            mystr = mystr.encode("utf-8", "backslashreplace")
             if fd in (sys.stdout, sys.stderr):
                 fd = fd.buffer
         fd.write(mystr)
@@ -463,8 +457,8 @@ def read_corresponding_eapi_file(filename, default="0"):
     eapi = None
     try:
         with open(
-            _unicode_encode(eapi_file, encoding=_encodings["fs"], errors="strict"),
-            encoding=_encodings["repo.content"],
+            eapi_file.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             lines = f.readlines()
@@ -668,8 +662,8 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
     else:
         try:
             with open(
-                _unicode_encode(myfilename, encoding=_encodings["fs"], errors="strict"),
-                encoding=_encodings["content"],
+                myfilename.encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as myfile:
                 if remember_source_file:
@@ -705,7 +699,7 @@ class _getconfig_shlex(shlex.shlex):
         self.__portage_tolerant = portage_tolerant
 
     def allow_sourcing(self, var_expand_map):
-        self.source = portage._native_string("source")
+        self.source = "source"
         self.var_expand_map = var_expand_map
 
     def sourcehook(self, newfile):
@@ -771,8 +765,8 @@ def getconfig(
     f = None
     try:
         f = open(
-            _unicode_encode(mycfg, encoding=_encodings["fs"], errors="strict"),
-            encoding=_encodings["content"],
+            mycfg.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         )
         content = f.read()
@@ -795,12 +789,12 @@ def getconfig(
     # Workaround for avoiding a silent error in shlex that is
     # triggered by a source statement at the end of the file
     # without a trailing newline after the source statement.
-    if content and content[-1] != portage._native_string("\n"):
-        content += portage._native_string("\n")
+    if content and content[-1] != "\n":
+        content += "\n"
 
     # Warn about dos-style line endings since that prevents
     # people from being able to source them with bash.
-    if portage._native_string("\r") in content:
+    if "\r" in content:
         writemsg(
             (
                 "!!! "
@@ -822,22 +816,20 @@ def getconfig(
         lex = _getconfig_shlex(
             instream=content, infile=mycfg, posix=True, portage_tolerant=tolerant
         )
-        lex.wordchars = portage._native_string(
-            string.digits + string.ascii_letters + r"~!@#$%*_\:;?,./-+{}"
-        )
-        lex.quotes = portage._native_string("\"'")
+        lex.wordchars = string.digits + string.ascii_letters + r"~!@#$%*_\:;?,./-+{}"
+        lex.quotes = "\"'"
         if allow_sourcing:
             lex.allow_sourcing(expand_map)
 
         while True:
-            key = _unicode_decode(lex.get_token())
+            key = lex.get_token()
             if key == "export":
-                key = _unicode_decode(lex.get_token())
+                key = lex.get_token()
             if key is None:
                 # normal end of file
                 break
 
-            equ = _unicode_decode(lex.get_token())
+            equ = lex.get_token()
             if not equ:
                 msg = lex.error_leader() + _("Unexpected EOF")
                 if not tolerant:
@@ -854,7 +846,7 @@ def getconfig(
                     writemsg(f"{msg}\n", noiselevel=-1)
                     return mykeys
 
-            val = _unicode_decode(lex.get_token())
+            val = lex.get_token()
             if val is None:
                 msg = lex.error_leader() + _(
                     "Unexpected end of config file: variable '%s'"
@@ -1039,7 +1031,7 @@ def pickle_read(filename, default=None, debug=0):
     data = None
     try:
         myf = open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
+            filename.encode("utf-8", "strict"), "rb"
         )
         mypickle = pickle.Unpickler(myf)
         data = mypickle.load()
@@ -1424,7 +1416,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
             open_func = open
         else:
             open_func = io.open
-            kargs.setdefault("encoding", _encodings["content"])
+            kargs.setdefault("encoding", "utf-8")
             kargs.setdefault("errors", "backslashreplace")
 
         if follow_links:
@@ -1898,17 +1890,13 @@ def new_protect_filename(mydest, newmd5=None, force=False):
                     # Read symlink target as bytes, in case the
                     # target path has a bad encoding.
                     pfile_link = os.readlink(
-                        _unicode_encode(
-                            old_pfile, encoding=_encodings["merge"], errors="strict"
-                        )
+                        old_pfile.encode("utf-8", "strict")
                     )
                 except OSError:
                     if e.errno != errno.ENOENT:
                         raise
                 else:
-                    pfile_link = _unicode_decode(
-                        pfile_link, encoding=_encodings["merge"], errors="replace"
-                    )
+                    pfile_link = pfile_link.decode("utf-8", "replace")
                     if pfile_link == newmd5:
                         return old_pfile
             else:
@@ -1935,7 +1923,7 @@ def find_updated_config_files(target_root, config_protect):
     """
     import subprocess
 
-    encoding = _encodings["fs"]
+    encoding = "utf-8"
 
     if config_protect:
         # directories with some protect files in them
@@ -1972,13 +1960,11 @@ def find_updated_config_files(target_root, config_protect):
             mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
             cmd = shlex.split(mycommand)
 
-            cmd = [
-                _unicode_encode(arg, encoding=encoding, errors="strict") for arg in cmd
-            ]
+            cmd = [arg.encode("utf-8", "strict") for arg in cmd]
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
-            output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+            output = proc.communicate()[0].decode("utf-8", "replace")
             status = proc.wait()
             if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
                 files = output.split("\0")

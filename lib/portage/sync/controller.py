@@ -8,7 +8,7 @@ import pwd
 import warnings
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.progress import ProgressBar
 
 # from portage.emaint.defaults import DEFAULT_OPTIONS
@@ -22,7 +22,6 @@ from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.metadata import action_metadata
 from portage.util.hooks import get_hooks_from_dir
 from portage.util._async.AsyncFunction import AsyncFunction
-from portage import _unicode_decode
 from _emerge.CompositeTask import CompositeTask
 
 
@@ -200,7 +199,7 @@ class SyncManager:
             _hooks = self.hooks["postsync.d"]
         for filepath in _hooks:
             writemsg_level(
-                f"Spawning post_sync hook: {_unicode_decode(_hooks[filepath])}\n",
+                f"Spawning post_sync hook: {_hooks[filepath]}\n",
                 level=logging.ERROR,
                 noiselevel=4,
             )
@@ -213,8 +212,7 @@ class SyncManager:
                 retval = portage.process.spawn([filepath], env=self.settings.environ())
             if retval != os.EX_OK:
                 writemsg_level(
-                    " %s Spawn failed for: %s, %s\n"
-                    % (bad("*"), _unicode_decode(_hooks[filepath]), filepath),
+                    f" {bad('*')} Spawn failed for: {_hooks[filepath]}, {filepath}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

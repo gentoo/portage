@@ -133,16 +133,14 @@ def main(argv):
         return 1
 
     infile = open(
-        portage._unicode_encode(
-            src_pkgs_index, encoding=portage._encodings["fs"], errors="strict"
-        ),
-        encoding=portage._encodings["repo.content"],
+        src_pkgs_index.encode("utf-8", "strict"),
+        encoding="utf-8",
         errors="strict",
     )
 
     outfile = portage.util.atomic_ofstream(
         os.path.join(binhost_dir, "Packages"),
-        encoding=portage._encodings["repo.content"],
+        encoding="utf-8",
         errors="strict",
     )
 

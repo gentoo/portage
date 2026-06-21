@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os, _unicode_encode
+from portage import os_unicode_fs as os
 from portage.const import MERGING_IDENTIFIER, EPREFIX, PRIVATE_PATH, VDB_PATH
 from portage.dep import isvalidatom
 
@@ -23,7 +23,7 @@ class TrackingFile:
         @type tracking_path: String
         """
         self._tracking_path = (
-            tracking_path if portage.utf8_mode else _unicode_encode(tracking_path)
+            tracking_path if portage.utf8_mode else tracking_path.encode("utf-8", "backslashreplace")
         )
 
     def save(self, failed_pkgs):

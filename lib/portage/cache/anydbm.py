@@ -11,8 +11,7 @@ except ImportError:
 
 import pickle
 
-from portage import _unicode_encode
-from portage import os
+from portage import os_unicode_fs as os
 from portage.cache import fs_template
 from portage.cache import cache_errors
 
@@ -89,10 +88,10 @@ class database(fs_template.FsBased):
 
     def _getitem(self, cpv):
         # we override getitem because it's just a cpickling of the data handed in.
-        return pickle.loads(self.__db[_unicode_encode(cpv)])
+        return pickle.loads(self.__db[cpv.encode("utf-8", "backslashreplace")])
 
     def _setitem(self, cpv, values):
-        self.__db[_unicode_encode(cpv)] = pickle.dumps(values, pickle.HIGHEST_PROTOCOL)
+        self.__db[cpv.encode("utf-8", "backslashreplace")] = pickle.dumps(values, pickle.HIGHEST_PROTOCOL)
 
     def _delitem(self, cpv):
         del self.__db[cpv]

@@ -50,8 +50,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os, shutil
-from portage import _encodings, _unicode_decode
+from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
 from portage.dispatch_conf import (
     diffstatusoutput,
     diff_mixed_wrapper,
@@ -189,10 +188,7 @@ class dispatch:
 
             try:
                 # Find existing configs
-                path_list = _unicode_decode(
-                    subprocess.check_output(["find", path] + find_opts),
-                    errors="strict",
-                ).splitlines()
+                path_list = subprocess.check_output(["find", path] + find_opts).decode("utf-8", "strict").splitlines()
             except subprocess.CalledProcessError:
                 pass
             else:
@@ -479,7 +475,7 @@ class dispatch:
         if "log-file" in self.options:
             status, output = diff(curconf, newconf)
             with open(
-                self.options["log-file"], mode="a", encoding=_encodings["stdio"]
+                self.options["log-file"], mode="a", encoding="utf-8"
             ) as f:
                 f.write(output + "\n")
 
@@ -518,7 +514,7 @@ class dispatch:
         for nconf in newconfigs:
             # Use strict mode here, because we want to know if it fails,
             # and portage only merges files with valid UTF-8 encoding.
-            nconf = _unicode_decode(nconf, errors="strict").rstrip()
+            nconf = nconf.decode("utf-8", "strict").rstrip()
             conf = re.sub(r"\._cfg\d+_", "", nconf)
             dirname = os.path.dirname(nconf)
             conf_map = {
@@ -577,7 +573,7 @@ def clear_screen():
     if curses is not None:
         try:
             curses.setupterm()
-            sys.stdout.write(_unicode_decode(curses.tigetstr("clear")))
+            sys.stdout.write(curses.tigetstr("clear").decode("utf-8", "replace"))
             sys.stdout.flush()
             return
         except curses.error:

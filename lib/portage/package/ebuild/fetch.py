@@ -24,12 +24,10 @@ from urllib.parse import quote as urlquote
 import portage
 
 from portage import (
-    os,
-    selinux,
-    shutil,
-    _encodings,
+    os_unicode_fs as os,
+    selinux_unicode_fs as selinux,
+    shutil_unicode_fs as shutil,
     _movefile,
-    _unicode_encode,
 )
 from portage.checksum import (
     get_valid_checksum_keys,
@@ -473,7 +471,7 @@ class FlatLayout:
         for dirpath, dirnames, filenames in os.walk(distdir, onerror=_raise_exc):
             for filename in filenames:
                 try:
-                    yield portage._unicode_decode(filename, errors="strict")
+                    yield filename.decode("utf-8", "strict") if isinstance(filename, bytes) else filename
                 except UnicodeDecodeError:
                     # Ignore it. Distfiles names must have valid UTF8 encoding.
                     pass
@@ -507,10 +505,10 @@ class FilenameHashLayout:
             pattern += c * "[0-9a-f]" + "/"
         pattern += "*"
         for x in glob.iglob(
-            portage._unicode_encode(os.path.join(distdir, pattern), errors="strict")
+            os.path.join(distdir, pattern).encode("utf-8", "strict")
         ):
             try:
-                yield portage._unicode_decode(x, errors="strict").rsplit("/", 1)[1]
+                yield (x.decode("utf-8", "strict") if isinstance(x, bytes) else x).rsplit("/", 1)[1]
             except UnicodeDecodeError:
                 # Ignore it. Distfiles names must have valid UTF8 encoding.
                 pass
@@ -1912,12 +1910,8 @@ async def async_fetch(
                                         re.I | re.M,
                                     )
                                     with open(
-                                        _unicode_encode(
-                                            download_path,
-                                            encoding=_encodings["fs"],
-                                            errors="strict",
-                                        ),
-                                        encoding=_encodings["content"],
+                                        download_path.encode("utf-8", "strict"),
+                                        encoding="utf-8",
                                         errors="replace",
                                     ) as f:
                                         if html404.search(f.read()):

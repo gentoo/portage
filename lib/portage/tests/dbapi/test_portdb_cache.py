@@ -8,7 +8,7 @@ import sys
 import textwrap
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -344,7 +344,7 @@ class PortdbCacheTestCase(TestCase):
                     proc.stdout.close()
                     if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(portage._unicode_decode(line))
+                            sys.stderr.write(line.decode("utf-8", "replace"))
 
                 self.assertEqual(
                     step.returncode,

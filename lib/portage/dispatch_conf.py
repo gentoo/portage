@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 import portage
-from portage import _encodings, os, shutil
+from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import varexpand
@@ -37,9 +37,9 @@ def diffstatusoutput(cmd, file1, file2):
     # raise a UnicodeDecodeError which makes the output inaccessible.
     args = shlex.split(cmd % (file1, file2))
 
-    args = (portage._unicode_encode(x, errors="strict") for x in args)
+    args = (x.encode("utf-8", "strict") for x in args)
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output = portage._unicode_decode(proc.communicate()[0])
+    output = proc.communicate()[0].decode("utf-8", "replace")
     if output and output.endswith("\n"):
         # getstatusoutput strips one newline
         output = output[:-1]
@@ -84,7 +84,7 @@ def diff_mixed(func, file1, file2):
                     content = f"FIF: {file1}\n"
                 else:
                     content = f"DEV: {file1}\n"
-                with open(diff_files[i], mode="w", encoding=_encodings["stdio"]) as f:
+                with open(diff_files[i], mode="w", encoding="utf-8") as f:
                     f.write(content)
 
         return func(diff_files[0], diff_files[1])

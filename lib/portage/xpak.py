@@ -38,12 +38,9 @@ import errno
 import tempfile
 
 import portage
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage import normalize_path
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
 from portage.binpkg import get_binpkg_format
 from portage.exception import InvalidBinaryPackageFormat
 from portage.util.file_copy import copyfile
@@ -52,23 +49,26 @@ from portage.util.file_copy import copyfile
 def addtolist(mylist, curdir):
     """(list, dir) --- Takes an array(list) and appends all files from dir down
     the directory tree. Returns nothing. list is modified."""
-    curdir = normalize_path(
-        _unicode_decode(curdir, encoding=_encodings["fs"], errors="strict")
-    )
+    if isinstance(curdir, bytes):
+        if isinstance(curdir, bytes): curdir = curdir.decode("utf-8", "strict")
+    curdir = normalize_path(curdir)
     for parent, dirs, files in os.walk(curdir):
-        parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
+        if isinstance(parent, bytes):
+            if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
         if parent != curdir:
             mylist.append(parent[len(curdir) + 1 :] + os.sep)
 
         for x in dirs:
             try:
-                _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
+                if isinstance(x, bytes):
+                    (x.decode("utf-8", "strict") if isinstance(x, bytes) else x)
             except UnicodeDecodeError:
                 dirs.remove(x)
 
         for x in files:
             try:
-                x = _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
+                if isinstance(x, bytes):
+                    if isinstance(x, bytes): x = x.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 continue
             mylist.append(os.path.join(parent, x)[len(curdir) + 1 :])
@@ -119,14 +119,14 @@ def xpak(rootdir, outfile=None):
         if x == "CONTENTS":
             # CONTENTS is generated during the merge process.
             continue
-        x = _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
+        x = x.encode("utf-8", "strict")
         with open(os.path.join(rootdir, x), "rb") as f:
             mydata[x] = f.read()
 
     xpak_segment = xpak_mem(mydata)
     if outfile:
         outf = open(
-            _unicode_encode(outfile, encoding=_encodings["fs"], errors="strict"), "wb"
+            outfile.encode("utf-8", "strict"), "wb"
         )
         outf.write(xpak_segment)
         outf.close()
@@ -139,12 +139,10 @@ def xpak_mem(mydata):
 
     mydata_encoded = {}
     for k, v in mydata.items():
-        k = _unicode_encode(
-            k, encoding=_encodings["repo.content"], errors="backslashreplace"
-        )
-        v = _unicode_encode(
-            v, encoding=_encodings["repo.content"], errors="backslashreplace"
-        )
+        if isinstance(k, str):
+            k = k.encode("utf-8", "backslashreplace")
+        if isinstance(v, str):
+            v = v.encode("utf-8", "backslashreplace")
         mydata_encoded[k] = v
     mydata = mydata_encoded
     del mydata_encoded
@@ -179,9 +177,10 @@ def xsplit(infile):
     """(infile) -- Splits the infile into two files.
     'infile.index' contains the index segment.
     'infile.dat' contains the data segment."""
-    infile = _unicode_decode(infile, encoding=_encodings["fs"], errors="strict")
+    if isinstance(infile, bytes):
+        if isinstance(infile, bytes): infile = infile.decode("utf-8", "strict")
     myfile = open(
-        _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"
+        infile.encode("utf-8", "strict"), "rb"
     )
     mydat = myfile.read()
     myfile.close()
@@ -191,13 +190,13 @@ def xsplit(infile):
         return False
 
     myfile = open(
-        _unicode_encode(infile + ".index", encoding=_encodings["fs"], errors="strict"),
+        infile + (".index" if isinstance(infile, str) else b".index"),
         "wb",
     )
     myfile.write(splits[0])
     myfile.close()
     myfile = open(
-        _unicode_encode(infile + ".dat", encoding=_encodings["fs"], errors="strict"),
+        infile + (".dat" if isinstance(infile, str) else b".dat"),
         "wb",
     )
     myfile.write(splits[1])
@@ -217,7 +216,7 @@ def xsplit_mem(mydat):
 def getindex(infile):
     """(infile) -- grabs the index segment from the infile and returns it."""
     myfile = open(
-        _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"
+        infile.encode("utf-8", "strict"), "rb"
     )
     myheader = myfile.read(16)
     if myheader[0:8] != b"XPAKPACK":
@@ -233,7 +232,7 @@ def getboth(infile):
     """(infile) -- grabs the index and data segments from the infile.
     Returns an array [indexSegment, dataSegment]"""
     myfile = open(
-        _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"
+        infile.encode("utf-8", "strict"), "rb"
     )
     myheader = myfile.read(16)
     if myheader[0:8] != b"XPAKPACK":
@@ -268,9 +267,7 @@ def getindex_mem(myindex):
 def searchindex(myindex, myitem):
     """(index, item) -- Finds the offset and length of the file 'item' in the
     datasegment via the index 'index' provided."""
-    myitem = _unicode_encode(
-        myitem, encoding=_encodings["repo.content"], errors="backslashreplace"
-    )
+    myitem = myitem.encode("utf-8", "backslashreplace")
     mylen = len(myitem)
     myindexlen = len(myindex)
     startpos = 0
@@ -309,9 +306,7 @@ def xpand(myid, mydest):
         datapos = decodeint(myindex[startpos + 4 + namelen : startpos + 8 + namelen])
         datalen = decodeint(myindex[startpos + 8 + namelen : startpos + 12 + namelen])
         myname = myindex[startpos + 4 : startpos + 4 + namelen]
-        myname = _unicode_decode(
-            myname, encoding=_encodings["repo.content"], errors="replace"
-        )
+        if isinstance(myname, bytes): myname = myname.decode("utf-8", "replace")
         filename = os.path.join(mydest, myname.lstrip(os.sep))
         filename = normalize_path(filename)
         if not filename.startswith(mydest):
@@ -322,7 +317,7 @@ def xpand(myid, mydest):
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
         mydat = open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "wb"
+            filename.encode("utf-8", "strict"), "wb"
         )
         mydat.write(mydata[datapos : datapos + datalen])
         mydat.close()
@@ -395,7 +390,7 @@ class tbz2:
             os.rename(tmp_fname, self.file)
 
         myfile = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"),
+            self.file.encode("utf-8", "strict"),
             "ab+",
         )
         if not myfile:
@@ -438,7 +433,7 @@ class tbz2:
                     return 1
             self.filestat = mystat
             a = open(
-                _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"),
+                self.file.encode("utf-8", "strict"),
                 "rb",
             )
             a.seek(-16, 2)
@@ -499,7 +494,7 @@ class tbz2:
         if not myresult:
             return mydefault
         a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
+            self.file.encode("utf-8", "strict"), "rb"
         )
         a.seek(self.datapos + myresult[0], 0)
         myreturn = a.read(myresult[1])
@@ -519,7 +514,7 @@ class tbz2:
             return 0
         mydest = normalize_path(mydest) + os.sep
         a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
+            self.file.encode("utf-8", "strict"), "rb"
         )
         if not os.path.exists(mydest):
             os.makedirs(mydest)
@@ -533,9 +528,7 @@ class tbz2:
                 self.index[startpos + 8 + namelen : startpos + 12 + namelen]
             )
             myname = self.index[startpos + 4 : startpos + 4 + namelen]
-            myname = _unicode_decode(
-                myname, encoding=_encodings["repo.content"], errors="replace"
-            )
+            if isinstance(myname, bytes): myname = myname.decode("utf-8", "replace")
             filename = os.path.join(mydest, myname.lstrip(os.sep))
             filename = normalize_path(filename)
             if not filename.startswith(mydest):
@@ -546,7 +539,7 @@ class tbz2:
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
             mydat = open(
-                _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"),
+                filename.encode("utf-8", "strict"),
                 "wb",
             )
             a.seek(self.datapos + datapos)
@@ -561,7 +554,7 @@ class tbz2:
         if not self.scan():
             return {}
         a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
+            self.file.encode("utf-8", "strict"), "rb"
         )
         mydata = {}
         startpos = 0
@@ -586,7 +579,7 @@ class tbz2:
             return None
 
         a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
+            self.file.encode("utf-8", "strict"), "rb"
         )
         a.seek(self.datapos)
         mydata = a.read(self.datasize)

@@ -5,7 +5,6 @@ import re
 import subprocess
 import sys
 
-from portage import _unicode_encode, _unicode_decode
 from portage.util import writemsg
 from portage.util.configparser import RawConfigParser, read_configs
 
@@ -47,9 +46,9 @@ _ShowIn_exemptions = (
 def validate_desktop_entry(path):
     args = ["desktop-file-validate", path]
 
-    args = [_unicode_encode(x, errors="strict") for x in args]
+    args = [x.encode("utf-8", "strict") for x in args]
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output_lines = _unicode_decode(proc.communicate()[0]).splitlines()
+    output_lines = proc.communicate()[0].decode("utf-8", "replace").splitlines()
     proc.wait()
 
     if output_lines:

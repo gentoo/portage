@@ -45,9 +45,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 import portage
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 
 
 async def _setup_locale(settings):
@@ -381,11 +379,7 @@ class EbuildPhase(CompositeTask):
                 # mark test phase as complete (bug #452030)
                 try:
                     open(
-                        _unicode_encode(
-                            os.path.join(self.settings["PORTAGE_BUILDDIR"], ".tested"),
-                            encoding=_encodings["fs"],
-                            errors="strict",
-                        ),
+                        os.path.join(self.settings["PORTAGE_BUILDDIR"], ".tested").encode("utf-8", "strict"),
                         "wb",
                     ).close()
                 except OSError:
@@ -484,7 +478,7 @@ class EbuildPhase(CompositeTask):
 
     def _append_temp_log(self, temp_log, log_path):
         temp_file = open(
-            _unicode_encode(temp_log, encoding=_encodings["fs"], errors="strict"), "rb"
+            temp_log.encode("utf-8", "strict"), "rb"
         )
 
         log_file, log_file_real = self._open_log(log_path)
@@ -500,7 +494,7 @@ class EbuildPhase(CompositeTask):
 
     def _open_log(self, log_path):
         f = open(
-            _unicode_encode(log_path, encoding=_encodings["fs"], errors="strict"),
+            log_path.encode("utf-8", "strict"),
             mode="ab",
         )
         f_real = f

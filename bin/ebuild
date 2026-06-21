@@ -47,9 +47,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.const import VDB_PATH
 from portage.exception import (
     PermissionDenied,
@@ -186,8 +184,8 @@ def main():
     cpv = f"{ebuild_split[-3]}/{pf}"
 
     with open(
-        _unicode_encode(ebuild, encoding=_encodings["fs"], errors="strict"),
-        encoding=_encodings["repo.content"],
+        ebuild.encode("utf-8", "strict"),
+        encoding="utf-8",
         errors="replace",
     ) as f:
         eapi = portage._parse_eapi_ebuild_head(f)[0]

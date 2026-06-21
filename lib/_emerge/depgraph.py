@@ -13,8 +13,7 @@ from collections import deque, OrderedDict
 from itertools import chain
 
 import portage
-from portage import os
-from portage import _unicode_decode, _unicode_encode, _encodings
+from portage import os_unicode_fs as os
 from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
@@ -4926,9 +4925,7 @@ class depgraph:
                     raise InvalidBinaryPackageFormat(x)
 
                 if cat is not None:
-                    cat = _unicode_decode(
-                        cat.strip(), encoding=_encodings["repo.content"]
-                    )
+                    cat = cat.strip() if isinstance(cat, str) else cat.strip().decode("utf-8", "replace")
                     if binpkg_format == "xpak":
                         mykey = cat + "/" + os.path.basename(x)[:-5]
                     elif binpkg_format == "gpkg":
@@ -10757,10 +10754,8 @@ class depgraph:
             file_contents = None
             try:
                 with open(
-                    _unicode_encode(
-                        file_to_write_to, encoding=_encodings["fs"], errors="strict"
-                    ),
-                    encoding=_encodings["content"],
+                    file_to_write_to.encode("utf-8", "strict"),
+                    encoding="utf-8",
                     errors="replace",
                 ) as f:
                     file_contents = f.readlines()

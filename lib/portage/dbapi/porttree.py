@@ -21,9 +21,7 @@ from portage.exception import (
 from portage.localization import _
 
 from portage import eclass_cache, eapi_is_supported, _eapi_is_deprecated
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
@@ -563,9 +561,6 @@ class portdbapi(dbapi):
 
         # For optimal performance in this hot spot, we do manual unicode
         # handling here instead of using the wrapped os module.
-        encoding = _encodings["fs"]
-        errors = "strict"
-
         relative_path = (
             mysplit[0] + _os.sep + psplit[0] + _os.sep + mysplit[1] + ".ebuild"
         )
@@ -584,7 +579,7 @@ class portdbapi(dbapi):
         for x in mytrees:
             filename = x + _os.sep + relative_path
             if _os.access(
-                _unicode_encode(filename, encoding=encoding, errors=errors), _os.R_OK
+                filename.encode("utf-8", "strict"), _os.R_OK
             ):
                 return (filename, x)
         return (None, 0)

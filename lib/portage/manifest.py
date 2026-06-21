@@ -8,10 +8,7 @@ import re
 import stat
 import warnings
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.exception import (
     DigestException,
     FileNotFound,
@@ -150,7 +147,9 @@ class Manifest:
         if find_invalid_path_char is None:
             find_invalid_path_char = _find_invalid_path_char
         self._find_invalid_path_char = find_invalid_path_char
-        self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
+        if isinstance(pkgdir, bytes):
+            pkgdir = pkgdir.decode("utf-8", "replace")
+        self.pkgdir = pkgdir.rstrip(os.sep) + os.sep
         self.hashes = set()
         self.required_hashes = set()
 
@@ -213,8 +212,8 @@ class Manifest:
         Otherwise, a new dict will be created and returned."""
         try:
             with open(
-                _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
-                encoding=_encodings["repo.content"],
+                file_path.encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 if myhashdict is None:
@@ -317,12 +316,8 @@ class Manifest:
             if myentries and not force:
                 try:
                     with open(
-                        _unicode_encode(
-                            self.getFullname(),
-                            encoding=_encodings["fs"],
-                            errors="strict",
-                        ),
-                        encoding=_encodings["repo.content"],
+                        self.getFullname().encode("utf-8", "strict"),
+                        encoding="utf-8",
                         errors="replace",
                     ) as f:
                         oldentries = list(self._parseManifestLines(f))
@@ -422,9 +417,8 @@ class Manifest:
             # self.pkgdir is already included via preserved_stats.
             for parent_dir, dirs, files in os.walk(self.pkgdir.rstrip(os.sep)):
                 try:
-                    parent_dir = _unicode_decode(
-                        parent_dir, encoding=_encodings["fs"], errors="strict"
-                    )
+                    if isinstance(parent_dir, bytes):
+                        if isinstance(parent_dir, bytes): parent_dir = parent_dir.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     # If an absolute path cannot be decoded, then it is
                     # always excluded from the manifest (repoman will
@@ -601,9 +595,8 @@ class Manifest:
 
         def _process_for_cpv(filename):
             try:
-                filename = _unicode_decode(
-                    filename, encoding=_encodings["fs"], errors="strict"
-                )
+                if isinstance(filename, bytes):
+                    if isinstance(filename, bytes): filename = filename.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 return None
             if filename.startswith("."):
@@ -623,7 +616,8 @@ class Manifest:
         cpvlist = []
         for f in pkgdir_files:
             try:
-                f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                if isinstance(f, bytes):
+                    if isinstance(f, bytes): f = f.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 continue
             if f.startswith("."):
@@ -646,7 +640,8 @@ class Manifest:
         for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
             for f in files:
                 try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                    if isinstance(f, bytes):
+                        if isinstance(f, bytes): f = f.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     continue
                 full_path = os.path.join(parentdir, f)
@@ -806,8 +801,8 @@ class Manifest:
         if not os.path.exists(mfname):
             return []
         with open(
-            _unicode_encode(mfname, encoding=_encodings["fs"], errors="strict"),
-            encoding=_encodings["repo.content"],
+            mfname.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as myfile:
             line_splits = (line.split() for line in myfile.readlines())

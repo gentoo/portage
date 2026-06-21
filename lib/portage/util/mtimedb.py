@@ -15,9 +15,6 @@ import io
 import json
 
 import portage
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
 from portage.data import portage_gid, uid
 from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
@@ -65,7 +62,7 @@ class MtimeDB(dict):
         f = None
         content = None
         try:
-            f = open(_unicode_encode(filename), "rb")
+            f = open(filename.encode("utf-8", "backslashreplace"), "rb")
             content = f.read()
         except OSError as e:
             if getattr(e, "errno", None) in (errno.ENOENT, errno.EACCES):
@@ -80,9 +77,7 @@ class MtimeDB(dict):
         if content:
             try:
                 d = json.loads(
-                    _unicode_decode(
-                        content, encoding=_encodings["repo.content"], errors="strict"
-                    )
+                    (content.decode("utf-8", "strict") if isinstance(content, bytes) else content)
                 )
             except SystemExit:
                 raise
@@ -136,11 +131,7 @@ class MtimeDB(dict):
         else:
             if self._json_write:
                 f.write(
-                    _unicode_encode(
-                        json.dumps(d, **self._json_write_opts),
-                        encoding=_encodings["repo.content"],
-                        errors="strict",
-                    )
+                    json.dumps(d, **self._json_write_opts).encode("utf-8", "strict")
                 )
             else:
                 pickle.dump(d, f, protocol=2)

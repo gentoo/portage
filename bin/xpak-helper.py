@@ -18,7 +18,7 @@ import argparse
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs as os
 
 
 def command_recompose(args):
@@ -49,7 +49,7 @@ def command_recompose(args):
 def main(argv):
     if argv and isinstance(argv[0], bytes):
         for i, x in enumerate(argv):
-            argv[i] = portage._unicode_decode(x, errors="strict")
+            argv[i] = x.decode("utf-8", "strict")
 
     valid_commands = ("recompose",)
     description = "Perform metadata operations on a binary package."

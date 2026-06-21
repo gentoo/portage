@@ -4,7 +4,6 @@
 import os as _os
 import re
 
-from portage import _unicode_decode
 from portage.exception import InvalidData
 
 #########################################################
@@ -157,7 +156,11 @@ def rewrite_lafile(contents):
         else:
             raise InvalidData(
                 "Error: Unexpected entry '%s' in 'dependency_libs'"
-                % _unicode_decode(dep_libs_entry)
+                % (
+                    dep_libs_entry.decode("utf-8", "replace")
+                    if isinstance(dep_libs_entry, bytes)
+                    else dep_libs_entry
+                )
             )
 
     # What should 'dependency_libs' and 'inherited_linker_flags' look like?

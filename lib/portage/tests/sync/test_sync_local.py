@@ -9,8 +9,7 @@ import sys
 import textwrap
 
 import portage
-from portage import os, shutil
-from portage import _unicode_decode
+from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
 from portage.const import PORTAGE_PYM_PATH, REPO_REVISIONS, TIMESTAMP_FORMAT
 from portage.process import find_binary
 from portage.sync.revision_history import get_repo_revision_history
@@ -583,7 +582,7 @@ class SyncLocalTestCase(TestCase):
                     proc.stdout.close()
                     if proc.returncode != os.EX_OK:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(line.decode("utf-8", "replace"))
 
                 self.assertEqual(
                     os.EX_OK,

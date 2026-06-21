@@ -7,8 +7,7 @@
 
 import sys
 
-from portage import os
-from portage import _unicode_decode, _unicode_encode
+from portage import os_unicode_fs as os
 from portage.localization import _
 import portage
 
@@ -16,8 +15,8 @@ import portage
 def _force_ascii_if_necessary(s):
     # Force ascii encoding in order to avoid UnicodeEncodeError
     # from smtplib.sendmail with python3 (bug #291331).
-    s = _unicode_encode(s, encoding="ascii", errors="backslashreplace")
-    s = _unicode_decode(s, encoding="ascii", errors="replace")
+    s = s.encode("ascii", "backslashreplace")
+    s = s.decode("ascii", "replace")
     return s
 
 

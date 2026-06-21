@@ -8,11 +8,8 @@ import pickle
 import stat
 
 from portage import abssymlink
-from portage import os
-from portage import _encodings
-from portage import _os_merge
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
+from portage import os_unicode_merge as _os_merge
 from portage.exception import PermissionDenied
 from portage.localization import _
 from portage.util import atomic_ofstream
@@ -65,9 +62,7 @@ class PreservedLibsRegistry:
         content = None
         try:
             f = open(
-                _unicode_encode(
-                    self._filename, encoding=_encodings["fs"], errors="strict"
-                ),
+                self._filename.encode("utf-8", "strict"),
                 "rb",
             )
             content = f.read()
@@ -88,9 +83,7 @@ class PreservedLibsRegistry:
         if content:
             try:
                 self._data = json.loads(
-                    _unicode_decode(
-                        content, encoding=_encodings["repo.content"], errors="strict"
-                    )
+                    (content.decode("utf-8", "strict") if isinstance(content, bytes) else content)
                 )
             except SystemExit:
                 raise
@@ -135,11 +128,7 @@ class PreservedLibsRegistry:
             f = atomic_ofstream(self._filename, "wb")
             if self._json_write:
                 f.write(
-                    _unicode_encode(
-                        json.dumps(self._data, **self._json_write_opts),
-                        encoding=_encodings["repo.content"],
-                        errors="strict",
-                    )
+                    json.dumps(self._data, **self._json_write_opts).encode("utf-8", "strict")
                 )
             else:
                 pickle.dump(self._data, f, protocol=2)
@@ -163,7 +152,7 @@ class PreservedLibsRegistry:
         """
         if not isinstance(counter, str):
             counter = str(counter)
-        return _unicode_decode(counter).strip()
+        return (counter.decode("utf-8", "replace") if isinstance(counter, bytes) else counter).strip()
 
     def register(self, cpv, slot, counter, paths):
         """Register new objects in the registry. If there is a record with the

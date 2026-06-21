@@ -5,9 +5,7 @@ from itertools import chain
 
 from portage.const import PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
+from portage import os_unicode_fs as os
 
 
 class ImportModulesTestCase(TestCase):
@@ -28,11 +26,11 @@ class ImportModulesTestCase(TestCase):
 
     def _iter_modules(self, base_dir):
         for parent, dirs, files in os.walk(base_dir):
-            parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
+            if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
             parent_mod = parent[len(PORTAGE_PYM_PATH) + 1 :]
             parent_mod = parent_mod.replace("/", ".")
             for x in files:
-                x = _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
+                if isinstance(x, bytes): x = x.decode("utf-8", "strict")
                 if x[-3:] != ".py":
                     continue
                 x = x[:-3]

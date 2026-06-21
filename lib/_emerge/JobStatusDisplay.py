@@ -7,9 +7,7 @@ import time
 
 import portage
 import portage.util.formatter as formatter
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
@@ -91,7 +89,7 @@ class JobStatusDisplay:
 
     def _write(self, s):
         # avoid potential UnicodeEncodeError
-        s = _unicode_encode(s, encoding=_encodings["stdio"], errors="backslashreplace")
+        s = s.encode("utf-8", "backslashreplace")
         out = self.out.buffer
         out.write(s)
         out.flush()
@@ -126,7 +124,7 @@ class JobStatusDisplay:
         term_codes = {}
         for k, capname in self._termcap_name_map.items():
             # Use _native_string for PyPy compat (bug #470258).
-            code = tigetstr(portage._native_string(capname))
+            code = tigetstr(capname)
             if code is None:
                 code = self._default_term_codes[capname]
             term_codes[k] = code

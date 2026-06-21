@@ -10,7 +10,7 @@ import subprocess
 import time
 
 import portage
-from portage import os, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs as os
 from portage.checksum import prelink_capable
 from portage.data import ostype
 from portage.exception import ParseError
@@ -228,10 +228,10 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
     for lib_dir_glob in ("usr/lib*", "lib*"):
         x = os.path.join(eroot, lib_dir_glob)
         for y in glob.glob(
-            _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
+            x.encode("utf-8", "strict")
         ):
             try:
-                y = _unicode_decode(y, encoding=_encodings["fs"], errors="strict")
+                if isinstance(y, bytes): y = y.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 continue
             if os.path.basename(y) != "libexec":
@@ -279,9 +279,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         prelink_conf = os.path.join(eroot, "etc", "prelink.conf")
         try:
             with open(
-                _unicode_encode(
-                    prelink_conf, encoding=_encodings["fs"], errors="strict"
-                ),
+                prelink_conf.encode("utf-8", "strict"),
                 "rb",
             ) as f:
                 if (
