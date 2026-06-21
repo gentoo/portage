@@ -32,6 +32,9 @@ Bug fixes:
   renice(1) to be invoked with a priority of 0, potentially overriding the
   inherited nice value (bug #977846).
 
+* Report and ignore package keyword atoms with USE dependencies instead of
+  failing with a setcpv recursion assertion (bug #966832).
+
 portage-3.0.80 (2026-06-17)
 --------------
 
