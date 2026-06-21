@@ -33,13 +33,10 @@ from portage.util.futures import asyncio
 from portage import abssymlink, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
-from portage import os
-from portage import shutil
-from portage import _encodings
-from portage import _os_merge
-from portage import _selinux_merge
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
+from portage import os_unicode_merge as _os_merge
+from portage import selinux_unicode_merge as _selinux_merge
 from portage.util.futures.executor.fork import ForkExecutor
 from ._VdbMetadataDelta import VdbMetadataDelta
 
@@ -711,9 +708,7 @@ class vardbapi(dbapi):
         open_kwargs = {}
         try:
             with open(
-                _unicode_encode(
-                    self._aux_cache_filename, encoding=_encodings["fs"], errors="strict"
-                ),
+                self._aux_cache_filename.encode("utf-8", "strict"),
                 mode="rb",
                 **open_kwargs,
             ) as f:
@@ -839,9 +834,7 @@ class vardbapi(dbapi):
         if cache_valid:
             # Migrate old metadata to unicode.
             for k, v in metadata.items():
-                metadata[k] = _unicode_decode(
-                    v, encoding=_encodings["repo.content"], errors="replace"
-                )
+                metadata[k] = (v.decode("utf-8", "replace") if isinstance(v, bytes) else v)
 
             mydata.update(metadata)
             pull_me.difference_update(mydata)
@@ -889,12 +882,8 @@ class vardbapi(dbapi):
                 continue
             try:
                 with open(
-                    _unicode_encode(
-                        os.path.join(mydir, x),
-                        encoding=_encodings["fs"],
-                        errors="strict",
-                    ),
-                    encoding=_encodings["repo.content"],
+                    os.path.join(mydir, x).encode("utf-8", "strict"),
+                    encoding="utf-8",
                     errors="replace",
                 ) as f:
                     myd = f.read()
@@ -969,9 +958,7 @@ class vardbapi(dbapi):
         variables = frozenset(variables)
         results = {}
         for line in proc.stdout:
-            line = _unicode_decode(
-                line, encoding=_encodings["content"], errors="replace"
-            )
+            if isinstance(line, bytes): line = line.decode("utf-8", "replace")
             var_assign_match = var_assign_re.match(line)
             if var_assign_match is not None:
                 key = var_assign_match.group(2)
@@ -982,9 +969,7 @@ class vardbapi(dbapi):
                     else:
                         value = [var_assign_match.group(4)]
                         for line in proc.stdout:
-                            line = _unicode_decode(
-                                line, encoding=_encodings["content"], errors="replace"
-                            )
+                            if isinstance(line, bytes): line = line.decode("utf-8", "replace")
                             value.append(line)
                             if have_end_quote(quote, line):
                                 break
@@ -1189,10 +1174,8 @@ class vardbapi(dbapi):
         counter = -1
         try:
             with open(
-                _unicode_encode(
-                    self._counter_path, encoding=_encodings["fs"], errors="strict"
-                ),
-                encoding=_encodings["repo.content"],
+                self._counter_path.encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 try:
@@ -1303,9 +1286,7 @@ class vardbapi(dbapi):
         removed = 0
 
         for filename in paths:
-            filename = _unicode_decode(
-                filename, encoding=_encodings["content"], errors="strict"
-            )
+            if isinstance(filename, bytes): filename = filename.decode("utf-8", "strict")
             filename = normalize_path(filename)
             if relative_paths:
                 relative_filename = filename
@@ -1327,10 +1308,8 @@ class vardbapi(dbapi):
             new_needed = None
             try:
                 with open(
-                    _unicode_encode(
-                        needed_filename, encoding=_encodings["fs"], errors="strict"
-                    ),
-                    encoding=_encodings["repo.content"],
+                    needed_filename.encode("utf-8", "strict"),
+                    encoding="utf-8",
                     errors="replace",
                 ) as f:
                     needed_lines = f.readlines()
@@ -1434,9 +1413,7 @@ class vardbapi(dbapi):
             # Always use a constant utf_8 encoding here, since
             # the "default" encoding can change.
             h.update(
-                _unicode_encode(
-                    s, encoding=_encodings["repo.content"], errors="backslashreplace"
-                )
+                s.encode("utf-8", "backslashreplace")
             )
             h = h.hexdigest()
             h = h[-self._hex_chars :]
@@ -2056,10 +2033,8 @@ class dblink:
         pkgfiles = {}
         try:
             with open(
-                _unicode_encode(
-                    contents_file, encoding=_encodings["fs"], errors="strict"
-                ),
-                encoding=_encodings["repo.content"],
+                contents_file.encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 mylines = f.readlines()
@@ -2844,21 +2819,17 @@ class dblink:
                 obj = normalize_path(objkey)
                 if os is _os_merge:
                     try:
-                        _unicode_encode(
-                            obj, encoding=_encodings["merge"], errors="strict"
-                        )
+                        obj.encode("utf-8", "strict")
                     except UnicodeEncodeError:
                         # The package appears to have been merged with a
                         # different value of sys.getfilesystemencoding(),
                         # so fall back to utf_8 if appropriate.
                         try:
-                            _unicode_encode(
-                                obj, encoding=_encodings["fs"], errors="strict"
-                            )
+                            obj.encode("utf-8", "strict")
                         except UnicodeEncodeError:
                             pass
                         else:
-                            os = portage.os
+                            os = portage.os_unicode_fs
                             perf_md5 = portage.checksum.perform_md5
 
                 file_data = pkgfiles[objkey]
@@ -3389,9 +3360,7 @@ class dblink:
         """
         from portage.util import normalize_path
 
-        filename = _unicode_decode(
-            filename, encoding=_encodings["content"], errors="strict"
-        )
+        if isinstance(filename, bytes): filename = filename.decode("utf-8", "strict")
 
         if destroot is not None and destroot != self._eroot:
             warnings.warn(
@@ -3415,17 +3384,17 @@ class dblink:
         os = _os_merge
 
         try:
-            _unicode_encode(filename, encoding=_encodings["merge"], errors="strict")
+            filename.encode("utf-8", "strict")
         except UnicodeEncodeError:
             # The package appears to have been merged with a
             # different value of sys.getfilesystemencoding(),
             # so fall back to utf_8 if appropriate.
             try:
-                _unicode_encode(filename, encoding=_encodings["fs"], errors="strict")
+                filename.encode("utf-8", "strict")
             except UnicodeEncodeError:
                 pass
             else:
-                os_filename_arg = portage.os
+                os_filename_arg = portage.os_unicode_fs
 
         destfile = normalize_path(
             os_filename_arg.path.join(
@@ -3444,22 +3413,18 @@ class dblink:
             if self._contents_basenames is None:
                 try:
                     for x in self._contents.keys():
-                        _unicode_encode(
-                            x, encoding=_encodings["merge"], errors="strict"
-                        )
+                        x.encode("utf-8", "strict")
                 except UnicodeEncodeError:
                     # The package appears to have been merged with a
                     # different value of sys.getfilesystemencoding(),
                     # so fall back to utf_8 if appropriate.
                     try:
                         for x in self._contents.keys():
-                            _unicode_encode(
-                                x, encoding=_encodings["fs"], errors="strict"
-                            )
+                            x.encode("utf-8", "strict")
                     except UnicodeEncodeError:
                         pass
                     else:
-                        os = portage.os
+                        os = portage.os_unicode_fs
 
                 self._contents_basenames = {
                     os.path.basename(x) for x in self._contents.keys()
@@ -3484,22 +3449,18 @@ class dblink:
                 if os is _os_merge:
                     try:
                         for x in self._contents.keys():
-                            _unicode_encode(
-                                x, encoding=_encodings["merge"], errors="strict"
-                            )
+                            x.encode("utf-8", "strict")
                     except UnicodeEncodeError:
                         # The package appears to have been merged with a
                         # different value of sys.getfilesystemencoding(),
                         # so fall back to utf_8 if appropriate.
                         try:
                             for x in self._contents.keys():
-                                _unicode_encode(
-                                    x, encoding=_encodings["fs"], errors="strict"
-                                )
+                                x.encode("utf-8", "strict")
                         except UnicodeEncodeError:
                             pass
                         else:
-                            os = portage.os
+                            os = portage.os_unicode_fs
 
                 self._contents_inodes = {}
                 parent_paths = set()
@@ -3612,21 +3573,17 @@ class dblink:
         for f_abs in old_contents:
             if os is _os_merge:
                 try:
-                    _unicode_encode(
-                        f_abs, encoding=_encodings["merge"], errors="strict"
-                    )
+                    f_abs.encode("utf-8", "strict")
                 except UnicodeEncodeError:
                     # The package appears to have been merged with a
                     # different value of sys.getfilesystemencoding(),
                     # so fall back to utf_8 if appropriate.
                     try:
-                        _unicode_encode(
-                            f_abs, encoding=_encodings["fs"], errors="strict"
-                        )
+                        f_abs.encode("utf-8", "strict")
                     except UnicodeEncodeError:
                         pass
                     else:
-                        os = portage.os
+                        os = portage.os_unicode_fs
 
             f = f_abs[root_len:]
             try:
@@ -3723,7 +3680,7 @@ class dblink:
         new_contents = self.getcontents().copy()
         old_contents = self._installed_instance.getcontents()
         for f in sorted(preserve_paths):
-            f = _unicode_decode(f, encoding=_encodings["content"], errors="strict")
+            if isinstance(f, bytes): f = f.decode("utf-8", "strict")
             f_abs = os.path.join(root, f.lstrip(os.sep))
             contents_entry = old_contents.get(f_abs)
             if contents_entry is None:
@@ -4179,19 +4136,17 @@ class dblink:
         for i, path in enumerate(file_paths):
             if os is _os_merge:
                 try:
-                    _unicode_encode(path, encoding=_encodings["merge"], errors="strict")
+                    path.encode("utf-8", "strict")
                 except UnicodeEncodeError:
                     # The package appears to have been merged with a
                     # different value of sys.getfilesystemencoding(),
                     # so fall back to utf_8 if appropriate.
                     try:
-                        _unicode_encode(
-                            path, encoding=_encodings["fs"], errors="strict"
-                        )
+                        path.encode("utf-8", "strict")
                     except UnicodeEncodeError:
                         pass
                     else:
-                        os = portage.os
+                        os = portage.os_unicode_fs
 
             try:
                 s = os.lstat(path)
@@ -4295,7 +4250,7 @@ class dblink:
                             str_buffer.append(" ".join(fields))
                             str_buffer.append("\n")
             if str_buffer:
-                str_buffer = _unicode_encode("".join(str_buffer))
+                str_buffer = "".join(str_buffer).encode("utf-8", "backslashreplace")
                 while str_buffer:
                     str_buffer = str_buffer[os.write(self._pipe.fileno(), str_buffer) :]
 
@@ -4379,16 +4334,10 @@ class dblink:
 
         os = _os_merge
 
-        srcroot = _unicode_decode(
-            srcroot, encoding=_encodings["content"], errors="strict"
-        )
+        if isinstance(srcroot, bytes): srcroot = srcroot.decode("utf-8", "strict")
         destroot = self.settings["ROOT"]
-        inforoot = _unicode_decode(
-            inforoot, encoding=_encodings["content"], errors="strict"
-        )
-        myebuild = _unicode_decode(
-            myebuild, encoding=_encodings["content"], errors="strict"
-        )
+        if isinstance(inforoot, bytes): inforoot = inforoot.decode("utf-8", "strict")
+        if isinstance(myebuild, bytes): myebuild = myebuild.decode("utf-8", "strict")
 
         showMessage = self._display_merge
         srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
@@ -4419,12 +4368,8 @@ class dblink:
         for var_name in ("CHOST", "SLOT"):
             try:
                 with open(
-                    _unicode_encode(
-                        os.path.join(inforoot, var_name),
-                        encoding=_encodings["fs"],
-                        errors="strict",
-                    ),
-                    encoding=_encodings["repo.content"],
+                    os.path.join(inforoot, var_name).encode("utf-8", "strict"),
+                    encoding="utf-8",
                     errors="replace",
                 ) as f:
                     val = f.readline().strip()
@@ -4561,12 +4506,8 @@ class dblink:
         phase.wait()
         try:
             with open(
-                _unicode_encode(
-                    os.path.join(inforoot, "INSTALL_MASK"),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
-                encoding=_encodings["repo.content"],
+                os.path.join(inforoot, "INSTALL_MASK").encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 install_mask = InstallMask(f.read())
@@ -4619,19 +4560,11 @@ class dblink:
                     dirs = [os.fsencode(value) for value in dirs]
                     files = [os.fsencode(value) for value in files]
                 try:
-                    parent = _unicode_decode(
-                        parent, encoding=_encodings["merge"], errors="strict"
-                    )
+                    if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
                 except UnicodeDecodeError:
-                    new_parent = _unicode_decode(
-                        parent, encoding=_encodings["merge"], errors="replace"
-                    )
-                    new_parent = _unicode_encode(
-                        new_parent, encoding="ascii", errors="backslashreplace"
-                    )
-                    new_parent = _unicode_decode(
-                        new_parent, encoding=_encodings["merge"], errors="replace"
-                    )
+                    new_parent = (parent.decode("utf-8", "replace") if isinstance(parent, bytes) else parent)
+                    new_parent = new_parent.encode("ascii", "backslashreplace")
+                    if isinstance(new_parent, bytes): new_parent = new_parent.decode("utf-8", "replace")
                     os.rename(parent, new_parent)
                     unicode_error = True
                     unicode_errors.append(new_parent[ed_len:])
@@ -4639,22 +4572,14 @@ class dblink:
 
                 for fname in files:
                     try:
-                        fname = _unicode_decode(
-                            fname, encoding=_encodings["merge"], errors="strict"
-                        )
+                        if isinstance(fname, bytes): fname = fname.decode("utf-8", "strict")
                     except UnicodeDecodeError:
                         fpath = portage._os.path.join(
-                            parent.encode(_encodings["merge"]), fname
+                            parent.encode("utf-8"), fname
                         )
-                        new_fname = _unicode_decode(
-                            fname, encoding=_encodings["merge"], errors="replace"
-                        )
-                        new_fname = _unicode_encode(
-                            new_fname, encoding="ascii", errors="backslashreplace"
-                        )
-                        new_fname = _unicode_decode(
-                            new_fname, encoding=_encodings["merge"], errors="replace"
-                        )
+                        new_fname = (fname.decode("utf-8", "replace") if isinstance(fname, bytes) else fname)
+                        new_fname = new_fname.encode("ascii", "backslashreplace")
+                        if isinstance(new_fname, bytes): new_fname = new_fname.decode("utf-8", "replace")
                         new_fpath = os.path.join(parent, new_fname)
                         os.rename(fpath, new_fpath)
                         unicode_error = True
@@ -4678,15 +4603,9 @@ class dblink:
                         # to an infinite recursion loop.
                         linklist.append(relative_path)
 
-                        myto = _unicode_decode(
-                            _os.readlink(
-                                _unicode_encode(
-                                    fpath, encoding=_encodings["merge"], errors="strict"
-                                )
-                            ),
-                            encoding=_encodings["merge"],
-                            errors="replace",
-                        )
+                        myto = _os.readlink(
+                                fpath.encode("utf-8", "strict")
+                            ).decode("utf-8", "replace")
                         if line_ending_re.search(myto) is not None:
                             paths_with_newlines.append(relative_path)
 
@@ -5089,13 +5008,9 @@ class dblink:
         if counter is None:
             counter = self.vartree.dbapi.counter_tick()
         with open(
-            _unicode_encode(
-                os.path.join(self.dbtmpdir, "COUNTER"),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
+            os.path.join(self.dbtmpdir, "COUNTER").encode("utf-8", "strict"),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="backslashreplace",
         ) as f:
             f.write(f"{counter}")
@@ -5412,14 +5327,10 @@ class dblink:
             (
                 contents_tmp_path
                 if portage.utf8_mode
-                else _unicode_encode(
-                    contents_tmp_path,
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                )
+                else contents_tmp_path.encode("utf-8", "strict")
             ),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="backslashreplace",
         )
 
@@ -5583,28 +5494,18 @@ class dblink:
                 # encoding if necessary, but the content of the symbolic link
                 # may need to be forcefully converted here.
                 myto = _os.readlink(
-                    _unicode_encode(
-                        mysrc, encoding=_encodings["merge"], errors="strict"
-                    )
+                    mysrc.encode("utf-8", "strict")
                 )
                 try:
-                    myto = _unicode_decode(
-                        myto, encoding=_encodings["merge"], errors="strict"
-                    )
+                    if isinstance(myto, bytes): myto = myto.decode("utf-8", "strict")
                 except UnicodeDecodeError:
-                    myto = _unicode_decode(
-                        myto, encoding=_encodings["merge"], errors="replace"
-                    )
-                    myto = _unicode_encode(
-                        myto, encoding="ascii", errors="backslashreplace"
-                    )
-                    myto = _unicode_decode(
-                        myto, encoding=_encodings["merge"], errors="replace"
-                    )
+                    if isinstance(myto, bytes): myto = myto.decode("utf-8", "replace")
+                    myto = myto.encode("ascii", "backslashreplace")
+                    if isinstance(myto, bytes): myto = myto.decode("utf-8", "replace")
                     os.unlink(mysrc)
                     os.symlink(myto, mysrc)
 
-                mymd5 = md5(_unicode_encode(myto)).hexdigest()
+                mymd5 = md5(myto.encode("utf-8", "backslashreplace")).hexdigest()
 
             protected = False
             if stat.S_ISLNK(mymode) or stat.S_ISREG(mymode):
@@ -5629,19 +5530,15 @@ class dblink:
                         # Read symlink target as bytes, in case the
                         # target path has a bad encoding.
                         mydest_link = _os.readlink(
-                            _unicode_encode(
-                                mydest, encoding=_encodings["merge"], errors="strict"
-                            )
+                            mydest.encode("utf-8", "strict")
                         )
-                        mydest_link = _unicode_decode(
-                            mydest_link, encoding=_encodings["merge"], errors="replace"
-                        )
+                        if isinstance(mydest_link, bytes): mydest_link = mydest_link.decode("utf-8", "replace")
 
                         # For protection of symlinks, the md5
                         # of the link target path string is used
                         # for cfgfiledict (symlinks are
                         # protected since bug #485598).
-                        destmd5 = md5(_unicode_encode(mydest_link)).hexdigest()
+                        destmd5 = md5(mydest_link.encode("utf-8", "backslashreplace")).hexdigest()
 
                     elif stat.S_ISREG(mydmode):
                         destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
@@ -5742,7 +5639,7 @@ class dblink:
                         newmtime=thismtime,
                         sstat=mystat,
                         mysettings=self.settings,
-                        encoding=_encodings["merge"],
+                        encoding="utf-8",
                     )
 
                 try:
@@ -5853,7 +5750,7 @@ class dblink:
                                 mydest,
                                 backup_dest,
                                 mysettings=self.settings,
-                                encoding=_encodings["merge"],
+                                encoding="utf-8",
                             )
                             is None
                         ):
@@ -5961,7 +5858,7 @@ class dblink:
                             sstat=mystat,
                             mysettings=self.settings,
                             hardlink_candidates=hardlink_candidates,
-                            encoding=_encodings["merge"],
+                            encoding="utf-8",
                         )
                         if mymtime is None:
                             return 1
@@ -6003,7 +5900,7 @@ class dblink:
                             newmtime=thismtime,
                             sstat=mystat,
                             mysettings=self.settings,
-                            encoding=_encodings["merge"],
+                            encoding="utf-8",
                         )
                         is not None
                     ):
@@ -6256,12 +6153,8 @@ class dblink:
         if not os.path.exists(self.dbdir + "/" + name):
             return ""
         with open(
-            _unicode_encode(
-                os.path.join(self.dbdir, name),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+            os.path.join(self.dbdir, name).encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             mydata = f.read().split()
@@ -6274,12 +6167,8 @@ class dblink:
         if not os.path.exists(self.dbdir + "/" + fname):
             return ""
         with open(
-            _unicode_encode(
-                os.path.join(self.dbdir, fname),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+            os.path.join(self.dbdir, fname).encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             return f.read()
@@ -6292,19 +6181,15 @@ class dblink:
             kwargs["mode"] = "wb"
         else:
             kwargs["mode"] = "w"
-            kwargs["encoding"] = _encodings["repo.content"]
+            kwargs["encoding"] = "utf-8"
         write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
 
     def getelements(self, ename):
         if not os.path.exists(self.dbdir + "/" + ename):
             return []
         with open(
-            _unicode_encode(
-                os.path.join(self.dbdir, ename),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+            os.path.join(self.dbdir, ename).encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             mylines = f.readlines()
@@ -6316,13 +6201,9 @@ class dblink:
 
     def setelements(self, mylist, ename):
         with open(
-            _unicode_encode(
-                os.path.join(self.dbdir, ename),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
+            os.path.join(self.dbdir, ename).encode("utf-8", "strict"),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="backslashreplace",
         ) as f:
             for x in mylist:
@@ -6429,8 +6310,8 @@ class dblink:
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
-        src_bytes = _unicode_encode(mysrc, encoding=_encodings["fs"], errors="strict")
-        dest_bytes = _unicode_encode(mydest, encoding=_encodings["fs"], errors="strict")
+        src_bytes = mysrc.encode("utf-8", "strict")
+        dest_bytes = mydest.encode("utf-8", "strict")
 
         if "xattr" in self.settings.features:
             excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
@@ -6582,23 +6463,23 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
     from portage.util._xattr import xattr
 
     os = _os_merge
-    encoding = _encodings["merge"]
+    encoding = "utf-8"
 
     try:
         for x in contents:
-            _unicode_encode(x, encoding=_encodings["merge"], errors="strict")
+            x.encode("utf-8", "strict")
     except UnicodeEncodeError:
         # The package appears to have been merged with a
         # different value of sys.getfilesystemencoding(),
         # so fall back to utf_8 if appropriate.
         try:
             for x in contents:
-                _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
+                x.encode("utf-8", "strict")
         except UnicodeEncodeError:
             pass
         else:
-            os = portage.os
-            encoding = _encodings["fs"]
+            os = portage.os_unicode_fs
+            encoding = "utf-8"
 
     tar.encoding = encoding
     root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
@@ -6690,10 +6571,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                 # potential collision-protect issues.
                 f = tempfile.TemporaryFile()
                 f.write(
-                    _unicode_encode(
-                        "# empty file because --include-config=n "
-                        + "when `quickpkg` was used\n"
-                    )
+                    b"# empty file because --include-config=n when `quickpkg` was used\n"
                 )
                 f.flush()
                 f.seek(0)
@@ -6701,14 +6579,14 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                 tar.addfile(tarinfo, f)
                 f.close()
             else:
-                path_bytes = _unicode_encode(path, encoding=encoding, errors="strict")
+                path_bytes = path.encode("utf-8", "strict")
 
                 if xattrs:
                     # Compatible with GNU tar, which saves the xattrs
                     # under the SCHILY.xattr namespace.
                     for k in xattr.list(path_bytes):
-                        tarinfo.pax_headers["SCHILY.xattr." + _unicode_decode(k)] = (
-                            _unicode_decode(xattr.get(path_bytes, _unicode_encode(k)))
+                        tarinfo.pax_headers["SCHILY.xattr." + (k.decode("utf-8", "replace") if isinstance(k, bytes) else k)] = (
+                            xattr.get(path_bytes, k.encode("utf-8", "backslashreplace")).decode("utf-8", "replace")
                         )
 
                 with open(path_bytes, "rb") as f:

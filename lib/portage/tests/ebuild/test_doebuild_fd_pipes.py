@@ -4,7 +4,7 @@
 import multiprocessing
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
@@ -177,7 +177,7 @@ class DoebuildFdPipesTestCase(TestCase):
                     pw.close()
 
                 task_scheduler.wait()
-                output = portage._unicode_decode(consumer.getvalue()).rstrip("\n")
+                output = consumer.getvalue().decode("utf-8", "replace").rstrip("\n")
 
                 if task_scheduler.returncode != os.EX_OK:
                     portage.writemsg(output, noiselevel=-1)

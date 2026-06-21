@@ -6,8 +6,6 @@ import portage
 from portage.exception import AlarmSignal, PortageException
 from portage.localization import _
 from portage.util import writemsg
-from portage import _encodings
-from portage import _unicode_decode
 
 import socket
 import time
@@ -22,11 +20,7 @@ _items = {}
 
 def process(mysettings, key, logentries, fulltext):
     global _items
-    time_str = _unicode_decode(
-        time.strftime("%Y%m%d-%H%M%S %Z", time.localtime(time.time())),
-        encoding=_encodings["content"],
-        errors="replace",
-    )
+    time_str = time.strftime("%Y%m%d-%H%M%S %Z", time.localtime(time.time()))
     header = _(
         ">>> Messages generated for package %(pkg)s by process %(pid)d on %(time)s:\n\n"
     ) % {"pkg": key, "pid": portage.getpid(), "time": time_str}

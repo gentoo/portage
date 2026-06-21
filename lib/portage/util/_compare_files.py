@@ -7,8 +7,6 @@ import io
 import os
 import stat
 
-from portage import _encodings
-from portage import _unicode_encode
 from portage.util._xattr import XATTRS_WORKS, xattr
 
 
@@ -28,10 +26,10 @@ def compare_files(file1, file2, skipped_types=()):
     """
 
     file1_stat = os.lstat(
-        _unicode_encode(file1, encoding=_encodings["fs"], errors="strict")
+        file1.encode("utf-8", "strict")
     )
     file2_stat = os.lstat(
-        _unicode_encode(file2, encoding=_encodings["fs"], errors="strict")
+        file2.encode("utf-8", "strict")
     )
 
     differences = []
@@ -93,27 +91,23 @@ def compare_files(file1, file2, skipped_types=()):
             if stat.S_ISLNK(file1_stat.st_mode):
                 file1_stream = io.BytesIO(
                     os.readlink(
-                        _unicode_encode(
-                            file1, encoding=_encodings["fs"], errors="strict"
-                        )
+                        file1.encode("utf-8", "strict")
                     )
                 )
             else:
                 file1_stream = open(
-                    _unicode_encode(file1, encoding=_encodings["fs"], errors="strict"),
+                    file1.encode("utf-8", "strict"),
                     "rb",
                 )
             if stat.S_ISLNK(file2_stat.st_mode):
                 file2_stream = io.BytesIO(
                     os.readlink(
-                        _unicode_encode(
-                            file2, encoding=_encodings["fs"], errors="strict"
-                        )
+                        file2.encode("utf-8", "strict")
                     )
                 )
             else:
                 file2_stream = open(
-                    _unicode_encode(file2, encoding=_encodings["fs"], errors="strict"),
+                    file2.encode("utf-8", "strict"),
                     "rb",
                 )
             while True:

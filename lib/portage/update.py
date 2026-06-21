@@ -7,10 +7,7 @@ import stat
 import sys
 import warnings
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 
 from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.eapi import _get_eapi_attrs
@@ -110,14 +107,10 @@ def update_dbentries(update_iter, mydata, eapi=None, parent=None):
     dict containing only the updated items."""
     updated_items = {}
     for k, mycontent in mydata.items():
-        k_unicode = _unicode_decode(
-            k, encoding=_encodings["repo.content"], errors="replace"
-        )
+        k_unicode = (k.decode("utf-8", "replace") if isinstance(k, bytes) else k)
         if k_unicode not in ignored_dbentries:
             orig_content = mycontent
-            mycontent = _unicode_decode(
-                mycontent, encoding=_encodings["repo.content"], errors="replace"
-            )
+            if isinstance(mycontent, bytes): mycontent = mycontent.decode("utf-8", "replace")
             is_encoded = mycontent is not orig_content
             orig_content = mycontent
             for update_cmd in update_iter:
@@ -126,11 +119,7 @@ def update_dbentries(update_iter, mydata, eapi=None, parent=None):
                 )
             if mycontent != orig_content:
                 if is_encoded:
-                    mycontent = _unicode_encode(
-                        mycontent,
-                        encoding=_encodings["repo.content"],
-                        errors="backslashreplace",
-                    )
+                    mycontent = mycontent.encode("utf-8", "backslashreplace")
                 updated_items[k] = mycontent
     return updated_items
 
@@ -149,15 +138,15 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
     for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
         file_path = os.path.join(dbdir, myfile)
         with open(
-            _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
-            encoding=_encodings["repo.content"],
+            file_path.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             mydata[myfile] = f.read()
     updated_items = update_dbentries(update_iter, mydata, eapi=eapi, parent=parent)
     for myfile, mycontent in updated_items.items():
         file_path = os.path.join(dbdir, myfile)
-        write_atomic(file_path, mycontent, encoding=_encodings["repo.content"])
+        write_atomic(file_path, mycontent, encoding="utf-8")
     return len(updated_items) > 0
 
 
@@ -191,8 +180,8 @@ def grab_updates(updpath, prev_mtimes=None):
             continue
         if int(prev_mtimes.get(file_path, -1)) != mystat[stat.ST_MTIME]:
             f = open(
-                _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
-                encoding=_encodings["repo.content"],
+                file_path.encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             )
             content = f.read()
@@ -349,16 +338,12 @@ def update_config_files(
         if os.path.isdir(config_file):
             for parent, dirs, files in os.walk(config_file):
                 try:
-                    parent = _unicode_decode(
-                        parent, encoding=_encodings["fs"], errors="strict"
-                    )
+                    if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     continue
                 for y_enc in list(dirs):
                     try:
-                        y = _unicode_decode(
-                            y_enc, encoding=_encodings["fs"], errors="strict"
-                        )
+                        y = (y_enc.decode("utf-8", "strict") if isinstance(y_enc, bytes) else y_enc)
                     except UnicodeDecodeError:
                         dirs.remove(y_enc)
                         continue
@@ -366,9 +351,7 @@ def update_config_files(
                         dirs.remove(y_enc)
                 for y in files:
                     try:
-                        y = _unicode_decode(
-                            y, encoding=_encodings["fs"], errors="strict"
-                        )
+                        if isinstance(y, bytes): y = y.decode("utf-8", "strict")
                     except UnicodeDecodeError:
                         continue
                     if y.startswith("."):
@@ -383,12 +366,8 @@ def update_config_files(
         f = None
         try:
             f = open(
-                _unicode_encode(
-                    os.path.join(abs_user_config, x),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
-                encoding=_encodings["content"],
+                os.path.join(abs_user_config, x).encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             )
             file_contents[x] = f.readlines()

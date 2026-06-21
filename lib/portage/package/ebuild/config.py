@@ -23,7 +23,7 @@ import warnings
 from _emerge.Package import Package
 import portage
 
-from portage import bsd_chflags, load_mod, os, selinux, _unicode_decode
+from portage import bsd_chflags, load_mod, os_unicode_fs as os, selinux_unicode_fs as selinux
 from portage.const import (
     CACHE_PATH,
     DEPCACHE_PATH,
@@ -556,12 +556,7 @@ class config:
             if env is None:
                 env = os.environ
 
-            # Avoid potential UnicodeDecodeError exceptions later.
-            env_unicode = {
-                _unicode_decode(k): _unicode_decode(v) for k, v in env.items()
-            }
-
-            self.backupenv = env_unicode
+            self.backupenv = dict(env)
 
             if env_d:
                 # Remove duplicate values so they don't override updated
@@ -3262,8 +3257,8 @@ class config:
             )
 
         # Avoid potential UnicodeDecodeError exceptions later.
-        mykey = _unicode_decode(mykey)
-        myvalue = _unicode_decode(myvalue)
+        if isinstance(mykey, bytes): mykey = mykey.decode("utf-8", "replace")
+        if isinstance(myvalue, bytes): myvalue = myvalue.decode("utf-8", "replace")
 
         self.modifying()
         self.modifiedkeys.append(mykey)

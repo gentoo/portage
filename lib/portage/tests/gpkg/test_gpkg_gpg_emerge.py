@@ -8,8 +8,8 @@ import sys
 import tempfile
 import subprocess
 
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.gpg import GPG
 from portage.process import find_binary
@@ -300,7 +300,7 @@ class test_gpkg_gpg_emerge_case(TestCase):
                     proc.stdout.close()
                     if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(portage._unicode_decode(line))
+                            sys.stderr.write(line.decode("utf-8", "replace"))
 
                 self.assertEqual(
                     step.returncode,

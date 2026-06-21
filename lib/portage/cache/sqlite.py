@@ -7,8 +7,7 @@ import re
 import portage
 from portage.cache import fs_template
 from portage.cache import cache_errors
-from portage import os
-from portage import _unicode_decode
+from portage import os_unicode_fs as os
 from portage.util import writemsg
 from portage.localization import _
 
@@ -113,7 +112,7 @@ class database(fs_template.FsBased):
             if not self.readonly:
                 self._ensure_dirs()
             connection = self._db_module.connect(
-                database=_unicode_decode(self._dbpath), **connection_kwargs
+                database=self._dbpath, **connection_kwargs
             )
             cursor = connection.cursor()
             self._db_connection_info = self._connection_info_entry(

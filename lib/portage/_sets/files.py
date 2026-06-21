@@ -6,10 +6,7 @@ import re
 from itertools import chain
 
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
@@ -159,23 +156,21 @@ class StaticFileSet(EditablePackageSet):
                 )
 
         try:
-            directory = _unicode_decode(
-                directory, encoding=_encodings["fs"], errors="strict"
-            )
+            if isinstance(directory, bytes):
+                if isinstance(directory, bytes): directory = directory.decode("utf-8", "strict")
             # Now verify that we can also encode it.
-            _unicode_encode(directory, encoding=_encodings["fs"], errors="strict")
+            directory.encode("utf-8", "strict")
         except UnicodeError:
-            directory = _unicode_decode(
-                directory, encoding=_encodings["fs"], errors="replace"
-            )
+            if isinstance(directory, bytes):
+                if isinstance(directory, bytes): directory = directory.decode("utf-8", "replace")
             raise SetConfigError(
                 _(
                     "Directory path contains invalid character(s) for encoding '%s': '%s'"
                 )
-                % (_encodings["fs"], directory)
+                % ("utf-8", directory)
             )
 
-        vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
+        vcs_dirs = [x.encode("utf-8", "backslashreplace") for x in VCS_DIRS]
         if os.path.isdir(directory):
             directory = normalize_path(directory)
 
@@ -189,9 +184,7 @@ class StaticFileSet(EditablePackageSet):
                 else:
                     omit_dir = lambda d: dirs.remove(d)
                 try:
-                    parent = _unicode_decode(
-                        parent, encoding=_encodings["fs"], errors="strict"
-                    )
+                    if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     continue
                 for d in dirs[:]:
@@ -199,9 +192,7 @@ class StaticFileSet(EditablePackageSet):
                         omit_dir(d)
                 for filename in files:
                     try:
-                        filename = _unicode_decode(
-                            filename, encoding=_encodings["fs"], errors="strict"
-                        )
+                        if isinstance(filename, bytes): filename = filename.decode("utf-8", "strict")
                     except UnicodeDecodeError:
                         continue
                     if filename.startswith(".") or filename.endswith("~"):

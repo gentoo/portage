@@ -33,14 +33,11 @@ from portage import (
     eapi_is_supported,
     installation,
     merge,
-    os,
-    selinux,
-    shutil,
+    os_unicode_fs as os,
+    selinux_unicode_fs as selinux,
+    shutil_unicode_fs as shutil,
     unmerge,
-    _encodings,
-    _os_merge,
-    _unicode_decode,
-    _unicode_encode,
+    os_unicode_merge as _os_merge,
 )
 from portage.const import (
     EBUILD_SH_ENV_FILE,
@@ -1537,13 +1534,9 @@ def doebuild(
                             build_info["BUILD_ID"] = f"{pkg.build_id}\n"
                         for k, v in build_info.items():
                             with open(
-                                _unicode_encode(
-                                    os.path.join(infoloc, k),
-                                    encoding=_encodings["fs"],
-                                    errors="strict",
-                                ),
+                                os.path.join(infoloc, k).encode("utf-8", "strict"),
                                 mode="w",
-                                encoding=_encodings["repo.content"],
+                                encoding="utf-8",
                                 errors="strict",
                             ) as f:
                                 f.write(v)
@@ -2479,7 +2472,7 @@ def _check_build_log(mysettings, out=None):
         return
     try:
         f = open(
-            _unicode_encode(logfile, encoding=_encodings["fs"], errors="strict"),
+            logfile.encode("utf-8", "strict"),
             mode="rb",
         )
     except OSError:
@@ -2507,14 +2500,10 @@ def _check_build_log(mysettings, out=None):
     qa_configure_opts = ""
     try:
         with open(
-            _unicode_encode(
-                os.path.join(
+            os.path.join(
                     mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_CONFIGURE_OPTIONS"
-                ),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+                ).encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as qa_configure_opts_f:
             qa_configure_opts = qa_configure_opts_f.read()
@@ -2534,16 +2523,12 @@ def _check_build_log(mysettings, out=None):
     qa_am_maintainer_mode = []
     try:
         with open(
-            _unicode_encode(
-                os.path.join(
+            os.path.join(
                     mysettings["PORTAGE_BUILDDIR"],
                     "build-info",
                     "QA_AM_MAINTAINER_MODE",
-                ),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+                ).encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as qa_am_maintainer_mode_f:
             qa_am_maintainer_mode = [
@@ -2588,7 +2573,7 @@ def _check_build_log(mysettings, out=None):
 
     try:
         for line in f:
-            line = _unicode_decode(line)
+            if isinstance(line, bytes): line = line.decode("utf-8", "replace")
             if (
                 am_maintainer_mode_re.search(line) is not None
                 and am_maintainer_mode_exclude_re.search(line) is None
@@ -2729,13 +2714,9 @@ def _post_src_install_write_metadata(settings):
             metadata_buffer[k] = v
 
     with open(
-        _unicode_encode(
-            os.path.join(build_info_dir, "BUILD_TIME"),
-            encoding=_encodings["fs"],
-            errors="strict",
-        ),
+        os.path.join(build_info_dir, "BUILD_TIME").encode("utf-8", "strict"),
         mode="w",
-        encoding=_encodings["repo.content"],
+        encoding="utf-8",
         errors="strict",
     ) as f:
         f.write(f"{int(time.time())}\n")
@@ -2783,13 +2764,9 @@ def _post_src_install_write_metadata(settings):
 
     for k, v in metadata_buffer.items():
         with open(
-            _unicode_encode(
-                os.path.join(build_info_dir, k),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
+            os.path.join(build_info_dir, k).encode("utf-8", "strict"),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
         ) as f:
             f.write(f"{v}\n")
 
@@ -2859,14 +2836,10 @@ def _post_src_install_uid_fix(mysettings, out):
     qa_desktop_file = ""
     try:
         with open(
-            _unicode_encode(
-                os.path.join(
+            os.path.join(
                     mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_DESKTOP_FILE"
-                ),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+                ).encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             qa_desktop_file = f.read()
@@ -2897,19 +2870,11 @@ def _post_src_install_uid_fix(mysettings, out):
                 dirs = [os.fsencode(value) for value in dirs]
                 files = [os.fsencode(value) for value in files]
             try:
-                parent = _unicode_decode(
-                    parent, encoding=_encodings["merge"], errors="strict"
-                )
+                if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
             except UnicodeDecodeError:
-                new_parent = _unicode_decode(
-                    parent, encoding=_encodings["merge"], errors="replace"
-                )
-                new_parent = _unicode_encode(
-                    new_parent, encoding="ascii", errors="backslashreplace"
-                )
-                new_parent = _unicode_decode(
-                    new_parent, encoding=_encodings["merge"], errors="replace"
-                )
+                new_parent = (parent.decode("utf-8", "replace") if isinstance(parent, bytes) else parent)
+                new_parent = new_parent.encode("ascii", "backslashreplace")
+                if isinstance(new_parent, bytes): new_parent = new_parent.decode("utf-8", "replace")
                 os.rename(parent, new_parent)
                 unicode_error = True
                 unicode_errors.append(new_parent[ed_len:])
@@ -2917,20 +2882,12 @@ def _post_src_install_uid_fix(mysettings, out):
 
             for fname in chain(dirs, files):
                 try:
-                    fname = _unicode_decode(
-                        fname, encoding=_encodings["merge"], errors="strict"
-                    )
+                    if isinstance(fname, bytes): fname = fname.decode("utf-8", "strict")
                 except UnicodeDecodeError:
-                    fpath = _os.path.join(parent.encode(_encodings["merge"]), fname)
-                    new_fname = _unicode_decode(
-                        fname, encoding=_encodings["merge"], errors="replace"
-                    )
-                    new_fname = _unicode_encode(
-                        new_fname, encoding="ascii", errors="backslashreplace"
-                    )
-                    new_fname = _unicode_decode(
-                        new_fname, encoding=_encodings["merge"], errors="replace"
-                    )
+                    fpath = _os.path.join(parent.encode("utf-8"), fname)
+                    new_fname = (fname.decode("utf-8", "replace") if isinstance(fname, bytes) else fname)
+                    new_fname = new_fname.encode("ascii", "backslashreplace")
+                    if isinstance(new_fname, bytes): new_fname = new_fname.decode("utf-8", "replace")
                     new_fpath = os.path.join(parent, new_fname)
                     os.rename(fpath, new_fpath)
                     unicode_error = True
@@ -2958,9 +2915,7 @@ def _post_src_install_uid_fix(mysettings, out):
 
                 if fixlafiles and fname.endswith(".la") and os.path.isfile(fpath):
                     f = open(
-                        _unicode_encode(
-                            fpath, encoding=_encodings["merge"], errors="strict"
-                        ),
+                        fpath.encode("utf-8", "strict"),
                         mode="rb",
                     )
                     has_lafile_header = b".la - a libtool library file" in f.readline()
@@ -3003,9 +2958,7 @@ def _post_src_install_uid_fix(mysettings, out):
                             (
                                 fpath
                                 if portage.utf8_mode
-                                else _unicode_encode(
-                                    fpath, encoding=_encodings["merge"], errors="strict"
-                                )
+                                else fpath.encode("utf-8", "strict")
                             ),
                             new_contents,
                             mode="wb",
@@ -3024,7 +2977,7 @@ def _post_src_install_uid_fix(mysettings, out):
                 if mystat.st_gid == portage_gid:
                     mygid = inst_gid
                 apply_secpass_permissions(
-                    _unicode_encode(fpath, encoding=_encodings["merge"]),
+                    fpath.encode("utf-8", "backslashreplace"),
                     uid=myuid,
                     gid=mygid,
                     mode=mystat.st_mode,
@@ -3050,13 +3003,9 @@ def _post_src_install_uid_fix(mysettings, out):
     build_info_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info")
 
     f = open(
-        _unicode_encode(
-            os.path.join(build_info_dir, "SIZE"),
-            encoding=_encodings["fs"],
-            errors="strict",
-        ),
+        os.path.join(build_info_dir, "SIZE").encode("utf-8", "strict"),
         mode="w",
-        encoding=_encodings["repo.content"],
+        encoding="utf-8",
         errors="strict",
     )
     f.write("%d\n" % size)
@@ -3141,10 +3090,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
     f = None
     try:
         f = open(
-            _unicode_encode(
-                needed_filename, encoding=_encodings["fs"], errors="strict"
-            ),
-            encoding=_encodings["repo.content"],
+            needed_filename.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         )
         lines = f.readlines()
@@ -3165,12 +3112,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
     for k in ("QA_PREBUILT", "QA_SONAME_NO_SYMLINK"):
         try:
             with open(
-                _unicode_encode(
-                    os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info", k),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
-                encoding=_encodings["repo.content"],
+                os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info", k).encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 v = f.read()
@@ -3235,12 +3178,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
     build_info_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info")
     try:
         with open(
-            _unicode_encode(
-                os.path.join(build_info_dir, "PROVIDES_EXCLUDE"),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+            os.path.join(build_info_dir, "PROVIDES_EXCLUDE").encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             provides_exclude = f.read()
@@ -3251,12 +3190,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     try:
         with open(
-            _unicode_encode(
-                os.path.join(build_info_dir, "REQUIRES_EXCLUDE"),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            encoding=_encodings["repo.content"],
+            os.path.join(build_info_dir, "REQUIRES_EXCLUDE").encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             requires_exclude = f.read()
@@ -3272,7 +3207,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
     # Parse NEEDED.ELF.2 like LinkageMapELF.rebuild() does, and
     # rewrite it to include multilib categories.
     needed_file = portage.util.atomic_ofstream(
-        needed_filename, encoding=_encodings["repo.content"], errors="strict"
+        needed_filename, encoding="utf-8", errors="strict"
     )
 
     for l in lines:
@@ -3289,7 +3224,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
         filename = os.path.join(image_dir, entry.filename.lstrip(os.sep))
         with open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
+            filename.encode("utf-8", "strict"), "rb"
         ) as f:
             elf_header = ELFHeader.read(f)
 
@@ -3338,26 +3273,18 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     if soname_deps.requires is not None:
         with open(
-            _unicode_encode(
-                os.path.join(build_info_dir, "REQUIRES"),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
+            os.path.join(build_info_dir, "REQUIRES").encode("utf-8", "strict"),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="strict",
         ) as f:
             f.write(soname_deps.requires)
 
     if soname_deps.provides is not None:
         with open(
-            _unicode_encode(
-                os.path.join(build_info_dir, "PROVIDES"),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
+            os.path.join(build_info_dir, "PROVIDES").encode("utf-8", "strict"),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="strict",
         ) as f:
             f.write(soname_deps.provides)

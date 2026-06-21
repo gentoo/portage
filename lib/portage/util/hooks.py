@@ -7,7 +7,7 @@ from collections import OrderedDict
 
 import portage
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.output import create_color_func
 from portage.util import writemsg_level, _recursive_file_list
 from warnings import warn
@@ -21,8 +21,8 @@ def get_hooks_from_dir(rel_directory, prefix="/"):
 
     hooks = OrderedDict()
     for filepath in _recursive_file_list(directory):
-        name = filepath.split(directory)[1].lstrip(portage.os.sep)
-        if portage.os.access(filepath, portage.os.X_OK):
+        name = filepath.split(directory)[1].lstrip(portage.os_unicode_fs.sep)
+        if portage.os_unicode_fs.access(filepath, portage.os_unicode_fs.X_OK):
             hooks[filepath] = name
         else:
             writemsg_level(
@@ -30,7 +30,7 @@ def get_hooks_from_dir(rel_directory, prefix="/"):
                 % (
                     warn("*"),
                     directory,
-                    portage._unicode_decode(name),
+                    name,
                 ),
                 level=logging.WARN,
                 noiselevel=2,
@@ -44,7 +44,7 @@ def perform_hooks(rel_directory, *argv, prefix="/"):
         hook_command = filepath + " " + " ".join(map(str, argv))
         retval = portage.process.spawn(hook_command)
 
-        if retval != portage.os.EX_OK:
+        if retval != portage.os_unicode_fs.EX_OK:
             writemsg_level(
                 f" {bad('*')} Spawn failed for: {name}, {filepath}\n",
                 level=logging.ERROR,

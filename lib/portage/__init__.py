@@ -179,6 +179,7 @@ except ImportError as e:
 
 utf8_mode = sys.getfilesystemencoding() == "utf-8"
 
+# Deprecated: retained for third-party compatibility.
 _encodings = {
     "content": "utf_8",
     "fs": "utf_8",
@@ -189,12 +190,26 @@ _encodings = {
 
 
 def _unicode_encode(s, encoding=_encodings["content"], errors="backslashreplace"):
+    import warnings
+
+    warnings.warn(
+        "portage._unicode_encode is deprecated",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if isinstance(s, str):
         s = s.encode(encoding, errors)
     return s
 
 
 def _unicode_decode(s, encoding=_encodings["content"], errors="replace"):
+    import warnings
+
+    warnings.warn(
+        "portage._unicode_decode is deprecated",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if isinstance(s, bytes):
         s = str(s, encoding=encoding, errors=errors)
     return s
@@ -342,13 +357,10 @@ if hasattr(_os, "statvfs"):
 
 os_unicode_fs = _unicode_module_wrapper(_os, overrides=_os_overrides)
 os_unicode_merge = _unicode_module_wrapper(_os, overrides=_os_overrides)
-os = os_unicode_fs
-_os_merge = os_unicode_merge
 
 import shutil as _shutil
 
 shutil_unicode_fs = _unicode_module_wrapper(_shutil)
-shutil = shutil_unicode_fs
 
 # Imports below this point rely on the above unicode wrapper definitions.
 try:
@@ -364,9 +376,6 @@ except (ImportError, OSError) as e:
     _selinux = None
     selinux_unicode_fs = None
     selinux_unicode_merge = None
-
-selinux = selinux_unicode_fs
-_selinux_merge = selinux_unicode_merge
 
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END

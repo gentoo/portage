@@ -11,7 +11,7 @@ import typing
 
 import portage
 from pathlib import Path
-from portage import eclass_cache, os
+from portage import eclass_cache, os_unicode_fs as os
 from portage._sets.base import WildcardPackageSet
 from portage.checksum import get_valid_checksum_keys
 from portage.dep import Atom
@@ -34,9 +34,6 @@ from portage.util.configparser import SafeConfigParser, ConfigParserError, read_
 from portage.util._path import isdir_raise_eaccess
 from portage.util.path import first_existing
 from portage.localization import _
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage import _encodings
 from portage import manifest
 import portage.sync
 
@@ -676,10 +673,8 @@ class RepoConfig:
         f = None
         try:
             f = open(
-                _unicode_encode(
-                    repo_name_path, encoding=_encodings["fs"], errors="strict"
-                ),
-                encoding=_encodings["repo.content"],
+                repo_name_path.encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             )
             return f.readline().strip(), False
@@ -739,7 +734,7 @@ class RepoConfig:
         return (
             "<portage.repository.config.RepoConfig(name={!r}, location={!r})>".format(
                 self.name,
-                _unicode_decode(self.location),
+                self.location,
             )
         )
 

@@ -12,8 +12,7 @@ from functools import reduce
 
 from io import StringIO
 
-from portage import _encodings, _unicode_decode, _unicode_encode
-from portage import os
+from portage import os_unicode_fs as os
 from portage.const import PRIVATE_PATH
 from portage.dep import _slot_separator
 from portage.localization import _
@@ -469,9 +468,7 @@ def format_date(datestr):
         return datestr
 
     # TODO We could format to local date format '%x' here?
-    return _unicode_decode(
-        d.strftime("%B %d, %Y"), encoding=_encodings["content"], errors="replace"
-    )
+    return d.strftime("%B %d, %Y")
 
 
 # simple Exception classes to catch specific errors
@@ -515,7 +512,6 @@ class Glsa:
         @type	portdbapi: portage.dbapi.porttree.portdbapi
         @param	portdbapi: ebuild repository
         """
-        myid = _unicode_decode(myid, encoding=_encodings["content"], errors="strict")
         if re.match(r"\d{6}-\d{2}", myid):
             self.type = "id"
         elif os.path.exists(myid):
@@ -796,16 +792,12 @@ class Glsa:
         """
         if not self.isInjected():
             checkfile = open(
-                _unicode_encode(
-                    os.path.join(self.config["EROOT"], PRIVATE_PATH, "glsa_injected"),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
+                os.path.join(self.config["EROOT"], PRIVATE_PATH, "glsa_injected").encode("utf-8", "strict"),
                 mode="a+",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="strict",
             )
-            checkfile.write(_unicode_decode(self.nr + "\n"))
+            checkfile.write(self.nr + "\n")
             checkfile.close()
 
     def getMergeList(self, least_change=True):

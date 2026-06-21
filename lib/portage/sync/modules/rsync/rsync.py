@@ -15,8 +15,7 @@ import time
 from _emerge.UserQuery import UserQuery
 
 import portage
-from portage import _unicode_decode
-from portage import os
+from portage import os_unicode_fs as os
 from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.output import create_color_func, yellow, blue, bold
 from portage.process import has_ipv6
@@ -269,7 +268,7 @@ class RsyncSync(NewBase):
                 except OSError as e:
                     writemsg_level(
                         "!!! getaddrinfo failed for '%s': %s\n"
-                        % (_unicode_decode(hostname), str(e)),
+                        % (hostname, str(e)),
                         noiselevel=-1,
                         level=logging.ERROR,
                     )
@@ -335,7 +334,7 @@ class RsyncSync(NewBase):
                     dosyncuri = uris.pop()
                 elif maxretries < 0 or retries > maxretries:
                     writemsg(
-                        f"!!! Exhausted addresses for {_unicode_decode(hostname)}\n",
+                        f"!!! Exhausted addresses for {hostname}\n",
                         noiselevel=-1,
                     )
                     return (1, False)

@@ -24,9 +24,7 @@ from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
 from inspect import iscoroutinefunction
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 import portage
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
@@ -953,7 +951,7 @@ def _exec_wrapper(
             writemsg(
                 f"ERROR: Executing {mycommand} failed with E2BIG. Child process environment size: {env_stats.env_size} bytes. Largest environment variable: {env_stats.env_largest_name} ({env_stats.env_largest_size} bytes)\n"
             )
-        writemsg(f"{e}:\n   {' '.join(mycommand)}\n", noiselevel=-1)
+        writemsg(f"{e}:\n   {' '.join(str(x) for x in mycommand)}\n", noiselevel=-1)
         raise
 
 
@@ -1033,7 +1031,7 @@ def _exec(
 
     # Avoid a potential UnicodeEncodeError from os.execve().
     myargs = [
-        _unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in myargs
+        x.encode("utf-8", "strict") if isinstance(x, str) else os.fsencode(x) for x in myargs
     ]
 
     # Use default signal handlers in order to avoid problems
@@ -1115,13 +1113,11 @@ def _exec(
             [
                 portage._python_interpreter,
                 os.path.join(portage._bin_path, "pid-ns-init"),
-                _unicode_encode("" if uid is None else str(uid)),
-                _unicode_encode("" if gid is None else str(gid)),
-                _unicode_encode(
-                    "" if groups is None else ",".join(str(group) for group in groups)
-                ),
-                _unicode_encode("" if umask is None else str(umask)),
-                _unicode_encode(",".join(str(fd) for fd in fd_pipes)),
+                "" if uid is None else str(uid).encode("utf-8", "backslashreplace"),
+                "" if gid is None else str(gid).encode("utf-8", "backslashreplace"),
+                "" if groups is None else ",".join(str(group) for group in groups).encode("utf-8", "backslashreplace"),
+                "" if umask is None else str(umask).encode("utf-8", "backslashreplace"),
+                ",".join(str(fd) for fd in fd_pipes).encode("utf-8", "backslashreplace"),
                 binary,
             ]
             + myargs,

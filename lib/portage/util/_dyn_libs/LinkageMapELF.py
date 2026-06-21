@@ -8,10 +8,7 @@ import logging
 import subprocess
 
 import portage
-from portage import _encodings
-from portage import _os_merge
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_merge as _os_merge
 from portage.cache.mappings import slot_dict_class
 from portage.const import EPREFIX
 from portage.dep.soname.multilib_category import compute_multilib_category
@@ -144,17 +141,17 @@ class LinkageMapELF:
             os = _os_merge
 
             try:
-                _unicode_encode(obj, encoding=_encodings["merge"], errors="strict")
+                obj.encode("utf-8", "strict")
             except UnicodeEncodeError:
                 # The package appears to have been merged with a
                 # different value of sys.getfilesystemencoding(),
                 # so fall back to utf_8 if appropriate.
                 try:
-                    _unicode_encode(obj, encoding=_encodings["fs"], errors="strict")
+                    obj.encode("utf-8", "strict")
                 except UnicodeEncodeError:
                     pass
                 else:
-                    os = portage.os
+                    os = portage.os_unicode_fs
 
             abs_path = os.path.join(root, obj.lstrip(os.sep))
             try:
@@ -283,13 +280,9 @@ class LinkageMapELF:
             else:
                 for l in proc.stdout:
                     try:
-                        l = _unicode_decode(
-                            l, encoding=_encodings["content"], errors="strict"
-                        )
+                        if isinstance(l, bytes): l = l.decode("utf-8", "strict")
                     except UnicodeDecodeError:
-                        l = _unicode_decode(
-                            l, encoding=_encodings["content"], errors="replace"
-                        )
+                        if isinstance(l, bytes): l = l.decode("utf-8", "replace")
                         writemsg_level(
                             _(
                                 "\nError decoding characters "
@@ -309,11 +302,7 @@ class LinkageMapELF:
                         continue
                     try:
                         with open(
-                            _unicode_encode(
-                                entry.filename,
-                                encoding=_encodings["fs"],
-                                errors="strict",
-                            ),
+                            entry.filename.encode("utf-8", "strict"),
                             "rb",
                         ) as f:
                             elf_header = ELFHeader.read(f)
@@ -329,11 +318,7 @@ class LinkageMapELF:
                             proc = subprocess.Popen(
                                 [
                                     b"file",
-                                    _unicode_encode(
-                                        entry.filename,
-                                        encoding=_encodings["fs"],
-                                        errors="strict",
-                                    ),
+                                    entry.filename.encode("utf-8", "strict"),
                                 ],
                                 stdout=subprocess.PIPE,
                             )

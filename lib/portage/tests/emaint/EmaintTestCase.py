@@ -80,7 +80,7 @@ class EmaintTestCase(TestCase):
                     bad_output = step.output is not None and output not in output
                     if bad_returncode or bad_output:
                         for line in output:
-                            sys.stderr.write(portage._unicode_decode(line))
+                            sys.stderr.write(line.decode("utf-8", "replace"))
 
                 self.assertEqual(
                     step.returncode,

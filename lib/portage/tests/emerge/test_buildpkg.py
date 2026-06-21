@@ -122,7 +122,7 @@ class BuildPkgTestCase(TestCase):
                     proc.stdout.close()
                     if proc.returncode != os.EX_OK:
                         for line in output:
-                            sys.stderr.write(portage._unicode_decode(line))
+                            sys.stderr.write(line.decode("utf-8", "replace"))
 
                 self.assertEqual(
                     os.EX_OK,

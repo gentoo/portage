@@ -25,7 +25,6 @@ from collections.abc import Sequence
 if TYPE_CHECKING:
     from portage.dep import Atom
 
-from portage import _unicode_decode
 from portage.eapi import _eapi_attrs, _get_eapi_attrs
 from portage.exception import InvalidData
 from portage.localization import _
@@ -404,7 +403,7 @@ class _pkg_str(str):
 
         if not isinstance(cpv, str):
             # Avoid TypeError from str.__init__ with PyPy.
-            cpv = _unicode_decode(cpv)
+            cpv = cpv
         str.__init__(cpv)
         if metadata is not None:
             self.__dict__["_metadata"] = metadata

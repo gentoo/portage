@@ -19,12 +19,9 @@ from datetime import datetime
 
 import portage
 from portage import checksum
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage import normalize_path
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
 from portage.binpkg import get_binpkg_format
 from portage.exception import (
     FileNotFound,
@@ -769,9 +766,7 @@ class gpkg:
         if gpkg_file is None:
             self.gpkg_file = None
         else:
-            self.gpkg_file = _unicode_decode(
-                gpkg_file, encoding=_encodings["fs"], errors="strict"
-            )
+            self.gpkg_file = gpkg_file.decode("utf-8", "strict") if isinstance(gpkg_file, bytes) else gpkg_file
 
         if basename is None:
             self.basename = None
@@ -996,7 +991,7 @@ class gpkg:
         """
 
         root_dir = normalize_path(
-            _unicode_decode(root_dir, encoding=_encodings["fs"], errors="strict")
+            (root_dir.decode("utf-8", "strict") if isinstance(root_dir, bytes) else root_dir)
         )
 
         # Get pre image info
@@ -1068,7 +1063,7 @@ class gpkg:
         Decompress current gpkg to decompress_dir
         """
         decompress_dir = normalize_path(
-            _unicode_decode(decompress_dir, encoding=_encodings["fs"], errors="strict")
+            (decompress_dir.decode("utf-8", "strict") if isinstance(decompress_dir, bytes) else decompress_dir)
         )
 
         self._verify_binpkg()
@@ -1341,7 +1336,7 @@ class gpkg:
         protect_file_size = protect_file.tell()
 
         root_dir = normalize_path(
-            _unicode_decode(root_dir, encoding=_encodings["fs"], errors="strict")
+            (root_dir.decode("utf-8", "strict") if isinstance(root_dir, bytes) else root_dir)
         )
 
         # Get pre image info
@@ -1475,9 +1470,7 @@ class gpkg:
                             tarinfo.size = protect_file_size
                             image_tar.addfile(tarinfo, protect_file)
                         else:
-                            path_bytes = _unicode_encode(
-                                path, encoding=_encodings["fs"], errors="strict"
-                            )
+                            path_bytes = path.encode("utf-8", "strict")
 
                             with open(path_bytes, "rb") as f:
                                 image_tar.addfile(tarinfo, f)
@@ -1831,12 +1824,12 @@ class gpkg:
         """
         metadata = {}
         metadata_dir = normalize_path(
-            _unicode_decode(metadata_dir, encoding=_encodings["fs"], errors="strict")
+            (metadata_dir.decode("utf-8", "strict") if isinstance(metadata_dir, bytes) else metadata_dir)
         )
         for parent, dirs, files in os.walk(metadata_dir):
             for f in files:
                 try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                    f = (f.decode("utf-8", "strict") if isinstance(f, bytes) else f)
                 except UnicodeDecodeError:
                     continue
                 with open(os.path.join(parent, f), "rb") as metafile:
@@ -1975,12 +1968,12 @@ class gpkg:
         image_prefix_length = len(image_prefix) + 1
         root_dir = os.path.join(
             normalize_path(
-                _unicode_decode(root_dir, encoding=_encodings["fs"], errors="strict")
+                (root_dir.decode("utf-8", "strict") if isinstance(root_dir, bytes) else root_dir)
             ),
             "",
         )
         root_dir_length = len(
-            _unicode_encode(root_dir, encoding=_encodings["fs"], errors="strict")
+            root_dir.encode("utf-8", "strict")
         )
 
         image_max_prefix_length = 0
@@ -1995,17 +1988,17 @@ class gpkg:
                 dirs = [os.fsencode(value) for value in dirs]
                 files = [os.fsencode(value) for value in files]
 
-            parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
+            parent = (parent.decode("utf-8", "strict") if isinstance(parent, bytes) else parent)
             for d in dirs:
                 try:
-                    d = _unicode_decode(d, encoding=_encodings["fs"], errors="strict")
+                    d = (d.decode("utf-8", "strict") if isinstance(d, bytes) else d)
                 except UnicodeDecodeError as err:
                     writemsg(colorize("BAD", f"\n*** {err}\n\n"), noiselevel=-1)
                     raise
 
                 d = os.path.join(parent, d)
                 prefix_length = (
-                    len(_unicode_encode(d, encoding=_encodings["fs"], errors="strict"))
+                    len(d.encode("utf-8", "strict"))
                     - root_dir_length
                     + image_prefix_length
                 )
@@ -2013,9 +2006,7 @@ class gpkg:
                 if os.path.islink(d):
                     path_link = os.readlink(d)
                     path_link_length = len(
-                        _unicode_encode(
-                            path_link, encoding=_encodings["fs"], errors="strict"
-                        )
+                        path_link.encode("utf-8", "strict")
                     )
                     image_max_link_length = max(image_max_link_length, path_link_length)
 
@@ -2023,19 +2014,19 @@ class gpkg:
 
             for f in files:
                 try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                    f = (f.decode("utf-8", "strict") if isinstance(f, bytes) else f)
                 except UnicodeDecodeError as err:
                     writemsg(colorize("BAD", f"\n*** {err}\n\n"), noiselevel=-1)
                     raise
 
                 filename_length = len(
-                    _unicode_encode(f, encoding=_encodings["fs"], errors="strict")
+                    f.encode("utf-8", "strict")
                 )
                 image_max_name_length = max(image_max_name_length, filename_length)
 
                 f = os.path.join(parent, f)
                 path_length = (
-                    len(_unicode_encode(f, encoding=_encodings["fs"], errors="strict"))
+                    len(f.encode("utf-8", "strict"))
                     - root_dir_length
                     + image_prefix_length
                 )
@@ -2047,9 +2038,7 @@ class gpkg:
                     path_link_length = len(
                         os.fsencode(path_link)
                         if portage.utf8_mode
-                        else _unicode_encode(
-                            path_link, encoding=_encodings["fs"], errors="strict"
-                        )
+                        else path_link.encode("utf-8", "strict")
                     )
                 elif file_stat.st_nlink > 1:
                     # Hardlink exists
@@ -2084,12 +2073,12 @@ class gpkg:
         image_prefix_length = len(image_prefix) + 1
         root_dir = os.path.join(
             normalize_path(
-                _unicode_decode(root, encoding=_encodings["fs"], errors="strict")
+                (root.decode("utf-8", "strict") if isinstance(root, bytes) else root)
             ),
             "",
         )
         root_dir_length = len(
-            _unicode_encode(root_dir, encoding=_encodings["fs"], errors="strict")
+            root_dir.encode("utf-8", "strict")
         )
 
         image_max_prefix_length = 0
@@ -2101,7 +2090,7 @@ class gpkg:
         paths = list(contents)
         for path in paths:
             try:
-                path = _unicode_decode(path, encoding=_encodings["fs"], errors="strict")
+                path = (path.decode("utf-8", "strict") if isinstance(path, bytes) else path)
             except UnicodeDecodeError as err:
                 writemsg(colorize("BAD", f"\n*** {err}\n\n"), noiselevel=-1)
                 raise
@@ -2109,19 +2098,19 @@ class gpkg:
             d, f = os.path.split(path)
 
             prefix_length = (
-                len(_unicode_encode(d, encoding=_encodings["fs"], errors="strict"))
+                len(d.encode("utf-8", "strict"))
                 - root_dir_length
                 + image_prefix_length
             )
             image_max_prefix_length = max(image_max_prefix_length, prefix_length)
 
             filename_length = len(
-                _unicode_encode(f, encoding=_encodings["fs"], errors="strict")
+                f.encode("utf-8", "strict")
             )
             image_max_name_length = max(image_max_name_length, filename_length)
 
             path_length = (
-                len(_unicode_encode(path, encoding=_encodings["fs"], errors="strict"))
+                len(path.encode("utf-8", "strict"))
                 - root_dir_length
                 + image_prefix_length
             )
@@ -2137,9 +2126,7 @@ class gpkg:
             if stat.S_ISLNK(file_stat.st_mode):
                 path_link = os.readlink(path)
                 path_link_length = len(
-                    _unicode_encode(
-                        path_link, encoding=_encodings["fs"], errors="strict"
-                    )
+                    path_link.encode("utf-8", "strict")
                 )
             elif file_stat.st_nlink > 1:
                 # Hardlink exists

@@ -61,7 +61,7 @@ try:
     import portage
 
     portage._internal_caller = True
-    from portage import os, _encodings, _unicode_encode, _unicode_decode
+    from portage import os_unicode_fs as os
     from portage.cache.cache_errors import CacheError, StatCollision
     from portage.cache.index.pkg_desc_index import (
         pkg_desc_index_line_format,
@@ -573,7 +573,7 @@ try:
             if display_updates:
                 try:
                     with open(
-                        self._output_file, encoding=_encodings["repo.content"]
+                        self._output_file, encoding="utf-8"
                     ) as f:
                         for line in f:
                             pkg_desc = pkg_desc_index_line_read(line)
@@ -583,7 +583,7 @@ try:
 
             portage.util.ensure_dirs(os.path.dirname(self._output_file))
             f = portage.util.atomic_ofstream(
-                self._output_file, encoding=_encodings["repo.content"]
+                self._output_file, encoding="utf-8"
             )
 
             portdb = self._portdb
@@ -673,18 +673,14 @@ try:
                         # Probe in binary mode, in order to avoid
                         # potential character encoding issues.
                         output = open(
-                            _unicode_encode(
-                                desc_path, encoding=_encodings["fs"], errors="strict"
-                            ),
+                            desc_path.encode("utf-8", "strict"),
                             "r+b",
                         )
                     else:
                         output = atomic_ofstream(
-                            _unicode_encode(
-                                desc_path, encoding=_encodings["fs"], errors="strict"
-                            ),
+                            desc_path.encode("utf-8", "strict"),
                             mode="w",
-                            encoding=_encodings["repo.content"],
+                            encoding="utf-8",
                             errors="backslashreplace",
                         )
                 except OSError as e:
@@ -709,11 +705,9 @@ try:
                     self._preserve_comments = False
                     try:
                         output = atomic_ofstream(
-                            _unicode_encode(
-                                desc_path, encoding=_encodings["fs"], errors="strict"
-                            ),
+                            desc_path.encode("utf-8", "strict"),
                             mode="w",
-                            encoding=_encodings["repo.content"],
+                            encoding="utf-8",
                             errors="backslashreplace",
                         )
                     except OSError as e:
@@ -739,19 +733,15 @@ try:
                 # Finished probing comments in binary mode, now append
                 # in text mode.
                 output = atomic_ofstream(
-                    _unicode_encode(
-                        desc_path, encoding=_encodings["fs"], errors="strict"
-                    ),
+                    desc_path.encode("utf-8", "strict"),
                     mode="w",
-                    encoding=_encodings["repo.content"],
+                    encoding="utf-8",
                     errors="backslashreplace",
                 )
                 # Copy previous content in order to simulate "append" with atomic_ofstream.
                 with open(
-                    _unicode_encode(
-                        desc_path, encoding=_encodings["fs"], errors="strict"
-                    ),
-                    encoding=_encodings["repo.content"],
+                    desc_path.encode("utf-8", "strict"),
+                    encoding="utf-8",
                     errors="backslashreplace",
                 ) as previous_content:
                     for line in previous_content:
@@ -793,9 +783,7 @@ try:
                 metadata_path = os.path.join(repo_path, cp, "metadata.xml")
                 try:
                     metadata = ElementTree.parse(
-                        _unicode_encode(
-                            metadata_path, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        metadata_path.encode("utf-8", "strict"),
                         parser=ElementTree.XMLParser(target=_MetadataTreeBuilder()),
                     )
                 except OSError:
@@ -909,9 +897,7 @@ try:
         @staticmethod
         def grab(cmd):
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            return _unicode_decode(
-                p.communicate()[0], encoding=_encodings["stdio"], errors="strict"
-            )
+            return p.communicate()[0].decode("utf-8", "strict")
 
         def generate_changelog(self, cp):
             os.chdir(os.path.join(self._repo_path, cp))
@@ -938,7 +924,7 @@ try:
                 output = atomic_ofstream(
                     self._changelog_output,
                     mode="w",
-                    encoding=_encodings["repo.content"],
+                    encoding="utf-8",
                     errors="backslashreplace",
                 )
             except OSError as e:

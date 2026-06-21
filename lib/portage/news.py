@@ -25,10 +25,7 @@ if TYPE_CHECKING:
     import portage.dbapi.vartree
     import portage.package.ebuild.config
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.const import NEWS_LIB_PATH
 from portage.util import (
     apply_secpass_permissions,
@@ -140,7 +137,7 @@ class NewsManager:
         news_dir: str = self._news_dir(repoid)
         try:
             news: list[str] = _os.listdir(
-                _unicode_encode(news_dir, encoding=_encodings["fs"], errors="strict")
+                news_dir.encode("utf-8", "strict")
             )
         except OSError:
             return
@@ -159,13 +156,9 @@ class NewsManager:
 
             for itemid in news:
                 try:
-                    itemid = _unicode_decode(
-                        itemid, encoding=_encodings["fs"], errors="strict"
-                    )
+                    if isinstance(itemid, bytes): itemid = itemid.decode("utf-8", "strict")
                 except UnicodeDecodeError:
-                    itemid = _unicode_decode(
-                        itemid, encoding=_encodings["fs"], errors="replace"
-                    )
+                    if isinstance(itemid, bytes): itemid = itemid.decode("utf-8", "replace")
                     writemsg_level(
                         _("!!! Invalid encoding in news item name: '%s'\n") % itemid,
                         level=logging.ERROR,
@@ -317,8 +310,8 @@ class NewsItem:
 
     def parse(self) -> None:
         with open(
-            _unicode_encode(self.path, encoding=_encodings["fs"], errors="strict"),
-            encoding=_encodings["content"],
+            self.path.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             lines = f.readlines()

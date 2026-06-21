@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
 from portage.tests import TestCase, CommandStep, FunctionStep
@@ -226,7 +226,7 @@ src_install() {
                     proc.stdout.close()
                     if proc.returncode != step.returncode:
                         for line in output:
-                            sys.stderr.write(portage._unicode_decode(line))
+                            sys.stderr.write(line.decode("utf-8", "replace"))
 
                 self.assertEqual(
                     step.returncode,

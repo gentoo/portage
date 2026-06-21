@@ -13,11 +13,8 @@ import tempfile
 import portage
 from portage import (
     bsd_chflags,
-    _encodings,
     _os_overrides,
     _selinux,
-    _unicode_decode,
-    _unicode_encode,
     _unicode_func_wrapper,
     _unicode_module_wrapper,
 )
@@ -86,7 +83,7 @@ def _copyxattr(src, dest, exclude=None):
 
     if attrs:
         if exclude is not None and isinstance(attrs[0], bytes):
-            exclude = exclude.encode(_encodings["fs"])
+            exclude = exclude.encode("utf-8")
         exclude = _get_xattr_excluder(exclude)
 
     for attr in attrs:
@@ -103,7 +100,7 @@ def _copyxattr(src, dest, exclude=None):
                     "Filesystem containing file '%s' "
                     "does not support extended attribute '%s'"
                 )
-                % (_unicode_decode(dest), _unicode_decode(attr))
+                % ((dest.decode("utf-8", "replace") if isinstance(dest, bytes) else dest), (attr.decode("utf-8", "replace") if isinstance(attr, bytes) else attr))
             )
 
 
@@ -123,7 +120,7 @@ def _cmpxattr(src: bytes, dest: bytes, exclude=None) -> bool:
 
     if src_attrs:
         if exclude is not None and isinstance(src_attrs[0], bytes):
-            exclude = exclude.encode(_encodings["fs"])
+            exclude = exclude.encode("utf-8")
     exclude = _get_xattr_excluder(exclude)
 
     src_attrs = {attr for attr in src_attrs if not exclude(attr)}
@@ -144,7 +141,7 @@ def movefile(
     sstat=None,
     mysettings=None,
     hardlink_candidates=None,
-    encoding=_encodings["fs"],
+    encoding="utf-8",
 ):
     """moves a file from src to dest, preserving all permissions and attributes; mtime will
     be preserved even when moving across filesystems.  Returns mtime as integer on success
@@ -154,8 +151,8 @@ def movefile(
     if mysettings is None:
         mysettings = portage.settings
 
-    src_bytes = _unicode_encode(src, encoding=encoding, errors="strict")
-    dest_bytes = _unicode_encode(dest, encoding=encoding, errors="strict")
+    src_bytes = src.encode(encoding, "strict")
+    dest_bytes = dest.encode(encoding, "strict")
     xattr_enabled = "xattr" in mysettings.features
     selinux_enabled = mysettings.selinux_enabled()
     if selinux_enabled:
@@ -345,9 +342,7 @@ def movefile(
     if renamefailed:
         if stat.S_ISREG(sstat[stat.ST_MODE]):
             dest_tmp = dest + "#new"
-            dest_tmp_bytes = _unicode_encode(
-                dest_tmp, encoding=encoding, errors="strict"
-            )
+            dest_tmp_bytes = dest_tmp.encode(encoding, "strict")
             success = False
             try:  # For safety copy then move it over.
                 _copyfile(src_bytes, dest_tmp_bytes)
@@ -396,8 +391,8 @@ def movefile(
                 writemsg(
                     _("!!! '%(src)s' to '%(dest)s'\n")
                     % {
-                        "src": _unicode_decode(src, encoding=encoding),
-                        "dest": _unicode_decode(dest, encoding=encoding),
+                        "src": src.decode(encoding, "replace"),
+                        "dest": dest.decode(encoding, "replace"),
                     },
                     noiselevel=-1,
                 )

@@ -16,11 +16,8 @@ from unittest.runner import TextTestResult as _TextTestResult
 import portage
 from portage import os_unicode_fs as os
 from portage.util import no_color
-from portage import _encodings
-from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH
 from portage.output import colorize
-from portage.proxy.objectproxy import ObjectProxy
 
 # This remains constant when the real value is a mock.
 EPREFIX_ORIG = portage.const.EPREFIX
@@ -40,19 +37,7 @@ class FunctionStep:
     function: Callable[[int], Any]  # called with step index as argument
 
 
-class lazy_value(ObjectProxy):
-    __slots__ = ("_func",)
-
-    def __init__(self, func):
-        ObjectProxy.__init__(self)
-        object.__setattr__(self, "_func", func)
-
-    def _get_target(self):
-        return object.__getattribute__(self, "_func")()
-
-
-@lazy_value
-def cnf_path():
+def _cnf_path():
     if portage._not_installed:
         return os.path.join(portage.const.PORTAGE_BASE_PATH, "cnf")
     return os.path.join(
@@ -60,25 +45,28 @@ def cnf_path():
     )
 
 
-@lazy_value
-def cnf_etc_path():
+def _cnf_etc_path():
     if portage._not_installed:
-        return str(cnf_path)
+        return cnf_path
     return os.path.join(EPREFIX_ORIG or "/", "etc")
 
 
-@lazy_value
-def cnf_bindir():
+def _cnf_bindir():
     if portage._not_installed:
         return portage.const.PORTAGE_BIN_PATH
     return os.path.join(portage.const.EPREFIX or "/", "usr", "bin")
 
 
-@lazy_value
-def cnf_sbindir():
+def _cnf_sbindir():
     if portage._not_installed:
-        return str(cnf_bindir)
+        return cnf_bindir
     return os.path.join(portage.const.EPREFIX or "/", "usr", "sbin")
+
+
+cnf_path = _cnf_path()
+cnf_etc_path = _cnf_etc_path()
+cnf_bindir = _cnf_bindir()
+cnf_sbindir = _cnf_sbindir()
 
 
 def get_pythonpath():

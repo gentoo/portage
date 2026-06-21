@@ -367,7 +367,7 @@ class MtimeDBTestCase(TestCase):
         ):
             mtimedb = MtimeDB("/some/path/mtimedb")
         d = {"z": "zome", "a": "AAA"}
-        encoding = portage._encodings["repo.content"]
+        encoding = "utf-8"
         # I'm interested here in unit testing, but the method is private
         # and shouldn't be called directly from outside, obviously:
         mtimedb._MtimeDB__write_to_disk(d)

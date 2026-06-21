@@ -7,7 +7,7 @@ import shlex
 import warnings
 
 import portage
-from portage import os, eapi_is_supported, _encodings, _unicode_encode
+from portage import os_unicode_fs as os, eapi_is_supported
 from portage.const import (
     CUSTOM_PROFILE_PATH,
     GLOBAL_CONFIG_PATH,
@@ -224,8 +224,8 @@ class LocationsManager:
         f = None
         try:
             f = open(
-                _unicode_encode(eapi_file, encoding=_encodings["fs"], errors="strict"),
-                encoding=_encodings["content"],
+                eapi_file.encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             )
             eapi = f.readline().strip()

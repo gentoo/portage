@@ -10,8 +10,7 @@ import sys
 import time
 
 import portage
-from portage import os
-from portage import _encodings, _unicode_decode
+from portage import os_unicode_fs as os
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -134,7 +133,7 @@ src_install() {
                 path = os.path.join(dir_path, name)
                 st = os.lstat(path)
                 if stat.S_ISREG(st.st_mode):
-                    with open(path, mode="a", encoding=_encodings["stdio"]) as f:
+                    with open(path, mode="a", encoding="utf-8") as f:
                         f.write("modified at %d\n" % time.time())
                 elif stat.S_ISLNK(st.st_mode):
                     old_dest = os.readlink(path)
@@ -291,7 +290,7 @@ src_install() {
                     proc.stdout.close()
                     if proc.returncode != os.EX_OK:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(line.decode("utf-8", "replace"))
 
                 self.assertEqual(
                     os.EX_OK, proc.returncode, f"emerge failed with args {args}"

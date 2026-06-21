@@ -28,7 +28,7 @@ import typing
 import warnings
 
 import portage
-from portage import os, _encodings, _unicode_decode
+from portage import os_unicode_fs as os
 from portage.exception import (
     DirectoryNotFound,
     FileNotFound,
@@ -379,9 +379,8 @@ def _lockfile_iteration(
                 # to close the file descriptor because it may
                 # still be in use.
                 os.close(myfd)
-            lockfilename_path = _unicode_decode(
-                lockfilename_path, encoding=_encodings["fs"], errors="strict"
-            )
+            if isinstance(lockfilename_path, bytes):
+                if isinstance(lockfilename_path, bytes): lockfilename_path = lockfilename_path.decode("utf-8", "strict")
             if not isinstance(lockfilename_path, str):
                 raise
             link_success = hardlink_lockfile(

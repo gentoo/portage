@@ -5,10 +5,7 @@
 import errno
 import stat
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.localization import _
 
 
@@ -56,7 +53,7 @@ def RecursiveFileLoader(filename):
                     dirs.remove(d)
             for f in files:
                 try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                    if isinstance(f, bytes): f = f.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     continue
                 if f[:1] == "." or f[-1:] == "~":
@@ -156,8 +153,8 @@ class FileLoader(DataLoader):
         for fn in RecursiveFileLoader(self.fname):
             try:
                 with open(
-                    _unicode_encode(fn, encoding=_encodings["fs"], errors="strict"),
-                    encoding=_encodings["content"],
+                    fn.encode("utf-8", "strict"),
+                    encoding="utf-8",
                     errors="replace",
                 ) as f:
                     lines = f.readlines()

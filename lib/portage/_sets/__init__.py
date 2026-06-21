@@ -10,11 +10,8 @@ __all__ = [
 ]
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage import load_mod
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage import _encodings
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 from portage.const import VCS_DIRS
 from portage.const import _ENABLE_SET_CONFIG
@@ -347,7 +344,7 @@ def load_default_config(settings, trees):
         global_config_path = os.path.join(
             portage.const.EPREFIX, GLOBAL_CONFIG_PATH.lstrip(os.sep)
         )
-    vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
+    vcs_dirs = [x.encode("utf-8", "backslashreplace") for x in VCS_DIRS]
 
     def _getfiles():
         sets_config_paths = [
@@ -362,8 +359,8 @@ def load_default_config(settings, trees):
         dot = "."
         tilde = "~"
         if not portage.utf8_mode:
-            dot = _unicode_encode(dot)
-            tilde = _unicode_encode(tilde)
+            dot = dot.encode("utf-8", "backslashreplace")
+            tilde = tilde.encode("utf-8", "backslashreplace")
 
         for sets_config_path in sets_config_paths:
             if os.path.isdir(sets_config_path):

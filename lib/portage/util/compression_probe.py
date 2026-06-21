@@ -5,7 +5,6 @@ import errno
 import re
 
 
-from portage import _encodings, _unicode_encode
 from portage.exception import FileNotFound, PermissionDenied
 from portage.util._ctypes import ctypes
 
@@ -92,7 +91,7 @@ def compression_probe(f):
     if open_file:
         try:
             f = open(
-                _unicode_encode(f, encoding=_encodings["fs"], errors="strict"),
+                f.encode("utf-8", "strict"),
                 mode="rb",
             )
         except OSError as e:

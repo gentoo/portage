@@ -19,11 +19,8 @@ from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._dyn_libs.dyn_libs import check_dyn_libs_inconsistent
 import portage
-from portage import os
-from portage import shutil
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 import logging
 
 
@@ -376,15 +373,13 @@ class Binpkg(CompositeTask):
                 continue
 
             f = open(
-                _unicode_encode(
-                    os.path.join(infloc, k), encoding=_encodings["fs"], errors="strict"
-                ),
+                os.path.join(infloc, k).encode("utf-8", "strict"),
                 mode="w",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="backslashreplace",
             )
             try:
-                f.write(_unicode_decode(v + "\n"))
+                f.write(v + "\n")
             finally:
                 f.close()
 
@@ -394,16 +389,12 @@ class Binpkg(CompositeTask):
             if not md5sum:
                 md5sum = portage.checksum.perform_md5(pkg_path)
             with open(
-                _unicode_encode(
-                    os.path.join(infloc, "BINPKGMD5"),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
+                os.path.join(infloc, "BINPKGMD5").encode("utf-8", "strict"),
                 mode="w",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="strict",
             ) as f:
-                f.write(_unicode_decode(f"{md5sum}\n"))
+                f.write(f"{md5sum}\n")
 
         env_extractor = BinpkgEnvExtractor(
             background=self.background, scheduler=self.scheduler, settings=self.settings
@@ -487,12 +478,8 @@ class Binpkg(CompositeTask):
 
         try:
             with open(
-                _unicode_encode(
-                    os.path.join(self._infloc, "EPREFIX"),
-                    encoding=_encodings["fs"],
-                    errors="strict",
-                ),
-                encoding=_encodings["repo.content"],
+                os.path.join(self._infloc, "EPREFIX").encode("utf-8", "strict"),
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 self._build_prefix = f.read().rstrip("\n")
@@ -536,13 +523,9 @@ class Binpkg(CompositeTask):
 
         # We want to install in "our" prefix, not the binary one
         with open(
-            _unicode_encode(
-                os.path.join(self._infloc, "EPREFIX"),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
+            os.path.join(self._infloc, "EPREFIX").encode("utf-8", "strict"),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="strict",
         ) as f:
             f.write(self.settings["EPREFIX"] + "\n")

@@ -55,9 +55,7 @@ class BinpkgExtractorAsync(SpawnProcess):
                 "{JOBS}", str(makeopts_to_job_count(self.env.get("MAKEOPTS", "1")))
             )
         elif tarfile.is_tarfile(
-            portage._unicode_encode(
-                self.pkg_path, encoding=portage._encodings["fs"], errors="strict"
-            )
+            self.pkg_path.encode("utf-8", "strict")
         ):
             decomp_cmd = "cat"
             decomp = {

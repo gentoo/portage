@@ -5,10 +5,7 @@
 import errno
 import time
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.data import portage_gid, portage_uid
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
 from portage.util import apply_permissions, ensure_dirs, normalize_path
@@ -38,11 +35,7 @@ def process(mysettings, key, logentries, fulltext):
     elogfilename = (
         pf
         + ":"
-        + _unicode_decode(
-            time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())),
-            encoding=_encodings["content"],
-            errors="replace",
-        )
+        + time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))
         + ".log"
     )
 
@@ -56,12 +49,12 @@ def process(mysettings, key, logentries, fulltext):
 
     try:
         with open(
-            _unicode_encode(elogfilename, encoding=_encodings["fs"], errors="strict"),
+            elogfilename.encode("utf-8", "strict"),
             mode="w",
-            encoding=_encodings["content"],
+            encoding="utf-8",
             errors="backslashreplace",
         ) as elogfile:
-            elogfile.write(_unicode_decode(fulltext))
+            elogfile.write(fulltext)
     except OSError as e:
         func_call = f"open('{elogfilename}', 'w')"
         if e.errno == errno.EACCES:

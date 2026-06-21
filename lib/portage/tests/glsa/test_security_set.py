@@ -3,7 +3,7 @@
 
 
 import portage
-from portage import os, _encodings
+from portage import os_unicode_fs as os
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -69,7 +69,7 @@ class SecuritySetTestCase(TestCase):
     def write_glsa_test_case(self, glsa_dir, glsa):
         with open(
             os.path.join(glsa_dir, "glsa-" + glsa["glsa_id"] + ".xml"),
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             mode="w",
         ) as f:
             f.write(self.glsa_template % glsa)

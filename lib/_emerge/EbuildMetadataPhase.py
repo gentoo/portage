@@ -6,10 +6,7 @@ import sys
 from portage.cache.mappings import slot_dict_class
 import portage
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs as os
 from portage.util.futures import asyncio
 
 import fcntl
@@ -55,8 +52,8 @@ class EbuildMetadataPhase(SubProcess):
         ebuild_path = self.ebuild_hash.location
 
         with open(
-            _unicode_encode(ebuild_path, encoding=_encodings["fs"], errors="strict"),
-            encoding=_encodings["repo.content"],
+            ebuild_path.encode("utf-8", "strict"),
+            encoding="utf-8",
             errors="replace",
         ) as f:
             self._eapi, self._eapi_lineno = portage._parse_eapi_ebuild_head(f)
@@ -206,11 +203,7 @@ class EbuildMetadataPhase(SubProcess):
         # self._raw_metadata is None when _start returns
         # early due to an unsupported EAPI
         if self.returncode == os.EX_OK and self._raw_metadata is not None:
-            metadata_lines = _unicode_decode(
-                b"".join(self._raw_metadata),
-                encoding=_encodings["repo.content"],
-                errors="replace",
-            ).splitlines()
+            metadata_lines = b"".join(self._raw_metadata).decode("utf-8", "replace").splitlines()
             metadata = {}
             metadata_valid = True
             for l in metadata_lines:

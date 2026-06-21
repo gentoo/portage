@@ -9,10 +9,7 @@ import signal
 import sys
 
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
-from portage import _unicode_decode
+from portage import os_unicode_fs as os
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import (
@@ -418,18 +415,14 @@ class _EbuildFetcherProcess(ForkProcess):
         # output here.
         if self.logfile is not None:
             f = open(
-                _unicode_encode(
-                    self.logfile, encoding=_encodings["fs"], errors="strict"
-                ),
+                self.logfile.encode("utf-8", "strict"),
                 mode="a",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="backslashreplace",
             )
             for filename in uri_map:
                 f.write(
-                    _unicode_decode(
-                        f" * {filename} size ;-) ...".ljust(73) + "[ ok ]\n"
-                    )
+                    f" * {filename} size ;-) ...".ljust(73) + "[ ok ]\n"
                 )
             f.close()
 
