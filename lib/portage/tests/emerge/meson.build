@@ -10,6 +10,7 @@ py.install_sources(
         'test_baseline.py',
         'test_libc_dep_inject.py',
         'test_noreplace.py',
+        'test_observability.py',
         '__init__.py',
         '__test__.py',
     ],
