@@ -23,6 +23,10 @@ Bug fixes:
   reparse repository configuration honour the configured value instead of
   falling back to false (bug #970768).
 
+* Do not create EAPI 9 PORTAGE_EBUILD_EXTRA_SOURCE directories under
+  ${PORTAGE_TMPDIR}/portage for unprivileged --pretend operations, since it may
+  be inaccessible to the calling user (bug #977840).
+
 portage-3.0.80 (2026-06-17)
 --------------
 

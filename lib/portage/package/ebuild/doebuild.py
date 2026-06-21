@@ -2245,26 +2245,31 @@ def spawn(
         else:  # case B and C
             global _emerge_tmpdir
             if _emerge_tmpdir is None:
-                # Keep this directory beneath ${PORTAGE_TMPDIR}/portage so that
-                # dropped-privilege phases can traverse the path and source
-                # PORTAGE_EBUILD_EXTRA_SOURCE (bug #977245).
-                build_prefix = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
-                portage.util.ensure_dirs(build_prefix)
-                try:
-                    apply_secpass_permissions(
-                        build_prefix,
-                        gid=portage_gid,
-                        uid=portage_uid,
-                        mode=0o700,
-                        mask=0,
+                mkdtemp_kwargs = {
+                    "prefix": f"portage-tmpdir-{portage.getpid()}-",
+                }
+                # A value of 2 means root-equivalent permissions are in effect.
+                if secpass >= 2:
+                    # Keep this directory beneath ${PORTAGE_TMPDIR}/portage so
+                    # that dropped-privilege phases can traverse the path and
+                    # source PORTAGE_EBUILD_EXTRA_SOURCE (bug #977245).
+                    build_prefix = os.path.join(
+                        mysettings["PORTAGE_TMPDIR"], "portage"
                     )
-                except PortageException:
-                    if not os.path.isdir(build_prefix):
-                        raise
-                _emerge_tmpdir = tempfile.mkdtemp(
-                    prefix=f"portage-tmpdir-{portage.getpid()}-",
-                    dir=build_prefix,
-                )
+                    portage.util.ensure_dirs(build_prefix)
+                    try:
+                        apply_secpass_permissions(
+                            build_prefix,
+                            gid=portage_gid,
+                            uid=portage_uid,
+                            mode=0o700,
+                            mask=0,
+                        )
+                    except PortageException:
+                        if not os.path.isdir(build_prefix):
+                            raise
+                    mkdtemp_kwargs["dir"] = build_prefix
+                _emerge_tmpdir = tempfile.mkdtemp(**mkdtemp_kwargs)
                 os.chmod(_emerge_tmpdir, 0o1775)
                 os.chown(_emerge_tmpdir, -1, int(portage_build_gid))
                 portage.process.atexit_register(
