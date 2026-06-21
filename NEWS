@@ -27,6 +27,11 @@ Bug fixes:
   ${PORTAGE_TMPDIR}/portage for unprivileged --pretend operations, since it may
   be inaccessible to the calling user (bug #977840).
 
+* Refrain from invoking renice(1) unless PORTAGE_NICENESS is set. Previously,
+  setting either PORTAGE_IONICE_COMMAND or PORTAGE_SCHEDULING_POLICY caused
+  renice(1) to be invoked with a priority of 0, potentially overriding the
+  inherited nice value (bug #977846).
+
 portage-3.0.80 (2026-06-17)
 --------------
 

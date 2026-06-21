@@ -3252,8 +3252,10 @@ def apply_priorities(settings):
 
 
 def nice(settings, pids):
+    priority = settings.get("PORTAGE_NICENESS")
+    if priority is None:
+        return
 
-    priority = settings.get("PORTAGE_NICENESS", "0")
     for name, pid in pids:
         cmd = ["renice", "-n", priority, str(pid)]
         try:
@@ -3262,11 +3264,10 @@ def nice(settings, pids):
                     cmd, env=os.environ, fd_pipes={1: dev_null.fileno()}
                 )
         except portage.exception.CommandNotFound:
-            if "PORTAGE_NICENESS" in settings:
-                out = portage.output.EOutput()
-                out.eerror(
-                    f"PORTAGE_NICENESS not applied because the renice command was not found"
-                )
+            out = portage.output.EOutput()
+            out.eerror(
+                "PORTAGE_NICENESS not applied because the renice command was not found"
+            )
             return
         if rval != os.EX_OK:
             out = portage.output.EOutput()
