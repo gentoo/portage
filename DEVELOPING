@@ -214,7 +214,7 @@ Releases
 1. Repository mangling:
 	- Update NEWS (for both new version and release date)
 	- Update meson.build
-	- git commit --signoff --message "NEWS, meson.build: prepare for portage-3.0.30" NEWS meson.build
+	- git commit --signoff --message "NEWS, meson.build: prepare for portage-${VERSION}" NEWS meson.build
 
 2. Run the tests:
      - meson setup -Dcode-only=true build
@@ -230,8 +230,8 @@ Releases
 	- Run the above command TWICE to ensure the new Portage can update itself.
 
 5. Create and push a git tag for this release:
-	- git tag --annotate --sign --message portage-3.0.30 portage-3.0.30
-	- git push --signed origin master portage-3.0.30
+	- git tag --annotate --sign --message portage-${VERSION} portage-${VERSION}
+	- git push --signed origin master portage-${VERSION}
 
 6. Publish the ebuild changes:
 	- Update the Manifest for the bumped ebuild. Portage should fetch from gitweb.gentoo.org.
@@ -245,7 +245,7 @@ Releases
 	- pip install build twine
 	- python -m build # build the sdist and arch/Python-specific wheel
 	- python -m build --wheel -Csetup-args="-Dnative-extensions=false" # build the pure wheel
-	- twine upload dist/portage-3.0.30.tar.gz dist/portage-3.0.30-py3-none-any.whl
+	- twine upload dist/portage-${VERSION}.tar.gz dist/portage-${VERSION}-py3-none-any.whl
 
 8. Bugzilla wrangling:
 	- Close the bugs blocked by the tracker bug for this release and
