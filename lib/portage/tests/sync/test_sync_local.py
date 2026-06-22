@@ -35,8 +35,7 @@ class SyncLocalTestCase(TestCase):
         debug = False
         self._must_skip()
 
-        repos_conf = textwrap.dedent(
-            """
+        repos_conf = textwrap.dedent("""
 			[DEFAULT]
 			%(default_keys)s
 			[test_repo]
@@ -49,8 +48,7 @@ class SyncLocalTestCase(TestCase):
 			auto-sync = %(auto-sync)s
 			volatile = no
 			%(repo_extra_keys)s
-		"""
-        )
+		""")
 
         profile = {"eapi": ("5",), "package.use.stable.mask": ("dev-libs/A flag",)}
 

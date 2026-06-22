@@ -10,7 +10,6 @@ import subprocess
 from portage.tests import TestCase
 from portage.util._xattr import xattr as _xattr, _XattrSystemCommands, _XattrStub
 
-
 orig_popen = subprocess.Popen
 
 

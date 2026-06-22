@@ -14,8 +14,7 @@ if (
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
-"""System health checks and maintenance utilities.
-"""
+"""System health checks and maintenance utilities."""
 
 import signal
 

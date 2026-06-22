@@ -7,7 +7,6 @@ from portage.output import EOutput, colorize
 from portage.const import EBUILD_PHASES
 from portage.localization import _
 
-
 _items = []
 
 

@@ -47,15 +47,13 @@ class test_sync_zipfile_case(TestCase):
 
             env = settings.environ()
 
-            repos_conf = textwrap.dedent(
-                """
+            repos_conf = textwrap.dedent("""
                 [test_repo]
                 location = %(location)s
                 sync-type = zipfile
                 sync-uri = %(sync-uri)s
                 auto-sync = true
-            """
-            )
+            """)
 
             repo_location = f"{playground.eprefix}/var/repositories/test_repo"
 

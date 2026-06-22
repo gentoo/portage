@@ -54,7 +54,6 @@ from portage.util._eventloop.asyncio_event_loop import (
     AsyncioEventLoop as _AsyncioEventLoop,
 )
 
-
 _lock = threading.Lock()
 _policy = None
 

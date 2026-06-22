@@ -136,25 +136,21 @@ class VirtualMinimizeChildrenTestCase(TestCase):
 
     def testVirtualPackageManager(self):
         ebuilds = {
-            "app-admin/perl-cleaner-2.25": {
-                "RDEPEND": """
+            "app-admin/perl-cleaner-2.25": {"RDEPEND": """
 					|| (
 						( sys-apps/portage app-portage/portage-utils )
 						sys-apps/pkgcore
 						sys-apps/paludis
-					)"""
-            },
+					)"""},
             "app-portage/portage-utils-0.64": {},
             "sys-apps/paludis-2.6.0": {},
             "sys-apps/portage-2.3.19-r1": {},
-            "virtual/package-manager-0": {
-                "RDEPEND": """
+            "virtual/package-manager-0": {"RDEPEND": """
 					|| (
 						sys-apps/portage
 						sys-apps/paludis
 						sys-apps/pkgcore
-					)"""
-            },
+					)"""},
         }
 
         test_cases = (
@@ -219,20 +215,16 @@ class VirtualMinimizeChildrenTestCase(TestCase):
             "sys-fs/eudev-3.1.5": {},
             "sys-fs/static-dev-0.1": {},
             "sys-fs/udev-233": {},
-            "virtual/dev-manager-0": {
-                "RDEPEND": """
+            "virtual/dev-manager-0": {"RDEPEND": """
 					|| (
 						virtual/udev
 						sys-fs/static-dev
-					)"""
-            },
-            "virtual/udev-0": {
-                "RDEPEND": """
+					)"""},
+            "virtual/udev-0": {"RDEPEND": """
 					|| (
 						>=sys-fs/eudev-2.1.1
 						>=sys-fs/udev-217
-					)"""
-            },
+					)"""},
         }
 
         test_cases = (

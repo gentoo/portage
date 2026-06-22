@@ -743,16 +743,12 @@ try:
                         output.write(line)
                 output.write("\n")
             else:
-                output.write(
-                    textwrap.dedent(
-                        """\
+                output.write(textwrap.dedent("""\
                     # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
                     # your descriptions to your package's metadata.xml ONLY.
                     # * generated automatically using egencache *
 
-                    """
-                    )
-                )
+                    """))
 
             # The cmp function no longer exists in python3, so we'll
             # implement our own here under a slightly different name
@@ -935,16 +931,12 @@ try:
                 self.returncode |= 2
                 return
 
-            output.write(
-                textwrap.dedent(
-                    f"""\
+            output.write(textwrap.dedent(f"""\
                 # ChangeLog for {cp}
                 # Copyright 1999-{time.strftime("%Y")} Gentoo Foundation; Distributed under the GPL v2
                 # (auto-generated from git log)
 
-                """
-                )
-            )
+                """))
 
             # now grab all the commits
             revlist_cmd = ["git", self._work_tree, "rev-list"]

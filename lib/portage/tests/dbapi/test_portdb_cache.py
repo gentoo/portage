@@ -80,13 +80,11 @@ class PortdbCacheTestCase(TestCase):
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					if portage.portdb.repositories['test_repo'].location in portage.portdb._pregen_auxdb:
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             CommandStep(
@@ -103,27 +101,23 @@ class PortdbCacheTestCase(TestCase):
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             CommandStep(
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 						import os, sys, portage
 						from portage.cache.flat_hash import md5_database
 						if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
 							sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             CommandStep(
@@ -156,27 +150,23 @@ class PortdbCacheTestCase(TestCase):
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             CommandStep(
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					from portage.cache.flat_hash import md5_database
 					if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             # Disable DeprecationWarnings, since the pms format triggers them
@@ -203,13 +193,11 @@ class PortdbCacheTestCase(TestCase):
                 command=(portage_python,)
                 + ("-b", "-Wd", "-Wi::DeprecationWarning", "-c")
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             CommandStep(
@@ -217,14 +205,12 @@ class PortdbCacheTestCase(TestCase):
                 command=(portage_python,)
                 + ("-b", "-Wd", "-Wi::DeprecationWarning", "-c")
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					from portage.cache.metadata import database as pms_database
 					if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], pms_database):
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             CommandStep(
@@ -232,14 +218,12 @@ class PortdbCacheTestCase(TestCase):
                 command=(portage_python,)
                 + ("-b", "-Wd", "-Wi::DeprecationWarning", "-c")
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					location = portage.portdb.repositories['test_repo'].location
 					if not portage.portdb._pregen_auxdb[location]["sys-apps/C-1"]['IDEPEND']:
 						sys.exit(1)
-					"""
-                    ),
+					"""),
                 ),
             ),
             # Test auto-detection and preference for md5-cache when both
@@ -252,27 +236,23 @@ class PortdbCacheTestCase(TestCase):
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					if portage.portdb.repositories['test_repo'].location not in portage.portdb._pregen_auxdb:
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
             CommandStep(
                 returncode=os.EX_OK,
                 command=python_cmd
                 + (
-                    textwrap.dedent(
-                        """
+                    textwrap.dedent("""
 					import os, sys, portage
 					from portage.cache.flat_hash import md5_database
 					if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories['test_repo'].location], md5_database):
 						sys.exit(1)
-			        """
-                    ),
+			        """),
                 ),
             ),
         )

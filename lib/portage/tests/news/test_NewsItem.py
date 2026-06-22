@@ -30,18 +30,14 @@ class FakeNewsItem(NewsItem):
     display_if_profile: Optional[list[str]] = None
     display_if_keyword: Optional[list[str]] = None
 
-    item_template_header = Template(
-        textwrap.dedent(
-            """
+    item_template_header = Template(textwrap.dedent("""
         Title: ${title}
         Author: ${author}
         Content-Type: ${content_type}
         Posted: ${posted}
         Revision: ${revision}
         News-Item-Format: ${news_item_format}
-        """
-        )
-    )
+        """))
 
     def __post_init__(self):
         super().__init__(path="mocked_news", name=self.title)
@@ -88,8 +84,7 @@ class NewsItemTestCase(TestCase):
         "display_if_installed": [],
         "display_if_profile": [],
         "display_if_keyword": [],
-        "content": textwrap.dedent(
-            """
+        "content": textwrap.dedent("""
     YourSQL databases created using YourSQL version 4.0 are incompatible
     with YourSQL version 4.1 or later. There is no reliable way to
     automate the database format conversion, so action from the system
@@ -109,8 +104,7 @@ class NewsItemTestCase(TestCase):
         revdep-rebuild --library=libyoursqlclient.so.12
 
     The revdep-rebuild tool is provided by app-portage/gentoolkit.
-    """
-        ),
+    """),
     }
 
     def setUp(self) -> None:

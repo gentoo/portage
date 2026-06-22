@@ -12,7 +12,6 @@ from portage.util._eventloop.global_event_loop import (
     global_event_loop as _global_event_loop,
 )
 
-
 if hasattr(os, "set_blocking"):
 
     def _set_nonblocking(fd):

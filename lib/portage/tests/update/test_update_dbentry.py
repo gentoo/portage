@@ -232,11 +232,9 @@ class UpdateDbentryTestCase(TestCase):
 
         world = ["dev-libs/M", "dev-libs/N"]
 
-        updates = textwrap.dedent(
-            """
+        updates = textwrap.dedent("""
 			move dev-libs/M dev-libs/M-moved
-		"""
-        )
+		""")
 
         for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
             with self.subTest(binpkg_format=binpkg_format):
@@ -429,11 +427,9 @@ class UpdateDbentryTestCase(TestCase):
 
         world = ["dev-libs/M", "dev-libs/N"]
 
-        updates = textwrap.dedent(
-            """
+        updates = textwrap.dedent("""
 			move dev-libs/M dev-libs/M-moved
-		"""
-        )
+		""")
 
         for binpkg_format in ("gpkg",):
             with self.subTest(binpkg_format=binpkg_format):

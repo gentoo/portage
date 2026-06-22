@@ -6445,7 +6445,9 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                             )
                         ] = xattr.get(
                             path_bytes, k.encode("utf-8", "backslashreplace")
-                        ).decode("utf-8", "surrogateescape")
+                        ).decode(
+                            "utf-8", "surrogateescape"
+                        )
 
                 with open(path_bytes, "rb") as f:
                     tar.addfile(tarinfo, f)

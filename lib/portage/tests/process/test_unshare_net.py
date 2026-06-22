@@ -11,7 +11,6 @@ import portage.process
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
 
-
 CLONE_NEWNET = 0x40000000
 UNSHARE_NET_TEST_SCRIPT = """
 ping -c 1 -W 1 127.0.0.1 || exit 1
