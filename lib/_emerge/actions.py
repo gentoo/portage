@@ -145,7 +145,7 @@ def action_build(
         + os.path.sep
     )
     quickpkg_direct = (
-        "--usepkg" in emerge_config.opts
+        emerge_config.opts.get("--usepkg") is True
         and emerge_config.opts.get("--quickpkg-direct", "n") == "y"
         and emerge_config.target_config.settings["ROOT"] != quickpkg_root
     )
@@ -171,7 +171,7 @@ def action_build(
             if "--getbinpkg-include" in emerge_config.opts:
                 kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
             emerge_config.target_config.trees["bintree"].populate(
-                getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
+                getbinpkgs=emerge_config.opts.get("--getbinpkg") is True, **kwargs
             )
         except ParseError as e:
             writemsg(f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n", noiselevel=-1)
@@ -426,7 +426,7 @@ def action_build(
             # instances need to load remote metadata if --getbinpkg
             # is enabled. Use getbinpkg_refresh=False to use cached
             # metadata, since the cache is already fresh.
-            if "--getbinpkg" in emerge_config.opts or quickpkg_direct:
+            if emerge_config.opts.get("--getbinpkg") is True or quickpkg_direct:
                 for root_trees in emerge_config.trees.values():
                     kwargs = {}
                     if quickpkg_direct:
@@ -1917,7 +1917,7 @@ def action_info(settings, trees, myopts, myfiles):
                 dbs = [IndexedVardb(vardb) if search_index else vardb]
                 # if "--usepkgonly" not in myopts:
                 dbs.append(IndexedPortdb(portdb) if search_index else portdb)
-                if "--usepkg" in myopts:
+                if myopts.get("--usepkg") is True:
                     dbs.append(bindb)
 
                 matches = similar_name_search(dbs, x)
@@ -2427,8 +2427,8 @@ def action_search(root_config, myopts, myfiles, spinner):
             spinner,
             "--searchdesc" in myopts,
             "--quiet" not in myopts,
-            "--usepkg" in myopts,
-            "--usepkgonly" in myopts,
+            myopts.get("--usepkg") is True,
+            myopts.get("--usepkgonly") is True,
             search_index=myopts.get("--search-index", "y") != "n",
             search_similarity=myopts.get("--search-similarity"),
             fuzzy=myopts.get("--fuzzy-search") != "n",
@@ -2703,7 +2703,7 @@ def adjust_configs(myopts, trees):
         # For --usepkgonly mode, propagate settings from the binary package
         # database, so that it's possible to operate without dependence on
         # a local ebuild repository and profile.
-        if "--usepkgonly" in myopts:
+        if myopts.get("--usepkgonly") is True:
             mytrees["bintree"]._propagate_config(mysettings)
 
         adjust_config(myopts, mysettings)
@@ -3683,18 +3683,19 @@ def run_action(emerge_config):
         emerge_config.opts["--buildpkg"] = True
 
     if "getbinpkg" in emerge_config.target_config.settings.features:
+        if emerge_config.opts.get("--getbinpkg") is not False:
+            emerge_config.opts["--getbinpkg"] = True
+
+    if emerge_config.opts.get("--getbinpkgonly") is True:
         emerge_config.opts["--getbinpkg"] = True
 
-    if "--getbinpkgonly" in emerge_config.opts:
-        emerge_config.opts["--getbinpkg"] = True
-
-    if "--getbinpkgonly" in emerge_config.opts:
+    if emerge_config.opts.get("--getbinpkgonly") is True:
         emerge_config.opts["--usepkgonly"] = True
 
-    if "--getbinpkg" in emerge_config.opts:
+    if emerge_config.opts.get("--getbinpkg") is True:
         emerge_config.opts["--usepkg"] = True
 
-    if "--usepkgonly" in emerge_config.opts:
+    if emerge_config.opts.get("--usepkgonly") is True:
         emerge_config.opts["--usepkg"] = True
 
     # Populate the bintree with current --getbinpkg setting.
@@ -3702,7 +3703,10 @@ def run_action(emerge_config):
     # * expand_set_arguments, in case any sets use the bintree
     # * adjust_configs and profile_check, in order to propagate settings
     #   implicit IUSE and USE_EXPAND settings from the binhost(s)
-    if emerge_config.action in ("search", None) and "--usepkg" in emerge_config.opts:
+    if (
+        emerge_config.action in ("search", None)
+        and emerge_config.opts.get("--usepkg") is True
+    ):
         for mytrees in emerge_config.trees.values():
             kwargs = {}
             if (
@@ -3722,7 +3726,7 @@ def run_action(emerge_config):
 
             try:
                 mytrees["bintree"].populate(
-                    getbinpkgs="--getbinpkg" in emerge_config.opts,
+                    getbinpkgs=emerge_config.opts.get("--getbinpkg") is True,
                     getbinpkg_refresh=True,
                     verbose="--verbose" in emerge_config.opts,
                     **kwargs,
@@ -4164,7 +4168,7 @@ def run_action(emerge_config):
 
                     if (
                         valid_atom.cp.split("/")[0] == "null"
-                        and "--usepkg" in emerge_config.opts
+                        and emerge_config.opts.get("--usepkg") is True
                     ):
                         valid_atom = dep_expand(x, mydb=bindb)
 

@@ -154,7 +154,7 @@ class _frozen_depgraph_config:
         # no soname data. Therefore, only enable soname dependency
         # resolution if --usepkgonly is enabled, or for removal actions.
         self.soname_deps_enabled = (
-            "--usepkgonly" in myopts or "remove" in params
+            myopts.get("--usepkgonly") is True or "remove" in params
         ) and params.get("ignore_soname_deps") != "y"
         dynamic_deps = "dynamic_deps" in params
         ignore_built_slot_operator_deps = (
@@ -310,7 +310,7 @@ class _rebuild_config:
             if self._needs_rebuild(dep_pkg):
                 self.rebuild_list.add(root_slot)
                 return True
-            if "--usepkg" in self._frozen_config.myopts and (
+            if self._frozen_config.myopts.get("--usepkg") is True and (
                 dep_root_slot in self.reinstall_list
                 or dep_root_slot in self.rebuild_list
                 or not dep_pkg.installed
@@ -640,7 +640,7 @@ class _dynamic_depgraph_config:
                     db_keys = list(portdb._aux_cache_keys)
                     dbs.append((portdb, "ebuild", False, False, db_keys))
 
-                if "--usepkg" in depgraph._frozen_config.myopts:
+                if depgraph._frozen_config.myopts.get("--usepkg") is True:
                     bindb = depgraph._frozen_config.trees[myroot]["bintree"].dbapi
                     db_keys = list(bindb._aux_cache_keys)
                     dbs.append((bindb, "binary", True, False, db_keys))
@@ -2841,7 +2841,7 @@ class depgraph:
         graph_pkg itself may be yielded only if it's not installed.
         """
 
-        usepkgonly = "--usepkgonly" in self._frozen_config.myopts
+        usepkgonly = self._frozen_config.myopts.get("--usepkgonly") is True
         useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
         use_ebuild_visibility = (
             self._frozen_config.myopts.get("--use-ebuild-visibility", "n") != "n"
@@ -6873,7 +6873,7 @@ class depgraph:
                 dbs = [vardb]
                 if "--usepkgonly" not in self._frozen_config.myopts:
                     dbs.append(IndexedPortdb(portdb) if search_index else portdb)
-                if "--usepkg" in self._frozen_config.myopts:
+                if self._frozen_config.myopts.get("--usepkg") is True:
                     # bindbapi is indexed
                     dbs.append(bindb)
 
@@ -7645,8 +7645,8 @@ class depgraph:
         existing_node = None
         myeb = None
         rebuilt_binaries = "rebuilt_binaries" in self._dynamic_config.myparams
-        usepkg = "--usepkg" in self._frozen_config.myopts
-        usepkgonly = "--usepkgonly" in self._frozen_config.myopts
+        usepkg = self._frozen_config.myopts.get("--usepkg") is True
+        usepkgonly = self._frozen_config.myopts.get("--usepkgonly") is True
         usepkg_exclude_live = "--usepkg-exclude-live" in self._frozen_config.myopts
         empty = "empty" in self._dynamic_config.myparams
         selective = "selective" in self._dynamic_config.myparams
@@ -11697,7 +11697,7 @@ class _dep_check_composite_db(dbapi):
                 "--update" not in myopts
                 and "remove" not in self._depgraph._dynamic_config.myparams
             )
-            usepkgonly = "--usepkgonly" in myopts
+            usepkgonly = myopts.get("--usepkgonly") is True
             if not avoid_update:
                 if not use_ebuild_visibility and usepkgonly:
                     return False
@@ -11822,8 +11822,8 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
         spinner,
         "--searchdesc" in myopts,
         "--quiet" not in myopts,
-        "--usepkg" in myopts,
-        "--usepkgonly" in myopts,
+        myopts.get("--usepkg") is True,
+        myopts.get("--usepkgonly") is True,
         search_index=False,
     )
     null_cp = portage.dep_getkey(insert_category_into_atom(arg, "null"))

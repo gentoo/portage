@@ -41,6 +41,9 @@ Bug fixes:
 * Fix selectively building binary packages via packages.env. This was broken by
   the refactoring done for buildpkg-proactive in 3.0.80. (bug #977741)
 
+* Respect --usepkg=n and --getbinpkg=n on command line if the user has set
+  FEATURES=getbinpkg (bug #759067)
+
 portage-3.0.80 (2026-06-17)
 --------------
 

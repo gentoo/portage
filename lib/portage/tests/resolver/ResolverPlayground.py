@@ -788,14 +788,14 @@ class ResolverPlayground:
             elif options.get("--prune"):
                 action = "prune"
 
-        if "--getbinpkgonly" in options:
+        if options.get("--getbinpkgonly") is True:
             options["--getbinpkg"] = True
             options["--usepkgonly"] = True
 
-        if "--getbinpkg" in options:
+        if options.get("--getbinpkg") is True:
             options["--usepkg"] = True
 
-        if "--usepkgonly" in options:
+        if options.get("--usepkgonly") is True:
             options["--usepkg"] = True
 
         binpkg_selection_config(options, self.settings)

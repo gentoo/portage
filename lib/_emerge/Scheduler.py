@@ -849,7 +849,7 @@ class Scheduler(PollScheduler):
 
         elif (
             pkg.type_name == "binary"
-            and "--getbinpkg" in self.myopts
+            and self.myopts.get("--getbinpkg") is True
             and pkg.root_config.trees["bintree"].download_required(pkg.cpv)
         ):
             prefetcher = BinpkgPrefetcher(

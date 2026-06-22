@@ -913,11 +913,15 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.getbinpkg in true_y:
         myoptions.getbinpkg = True
+    elif myoptions.getbinpkg == "n":
+        myoptions.getbinpkg = False
     else:
         myoptions.getbinpkg = None
 
     if myoptions.getbinpkgonly in true_y:
         myoptions.getbinpkgonly = True
+    elif myoptions.getbinpkgonly == "n":
+        myoptions.getbinpkgonly = False
     else:
         myoptions.getbinpkgonly = None
 
@@ -1104,11 +1108,15 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.usepkg in true_y:
         myoptions.usepkg = True
+    elif myoptions.usepkg == "n":
+        myoptions.usepkg = False
     else:
         myoptions.usepkg = None
 
     if myoptions.usepkgonly in true_y:
         myoptions.usepkgonly = True
+    elif myoptions.usepkgonly == "n":
+        myoptions.usepkgonly = False
     else:
         myoptions.usepkgonly = None
 
