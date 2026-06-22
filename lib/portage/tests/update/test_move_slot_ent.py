@@ -70,13 +70,11 @@ class MoveSlotEntTestCase(TestCase):
             },
         }
 
-        updates = textwrap.dedent(
-            """
+        updates = textwrap.dedent("""
 			slotmove dev-libs/A 0 2
 			slotmove dev-libs/B 0 1
 			slotmove dev-libs/C 0 1
-		"""
-        )
+		""")
 
         for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
             with self.subTest(binpkg_format=binpkg_format):
@@ -213,13 +211,11 @@ class MoveSlotEntTestCase(TestCase):
             },
         }
 
-        updates = textwrap.dedent(
-            """
+        updates = textwrap.dedent("""
 			slotmove dev-libs/A 0 2
 			slotmove dev-libs/B 0 1
 			slotmove dev-libs/C 0 1
-		"""
-        )
+		""")
 
         for binpkg_format in ("gpkg",):
             with self.subTest(binpkg_format=binpkg_format):

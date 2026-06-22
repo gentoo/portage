@@ -5,7 +5,6 @@ import collections
 
 from portage.versions import _pkg_str
 
-
 pkg_desc_index_node = collections.namedtuple(
     "pkg_desc_index_node", ["cp", "cpv_list", "desc"]
 )

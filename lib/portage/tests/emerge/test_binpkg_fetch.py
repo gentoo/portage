@@ -214,15 +214,13 @@ class BinpkgFetchtestCase(TestCase):
         """
         debug = False
 
-        pkg_pretend = textwrap.dedent(
-            """
+        pkg_pretend = textwrap.dedent("""
         S="${WORKDIR}"
 
         pkg_pretend() {
             einfo "Hello world!"
         }
-        """
-        )
+        """)
 
         ebuilds = {
             "dev-libs/A-1::local": {

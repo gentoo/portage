@@ -11,7 +11,6 @@ import os
 
 from portage.sync.config_checks import CheckSyncConfig
 
-
 DEFAULT_CLASS = "WebRsync"
 AVAILABLE_CLASSES = ["WebRsync", "PyWebRsync"]
 options = {"1": "WebRsync", "2": "PyWebRsync"}

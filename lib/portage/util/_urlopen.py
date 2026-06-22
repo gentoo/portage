@@ -9,7 +9,6 @@ from urllib.request import urlopen as _urlopen
 import urllib.parse as urllib_parse
 import urllib.request as urllib_request
 
-
 # to account for the difference between TIMESTAMP of the index' contents
 #  and the file-'mtime'
 TIMESTAMP_TOLERANCE = 5

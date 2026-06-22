@@ -9,7 +9,6 @@ from portage.localization import _
 from portage.sync.config_checks import CheckSyncConfig
 from portage.util import writemsg_level
 
-
 module_spec = {
     "name": "svn",
     "description": doc,

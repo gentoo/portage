@@ -7,7 +7,6 @@ __doc__ = doc[:]
 
 from portage.sync.config_checks import CheckSyncConfig
 
-
 module_spec = {
     "name": "rsync",
     "description": doc,

@@ -5,7 +5,6 @@
 import locale
 import math
 
-
 # We define this to make the transition easier for us.
 
 

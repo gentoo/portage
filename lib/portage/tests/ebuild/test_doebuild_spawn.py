@@ -28,11 +28,9 @@ class DoebuildSpawnTestCase(TestCase):
     """
 
     def testDoebuildSpawn(self):
-        ebuild_body = textwrap.dedent(
-            """
+        ebuild_body = textwrap.dedent("""
 			pkg_nofetch() { : ; }
-		"""
-        )
+		""")
 
         ebuilds = {
             "sys-apps/portage-2.1": {

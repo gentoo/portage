@@ -90,7 +90,7 @@ class WithTestDepsTestCase(TestCase):
                 ["app-misc/H"],
                 success=True,
                 options={"--with-test-deps": True},
-                mergelist=[("app-misc/H-0")],
+                mergelist=["app-misc/H-0"],
             ),
         )
 

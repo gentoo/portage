@@ -29,8 +29,7 @@ class LibcDepInjectEmergeTestCase(TestCase):
         """
         debug = False
 
-        install_elf = textwrap.dedent(
-            """
+        install_elf = textwrap.dedent("""
         S="${WORKDIR}"
 
         src_install() {
@@ -39,8 +38,7 @@ class LibcDepInjectEmergeTestCase(TestCase):
             # use ${BASH} given we know it must be around for running ebuilds.
             cp "${BASH}" "${ED}"/usr/bin/${PN} || die
         }
-        """
-        )
+        """)
 
         ebuilds = {
             "sys-libs/glibc-2.38": {
@@ -382,8 +380,7 @@ class LibcDepInjectEmergeTestCase(TestCase):
         """
         debug = False
 
-        install_elf = textwrap.dedent(
-            """
+        install_elf = textwrap.dedent("""
         S="${WORKDIR}"
 
         src_install() {
@@ -392,8 +389,7 @@ class LibcDepInjectEmergeTestCase(TestCase):
             # use ${BASH} given we know it must be around for running ebuilds.
             cp "${BASH}" "${ED}"/usr/bin/${PN} || die
         }
-        """
-        )
+        """)
 
         ebuilds = {
             "sys-libs/glibc-2.37": {

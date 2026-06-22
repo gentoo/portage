@@ -158,9 +158,7 @@ try:
             portage.writemsg(f"ERROR: Invalid atom: '{argv[1]}'\n", noiselevel=-1)
             return 2
 
-    docstrings[
-        "has_version"
-    ] = """<eroot> <category/package>
+    docstrings["has_version"] = """<eroot> <category/package>
 		Return code 0 if it's available, 1 otherwise.
 		"""
     has_version.__doc__ = docstrings["has_version"]
@@ -199,9 +197,7 @@ try:
         except KeyError:
             return 1
 
-    docstrings[
-        "best_version"
-    ] = """<eroot> <category/package>
+    docstrings["best_version"] = """<eroot> <category/package>
 		Returns highest installed matching category/package-version (without .ebuild).
 		"""
     best_version.__doc__ = docstrings["best_version"]
@@ -218,9 +214,7 @@ try:
         except KeyError:
             return 1
 
-    docstrings[
-        "mass_best_version"
-    ] = """<eroot> [<category/package>]+
+    docstrings["mass_best_version"] = """<eroot> [<category/package>]+
 		Returns category/package-version (without .ebuild).
 		"""
     mass_best_version.__doc__ = docstrings["mass_best_version"]
@@ -249,9 +243,7 @@ try:
             print(f"Package not found: '{pkgspec}'", file=sys.stderr)
             return 1
 
-    docstrings[
-        "metadata"
-    ] = f"""
+    docstrings["metadata"] = f"""
 \t<eroot> <pkgtype> <category/package> [<key>]+
 \tReturns metadata values for the specified package.
 \tAvailable keys: {','.join(sorted(x for x in portage.auxdbkeys))}
@@ -277,9 +269,7 @@ try:
             "".join(f"{x}\n" for x in sorted(db.getcontents())), noiselevel=-1
         )
 
-    docstrings[
-        "contents"
-    ] = """<eroot> <category/package>
+    docstrings["contents"] = """<eroot> <category/package>
 		List the files that are installed for a given package, with
 		one file listed on each line. All file names will begin with
 		<eroot>.
@@ -358,9 +348,7 @@ try:
             return 0
         return 1
 
-    docstrings[
-        "owners"
-    ] = """<eroot> [<filename>]+
+    docstrings["owners"] = """<eroot> [<filename>]+
 		Given a list of files, print the packages that own the files and which
 		files belong to each package. Files owned by a package are listed on
 		the lines below it, indented by a single tab character (\\t). All file
@@ -414,9 +402,7 @@ try:
             return 0
         return 1
 
-    docstrings[
-        "is_protected"
-    ] = """<eroot> <filename>
+    docstrings["is_protected"] = """<eroot> <filename>
 		Given a single filename, return code 0 if it's protected, 1 otherwise.
 		The filename must begin with <eroot>.
 		"""
@@ -479,9 +465,7 @@ try:
 
         return 0
 
-    docstrings[
-        "filter_protected"
-    ] = """<eroot>
+    docstrings["filter_protected"] = """<eroot>
 		Read filenames from stdin and write them to stdout if they are protected.
 		All filenames are delimited by \\n and must begin with <eroot>.
 		"""
@@ -571,9 +555,7 @@ try:
 
         return 1
 
-    docstrings[
-        "best_visible"
-    ] = """<eroot> [pkgtype] <atom>
+    docstrings["best_visible"] = """<eroot> [pkgtype] <atom>
 		Returns category/package-version (without .ebuild).
 		The pkgtype argument defaults to "ebuild" if unspecified,
 		otherwise it must be one of ebuild, binary, or installed.
@@ -598,9 +580,7 @@ try:
         except KeyError:
             return 1
 
-    docstrings[
-        "mass_best_visible"
-    ] = """<eroot> [<type>] [<category/package>]+
+    docstrings["mass_best_visible"] = """<eroot> [<type>] [<category/package>]+
 		Returns category/package-version (without .ebuild).
 		The pkgtype argument defaults to "ebuild" if unspecified,
 		otherwise it must be one of ebuild, binary, or installed.
@@ -620,9 +600,7 @@ try:
             if mybest:
                 print(mybest)
 
-    docstrings[
-        "all_best_visible"
-    ] = """<eroot>
+    docstrings["all_best_visible"] = """<eroot>
 		Returns all best_visible packages (without .ebuild).
 		"""
     all_best_visible.__doc__ = docstrings["all_best_visible"]
@@ -669,9 +647,7 @@ try:
         for cpv in results:
             print(cpv)
 
-    docstrings[
-        "match"
-    ] = """<eroot> <atom>
+    docstrings["match"] = """<eroot> <atom>
 		Returns a \\n separated list of category/package-version.
 		When given an empty string, all installed packages will
 		be listed.
@@ -701,9 +677,7 @@ try:
 
         return os.EX_OK
 
-    docstrings[
-        "expand_virtual"
-    ] = """<eroot> <atom>
+    docstrings["expand_virtual"] = """<eroot> <atom>
 		Returns a \\n separated list of atoms expanded from a
 		given virtual atom (GLEP 37 virtuals only),
 		excluding blocker atoms. Satisfied
@@ -722,9 +696,7 @@ try:
         out.flush()
         return os.EX_OK
 
-    docstrings[
-        "vdb_path"
-    ] = """
+    docstrings["vdb_path"] = """
 		Returns the path used for the var(installed) package database for the
 		set environment/configuration options.
 		"""
@@ -733,9 +705,7 @@ try:
     def gentoo_mirrors(_argv):
         print(portage.settings["GENTOO_MIRRORS"])
 
-    docstrings[
-        "gentoo_mirrors"
-    ] = """
+    docstrings["gentoo_mirrors"] = """
 		Returns the mirrors set to use in the portage configuration.
 		"""
     gentoo_mirrors.__doc__ = docstrings["gentoo_mirrors"]
@@ -751,9 +721,7 @@ try:
         )
         sys.stdout.flush()
 
-    docstrings[
-        "repositories_configuration"
-    ] = """<eroot>
+    docstrings["repositories_configuration"] = """<eroot>
 		Returns the configuration of repositories.
 		"""
     repositories_configuration.__doc__ = docstrings["repositories_configuration"]
@@ -763,9 +731,7 @@ try:
     def repos_config(argv):
         return repositories_configuration(argv)
 
-    docstrings[
-        "repos_config"
-    ] = """
+    docstrings["repos_config"] = """
 		<eroot>
 		This is an alias for the repositories_configuration command.
 		"""
@@ -780,9 +746,7 @@ try:
         )
         print(portage.settings["PORTDIR"])
 
-    docstrings[
-        "portdir"
-    ] = """
+    docstrings["portdir"] = """
 		Returns the PORTDIR path.
 		Deprecated in favor of get_repo_path command.
 		"""
@@ -791,9 +755,7 @@ try:
     def config_protect(_argv):
         print(portage.settings["CONFIG_PROTECT"])
 
-    docstrings[
-        "config_protect"
-    ] = """
+    docstrings["config_protect"] = """
 		Returns the CONFIG_PROTECT paths.
 		"""
     config_protect.__doc__ = docstrings["config_protect"]
@@ -801,9 +763,7 @@ try:
     def config_protect_mask(_argv):
         print(portage.settings["CONFIG_PROTECT_MASK"])
 
-    docstrings[
-        "config_protect_mask"
-    ] = """
+    docstrings["config_protect_mask"] = """
 		Returns the CONFIG_PROTECT_MASK paths.
 		"""
     config_protect_mask.__doc__ = docstrings["config_protect_mask"]
@@ -817,9 +777,7 @@ try:
         )
         print(portage.settings["PORTDIR_OVERLAY"])
 
-    docstrings[
-        "portdir_overlay"
-    ] = """
+    docstrings["portdir_overlay"] = """
 		Returns the PORTDIR_OVERLAY path.
 		Deprecated in favor of get_repos & get_repo_path or repos_config commands.
 		"""
@@ -828,9 +786,7 @@ try:
     def pkgdir(_argv):
         print(portage.settings["PKGDIR"])
 
-    docstrings[
-        "pkgdir"
-    ] = """
+    docstrings["pkgdir"] = """
 		Returns the PKGDIR path.
 		"""
     pkgdir.__doc__ = docstrings["pkgdir"]
@@ -838,9 +794,7 @@ try:
     def distdir(_argv):
         print(portage.settings["DISTDIR"])
 
-    docstrings[
-        "distdir"
-    ] = """
+    docstrings["distdir"] = """
 		Returns the DISTDIR path.
 		"""
     distdir.__doc__ = docstrings["distdir"]
@@ -848,9 +802,7 @@ try:
     def colormap(_argv):
         print(portage.output.colormap())
 
-    docstrings[
-        "colormap"
-    ] = """
+    docstrings["colormap"] = """
 		Display the color.map as environment variables.
 		"""
     colormap.__doc__ = docstrings["colormap"]
@@ -893,9 +845,7 @@ try:
 
         return exit_status
 
-    docstrings[
-        "envvar"
-    ] = """<variable>+
+    docstrings["envvar"] = """<variable>+
 		Returns a specific environment variable as exists prior to ebuild.sh.
 		Variable names can end with * to match multiple variables.
 		Similar to: emerge --verbose --info | grep -E '^<variable>='
@@ -916,9 +866,7 @@ try:
             )
         )
 
-    docstrings[
-        "get_repos"
-    ] = """<eroot>
+    docstrings["get_repos"] = """<eroot>
 		Returns all repos with names (repo_name file) argv[0] = ${EROOT}
 		"""
     get_repos.__doc__ = docstrings["get_repos"]
@@ -941,9 +889,7 @@ try:
             else:
                 print(" ".join(x.name for x in repo.masters))
 
-    docstrings[
-        "master_repositories"
-    ] = """<eroot> <repo_id>+
+    docstrings["master_repositories"] = """<eroot> <repo_id>+
 		Returns space-separated list of master repositories for specified repository.
 		"""
     master_repositories.__doc__ = docstrings["master_repositories"]
@@ -953,9 +899,7 @@ try:
     def master_repos(argv):
         return master_repositories(argv)
 
-    docstrings[
-        "master_repos"
-    ] = """<eroot> <repo_id>+
+    docstrings["master_repos"] = """<eroot> <repo_id>+
 		This is an alias for the master_repositories command.
 		"""
     master_repos.__doc__ = docstrings["master_repos"]
@@ -976,9 +920,7 @@ try:
                 return 1
             print(path)
 
-    docstrings[
-        "get_repo_path"
-    ] = """<eroot> <repo_id>+
+    docstrings["get_repo_path"] = """<eroot> <repo_id>+
 		Returns the path to the repo named argv[1], argv[0] = ${EROOT}
 		"""
     get_repo_path.__doc__ = docstrings["get_repo_path"]
@@ -1000,9 +942,7 @@ try:
             else:
                 print(" ".join(sorted(repo.eclass_db.eclasses)))
 
-    docstrings[
-        "available_eclasses"
-    ] = """<eroot> <repo_id>+
+    docstrings["available_eclasses"] = """<eroot> <repo_id>+
 		Returns space-separated list of available eclasses for specified repository.
 		"""
     available_eclasses.__doc__ = docstrings["available_eclasses"]
@@ -1032,9 +972,7 @@ try:
                     print(eclass.location)
             return retval
 
-    docstrings[
-        "eclass_path"
-    ] = """<eroot> <repo_id> <eclass>+
+    docstrings["eclass_path"] = """<eroot> <repo_id> <eclass>+
 		Returns the path to specified eclass for specified repository.
 		"""
     eclass_path.__doc__ = docstrings["eclass_path"]
@@ -1071,9 +1009,7 @@ try:
                 print(eclass_path)
             return retval
 
-    docstrings[
-        "license_path"
-    ] = """<eroot> <repo_id> <license>+
+    docstrings["license_path"] = """<eroot> <repo_id> <license>+
 		Returns the path to specified license for specified repository.
 		"""
     license_path.__doc__ = docstrings["license_path"]
@@ -1095,9 +1031,7 @@ try:
         writemsg_stdout("".join(msg), noiselevel=-1)
         return rValue
 
-    docstrings[
-        "list_preserved_libs"
-    ] = """<eroot>
+    docstrings["list_preserved_libs"] = """<eroot>
 		Print a list of libraries preserved during a package update in the form
 		package: path. Returns 1 if no preserved libraries could be found,
 		0 otherwise.
@@ -1305,9 +1239,7 @@ try:
 
         return os.EX_OK
 
-    docstrings[
-        "pquery"
-    ] = """[options] [atom]+
+    docstrings["pquery"] = """[options] [atom]+
 		Emulates a subset of Pkgcore's pquery tool.
 		"""
     pquery.__doc__ = docstrings["pquery"]

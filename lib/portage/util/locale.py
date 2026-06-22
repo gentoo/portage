@@ -19,7 +19,6 @@ from portage.util import writemsg_level
 from portage.util._ctypes import load_libc
 from portage.util.futures import asyncio
 
-
 locale_categories = (
     "LC_COLLATE",
     "LC_CTYPE",
@@ -43,7 +42,7 @@ def _check_locale(silent):
     """
     The inner locale check function.
     """
-    (libc, _) = load_libc()
+    libc, _ = load_libc()
     if libc is None:
         return None
 

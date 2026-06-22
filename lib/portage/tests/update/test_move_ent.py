@@ -44,11 +44,9 @@ class MoveEntTestCase(TestCase):
             },
         }
 
-        updates = textwrap.dedent(
-            """
+        updates = textwrap.dedent("""
 			move dev-libs/A dev-libs/A-moved
-		"""
-        )
+		""")
 
         for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
             with self.subTest(binpkg_format=binpkg_format):
@@ -152,11 +150,9 @@ class MoveEntTestCase(TestCase):
             },
         }
 
-        updates = textwrap.dedent(
-            """
+        updates = textwrap.dedent("""
 			move dev-libs/A dev-libs/A-moved
-		"""
-        )
+		""")
 
         for binpkg_format in ("gpkg",):
             with self.subTest(binpkg_format=binpkg_format):
@@ -271,11 +267,9 @@ class MoveEntTestCase(TestCase):
             },
         }
 
-        updates = textwrap.dedent(
-            """
+        updates = textwrap.dedent("""
 			move dev-libs/A dev-libs/A-moved
-		"""
-        )
+		""")
 
         for binpkg_format in ("gpkg",):
             with self.subTest(binpkg_format=binpkg_format):

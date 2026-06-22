@@ -317,8 +317,7 @@ class EbuildFetchTestCase(TestCase):
             orig_distdir_mode = os.stat(settings["DISTDIR"]).st_mode
             temp_fetchcommand = os.path.join(eubin, "fetchcommand")
             with open(temp_fetchcommand, "w") as f:
-                f.write(
-                    """
+                f.write("""
 					set -e
 					URI=$1
 					DISTDIR=$2
@@ -327,9 +326,7 @@ class EbuildFetchTestCase(TestCase):
 					chmod ug+w "${DISTDIR}"
 					%s
 					mv -f "${DISTDIR}/${FILE}.__download__" "${DISTDIR}/${FILE}"
-				"""
-                    % orig_fetchcommand.replace("${FILE}", "${FILE}.__download__")
-                )
+				""" % orig_fetchcommand.replace("${FILE}", "${FILE}.__download__"))
             settings["FETCHCOMMAND"] = (
                 '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
                     BASH_BINARY,

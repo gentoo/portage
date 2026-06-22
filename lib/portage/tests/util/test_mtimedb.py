@@ -10,7 +10,6 @@ import portage
 from portage.data import portage_gid, uid
 from portage.util.mtimedb import MtimeDB, _MTIMEDBKEYS
 
-
 # Some data for the fixtures:
 
 _ONE_RESUME_LIST_JSON = b"""{

@@ -11,7 +11,6 @@ import os
 
 from portage.sync.config_checks import CheckSyncConfig
 
-
 module_spec = {
     "name": "zipfile",
     "description": doc,

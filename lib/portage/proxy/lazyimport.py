@@ -9,7 +9,6 @@ import threading
 
 from portage.proxy.objectproxy import ObjectProxy
 
-
 _module_proxies = {}
 _module_proxies_lock = threading.RLock()
 

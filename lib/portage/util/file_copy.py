@@ -9,7 +9,6 @@ import platform
 import shutil
 import sys
 
-
 logger = logging.getLogger(__name__)
 
 # Added in Python 3.12
