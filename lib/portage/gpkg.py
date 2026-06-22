@@ -831,6 +831,13 @@ class gpkg:
             "zstd": ".zst",
         }
 
+    @staticmethod
+    def _strip_metadata_prefix(path):
+        prefix = "metadata/"
+        if not path.startswith(prefix):
+            raise InvalidBinaryPackageFormat(f"Invalid metadata path: {path}")
+        return path[len(prefix) :]
+
     def unpack_metadata(self, dest_dir=None):
         """
         Unpack metadata to dest_dir.
@@ -853,7 +860,7 @@ class gpkg:
             with tarfile.open(mode="r:", fileobj=metadata_tar) as metadata:
                 if dest_dir is None:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
+                        self._strip_metadata_prefix(k.name): metadata.extractfile(
                             k
                         ).read()
                         for k in metadata.getmembers()
@@ -963,14 +970,14 @@ class gpkg:
             with tarfile.open(mode="r:", fileobj=metadata_file) as metadata:
                 if want is None:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
+                        self._strip_metadata_prefix(k.name): metadata.extractfile(
                             k
                         ).read()
                         for k in metadata.getmembers()
                     }
                 else:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
+                        self._strip_metadata_prefix(k.name): metadata.extractfile(
                             k
                         ).read()
                         for k in metadata.getmembers()

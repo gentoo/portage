@@ -35,6 +35,9 @@ Bug fixes:
 * Report and ignore package keyword atoms with USE dependencies instead of
   failing with a setcpv recursion assertion (bug #966832).
 
+* gpkg: Fix binpkg creation where emerge is invoked from a directory that
+  undergoes removal (bug #975132).
+
 portage-3.0.80 (2026-06-17)
 --------------
 
