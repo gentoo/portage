@@ -320,6 +320,7 @@ def parse_opts(tmpcmdline, silent=False):
     y_or_n = ("y", "n")
     true_y_or_n = ("True", "y", "n")
     true_y = ("True", "y")
+    false_n = ("False", "n")
     argument_options = {
         "--alert": {
             "shortopt": "-A",
@@ -913,11 +914,15 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.getbinpkg in true_y:
         myoptions.getbinpkg = True
+    elif myoptions.getbinpkg in false_n:
+        myoptions.getbinpkg = False
     else:
         myoptions.getbinpkg = None
 
     if myoptions.getbinpkgonly in true_y:
         myoptions.getbinpkgonly = True
+    elif myoptions.getbinpkgonly in false_n:
+        myoptions.getbinpkgonly = False
     else:
         myoptions.getbinpkgonly = None
 
@@ -1104,11 +1109,15 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.usepkg in true_y:
         myoptions.usepkg = True
+    elif myoptions.usepkg in false_n:
+        myoptions.usepkg = False
     else:
         myoptions.usepkg = None
 
     if myoptions.usepkgonly in true_y:
         myoptions.usepkgonly = True
+    elif myoptions.usepkgonly in false_n:
+        myoptions.usepkgonly = False
     else:
         myoptions.usepkgonly = None
 

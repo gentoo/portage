@@ -37,6 +37,9 @@ Bug fixes:
   reduced-privilege phases can source them where the process TMPDIR is not
   traversable by the portage user. (bug #977245)
 
+* Respect --usepkg=n and --getbinpkg=n on command line if the user has set
+  FEATURES=getbinpkg (bug #759067)
+
 portage-3.0.79 (2026-05-22)
 --------------
 
