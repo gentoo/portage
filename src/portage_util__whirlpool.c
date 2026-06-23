@@ -1074,7 +1074,7 @@ Whirlpool_update(WhirlpoolObject *self, PyObject *buf)
         return NULL;
     }
 
-    NESSIEadd(data, length * 8, &self->state);
+    NESSIEadd((const unsigned char *)data, length * 8, &self->state);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -1085,7 +1085,7 @@ Whirlpool_digest(WhirlpoolObject *self, PyObject *unused_obj)
 {
     char result[DIGESTBYTES];
 
-    NESSIEfinalize(&self->state, result);
+    NESSIEfinalize(&self->state, (unsigned char *)result);
 
     return PyBytes_FromStringAndSize(result, DIGESTBYTES);
 }
