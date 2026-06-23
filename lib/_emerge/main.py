@@ -11,6 +11,7 @@ import sys
 import portage
 
 from portage import os
+from portage.repository.config import _find_bad_atoms
 from portage.sync import _SUBMODULE_PATH_MAP
 
 from typing import Optional
@@ -31,6 +32,7 @@ options = [
     "--noconfmem",
     "--newrepo",
     "--newuse",
+    "--nobindeps",
     "--nodeps",
     "--noreplace",
     "--nospinner",
@@ -126,6 +128,14 @@ def insert_optional_args(args):
         "n",
     )
 
+    class valid_integers_or_y_or_n:
+        def __contains__(self, s):
+            if s in valid_integers:
+                return True
+            return s in y_or_n
+
+    valid_integers_or_y_or_n = valid_integers_or_y_or_n()
+
     new_args = []
 
     default_arg_opts = {
@@ -153,7 +163,7 @@ def insert_optional_args(args):
         "--getbinpkg": y_or_n,
         "--getbinpkgonly": y_or_n,
         "--ignore-world": y_or_n,
-        "--jobs": valid_integers,
+        "--jobs": valid_integers_or_y_or_n,
         "--jobs-tmpdir-require-free-gb": valid_integers,
         "--keep-going": y_or_n,
         "--load-average": valid_floats,
@@ -177,6 +187,7 @@ def insert_optional_args(args):
         "--usepkgonly": y_or_n,
         "--usepkg-exclude-live": y_or_n,
         "--verbose": y_or_n,
+        "--verbose-missing-ebuilds": y_or_n,
         "--verbose-slot-rebuilds": y_or_n,
         "--with-test-deps": y_or_n,
     }
@@ -278,35 +289,6 @@ def insert_optional_args(args):
             arg_stack.append("-" + saved_opts)
 
     return new_args
-
-
-def _find_bad_atoms(atoms, less_strict=False):
-    """
-    Declares all atoms as invalid that have an operator,
-    a use dependency, a blocker or a repo spec.
-    It accepts atoms with wildcards.
-    In less_strict mode it accepts operators and repo specs.
-    """
-    from _emerge.is_valid_package_atom import insert_category_into_atom
-    from portage.dep import Atom
-
-    bad_atoms = []
-    for x in " ".join(atoms).split():
-        atom = x
-        if "/" not in x.split(":")[0]:
-            x_cat = insert_category_into_atom(x, "dummy-category")
-            if x_cat is not None:
-                atom = x_cat
-
-        bad_atom = False
-        try:
-            atom = Atom(atom, allow_wildcard=True, allow_repo=less_strict)
-        except portage.exception.InvalidAtom:
-            bad_atom = True
-
-        if bad_atom or (atom.operator and not less_strict) or atom.blocker or atom.use:
-            bad_atoms.append(x)
-    return bad_atoms
 
 
 def parse_opts(tmpcmdline, silent=False):
@@ -570,9 +552,24 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "fetch binary packages only",
             "choices": true_y_or_n,
         },
+        "--getbinpkg-exclude": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will not fetch matching remote binary packages. ",
+            "action": "append",
+        },
+        "--getbinpkg-include": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will not fetch non-matching remote binary packages. ",
+            "action": "append",
+        },
         "--usepkg-exclude": {
             "help": "A space separated list of package names or slot atoms. "
             + "Emerge will ignore matching binary packages. ",
+            "action": "append",
+        },
+        "--usepkg-include": {
+            "help": "A space separated list of package names or slot atoms. "
+            + "Emerge will ignore non-matching binary packages. ",
             "action": "append",
         },
         "--onlydeps-with-ideps": {
@@ -737,6 +734,10 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "verbose output",
             "choices": true_y_or_n,
         },
+        "--verbose-missing-ebuilds": {
+            "help": "verbose missing ebuild output",
+            "choices": true_y_or_n,
+        },
         "--verbose-slot-rebuilds": {
             "help": "verbose slot rebuild output",
             "choices": true_y_or_n,
@@ -884,10 +885,13 @@ def parse_opts(tmpcmdline, silent=False):
 
     candidate_bad_options = (
         (myoptions.exclude, "exclude"),
+        (myoptions.getbinpkg_exclude, "getbinpkg-exclude"),
+        (myoptions.getbinpkg_include, "getbinpkg-include"),
         (myoptions.reinstall_atoms, "reinstall-atoms"),
         (myoptions.rebuild_exclude, "rebuild-exclude"),
         (myoptions.rebuild_ignore, "rebuild-ignore"),
         (myoptions.usepkg_exclude, "usepkg-exclude"),
+        (myoptions.usepkg_include, "usepkg-include"),
         (myoptions.useoldpkg_atoms, "useoldpkg-atoms"),
     )
     bad_options = (
@@ -909,11 +913,15 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.getbinpkg in true_y:
         myoptions.getbinpkg = True
+    elif myoptions.getbinpkg == "n":
+        myoptions.getbinpkg = False
     else:
         myoptions.getbinpkg = None
 
     if myoptions.getbinpkgonly in true_y:
         myoptions.getbinpkgonly = True
+    elif myoptions.getbinpkgonly == "n":
+        myoptions.getbinpkgonly = False
     else:
         myoptions.getbinpkgonly = None
 
@@ -1014,17 +1022,18 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.jobs is not None:
         jobs = None
-        if myoptions.jobs == "True":
+        if myoptions.jobs in ("True", "y"):
             jobs = True
+        elif myoptions.jobs == "n":
+            jobs = None
         else:
             try:
                 jobs = int(myoptions.jobs)
             except ValueError:
-                jobs = None
+                if not silent:
+                    parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
 
-        if jobs is None and not silent:
-            parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
-        elif jobs == 0:
+        if jobs == 0:
             from portage.util.cpuinfo import get_cpu_count
 
             jobs = get_cpu_count()
@@ -1099,11 +1108,15 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.usepkg in true_y:
         myoptions.usepkg = True
+    elif myoptions.usepkg == "n":
+        myoptions.usepkg = False
     else:
         myoptions.usepkg = None
 
     if myoptions.usepkgonly in true_y:
         myoptions.usepkgonly = True
+    elif myoptions.usepkgonly == "n":
+        myoptions.usepkgonly = False
     else:
         myoptions.usepkgonly = None
 

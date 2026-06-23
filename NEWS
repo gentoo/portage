@@ -6,7 +6,311 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.74 (2025-01-01)
+portage-3.0.82 (UNRELEASED)
+--------------
+
+portage-3.0.81 (2026-06-23)
+--------------
+
+Bug fixes:
+
+* Preserve non-boolean sync-openpgp-key-refresh values when composing
+  PORTAGE_REPOSITORIES, so values such as "wkd", "keyserver", "false", and
+  "false-nowarn" survive reparsing by child processes (bug #977915).
+
+* Ignore sync module declarations for built-in repos.conf options, preventing
+  config_string() from emitting duplicate options in PORTAGE_REPOSITORIES
+  (bug #965876).
+
+* Include sync-hooks-only-on-change in PORTAGE_REPOSITORIES, so processes that
+  reparse repository configuration honour the configured value instead of
+  falling back to false (bug #970768).
+
+* Do not create EAPI 9 PORTAGE_EBUILD_EXTRA_SOURCE directories under
+  ${PORTAGE_TMPDIR}/portage for unprivileged --pretend operations, since it may
+  be inaccessible to the calling user (bug #977840).
+
+* Refrain from invoking renice(1) unless PORTAGE_NICENESS is set. Previously,
+  setting either PORTAGE_IONICE_COMMAND or PORTAGE_SCHEDULING_POLICY caused
+  renice(1) to be invoked with a priority of 0, potentially overriding the
+  inherited nice value (bug #977846).
+
+* Report and ignore package keyword atoms with USE dependencies instead of
+  failing with a setcpv recursion assertion (bug #966832).
+
+* gpkg: Fix binpkg creation where emerge is invoked from a directory that
+  undergoes removal (bug #975132).
+
+* Fix selectively building binary packages via packages.env. This was broken by
+  the refactoring done for buildpkg-proactive in 3.0.80. (bug #977741)
+
+* Respect --usepkg=n and --getbinpkg=n on command line if the user has set
+  FEATURES=getbinpkg (bug #759067)
+
+* emerge: Suppress world file warning for missing ebuilds with usepkgonly (bug #976362)
+
+* emerge: Fix typo in world file warning check.
+
+portage-3.0.80 (2026-06-17)
+--------------
+
+Breaking changes:
+
+* Drop the @unavailable-binaries set in favour of FEATURES="buildpkg-proactive"
+  (see below) because the former cannot check whether an existing binary package
+  is usable or whether a given ebuild will actually produce a binary package or
+  not. This set is broken anyway and probably has been for 11 years since
+  Portage 2.2.19. (bug #976083)
+
+Features:
+
+* Add User-Agent to default wget FETCHCOMMAND and RESUMECOMMAND settings, as
+  well as emirrordist, in order to avoid blocking by some web servers,
+  particularly crates.io. (bug #682610)
+
+* Add FEATURES="buildpkg-proactive" to proactively rebuild matching packages
+  that have no (usable) binary package, even if those packages are already
+  installed. (bug #976083)
+
+Bug fixes:
+
+* Allow BROOT, ESYSROOT, and SYSROOT to be exported again under EAPI 9 because
+  they are required by crossdev's cross-pkg-config and a Gentoo GCC patch when
+  cross-compiling with a SYSROOT other than /usr/${CHOST}. (bug #977170)
+
+* Create EAPI 9 PORTAGE_EBUILD_EXTRA_SOURCE files under PORTAGE_TMPDIR, so
+  reduced-privilege phases can source them where the process TMPDIR is not
+  traversable by the portage user. (bug #977245)
+
+portage-3.0.79 (2026-05-22)
+--------------
+
+Bug fixes:
+
+* Use 'fork' multiprocessing start method if 'forkserver' is in effect (bug #973043)
+
+  If PORTAGE_MULTIPROCESSING_START_METHOD is set, change the multiprocessing
+  start method to its value.
+
+  If it is not set, check if the current start method is forkserver. If it is,
+  change to fork. We can't do that unconditionally as not all platforms
+  defaulted to fork before Python 3.14.
+
+* LocationsManager: Initialize profiles and profiles_complex
+
+portage-3.0.78 (2026-05-03)
+--------------
+
+This release has several big changes to binary package support: signature
+verification is enabled by default, and there are new EXPERIMENTAL configuration
+options for controlling binpkg use per repository and binary repository.
+
+There are many miscellaneous improvements as well.
+
+Breaking changes:
+
+* cnf: enable verify-signature by default in binrepos.conf (bug #945384,
+  bug #969086)
+
+  PGP signature verification is now enabled by default for all binary
+  repositories.
+
+  Signature verification is not supported for the old 'xpak' binary format
+  (i.e. it requires the new 'gpkg' format).
+
+  The new default can be overridden in /etc/portage/binrepos.conf with either:
+  ```
+  [DEFAULT]
+  verify-signature = false
+  ```
+  or
+  ```
+  [reponame]
+  verify-signature = false
+  ```
+  or with FEATURES="binpkg-ignore-signature" in /etc/portage/make.conf.
+
+  To set up signing for binpkgs, a signing keyring must reside (by default)
+  at /root/.gnupg and a verification keyring must reside (by default)
+  at /etc/portage/gnupg. The verification keyring must mark the signing
+  key as trusted. Signing is toggled by FEATURES="binpkg-signing".
+
+Features:
+
+* config: binrepos.conf: Add 'getbinpkg-exclude', 'getbinpkg-include' (bug #463964).
+
+  NOTE: This feature is considered experimental and subject to change
+  based on feedback.
+
+* config: repos.conf: Add 'usepkg-exclude', 'usepkg-include' (bug #463964).
+
+  NOTE: This feature is considered experimental and subject to change
+  based on feedback.
+
+* emerge: Add --getbinpkg-include, --getbinpkg-exclude (bug #463964).
+
+* emerge: Add --nobindeps.
+
+  This only has an effect with --usepkg.
+
+* emerge: Add --usepkg-include (inverse of --usepkg-exclude).
+
+* emerge: Add 'g' symbol to package list display for remote binpkgs with
+  --getbinpkg.
+
+* Read binrepos.conf from /usr/share/portage/config as well.
+
+* bintree: Run trust helper when any binrepos.conf configuration has
+  verify-signature enabled (bug #969187)
+
+* Scheduler: No background mode if there is just one merge job (bug #339579)
+
+  The old behaviour can be restored with --quiet-build.
+
+* Scheduler: Improved heuristics for --jobs-tmpdir-require-free-gb.
+
+* emerge: Warn on installed packages in @world without ebuilds available
+  (bug #911180).
+
+  This can be suppressed with --verbose-missing-ebuilds=n.
+
+* repos.conf: Implement sync-openpgp-key-package (bug #968578).
+
+  Portage will notify the user if a named package has an update available,
+  like it does for itself, after a sync.
+
+* binrepos.conf: Implement openpgp-key-package (bug #968578).
+
+  Behaves the same way as the aforementioned repos.conf option.
+
+* cnf: repos.conf: Set sync-openpgp-key-package for ::gentoo (bug #968578).
+
+* ELF: Add entry for Elbrus.
+
+* fowners: Better support ROOT use by inspecting the database inside (bug #971120).
+
+Bug fixes:
+
+* man: portage(5): Document that binrepos.conf location must be unique.
+
+* bintree: Improve error message for per-binhost Packages fetch failure.
+
+* phase-helpers.sh: Fix unpack vs. empty suffixes (bug #969217).
+
+* estrip: Silence noise from objcopy when no build ID section exists (bug #968220).
+
+* estrip: Don't break the debuglink CRC with the salted build ID (bug #971641).
+
+* bintree: Keep local pkgindex with --pretend when remote binhost is unreachable.
+
+* bintree: Discard local pkgindex when remote index could not be found (bug #970223).
+
+  Otherwise, we may try to fetch binpkgs which have been removed on the
+  other side.
+
+* emerge: Support "--jobs 1" to disable parallel jobs when EMERGE_DEFAULT_OPTS
+  contains "--jobs 0" for automatic detection.
+
+* emerge: Differentiate between unset and empty variables in --info.
+
+* bin/isolated-functions.sh: Make nonfatal `die -n` log to stderr (bug #970844).
+
+* lib: Follow PEP440 more closely, handle '-dirty' version suffix.
+
+Cleanups:
+
+* actions: Drop DEFINED_PHASES use when unnecessary.
+
+* netlink: Modernise.
+
+portage-3.0.77 (2026-01-23)
+--------------
+
+Breaking changes:
+
+* binrepo: Default to /var/cache/binhost/${NAME} for `location` (bug #945385)
+
+  This is needed to cleanly separate locally-created binpkgs vs
+  remote fetched binpkgs, which is important for allowing per-repository
+  PGP verification, but also e.g. deploying your own binhost without
+  (re-)serving other binpkgs unintentionally.
+
+  Support for `location` was introduced for bug #934784. gentoolkit's
+  eclean-pkg supports multiple binpkg locations rather than just `PKGDIR`
+  since gentoolkit-0.7 (bug #947694).
+
+Bug fixes:
+
+* doebuild: Fix unexported_env_vars call to chown.
+
+  This affects egencache when called with an alternative PORTAGE_USERNAME
+  and PORTAGE_GRPNAME w/ >= EAPI 9.
+
+* man: make.conf(5): Mention in another place (--getbinpkg) the existence
+  of binrepos.conf.
+
+* man: make.conf(5): Document in another place (--getbinpkg) that PORTAGE_BINHOST
+  is deprecated.
+
+  Use binrepos.conf instead.
+
+Cleanups:
+
+* doebuild: Fix typos in docstring.
+
+portage-3.0.76 (2026-01-18)
+--------------
+
+First release with EAPI 9 support declared!
+
+Features:
+
+* Enable EAPI 9!
+
+* Scheduler: implicit jobserver slot support (bug #692576)
+
+  Followup to previous FEATURES="jobserver-token" support.
+
+Bug fixes:
+
+* gpkg: Improve the PORTAGE_TRUST_HELPER hint in error messages.
+
+* meson: Fix warning for configure_file.
+
+* Scheduler: Fix pkg_pretend bug with binpkgs.
+
+Cleanups:
+
+* gpkg: Minor readability refactoring and commentary.
+
+portage-3.0.75 (2026-01-07)
+--------------
+
+Features:
+
+* gpkg: Various improvements to verification and signing error messages
+  (bug #930730, bug #966958).
+
+  Notably, we now include a summary of GnuPG error if possible, and we
+  clearly mark the raw GnuPG output as such.
+
+Bug fixes:
+
+* depgraph: Earlier slot operator backtracking (bug #964705, bug #968228).
+
+  This fixes a failure to upgrade Qt in some cases as well as --usepkg
+  failing to resolve dependencies with REQUIRED_USE.
+
+* sync: Fix crash when sync-user is a UID (bug #968268).
+
+* bintree: Silence warning with file:// for Packages fetch (bug #966721).
+
+* estrip: copy build ID for splitdebug file from original source w/ FEATURES=-installsources
+  (bug #968220).
+
+  Revert the original fix and fix it properly.
+
+portage-3.0.74 (2026-01-01)
 --------------
 
 Features:

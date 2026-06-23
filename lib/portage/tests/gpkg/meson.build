@@ -2,6 +2,7 @@ py.install_sources(
     [
         'test_gpkg_checksum.py',
         'test_gpkg_gpg.py',
+        'test_gpkg_gpg_emerge.py',
         'test_gpkg_metadata_update.py',
         'test_gpkg_metadata_url.py',
         'test_gpkg_path.py',

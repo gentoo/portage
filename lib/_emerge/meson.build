@@ -1,7 +1,7 @@
 AbstractEbuildProcess_py = configure_file(
     input : 'AbstractEbuildProcess.py',
     output : 'AbstractEbuildProcess.py',
-    configuration : {'IPC' : get_option('ipc')}
+    configuration : {'IPC' : get_option('ipc') ? 'True' : 'False'}
 )
 
 create_depgraph_params_py = configure_file(

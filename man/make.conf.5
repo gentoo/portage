@@ -417,6 +417,15 @@ When this option is enabled (the default), \fBbuildpkg\fR will exhibit
 the default behavior of building binary cache for all packages. When
 it is disabled, binary packages will not be created for live ebuilds.
 .TP
+.B buildpkg\-proactive
+Proactively rebuild packages that have no (usable) binary package. This only
+applies to installed packages that Portage is already checking but would
+otherwise not consider rebuilding, e.g. because they're already up-to-date.
+This does nothing unless \fBbuildpkg\fR or \fBbuildsyspkg\fR is also enabled.
+When \fBemerge\fR(1) \fB--binpkg-respect-use\fR or \fB--binpkg-changed-deps\fR
+are enabled (they usually are), binary packages will also be rebuilt if the USE
+flags or dependencies have changed.
+.TP
 .B buildsyspkg
 Build binary packages for just packages in the system set.
 .TP
@@ -534,8 +543,9 @@ Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
 except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
 .TP
 .B getbinpkg
-Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
-\fBmake.conf\fR(5) for more information.
+Force emerges to always try to fetch files from the remote binhosts configured
+in \fBbinrepos.conf\fR or \fIPORTAGE_BINHOST\fR. (deprecated).
+See \fBmake.conf\fR(5) for more information.
 .TP
 .B gpg-keepalive
 Run GnuPG unlock command every 5 mins to avoid passphrase expiry.

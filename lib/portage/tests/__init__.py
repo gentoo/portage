@@ -22,7 +22,6 @@ from portage.const import PORTAGE_PYM_PATH
 from portage.output import colorize
 from portage.proxy.objectproxy import ObjectProxy
 
-
 # This remains constant when the real value is a mock.
 EPREFIX_ORIG = portage.const.EPREFIX
 
@@ -33,6 +32,7 @@ class CommandStep:
     command: tuple[str, ...]
     env: Optional[dict] = None
     cwd: Optional[str] = None
+    output: Optional[str] = None
 
 
 @dataclass

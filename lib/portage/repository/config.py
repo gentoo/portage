@@ -12,7 +12,9 @@ import typing
 import portage
 from pathlib import Path
 from portage import eclass_cache, os
+from portage._sets.base import WildcardPackageSet
 from portage.checksum import get_valid_checksum_keys
+from portage.dep import Atom
 from portage.const import PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH
 from portage.eapi import (
     eapi_allows_directories_on_profile_level_and_repository_level,
@@ -89,6 +91,34 @@ def _gen_valid_repo(name):
     return name
 
 
+def _find_bad_atoms(atoms, less_strict=False):
+    """
+    Declares all atoms as invalid that have an operator,
+    a use dependency, a blocker or a repo spec.
+    It accepts atoms with wildcards.
+    In less_strict mode it accepts operators and repo specs.
+    """
+    from _emerge.is_valid_package_atom import insert_category_into_atom
+
+    bad_atoms = []
+    for x in " ".join(atoms or []).split():
+        atom = x
+        if "/" not in x.split(":")[0]:
+            x_cat = insert_category_into_atom(x, "dummy-category")
+            if x_cat is not None:
+                atom = x_cat
+
+        bad_atom = False
+        try:
+            atom = Atom(atom, allow_wildcard=True, allow_repo=less_strict)
+        except portage.exception.InvalidAtom:
+            bad_atom = True
+
+        if bad_atom or (atom.operator and not less_strict) or atom.blocker or atom.use:
+            bad_atoms.append(x)
+    return bad_atoms
+
+
 def _find_invalid_path_char(path, pos=0, endpos=None):
     """
     Returns the position of the first invalid character found in basename,
@@ -145,6 +175,7 @@ class RepoConfig:
         "sync_depth",
         "sync_hooks_only_on_change",
         "sync_openpgp_keyserver",
+        "sync_openpgp_key_package",
         "sync_openpgp_key_path",
         "sync_openpgp_key_refresh",
         "sync_openpgp_key_refresh_retry_count",
@@ -162,6 +193,8 @@ class RepoConfig:
         "sync_user",
         "thin_manifest",
         "update_changelog",
+        "usepkg_exclude",
+        "usepkg_include",
         "user_location",
         "volatile",
         "_eapis_banned",
@@ -217,6 +250,40 @@ class RepoConfig:
         # The main-repo key makes only sense for the 'DEFAULT' section.
         self.main_repo = repo_opts.get("main-repo")
 
+        # usepkg-exclude and usepkg-include validation
+        for opt in ("usepkg-exclude", "usepkg-include"):
+            attr = opt.replace("-", "_")
+            if name == "DEFAULT":
+                setattr(self, attr, None)
+                continue
+            usepkg_atoms = repo_opts.get(opt, "").split()
+            bad_atoms = _find_bad_atoms(usepkg_atoms)
+            if bad_atoms:
+                writemsg(
+                    "\n!!! The following atoms are invalid in %s attribute for "
+                    "repo [%s] (only package names and slot atoms allowed):\n"
+                    "\n    %s\n" % (opt, name, "\n    ".join(bad_atoms))
+                )
+                for a in bad_atoms:
+                    usepkg_atoms.remove(a)
+            usepkg_set = WildcardPackageSet(usepkg_atoms)
+            setattr(self, attr, usepkg_set)
+        conflicted_atoms = (
+            self.usepkg_exclude
+            and self.usepkg_exclude.getAtoms().intersection(
+                self.usepkg_include.getAtoms()
+            )
+        )
+        if conflicted_atoms:
+            writemsg(
+                "\n!!! The following atoms appear in both the usepkg-exclude "
+                "usepkg-include lists for repo [%s]:\n"
+                "\n    %s\n" % (name, "\n    ".join(conflicted_atoms))
+            )
+            for a in conflicted_atoms:
+                self.usepkg_exclude.remove(a)
+                self.usepkg_include.remove(a)
+
         priority = repo_opts.get("priority")
         if priority is not None:
             try:
@@ -269,6 +336,7 @@ class RepoConfig:
             repo_opts.get("sync-openpgp-keyserver", "").strip().lower() or None
         )
 
+        self.sync_openpgp_key_package = repo_opts.get("sync-openpgp-key-package", None)
         self.sync_openpgp_key_path = repo_opts.get("sync-openpgp-key-path", None)
 
         sync_openpgp_key_refresh = repo_opts.get(
@@ -682,6 +750,59 @@ class RepoConfig:
         return f"{d}"
 
 
+_bool_keys = (
+    "strict_misc_digests",
+    "sync_allow_hardlinks",
+    "sync_hooks_only_on_change",
+    "sync_rcu",
+    "volatile",
+)
+_str_or_int_keys = (
+    "auto_sync",
+    "clone_depth",
+    "format",
+    "location",
+    "main_repo",
+    "priority",
+    "sync_depth",
+    "sync_openpgp_keyserver",
+    "sync_openpgp_key_package",
+    "sync_openpgp_key_path",
+    "sync_openpgp_key_refresh",
+    "sync_openpgp_key_refresh_retry_count",
+    "sync_openpgp_key_refresh_retry_delay_exp_base",
+    "sync_openpgp_key_refresh_retry_delay_max",
+    "sync_openpgp_key_refresh_retry_delay_mult",
+    "sync_openpgp_key_refresh_retry_overall_timeout",
+    "sync_rcu_spare_snapshots",
+    "sync_rcu_store_dir",
+    "sync_rcu_ttl_days",
+    "sync_type",
+    "sync_umask",
+    "sync_uri",
+    "sync_user",
+)
+_str_tuple_keys = (
+    "aliases",
+    "eclass_overrides",
+    "force",
+    "usepkg_exclude",
+    "usepkg_include",
+)
+_repo_config_tuple_keys = ("masters",)
+
+# Flatten the built-in option names into a set to facilitate rapid lookups.
+_builtin_options = frozenset(
+    key.replace("_", "-")
+    for key in (
+        _bool_keys + _str_or_int_keys + _str_tuple_keys + _repo_config_tuple_keys
+    )
+)
+
+# Used to cache sync-type/option pairs for which warnings have been raised.
+_warned_module_options = set()
+
+
 class RepoConfigLoader:
     """Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
 
@@ -755,6 +876,7 @@ class RepoConfigLoader:
                             "sync_depth",
                             "sync_hooks_only_on_change",
                             "sync_openpgp_keyserver",
+                            "sync_openpgp_key_package",
                             "sync_openpgp_key_path",
                             "sync_openpgp_key_refresh",
                             "sync_openpgp_key_refresh_retry_count",
@@ -770,6 +892,8 @@ class RepoConfigLoader:
                             "sync_umask",
                             "sync_uri",
                             "sync_user",
+                            "usepkg_exclude",
+                            "usepkg_include",
                             "volatile",
                         ):
                             v = getattr(repos_conf_opts, k, None)
@@ -843,8 +967,27 @@ class RepoConfigLoader:
 
             repo = RepoConfig(sname, optdict, local_config=local_config)
             for o in portage.sync.module_specific_options(repo):
-                if parser.has_option(sname, o):
-                    repo.set_module_specific_opt(o, parser.get(sname, o))
+                if not parser.has_option(sname, o):
+                    continue
+
+                if o in _builtin_options:
+                    module_option = (repo.sync_type, o)
+                    if module_option not in _warned_module_options:
+                        _warned_module_options.add(module_option)
+                        writemsg_level(
+                            "!!! %s\n"
+                            % _(
+                                "Sync module '%s' declares built-in repos.conf "
+                                "option '%s'; ignoring the module-specific "
+                                "declaration."
+                            )
+                            % module_option,
+                            level=logging.WARNING,
+                            noiselevel=-1,
+                        )
+                    continue
+
+                repo.set_module_specific_opt(o, parser.get(sname, o))
 
             # Perform repos.conf sync variable validation
             portage.sync.validate_config(repo, logging)
@@ -1300,43 +1443,7 @@ class RepoConfigLoader:
         return repo_name in self.prepos
 
     def config_string(self):
-        bool_keys = (
-            "strict_misc_digests",
-            "sync_allow_hardlinks",
-            "sync_openpgp_key_refresh",
-            "sync_rcu",
-            "volatile",
-        )
-        str_or_int_keys = (
-            "auto_sync",
-            "clone_depth",
-            "format",
-            "location",
-            "main_repo",
-            "priority",
-            "sync_depth",
-            "sync_openpgp_keyserver",
-            "sync_openpgp_key_path",
-            "sync_openpgp_key_refresh_retry_count",
-            "sync_openpgp_key_refresh_retry_delay_exp_base",
-            "sync_openpgp_key_refresh_retry_delay_max",
-            "sync_openpgp_key_refresh_retry_delay_mult",
-            "sync_openpgp_key_refresh_retry_overall_timeout",
-            "sync_rcu_spare_snapshots",
-            "sync_rcu_store_dir",
-            "sync_rcu_ttl_days",
-            "sync_type",
-            "sync_umask",
-            "sync_uri",
-            "sync_user",
-        )
-        str_tuple_keys = (
-            "aliases",
-            "eclass_overrides",
-            "force",
-        )
-        repo_config_tuple_keys = ("masters",)
-        keys = bool_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
+        keys = _bool_keys + _str_or_int_keys + _str_tuple_keys + _repo_config_tuple_keys
         config_string = ""
         for repo_name, repo in sorted(
             self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])
@@ -1348,22 +1455,22 @@ class RepoConfigLoader:
                 if key == "main_repo" and repo_name != "DEFAULT":
                     continue
                 if getattr(repo, key) is not None:
-                    if key in bool_keys:
+                    if key in _bool_keys:
                         config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             "true" if getattr(repo, key) else "false",
                         )
-                    elif key in str_or_int_keys:
+                    elif key in _str_or_int_keys:
                         config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             getattr(repo, key),
                         )
-                    elif key in str_tuple_keys:
+                    elif key in _str_tuple_keys:
                         config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             " ".join(getattr(repo, key)),
                         )
-                    elif key in repo_config_tuple_keys:
+                    elif key in _repo_config_tuple_keys:
                         config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             " ".join(x.name for x in getattr(repo, key)),

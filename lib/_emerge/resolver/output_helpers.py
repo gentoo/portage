@@ -18,6 +18,7 @@ from portage.output import (
     colorize,
     create_color_func,
     green,
+    fuchsia,
     red,
     teal,
     turquoise,
@@ -596,6 +597,7 @@ class PkgAttrDisplay(SlotObject):
         "new_slot",
         "new_version",
         "replace",
+        "remote_binary",
     )
 
     def __str__(self):
@@ -622,11 +624,13 @@ class PkgAttrDisplay(SlotObject):
         else:
             output.append(" ")
 
-        if self.fetch_restrict or self.fetch_restrict_satisfied:
+        if self.fetch_restrict or self.fetch_restrict_satisfied or self.remote_binary:
             if self.fetch_restrict_satisfied:
                 output.append(green("f"))
-            else:
+            elif self.fetch_restrict:
                 output.append(red("F"))
+            else:
+                output.append(fuchsia("g"))
         else:
             output.append(" ")
 

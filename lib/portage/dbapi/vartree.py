@@ -9,6 +9,7 @@ from portage.const import (
     CACHE_PATH,
     CONFIG_MEMORY_FILE,
     MERGING_IDENTIFIER,
+    PACKDEBUG_PATH,
     PORTAGE_PACKAGE_ATOM,
     PRIVATE_PATH,
     VDB_PATH,
@@ -43,6 +44,10 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util.futures.executor.fork import ForkExecutor
 from ._VdbMetadataDelta import VdbMetadataDelta
+
+# Made global to fix importing on Python version upgrade:
+# https://bugs.gentoo.org/970375
+from ._SyncfsProcess import SyncfsProcess
 
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
@@ -2768,7 +2773,7 @@ class dblink:
                 # For packdebug, we don't want to clean up old debuginfo
                 # tarballs that we made, as we want to keep serving them
                 # to binhost clients for some time.
-                uninstall_ignore += " /usr/lib/debug/.tarball/*"
+                uninstall_ignore += f" {PACKDEBUG_PATH}/*"
 
             uninstall_ignore = shlex.split(uninstall_ignore)
 
@@ -3969,7 +3974,7 @@ class dblink:
         # packdebug tarballs are orphaned for management outside of Portage,
         # so it's expected that we may collide with an orphaned file. Ignore it.
         if "packdebug" in self.settings.features:
-            x = "/usr/lib/debug/.tarball"
+            x = PACKDEBUG_PATH
             if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
                 x = normalize_path(x)
                 x += "/*"
@@ -6146,7 +6151,6 @@ class dblink:
         does nothing if FEATURES=merge-sync is disabled.
         """
         import subprocess
-        from portage.dbapi._SyncfsProcess import SyncfsProcess
 
         if not self._device_path_map or "merge-sync" not in self.settings.features:
             return

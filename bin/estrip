@@ -143,8 +143,7 @@ save_elf_debug() {
 			if (( has_feature[compressdebug] )); then
 				objcopy_flags+=( --compress-debug-sections )
 			fi
-			"${name_of[objcopy]}" "${objcopy_flags[@]}" "${src}" "${dst}" \
-			&& "${name_of[objcopy]}" --add-gnu-debuglink="${dst}" "${src}"
+			"${name_of[objcopy]}" "${objcopy_flags[@]}" "${src}" "${dst}"
 		fi
 
 		# Only do the following if the debug file was
@@ -171,9 +170,9 @@ save_elf_debug() {
 
 					# We need to process the splitdebug file too
 					# if we're doing it at this late juncture (bug #968220)
-					"${name_of[debugedit]}" -i \
-						-s "${CATEGORY}/${PF}:${SLOT}" \
-						"${dst}"
+					"${name_of[objcopy]}" --dump-section .note.gnu.build-id="${inode_link}_buildid" "${src}" 2>/dev/null \
+						&& "${name_of[objcopy]}" --update-section .note.gnu.build-id="${inode_link}_buildid" "${dst}" 2>/dev/null
+					rm -f "${inode_link}_buildid"
 				elif ! contains_word buildid "${warned_for[debugedit]}"; then
 					warned_for[debugedit]+=" buildid"
 					stash_warning <<-'EOF'
@@ -198,6 +197,11 @@ save_elf_debug() {
 				__try_symlink "${dst_buildid_rel}" "${buildid_file}.debug"
 				__try_symlink "${src_buildid_rel}" "${buildid_file}"
 			fi
+		fi
+
+		if [[ -z ${splitdebug} ]] ; then
+			# Add debuglink last to avoid the salted build ID breaking the CRC.
+			"${name_of[objcopy]}" --add-gnu-debuglink="${dst}" "${src}"
 		fi
 	fi
 }

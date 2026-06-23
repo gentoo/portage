@@ -23,7 +23,11 @@ from portage import os
 from portage import shutil
 from portage import _encodings, _unicode_decode
 from portage.binrepo.config import BinRepoConfigLoader
-from portage.const import BINREPOS_CONF_FILE, _DEPCLEAN_LIB_CHECK_DEFAULT
+from portage.const import (
+    BINREPOS_CONF_FILE,
+    _DEPCLEAN_LIB_CHECK_DEFAULT,
+    PORTAGE_BASE_PATH,
+)
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
@@ -51,7 +55,7 @@ warn = create_color_func("WARN")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.fetch import _hide_url_passwd
 from portage._sets import load_default_config, SETPREFIX
-from portage._sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet, WildcardPackageSet
 from portage.util import (
     cmp_sort_key,
     normalize_path,
@@ -141,7 +145,7 @@ def action_build(
         + os.path.sep
     )
     quickpkg_direct = (
-        "--usepkg" in emerge_config.opts
+        emerge_config.opts.get("--usepkg") is True
         and emerge_config.opts.get("--quickpkg-direct", "n") == "y"
         and emerge_config.target_config.settings["ROOT"] != quickpkg_root
     )
@@ -162,8 +166,12 @@ def action_build(
         kwargs["add_repos"] = (quickpkg_vardb,)
         try:
             kwargs["pretend"] = "--pretend" in emerge_config.opts
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
             emerge_config.target_config.trees["bintree"].populate(
-                getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
+                getbinpkgs=emerge_config.opts.get("--getbinpkg") is True, **kwargs
             )
         except ParseError as e:
             writemsg(f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n", noiselevel=-1)
@@ -418,13 +426,21 @@ def action_build(
             # instances need to load remote metadata if --getbinpkg
             # is enabled. Use getbinpkg_refresh=False to use cached
             # metadata, since the cache is already fresh.
-            if "--getbinpkg" in emerge_config.opts or quickpkg_direct:
+            if emerge_config.opts.get("--getbinpkg") is True or quickpkg_direct:
                 for root_trees in emerge_config.trees.values():
                     kwargs = {}
                     if quickpkg_direct:
                         kwargs["add_repos"] = (
                             emerge_config.running_config.trees["vartree"].dbapi,
                         )
+                    if "--getbinpkg-exclude" in emerge_config.opts:
+                        kwargs["getbinpkg_exclude"] = emerge_config.opts[
+                            "--getbinpkg-exclude"
+                        ]
+                    if "--getbinpkg-include" in emerge_config.opts:
+                        kwargs["getbinpkg_include"] = emerge_config.opts[
+                            "--getbinpkg-include"
+                        ]
 
                     try:
                         root_trees["bintree"].populate(
@@ -1901,7 +1917,7 @@ def action_info(settings, trees, myopts, myfiles):
                 dbs = [IndexedVardb(vardb) if search_index else vardb]
                 # if "--usepkgonly" not in myopts:
                 dbs.append(IndexedPortdb(portdb) if search_index else portdb)
-                if "--usepkg" in myopts:
+                if myopts.get("--usepkg") is True:
                     dbs.append(bindb)
 
                 matches = similar_name_search(dbs, x)
@@ -2131,10 +2147,19 @@ def action_info(settings, trees, myopts, myfiles):
     for repo in repos:
         append(repo.info_string())
 
-    binrepos_conf_path = os.path.join(
-        settings["PORTAGE_CONFIGROOT"], BINREPOS_CONF_FILE
+    binrepos_config_paths = []
+    if portage._not_installed:
+        binrepos_config_paths.append(
+            os.path.join(PORTAGE_BASE_PATH, "cnf", "binrepos.conf")
+        )
+    else:
+        binrepos_config_paths.append(
+            os.path.join(settings.global_config_path, "binrepos.conf")
+        )
+    binrepos_config_paths.append(
+        os.path.join(settings["PORTAGE_CONFIGROOT"], BINREPOS_CONF_FILE)
     )
-    binrepos_conf = BinRepoConfigLoader((binrepos_conf_path,), settings)
+    binrepos_conf = BinRepoConfigLoader(binrepos_config_paths, settings)
     if binrepos_conf and any(repo.name for repo in binrepos_conf.values()):
         append("Binary Repositories:\n")
         for repo in reversed(list(binrepos_conf.values())):
@@ -2235,8 +2260,7 @@ def action_info(settings, trees, myopts, myfiles):
         # Get our global settings (we only print stuff if it varies from
         # the current config)
         mydesiredvars = ["CHOST", "CFLAGS", "CXXFLAGS", "FEATURES", "LDFLAGS"]
-        auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
-        auxkeys.append("DEFINED_PHASES")
+        auxkeys = list(vardb._aux_cache_keys)
         pkgsettings = portage.config(clone=settings)
 
         # Loop through each package
@@ -2291,9 +2315,17 @@ def action_info(settings, trees, myopts, myfiles):
 
             append(f"{pkg_use_display(pkg, myopts)}")
             if pkg_type == "installed":
+                unset_var = []
+                env_results = vardb._aux_env_search(cpv, mydesiredvars)
                 for myvar in mydesiredvars:
-                    if metadata[myvar].split() != settings.get(myvar, "").split():
-                        append(f'{myvar}="{metadata[myvar]}"')
+                    myval = env_results.get(myvar)
+                    if myval is None:
+                        unset_var.append(myvar)
+                    elif myval.split() != settings.get(myvar, "").split():
+                        append(f'{myvar}="{myval}"')
+                if len(unset_var) > 0:
+                    unset_var_string = ", ".join(unset_var)
+                    append(f"Unset: {unset_var_string}")
             append("")
             append("")
             writemsg_stdout("\n".join(output_buffer), noiselevel=-1)
@@ -2395,8 +2427,8 @@ def action_search(root_config, myopts, myfiles, spinner):
             spinner,
             "--searchdesc" in myopts,
             "--quiet" not in myopts,
-            "--usepkg" in myopts,
-            "--usepkgonly" in myopts,
+            myopts.get("--usepkg") is True,
+            myopts.get("--usepkgonly") is True,
             search_index=myopts.get("--search-index", "y") != "n",
             search_similarity=myopts.get("--search-similarity"),
             fuzzy=myopts.get("--fuzzy-search") != "n",
@@ -2671,17 +2703,16 @@ def adjust_configs(myopts, trees):
         # For --usepkgonly mode, propagate settings from the binary package
         # database, so that it's possible to operate without dependence on
         # a local ebuild repository and profile.
-        if "--usepkgonly" in myopts and mytrees["bintree"]._propagate_config(
-            mysettings
-        ):
-            # Also propagate changes to the portdbapi doebuild_settings
-            # attribute which is used by Package instances for USE
-            # calculations (in support of --binpkg-respect-use).
-            mytrees["porttree"].dbapi.doebuild_settings = portage.config(
-                clone=mysettings
-            )
+        if myopts.get("--usepkgonly") is True:
+            mytrees["bintree"]._propagate_config(mysettings)
 
         adjust_config(myopts, mysettings)
+
+        # Propagate additional changes to portdbapi doebuild_settings attribute
+        # used by Package instances to determine whether binary packages should
+        # be built (--buildpkg) and for USE calculations (--binpkg-respect-use).
+        mytrees["porttree"].dbapi.doebuild_settings = portage.config(clone=mysettings)
+
         mysettings.lock()
 
 
@@ -2784,6 +2815,113 @@ def adjust_config(myopts, settings):
     if "--pkg-format" in myopts:
         settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]
         settings.backup_changes("PORTAGE_BINPKG_FORMAT")
+
+    binpkg_selection_config(myopts, settings)
+
+
+def binpkg_selection_config(opts, settings):
+    atoms = " ".join(opts.pop("--getbinpkg-exclude", [])).split()
+    getbinpkg_exclude = WildcardPackageSet(atoms)
+    atoms = " ".join(opts.pop("--getbinpkg-include", [])).split()
+    getbinpkg_include = WildcardPackageSet(atoms)
+    atoms = " ".join(opts.pop("--usepkg-exclude", [])).split()
+    usepkg_exclude = WildcardPackageSet(atoms)
+    atoms = " ".join(opts.pop("--usepkg-include", [])).split()
+    usepkg_include = WildcardPackageSet(atoms)
+
+    # --usepkg-include and --usepkg-exclude may not overlap
+    conflicted_atoms = usepkg_exclude.getAtoms().intersection(usepkg_include.getAtoms())
+    if conflicted_atoms:
+        writemsg(
+            "\n!!! The following atoms appear in both the --usepkg-exclude "
+            "and --usepkg-include command line arguments:\n"
+            "\n    %s\n" % ("\n    ".join(conflicted_atoms))
+        )
+        for a in conflicted_atoms:
+            usepkg_exclude.remove(a)
+            usepkg_include.remove(a)
+
+    # --nobindeps ignores all usepkg-include and usepkg-exclude settings
+    if "--nobindeps" in opts:
+        if not usepkg_exclude.isEmpty():
+            writemsg(
+                "\n!!! The following --usepkg-exclude atoms are ignored due "
+                "to use of --nobindeps:\n"
+                "\n    %s\n" % ("\n    ".join(usepkg_exclude.getAtoms()))
+            )
+            usepkg_exclude.clear()
+        if not usepkg_include.isEmpty():
+            writemsg(
+                "\n!!! The following --usepkg-include atoms are ignored due "
+                "to use of --nobindeps:\n"
+                "\n    %s\n" % ("\n    ".join(usepkg_include.getAtoms()))
+            )
+            usepkg_include.clear()
+        for repo in settings.repositories:
+            if not repo.usepkg_exclude.isEmpty():
+                writemsg(
+                    "\n!!! The following usepkg-exclude atoms for [%s] are "
+                    "ignored due to use of --nobindeps:\n"
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(repo.usepkg_exclude.getAtoms()))
+                )
+                repo.usepkg_exclude.clear()
+            if not repo.usepkg_include.isEmpty():
+                writemsg(
+                    "\n!!! The following usepkg-include atoms for [%s] are "
+                    "ignored due to use of --nobindeps:\n"
+                    "\n    %s\n"
+                    % (repo.name, "\n    ".join(repo.usepkg_include.getAtoms()))
+                )
+                repo.usepkg_include.clear()
+
+    # --usepkg-exclude and --usepkg-include override repos.conf
+    for repo in settings.repositories:
+        conflicted_exclude = repo.usepkg_exclude.getAtoms().intersection(
+            usepkg_include.getAtoms()
+        )
+        if conflicted_exclude:
+            writemsg(
+                "\n!!! The following usepkg-exclude atoms for [%s] have "
+                "been overridden by the --usepkg-include option:\n"
+                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_exclude))
+            )
+            for a in conflicted_exclude:
+                repo.usepkg_exclude.remove(a)
+        conflicted_include = repo.usepkg_include.getAtoms().intersection(
+            usepkg_exclude.getAtoms()
+        )
+        if conflicted_include:
+            writemsg(
+                "\n!!! The following usepkg-include atoms for [%s] have "
+                "been overridden by the --usepkg-exclude option:\n"
+                "\n    %s\n" % (repo.name, "\n    ".join(conflicted_include))
+            )
+            for a in conflicted_include:
+                repo.usepkg_include.remove(a)
+
+    # --getbinpkg-include and --getbinpkg-exclude may not overlap
+    conflicted_atoms = getbinpkg_exclude.getAtoms().intersection(
+        getbinpkg_include.getAtoms()
+    )
+    if conflicted_atoms:
+        writemsg(
+            "\n!!! The following atoms appear in both the --getbinpkg-exclude "
+            "and --getbinpkg-include command line arguments:\n"
+            "\n    %s\n" % ("\n    ".join(conflicted_atoms))
+        )
+        for a in conflicted_atoms:
+            getbinpkg_exclude.remove(a)
+            getbinpkg_include.remove(a)
+
+    if not getbinpkg_exclude.isEmpty():
+        opts["--getbinpkg-exclude"] = list(getbinpkg_exclude)
+    if not getbinpkg_include.isEmpty():
+        opts["--getbinpkg-include"] = list(getbinpkg_include)
+    if not usepkg_exclude.isEmpty():
+        opts["--usepkg-exclude"] = list(usepkg_exclude)
+    if not usepkg_include.isEmpty():
+        opts["--usepkg-include"] = list(usepkg_include)
 
 
 def display_missing_pkg_set(root_config, set_name):
@@ -3113,20 +3251,22 @@ def apply_priorities(settings):
 
 
 def nice(settings, pids):
+    priority = settings.get("PORTAGE_NICENESS")
+    if priority is None:
+        return
 
     for name, pid in pids:
-        cmd = f"renice -n {settings.get('PORTAGE_NICENESS', '0')} {pid}".split()
+        cmd = ["renice", "-n", priority, str(pid)]
         try:
             with open(os.devnull, "wb", 0) as dev_null:
                 rval = portage.process.spawn(
                     cmd, env=os.environ, fd_pipes={1: dev_null.fileno()}
                 )
         except portage.exception.CommandNotFound:
-            if "PORTAGE_NICENESS" in settings:
-                out = portage.output.EOutput()
-                out.eerror(
-                    f"PORTAGE_NICENESS not applied because the renice command was not found"
-                )
+            out = portage.output.EOutput()
+            out.eerror(
+                "PORTAGE_NICENESS not applied because the renice command was not found"
+            )
             return
         if rval != os.EX_OK:
             out = portage.output.EOutput()
@@ -3541,18 +3681,19 @@ def run_action(emerge_config):
         emerge_config.opts["--buildpkg"] = True
 
     if "getbinpkg" in emerge_config.target_config.settings.features:
+        if emerge_config.opts.get("--getbinpkg") is not False:
+            emerge_config.opts["--getbinpkg"] = True
+
+    if emerge_config.opts.get("--getbinpkgonly") is True:
         emerge_config.opts["--getbinpkg"] = True
 
-    if "--getbinpkgonly" in emerge_config.opts:
-        emerge_config.opts["--getbinpkg"] = True
-
-    if "--getbinpkgonly" in emerge_config.opts:
+    if emerge_config.opts.get("--getbinpkgonly") is True:
         emerge_config.opts["--usepkgonly"] = True
 
-    if "--getbinpkg" in emerge_config.opts:
+    if emerge_config.opts.get("--getbinpkg") is True:
         emerge_config.opts["--usepkg"] = True
 
-    if "--usepkgonly" in emerge_config.opts:
+    if emerge_config.opts.get("--usepkgonly") is True:
         emerge_config.opts["--usepkg"] = True
 
     # Populate the bintree with current --getbinpkg setting.
@@ -3560,7 +3701,10 @@ def run_action(emerge_config):
     # * expand_set_arguments, in case any sets use the bintree
     # * adjust_configs and profile_check, in order to propagate settings
     #   implicit IUSE and USE_EXPAND settings from the binhost(s)
-    if emerge_config.action in ("search", None) and "--usepkg" in emerge_config.opts:
+    if (
+        emerge_config.action in ("search", None)
+        and emerge_config.opts.get("--usepkg") is True
+    ):
         for mytrees in emerge_config.trees.values():
             kwargs = {}
             if (
@@ -3573,10 +3717,14 @@ def run_action(emerge_config):
                 )
 
             kwargs["pretend"] = "--pretend" in emerge_config.opts
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
 
             try:
                 mytrees["bintree"].populate(
-                    getbinpkgs="--getbinpkg" in emerge_config.opts,
+                    getbinpkgs=emerge_config.opts.get("--getbinpkg") is True,
                     getbinpkg_refresh=True,
                     verbose="--verbose" in emerge_config.opts,
                     **kwargs,
@@ -4018,7 +4166,7 @@ def run_action(emerge_config):
 
                     if (
                         valid_atom.cp.split("/")[0] == "null"
-                        and "--usepkg" in emerge_config.opts
+                        and emerge_config.opts.get("--usepkg") is True
                     ):
                         valid_atom = dep_expand(x, mydb=bindb)
 

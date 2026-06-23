@@ -118,6 +118,7 @@ MACOSSANDBOX_PROFILE     = '''(version 1)
 
 INVALID_ENV_FILE = "/etc/spork/is/not/valid/profile.env"
 MERGING_IDENTIFIER = "-MERGING-"
+PACKDEBUG_PATH = "/usr/lib/debug/.tarball"
 REPO_NAME_FILE = "repo_name"
 REPO_NAME_LOC = f"profiles/{REPO_NAME_FILE}"
 
@@ -177,6 +178,7 @@ SUPPORTED_FEATURES = frozenset(
         "binpkg-signing",
         "buildpkg",
         "buildpkg-live",
+        "buildpkg-proactive",
         "buildsyspkg",
         "candy",
         "case-insensitive-fs",
@@ -265,7 +267,7 @@ SUPPORTED_FEATURES = frozenset(
     )
 )
 
-EAPI = 8
+EAPI = 9
 
 HASHING_BLOCKSIZE = 32768
 

@@ -1,4 +1,4 @@
-# Copyright 2010-2025 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
@@ -86,6 +86,7 @@ from portage.exception import (
     InvalidData,
     InvalidDependString,
     PermissionDenied,
+    PortageException,
     UnsupportedAPIException,
 )
 from portage.localization import _
@@ -202,9 +203,9 @@ _unexported_pms_vars = frozenset(
         "ECLASSDIR",
         "ROOT",
         "EROOT",
-        "SYSROOT",
-        "ESYSROOT",
-        "BROOT",
+#        "SYSROOT",       # EXPORTED: used by crossdev's cross-pkg-config
+#        "ESYSROOT",      # EXPORTED: used by a Gentoo GCC patch and crossdev's cross-pkg-config
+#        "BROOT",         # EXPORTED: used by a Gentoo GCC patch
         "T",
 #        "TMPDIR",        # EXPORTED: often assumed to be exported and available to child processes
 #        "HOME",          # EXPORTED: often assumed to be exported and available to child processes
@@ -2012,9 +2013,9 @@ def spawn(
 ):
     """
     Spawn a subprocess with extra portage-specific options.
-    Optiosn include:
+    Options include:
 
-    Sandbox: Sandbox means the spawned process will be limited in its ability t
+    Sandbox: Sandbox means the spawned process will be limited in its ability to
     read and write files (normally this means it is restricted to ${D}/)
     SElinux Sandbox: Enables sandboxing on SElinux
     Reduced Privileges: Drops privileges such that the process runs as portage:portage
@@ -2335,12 +2336,34 @@ def spawn(
         else:  # case B and C
             global _emerge_tmpdir
             if _emerge_tmpdir is None:
-                _emerge_tmpdir = tempfile.mkdtemp(
-                    prefix=f"portage-tmpdir-{portage.getpid()}-"
-                )
+                mkdtemp_kwargs = {
+                    "prefix": f"portage-tmpdir-{portage.getpid()}-",
+                }
+                # A value of 2 means root-equivalent permissions are in effect.
+                if secpass >= 2:
+                    # Keep this directory beneath ${PORTAGE_TMPDIR}/portage so
+                    # that dropped-privilege phases can traverse the path and
+                    # source PORTAGE_EBUILD_EXTRA_SOURCE (bug #977245).
+                    build_prefix = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
+                    portage.util.ensure_dirs(build_prefix)
+                    try:
+                        apply_secpass_permissions(
+                            build_prefix,
+                            gid=portage_gid,
+                            uid=portage_uid,
+                            mode=0o700,
+                            mask=0,
+                        )
+                    except PortageException:
+                        if not os.path.isdir(build_prefix):
+                            raise
+                    mkdtemp_kwargs["dir"] = build_prefix
+                _emerge_tmpdir = tempfile.mkdtemp(**mkdtemp_kwargs)
                 os.chmod(_emerge_tmpdir, 0o1775)
-                os.chown(_emerge_tmpdir, -1, int(portage_gid))
-                portage.process.atexit_register(shutil.rmtree, _emerge_tmpdir)
+                os.chown(_emerge_tmpdir, -1, int(portage_build_gid))
+                portage.process.atexit_register(
+                    shutil.rmtree, _emerge_tmpdir, ignore_errors=True
+                )
             ebuild_extra_source_fd, ebuild_extra_source_path = tempfile.mkstemp(
                 prefix=f"portage-ebuild-extra-source-{phase}-",
                 dir=_emerge_tmpdir,

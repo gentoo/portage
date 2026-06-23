@@ -132,6 +132,7 @@ async def _async_test_baseline(playground, binhost, commands):
         "PORTAGE_PYTHON": portage._python_interpreter,
         "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
         "PORTAGE_TMPDIR": portage_tmpdir,
+        "PORTAGE_TRUST_HELPER": "getuto",
         "PORTAGE_LOGDIR": portage_tmpdir,
         "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
         "PYTHONPATH": pythonpath,
@@ -160,7 +161,7 @@ async def _async_test_baseline(playground, binhost, commands):
     # Override things that may be unavailable, or may have portability
     # issues when running tests in exotic environments.
     #   prepstrip - bug #447810 (bash read builtin EINTR problem)
-    true_symlinks = ["find", "prepstrip", "sed", "scanelf"]
+    true_symlinks = ["find", "prepstrip", "sed", "scanelf", "getuto"]
     true_binary = find_binary("true")
     assert true_binary is not None, "true command not found"
 

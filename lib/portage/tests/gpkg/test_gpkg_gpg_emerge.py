@@ -195,7 +195,6 @@ class test_gpkg_gpg_emerge_case(TestCase):
                     returncode=not os.EX_OK,
                     env={
                         "FEATURES": "binpkg-request-signature",
-                        "PORTAGE_TRUST_HELPER": "true",
                     },
                     command=emerge_cmd
                     + (
@@ -235,6 +234,7 @@ class test_gpkg_gpg_emerge_case(TestCase):
                 "PATH": path,
                 "PORTAGE_PYTHON": portage_python,
                 "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
+                "PORTAGE_TRUST_HELPER": "getuto",
                 "PYTHONDONTWRITEBYTECODE": os.environ.get(
                     "PYTHONDONTWRITEBYTECODE", ""
                 ),
@@ -251,7 +251,7 @@ class test_gpkg_gpg_emerge_case(TestCase):
                 user_config_dir,
                 var_cache_edb,
             ]
-            true_symlinks = ["chown", "chgrp"]
+            true_symlinks = ["chown", "chgrp", "getuto"]
             needed_binaries = {
                 "true": (find_binary("true"), True),
             }

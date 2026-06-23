@@ -11,7 +11,7 @@ fi
 
 if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
 	source "${PORTAGE_EBUILD_EXTRA_SOURCE}" || exit 1
-	# We deliberately do not unset PORTABE_EBUILD_EXTRA_SOURCE, so
+	# We deliberately do not unset PORTAGE_EBUILD_EXTRA_SOURCE, so
 	# that it keeps being exported in the environment of this
 	# process and its child processes. There, for example portage
 	# helper like doins, can pick it up and set the PMS variables
@@ -92,11 +92,13 @@ __helpers_die() {
 		die "$@"
 	else
 		echo -e "$@" >&2
-		return "$(( retval || 1 ))"
+		return "$(( retval ? retval : 1 ))"
 	fi
 }
 
 die() {
+	local retval=$?
+
 	# restore PATH since die calls basename & sed
 	# TODO: make it pure bash
 	[[ -n ${_PORTAGE_ORIG_PATH} ]] && PATH=${_PORTAGE_ORIG_PATH}
@@ -107,8 +109,8 @@ die() {
 	if ___eapi_die_can_respect_nonfatal && [[ $1 == -n ]]; then
 		shift
 		if [[ ${PORTAGE_NONFATAL} == 1 ]]; then
-			[[ $# -gt 0 ]] && eerror "$*"
-			return 1
+			[[ $# -gt 0 ]] && echo -e "$@" >&2
+			return "$(( retval ? retval : 1 ))"
 		fi
 	fi
 
@@ -221,7 +223,7 @@ die() {
 	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID} != "${EBUILD_MASTER_PID}" ]] ; then
 		kill -s SIGTERM "${EBUILD_MASTER_PID}"
 	fi
-	exit 1
+	exit "$(( retval ? retval : 1 ))"
 }
 
 __quiet_mode() {

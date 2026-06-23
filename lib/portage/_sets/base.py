@@ -1,4 +1,4 @@
-# Copyright 2007-2020 Gentoo Authors
+# Copyright 2007-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.dep import Atom, ExtendedAtomDict, best_match_to_list, match_from_list
@@ -61,6 +61,10 @@ class PackageSet:
         self._load()
         return self._nonatoms.copy()
 
+    def isEmpty(self):
+        self._load()
+        return len(self._atoms) == 0 and len(self._nonatoms) == 0
+
     def _setAtoms(self, atoms):
         self._atoms.clear()
         self._nonatoms.clear()
@@ -91,7 +95,7 @@ class PackageSet:
 
     def containsCPV(self, cpv):
         self._load()
-        for a in self._atoms:
+        for a in self._atommap.get(cpv_getkey(cpv), []):
             if match_from_list(a, [cpv]):
                 return True
         return False
@@ -248,3 +252,19 @@ class DummyPackageSet(PackageSet):
         return DummyPackageSet(atoms=atoms)
 
     singleBuilder = classmethod(singleBuilder)
+
+
+class WildcardPackageSet(InternalPackageSet):
+    def __init__(self, initial_atoms, allow_repo=False):
+        super().__init__(initial_atoms, allow_wildcard=True, allow_repo=allow_repo)
+
+    def _implicitWildcarding(self, atom):
+        if isinstance(atom, Atom):
+            return atom
+        try:
+            return Atom(atom, allow_wildcard=True, allow_repo=self._allow_repo)
+        except InvalidAtom:
+            return Atom("*/" + atom, allow_wildcard=True, allow_repo=self._allow_repo)
+
+    def update(self, atoms):
+        super().update(self._implicitWildcarding(a) for a in atoms)

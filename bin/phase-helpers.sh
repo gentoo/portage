@@ -426,7 +426,7 @@ unpack() {
 		fi
 
 		# Skip any files bearing unsupported suffixes.
-		if [[ -v 'suffix_by[$suffix]' ]]; then
+		if [[ ${suffix} && -v 'suffix_by[$suffix]' ]]; then
 			__vecho ">>> Unpacking ${f@Q} to ${PWD}"
 		else
 			__vecho "=== Skipping unpack of ${f@Q}"

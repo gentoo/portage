@@ -243,7 +243,7 @@ class slot_conflict_handler:
         Print all slot conflicts in a human readable way.
         """
         _pkg_use_enabled = self.depgraph._pkg_use_enabled
-        usepkgonly = "--usepkgonly" in self.myopts
+        usepkgonly = self.myopts.get("--usepkgonly") is True
         need_rebuild = {}
         verboseconflicts = "--verbose-conflicts" in self.myopts
         any_omitted_parents = False

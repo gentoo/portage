@@ -248,6 +248,7 @@ class Scheduler(PollScheduler):
 
         features = self.settings.features
         self._jobserver_fd = None
+        self._jobserver_has_implicit_token = False
         self._jobserver_tokens = {}
 
         self._fetch_log = os.path.join(
@@ -445,11 +446,10 @@ class Scheduler(PollScheduler):
         @return: True if background mode is enabled, False otherwise.
         """
         parallel_jobs = self._max_jobs is True or self._max_jobs > 1
-        background = (
-            parallel_jobs
-            or "--quiet" in self.myopts
-            or self.myopts.get("--quiet-build") == "y"
-        ) and not bool(self._opts_no_background.intersection(self.myopts))
+        quiet = "--quiet" in self.myopts or self.myopts.get("--quiet-build") == "y"
+        background = (parallel_jobs or quiet) and not bool(
+            self._opts_no_background.intersection(self.myopts)
+        )
 
         if background:
             interactive_tasks = self._get_interactive_tasks()
@@ -488,6 +488,10 @@ class Scheduler(PollScheduler):
                         level=logging.INFO,
                         noiselevel=-1,
                     )
+            elif len(self._mergelist) <= 1 and not quiet:
+                self._set_max_jobs(1)
+                background = False
+
         self._status_display.quiet = not background or (
             "--quiet" in self.myopts and "--verbose" not in self.myopts
         )
@@ -845,7 +849,7 @@ class Scheduler(PollScheduler):
 
         elif (
             pkg.type_name == "binary"
-            and "--getbinpkg" in self.myopts
+            and self.myopts.get("--getbinpkg") is True
             and pkg.root_config.trees["bintree"].download_required(pkg.cpv)
         ):
             prefetcher = BinpkgPrefetcher(
@@ -1020,17 +1024,17 @@ class Scheduler(PollScheduler):
                             sys.stderr = stderr_orig
 
                         output_value = out.getvalue()
-                        if output_value:
-                            if injected_pkg is None:
-                                msg = ["Binary package is not usable:"]
+                        if injected_pkg is None:
+                            msg = ["Binary package is not usable:"]
+                            if output_value:
                                 msg.extend(
                                     "\t" + line for line in output_value.splitlines()
                                 )
-                                self._elog("eerror", msg)
+                            self._elog("eerror", msg)
 
-                        failures += 1
-                        self._record_pkg_failure(x, settings, 1)
-                        continue
+                            failures += 1
+                            self._record_pkg_failure(x, settings, 1)
+                            continue
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
@@ -1639,6 +1643,13 @@ class Scheduler(PollScheduler):
                         out = portage.output.EOutput()
                         out.ewarn(f"Unsupported jobserver type: {flag}")
             if jobserver_path is not None:
+                # If MAKEFLAGS were passed via environment, we're likely running
+                # under a jobserver client (make, stevie) and a token was acquired
+                # for us, so use an implicit slot. If they were set via make.conf,
+                # we are the top-level process and need to acquire tokens for all
+                # jobs.
+                if "MAKEFLAGS" in os.environ:
+                    self._jobserver_has_implicit_token = True
                 try:
                     self._jobserver_fd = os.open(
                         jobserver_path, os.O_RDWR | os.O_NONBLOCK
@@ -1905,15 +1916,12 @@ class Scheduler(PollScheduler):
                         level=logging.ERROR,
                     )
                 else:
-                    # Use a decaying function to take potential future PORTAGE_TMPDIR consumption
+                    # Use a function to take potential future PORTAGE_TMPDIR consumption
                     # of currently running jobs and the new job into account.
-                    def scale_to_jobs(num):
+                    def scale_to_jobs(num, p90):
                         # The newly started job is fully taken into account.
                         res = num
-                        # All currently running jobs are taken into account with less weight,
-                        # since it is likely that they are already using space in PORTAGE_TMPDIR.
-                        for i in range(2, running_job_count + 2):
-                            res += (1 / i) * num
+                        res += running_job_count * p90
                         return res
 
                     if (
@@ -1923,7 +1931,12 @@ class Scheduler(PollScheduler):
                         required_free_bytes = (
                             self._jobs_tmpdir_require_free_gb * 1024 * 1024 * 1024
                         )
-                        required_free_bytes = scale_to_jobs(required_free_bytes)
+                        p90_bytes = (
+                            1 * 1024 * 1024 * 1024
+                        )  # Assume 1 GiB for 90th percentile job size
+                        required_free_bytes = scale_to_jobs(
+                            required_free_bytes, p90_bytes
+                        )
 
                         actual_free_bytes = vfs_stat.f_bsize * vfs_stat.f_bavail
 
@@ -1946,7 +1959,7 @@ class Scheduler(PollScheduler):
                                         f" ({required_free_bytes} bytes)"
                                     )
 
-                                msg = f"--- {tmpdir} has not enough free space, emerge job parallelism reduced. free: {actual_free_bytes_hr}{actual_free_bytes_debug}, required {required_free_bytes_hr}{required_free_bytes_debug}"
+                                msg = f"--- {tmpdir} has insufficient free space, emerge job parallelism reduced. free: {actual_free_bytes_hr}{actual_free_bytes_debug}, required {required_free_bytes_hr}{required_free_bytes_debug}"
                                 portage.writemsg_stdout(
                                     colorize("WARN", f"\n{msg}\n"), noiselevel=-1
                                 )
@@ -2122,13 +2135,17 @@ class Scheduler(PollScheduler):
 
         return False
 
-    def _acquire_job_token(self) -> str:
+    def _acquire_job_token(self) -> bytes:
         """
         Acquire a job token. Returns the token if available, or an empty value
         if no jobserver is used (or the jobserver died). Raises BlockingIOError
         if no tokens are available.
         """
         if self._jobserver_fd is None:
+            return b""
+        if self._jobserver_has_implicit_token:
+            # If our implicit slot is free, use it.
+            self._jobserver_has_implicit_token = False
             return b""
         try:
             return os.read(self._jobserver_fd, 1)
@@ -2154,6 +2171,11 @@ class Scheduler(PollScheduler):
         """
         token = self._jobserver_tokens.pop(task_id, None)
         if token is not None and self._jobserver_fd is not None:
+            if token == b"":
+                # This job was running in our implicit slot.
+                assert not self._jobserver_has_implicit_token
+                self._jobserver_has_implicit_token = True
+                return
             try:
                 os.write(self._jobserver_fd, token)
             except OSError as exception:

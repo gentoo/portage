@@ -1,4 +1,4 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -52,7 +52,7 @@ from portage.output import colorize, create_color_func, darkgreen, green
 bad = create_color_func("BAD")
 from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
-from portage._sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet, WildcardPackageSet
 from portage.dep._slot_operator import evaluate_slot_operator_equal_deps
 from portage.util import ConfigProtect, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
@@ -131,17 +131,6 @@ class _scheduler_graph_config:
         self.mergelist = mergelist
 
 
-def _wildcard_set(atoms):
-    pkgs = InternalPackageSet(allow_wildcard=True)
-    for x in atoms:
-        try:
-            x = Atom(x, allow_wildcard=True, allow_repo=False)
-        except portage.exception.InvalidAtom:
-            x = Atom("*/" + x, allow_wildcard=True, allow_repo=False)
-        pkgs.add(x)
-    return pkgs
-
-
 class _frozen_depgraph_config:
     def __init__(self, settings, trees, myopts, params, spinner):
         self.settings = settings
@@ -165,7 +154,7 @@ class _frozen_depgraph_config:
         # no soname data. Therefore, only enable soname dependency
         # resolution if --usepkgonly is enabled, or for removal actions.
         self.soname_deps_enabled = (
-            "--usepkgonly" in myopts or "remove" in params
+            myopts.get("--usepkgonly") is True or "remove" in params
         ) and params.get("ignore_soname_deps") != "y"
         dynamic_deps = "dynamic_deps" in params
         ignore_built_slot_operator_deps = (
@@ -204,17 +193,33 @@ class _frozen_depgraph_config:
             self._required_set_names = {"world"}
 
         atoms = " ".join(myopts.get("--exclude", [])).split()
-        self.excluded_pkgs = _wildcard_set(atoms)
+        self.excluded_pkgs = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--reinstall-atoms", [])).split()
-        self.reinstall_atoms = _wildcard_set(atoms)
+        self.reinstall_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--usepkg-exclude", [])).split()
-        self.usepkg_exclude = _wildcard_set(atoms)
+        self.usepkg_exclude = WildcardPackageSet(atoms, allow_repo=True)
+        atoms = " ".join(myopts.get("--usepkg-include", [])).split()
+        self.usepkg_include = WildcardPackageSet(atoms, allow_repo=True)
         atoms = " ".join(myopts.get("--useoldpkg-atoms", [])).split()
-        self.useoldpkg_atoms = _wildcard_set(atoms)
+        self.useoldpkg_atoms = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-exclude", [])).split()
-        self.rebuild_exclude = _wildcard_set(atoms)
+        self.rebuild_exclude = WildcardPackageSet(atoms)
         atoms = " ".join(myopts.get("--rebuild-ignore", [])).split()
-        self.rebuild_ignore = _wildcard_set(atoms)
+        self.rebuild_ignore = WildcardPackageSet(atoms)
+
+        self.buildpkg_exclude = InternalPackageSet(
+            initial_atoms=" ".join(myopts.get("--buildpkg-exclude", [])).split(),
+            allow_wildcard=True,
+            allow_repo=True,
+        )
+
+        for repo in settings.repositories:
+            self.usepkg_exclude.update(
+                a + _repo_separator + repo.name for a in repo.usepkg_exclude.getAtoms()
+            )
+            self.usepkg_include.update(
+                a + _repo_separator + repo.name for a in repo.usepkg_include.getAtoms()
+            )
 
         self.rebuild_if_new_rev = "--rebuild-if-new-rev" in myopts
         self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts
@@ -305,7 +310,7 @@ class _rebuild_config:
             if self._needs_rebuild(dep_pkg):
                 self.rebuild_list.add(root_slot)
                 return True
-            if "--usepkg" in self._frozen_config.myopts and (
+            if self._frozen_config.myopts.get("--usepkg") is True and (
                 dep_root_slot in self.reinstall_list
                 or dep_root_slot in self.rebuild_list
                 or not dep_pkg.installed
@@ -635,7 +640,7 @@ class _dynamic_depgraph_config:
                     db_keys = list(portdb._aux_cache_keys)
                     dbs.append((portdb, "ebuild", False, False, db_keys))
 
-                if "--usepkg" in depgraph._frozen_config.myopts:
+                if depgraph._frozen_config.myopts.get("--usepkg") is True:
                     bindb = depgraph._frozen_config.trees[myroot]["bintree"].dbapi
                     db_keys = list(bindb._aux_cache_keys)
                     dbs.append((bindb, "binary", True, False, db_keys))
@@ -2836,7 +2841,7 @@ class depgraph:
         graph_pkg itself may be yielded only if it's not installed.
         """
 
-        usepkgonly = "--usepkgonly" in self._frozen_config.myopts
+        usepkgonly = self._frozen_config.myopts.get("--usepkgonly") is True
         useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
         use_ebuild_visibility = (
             self._frozen_config.myopts.get("--use-ebuild-visibility", "n") != "n"
@@ -5277,6 +5282,14 @@ class depgraph:
         # is to allow the user to force a specific merge order.
         self._dynamic_config._initial_arg_list = args[:]
 
+        # set usepkg-include set to expanded args if --nobindeps is
+        # in effect, both usepkg-include and usepkg-exclude should
+        # be assumed empty at this point
+        if "--nobindeps" in self._frozen_config.myopts:
+            for arg in self._expand_set_args(args):
+                arg_cp = (a.cp for a in arg.pset.getAtoms())
+                self._frozen_config.usepkg_include.update(arg_cp)
+
         return self._resolve(myfavorites)
 
     def _gen_reinstall_sets(self):
@@ -5312,6 +5325,7 @@ class depgraph:
         a favorite list."""
         debug = "--debug" in self._frozen_config.myopts
         onlydeps = "--onlydeps" in self._frozen_config.myopts
+        usepkgonly = self._frozen_config.myopts.get("--usepkgonly", False)
         args = self._dynamic_config._initial_arg_list[:]
 
         for arg in self._expand_set_args(args, add_to_digraph=True):
@@ -5365,6 +5379,28 @@ class depgraph:
                         if not package_is_installed:
                             continue
 
+                    # If we're emerging @selected or @world, we want to loudly warn about
+                    # no ebuilds being available for packages (bug #911180).
+                    if (
+                        self._frozen_config.myopts.get("--verbose-missing-ebuilds", "y")
+                        != "n"
+                        and not usepkgonly
+                        and pkg
+                        and pkg.installed
+                        and pkg.operation == "nomerge"
+                        and isinstance(arg, SetArg)
+                        and arg.name in ("selected", "world")
+                        and not self._replace_installed_atom(pkg)
+                        and not self._frozen_config.excluded_pkgs.findAtomForPackage(
+                            pkg
+                        )
+                    ):
+                        self._dynamic_config._missing_args.append((arg, atom))
+
+                    # But here, we don't warn unlike for @selected or @world because the
+                    # user might be emerging something else and a package instead gets
+                    # dragged in. We may want to warn about this at some point, but one
+                    # step at a time.
                     if not pkg:
                         pprovided_match = False
                         for virt_choice in virtuals.get(atom.cp, []):
@@ -6839,7 +6875,7 @@ class depgraph:
                 dbs = [vardb]
                 if "--usepkgonly" not in self._frozen_config.myopts:
                     dbs.append(IndexedPortdb(portdb) if search_index else portdb)
-                if "--usepkg" in self._frozen_config.myopts:
+                if self._frozen_config.myopts.get("--usepkg") is True:
                     # bindbapi is indexed
                     dbs.append(bindb)
 
@@ -7611,8 +7647,8 @@ class depgraph:
         existing_node = None
         myeb = None
         rebuilt_binaries = "rebuilt_binaries" in self._dynamic_config.myparams
-        usepkg = "--usepkg" in self._frozen_config.myopts
-        usepkgonly = "--usepkgonly" in self._frozen_config.myopts
+        usepkg = self._frozen_config.myopts.get("--usepkg") is True
+        usepkgonly = self._frozen_config.myopts.get("--usepkgonly") is True
         usepkg_exclude_live = "--usepkg-exclude-live" in self._frozen_config.myopts
         empty = "empty" in self._dynamic_config.myparams
         selective = "selective" in self._dynamic_config.myparams
@@ -7624,6 +7660,9 @@ class depgraph:
         )
         reinstall_atoms = self._frozen_config.reinstall_atoms
         usepkg_exclude = self._frozen_config.usepkg_exclude
+        usepkg_include = self._frozen_config.usepkg_include
+        have_usepkg_exclude = not usepkg_exclude.isEmpty()
+        have_usepkg_include = not usepkg_include.isEmpty()
         useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
         matched_oldpkg = []
         # Behavior of the "selective" parameter depends on
@@ -7694,14 +7733,21 @@ class depgraph:
                     ):
                         continue
 
-                    if (
-                        built
-                        and not installed
-                        and usepkg_exclude.findAtomForPackage(
-                            pkg, modified_use=self._pkg_use_enabled(pkg)
+                    if built and not installed:
+                        in_usepkg_exclude = (
+                            have_usepkg_exclude
+                            and usepkg_exclude.findAtomForPackage(
+                                pkg, modified_use=self._pkg_use_enabled(pkg)
+                            )
                         )
-                    ):
-                        break
+                        in_usepkg_include = (
+                            not have_usepkg_include
+                            or usepkg_include.findAtomForPackage(
+                                pkg, modified_use=self._pkg_use_enabled(pkg)
+                            )
+                        )
+                        if in_usepkg_exclude or not in_usepkg_include:
+                            break
 
                     # We can choose not to install a live package from using binary
                     # cache by disabling it with option --usepkg-exclude-live in the
@@ -7812,6 +7858,46 @@ class depgraph:
                                 pkg, autounmask_level=autounmask_level
                             ):
                                 continue
+                            # Also reject built instances if we want a binary
+                            # package, but none exist, all the existing ones are
+                            # now masked (e.g. accepted keywords changed), or we
+                            # care that the USE flags or deps have changed.
+                            elif (
+                                myeb
+                                and "buildpkg-proactive"
+                                in root_config.settings.features
+                                and myeb.binpkg_wanted(
+                                    self._frozen_config.buildpkg_exclude
+                                )
+                            ):
+                                for binpkg in self._iter_match_pkgs_atom(
+                                    root_config, "binary", Atom(f"={myeb.cpv}")
+                                ):
+                                    forced_flags = set(
+                                        chain(myeb.use.force, myeb.use.mask)
+                                    )
+                                    bin_use = binpkg.use.enabled
+                                    bin_iuse = binpkg.iuse.all
+                                    pkg_use = self._pkg_use_enabled(myeb)
+                                    pkg_iuse = myeb.iuse.all
+                                    if (
+                                        not binpkg.masks
+                                        and not self._reinstall_for_flags(
+                                            binpkg,
+                                            forced_flags,
+                                            bin_use,
+                                            bin_iuse,
+                                            pkg_use,
+                                            pkg_iuse,
+                                        )
+                                        and not (
+                                            binpkg_changed_deps
+                                            and self._changed_deps(binpkg)
+                                        )
+                                    ):
+                                        break
+                                else:
+                                    continue
 
                     # Calculation of USE for unbuilt ebuilds is relatively
                     # expensive, so it is only performed lazily, after the
@@ -11613,7 +11699,7 @@ class _dep_check_composite_db(dbapi):
                 "--update" not in myopts
                 and "remove" not in self._depgraph._dynamic_config.myparams
             )
-            usepkgonly = "--usepkgonly" in myopts
+            usepkgonly = myopts.get("--usepkgonly") is True
             if not avoid_update:
                 if not use_ebuild_visibility and usepkgonly:
                     return False
@@ -11738,8 +11824,8 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
         spinner,
         "--searchdesc" in myopts,
         "--quiet" not in myopts,
-        "--usepkg" in myopts,
-        "--usepkgonly" in myopts,
+        myopts.get("--usepkg") is True,
+        myopts.get("--usepkgonly") is True,
         search_index=False,
     )
     null_cp = portage.dep_getkey(insert_category_into_atom(arg, "null"))

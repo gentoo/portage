@@ -212,41 +212,46 @@ Releases
 0. Before starting: CI MUST BE GREEN!
 
 1. Repository mangling:
-	- Update NEWS (for both new version & release date)
+	- Update NEWS (for both new version and release date)
 	- Update meson.build
-and commit.
+	- git commit --signoff --message "NEWS, meson.build: prepare for portage-${VERSION}" NEWS meson.build
 
-2. Create a git tag for this release:
-	git tag -a -s portage-3.0.30
-
-3. Create the tarball and run the tests:
-     - meson setup -Dmodules-only=true build
+2. Run the tests:
+     - meson setup -Dcode-only=true build
      - meson test -C build --verbose
    Use meson setup's --native-file to override the Python version. See
    Python versions listed in tox.ini.
 
-4. Version bump the ebuild locally (don't push) and verify it can re-install itself:
-	emerge --oneshot sys-apps/portage
-	emerge --oneshot sys-apps/portage # this is using the new Portage
+3. Bump the Portage ebuild, including any changes in the live ebuild. Don't
+	commit yet because we don't have the tarball yet.
 
-5. Publish the results (no going back now):
-	- Push the new git tag
-	- Upload the tarball
-	- Commit the new ebuild version and tag the tracker bug for the commit
+4. Update Portage using the live ebuild pointing at your development repository:
+	- sudo env EGIT_OVERRIDE_REPO_PROJ_PORTAGE="${PWD}" ebuild "$(portageq get_repo_path / gentoo)"/sys-apps/portage/portage-9999.ebuild clean merge
+	- Run the above command TWICE to ensure the new Portage can update itself.
 
-6. Create the release for pypi and upload it there:
+5. Create and push a git tag for this release:
+	- git tag --annotate --sign --message portage-${VERSION} portage-${VERSION}
+	- git push --signed origin master portage-${VERSION}
+
+6. Publish the ebuild changes:
+	- Update the Manifest for the bumped ebuild. Portage should fetch from gitweb.gentoo.org.
+	- Downgrade Portage from the live version to the new release to ensure the non-live ebuild works.
+	- Commit the ebuild changes, tagging the tracker bug.
+	- Push the changes.
+
+7. Create the release for pypi and upload it there:
 	- python -m venv .venv
 	- . .venv/bin/activate
 	- pip install build twine
 	- python -m build # build the sdist and arch/Python-specific wheel
 	- python -m build --wheel -Csetup-args="-Dnative-extensions=false" # build the pure wheel
-	- twine upload dist/<filenames>
+	- twine upload dist/portage-${VERSION}.tar.gz dist/portage-${VERSION}-py3-none-any.whl
 
-7. Bugzilla wrangling:
+8. Bugzilla wrangling:
 	- Close the bugs blocked by the tracker bug for this release and
           the tracker itself.
 
-	- File a new bug in Portage Development > Core named
+	- File a new bug in Portage Development > Trackers named
 		"[TRACKER] sys-apps/portage-${NEW_VERSION}"
 	  with the 'Tracker' Bugzilla Keyword and the following text:
 	"""
@@ -256,4 +261,6 @@ and commit.
 	'Blocks' means 'fixed in this release'
 	"""
 
-8. Done! Congratulations!
+	- Move unclosed dependencies from the old tracker to the new tracker.
+
+9. Done! Congratulations!

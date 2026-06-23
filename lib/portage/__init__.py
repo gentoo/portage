@@ -31,24 +31,15 @@ try:
     del shutil
 
 except ImportError as e:
-    sys.stderr.write("\n\n")
     sys.stderr.write(
+        "\n\n"
         "!!! Failed to complete python imports. These are internal modules for\n"
-    )
-    sys.stderr.write(
         "!!! python and failure here indicates that you have a problem with python\n"
-    )
-    sys.stderr.write(
         "!!! itself and thus portage is not able to continue processing.\n\n"
-    )
-
-    sys.stderr.write(
         "!!! You might consider starting python with verbose flags to see what has\n"
-    )
-    sys.stderr.write(
         "!!! gone wrong. Here is the information we got for this exception:\n"
+        f"    {e}\n\n"
     )
-    sys.stderr.write(f"    {e}\n\n")
     raise
 
 try:
@@ -412,6 +403,20 @@ _internal_caller = False
 
 _sync_mode = False
 
+import multiprocessing
+
+# Prefer the environment variable if set. Otherwise, change away from
+# forkserver if in use.
+_multiprocessing_method = os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD")
+if not _multiprocessing_method:
+    _multiprocessing_method = multiprocessing.get_start_method(allow_none=False)
+    if _multiprocessing_method == "forkserver":
+        # Undo the Python 3.14 default change on Linux from fork->forkserver
+        # because of various problems (bug #973043, bug #973571).
+        _multiprocessing_method = "fork"
+if _multiprocessing_method:
+    multiprocessing.set_start_method(_multiprocessing_method, force=True)
+
 
 class _ForkWatcher:
     @staticmethod
@@ -705,15 +710,30 @@ if installation.TYPE == installation.TYPES.SOURCE:
             if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
                 try:
                     result = subprocess.run(
-                        ["git", "describe", "--dirty", "--match", "portage-*"],
+                        [
+                            "git",
+                            "describe",
+                            "--dirty",
+                            "--long",
+                            "--match",
+                            "portage-*",
+                        ],
                         capture_output=True,
                         cwd=PORTAGE_BASE_PATH,
                         encoding=_encodings["stdio"],
                     )
                     if result.returncode == 0:
-                        VERSION = (
-                            result.stdout.lstrip("portage-").strip().replace("-g", "+g")
-                        )
+                        # https://peps.python.org/pep-0440/
+                        VERSION, commits_since_tag, commit, dirty = re.fullmatch(
+                            "portage-([0-9.]*)-([0-9]*)-(g[0-9a-z]*)(-dirty)?",
+                            result.stdout.strip(),
+                        ).groups()
+                        if commits_since_tag != "0":
+                            VERSION += f".dev{commits_since_tag}+{commit}"
+                            if dirty is not None:
+                                VERSION += "-dirty"
+                        elif dirty is not None:
+                            VERSION += "+dirty"
                 except OSError:
                     pass
             return VERSION

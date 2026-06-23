@@ -14,6 +14,8 @@ class WorldHandler:
 
     def __init__(self):
         self.invalid = []
+        self.masked = []
+        self.missing = []
         self.not_installed = []
         self.okay = []
         from portage._sets import load_default_config
@@ -28,15 +30,17 @@ class WorldHandler:
         self.world_file = os.path.join(eroot, portage.const.WORLD_FILE)
         self.found = os.access(self.world_file, os.R_OK)
         vardb = portage.db[eroot]["vartree"].dbapi
+        portdb = portage.db[eroot]["porttree"].dbapi
 
         from portage._sets import SETPREFIX
+        from portage.package.ebuild.getmaskingstatus import getmaskingstatus
 
         sets = self._sets
         world_atoms = list(sets["selected"])
         maxval = len(world_atoms)
         if onProgress:
             onProgress(maxval, 0)
-        for i, atom in enumerate(world_atoms):
+        for i, atom in enumerate(sorted(world_atoms)):
             if not isinstance(atom, portage.dep.Atom):
                 if atom.startswith(SETPREFIX):
                     s = atom[len(SETPREFIX) :]
@@ -49,12 +53,28 @@ class WorldHandler:
                 if onProgress:
                     onProgress(maxval, i + 1)
                 continue
-            okay = True
-            if not vardb.match(atom):
+
+            installed = vardb.match(atom)
+            existing = portdb.xmatch("match-all", atom)
+            if not existing:
+                self.missing.append(atom)
+            elif not installed:
                 self.not_installed.append(atom)
-                okay = False
-            if okay:
+            elif not portdb.xmatch("match-visible", atom):
+                try:
+                    reasons = {
+                        r
+                        for cpv in existing
+                        for r in getmaskingstatus(cpv)
+                        if "live" not in cpv._metadata.get("PROPERTIES", "").split()
+                    }
+                    reasons = f" [{', '.join(sorted(reasons))}]"
+                except:
+                    reasons = ""
+                self.masked.append((atom, reasons))
+            else:
                 self.okay.append(atom)
+
             if onProgress:
                 onProgress(maxval, i + 1)
 
@@ -63,6 +83,8 @@ class WorldHandler:
         self._check_world(onProgress)
         errors = []
         if self.found:
+            errors += [f"'{x}' has no visible ebuilds{r}" for x, r in self.masked]
+            errors += [f"'{x}' has no available ebuilds" for x in self.missing]
             errors += [f"'{x}' is not a valid atom" for x in self.invalid]
             errors += [f"'{x}' is not installed" for x in self.not_installed]
         else:

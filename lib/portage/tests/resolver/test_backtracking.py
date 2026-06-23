@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -183,6 +183,80 @@ class BacktrackingTestCase(TestCase):
 
         playground = ResolverPlayground(
             ebuilds=ebuilds, installed=installed, world=world
+        )
+
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    def testBacktrackInconsistentForcedRebuildWithBlocker(self):
+
+        ebuilds = {
+            "dev-libs/boost-1.88.0": {"EAPI": 8, "SLOT": "0/1.88"},
+            "dev-libs/boost-1.89.0": {"EAPI": 8, "SLOT": "0/1.89"},
+            "x11-libs/qwt-6.3.0": {"EAPI": 8},
+            "x11-libs/qwt-6.2.0": {"EAPI": 8, "IUSE": "+qt5"},
+            "net-wireless/gnuradio-3.10.12": {
+                "EAPI": 8,
+                "SLOT": "0/3.10.12.0",
+                "RDEPEND": "x11-libs/qwt[qt5(-)]",
+            },
+            "net-wireless/gr-iqbal-0.38.3": {
+                "EAPI": 8,
+                "RDEPEND": "net-wireless/gnuradio:= dev-libs/boost:=",
+            },
+            "dev-libs/A-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:="},
+            "dev-libs/B-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:="},
+            "dev-libs/C-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:="},
+            "dev-libs/D-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:="},
+        }
+
+        installed = {
+            "dev-libs/boost-1.89.0": {"EAPI": 8, "SLOT": "0/1.89"},
+            "x11-libs/qwt-6.2.0": {"EAPI": 8, "IUSE": "+qt5", "USE": "qt5"},
+            "net-wireless/gnuradio-3.10.12": {
+                "EAPI": 8,
+                "SLOT": "0/3.10.12.0",
+                "RDEPEND": "x11-libs/qwt[qt5(-)]",
+            },
+            "net-wireless/gr-iqbal-0.38.3": {
+                "EAPI": 8,
+                "RDEPEND": "net-wireless/gnuradio:0/3.10.12.0= dev-libs/boost:0/1.88=",
+            },
+            "dev-libs/A-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:0/1.89="},
+            "dev-libs/B-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:0/1.89="},
+            "dev-libs/C-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:0/1.89="},
+            "dev-libs/D-1": {"EAPI": 8, "RDEPEND": "dev-libs/boost:0/1.89="},
+        }
+
+        world = [
+            "net-wireless/gr-iqbal",
+            "dev-libs/A",
+            "dev-libs/B",
+            "dev-libs/C",
+            "dev-libs/D",
+        ]
+
+        options = {
+            "--update": True,
+            "--deep": True,
+            "--reinstall": "changed-use",
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["@world"],
+                options=options,
+                mergelist=["net-wireless/gr-iqbal-0.38.3"],
+                success=True,
+            ),
+        )
+
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, installed=installed, world=world, debug=False
         )
 
         try:

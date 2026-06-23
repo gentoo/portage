@@ -325,9 +325,8 @@ you want emerge to alert you when it is finished. If you use
 \fBemerge -auAD world\fR, emerge will courteously point out when it has
 finished calculating the graph.
 
-\fB--alert\fR may be 'y' or 'n'. 'true' and 'false' mean the same thing.
-Using \fB--alert\fR without an option is the same as using it with 'y'.
-Try it with 'emerge -aA sys-apps/portage'.
+\fB--alert\fR may be 'y' or 'n'. Using \fB--alert\fR without an option is the
+same as using it with 'y'. Try it with 'emerge -aA sys-apps/portage'.
 
 If your terminal emulator is set up to make '\\a' into a window manager
 urgency hint, move your cursor to a different window to get the effect.
@@ -632,6 +631,22 @@ merging.)
 This option is identical to \fB\-g\fR, as above, except binaries from the
 remote server are preferred over local packages if they are not identical.
 .TP
+.BR "\-\-getbinpkg\-exclude " ATOMS
+A space separated list of package names or slot atoms. Emerge will not fetch
+matching remote binary packages. This option only influences fetching of
+remote binary packages, local binary packages are still considered even if
+listed here. To define an explicit binary package blacklist use
+\fB\-\-usepkg\-exclude\fR instead, which also affects remote binaries when
+\fB-g\fR is used.
+.TP
+.BR "\-\-getbinpkg\-include " ATOMS
+A space separated list of package names or slot atoms. Emerge will not fetch
+non-matching remote binary packages. This option only influences fetching of
+remote binary packages, local binary packages are still considered even if
+not listed here. To define an explicit binary package whitelist use
+\fB\-\-usepkg\-include\fR instead, which also affects remote binaries when
+\fB-g\fR is used.
+.TP
 .BR \-\-ignore-default-opts
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
@@ -685,7 +700,8 @@ in the \fBmake.conf\fR(5) man page.
 Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can
 run simultaneously.  If 0 is given as argument, emerge will limit the jobs to
-the number of processors.  Also see the related \fB\-\-load\-average\fR option.
+the number of processors.  Using 'n' as argument can be used to disable this
+setting.  Also see the related \fB\-\-load\-average\fR option.
 Similarly to the \-\-quiet\-build option, the \-\-jobs option causes all
 build output to be redirected to logs.
 Note that interactive packages currently force a setting
@@ -693,7 +709,7 @@ of \fI\-\-jobs=1\fR. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
 .TP
 .BR \-\-jobs\-tmpdir\-require\-free\-gb[=GB]
-Specifies the required remainnig capacity (in GiB) of \fPORTAGE_TMPDIR\fR
+Specifies the required remaining capacity (in GiB) of \fBPORTAGE_TMPDIR\fR
 before additional emerge jobs are started. A decaying function is used to
 reduce the limit for every additional emerge job after the second.
 Specifiy \fI0\fR to disable this check. Defaults to \fI18\fR GiB.
@@ -741,6 +757,13 @@ been added to or removed from IUSE, see the related
 \fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
 specific packages, see the \fB\-\-exclude\fR option.
 .TP
+.BR \-\-nobindeps
+Prefer ebuilds for any dependencies and select binary packages only for the
+atoms or sets requested for install, i.e. those named on the command line. Has
+no effect unless \fB-k\fR is also used or implied. Both \fB--usepkg-exclude\fR
+and \fB--usepkg-include\fR are ignored when this option is used, as are the
+usepkg-exclude and usepkg-include attributes in \fBrepos.conf\fR.
+.TP
 .BR \-\-noconfmem
 Causes portage to disregard merge records indicating that a config file
 inside of a \fBCONFIG_PROTECT\fR directory has been merged already.  Portage
@@ -768,6 +791,10 @@ terminal device is determined to be a TTY.  This flag disables it regardless.
 .BR "\-\-usepkg\-exclude " ATOMS
 A space separated list of package names or slot atoms. Emerge will ignore
 matching binary packages.
+.TP
+.BR "\-\-usepkg\-include " ATOMS
+A space separated list of package names or slot names. Emerge will ignore
+non\-matching binary packages.
 .TP
 .BR "\-\-rebuild\-exclude " ATOMS
 A space separated list of package names or slot atoms. Emerge will not rebuild
@@ -851,6 +878,7 @@ r	reinstall (forced for some reason, possibly due to slot or sub\-slot)
 R	replacing (remerging same version)
 F	fetch restricted (must be manually downloaded)
 f	fetch restricted (already downloaded)
+g	remote binary (automatically download from binhost)
 I	interactive (requires user input)
 B	blocked by another package (unresolved conflict)
 b	blocked by another package (automatically resolved conflict)
@@ -1108,6 +1136,10 @@ Symbol	Location	Meaning
 Make slot conflicts more verbose. Note that this may in some cases output
 hundreds of packages for slot conflicts.
 .TP
+.BR "\-\-verbose\-missing\-ebuilds [ y | n ]"
+Warn on packages in the world file with no ebuild available, which can
+prevent subslot rebuilds.  The default is set to "y" (on).
+.TP
 .BR "\-\-verbose\-slot\-rebuilds [ y | n ]"
 Turns on/off the extra emerge output to list which packages are causing rebuilds.
 The default is set to "y" (on).
@@ -1179,8 +1211,9 @@ Use \fBSYSROOT\fR to specify the target root filesystem to be used for
 merging the build dependencies satisfied by \fBDEPEND\fR.  This
 variable can be set via the \fB\-\-sysroot\fR option or in
 \fBmake.conf\fR(5) (the command line overrides other settings).  The
-value must either be / or equal to \fBROOT\fR.  When cross-compiling,
-only the latter is valid.
+value must be / (or empty) when \fBROOT\fR is / (or empty), although it
+should only be set to something other than / or \fBROOT\fR when
+cross-bootstrapping a new system from scratch.
 .br
 Defaults to /.
 .TP
@@ -1453,6 +1486,10 @@ Portage.  They allow for introspection, debugging, and performance
 analysis.  Portage provides no stability guarantee; any feature may
 disappear in the future, and the output format may change without
 prior notice.
+.TP
+.BR PORTAGE_MULTIPROCESSING_START_METHOD
+If this environment variable is set, then Portage will override the
+default Python multiprocessing start method with its value.
 .TP
 .BR PORTAGE_SHOW_LRU_CACHE_INFO
 If this environment variable is set, then Portage will display

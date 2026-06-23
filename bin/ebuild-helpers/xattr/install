@@ -3,10 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 INSTALL_XATTR=${EPREFIX}/usr/bin/install-xattr
-# Use safe cwd, avoiding unsafe import for bug #469338.
-export __PORTAGE_HELPER_CWD=${PWD}
-cd "${PORTAGE_PYM_PATH}"
-export __PORTAGE_HELPER_PATH=${BASH_SOURCE[0]}
 
 if [[ ${PORTAGE_INSTALL_XATTR_IMPLEMENTATION} == "c" ]]; then
 	implementation="c"
@@ -36,6 +32,10 @@ PATH=${path#:}
 if [[ "${implementation}" == "c" ]]; then
 	exec "${INSTALL_XATTR}" "$@"
 elif [[ "${implementation}" == "python" ]]; then
+	# Use safe cwd, avoiding unsafe import for bug #469338.
+	export __PORTAGE_HELPER_CWD=${PWD}
+	cd "${PORTAGE_PYM_PATH}"
+	export __PORTAGE_HELPER_PATH=${BASH_SOURCE[0]}
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 		exec "${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH:?}/install.py" "$@"
 else

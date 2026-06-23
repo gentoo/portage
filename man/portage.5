@@ -121,6 +121,7 @@ use.stable.force
 .TP
 .BR /usr/share/portage/config/
 .nf
+binrepos.conf
 make.globals
 repos.conf
 sets
@@ -664,14 +665,33 @@ overriding the value from \fBmake.conf\fR(5).
 .I Attributes supported in sections of repositories:
 .RS
 .TP
+.B openpgp\-key\-package
+Portage will check if the named package has an update available after
+syncing and notify the user to update it immediately if so.
+.TP
+.B getbinpkg\-exclude
+A space separated list of package names or slot atoms. Emerge will not
+fetch matching remote binary packages except where overridden by the
+\-\-getbinpkg\-include command line option (see \fBemerge\fR(1)).
+
+This is an experimental option subject to change.
+.TP
+.B getbinpkg\-include
+A space separated list of package names or slot atoms. Emerge will not
+fetch non-matching remote binary packages except where overridden by the
+\-\-getbinpkg\-exclude command line option (see \fBemerge\fR(1)).
+
+This is an experimental option subject to change.
+.TP
 .B priority
 Specifies priority of given repository. When a package exists in multiple
 repositories, those with higher priority are preferred.
 .TP
 .B location
 Specify a cache location which serves as a partial local mirror of a
-remote repository. If unset then the effective default is PKGDIR
-(see \fBmake.conf\fR(5)).
+remote repository.  If unset then the default is /var/cache/binhost/repository_name.
+It was previously PKGDIR (see \fBmake.conf\fR(5)).  This location must be
+unique.
 .TP
 .B sync\-uri
 Specifies URI of repository used for `emerge \-\-getbinpkg`.
@@ -691,6 +711,12 @@ priority = 9999
 # packages are fetched from here
 sync-uri = https://example.com/binhost
 
+# Introduced in portage-3.0.74 for per-repo verification choices
+verify-signature = true
+
+# Defaults to /var/cache/binhost/$NAME with >=portage-3.0.77
+# Stores downloaded binpkgs separately rather than comingling in PKGDIR.
+#location = /var/cache/binhost/example-binhost
 .fi
 .TP
 .BR categories
@@ -1208,13 +1234,18 @@ If only user is provided, the primary group of the user will be used.
 If only group is provided, the current user will be preserved and only
 group id will be changed.
 .br
-This key takes precedence over FEATURES=userpriv. If user or group id
+This key takes precedence over FEATURES=usersync. If user or group id
 is provided, Portage no longer uses owner of the directory.
 .TP
 .B sync-rsync-extra-opts
 Extra options to give to rsync on repository synchronization. It takes
 precedence over a declaration in [DEFAULT] section, that takes
 precedence over PORTAGE_RSYNC_EXTRA_OPTS.
+.TP
+.B sync\-openpgp\-key\-package
+Package name providing the keyring referenced in sync\-openpgp\-key\-path.
+If set, Portage will notify the user when an update is available for
+this package immediately after syncing.
 .TP
 .B sync\-openpgp\-key\-path
 Path to the OpenPGP key(ring) used to verify received repository. Used
@@ -1302,6 +1333,20 @@ Keep snapshots in \fBDISTDIR\fR (do not delete). Defaults to no, false.
 Require the detached tarball signature to contain a good OpenPGP
 signature. This uses the OpenPGP key(ring) specified by the
 sync\-openpgp\-key\-path setting. Defaults to no, false.
+.TP
+.B usepkg\-exclude
+A space separated list of package names or slot atoms. Emerge will ignore
+matching binary packages except where overridden by the \-\-usepkg\-include
+command line option (see \fBemerge\fR(1)).
+
+This is an experimental option subject to change.
+.TP
+.B usepkg\-include
+A space separated list of package names or slot names. Emerge will ignore
+non-matching binary packages except where overridden by the \-\-usepkg\-exclude
+command line option (see \fBemerge\fR(1)).
+
+This is an experimental option subject to change.
 .TP
 .B volatile = yes|no|true|false
 Specifies whether a repository is volatile.  Volatile repositories
@@ -1849,6 +1894,12 @@ games\-emulation/xmess:net \- Adds network support
 .TP
 .BR /usr/share/portage/config/
 .RS
+.TP
+.BR binrepos.conf
+The default configuration of binary repositories for Portage.  This comes from
+the portage package itself.  Settings in \fB/etc/portage/binrepos.conf\fR
+override values set here. The format is described extensively in section
+for \fB/etc/portage/binrepos.conf\fR.
 .TP
 .BR make.globals
 The global default settings for Portage.  This comes from the portage package

@@ -1,4 +1,4 @@
-# Copyright 2001-2025 Gentoo Authors
+# Copyright 2001-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tarfile
@@ -9,6 +9,7 @@ import subprocess
 import errno
 import pwd
 import grp
+import re
 import shlex
 import stat
 import sys
@@ -541,6 +542,56 @@ class checksum_helper:
     def __del__(self):
         self.finish()
 
+    def show_gpg_error(self, operation, gpg_error_lines):
+        """
+        Interpret GnuPG output to give a pretty error message
+        with a summary if possible.
+        """
+        if operation == checksum_helper.VERIFY:
+            operation_blurb = "verification failed"
+        elif operation == checksum_helper.SIGNING:
+            operation_blurb = "signing failed"
+
+        # Attempt to give a nicer error the sniffing the status output.
+        error_summaries = []
+        portage_trust_helper = self.settings.get("PORTAGE_TRUST_HELPER", "")
+        portage_trust_helper_msg = [
+            # fmt: off
+            "\t" + "Possible fix:",
+            "\t" + f"Try running '{portage_trust_helper}', i.e., $PORTAGE_TRUST_HELPER, as root",
+            # fmt: on
+        ]
+
+        def _match_list(regex: re.Pattern, msgs: list) -> list[re.Match]:
+            return list(filter(lambda s: re.match(regex, s), msgs))
+
+        errors = 0
+        if _match_list(r"^\[GNUPG:\] NODATA", gpg_error_lines):
+            errors += 1
+            error_summaries.append("binpkg appears unsigned (missing any signature)")
+        if _match_list(r"^\[GNUPG:\] NO_PUBKEY", gpg_error_lines):
+            errors += 1
+            error_summaries.append("binpkg signed with at least one unknown key.")
+            error_summaries.extend(portage_trust_helper_msg)
+        if _match_list(r"^\[GNUPG:\] TRUST_UNDEFINED", gpg_error_lines):
+            errors += 1
+            error_summaries.append("binpkg signed with a known key of undefined trust.")
+            error_summaries.extend(portage_trust_helper_msg)
+
+        # Don't show any summary if it's ambiguous, in case of
+        # a malformed signature.
+        if errors != 1:
+            error_summaries = ["(none available)"]
+
+        out = portage.output.EOutput()
+        msg = [f"Binary package is not usable ({operation_blurb}):"]
+        msg.append(" Summary:")
+        msg.extend("\t" + line for line in error_summaries)
+        msg.append("")
+        msg.append(" Raw GnuPG output:")
+        msg.extend("\t" + line for line in gpg_error_lines)
+        [out.eerror(line) for line in msg]
+
     def _check_gpg_status(self, gpg_status: bytes) -> None:
         """
         Check GnuPG status log for extra info.
@@ -559,17 +610,11 @@ class checksum_helper:
                 trust_signature = True
 
         if (not good_signature) or (not trust_signature):
-            msg = ["Binary package is not usable:"]
-            msg.extend(
-                "\t" + line
-                for line in self.gpg_result.decode(
-                    "UTF-8", errors="replace"
-                ).splitlines()
-            )
-            out = portage.output.EOutput()
-            [out.eerror(line) for line in msg]
-
-            raise InvalidSignature("GnuPG verify failed")
+            gpg_error_lines = self.gpg_result.decode(
+                "UTF-8", errors="replace"
+            ).splitlines()
+            self.show_gpg_error(checksum_helper.VERIFY, gpg_error_lines)
+            raise InvalidSignature("GnuPG verification failed")
 
     def update(self, data):
         """
@@ -585,51 +630,38 @@ class checksum_helper:
         """
         Tell GnuPG that the file is EOF, then get results, then cleanup.
         """
-        if self.finished:
+        if self.finished or self.gpg_proc is None:
             return
 
-        if self.gpg_proc is not None:
-            # Tell GnuPG EOF
-            self.gpg_proc.stdin.close()
+        # Tell GnuPG EOF
+        self.gpg_proc.stdin.close()
 
-            return_code = self.gpg_proc.wait()
+        return_code = self.gpg_proc.wait()
 
-            if self.sign_file_path:
-                os.remove(self.sign_file_path)
+        if self.sign_file_path:
+            os.remove(self.sign_file_path)
 
-            self.finished = True
+        self.finished = True
+        self.gpg_result = self.gpg_proc.stderr.read()
+        self.gpg_output = self.gpg_proc.stdout.read()
+        self.gpg_proc.stdout.close()
+        self.gpg_proc.stderr.close()
 
-            self.gpg_result = self.gpg_proc.stderr.read()
-            self.gpg_output = self.gpg_proc.stdout.read()
-            self.gpg_proc.stdout.close()
-            self.gpg_proc.stderr.close()
+        if return_code == os.EX_OK:
+            if self.gpg_operation == checksum_helper.VERIFY:
+                # os.EX_OK isn't a guarantee of everything being fine,
+                # so do more checks with `status-fd` output.
+                self._check_gpg_status(self.gpg_result)
+            return
 
-            if return_code == os.EX_OK:
-                if self.gpg_operation == checksum_helper.VERIFY:
-                    self._check_gpg_status(self.gpg_result)
-            else:
-                msg = ["Binary package is not usable:"]
-                msg.extend(
-                    "\t" + line
-                    for line in self.gpg_result.decode(
-                        "UTF-8", errors="replace"
-                    ).splitlines()
-                )
-                out = portage.output.EOutput()
-                [out.eerror(line) for line in msg]
+        gpg_error_lines = self.gpg_result.decode("UTF-8", errors="replace").splitlines()
 
-                if self.gpg_operation == checksum_helper.SIGNING:
-                    msg = ["Binary package is not usable (signing failed):"]
-                    msg.extend(
-                        "\t" + line
-                        for line in self.gpg_output.decode(
-                            "UTF-8", errors="replace"
-                        ).splitlines()
-                    )
-                    [out.eerror(line) for line in msg]
-                    raise GPGException("GnuPG signing failed")
-                elif self.gpg_operation == checksum_helper.VERIFY:
-                    raise InvalidSignature("GnuPG verification failed")
+        if self.gpg_operation == checksum_helper.SIGNING:
+            self.show_gpg_error(checksum_helper.SIGNING, gpg_error_lines)
+            raise GPGException("GnuPG signing failed")
+        elif self.gpg_operation == checksum_helper.VERIFY:
+            self.show_gpg_error(checksum_helper.VERIFY, gpg_error_lines)
+            raise InvalidSignature("GnuPG verification failed")
 
 
 class tar_safe_extract:
@@ -799,6 +831,13 @@ class gpkg:
             "zstd": ".zst",
         }
 
+    @staticmethod
+    def _strip_metadata_prefix(path):
+        prefix = "metadata/"
+        if not path.startswith(prefix):
+            raise InvalidBinaryPackageFormat(f"Invalid metadata path: {path}")
+        return path[len(prefix) :]
+
     def unpack_metadata(self, dest_dir=None):
         """
         Unpack metadata to dest_dir.
@@ -821,7 +860,7 @@ class gpkg:
             with tarfile.open(mode="r:", fileobj=metadata_tar) as metadata:
                 if dest_dir is None:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
+                        self._strip_metadata_prefix(k.name): metadata.extractfile(
                             k
                         ).read()
                         for k in metadata.getmembers()
@@ -931,14 +970,14 @@ class gpkg:
             with tarfile.open(mode="r:", fileobj=metadata_file) as metadata:
                 if want is None:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
+                        self._strip_metadata_prefix(k.name): metadata.extractfile(
                             k
                         ).read()
                         for k in metadata.getmembers()
                     }
                 else:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
+                        self._strip_metadata_prefix(k.name): metadata.extractfile(
                             k
                         ).read()
                         for k in metadata.getmembers()

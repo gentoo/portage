@@ -327,40 +327,15 @@ class EbuildBuild(CompositeTask):
         self._build_dir.clean_log()
         pkg = self.pkg
         logger = self.logger
-        opts = self.opts
         pkg_count = self.pkg_count
         scheduler = self.scheduler
         settings = self.settings
-        features = settings.features
         ebuild_path = self._ebuild_path
-        system_set = pkg.root_config.sets["system"]
 
         # buildsyspkg: Check if we need to _force_ binary package creation
-        self._issyspkg = (
-            "buildsyspkg" in features
-            and system_set.findAtomForPackage(pkg)
-            and "buildpkg" not in features
-            and opts.buildpkg != "n"
-        )
+        self._issyspkg = pkg.syspkg_wanted()
 
-        # Do not build binary cache for packages from volatile sources.
-        # For volatile sources (eg., git), the PROPERTIES parameter in
-        # the ebuild is set to 'live'.
-
-        # The default behavior is to build binary cache for all pkgs.
-        # "buildpkg-live" is a FEATURE that is enabled by default.
-        # To not build binary cache for live pkgs, we disable it by
-        # specifying FEATURES="-buildpkg-live"
-
-        buildpkg_live = "buildpkg-live" in features
-        live_ebuild = "live" in self.settings.get("PROPERTIES", "").split()
-        buildpkg_live_disabled = live_ebuild and not buildpkg_live
-
-        if (
-            ("buildpkg" in features or self._issyspkg)
-            and not buildpkg_live_disabled
-            and not self.opts.buildpkg_exclude.findAtomForPackage(pkg)
-        ):
+        if pkg.binpkg_wanted(self.opts.buildpkg_exclude):
             self._buildpkg = True
 
             msg = " === ({} of {}) Compiling/Packaging ({}::{})".format(
