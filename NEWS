@@ -6,7 +6,10 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.81 (UNRELEASED)
+portage-3.0.82 (UNRELEASED)
+--------------
+
+portage-3.0.81 (2026-06-23)
 --------------
 
 Bug fixes:
