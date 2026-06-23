@@ -23,9 +23,9 @@ class BuildPkgTestCase(TestCase):
         debug = False
 
         ebuilds = {
-            "dev-libs/penv-1": { "EAPI": "8" },
-            "dev-libs/arg-1": { "EAPI": "8" },
-            "dev-libs/feature-1": { "EAPI": "8" },
+            "dev-libs/penv-1": {"EAPI": "8"},
+            "dev-libs/arg-1": {"EAPI": "8"},
+            "dev-libs/feature-1": {"EAPI": "8"},
         }
 
         user_config = {
@@ -33,9 +33,7 @@ class BuildPkgTestCase(TestCase):
         }
 
         playground = ResolverPlayground(
-            ebuilds=ebuilds,
-            user_config=user_config,
-            debug=debug
+            ebuilds=ebuilds, user_config=user_config, debug=debug
         )
 
         settings = playground.settings
@@ -147,7 +145,10 @@ class BuildPkgTestCase(TestCase):
             run_emerge(("--buildpkg", "dev-libs/arg"))
             self.assertEqual([], bindb.aux_get("dev-libs/arg-1", []))
 
-            run_emerge(("--buildpkg-exclude=dev-libs/feature", "dev-libs/feature"), {"FEATURES": "buildpkg"})
+            run_emerge(
+                ("--buildpkg-exclude=dev-libs/feature", "dev-libs/feature"),
+                {"FEATURES": "buildpkg"},
+            )
             with self.assertRaises(KeyError):
                 bindb.aux_get("dev-libs/feature-1", [])
 

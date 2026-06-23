@@ -2253,9 +2253,7 @@ def spawn(
                     # Keep this directory beneath ${PORTAGE_TMPDIR}/portage so
                     # that dropped-privilege phases can traverse the path and
                     # source PORTAGE_EBUILD_EXTRA_SOURCE (bug #977245).
-                    build_prefix = os.path.join(
-                        mysettings["PORTAGE_TMPDIR"], "portage"
-                    )
+                    build_prefix = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
                     portage.util.ensure_dirs(build_prefix)
                     try:
                         apply_secpass_permissions(

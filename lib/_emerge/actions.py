@@ -2711,9 +2711,7 @@ def adjust_configs(myopts, trees):
         # Propagate additional changes to portdbapi doebuild_settings attribute
         # used by Package instances to determine whether binary packages should
         # be built (--buildpkg) and for USE calculations (--binpkg-respect-use).
-        mytrees["porttree"].dbapi.doebuild_settings = portage.config(
-            clone=mysettings
-        )
+        mytrees["porttree"].dbapi.doebuild_settings = portage.config(clone=mysettings)
 
         mysettings.lock()
 
