@@ -3773,6 +3773,7 @@ class dblink:
         """
         from portage.util.digraph import digraph
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        from portage.util._dyn_libs.LinkageMapMachO import LinkageMapMachO as LinkageMapMachO
 
         if (
             self._linkmap_broken
