@@ -113,6 +113,7 @@ class vardbapi(dbapi):
         """
         from portage.util._dyn_libs.PreservedLibsRegistry import PreservedLibsRegistry
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        # PREFIX LOCAL
         from portage.util._dyn_libs.LinkageMapMachO import LinkageMapMachO as LinkageMapMachO
 
         # Used by emerge to check whether any packages
@@ -1305,6 +1306,8 @@ class vardbapi(dbapi):
         @type paths: iterable
         """
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        # PREFIX LOCAL
+        from portage.util._dyn_libs.LinkageMapMachO import LinkageMapMachO as LinkageMapMachO
         from portage.util._dyn_libs.NeededEntry import NeededEntry
         from portage.util import normalize_path, writemsg_level
 
@@ -1336,7 +1339,13 @@ class vardbapi(dbapi):
         if removed:
             # Also remove corresponding NEEDED lines, so that they do
             # no corrupt LinkageMap data for preserve-libs.
-            needed_filename = os.path.join(pkg.dbdir, LinkageMap._needed_aux_key)
+            # BEGIN PREFIX LOCAL: use arch specific impl
+            chost = self.settings.get('CHOST')
+            if chost.find('darwin') >= 0:
+                needed_filename = os.path.join(pkg.dbdir, LinkageMapMachO._needed_aux_key)
+            else:
+                needed_filename = os.path.join(pkg.dbdir, LinkageMap._needed_aux_key)
+            # END PREFIX LOCAL
             new_needed = None
             try:
                 with open(
@@ -1380,11 +1389,19 @@ class vardbapi(dbapi):
         """
         from portage.util import atomic_ofstream
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        # PREFIX LOCAL
+        from portage.util._dyn_libs.LinkageMapMachO import LinkageMapMachO as LinkageMapMachO
 
         root = self.settings["ROOT"]
         self._bump_mtime(pkg.mycpv)
         if new_needed is not None:
-            f = atomic_ofstream(os.path.join(pkg.dbdir, LinkageMap._needed_aux_key))
+            # BEGIN PREFIX LOCAL: use arch specific impl
+            chost = self.settings.get('CHOST')
+            if chost.find('darwin') >= 0:
+                f = atomic_ofstream(os.path.join(pkg.dbdir, LinkageMapMachO._needed_aux_key))
+            else:
+                f = atomic_ofstream(os.path.join(pkg.dbdir, LinkageMap._needed_aux_key))
+            # END PREFIX LOCAL
             for entry in new_needed:
                 f.write(str(entry))
             f.close()
@@ -3586,6 +3603,8 @@ class dblink:
         """
         from portage.util.digraph import digraph
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        # PREFIX LOCAL
+        from portage.util._dyn_libs.LinkageMapMachO import LinkageMapMachO as LinkageMapMachO
 
         if (
             self._linkmap_broken
@@ -3611,7 +3630,13 @@ class dblink:
         def path_to_node(path):
             node = path_node_map.get(path)
             if node is None:
-                node = LinkageMap._LibGraphNode(linkmap._obj_key(path))
+                # BEGIN PREFIX LOCAL: use arch specific impl
+                chost = self.settings.get('CHOST')
+                if chost.find('darwin') >= 0:
+                    node = LinkageMapMachO._LibGraphNode(linkmap._obj_key(path))
+                else:
+                    node = LinkageMap._LibGraphNode(linkmap._obj_key(path))
+                # END PREFIX LOCAL
                 alt_path_node = lib_graph.get(node)
                 if alt_path_node is not None:
                     node = alt_path_node
@@ -3778,6 +3803,8 @@ class dblink:
         """
         from portage.util.digraph import digraph
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        # PREFIX LOCAL
+        from portage.util._dyn_libs.LinkageMapMachO import LinkageMapMachO as LinkageMapMachO
 
         if (
             self._linkmap_broken
