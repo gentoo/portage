@@ -43,7 +43,7 @@ class PackagePhase(CompositeTask):
                     self.settings["PORTAGE_BUILDDIR"],
                     "build-info",
                     "PKG_INSTALL_MASK",
-                ).encode("utf-8", "strict"),
+                ),
                 encoding="utf-8",
                 errors="replace",
             ) as f:

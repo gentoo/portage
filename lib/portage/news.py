@@ -135,7 +135,7 @@ class NewsManager:
 
         news_dir: str = self._news_dir(repoid)
         try:
-            news: list[str] = os.listdir(news_dir.encode("utf-8", "strict"))
+            news: list[str] = os.listdir(news_dir)
         except OSError:
             return
 
@@ -309,7 +309,7 @@ class NewsItem:
 
     def parse(self) -> None:
         with open(
-            self.path.encode("utf-8", "strict"),
+            self.path,
             encoding="utf-8",
             errors="replace",
         ) as f:

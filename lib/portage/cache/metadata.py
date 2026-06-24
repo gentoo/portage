@@ -114,7 +114,7 @@ class database(flat_hash.database):
         new_fp = os.path.join(self.location, cpv)
         try:
             f = open(
-                new_fp.encode("utf-8", "strict"),
+                new_fp,
                 "rb",
             )
         except OSError:

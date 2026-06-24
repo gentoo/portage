@@ -416,7 +416,7 @@ class _EbuildFetcherProcess(ForkProcess):
         # output here.
         if self.logfile is not None:
             f = open(
-                self.logfile.encode("utf-8", "strict"),
+                self.logfile,
                 mode="a",
                 encoding="utf-8",
                 errors="backslashreplace",

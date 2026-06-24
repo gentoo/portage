@@ -154,7 +154,7 @@ class FileLoader(DataLoader):
         for fn in RecursiveFileLoader(self.fname):
             try:
                 with open(
-                    fn.encode("utf-8", "strict"),
+                    fn,
                     encoding="utf-8",
                     errors="replace",
                 ) as f:

@@ -286,7 +286,7 @@ class LinkageMapELF:
                         continue
                     try:
                         with open(
-                            entry.filename.encode("utf-8", "strict"),
+                            entry.filename,
                             "rb",
                         ) as f:
                             elf_header = ELFHeader.read(f)
@@ -302,7 +302,7 @@ class LinkageMapELF:
                             proc = subprocess.Popen(
                                 [
                                     b"file",
-                                    entry.filename.encode("utf-8", "strict"),
+                                    entry.filename,
                                 ],
                                 stdout=subprocess.PIPE,
                             )

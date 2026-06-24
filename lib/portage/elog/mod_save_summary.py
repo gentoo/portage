@@ -39,7 +39,7 @@ def process(mysettings, key, logentries, fulltext):
     elogfilename = elogdir + "/summary.log"
     try:
         elogfile = open(
-            elogfilename.encode("utf-8", "strict"),
+            elogfilename,
             mode="a",
             encoding="utf-8",
             errors="backslashreplace",

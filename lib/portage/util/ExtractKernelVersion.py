@@ -26,7 +26,7 @@ def ExtractKernelVersion(base_dir):
     pathname = os.path.join(base_dir, "Makefile")
     try:
         f = open(
-            pathname.encode("utf-8", "strict"),
+            pathname,
             encoding="utf-8",
             errors="replace",
         )

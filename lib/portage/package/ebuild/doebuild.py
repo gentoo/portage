@@ -1532,7 +1532,7 @@ def doebuild(
                             build_info["BUILD_ID"] = f"{pkg.build_id}\n"
                         for k, v in build_info.items():
                             with open(
-                                os.path.join(infoloc, k).encode("utf-8", "strict"),
+                                os.path.join(infoloc, k),
                                 mode="w",
                                 encoding="utf-8",
                                 errors="strict",
@@ -2470,7 +2470,7 @@ def _check_build_log(mysettings, out=None):
         return
     try:
         f = open(
-            logfile.encode("utf-8", "strict"),
+            logfile,
             mode="rb",
         )
     except OSError:
@@ -2500,7 +2500,7 @@ def _check_build_log(mysettings, out=None):
         with open(
             os.path.join(
                 mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_CONFIGURE_OPTIONS"
-            ).encode("utf-8", "strict"),
+            ),
             encoding="utf-8",
             errors="replace",
         ) as qa_configure_opts_f:
@@ -2525,7 +2525,7 @@ def _check_build_log(mysettings, out=None):
                 mysettings["PORTAGE_BUILDDIR"],
                 "build-info",
                 "QA_AM_MAINTAINER_MODE",
-            ).encode("utf-8", "strict"),
+            ),
             encoding="utf-8",
             errors="replace",
         ) as qa_am_maintainer_mode_f:
@@ -2713,7 +2713,7 @@ def _post_src_install_write_metadata(settings):
             metadata_buffer[k] = v
 
     with open(
-        os.path.join(build_info_dir, "BUILD_TIME").encode("utf-8", "strict"),
+        os.path.join(build_info_dir, "BUILD_TIME"),
         mode="w",
         encoding="utf-8",
         errors="strict",
@@ -2763,7 +2763,7 @@ def _post_src_install_write_metadata(settings):
 
     for k, v in metadata_buffer.items():
         with open(
-            os.path.join(build_info_dir, k).encode("utf-8", "strict"),
+            os.path.join(build_info_dir, k),
             mode="w",
             encoding="utf-8",
         ) as f:
@@ -2835,7 +2835,7 @@ def _post_src_install_uid_fix(mysettings, out):
         with open(
             os.path.join(
                 mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_DESKTOP_FILE"
-            ).encode("utf-8", "strict"),
+            ),
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -2904,7 +2904,7 @@ def _post_src_install_uid_fix(mysettings, out):
 
                 if fixlafiles and fname.endswith(".la") and os.path.isfile(fpath):
                     f = open(
-                        fpath.encode("utf-8", "strict"),
+                        fpath,
                         mode="rb",
                     )
                     has_lafile_header = b".la - a libtool library file" in f.readline()
@@ -2988,7 +2988,7 @@ def _post_src_install_uid_fix(mysettings, out):
     build_info_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info")
 
     f = open(
-        os.path.join(build_info_dir, "SIZE").encode("utf-8", "strict"),
+        os.path.join(build_info_dir, "SIZE"),
         mode="w",
         encoding="utf-8",
         errors="strict",
@@ -3075,7 +3075,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
     f = None
     try:
         f = open(
-            needed_filename.encode("utf-8", "strict"),
+            needed_filename,
             encoding="utf-8",
             errors="replace",
         )
@@ -3165,7 +3165,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
     build_info_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info")
     try:
         with open(
-            os.path.join(build_info_dir, "PROVIDES_EXCLUDE").encode("utf-8", "strict"),
+            os.path.join(build_info_dir, "PROVIDES_EXCLUDE"),
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -3177,7 +3177,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     try:
         with open(
-            os.path.join(build_info_dir, "REQUIRES_EXCLUDE").encode("utf-8", "strict"),
+            os.path.join(build_info_dir, "REQUIRES_EXCLUDE"),
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -3210,7 +3210,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
             continue
 
         filename = os.path.join(image_dir, entry.filename.lstrip(os.sep))
-        with open(filename.encode("utf-8", "strict"), "rb") as f:
+        with open(filename, "rb") as f:
             elf_header = ELFHeader.read(f)
 
         # Compute the multilib category and write it back to the file.
@@ -3258,7 +3258,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     if soname_deps.requires is not None:
         with open(
-            os.path.join(build_info_dir, "REQUIRES").encode("utf-8", "strict"),
+            os.path.join(build_info_dir, "REQUIRES"),
             mode="w",
             encoding="utf-8",
             errors="strict",
@@ -3267,7 +3267,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     if soname_deps.provides is not None:
         with open(
-            os.path.join(build_info_dir, "PROVIDES").encode("utf-8", "strict"),
+            os.path.join(build_info_dir, "PROVIDES"),
             mode="w",
             encoding="utf-8",
             errors="strict",

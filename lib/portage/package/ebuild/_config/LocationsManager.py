@@ -224,7 +224,7 @@ class LocationsManager:
         f = None
         try:
             f = open(
-                eapi_file.encode("utf-8", "strict"),
+                eapi_file,
                 encoding="utf-8",
                 errors="replace",
             )

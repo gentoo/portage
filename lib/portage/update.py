@@ -138,7 +138,7 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
     for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
         file_path = os.path.join(dbdir, myfile)
         with open(
-            file_path.encode("utf-8", "strict"),
+            file_path,
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -180,7 +180,7 @@ def grab_updates(updpath, prev_mtimes=None):
             continue
         if int(prev_mtimes.get(file_path, -1)) != mystat[stat.ST_MTIME]:
             f = open(
-                file_path.encode("utf-8", "strict"),
+                file_path,
                 encoding="utf-8",
                 errors="replace",
             )
@@ -372,7 +372,7 @@ def update_config_files(
         f = None
         try:
             f = open(
-                os.path.join(abs_user_config, x).encode("utf-8", "strict"),
+                os.path.join(abs_user_config, x),
                 encoding="utf-8",
                 errors="replace",
             )

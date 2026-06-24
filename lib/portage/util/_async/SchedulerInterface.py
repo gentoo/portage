@@ -110,7 +110,7 @@ class SchedulerInterface(SlotObject):
         if log_path is not None:
             try:
                 f = open(
-                    log_path.encode("utf-8", "strict"),
+                    log_path,
                     mode="ab",
                 )
                 f_real = f

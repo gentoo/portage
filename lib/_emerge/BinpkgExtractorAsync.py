@@ -54,9 +54,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             decomp_cmd = decomp_cmd.replace(
                 "{JOBS}", str(makeopts_to_job_count(self.env.get("MAKEOPTS", "1")))
             )
-        elif tarfile.is_tarfile(
-            self.pkg_path.encode("utf-8", "strict")
-        ):
+        elif tarfile.is_tarfile(self.pkg_path):
             decomp_cmd = "cat"
             decomp = {
                 "compress": "cat",

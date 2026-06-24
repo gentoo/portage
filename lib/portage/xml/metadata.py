@@ -191,7 +191,7 @@ class MetaDataXML:
 
         try:
             self._xml_tree = etree.parse(
-                metadata_xml_path.encode("utf-8", "strict"),
+                metadata_xml_path,
                 parser=etree.XMLParser(target=_MetadataTreeBuilder()),
             )
         except ImportError:
@@ -231,7 +231,7 @@ class MetaDataXML:
         if self._herdstree is None:
             try:
                 self._herdstree = etree.parse(
-                    self._herds_path.encode("utf-8", "strict"),
+                    self._herds_path,
                     parser=etree.XMLParser(target=_MetadataTreeBuilder()),
                 )
             except (ImportError, OSError, SyntaxError):

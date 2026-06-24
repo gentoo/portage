@@ -48,7 +48,7 @@ def collect_ebuild_messages(path):
         lastmsgtype = None
         msgcontent = []
         f = open(
-            filename.encode("utf-8", "strict"),
+            filename,
             encoding="utf-8",
             errors="replace",
         )

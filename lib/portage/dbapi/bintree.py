@@ -775,9 +775,9 @@ class binarytree:
                 )
             if mynewpkg != myoldpkg:
                 ebuild_key = (
-                    (myoldpkg + ".ebuild")
+                    f"{myoldpkg}.ebuild"
                     if decode_metadata_name
-                    else (myoldpkg + ".ebuild").encode("utf-8", "backslashreplace")
+                    else f"{myoldpkg}.ebuild".encode("utf-8", "backslashreplace")
                 )
                 ebuild_data = mydata.pop(ebuild_key, None)
                 if ebuild_data is not None:
@@ -1503,7 +1503,7 @@ class binarytree:
         pkgindex = self._new_pkgindex()
         try:
             f = open(
-                pkgindex_file.encode("utf-8", "strict"),
+                pkgindex_file,
                 encoding="utf-8",
                 errors="replace",
             )
@@ -2826,7 +2826,7 @@ class binarytree:
         pkgindex = self._new_pkgindex()
         try:
             f = open(
-                self._pkgindex_file.encode("utf-8", "strict"),
+                self._pkgindex_file,
                 encoding="utf-8",
                 errors="replace",
             )

@@ -1310,7 +1310,7 @@ class Scheduler(PollScheduler):
             if log_path is not None:
                 try:
                     log_file = open(
-                        log_path.encode("utf-8", "strict"),
+                        log_path,
                         mode="rb",
                     )
                 except OSError:

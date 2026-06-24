@@ -55,7 +55,7 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
     """
     try:
         with open(
-            os.path.join(metadata_dir, "REQUIRES").encode("utf-8", "strict"),
+            os.path.join(metadata_dir, "REQUIRES"),
             encoding="utf-8",
             errors="strict",
         ) as f:
@@ -72,7 +72,7 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
 
     needed_filename = os.path.join(metadata_dir, "NEEDED.ELF.2")
     with open(
-        needed_filename.encode("utf-8", "strict"),
+        needed_filename,
         encoding="utf-8",
         errors="strict",
     ) as f:

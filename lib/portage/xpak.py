@@ -119,13 +119,13 @@ def xpak(rootdir, outfile=None):
         if x == "CONTENTS":
             # CONTENTS is generated during the merge process.
             continue
-        x = x.encode("utf-8", "strict")
+        x = x
         with open(os.path.join(rootdir, x), "rb") as f:
             mydata[x] = f.read()
 
     xpak_segment = xpak_mem(mydata)
     if outfile:
-        outf = open(outfile.encode("utf-8", "strict"), "wb")
+        outf = open(outfile, "wb")
         outf.write(xpak_segment)
         outf.close()
     else:
@@ -178,7 +178,7 @@ def xsplit(infile):
     if isinstance(infile, bytes):
         if isinstance(infile, bytes):
             infile = infile.decode("utf-8", "strict")
-    myfile = open(infile.encode("utf-8", "strict"), "rb")
+    myfile = open(infile, "rb")
     mydat = myfile.read()
     myfile.close()
 
@@ -212,7 +212,7 @@ def xsplit_mem(mydat):
 
 def getindex(infile):
     """(infile) -- grabs the index segment from the infile and returns it."""
-    myfile = open(infile.encode("utf-8", "strict"), "rb")
+    myfile = open(infile, "rb")
     myheader = myfile.read(16)
     if myheader[0:8] != b"XPAKPACK":
         myfile.close()
@@ -226,7 +226,7 @@ def getindex(infile):
 def getboth(infile):
     """(infile) -- grabs the index and data segments from the infile.
     Returns an array [indexSegment, dataSegment]"""
-    myfile = open(infile.encode("utf-8", "strict"), "rb")
+    myfile = open(infile, "rb")
     myheader = myfile.read(16)
     if myheader[0:8] != b"XPAKPACK":
         myfile.close()
@@ -310,7 +310,7 @@ def xpand(myid, mydest):
         if dirname:
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
-        mydat = open(filename.encode("utf-8", "strict"), "wb")
+        mydat = open(filename, "wb")
         mydat.write(mydata[datapos : datapos + datalen])
         mydat.close()
         startpos = startpos + namelen + 12
@@ -382,7 +382,7 @@ class tbz2:
             os.rename(tmp_fname, self.file)
 
         myfile = open(
-            self.file.encode("utf-8", "strict"),
+            self.file,
             "ab+",
         )
         if not myfile:
@@ -425,7 +425,7 @@ class tbz2:
                     return 1
             self.filestat = mystat
             a = open(
-                self.file.encode("utf-8", "strict"),
+                self.file,
                 "rb",
             )
             a.seek(-16, 2)
@@ -485,7 +485,7 @@ class tbz2:
         myresult = searchindex(self.index, myfile)
         if not myresult:
             return mydefault
-        a = open(self.file.encode("utf-8", "strict"), "rb")
+        a = open(self.file, "rb")
         a.seek(self.datapos + myresult[0], 0)
         myreturn = a.read(myresult[1])
         a.close()
@@ -503,7 +503,7 @@ class tbz2:
         if not self.scan():
             return 0
         mydest = normalize_path(mydest) + os.sep
-        a = open(self.file.encode("utf-8", "strict"), "rb")
+        a = open(self.file, "rb")
         if not os.path.exists(mydest):
             os.makedirs(mydest)
         startpos = 0
@@ -528,7 +528,7 @@ class tbz2:
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
             mydat = open(
-                filename.encode("utf-8", "strict"),
+                filename,
                 "wb",
             )
             a.seek(self.datapos + datapos)
@@ -542,7 +542,7 @@ class tbz2:
         """Returns all the files from the dataSegment as a map object."""
         if not self.scan():
             return {}
-        a = open(self.file.encode("utf-8", "strict"), "rb")
+        a = open(self.file, "rb")
         mydata = {}
         startpos = 0
         while (startpos + 8) < self.indexsize:
@@ -565,7 +565,7 @@ class tbz2:
         if not self.scan():
             return None
 
-        a = open(self.file.encode("utf-8", "strict"), "rb")
+        a = open(self.file, "rb")
         a.seek(self.datapos)
         mydata = a.read(self.datasize)
         a.close()

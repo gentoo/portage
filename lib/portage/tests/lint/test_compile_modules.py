@@ -49,11 +49,8 @@ class CompileModulesTestCase(TestCase):
                 else:
                     # Check for python shebang.
                     try:
-                        with open(
-                            x.encode("utf-8", "strict"),
-                            "rb",
-                        ) as f:
-                            line = f.readline().decode("utf-8", "replace")
+                        with open(x, encoding="utf-8", errors="replace") as f:
+                            line = f.readline()
                     except OSError as e:
                         # Some tests create files that are unreadable by the
                         # user (by design), so ignore EACCES issues.
@@ -64,7 +61,7 @@ class CompileModulesTestCase(TestCase):
                         do_compile = True
                 if do_compile:
                     with open(
-                        x.encode("utf-8", "strict"),
+                        x,
                         "rb",
                     ) as f:
                         compile(f.read(), x, "exec")

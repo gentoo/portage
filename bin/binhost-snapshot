@@ -133,7 +133,7 @@ def main(argv):
         return 1
 
     infile = open(
-        src_pkgs_index.encode("utf-8", "strict"),
+        src_pkgs_index,
         encoding="utf-8",
         errors="strict",
     )

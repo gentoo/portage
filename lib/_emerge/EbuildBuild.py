@@ -539,7 +539,7 @@ class EbuildBuild(CompositeTask):
             info["BUILD_ID"] = f"{pkg.build_id}\n"
         for k, v in info.items():
             with open(
-                os.path.join(infoloc, k).encode("utf-8", "strict"),
+                os.path.join(infoloc, k),
                 mode="w",
                 encoding="utf-8",
                 errors="strict",

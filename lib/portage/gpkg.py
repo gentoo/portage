@@ -1480,9 +1480,8 @@ class gpkg:
                             tarinfo.size = protect_file_size
                             image_tar.addfile(tarinfo, protect_file)
                         else:
-                            path_bytes = path.encode("utf-8", "strict")
 
-                            with open(path_bytes, "rb") as f:
+                            with open(path, "rb") as f:
                                 image_tar.addfile(tarinfo, f)
 
                     else:

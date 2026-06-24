@@ -185,7 +185,7 @@ hashfunc_keys = frozenset(hashfunc_map)
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
     cmd = [PRELINK_BINARY, "--version"]
-    cmd = [x.encode("utf-8", "strict") for x in cmd]
+    cmd = [x for x in cmd]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     proc.communicate()
     status = proc.wait()
@@ -398,7 +398,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
     # Make sure filename is encoded with the correct encoding before
     # it is passed to spawn (for prelink) and/or the hash function.
     if isinstance(filename, str):
-        filename = filename.encode("utf-8", "strict")
+        filename = filename
     myfilename = filename
     prelink_tmpfile = None
     try:

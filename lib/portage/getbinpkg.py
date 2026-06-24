@@ -615,7 +615,7 @@ def dir_get_metadata(
     out = sys.stdout
     try:
         metadatafile = open(
-            metadatafilename.encode("utf-8", "strict"),
+            metadatafilename,
             "rb",
         )
         mypickle = pickle.Unpickler(metadatafile)
@@ -718,7 +718,7 @@ def dir_get_metadata(
                     sys.stderr.flush()
             try:
                 metadatafile = open(
-                    metadatafilename.encode("utf-8", "strict"),
+                    metadatafilename,
                     "wb",
                 )
                 pickle.dump(metadata, metadatafile, protocol=2)
@@ -822,14 +822,14 @@ def dir_get_metadata(
         if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
             metadata[baseurl]["timestamp"] = int(time.time())
             metadatafile = open(
-                metadatafilename.encode("utf-8", "strict"),
+                metadatafilename,
                 "wb",
             )
             pickle.dump(metadata, metadatafile, protocol=2)
             metadatafile.close()
         if makepickle:
             metadatafile = open(
-                makepickle.encode("utf-8", "strict"),
+                makepickle,
                 "wb",
             )
             pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)

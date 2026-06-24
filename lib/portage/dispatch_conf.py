@@ -39,7 +39,7 @@ def diffstatusoutput(cmd, file1, file2):
     # raise a UnicodeDecodeError which makes the output inaccessible.
     args = shlex.split(cmd % (file1, file2))
 
-    args = (x.encode("utf-8", "strict") for x in args)
+    args = (x for x in args)
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = proc.communicate()[0].decode("utf-8", "replace")
     if output and output.endswith("\n"):

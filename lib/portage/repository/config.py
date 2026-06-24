@@ -674,7 +674,7 @@ class RepoConfig:
         f = None
         try:
             f = open(
-                repo_name_path.encode("utf-8", "strict"),
+                repo_name_path,
                 encoding="utf-8",
                 errors="replace",
             )

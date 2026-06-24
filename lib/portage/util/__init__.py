@@ -457,7 +457,7 @@ def read_corresponding_eapi_file(filename, default="0"):
     eapi = None
     try:
         with open(
-            eapi_file.encode("utf-8", "strict"),
+            eapi_file,
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -662,7 +662,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
     else:
         try:
             with open(
-                myfilename.encode("utf-8", "strict"),
+                myfilename,
                 encoding="utf-8",
                 errors="replace",
             ) as myfile:
@@ -765,7 +765,7 @@ def getconfig(
     f = None
     try:
         f = open(
-            mycfg.encode("utf-8", "strict"),
+            mycfg,
             encoding="utf-8",
             errors="replace",
         )
@@ -1030,7 +1030,7 @@ def pickle_read(filename, default=None, debug=0):
         return default
     data = None
     try:
-        myf = open(filename.encode("utf-8", "strict"), "rb")
+        myf = open(filename, "rb")
         mypickle = pickle.Unpickler(myf)
         data = mypickle.load()
         myf.close()
@@ -1952,7 +1952,7 @@ def find_updated_config_files(target_root, config_protect):
             mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
             cmd = shlex.split(mycommand)
 
-            cmd = [arg.encode("utf-8", "strict") for arg in cmd]
+            cmd = [arg for arg in cmd]
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
