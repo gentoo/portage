@@ -33,7 +33,7 @@ class database(fs_template.FsBased):
         fp = self.location + os.sep + cpv
         try:
             with open(
-                fp.encode("utf-8", "strict"),
+                fp,
                 encoding="utf-8",
                 errors="replace",
             ) as myf:

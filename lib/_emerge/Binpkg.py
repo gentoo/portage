@@ -373,7 +373,7 @@ class Binpkg(CompositeTask):
                 continue
 
             f = open(
-                os.path.join(infloc, k).encode("utf-8", "strict"),
+                os.path.join(infloc, k),
                 mode="w",
                 encoding="utf-8",
                 errors="backslashreplace",
@@ -389,7 +389,7 @@ class Binpkg(CompositeTask):
             if not md5sum:
                 md5sum = portage.checksum.perform_md5(pkg_path)
             with open(
-                os.path.join(infloc, "BINPKGMD5").encode("utf-8", "strict"),
+                os.path.join(infloc, "BINPKGMD5"),
                 mode="w",
                 encoding="utf-8",
                 errors="strict",
@@ -478,7 +478,7 @@ class Binpkg(CompositeTask):
 
         try:
             with open(
-                os.path.join(self._infloc, "EPREFIX").encode("utf-8", "strict"),
+                os.path.join(self._infloc, "EPREFIX"),
                 encoding="utf-8",
                 errors="replace",
             ) as f:
@@ -523,7 +523,7 @@ class Binpkg(CompositeTask):
 
         # We want to install in "our" prefix, not the binary one
         with open(
-            os.path.join(self._infloc, "EPREFIX").encode("utf-8", "strict"),
+            os.path.join(self._infloc, "EPREFIX"),
             mode="w",
             encoding="utf-8",
             errors="strict",

@@ -181,7 +181,7 @@ def _parse_color_map(config_root="/", onerror=None):
 
     try:
         with open(
-            myfile.encode("utf-8", "strict"),
+            myfile,
             encoding="utf-8",
             errors="replace",
         ) as f:

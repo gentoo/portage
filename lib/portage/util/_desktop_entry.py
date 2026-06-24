@@ -46,7 +46,7 @@ _ShowIn_exemptions = (
 def validate_desktop_entry(path):
     args = ["desktop-file-validate", path]
 
-    args = [x.encode("utf-8", "strict") for x in args]
+    args = [x for x in args]
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output_lines = proc.communicate()[0].decode("utf-8", "replace").splitlines()
     proc.wait()

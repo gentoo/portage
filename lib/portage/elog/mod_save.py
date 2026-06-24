@@ -47,7 +47,7 @@ def process(mysettings, key, logentries, fulltext):
 
     try:
         with open(
-            elogfilename.encode("utf-8", "strict"),
+            elogfilename,
             mode="w",
             encoding="utf-8",
             errors="backslashreplace",

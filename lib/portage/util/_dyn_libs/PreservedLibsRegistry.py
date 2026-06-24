@@ -61,7 +61,7 @@ class PreservedLibsRegistry:
         content = None
         try:
             f = open(
-                self._filename.encode("utf-8", "strict"),
+                self._filename,
                 "rb",
             )
             content = f.read()

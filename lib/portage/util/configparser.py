@@ -25,7 +25,6 @@ from configparser import (
 from configparser import ConfigParser as SafeConfigParser
 
 
-
 def read_configs(parser, paths):
     """
     Read configuration files from given paths into the specified
@@ -49,7 +48,7 @@ def read_configs(parser, paths):
             f = None
             try:
                 f = open(
-                    p.encode("utf-8", "strict"),
+                    p,
                     encoding="utf-8",
                     errors="replace",
                 )

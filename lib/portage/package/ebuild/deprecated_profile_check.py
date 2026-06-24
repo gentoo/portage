@@ -39,7 +39,7 @@ def deprecated_profile_check(settings=None):
                 return
 
     with open(
-        deprecated_profile_file.encode("utf-8", "strict"),
+        deprecated_profile_file,
         encoding="utf-8",
         errors="replace",
     ) as f:

@@ -508,7 +508,7 @@ class FilenameHashLayout:
             c = c // 4
             pattern += c * "[0-9a-f]" + "/"
         pattern += "*"
-        for x in glob.iglob(os.path.join(distdir, pattern).encode("utf-8", "strict")):
+        for x in glob.iglob(os.path.join(distdir, pattern)):
             try:
                 yield (
                     x.decode("utf-8", "strict") if isinstance(x, bytes) else x
@@ -1914,7 +1914,7 @@ async def async_fetch(
                                         re.I | re.M,
                                     )
                                     with open(
-                                        download_path.encode("utf-8", "strict"),
+                                        download_path,
                                         encoding="utf-8",
                                         errors="replace",
                                     ) as f:

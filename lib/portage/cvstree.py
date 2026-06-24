@@ -44,7 +44,7 @@ def isadded(entries, path):
 
     try:
         myfile = open(
-            os.path.join(basedir, "CVS", "Entries").encode("utf-8", "strict"),
+            os.path.join(basedir, "CVS", "Entries"),
             encoding="utf-8",
             errors="strict",
         )
@@ -225,7 +225,7 @@ def getentries(mydir, recursive=0):
         return entries
     try:
         myfile = open(
-            myfn.encode("utf-8", "strict"),
+            myfn,
             encoding="utf-8",
             errors="strict",
         )

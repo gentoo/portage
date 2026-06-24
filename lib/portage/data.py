@@ -224,7 +224,7 @@ def _get_global(k):
             # Get a list of group IDs for the portage user. Do not use
             # grp.getgrall() since it is known to trigger spurious
             # SIGPIPE problems with nss_ldap.
-            cmd = (x.encode("utf-8", "strict") for x in ("id", "-G", _portage_username))
+            cmd = (x for x in ("id", "-G", _portage_username))
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )

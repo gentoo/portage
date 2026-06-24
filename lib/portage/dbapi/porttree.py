@@ -577,7 +577,7 @@ class portdbapi(dbapi):
 
         for x in mytrees:
             filename = x + os.sep + relative_path
-            if os.access(filename.encode("utf-8", "strict"), os.R_OK):
+            if os.access(filename, os.R_OK):
                 return (filename, x)
         return (None, 0)
 

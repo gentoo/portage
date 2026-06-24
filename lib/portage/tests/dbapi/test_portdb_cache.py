@@ -8,8 +8,8 @@ import sys
 import textwrap
 
 import os
-import portage
 
+import portage
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.tests import TestCase, CommandStep, FunctionStep
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground

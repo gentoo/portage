@@ -183,7 +183,7 @@ def main():
     cpv = f"{ebuild_split[-3]}/{pf}"
 
     with open(
-        ebuild.encode("utf-8", "strict"),
+        ebuild,
         encoding="utf-8",
         errors="replace",
     ) as f:

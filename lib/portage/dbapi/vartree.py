@@ -704,7 +704,7 @@ class vardbapi(dbapi):
         open_kwargs = {}
         try:
             with open(
-                self._aux_cache_filename.encode("utf-8", "strict"),
+                self._aux_cache_filename,
                 mode="rb",
                 **open_kwargs,
             ) as f:
@@ -880,7 +880,7 @@ class vardbapi(dbapi):
                 continue
             try:
                 with open(
-                    os.path.join(mydir, x).encode("utf-8", "strict"),
+                    os.path.join(mydir, x),
                     encoding="utf-8",
                     errors="replace",
                 ) as f:
@@ -1174,7 +1174,7 @@ class vardbapi(dbapi):
         counter = -1
         try:
             with open(
-                self._counter_path.encode("utf-8", "strict"),
+                self._counter_path,
                 encoding="utf-8",
                 errors="replace",
             ) as f:
@@ -1309,7 +1309,7 @@ class vardbapi(dbapi):
             new_needed = None
             try:
                 with open(
-                    needed_filename.encode("utf-8", "strict"),
+                    needed_filename,
                     encoding="utf-8",
                     errors="replace",
                 ) as f:
@@ -2032,7 +2032,7 @@ class dblink:
         pkgfiles = {}
         try:
             with open(
-                contents_file.encode("utf-8", "strict"),
+                contents_file,
                 encoding="utf-8",
                 errors="replace",
             ) as f:
@@ -4263,7 +4263,7 @@ class dblink:
         for var_name in ("CHOST", "SLOT"):
             try:
                 with open(
-                    os.path.join(inforoot, var_name).encode("utf-8", "strict"),
+                    os.path.join(inforoot, var_name),
                     encoding="utf-8",
                     errors="replace",
                 ) as f:
@@ -4401,7 +4401,7 @@ class dblink:
         phase.wait()
         try:
             with open(
-                os.path.join(inforoot, "INSTALL_MASK").encode("utf-8", "strict"),
+                os.path.join(inforoot, "INSTALL_MASK"),
                 encoding="utf-8",
                 errors="replace",
             ) as f:
@@ -4488,9 +4488,7 @@ class dblink:
                         # to an infinite recursion loop.
                         linklist.append(relative_path)
 
-                        myto = os.readlink(fpath.encode("utf-8", "strict")).decode(
-                            "utf-8", "replace"
-                        )
+                        myto = os.readlink(fpath)
                         if line_ending_re.search(myto) is not None:
                             paths_with_newlines.append(relative_path)
 
@@ -4893,7 +4891,7 @@ class dblink:
         if counter is None:
             counter = self.vartree.dbapi.counter_tick()
         with open(
-            os.path.join(self.dbtmpdir, "COUNTER").encode("utf-8", "strict"),
+            os.path.join(self.dbtmpdir, "COUNTER"),
             mode="w",
             encoding="utf-8",
             errors="backslashreplace",
@@ -6034,7 +6032,7 @@ class dblink:
         if not os.path.exists(self.dbdir + "/" + name):
             return ""
         with open(
-            os.path.join(self.dbdir, name).encode("utf-8", "strict"),
+            os.path.join(self.dbdir, name),
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -6048,7 +6046,7 @@ class dblink:
         if not os.path.exists(self.dbdir + "/" + fname):
             return ""
         with open(
-            os.path.join(self.dbdir, fname).encode("utf-8", "strict"),
+            os.path.join(self.dbdir, fname),
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -6069,7 +6067,7 @@ class dblink:
         if not os.path.exists(self.dbdir + "/" + ename):
             return []
         with open(
-            os.path.join(self.dbdir, ename).encode("utf-8", "strict"),
+            os.path.join(self.dbdir, ename),
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -6082,7 +6080,7 @@ class dblink:
 
     def setelements(self, mylist, ename):
         with open(
-            os.path.join(self.dbdir, ename).encode("utf-8", "strict"),
+            os.path.join(self.dbdir, ename),
             mode="w",
             encoding="utf-8",
             errors="backslashreplace",
@@ -6191,8 +6189,8 @@ class dblink:
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
-        src_bytes = mysrc.encode("utf-8", "strict")
-        dest_bytes = mydest.encode("utf-8", "strict")
+        src_bytes = mysrc
+        dest_bytes = mydest
 
         if "xattr" in self.settings.features:
             excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
@@ -6347,14 +6345,14 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
 
     try:
         for x in contents:
-            x.encode("utf-8", "strict")
+            x
     except UnicodeEncodeError:
         # The package appears to have been merged with a
         # different value of sys.getfilesystemencoding(),
         # so fall back to utf_8 if appropriate.
         try:
             for x in contents:
-                x.encode("utf-8", "strict")
+                x
         except UnicodeEncodeError:
             pass
         else:
@@ -6458,7 +6456,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                 tar.addfile(tarinfo, f)
                 f.close()
             else:
-                path_bytes = path.encode("utf-8", "strict")
+                path_bytes = path
 
                 if xattrs:
                     # Compatible with GNU tar, which saves the xattrs
@@ -6473,9 +6471,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                             )
                         ] = xattr.get(
                             path_bytes, k.encode("utf-8", "backslashreplace")
-                        ).decode(
-                            "utf-8", "replace"
-                        )
+                        ).decode()
 
                 with open(path_bytes, "rb") as f:
                     tar.addfile(tarinfo, f)

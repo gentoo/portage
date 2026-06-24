@@ -792,9 +792,7 @@ class Glsa:
         """
         if not self.isInjected():
             checkfile = open(
-                os.path.join(
-                    self.config["EROOT"], PRIVATE_PATH, "glsa_injected"
-                ).encode("utf-8", "strict"),
+                os.path.join(self.config["EROOT"], PRIVATE_PATH, "glsa_injected"),
                 mode="a+",
                 encoding="utf-8",
                 errors="strict",

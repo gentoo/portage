@@ -212,7 +212,7 @@ class Manifest:
         Otherwise, a new dict will be created and returned."""
         try:
             with open(
-                file_path.encode("utf-8", "strict"),
+                file_path,
                 encoding="utf-8",
                 errors="replace",
             ) as f:
@@ -316,7 +316,7 @@ class Manifest:
             if myentries and not force:
                 try:
                     with open(
-                        self.getFullname().encode("utf-8", "strict"),
+                        self.getFullname(),
                         encoding="utf-8",
                         errors="replace",
                     ) as f:
@@ -801,7 +801,7 @@ class Manifest:
         if not os.path.exists(mfname):
             return []
         with open(
-            mfname.encode("utf-8", "strict"),
+            mfname,
             encoding="utf-8",
             errors="replace",
         ) as myfile:

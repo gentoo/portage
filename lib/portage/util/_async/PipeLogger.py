@@ -39,7 +39,7 @@ class PipeLogger(AbstractPollTask):
         elif log_file_path is not None:
             try:
                 self._log_file = open(
-                    log_file_path.encode("utf-8", "strict"),
+                    log_file_path,
                     mode="ab",
                 )
 

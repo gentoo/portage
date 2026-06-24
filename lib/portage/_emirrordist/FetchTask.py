@@ -479,8 +479,6 @@ class FetchTask(CompositeTask):
         args = shlex.split(default_fetchcommand)
         args = [portage.util.varexpand(x, mydict=variables) for x in args]
 
-        args = [x.encode("utf-8", "strict") for x in args]
-
         null_fd = os.open(os.devnull, os.O_RDONLY)
         fetcher = PopenProcess(
             background=self.background,

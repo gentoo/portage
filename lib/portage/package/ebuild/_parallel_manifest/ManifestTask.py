@@ -231,7 +231,7 @@ class ManifestTask(CompositeTask):
     def _need_signature(self):
         try:
             with open(
-                self._manifest_path.encode("utf-8", "strict"),
+                self._manifest_path,
                 "rb",
             ) as f:
                 return self._PGP_HEADER not in f.readline()

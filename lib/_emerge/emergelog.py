@@ -32,7 +32,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
         file_path = os.path.join(_emerge_log_dir, "emerge.log")
         existing_log = os.path.exists(file_path)
         mylogfile = open(
-            file_path.encode("utf-8", "strict"),
+            file_path,
             mode="a",
             encoding="utf-8",
             errors="backslashreplace",

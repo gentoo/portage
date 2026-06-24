@@ -52,7 +52,7 @@ class EbuildMetadataPhase(SubProcess):
         ebuild_path = self.ebuild_hash.location
 
         with open(
-            ebuild_path.encode("utf-8", "strict"),
+            ebuild_path,
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -214,6 +214,9 @@ class EbuildMetadataPhase(SubProcess):
                     break
                 key, value = l.split("=", 1)
                 metadata[key] = value
+
+            if metadata_valid and "EAPI" not in metadata:
+                metadata_valid = False
 
             if metadata_valid:
                 parsed_eapi = self._eapi

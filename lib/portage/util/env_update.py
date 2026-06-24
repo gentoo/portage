@@ -228,7 +228,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
     potential_lib_dirs = set()
     for lib_dir_glob in ("usr/lib*", "lib*"):
         x = os.path.join(eroot, lib_dir_glob)
-        for y in glob.glob(x.encode("utf-8", "strict")):
+        for y in glob.glob(x):
             try:
                 if isinstance(y, bytes):
                     y = y.decode("utf-8", "strict")
@@ -279,7 +279,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         prelink_conf = os.path.join(eroot, "etc", "prelink.conf")
         try:
             with open(
-                prelink_conf.encode("utf-8", "strict"),
+                prelink_conf,
                 "rb",
             ) as f:
                 if (

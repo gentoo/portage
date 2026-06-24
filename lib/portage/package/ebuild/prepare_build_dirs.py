@@ -171,7 +171,7 @@ def _adjust_perms_msg(settings, msg):
     if background and log_path is not None:
         try:
             log_file = open(
-                log_path.encode("utf-8", "strict"),
+                log_path,
                 mode="ab",
             )
             log_file_real = log_file

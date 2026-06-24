@@ -31,7 +31,7 @@ class SpawnTestCase(TestCase):
             os.close(null_fd)
             self.assertEqual(proc.wait(), os.EX_OK)
             f = open(
-                logfile.encode("utf-8", "strict"),
+                logfile,
                 encoding="utf-8",
                 errors="strict",
             )

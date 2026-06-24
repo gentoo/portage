@@ -378,9 +378,7 @@ class EbuildPhase(CompositeTask):
                 # mark test phase as complete (bug #452030)
                 try:
                     open(
-                        os.path.join(
-                            self.settings["PORTAGE_BUILDDIR"], ".tested"
-                        ).encode("utf-8", "strict"),
+                        os.path.join(self.settings["PORTAGE_BUILDDIR"], ".tested"),
                         "wb",
                     ).close()
                 except OSError:
@@ -478,7 +476,7 @@ class EbuildPhase(CompositeTask):
         return
 
     def _append_temp_log(self, temp_log, log_path):
-        temp_file = open(temp_log.encode("utf-8", "strict"), "rb")
+        temp_file = open(temp_log, "rb")
 
         log_file, log_file_real = self._open_log(log_path)
 
@@ -493,7 +491,7 @@ class EbuildPhase(CompositeTask):
 
     def _open_log(self, log_path):
         f = open(
-            log_path.encode("utf-8", "strict"),
+            log_path,
             mode="ab",
         )
         f_real = f

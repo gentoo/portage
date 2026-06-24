@@ -10758,7 +10758,7 @@ class depgraph:
             file_contents = None
             try:
                 with open(
-                    file_to_write_to.encode("utf-8", "strict"),
+                    file_to_write_to,
                     encoding="utf-8",
                     errors="replace",
                 ) as f:

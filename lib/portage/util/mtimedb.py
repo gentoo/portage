@@ -19,7 +19,6 @@ from portage.data import portage_gid, uid
 from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
 
-
 _MTIMEDBKEYS = {
     "info",
     "ldpath",
@@ -77,7 +76,9 @@ class MtimeDB(dict):
         if content:
             try:
                 d = json.loads(
-                    (content.decode("utf-8", "strict") if isinstance(content, bytes) else content)
+                    content.decode("utf-8", "strict")
+                    if isinstance(content, bytes)
+                    else content
                 )
             except SystemExit:
                 raise

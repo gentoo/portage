@@ -91,7 +91,7 @@ def compression_probe(f):
     if open_file:
         try:
             f = open(
-                f.encode("utf-8", "strict"),
+                f,
                 mode="rb",
             )
         except OSError as e:

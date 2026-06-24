@@ -668,12 +668,12 @@ try:
                         # Probe in binary mode, in order to avoid
                         # potential character encoding issues.
                         output = open(
-                            desc_path.encode("utf-8", "strict"),
+                            desc_path,
                             "r+b",
                         )
                     else:
                         output = atomic_ofstream(
-                            desc_path.encode("utf-8", "strict"),
+                            desc_path,
                             mode="w",
                             encoding="utf-8",
                             errors="backslashreplace",
@@ -700,7 +700,7 @@ try:
                     self._preserve_comments = False
                     try:
                         output = atomic_ofstream(
-                            desc_path.encode("utf-8", "strict"),
+                            desc_path,
                             mode="w",
                             encoding="utf-8",
                             errors="backslashreplace",
@@ -728,14 +728,14 @@ try:
                 # Finished probing comments in binary mode, now append
                 # in text mode.
                 output = atomic_ofstream(
-                    desc_path.encode("utf-8", "strict"),
+                    desc_path,
                     mode="w",
                     encoding="utf-8",
                     errors="backslashreplace",
                 )
                 # Copy previous content in order to simulate "append" with atomic_ofstream.
                 with open(
-                    desc_path.encode("utf-8", "strict"),
+                    desc_path,
                     encoding="utf-8",
                     errors="backslashreplace",
                 ) as previous_content:
@@ -743,12 +743,16 @@ try:
                         output.write(line)
                 output.write("\n")
             else:
-                output.write(textwrap.dedent("""\
+                output.write(
+                    textwrap.dedent(
+                        """\
                     # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
                     # your descriptions to your package's metadata.xml ONLY.
                     # * generated automatically using egencache *
 
-                    """))
+                    """
+                    )
+                )
 
             # The cmp function no longer exists in python3, so we'll
             # implement our own here under a slightly different name
@@ -778,7 +782,7 @@ try:
                 metadata_path = os.path.join(repo_path, cp, "metadata.xml")
                 try:
                     metadata = ElementTree.parse(
-                        metadata_path.encode("utf-8", "strict"),
+                        metadata_path,
                         parser=ElementTree.XMLParser(target=_MetadataTreeBuilder()),
                     )
                 except OSError:
@@ -931,12 +935,16 @@ try:
                 self.returncode |= 2
                 return
 
-            output.write(textwrap.dedent(f"""\
+            output.write(
+                textwrap.dedent(
+                    f"""\
                 # ChangeLog for {cp}
                 # Copyright 1999-{time.strftime("%Y")} Gentoo Foundation; Distributed under the GPL v2
                 # (auto-generated from git log)
 
-                """))
+                """
+                )
+            )
 
             # now grab all the commits
             revlist_cmd = ["git", self._work_tree, "rev-list"]

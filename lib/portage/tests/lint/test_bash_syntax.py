@@ -31,12 +31,12 @@ class BashSyntaxTestCase(TestCase):
                     continue
 
                 # Check for bash shebang
-                f = open(x.encode("utf-8", "strict"), "rb")
+                f = open(x, "rb")
                 line = f.readline().decode("utf-8", "replace")
                 f.close()
                 if line[:2] == "#!" and "bash" in line:
                     cmd = [BASH_BINARY, "-n", x]
-                    cmd = [x.encode("utf-8", "strict") for x in cmd]
+                    cmd = [x for x in cmd]
                     proc = subprocess.Popen(
                         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                     )
