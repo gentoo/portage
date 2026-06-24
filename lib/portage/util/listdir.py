@@ -1,56 +1,44 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["cacheddir", "listdir"]
 
-import errno
-import stat
-
 import os
+
 from portage.const import VCS_DIRS
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
 from portage.util import normalize_path
 
 
 def cacheddir(my_original_path, ignorecvs, ignorelist, followSymlinks=True):
+    fpaths = []
+    ftype = []
     mypath = normalize_path(my_original_path)
+
     try:
-        pathstat = os.stat(mypath)
-        if not stat.S_ISDIR(pathstat.st_mode):
-            raise DirectoryNotFound(mypath)
+        with os.scandir(mypath) as it:
+            for entry in it:
+                fpaths.append(entry.name)
+
+                try:
+                    if entry.is_file(follow_symlinks=followSymlinks):
+                        ftype.append(0)
+                    elif entry.is_dir(follow_symlinks=followSymlinks):
+                        ftype.append(1)
+                    elif entry.is_symlink(follow_symlinks=followSymlinks):
+                        ftype.append(2)
+                    else:
+                        ftype.append(3)
+                except OSError:
+                    ftype.append(3)
+    except NotADirectoryError:
+        raise DirectoryNotFound(mypath)
     except OSError as e:
         if e.errno == PermissionDenied.errno:
             raise PermissionDenied(mypath)
-        del e
-        return [], []
+        return fpaths, ftype
     except PortageException:
-        return [], []
-    else:
-        try:
-            fpaths = os.listdir(mypath)
-        except OSError as e:
-            if e.errno != errno.EACCES:
-                raise
-            del e
-            raise PermissionDenied(mypath)
-        ftype = []
-        for x in fpaths:
-            try:
-                if followSymlinks:
-                    pathstat = os.stat(mypath + "/" + x)
-                else:
-                    pathstat = os.lstat(mypath + "/" + x)
-
-                if stat.S_ISREG(pathstat[stat.ST_MODE]):
-                    ftype.append(0)
-                elif stat.S_ISDIR(pathstat[stat.ST_MODE]):
-                    ftype.append(1)
-                elif stat.S_ISLNK(pathstat[stat.ST_MODE]):
-                    ftype.append(2)
-                else:
-                    ftype.append(3)
-            except OSError:
-                ftype.append(3)
+        return fpaths, ftype
 
     if ignorelist or ignorecvs:
         ret_list = []
