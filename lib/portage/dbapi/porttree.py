@@ -1130,9 +1130,7 @@ class portdbapi(dbapi):
             trees = self.porttrees
         for x in categories:
             for oroot in trees:
-                for y in listdir(
-                    oroot + "/" + x, EmptyOnError=1, ignorecvs=1, dirsonly=1
-                ):
+                for y in listdir(oroot + "/" + x, ignorecvs=1, dirsonly=1):
                     try:
                         atom = Atom(f"{x}/{y}")
                     except InvalidAtom:

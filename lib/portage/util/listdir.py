@@ -12,9 +12,7 @@ from portage.exception import DirectoryNotFound, PermissionDenied, PortageExcept
 from portage.util import normalize_path
 
 
-def cacheddir(
-    my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True
-):
+def cacheddir(my_original_path, ignorecvs, ignorelist, followSymlinks=True):
     mypath = normalize_path(my_original_path)
     try:
         pathstat = os.stat(mypath)
@@ -80,7 +78,6 @@ def listdir(
     ignorecvs=False,
     ignorelist=[],
     followSymlinks=True,
-    EmptyOnError=False,
     dirsonly=False,
 ):
     """
@@ -98,17 +95,13 @@ def listdir(
     @type ignorelist: List
     @param followSymlinks: Follow Symlink'd files and directories
     @type followSymlinks: Boolean
-    @param EmptyOnError: Return [] if an error occurs (deprecated, always True)
-    @type EmptyOnError: Boolean
     @param dirsonly: Only return directories.
     @type dirsonly: Boolean
     @rtype: List
     @return: A list of files and directories (or just files or just directories) or an empty list.
     """
 
-    fpaths, ftype = cacheddir(
-        mypath, ignorecvs, ignorelist, EmptyOnError, followSymlinks
-    )
+    fpaths, ftype = cacheddir(mypath, ignorecvs, ignorelist, followSymlinks)
 
     if fpaths is None:
         fpaths = []
@@ -131,7 +124,6 @@ def listdir(
                     os.path.join(mypath, file_path),
                     ignorecvs,
                     ignorelist,
-                    EmptyOnError,
                     followSymlinks,
                 )
                 stack.extend(

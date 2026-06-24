@@ -536,7 +536,7 @@ class vardbapi(dbapi):
                     del e
                     return []
 
-        catdirs = listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1)
+        catdirs = listdir(basepath, ignorecvs=1, dirsonly=1)
         if sort:
             catdirs.sort()
 
@@ -546,7 +546,7 @@ class vardbapi(dbapi):
             if not self._category_re.match(x):
                 continue
 
-            pkgdirs = listdir(basepath + x, EmptyOnError=1, dirsonly=1)
+            pkgdirs = listdir(basepath + x, dirsonly=1)
             if sort:
                 pkgdirs.sort()
 

@@ -108,7 +108,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
     )
     envd_dir = os.path.join(eroot, "etc", "env.d")
     ensure_dirs(envd_dir, mode=0o755)
-    fns = listdir(envd_dir, EmptyOnError=1)
+    fns = listdir(envd_dir)
     fns.sort()
     templist = []
     for x in fns:
