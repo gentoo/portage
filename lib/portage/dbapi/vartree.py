@@ -506,35 +506,22 @@ class vardbapi(dbapi):
             del self.cpcache[mycp]
         return returnme
 
-    def cpv_all(self, use_cache=1):
-        """
-        Set use_cache=0 to bypass the portage.cachedir() cache in cases
-        when the accuracy of mtime staleness checks should not be trusted
-        (generally this is only necessary in critical sections that
-        involve merge or unmerge of packages).
-        """
-        return list(self._iter_cpv_all(use_cache=use_cache))
+    def cpv_all(self):
+        return list(self._iter_cpv_all())
 
-    def _iter_cpv_all(self, use_cache=True, sort=False):
+    def _iter_cpv_all(self, use_cache=None, sort=False):
         from portage.versions import _pkg_str
+        from portage import listdir
 
         returnme = []
         basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
         if use_cache:
-            from portage import listdir
-        else:
-
-            def listdir(p, **kwargs):
-                try:
-                    return [
-                        x for x in os.listdir(p) if os.path.isdir(os.path.join(p, x))
-                    ]
-                except OSError as e:
-                    if e.errno == PermissionDenied.errno:
-                        raise PermissionDenied(p)
-                    del e
-                    return []
+            warnings.warn(
+                "_iter_cpv_all's use_cache param is a noop and is always false, please remove it",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         catdirs = listdir(basepath, ignorecvs=1, dirsonly=1)
         if sort:
@@ -563,10 +550,10 @@ class vardbapi(dbapi):
 
                 yield subpath
 
-    def cp_all(self, use_cache=1, sort=False):
+    def cp_all(self, sort=False):
         from portage.versions import catpkgsplit
 
-        mylist = self.cpv_all(use_cache=use_cache)
+        mylist = self.cpv_all()
         d = {}
         for y in mylist:
             if y[0] == "*":
