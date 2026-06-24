@@ -21,7 +21,6 @@ py.install_sources(
         'binpkg.py',
         'checksum.py',
         const_py,
-        'cvstree.py',
         'data.py',
         'debug.py',
         'dispatch_conf.py',
