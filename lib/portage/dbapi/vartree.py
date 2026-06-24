@@ -5153,10 +5153,10 @@ class dblink:
             )
             self._send_mtimes(prev_mtimes)
 
-        # For gcc upgrades, preserved libs have to be removed after the
-        # the library path has been updated.
-        self._prune_plib_registry()
-        self._post_merge_sync()
+            # For gcc upgrades, preserved libs have to be removed after the
+            # the library path has been updated.
+            self._prune_plib_registry()
+            self._post_merge_sync()
 
         return os.EX_OK
 
