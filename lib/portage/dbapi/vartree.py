@@ -600,15 +600,12 @@ class vardbapi(dbapi):
         self._clear_pkg_cache(pkg_dblink)
 
     def _clear_pkg_cache(self, pkg_dblink):
-        from portage.util.listdir import dircache
-
         # Due to 1 second mtime granularity in <python-2.5, mtime checks
         # are not always sufficient to invalidate vardbapi caches. Therefore,
         # the caches need to be actively invalidated here.
         self.mtdircache.pop(pkg_dblink.cat, None)
         self.matchcache.pop(pkg_dblink.cat, None)
         self.cpcache.pop(pkg_dblink.mysplit[0], None)
-        dircache.pop(pkg_dblink.dbcatdir, None)
 
     def match(self, origdep, use_cache=1):
         "caching match function"

@@ -11,14 +11,6 @@ from portage.const import VCS_DIRS
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
 from portage.util import normalize_path
 
-# The global dircache is no longer supported, since it could
-# be a memory leak for API consumers. Any cacheddir callers
-# should use higher-level caches instead, when necessary.
-# TODO: Remove dircache variable after stable portage does
-# not use is (keep it for now, in case API consumers clear
-# it manually).
-dircache = {}
-
 
 def cacheddir(
     my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True
