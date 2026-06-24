@@ -83,8 +83,11 @@ portage.process.atexit_register(close_portdbapi_caches)
 
 class _dummy_list(list):
     def remove(self, item):
-        # TODO: Trigger a DeprecationWarning here, after stable portage
-        # has dummy portdbapi_instances.
+        warnings.warn(
+            "_dummy_list.remove() is no longer necessary for portdbapi_instances; drop the call",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
             list.remove(self, item)
         except ValueError:
