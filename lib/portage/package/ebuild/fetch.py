@@ -309,25 +309,28 @@ def _checksum_failure_temp_file(settings, distdir, basename):
     size = os.stat(filename).st_size
     checksum = None
     tempfile_re = re.compile(re.escape(normal_basename) + r"\._checksum_failure_\..*")
-    for temp_filename in os.listdir(distdir):
-        if not tempfile_re.match(temp_filename):
-            continue
-        temp_filename = os.path.join(distdir, temp_filename)
-        try:
-            if size != os.stat(temp_filename).st_size:
+    with os.scandir(distdir) as it:
+        for temp_filename in it:
+            if not tempfile_re.match(temp_filename.name):
                 continue
-        except OSError:
-            continue
-        try:
-            temp_checksum = perform_md5(temp_filename)
-        except FileNotFound:
-            # Apparently the temp file disappeared. Let it go.
-            continue
-        if checksum is None:
-            checksum = perform_md5(filename)
-        if checksum == temp_checksum:
-            os.unlink(filename)
-            return temp_filename
+
+            try:
+                if size != temp_filename.stat(follow_symlinks=False).st_size:
+                    continue
+            except OSError:
+                continue
+
+            try:
+                temp_checksum = perform_md5(temp_filename.path)
+            except FileNotFound:
+                # Apparently the temp file disappeared. Let it go.
+                continue
+
+            if checksum is None:
+                checksum = perform_md5(filename)
+            if checksum == temp_checksum:
+                os.unlink(filename)
+                return temp_filename.path
 
     fd, temp_filename = tempfile.mkstemp(
         "", normal_basename + "._checksum_failure_.", distdir
