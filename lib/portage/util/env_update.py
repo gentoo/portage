@@ -195,11 +195,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
 
     ldsoconf_path = os.path.join(eroot, "etc", "ld.so.conf")
 
-    newld = list(specials["LDPATH"])
-    if os.path.isdir(os.path.join(eroot, "etc", "ld.so.conf.d")):
-        # Preserve include directive so ldconfig picks up ld.so.conf.d/*.conf
-        newld.append(f"include {eprefix}/etc/ld.so.conf.d/*.conf")
-
+    newld = specials["LDPATH"]
     if grabfile(ldsoconf_path) != newld:
         # ld.so.conf needs updating and ldconfig needs to be run
         with atomic_ofstream(ldsoconf_path) as myfd:
