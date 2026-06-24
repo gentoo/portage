@@ -177,7 +177,7 @@ except ImportError as e:
     sys.stderr.write(f"    {e}\n\n")
     raise
 
-utf8_mode = sys.getfilesystemencoding() == "utf-8"
+import os
 
 # Deprecated: retained for third-party compatibility.
 _encodings = {
@@ -226,149 +226,10 @@ def _decode_argv(argv):
     return [x.encode(fs_encoding, "surrogateescape").decode() for x in argv]
 
 
-class _unicode_func_wrapper:
-    """
-    Wraps a function, converts arguments from unicode to bytes,
-    and return values to unicode from bytes. Function calls
-    will raise UnicodeEncodeError if an argument fails to be
-    encoded with the required encoding. Return values that
-    are single strings are decoded with errors='replace'. Return
-    values that are lists of strings are decoded with errors='strict'
-    and elements that fail to be decoded are omitted from the returned
-    list.
-    """
-
-    __slots__ = ("_func", "_encoding")
-
-    def __init__(self, func, encoding="utf-8"):
-        self._func = func
-        self._encoding = encoding
-
-    def _process_args(self, args, kwargs):
-        encoding = self._encoding
-
-        def _encode(s):
-            if isinstance(s, str):
-                s = s.encode(encoding, "strict")
-            return s
-
-        wrapped_args = [_encode(x) for x in args]
-        if kwargs:
-            wrapped_kwargs = {k: _encode(v) for k, v in kwargs.items()}
-        else:
-            wrapped_kwargs = {}
-
-        return (wrapped_args, wrapped_kwargs)
-
-    def __call__(self, *args, **kwargs):
-        encoding = self._encoding
-
-        def _decode(s, errors="strict"):
-            if isinstance(s, bytes):
-                s = s.decode(encoding, errors)
-            return s
-
-        wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
-
-        rval = self._func(*wrapped_args, **wrapped_kwargs)
-
-        # Don't use isinstance() since we don't want to convert subclasses
-        # of tuple such as posix.stat_result in Python >=3.2.
-        if rval.__class__ in (list, tuple):
-            decoded_rval = []
-            for x in rval:
-                try:
-                    x = _decode(x)
-                except UnicodeDecodeError:
-                    pass
-                else:
-                    decoded_rval.append(x)
-
-            if isinstance(rval, tuple):
-                rval = tuple(decoded_rval)
-            else:
-                rval = decoded_rval
-        else:
-            rval = _decode(rval, errors="replace")
-
-        return rval
-
-
-class _unicode_module_wrapper:
-    """
-    Wraps a module and wraps all functions with _unicode_func_wrapper.
-    """
-
-    __slots__ = ("_mod", "_encoding", "_overrides", "_cache")
-
-    def __init__(self, mod, encoding="utf-8", overrides=None, cache=True):
-        object.__setattr__(self, "_mod", mod)
-        object.__setattr__(self, "_encoding", encoding)
-        object.__setattr__(self, "_overrides", overrides)
-        if cache:
-            cache = {}
-        else:
-            cache = None
-        object.__setattr__(self, "_cache", cache)
-
-    def __getattribute__(self, attr):
-        if utf8_mode:
-            return getattr(object.__getattribute__(self, "_mod"), attr)
-
-        cache = object.__getattribute__(self, "_cache")
-        if cache is not None:
-            result = cache.get(attr)
-            if result is not None:
-                return result
-        result = getattr(object.__getattribute__(self, "_mod"), attr)
-        encoding = object.__getattribute__(self, "_encoding")
-        overrides = object.__getattribute__(self, "_overrides")
-        override = None
-        if overrides is not None:
-            override = overrides.get(id(result))
-        if override is not None:
-            result = override
-        elif isinstance(result, type):
-            pass
-        elif type(result) is types.ModuleType:
-            result = _unicode_module_wrapper(
-                result, encoding=encoding, overrides=overrides
-            )
-        elif hasattr(result, "__call__"):
-            result = _unicode_func_wrapper(result, encoding=encoding)
-        if cache is not None:
-            cache[attr] = result
-        return result
-
-
-import os as _os
-
-_os_overrides = {
-    id(_os.fdopen): _os.fdopen,
-    id(_os.mkfifo): _os.mkfifo,
-    id(_os.popen): _os.popen,
-    id(_os.read): _os.read,
-    id(_os.system): _os.system,
-    id(_os.waitpid): _os.waitpid,
-}
-
-if hasattr(_os, "statvfs"):
-    _os_overrides[id(_os.statvfs)] = _os.statvfs
-
-os_unicode_fs = _unicode_module_wrapper(_os, overrides=_os_overrides)
-os_unicode_merge = _unicode_module_wrapper(_os, overrides=_os_overrides)
-
-import shutil as _shutil
-
-shutil_unicode_fs = _unicode_module_wrapper(_shutil)
-
-# Imports below this point rely on the above unicode wrapper definitions.
 try:
     __import__("selinux")
     import portage._selinux
 
-    selinux_unicode_fs = _unicode_module_wrapper(_selinux)
-    selinux_unicode_merge = _unicode_module_wrapper(_selinux)
     selinux = _selinux
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
@@ -385,13 +246,13 @@ except (ImportError, OSError) as e:
 
 _python_interpreter = (
     sys.executable
-    if os_unicode_fs.environ.get("VIRTUAL_ENV")
-    else os_unicode_fs.path.realpath(sys.executable)
+    if os.environ.get("VIRTUAL_ENV")
+    else os.path.realpath(sys.executable)
 )
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
-_not_installed = os_unicode_fs.path.isfile(
-    os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".portage_not_installed")
+_not_installed = os.path.isfile(
+    os.path.join(PORTAGE_BASE_PATH, ".portage_not_installed")
 )
 
 # Api consumers included in portage should set this to True.
@@ -413,7 +274,7 @@ import multiprocessing
 
 # Prefer the environment variable if set. Otherwise, change away from
 # forkserver if in use.
-_multiprocessing_method = os_unicode_fs.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD")
+_multiprocessing_method = os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD")
 if not _multiprocessing_method:
     _multiprocessing_method = multiprocessing.get_start_method(allow_none=False)
     if _multiprocessing_method == "forkserver":
@@ -436,7 +297,7 @@ class _ForkWatcher:
 
 _ForkWatcher.hook(_ForkWatcher)
 
-_os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
+os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
 
 
 def getpid():
@@ -444,7 +305,7 @@ def getpid():
     Cached version of os.getpid(). ForkProcess updates the cache.
     """
     if _ForkWatcher.current_pid is None:
-        _ForkWatcher.current_pid = _os.getpid()
+        _ForkWatcher.current_pid = os.getpid()
     return _ForkWatcher.current_pid
 
 
@@ -465,8 +326,8 @@ bsd_chflags = None
 if platform.system() in ("FreeBSD",):
     # TODO: remove this class?
     class bsd_chflags:
-        chflags = os_unicode_fs.chflags
-        lchflags = os_unicode_fs.lchflags
+        chflags = os.chflags
+        lchflags = os.lchflags
 
 
 def load_mod(name):
@@ -481,9 +342,9 @@ def load_mod(name):
 def getcwd():
     "this fixes situations where the current directory doesn't exist"
     try:
-        return os_unicode_fs.getcwd()
+        return os.getcwd()
     except OSError:  # dir doesn't exist
-        os_unicode_fs.chdir("/")
+        os.chdir("/")
         return "/"
 
 
@@ -503,11 +364,11 @@ def abssymlink(symlink, target=None):
     if target is not None:
         mylink = target
     else:
-        mylink = os_unicode_fs.readlink(symlink)
+        mylink = os.readlink(symlink)
     if mylink[0] != "/":
-        mydir = os_unicode_fs.path.dirname(symlink)
+        mydir = os.path.dirname(symlink)
         mylink = f"{mydir}/{mylink}"
-    return os_unicode_fs.path.normpath(mylink)
+    return os.path.normpath(mylink)
 
 
 _doebuild_manifest_exempt_depend = 0
@@ -615,15 +476,14 @@ class _trees_dict(dict):
 def create_trees(
     config_root=None, target_root=None, trees=None, env=None, sysroot=None, eprefix=None
 ):
-    if utf8_mode:
-        config_root = (
-            _os.fsdecode(config_root) if isinstance(config_root, bytes) else config_root
-        )
-        target_root = (
-            _os.fsdecode(target_root) if isinstance(target_root, bytes) else target_root
-        )
-        sysroot = _os.fsdecode(sysroot) if isinstance(sysroot, bytes) else sysroot
-        eprefix = _os.fsdecode(eprefix) if isinstance(eprefix, bytes) else eprefix
+    config_root = (
+        os.fsdecode(config_root) if isinstance(config_root, bytes) else config_root
+    )
+    target_root = (
+        os.fsdecode(target_root) if isinstance(target_root, bytes) else target_root
+    )
+    sysroot = os.fsdecode(sysroot) if isinstance(sysroot, bytes) else sysroot
+    eprefix = os.fsdecode(eprefix) if isinstance(eprefix, bytes) else eprefix
 
     if trees is None:
         trees = _trees_dict()
@@ -633,7 +493,7 @@ def create_trees(
         trees = _trees_dict(trees)
 
     if env is None:
-        env = os_unicode_fs.environ
+        env = os.environ
 
     settings = config(
         config_root=config_root,
@@ -713,7 +573,7 @@ if installation.TYPE == installation.TYPES.SOURCE:
             if VERSION is not self:
                 return VERSION
             VERSION = "HEAD"
-            if os_unicode_fs.path.isdir(os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".git")):
+            if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
                 try:
                     result = subprocess.run(
                         [
