@@ -3,8 +3,9 @@
 
 __all__ = ["getmaskingreason"]
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom, match_from_list
 from portage.exception import InvalidAtom

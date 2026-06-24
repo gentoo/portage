@@ -8,8 +8,9 @@ import multiprocessing
 import signal
 import sys
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import (
@@ -421,9 +422,7 @@ class _EbuildFetcherProcess(ForkProcess):
                 errors="backslashreplace",
             )
             for filename in uri_map:
-                f.write(
-                    f" * {filename} size ;-) ...".ljust(73) + "[ ok ]\n"
-                )
+                f.write(f" * {filename} size ;-) ...".ljust(73) + "[ ok ]\n")
             f.close()
 
         return True

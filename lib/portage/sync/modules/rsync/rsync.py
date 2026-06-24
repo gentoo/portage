@@ -14,8 +14,9 @@ import time
 
 from _emerge.UserQuery import UserQuery
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.output import create_color_func, yellow, blue, bold
 from portage.process import has_ipv6
@@ -34,7 +35,6 @@ try:
     import gemato.recursiveloader
 except ImportError:
     gemato = None
-
 
 SERVER_OUT_OF_DATE = -1
 EXCEEDED_MAX_RETRIES = -2
@@ -267,8 +267,7 @@ class RsyncSync(NewBase):
                     )
                 except OSError as e:
                     writemsg_level(
-                        "!!! getaddrinfo failed for '%s': %s\n"
-                        % (hostname, str(e)),
+                        f"!!! getaddrinfo failed for '{hostname}': {e!s}\n",
                         noiselevel=-1,
                         level=logging.ERROR,
                     )

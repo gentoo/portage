@@ -4,8 +4,9 @@
 
 import errno
 import time
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.data import portage_gid, portage_uid
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
 from portage.util import apply_permissions, ensure_dirs, normalize_path
@@ -33,10 +34,7 @@ def process(mysettings, key, logentries, fulltext):
     cat, pf = portage.catsplit(key)
 
     elogfilename = (
-        pf
-        + ":"
-        + time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))
-        + ".log"
+        pf + ":" + time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())) + ".log"
     )
 
     if "split-elog" in mysettings.features:

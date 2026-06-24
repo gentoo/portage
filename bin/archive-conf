@@ -36,7 +36,6 @@ import portage
 portage._internal_caller = True
 
 import portage.dispatch_conf
-from portage import os_unicode_fs as os
 from portage.checksum import perform_md5
 
 MANDATORY_OPTS = ["archive-dir"]

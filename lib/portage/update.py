@@ -7,8 +7,7 @@ import stat
 import sys
 import warnings
 
-from portage import os_unicode_fs as os
-
+import os
 from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
@@ -107,10 +106,11 @@ def update_dbentries(update_iter, mydata, eapi=None, parent=None):
     dict containing only the updated items."""
     updated_items = {}
     for k, mycontent in mydata.items():
-        k_unicode = (k.decode("utf-8", "replace") if isinstance(k, bytes) else k)
+        k_unicode = k.decode("utf-8", "replace") if isinstance(k, bytes) else k
         if k_unicode not in ignored_dbentries:
             orig_content = mycontent
-            if isinstance(mycontent, bytes): mycontent = mycontent.decode("utf-8", "replace")
+            if isinstance(mycontent, bytes):
+                mycontent = mycontent.decode("utf-8", "replace")
             is_encoded = mycontent is not orig_content
             orig_content = mycontent
             for update_cmd in update_iter:
@@ -338,12 +338,17 @@ def update_config_files(
         if os.path.isdir(config_file):
             for parent, dirs, files in os.walk(config_file):
                 try:
-                    if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
+                    if isinstance(parent, bytes):
+                        parent = parent.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     continue
                 for y_enc in list(dirs):
                     try:
-                        y = (y_enc.decode("utf-8", "strict") if isinstance(y_enc, bytes) else y_enc)
+                        y = (
+                            y_enc.decode("utf-8", "strict")
+                            if isinstance(y_enc, bytes)
+                            else y_enc
+                        )
                     except UnicodeDecodeError:
                         dirs.remove(y_enc)
                         continue
@@ -351,7 +356,8 @@ def update_config_files(
                         dirs.remove(y_enc)
                 for y in files:
                     try:
-                        if isinstance(y, bytes): y = y.decode("utf-8", "strict")
+                        if isinstance(y, bytes):
+                            y = y.decode("utf-8", "strict")
                     except UnicodeDecodeError:
                         continue
                     if y.startswith("."):

@@ -2,8 +2,9 @@
 
 import logging
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.util import writemsg_level
 from portage.output import create_color_func
 from portage.sync.syncbase import SyncBase

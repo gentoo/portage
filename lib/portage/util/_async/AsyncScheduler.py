@@ -1,7 +1,7 @@
 # Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os_unicode_fs as os
+import os
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.PollScheduler import PollScheduler
 

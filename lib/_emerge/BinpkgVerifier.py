@@ -6,8 +6,9 @@ import io
 import sys
 
 from _emerge.CompositeTask import CompositeTask
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.checksum import (
     _apply_hash_filter,
     _filter_unaccelarated_hashes,

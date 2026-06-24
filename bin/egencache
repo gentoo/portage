@@ -61,7 +61,6 @@ try:
     import portage
 
     portage._internal_caller = True
-    from portage import os_unicode_fs as os
     from portage.cache.cache_errors import CacheError, StatCollision
     from portage.cache.index.pkg_desc_index import (
         pkg_desc_index_line_format,
@@ -572,9 +571,7 @@ try:
             new = {}
             if display_updates:
                 try:
-                    with open(
-                        self._output_file, encoding="utf-8"
-                    ) as f:
+                    with open(self._output_file, encoding="utf-8") as f:
                         for line in f:
                             pkg_desc = pkg_desc_index_line_read(line)
                             old[pkg_desc.cp] = pkg_desc
@@ -582,9 +579,7 @@ try:
                     pass
 
             portage.util.ensure_dirs(os.path.dirname(self._output_file))
-            f = portage.util.atomic_ofstream(
-                self._output_file, encoding="utf-8"
-            )
+            f = portage.util.atomic_ofstream(self._output_file, encoding="utf-8")
 
             portdb = self._portdb
             for cp in portdb.cp_all():

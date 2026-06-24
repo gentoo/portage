@@ -8,8 +8,9 @@ from urllib.parse import urlparse as urllib_parse_urlparse
 import shlex
 import stat
 import sys
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.binpkg import get_binpkg_format
 from portage.exception import FileNotFound
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture

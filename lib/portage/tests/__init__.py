@@ -13,8 +13,9 @@ from typing import Any, Callable, Optional
 
 from unittest.runner import TextTestResult as _TextTestResult
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.util import no_color
 from portage.const import PORTAGE_PYM_PATH
 from portage.output import colorize

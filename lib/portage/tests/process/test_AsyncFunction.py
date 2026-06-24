@@ -5,8 +5,9 @@ import functools
 import multiprocessing
 import sys
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.tests import TestCase
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage.util.futures import asyncio

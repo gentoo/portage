@@ -8,7 +8,7 @@ import re
 import stat
 import warnings
 
-from portage import os_unicode_fs as os
+import os
 from portage.exception import (
     DigestException,
     FileNotFound,
@@ -418,7 +418,7 @@ class Manifest:
             for parent_dir, dirs, files in os.walk(self.pkgdir.rstrip(os.sep)):
                 try:
                     if isinstance(parent_dir, bytes):
-                        if isinstance(parent_dir, bytes): parent_dir = parent_dir.decode("utf-8", "strict")
+                        parent_dir = parent_dir.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     # If an absolute path cannot be decoded, then it is
                     # always excluded from the manifest (repoman will
@@ -596,7 +596,7 @@ class Manifest:
         def _process_for_cpv(filename):
             try:
                 if isinstance(filename, bytes):
-                    if isinstance(filename, bytes): filename = filename.decode("utf-8", "strict")
+                    filename = filename.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 return None
             if filename.startswith("."):
@@ -617,7 +617,7 @@ class Manifest:
         for f in pkgdir_files:
             try:
                 if isinstance(f, bytes):
-                    if isinstance(f, bytes): f = f.decode("utf-8", "strict")
+                    f = f.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 continue
             if f.startswith("."):
@@ -641,7 +641,7 @@ class Manifest:
             for f in files:
                 try:
                     if isinstance(f, bytes):
-                        if isinstance(f, bytes): f = f.decode("utf-8", "strict")
+                        f = f.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     continue
                 full_path = os.path.join(parentdir, f)

@@ -17,10 +17,10 @@ import time
 import warnings
 from itertools import chain
 
+import os
+import shutil
 import portage
 
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.binrepo.config import BinRepoConfigLoader
 from portage.const import (
     BINREPOS_CONF_FILE,
@@ -2031,13 +2031,16 @@ def action_info(settings, trees, myopts, myfiles):
     for name in ld_names:
         try:
             proc = subprocess.Popen(
-                [name, "--version"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                [name, "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                errors="replace",
             )
         except OSError:
             pass
         else:
-            output = proc.communicate()[0].decode("utf-8", "replace").splitlines()
-            proc.wait()
+            output = proc.communicate()[0].splitlines()
             if proc.wait() == os.EX_OK and output:
                 append(f"ld {output[0]}")
                 break
@@ -4047,7 +4050,8 @@ def run_action(emerge_config):
         time_str = time.strftime(time_fmt, time.localtime(time.time()))
         # Avoid potential UnicodeDecodeError in Python 2, since strftime
         # returns bytes in Python 2, and %b may contain non-ascii chars.
-        if isinstance(time_str, bytes): time_str = time_str.decode("utf-8", "replace")
+        if isinstance(time_str, bytes):
+            time_str = time_str.decode("utf-8", "replace")
         emergelog(xterm_titles, f"Started emerge on: {time_str}")
         myelogstr = ""
         if emerge_config.opts:

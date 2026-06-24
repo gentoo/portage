@@ -6,7 +6,7 @@ __all__ = ["ExtractKernelVersion"]
 import logging
 import shlex
 
-from portage import os_unicode_fs as os
+import os
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import grabfile, writemsg_level
 

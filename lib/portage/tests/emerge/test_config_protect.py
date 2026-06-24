@@ -9,8 +9,9 @@ import subprocess
 import sys
 import time
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.process import find_binary
 from portage.tests import TestCase

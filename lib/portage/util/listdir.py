@@ -6,8 +6,7 @@ __all__ = ["cacheddir", "listdir"]
 import errno
 import stat
 
-
-from portage import os_unicode_fs as os
+import os
 from portage.const import VCS_DIRS
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
 from portage.util import normalize_path

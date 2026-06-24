@@ -18,9 +18,9 @@ from portage.output import colorize
 from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._dyn_libs.dyn_libs import check_dyn_libs_inconsistent
+import os
+import shutil
 import portage
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 import logging
 
 

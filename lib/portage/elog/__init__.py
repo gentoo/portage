@@ -2,14 +2,13 @@
 # Copyright 2006-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-
+import os
 from portage.const import EBUILD_PHASES
 from portage.exception import AlarmSignal, PortageException
 from portage.process import atexit_register
 from portage.elog.messages import collect_ebuild_messages, collect_messages
 from portage.elog.filtering import filter_loglevels
 from portage.localization import _
-from portage import os_unicode_fs as os
 
 
 def _merge_logentries(a, b):

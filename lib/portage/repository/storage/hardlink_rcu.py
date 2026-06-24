@@ -3,8 +3,9 @@
 
 import datetime
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.repository.storage.interface import (
     RepoStorageException,
     RepoStorageInterface,

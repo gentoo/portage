@@ -27,6 +27,7 @@ import atexit
 import errno
 import re
 import shlex
+import shutil
 import subprocess
 import termios
 import tty
@@ -50,7 +51,6 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
 from portage.dispatch_conf import (
     diffstatusoutput,
     diff_mixed_wrapper,
@@ -188,7 +188,11 @@ class dispatch:
 
             try:
                 # Find existing configs
-                path_list = subprocess.check_output(["find", path] + find_opts).decode("utf-8", "strict").splitlines()
+                path_list = subprocess.check_output(
+                    ["find", path] + find_opts,
+                    encoding="utf-8",
+                    errors="strict",
+                ).splitlines()
             except subprocess.CalledProcessError:
                 pass
             else:
@@ -474,9 +478,7 @@ class dispatch:
         the diff of what changed into the configured log file."""
         if "log-file" in self.options:
             status, output = diff(curconf, newconf)
-            with open(
-                self.options["log-file"], mode="a", encoding="utf-8"
-            ) as f:
+            with open(self.options["log-file"], mode="a", encoding="utf-8") as f:
                 f.write(output + "\n")
 
         perform_conf_update_hooks("pre-update", curconf)

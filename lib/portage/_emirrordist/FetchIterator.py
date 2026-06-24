@@ -3,7 +3,7 @@
 
 import threading
 
-from portage import os_unicode_fs as os
+import os
 from portage.checksum import (
     _apply_hash_filter,
     _filter_unaccelarated_hashes,

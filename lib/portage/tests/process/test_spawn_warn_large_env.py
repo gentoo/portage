@@ -6,9 +6,9 @@ import tempfile
 
 from pathlib import Path
 
+import shutil
 import portage.process
 
-from portage import shutil_unicode_fs as shutil
 from portage.tests import TestCase
 
 

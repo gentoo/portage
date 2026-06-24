@@ -13,16 +13,15 @@ from portage.const import (
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.cache.mappings import Mapping
 from portage.tests.util.test_socks5 import AsyncHTTPServer
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.util.futures import asyncio
 from portage.tests import cnf_bindir, cnf_sbindir
 from portage.process import find_binary
 from portage.util import find_updated_config_files
+import os
+import shutil
 import portage
 
 import pytest
-
 
 _INSTALL_SOMETHING = """
 S="${WORKDIR}"
@@ -178,7 +177,6 @@ _INSTALLED_EBUILDS = {
         "USE": "",
     },
 }
-
 
 _BASELINE_COMMAND_SEQUENCE = [
     "emerge -1 dev-libs/A -v dev-libs/B",

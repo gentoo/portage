@@ -12,7 +12,7 @@ from collections.abc import Sequence
 
 from portage.const import MERGING_IDENTIFIER
 
-from portage import os_unicode_fs as os
+import os
 from portage import auxdbkeys
 from portage.eapi import _get_eapi_attrs
 from portage.exception import (

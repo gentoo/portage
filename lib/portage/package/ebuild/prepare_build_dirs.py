@@ -9,8 +9,10 @@ import stat
 import time
 import pwd
 
+import os
+import shutil
 import portage
-from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
+
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import (
     DirectoryNotFound,
@@ -405,7 +407,9 @@ def _prepare_workdir(mysettings):
         logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
         if not os.path.exists(logid_path):
             open(logid_path.encode("utf-8", "backslashreplace"), "w").close()
-        logid_time = time.strftime("%Y%m%d-%H%M%S", time.gmtime(os.stat(logid_path).st_mtime))
+        logid_time = time.strftime(
+            "%Y%m%d-%H%M%S", time.gmtime(os.stat(logid_path).st_mtime)
+        )
 
         # The separator used between the individual name components of the log file.
         sep = mysettings.get("PORTAGE_LOG_FILE_SEP", ":")

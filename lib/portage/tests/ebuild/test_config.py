@@ -3,8 +3,10 @@
 
 import tempfile
 
+import os
+import shutil
 import portage
-from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
+
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom
 from portage.package.ebuild.config import config
@@ -419,9 +421,7 @@ class ConfigTestCase(TestCase):
             env_dir = os.path.join(user_config_dir, "env")
             os.makedirs(env_dir)
             for k, v in env_files.items():
-                with open(
-                    os.path.join(env_dir, k), mode="w", encoding="utf-8"
-                ) as f:
+                with open(os.path.join(env_dir, k), mode="w", encoding="utf-8") as f:
                     for line in v:
                         f.write(line + "\n")
 

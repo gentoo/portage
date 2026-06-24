@@ -5,7 +5,7 @@ import locale
 import logging
 import time
 
-from portage import os_unicode_fs as os
+import os
 from portage.exception import PortageException
 from portage.localization import _
 from portage.output import EOutput

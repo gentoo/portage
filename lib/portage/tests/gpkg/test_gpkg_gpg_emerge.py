@@ -2,14 +2,13 @@
 # Similar to test_gpkg_gpg.py but
 # with full emerge calls to test how we control signature verification.
 
+import os
 import portage
 import shutil
 import sys
 import tempfile
 import subprocess
 
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.gpg import GPG
 from portage.process import find_binary

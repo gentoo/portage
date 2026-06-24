@@ -1,8 +1,7 @@
 # Copyright 2014-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-
-from portage import os_unicode_fs as os
+import os
 from portage.const import USER_CONFIG_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground

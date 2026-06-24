@@ -6,7 +6,7 @@ import subprocess
 import sys
 import threading
 
-from portage import os_unicode_fs as os
+import os
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.exception import GPGException
 from portage.output import colorize

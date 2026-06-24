@@ -15,6 +15,7 @@ from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from _emerge.PackagePhase import PackagePhase
 from _emerge.TaskSequence import TaskSequence
+import os
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util._dyn_libs.soname_deps_qa import (
     _get_all_provides,
@@ -44,8 +45,6 @@ except (ImportError, SystemError, RuntimeError, Exception):
     MetaDataXML = None
 
 import portage
-
-from portage import os_unicode_fs as os
 
 
 async def _setup_locale(settings):
@@ -379,7 +378,9 @@ class EbuildPhase(CompositeTask):
                 # mark test phase as complete (bug #452030)
                 try:
                     open(
-                        os.path.join(self.settings["PORTAGE_BUILDDIR"], ".tested").encode("utf-8", "strict"),
+                        os.path.join(
+                            self.settings["PORTAGE_BUILDDIR"], ".tested"
+                        ).encode("utf-8", "strict"),
                         "wb",
                     ).close()
                 except OSError:
@@ -477,9 +478,7 @@ class EbuildPhase(CompositeTask):
         return
 
     def _append_temp_log(self, temp_log, log_path):
-        temp_file = open(
-            temp_log.encode("utf-8", "strict"), "rb"
-        )
+        temp_file = open(temp_log.encode("utf-8", "strict"), "rb")
 
         log_file, log_file_real = self._open_log(log_path)
 

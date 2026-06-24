@@ -5,9 +5,10 @@ import io
 import sys
 import time
 
+import os
 import portage
 import portage.util.formatter as formatter
-from portage import os_unicode_fs as os
+
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg

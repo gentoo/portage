@@ -6,8 +6,9 @@ import sys
 import re
 import textwrap
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.dep import Atom
 from portage.exception import CorruptionKeyError

@@ -4,7 +4,8 @@
 import functools
 
 from _emerge.CompositeTask import CompositeTask
-from portage import os_unicode_fs as os
+
+import os
 from portage.dbapi._MergeProcess import MergeProcess
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 

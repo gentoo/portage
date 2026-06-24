@@ -18,14 +18,13 @@ from typing import TYPE_CHECKING, Any, Optional
 from re import Pattern, Match
 import fnmatch
 import logging
-import os as _os
+import os
 import re
 
 if TYPE_CHECKING:
     import portage.dbapi.vartree
     import portage.package.ebuild.config
 
-from portage import os_unicode_fs as os
 from portage.const import NEWS_LIB_PATH
 from portage.util import (
     apply_secpass_permissions,
@@ -136,9 +135,7 @@ class NewsManager:
 
         news_dir: str = self._news_dir(repoid)
         try:
-            news: list[str] = _os.listdir(
-                news_dir.encode("utf-8", "strict")
-            )
+            news: list[str] = os.listdir(news_dir.encode("utf-8", "strict"))
         except OSError:
             return
 
@@ -156,9 +153,11 @@ class NewsManager:
 
             for itemid in news:
                 try:
-                    if isinstance(itemid, bytes): itemid = itemid.decode("utf-8", "strict")
+                    if isinstance(itemid, bytes):
+                        itemid = itemid.decode("utf-8", "strict")
                 except UnicodeDecodeError:
-                    if isinstance(itemid, bytes): itemid = itemid.decode("utf-8", "replace")
+                    if isinstance(itemid, bytes):
+                        itemid = itemid.decode("utf-8", "replace")
                     writemsg_level(
                         _("!!! Invalid encoding in news item name: '%s'\n") % itemid,
                         level=logging.ERROR,

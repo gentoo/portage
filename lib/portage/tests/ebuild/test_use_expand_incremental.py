@@ -1,8 +1,7 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-
-from portage import os_unicode_fs as os
+import os
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.tests import TestCase

@@ -7,8 +7,8 @@ import re
 import stat
 import subprocess
 
+import os
 import portage
-from portage import os_unicode_fs as os
 
 
 def chk_updated_info_files(root, infodirs, prev_mtimes):
@@ -86,8 +86,10 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                     except OSError:
                         myso = None
                     else:
-                        myso = proc.communicate()[0].decode("utf-8", "replace").rstrip(
-                            "\n"
+                        myso = (
+                            proc.communicate()[0]
+                            .decode("utf-8", "replace")
+                            .rstrip("\n")
                         )
                         proc.wait()
                     existsstr = "already exists, for file `"

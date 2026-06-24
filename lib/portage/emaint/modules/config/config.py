@@ -1,8 +1,9 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import PRIVATE_PATH
 from portage.util import grabdict, writedict
 

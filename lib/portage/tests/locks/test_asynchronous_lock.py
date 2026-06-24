@@ -1,11 +1,11 @@
 # Copyright 2010-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shutil
+import os
 import signal
 import tempfile
 
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.AsynchronousLock import AsynchronousLock

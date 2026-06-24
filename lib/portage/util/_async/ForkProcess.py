@@ -10,8 +10,9 @@ import threading
 
 from typing import Optional
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.cache.mappings import slot_dict_class
 from portage.util.futures import asyncio
 from _emerge.SpawnProcess import SpawnProcess

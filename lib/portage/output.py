@@ -12,10 +12,10 @@ import sys
 from asyncio import Future
 from typing import Optional
 
+import os
 import portage
 import portage.util.formatter as formatter
 
-from portage import os_unicode_fs as os
 from portage.const import COLOR_MAP_FILE
 from portage.exception import (
     CommandNotFound,
@@ -73,7 +73,6 @@ def color(fg, bg="default", attr=["normal"]):
 
 ansi_codes = [y for x in range(30, 38) for y in (f"{x}m", f"{x};01m")]
 
-
 rgb_ansi_colors = [
     "0x000000",
     "0x555555",
@@ -126,7 +125,6 @@ codes["darkteal"] = codes["turquoise"]
 # Some terminals have darkyellow instead of brown.
 codes["0xAAAA00"] = codes["brown"]
 codes["darkyellow"] = codes["0xAAAA00"]
-
 
 # Colors from /lib/gentoo/functions.sh
 _styles["BAD"] = ("red",)
@@ -451,7 +449,8 @@ class ConsoleStyleFile:
         # non-unicode '\n' which fails with TypeError if self._file
         # is a text stream such as io.StringIO. Therefore, make sure
         # input is converted to unicode when necessary.
-        if isinstance(s, bytes): s = s.decode("utf-8", "replace")
+        if isinstance(s, bytes):
+            s = s.decode("utf-8", "replace")
         global havecolor
         if havecolor and self._styles:
             styled_s = []

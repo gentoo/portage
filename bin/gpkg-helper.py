@@ -18,7 +18,7 @@ import argparse
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs as os
+
 from portage.output import EOutput
 
 

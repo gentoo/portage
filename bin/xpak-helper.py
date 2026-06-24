@@ -18,7 +18,6 @@ import argparse
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs as os
 
 
 def command_recompose(args):

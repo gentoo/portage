@@ -3,8 +3,9 @@
 
 import logging
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.localization import _
 from portage.output import bold, colorize, yellow
 from portage.util import writemsg_level

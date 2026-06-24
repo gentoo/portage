@@ -3,7 +3,7 @@
 
 __all__ = ("LicenseManager",)
 
-from portage import os_unicode_fs as os
+import os
 from portage.dep import ExtendedAtomDict, use_reduce
 from portage.exception import InvalidDependString
 from portage.localization import _

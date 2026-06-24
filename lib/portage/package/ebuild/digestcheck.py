@@ -5,7 +5,7 @@ __all__ = ["digestcheck"]
 
 import warnings
 
-from portage import os_unicode_fs as os
+import os
 from portage.checksum import _hash_filter
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
@@ -109,9 +109,11 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
     for parent, dirs, files in os.walk(filesdir):
         try:
             if isinstance(parent, bytes):
-                if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
+                if isinstance(parent, bytes):
+                    parent = parent.decode("utf-8", "strict")
         except UnicodeDecodeError:
-            if isinstance(parent, bytes): parent = parent.decode("utf-8", "replace")
+            if isinstance(parent, bytes):
+                parent = parent.decode("utf-8", "replace")
             writemsg(
                 _("!!! Path contains invalid " "character(s) for encoding '%s': '%s'")
                 % ("utf-8", parent),
@@ -123,9 +125,11 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
         for d in dirs:
             d_bytes = d
             try:
-                if isinstance(d, bytes): d = d.decode("utf-8", "strict")
+                if isinstance(d, bytes):
+                    d = d.decode("utf-8", "strict")
             except UnicodeDecodeError:
-                if isinstance(d, bytes): d = d.decode("utf-8", "replace")
+                if isinstance(d, bytes):
+                    d = d.decode("utf-8", "replace")
                 writemsg(
                     _(
                         "!!! Path contains invalid "
@@ -142,9 +146,11 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 dirs.remove(d_bytes)
         for f in files:
             try:
-                if isinstance(f, bytes): f = f.decode("utf-8", "strict")
+                if isinstance(f, bytes):
+                    f = f.decode("utf-8", "strict")
             except UnicodeDecodeError:
-                if isinstance(f, bytes): f = f.decode("utf-8", "replace")
+                if isinstance(f, bytes):
+                    f = f.decode("utf-8", "replace")
                 if f.startswith("."):
                     continue
                 f = os.path.join(parent, f)[len(filesdir) + 1 :]

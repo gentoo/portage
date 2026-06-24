@@ -6,7 +6,7 @@ import re
 import shlex
 import subprocess
 
-from portage import os_unicode_fs as os
+import os
 from portage.const import MANIFEST2_IDENTIFIERS
 from portage.dep import _repo_separator
 from portage.exception import InvalidDependString

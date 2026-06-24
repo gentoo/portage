@@ -1,7 +1,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os_unicode_fs as os
+import os
 
 getloadavg = getattr(os, "getloadavg", None)
 if getloadavg is None:

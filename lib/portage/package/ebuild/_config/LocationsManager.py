@@ -6,8 +6,9 @@ __all__ = ("LocationsManager",)
 import shlex
 import warnings
 
+import os
 import portage
-from portage import os_unicode_fs as os, eapi_is_supported
+from portage import eapi_is_supported
 from portage.const import (
     CUSTOM_PROFILE_PATH,
     GLOBAL_CONFIG_PATH,
@@ -30,7 +31,6 @@ from portage.repository.config import (
     _portage1_profiles_allow_directories,
     _profile_node,
 )
-
 
 _PORTAGE1_DIRECTORIES = frozenset(
     [

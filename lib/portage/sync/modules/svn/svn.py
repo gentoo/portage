@@ -4,8 +4,9 @@
 import logging
 import shlex
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.util import writemsg_level
 from portage.sync.syncbase import NewBase
 

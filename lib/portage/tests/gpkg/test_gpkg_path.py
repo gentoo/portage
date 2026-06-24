@@ -1,13 +1,13 @@
 # Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
+import os
+import shutil
 import tempfile
 import tarfile
 import io
 from os import urandom
 
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.util._compare_files import compare_files
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground

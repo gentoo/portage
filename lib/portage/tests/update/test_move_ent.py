@@ -4,8 +4,9 @@
 import sys
 import textwrap
 import pytest
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground

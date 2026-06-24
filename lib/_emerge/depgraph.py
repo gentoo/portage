@@ -12,8 +12,9 @@ import collections
 from collections import deque, OrderedDict
 from itertools import chain
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
@@ -106,7 +107,6 @@ from typing import Any, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import _emerge.stdout_spinner.stdout_spinner
-
 
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
@@ -4925,7 +4925,11 @@ class depgraph:
                     raise InvalidBinaryPackageFormat(x)
 
                 if cat is not None:
-                    cat = cat.strip() if isinstance(cat, str) else cat.strip().decode("utf-8", "replace")
+                    cat = (
+                        cat.strip()
+                        if isinstance(cat, str)
+                        else cat.strip().decode("utf-8", "replace")
+                    )
                     if binpkg_format == "xpak":
                         mykey = cat + "/" + os.path.basename(x)[:-5]
                     elif binpkg_format == "gpkg":

@@ -2,9 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
-import os as _os
+import os
 from portage.cache import template
-from portage import os_unicode_fs as os
 
 
 class FsBased(template.database):
@@ -67,10 +66,10 @@ class FsBased(template.database):
         all_dirs = []
         for parent, dirs, files in os.walk(self.location):
             for x in dirs:
-                all_dirs.append(_os.path.join(parent, x))
+                all_dirs.append(os.path.join(parent, x))
         while all_dirs:
             try:
-                _os.rmdir(all_dirs.pop())
+                os.rmdir(all_dirs.pop())
             except OSError:
                 pass
 

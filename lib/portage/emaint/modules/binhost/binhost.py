@@ -4,8 +4,9 @@
 import errno
 import stat
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.util import writemsg
 from portage.versions import _pkg_str
 

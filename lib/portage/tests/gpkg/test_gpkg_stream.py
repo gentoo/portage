@@ -6,9 +6,9 @@ import io
 import tarfile
 from os import urandom
 
+import os
+import shutil
 import portage.gpkg
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.tests import TestCase
 from portage.exception import CompressorOperationFailed
 

@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from portage import os_unicode_fs as os
+import os
 from portage.tests import TestCase
 from portage.checksum import perform_md5
 from portage.util.file_copy import copyfile, _fastcopy

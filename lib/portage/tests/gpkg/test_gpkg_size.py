@@ -4,7 +4,8 @@
 import tempfile
 import tarfile
 
-from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
+import os
+import shutil
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.gpkg import gpkg

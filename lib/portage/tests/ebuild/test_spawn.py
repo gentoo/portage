@@ -3,8 +3,9 @@
 
 import errno
 import tempfile
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop

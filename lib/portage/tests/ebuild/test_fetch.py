@@ -9,8 +9,10 @@ import signal
 import tempfile
 import types
 
+import os
+import shutil
 import portage
-from portage import shutil_unicode_fs as shutil, os_unicode_fs as os
+
 from portage.checksum import checksum_str
 from portage.const import BASH_BINARY, MANIFEST2_HASH_DEFAULTS, PORTAGE_PYM_PATH
 from portage.tests import TestCase

@@ -13,8 +13,10 @@ import subprocess
 import sys
 import tempfile
 
+import os
+import shutil
 import portage
-from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
+
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import varexpand

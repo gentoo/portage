@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import time
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.data import secpass
 from portage.output import xtermTitle
 
@@ -18,10 +19,12 @@ def emergelog(xterm_titles, mystr, short_msg=None):
     if _disable:
         return
 
-    if isinstance(mystr, bytes): mystr = mystr.decode("utf-8", "replace")
+    if isinstance(mystr, bytes):
+        mystr = mystr.decode("utf-8", "replace")
 
     if short_msg is not None:
-        if isinstance(short_msg, bytes): short_msg = short_msg.decode("utf-8", "replace")
+        if isinstance(short_msg, bytes):
+            short_msg = short_msg.decode("utf-8", "replace")
 
     if xterm_titles and short_msg:
         xtermTitle(short_msg)

@@ -14,8 +14,8 @@ import warnings
 import weakref
 import zlib
 
+import os
 import portage
-from portage import os_unicode_fs as os
 from portage import installation
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror

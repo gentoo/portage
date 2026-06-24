@@ -6,10 +6,10 @@ import itertools
 import stat
 import sys
 
+import os
 from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
 from portage.tests.lint.metadata import module_metadata, script_metadata
-from portage import os_unicode_fs as os
 
 
 class CompileModulesTestCase(TestCase):
@@ -20,9 +20,11 @@ class CompileModulesTestCase(TestCase):
         iters.append(os.walk(PORTAGE_BIN_PATH))
 
         for parent, _dirs, files in itertools.chain(*iters):
-            if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
+            if isinstance(parent, bytes):
+                parent = parent.decode("utf-8", "strict")
             for x in files:
-                if isinstance(x, bytes): x = x.decode("utf-8", "strict")
+                if isinstance(x, bytes):
+                    x = x.decode("utf-8", "strict")
                 if x[-4:] in (".pyc", ".pyo"):
                     continue
                 x = os.path.join(parent, x)

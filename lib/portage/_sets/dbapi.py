@@ -5,7 +5,7 @@ import glob
 import shlex
 import time
 
-from portage import os_unicode_fs as os
+import os
 from portage.exception import PortageKeyError
 from portage.versions import best, catsplit, vercmp
 from portage.dep import Atom, use_reduce

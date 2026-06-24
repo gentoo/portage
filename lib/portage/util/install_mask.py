@@ -8,7 +8,7 @@ import errno
 import fnmatch
 import operator
 
-from portage import os_unicode_fs as os
+import os
 from portage.exception import (
     FileNotFound,
     IsADirectory,
@@ -175,7 +175,8 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
     while todo:
         parent = todo.pop()
         try:
-            if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
+            if isinstance(parent, bytes):
+                parent = parent.decode("utf-8", "strict")
         except UnicodeDecodeError:
             continue
 

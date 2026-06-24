@@ -4574,7 +4574,7 @@ class dblink:
                     try:
                         if isinstance(fname, bytes): fname = fname.decode("utf-8", "strict")
                     except UnicodeDecodeError:
-                        fpath = portage._os.path.join(
+                        fpath = os.path.join(
                             parent.encode("utf-8"), fname
                         )
                         new_fname = (fname.decode("utf-8", "replace") if isinstance(fname, bytes) else fname)

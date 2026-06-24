@@ -9,8 +9,9 @@ import shlex
 import subprocess
 import tempfile
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.util import ensure_dirs
 from portage.util._async.FileCopier import FileCopier
 from portage.util._async.FileDigester import FileDigester
@@ -478,9 +479,7 @@ class FetchTask(CompositeTask):
         args = shlex.split(default_fetchcommand)
         args = [portage.util.varexpand(x, mydict=variables) for x in args]
 
-        args = [
-            x.encode("utf-8", "strict") for x in args
-        ]
+        args = [x.encode("utf-8", "strict") for x in args]
 
         null_fd = os.open(os.devnull, os.O_RDONLY)
         fetcher = PopenProcess(

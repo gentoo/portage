@@ -6,8 +6,9 @@ import logging
 import sys
 import threading
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.exception import TryAgain
 from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
