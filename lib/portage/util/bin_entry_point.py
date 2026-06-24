@@ -5,8 +5,8 @@ __all__ = ["bin_entry_point"]
 
 import sys
 
+import os
 from portage.const import PORTAGE_BIN_PATH
-from portage import os_unicode_fs as os
 
 
 def bin_entry_point():

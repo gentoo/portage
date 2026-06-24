@@ -5,8 +5,9 @@ import functools
 
 from _emerge.AsynchronousLock import AsynchronousLock
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.exception import PortageException
 from portage.util.SlotObject import SlotObject
 

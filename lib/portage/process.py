@@ -2,7 +2,6 @@
 # Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-
 import asyncio as _asyncio
 import atexit
 import errno
@@ -16,7 +15,7 @@ import socket
 import subprocess
 import sys
 import traceback
-import os as _os
+import os
 import warnings
 
 from dataclasses import dataclass
@@ -24,9 +23,7 @@ from functools import lru_cache, partial
 from typing import Any, Optional, Callable, Union
 from inspect import iscoroutinefunction
 
-from portage import os_unicode_fs as os
 import portage
-
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
 from portage.proxy.objectproxy import ObjectProxy
@@ -46,10 +43,9 @@ try:
 except ImportError:
     max_fd_limit = 256
 
-
 # Support PEP 446 for Python >=3.4
 try:
-    _set_inheritable = _os.set_inheritable
+    _set_inheritable = os.set_inheritable
 except AttributeError:
     _set_inheritable = None
 
@@ -679,7 +675,7 @@ def spawn(
             raise ValueError(fd_pipes)
 
         # Create a pipe
-        (pr, pw) = os.pipe()
+        pr, pw = os.pipe()
 
         # Create a tee process, giving it our stdout and stderr
         # as well as the read end of the pipe.
@@ -1031,7 +1027,8 @@ def _exec(
 
     # Avoid a potential UnicodeEncodeError from os.execve().
     myargs = [
-        x.encode("utf-8", "strict") if isinstance(x, str) else os.fsencode(x) for x in myargs
+        x.encode("utf-8", "strict") if isinstance(x, str) else os.fsencode(x)
+        for x in myargs
     ]
 
     # Use default signal handlers in order to avoid problems
@@ -1060,7 +1057,7 @@ def _exec(
     have_unshare = False
     libc = None
     if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
-        (libc, _) = load_libc()
+        libc, _ = load_libc()
         if libc is not None:
             have_unshare = hasattr(libc, "unshare")
 
@@ -1115,9 +1112,17 @@ def _exec(
                 os.path.join(portage._bin_path, "pid-ns-init"),
                 "" if uid is None else str(uid).encode("utf-8", "backslashreplace"),
                 "" if gid is None else str(gid).encode("utf-8", "backslashreplace"),
-                "" if groups is None else ",".join(str(group) for group in groups).encode("utf-8", "backslashreplace"),
+                (
+                    ""
+                    if groups is None
+                    else ",".join(str(group) for group in groups).encode(
+                        "utf-8", "backslashreplace"
+                    )
+                ),
                 "" if umask is None else str(umask).encode("utf-8", "backslashreplace"),
-                ",".join(str(fd) for fd in fd_pipes).encode("utf-8", "backslashreplace"),
+                ",".join(str(fd) for fd in fd_pipes).encode(
+                    "utf-8", "backslashreplace"
+                ),
                 binary,
             ]
             + myargs,
@@ -1310,7 +1315,7 @@ class _unshare_validator:
         """
         # This ctypes library lookup caches the result for use in the
         # subprocess when the multiprocessing start method is fork.
-        (libc, filename) = load_libc()
+        libc, filename = load_libc()
         if libc is None:
             return errno.ENOTSUP
 
@@ -1518,7 +1523,7 @@ def _start_fork(
     finally:
         # Don't used portage.getpid() here, in case there is a race
         # with getpid cache invalidation via _ForkWatcher hook.
-        if pid == 0 or (pid is None and _os.getpid() != parent_pid):
+        if pid == 0 or (pid is None and os.getpid() != parent_pid):
             # Call os._exit() from a finally block in order
             # to suppress any finally blocks from earlier
             # in the call stack (see bug #345289). This
@@ -1649,7 +1654,7 @@ def find_binary(binary):
         paths = paths.split(":")
 
     for path in paths:
-        filename = _os.path.join(path, binary)
-        if _os.access(filename, os.X_OK) and _os.path.isfile(filename):
+        filename = os.path.join(path, binary)
+        if os.access(filename, os.X_OK) and os.path.isfile(filename):
             return filename
     return None

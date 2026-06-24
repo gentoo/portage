@@ -5,8 +5,9 @@ import fcntl
 import errno
 import gzip
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.util.futures import asyncio
 from portage.util.futures._asyncio.streams import _writer
 from portage.util.futures.unix_events import _set_nonblocking

@@ -4,8 +4,9 @@
 
 import errno
 import time
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.data import portage_gid, portage_uid
 from portage.localization import _
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
@@ -81,7 +82,9 @@ def process(mysettings, key, logentries, fulltext):
         )
         % {"pid": portage.getpid(), "time": time_str, "pkg": key}
     )
-    elogfile.write((fulltext.decode("utf-8", "replace") if isinstance(fulltext, bytes) else fulltext))
+    elogfile.write(
+        fulltext.decode("utf-8", "replace") if isinstance(fulltext, bytes) else fulltext
+    )
     elogfile.write("\n")
     elogfile.close()
 

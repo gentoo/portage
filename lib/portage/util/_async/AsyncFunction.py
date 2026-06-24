@@ -6,7 +6,7 @@ import multiprocessing
 import pickle
 import traceback
 
-from portage import os_unicode_fs as os
+import os
 from portage.util._async.ForkProcess import ForkProcess
 from _emerge.PipeReader import PipeReader
 

@@ -4,7 +4,8 @@
 import errno
 import logging
 import pickle
-from portage import os_unicode_fs as os
+
+import os
 from portage.exception import TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile

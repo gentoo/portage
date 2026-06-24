@@ -7,8 +7,9 @@ from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
 from portage.dep._slot_operator import find_built_slot_operator_atoms

@@ -3,9 +3,9 @@
 
 __all__ = ["deprecated_profile_check"]
 
-
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import DEPRECATED_PROFILE_FILE
 from portage.localization import _
 from portage.output import colorize

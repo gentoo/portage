@@ -7,7 +7,7 @@ import pty
 import termios
 from typing import Optional, Union
 
-from portage import os_unicode_fs as os
+import os
 from portage.output import get_term_size, set_term_size
 from portage.util import writemsg
 

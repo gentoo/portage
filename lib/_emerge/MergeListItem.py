@@ -1,7 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os_unicode_fs as os
+import os
 from portage.dep import _repo_separator
 from portage.output import colorize
 

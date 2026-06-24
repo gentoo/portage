@@ -8,12 +8,13 @@ import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
+import os
 import portage
 from portage.elog import messages as elog_messages
 from portage import installation
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage import os_unicode_fs as os
+
 from portage.util.futures import asyncio
 from portage.util import apply_secpass_permissions, no_color
 

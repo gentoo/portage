@@ -3,7 +3,7 @@
 
 import functools
 
-from portage import os_unicode_fs as os
+import os
 from portage.util._ctypes import load_libc
 from portage.util._async.ForkProcess import ForkProcess
 
@@ -24,7 +24,7 @@ class SyncfsProcess(ForkProcess):
 
     @staticmethod
     def _get_syncfs():
-        (libc, _) = load_libc()
+        libc, _ = load_libc()
         if libc is not None:
             return getattr(libc, "syncfs", None)
         return None

@@ -40,9 +40,7 @@ if (
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
 #
 
-import os as _os
-
-from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
+import shutil
 from portage.util import normalize_path, writemsg
 
 # Change back to original cwd _after_ all imports (bug #469338).
@@ -125,7 +123,7 @@ def install(basename, dirname, options, prefix=""):
         and os.path.isdir(fullpath)
         and basename not in options.disallowed_dirs
     ):
-        for i in _os.listdir(fullpath.encode("utf-8", "backslashreplace")):
+        for i in os.listdir(fullpath.encode("utf-8", "backslashreplace")):
             try:
                 i = i.decode("utf-8", "strict")
             except UnicodeDecodeError:

@@ -6,15 +6,14 @@
 import errno
 import functools
 import hashlib
+import os
 import portage
 import stat
 import subprocess
 import tempfile
 
-from portage import os_unicode_fs as os
 from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
 from portage.localization import _
-
 
 # Summary of all available hashes and their implementations,
 # most preferred first. Please keep this in sync with logic below.
@@ -30,7 +29,6 @@ from portage.localization import _
 # BLAKE2S (512): hashlib
 # SHA3_256: hashlib
 # SHA3_512: hashlib
-
 
 # Dict of all available hash functions
 hashfunc_map = {}
@@ -126,7 +124,6 @@ for local_name, hash_name in (
             local_name, functools.partial(hashlib.new, hash_name), origin="hashlib"
         )
 
-
 # Use pycrypto when available, prefer it over the internal fallbacks
 # Check for 'new' attributes, since they can be missing if the module
 # is broken somehow.
@@ -159,7 +156,6 @@ if "RMD160" not in hashfunc_map:
         except ImportError:
             pass
 
-
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
     # Bundled WHIRLPOOL implementation
@@ -185,7 +181,6 @@ hashfunc_map["size"] = SizeHash()
 hashfunc_keys = frozenset(hashfunc_map)
 
 # end actual hash functions
-
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):

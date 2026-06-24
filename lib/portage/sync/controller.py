@@ -7,8 +7,9 @@ import grp
 import pwd
 import warnings
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.progress import ProgressBar
 
 # from portage.emaint.defaults import DEFAULT_OPTIONS
@@ -284,7 +285,7 @@ class SyncManager:
                 return (logname, user, group, home)
 
             # user or user:group
-            (logname, uid, gid, home) = get_sync_user_data(repo.sync_user)
+            logname, uid, gid, home = get_sync_user_data(repo.sync_user)
             if uid is not None:
                 spawn_kwargs["uid"] = uid
                 self.usersync_uid = uid

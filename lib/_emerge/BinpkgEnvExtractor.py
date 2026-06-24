@@ -6,7 +6,8 @@ import shlex
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
-from portage import os_unicode_fs as os
+
+import os
 from portage.const import BASH_BINARY
 
 

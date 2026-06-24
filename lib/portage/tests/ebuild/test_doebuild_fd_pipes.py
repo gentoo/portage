@@ -3,8 +3,9 @@
 
 import multiprocessing
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand

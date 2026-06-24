@@ -3,8 +3,9 @@
 
 import re
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import GLOBAL_CONFIG_PATH
 
 COMPAT_BINPKG_FORMAT = "xpak"

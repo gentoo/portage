@@ -3,8 +3,9 @@
 
 import difflib
 import re
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb

@@ -1,7 +1,7 @@
 # Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os_unicode_fs as os
+import os
 from portage.repository.storage.interface import (
     RepoStorageException,
     RepoStorageInterface,

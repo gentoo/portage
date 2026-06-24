@@ -5,8 +5,8 @@ import errno
 from portage.dep import Atom
 from portage.util import writemsg
 from portage.data import secpass
+import os
 import portage
-from portage import os_unicode_fs as os
 import pickle
 
 

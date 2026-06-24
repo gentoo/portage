@@ -1,13 +1,13 @@
 # Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
+import os
+import shutil
 import io
 import tarfile
 import tempfile
 from os import urandom
 
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.gpkg import gpkg
@@ -362,7 +362,6 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
                             sig = b"""
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA256
-
 
 DATA test/image.tar.zst 1049649 BLAKE2B 3112adba9c09023962f26d9dcbf8e74107c05220f2f29aa2ce894f8a4104c3bb238f87095df73735befcf1e1f6039fc3abf4defa87e68ce80f33dd01e09c055a SHA512 9f584727f2e20a50a30e0077b94082c8c1f517ebfc9978eb3281887e24458108e73d1a2ce82eb0b59f5df7181597e4b0a297ae68bbfb36763aa052e6bdbf2c59
 DATA test/image.tar.zst.sig 833 BLAKE2B 214724ae4ff9198879c8c960fd8167632e27982c2278bb873f195abe75b75afa1ebed4c37ec696f5f5bc35c3a1184b60e0b50d56695b072b254f730db01eddb5 SHA512 67316187da8bb6b7a5f9dc6a42ed5c7d72c6184483a97f23c0bebd8b187ac9268e0409eb233c935101606768718c99eaa5699037d6a68c2d88c9ed5331a3f73c

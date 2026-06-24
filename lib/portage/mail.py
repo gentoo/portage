@@ -7,7 +7,7 @@
 
 import sys
 
-from portage import os_unicode_fs as os
+import os
 from portage.localization import _
 import portage
 

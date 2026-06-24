@@ -4,10 +4,11 @@
 import collections
 import re
 
+import os
 import portage
 from portage.cache import fs_template
 from portage.cache import cache_errors
-from portage import os_unicode_fs as os
+
 from portage.util import writemsg
 from portage.localization import _
 

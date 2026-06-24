@@ -2,10 +2,9 @@
 # Copyright 2006-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-
+import os
 from portage.const import EBUILD_PHASES
 from portage.localization import _
-from portage import os_unicode_fs as os
 
 import sys
 

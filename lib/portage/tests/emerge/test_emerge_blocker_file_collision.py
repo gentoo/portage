@@ -4,8 +4,9 @@
 import subprocess
 import sys
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
 from portage.tests import TestCase, CommandStep, FunctionStep

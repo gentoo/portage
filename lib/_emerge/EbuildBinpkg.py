@@ -8,8 +8,8 @@ import tempfile
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
 
+import os
 import portage
-from portage import os_unicode_fs as os
 
 
 class EbuildBinpkg(CompositeTask):

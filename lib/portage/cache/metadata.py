@@ -8,13 +8,13 @@ import stat
 import tempfile
 from operator import attrgetter
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
-
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22

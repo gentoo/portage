@@ -5,8 +5,9 @@ import functools
 import sys
 
 from _emerge.SubProcess import SubProcess
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import BASH_BINARY
 from portage.output import EOutput
 from portage.util._async.BuildLogger import BuildLogger
@@ -250,7 +251,7 @@ class SpawnProcess(SubProcess):
         spawn_func = portage.process.spawn
 
         if self._selinux_type is not None:
-            spawn_func = portage.selinux_unicode_fs.spawn_wrapper(spawn_func, self._selinux_type)
+            spawn_func = portage.selinux.spawn_wrapper(spawn_func, self._selinux_type)
             # bash is an allowed entrypoint, while most binaries are not
             if args[0] != BASH_BINARY:
                 args = [BASH_BINARY, "-c", 'exec "$@"', args[0]] + args

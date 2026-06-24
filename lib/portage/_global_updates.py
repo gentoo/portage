@@ -3,7 +3,8 @@
 
 import stat
 
-from portage import best, os_unicode_fs as os
+import os
+from portage import best
 from portage.const import WORLD_FILE
 from portage.data import secpass
 from portage.exception import DirectoryNotFound, PermissionDenied

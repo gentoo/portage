@@ -1,6 +1,8 @@
 # Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
+import os
+import shutil
 import io
 import tarfile
 import tempfile
@@ -9,8 +11,6 @@ from os import urandom
 from concurrent.futures import Future
 
 from portage.gpkg import gpkg
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.exception import InvalidSignature

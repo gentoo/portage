@@ -9,9 +9,10 @@ import re
 import shlex
 import typing
 
+import os
 import portage
 from pathlib import Path
-from portage import eclass_cache, os_unicode_fs as os
+from portage import eclass_cache
 from portage._sets.base import WildcardPackageSet
 from portage.checksum import get_valid_checksum_keys
 from portage.dep import Atom

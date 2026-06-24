@@ -2,12 +2,10 @@
 # Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import re
 import stat
 import time
-
-from portage import os_unicode_fs as os
-
 
 # [D]/Name/Version/Date/Flags/Tags
 

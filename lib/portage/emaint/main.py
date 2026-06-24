@@ -5,8 +5,9 @@ import argparse
 import sys
 import textwrap
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.module import Modules
 from portage.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS

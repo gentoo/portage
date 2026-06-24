@@ -33,7 +33,7 @@ def main(args):
     sys.stdout.flush()
     sys.stdin.read(1)
     portage.locks.unlockfile(lock_obj)
-    return portage.os_unicode_fs.EX_OK
+    return os.EX_OK
 
 
 if __name__ == "__main__":

@@ -369,6 +369,7 @@ try:
 
     selinux_unicode_fs = _unicode_module_wrapper(_selinux)
     selinux_unicode_merge = _unicode_module_wrapper(_selinux)
+    selinux = _selinux
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
         sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
@@ -376,6 +377,7 @@ except (ImportError, OSError) as e:
     _selinux = None
     selinux_unicode_fs = None
     selinux_unicode_merge = None
+    selinux = None
 
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END

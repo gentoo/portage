@@ -8,8 +8,10 @@ import subprocess
 import sys
 import textwrap
 
+import os
+import shutil
 import portage
-from portage import os_unicode_fs as os, shutil_unicode_fs as shutil
+
 from portage.const import PORTAGE_PYM_PATH, REPO_REVISIONS, TIMESTAMP_FORMAT
 from portage.process import find_binary
 from portage.sync.revision_history import get_repo_revision_history

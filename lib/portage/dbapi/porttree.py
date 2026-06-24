@@ -21,13 +21,12 @@ from portage.exception import (
 from portage.localization import _
 
 from portage import eclass_cache, eapi_is_supported, _eapi_is_deprecated
-from portage import os_unicode_fs as os
 from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import contextlib
-import os as _os
+import os
 import threading
 import traceback
 import warnings
@@ -562,7 +561,7 @@ class portdbapi(dbapi):
         # For optimal performance in this hot spot, we do manual unicode
         # handling here instead of using the wrapped os module.
         relative_path = (
-            mysplit[0] + _os.sep + psplit[0] + _os.sep + mysplit[1] + ".ebuild"
+            mysplit[0] + os.sep + psplit[0] + os.sep + mysplit[1] + ".ebuild"
         )
 
         # There is no need to access the filesystem when the package
@@ -574,13 +573,11 @@ class portdbapi(dbapi):
             and myrepo == getattr(mycpv, "repo", None)
             and self is getattr(mycpv, "_db", None)
         ):
-            return (mytree + _os.sep + relative_path, mytree)
+            return (mytree + os.sep + relative_path, mytree)
 
         for x in mytrees:
-            filename = x + _os.sep + relative_path
-            if _os.access(
-                filename.encode("utf-8", "strict"), _os.R_OK
-            ):
+            filename = x + os.sep + relative_path
+            if os.access(filename.encode("utf-8", "strict"), os.R_OK):
                 return (filename, x)
         return (None, 0)
 

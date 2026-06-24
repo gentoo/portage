@@ -3,8 +3,9 @@
 
 import functools
 import logging
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.dbapi._MergeProcess import MergeProcess
 from portage.exception import UnsupportedAPIException
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture

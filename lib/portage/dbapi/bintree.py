@@ -3,6 +3,7 @@
 
 __all__ = ["bindbapi", "binarytree"]
 
+import os
 import portage
 
 from portage.binrepo.config import BinRepoConfigLoader
@@ -38,7 +39,6 @@ from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.binpkg import get_binpkg_format
 from portage import _movefile
-from portage import os_unicode_fs as os
 
 import codecs
 import errno
@@ -228,11 +228,10 @@ class bindbapi(fakedbapi):
                     if decode_metadata_name:
                         v = metadata_bytes.get(k)
                     else:
-                        v = metadata_bytes.get(
-                            k.encode("utf-8", "backslashreplace")
-                        )
+                        v = metadata_bytes.get(k.encode("utf-8", "backslashreplace"))
                 if v is not None:
-                    if isinstance(v, bytes): v = v.decode("utf-8", "replace")
+                    if isinstance(v, bytes):
+                        v = v.decode("utf-8", "replace")
                 return v
 
         else:
@@ -771,19 +770,32 @@ class binarytree:
                 mydata["CATEGORY"] = mynewcat + "\n"
             else:
                 mydata[b"PF"] = (mynewpkg + "\n").encode("utf-8", "backslashreplace")
-                mydata[b"CATEGORY"] = (mynewcat + "\n").encode("utf-8", "backslashreplace")
+                mydata[b"CATEGORY"] = (mynewcat + "\n").encode(
+                    "utf-8", "backslashreplace"
+                )
             if mynewpkg != myoldpkg:
-                ebuild_key = (myoldpkg + ".ebuild") if decode_metadata_name else (myoldpkg + ".ebuild").encode("utf-8", "backslashreplace")
+                ebuild_key = (
+                    (myoldpkg + ".ebuild")
+                    if decode_metadata_name
+                    else (myoldpkg + ".ebuild").encode("utf-8", "backslashreplace")
+                )
                 ebuild_data = mydata.pop(ebuild_key, None)
                 if ebuild_data is not None:
-                    new_ebuild_key = (mynewpkg + ".ebuild") if decode_metadata_name else (mynewpkg + ".ebuild").encode("utf-8", "backslashreplace")
+                    new_ebuild_key = (
+                        (mynewpkg + ".ebuild")
+                        if decode_metadata_name
+                        else (mynewpkg + ".ebuild").encode("utf-8", "backslashreplace")
+                    )
                     mydata[new_ebuild_key] = ebuild_data
 
             metadata = self.dbapi._aux_cache_slot_dict()
             for k in self.dbapi._aux_cache_keys:
-                v = mydata.get(k if decode_metadata_name else k.encode("utf-8", "backslashreplace"))
+                v = mydata.get(
+                    k if decode_metadata_name else k.encode("utf-8", "backslashreplace")
+                )
                 if v is not None:
-                    if isinstance(v, bytes): v = v.decode("utf-8", "replace")
+                    if isinstance(v, bytes):
+                        v = v.decode("utf-8", "replace")
                     metadata[k] = " ".join(v.split())
 
             # Create a copy of the old version of the package and
@@ -1059,12 +1071,14 @@ class binarytree:
             update_pkgindex = False
             for mydir, file_names in dir_files.items():
                 try:
-                    if isinstance(mydir, bytes): mydir = mydir.decode("utf-8", "strict")
+                    if isinstance(mydir, bytes):
+                        mydir = mydir.decode("utf-8", "strict")
                 except UnicodeDecodeError:
                     continue
                 for myfile in file_names:
                     try:
-                        if isinstance(myfile, bytes): myfile = myfile.decode("utf-8", "strict")
+                        if isinstance(myfile, bytes):
+                            myfile = myfile.decode("utf-8", "strict")
                     except UnicodeDecodeError:
                         continue
                     if not myfile.endswith(
@@ -1697,9 +1711,7 @@ class binarytree:
                 if remote_pkgindex_file == "Packages.gz":
                     f = GzipFile(fileobj=f, mode="rb")
 
-                f_dec = codecs.iterdecode(
-                    f, "utf-8", errors="replace"
-                )
+                f_dec = codecs.iterdecode(f, "utf-8", errors="replace")
                 try:
                     rmt_idx.readHeader(f_dec)
                     if (
@@ -2131,7 +2143,8 @@ class binarytree:
                     else:
                         metadata[k] = ""
                 else:
-                    if isinstance(v, bytes): v = v.decode("utf-8", "replace")
+                    if isinstance(v, bytes):
+                        v = v.decode("utf-8", "replace")
                     metadata[k] = " ".join(v.split())
 
         return metadata

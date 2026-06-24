@@ -3,10 +3,10 @@
 
 from _emerge.SubProcess import SubProcess
 import sys
+import os
 from portage.cache.mappings import slot_dict_class
 import portage
 
-from portage import os_unicode_fs as os
 from portage.util.futures import asyncio
 
 import fcntl
@@ -203,7 +203,9 @@ class EbuildMetadataPhase(SubProcess):
         # self._raw_metadata is None when _start returns
         # early due to an unsupported EAPI
         if self.returncode == os.EX_OK and self._raw_metadata is not None:
-            metadata_lines = b"".join(self._raw_metadata).decode("utf-8", "replace").splitlines()
+            metadata_lines = (
+                b"".join(self._raw_metadata).decode("utf-8", "replace").splitlines()
+            )
             metadata = {}
             metadata_valid = True
             for l in metadata_lines:

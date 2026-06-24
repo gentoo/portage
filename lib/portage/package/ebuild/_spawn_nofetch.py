@@ -1,10 +1,10 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shutil
+import os
 import tempfile
 
-from portage import os_unicode_fs as os
-from portage import shutil_unicode_fs as shutil
 from portage.const import EBUILD_PHASES
 from portage.elog import elog_process
 from portage.package.ebuild.config import config

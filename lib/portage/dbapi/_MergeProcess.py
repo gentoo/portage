@@ -7,8 +7,9 @@ import multiprocessing
 import platform
 
 import fcntl
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util._ctypes import load_libc
 import portage.elog.messages
@@ -99,7 +100,11 @@ class MergeProcess(ForkProcess):
     def _elog_output_handler(self):
         output = self._read_buf(self._elog_reader_fd.fileno())
         if output:
-            lines = (output.decode("utf-8", "replace") if isinstance(output, bytes) else output).split("\n")
+            lines = (
+                output.decode("utf-8", "replace")
+                if isinstance(output, bytes)
+                else output
+            ).split("\n")
             if len(lines) == 1:
                 self._buf += lines[0]
             else:

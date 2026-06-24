@@ -2,11 +2,12 @@
 # Copyright 2003-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _
 import portage
-from portage import os_unicode_fs as os
+
 from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
@@ -53,7 +54,11 @@ def make_metadata_dict(data):
     metadata = (
         (
             k_bytes,
-            (k_bytes.decode("utf-8", "replace") if isinstance(k_bytes, bytes) else k_bytes),
+            (
+                k_bytes.decode("utf-8", "replace")
+                if isinstance(k_bytes, bytes)
+                else k_bytes
+            ),
         )
         for k_bytes in portage.xpak.getindex_mem(myid)
     )
@@ -156,9 +161,9 @@ def create_conn(baseurl, conn=None):
     http_params = {}
     if username and password:
         encodebytes = base64.encodebytes
-        unicode_bytes = encodebytes(f"{username}:{password}".encode("utf-8", "backslashreplace")).replace(
-            b"\012", b""
-        )
+        unicode_bytes = encodebytes(
+            f"{username}:{password}".encode("utf-8", "backslashreplace")
+        ).replace(b"\012", b"")
         http_headers = {b"Authorization": f"Basic {unicode_bytes}"}
 
     if not conn:
@@ -386,7 +391,9 @@ def dir_get_list(baseurl, conn=None):
 
         if page:
             parser = ParseLinks()
-            parser.feed((page.decode("utf-8", "replace") if isinstance(page, bytes) else page))
+            parser.feed(
+                page.decode("utf-8", "replace") if isinstance(page, bytes) else page
+            )
             del page
             listing = parser.get_anchors()
         else:

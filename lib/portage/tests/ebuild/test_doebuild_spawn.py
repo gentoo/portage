@@ -4,7 +4,7 @@
 import shlex
 import textwrap
 
-from portage import os_unicode_fs as os
+import os
 from portage import _python_interpreter
 from portage.const import EBUILD_SH_BINARY
 from portage.package.ebuild.config import config

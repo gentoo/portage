@@ -16,8 +16,9 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.TaskSequence import TaskSequence
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir

@@ -3,8 +3,9 @@
 
 import asyncio
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.dbapi.porttree import _async_manifest_fetchlist
 from portage.dep import _repo_separator
 from portage.localization import _

@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import re
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
