@@ -5372,14 +5372,10 @@ class dblink:
                 # may need to be forcefully converted here.
                 myto = os.readlink(mysrc.encode("utf-8", "strict"))
                 try:
-                    if isinstance(myto, bytes):
-                        myto = myto.decode("utf-8", "strict")
+                    myto = myto.decode("utf-8", "strict")
                 except UnicodeDecodeError:
-                    if isinstance(myto, bytes):
-                        myto = myto.decode("utf-8", "replace")
-                    myto = myto.encode("ascii", "backslashreplace")
-                    if isinstance(myto, bytes):
-                        myto = myto.decode("utf-8", "replace")
+                    myto = myto.decode("utf-8", "replace")
+                    myto = myto.encode("ascii", "backslashreplace").decode("utf-8")
                     os.unlink(mysrc)
                     os.symlink(myto, mysrc)
 
@@ -5518,7 +5514,6 @@ class dblink:
                         newmtime=thismtime,
                         sstat=mystat,
                         mysettings=self.settings,
-                        encoding="utf-8",
                     )
 
                 try:
@@ -5629,7 +5624,6 @@ class dblink:
                                 mydest,
                                 backup_dest,
                                 mysettings=self.settings,
-                                encoding="utf-8",
                             )
                             is None
                         ):
@@ -5737,7 +5731,6 @@ class dblink:
                             sstat=mystat,
                             mysettings=self.settings,
                             hardlink_candidates=hardlink_candidates,
-                            encoding="utf-8",
                         )
                         if mymtime is None:
                             return 1
@@ -5779,7 +5772,6 @@ class dblink:
                             newmtime=thismtime,
                             sstat=mystat,
                             mysettings=self.settings,
-                            encoding="utf-8",
                         )
                         is not None
                     ):
@@ -6189,16 +6181,13 @@ class dblink:
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
 
-        src_bytes = mysrc
-        dest_bytes = mydest
-
         if "xattr" in self.settings.features:
             excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
-            if not _cmpxattr(src_bytes, dest_bytes, exclude=excluded_xattrs):
+            if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
                 return True
 
         try:
-            files_equal = filecmp.cmp(src_bytes, dest_bytes, shallow=False)
+            files_equal = filecmp.cmp(mysrc, mydest, shallow=False)
         except Exception as e:
             writemsg(
                 _(

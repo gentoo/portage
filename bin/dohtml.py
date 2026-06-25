@@ -128,7 +128,7 @@ def install(basename, dirname, options, prefix=""):
                 i = i.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 writemsg(
-                    f"dohtml: argument is not encoded as UTF-8: {i.decode("utf-8", "replace")}\n",
+                    f"dohtml: argument is not encoded as UTF-8: {i.decode('utf-8', 'replace')}\n",
                     noiselevel=-1,
                 )
                 sys.exit(1)
@@ -206,7 +206,7 @@ def parse_args():
             argv[x] = arg.decode("utf-8", "strict")
         except UnicodeDecodeError:
             writemsg(
-                f"dohtml: argument is not encoded as UTF-8: {arg.decode("utf-8", "replace")}\n",
+                f"dohtml: argument is not encoded as UTF-8: {arg.decode('utf-8', 'replace')}\n",
                 noiselevel=-1,
             )
             sys.exit(1)
