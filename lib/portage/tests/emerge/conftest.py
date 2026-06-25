@@ -13,8 +13,8 @@ from portage.const import (
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.cache.mappings import Mapping
 from portage.tests.util.test_socks5 import AsyncHTTPServer
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.util.futures import asyncio
 from portage.tests import cnf_bindir, cnf_sbindir
 from portage.process import find_binary

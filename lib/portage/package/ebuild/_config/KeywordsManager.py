@@ -6,7 +6,7 @@ __all__ = ("KeywordsManager",)
 import warnings
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.dep import ExtendedAtomDict
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity

@@ -6,7 +6,7 @@ import multiprocessing
 import tempfile
 from unittest.mock import patch
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.tests import TestCase
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util.futures import asyncio

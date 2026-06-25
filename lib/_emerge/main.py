@@ -11,7 +11,7 @@ import sys
 
 import portage
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.repository.config import _find_bad_atoms
 from portage.sync import _SUBMODULE_PATH_MAP
 

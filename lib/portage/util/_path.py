@@ -3,7 +3,7 @@
 
 import stat
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.exception import PermissionDenied
 
 

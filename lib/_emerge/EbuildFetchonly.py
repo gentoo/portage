@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.elog.messages import eerror
 from portage.util.SlotObject import SlotObject
 

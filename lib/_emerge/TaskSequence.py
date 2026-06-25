@@ -3,7 +3,7 @@
 
 from collections import deque
 
-from portage import os
+from portage import os_unicode_fs as os
 from _emerge.CompositeTask import CompositeTask
 from _emerge.AsynchronousTask import AsynchronousTask
 

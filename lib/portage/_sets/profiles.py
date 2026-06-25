@@ -3,7 +3,7 @@
 
 import logging
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.repository.config import allow_profile_repo_deps
 from portage.util import grabfile_package, stack_lists
 from portage._sets.base import PackageSet

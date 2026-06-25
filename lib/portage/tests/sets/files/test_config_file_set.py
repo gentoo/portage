@@ -4,7 +4,7 @@
 
 import tempfile
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.tests import TestCase, test_cps
 from portage._sets.files import ConfigFileSet
 

@@ -11,7 +11,7 @@ import warnings
 from portage.util import normalize_path
 import errno
 from portage.exception import FileNotFound, PermissionDenied
-from portage import os
+from portage import os_unicode_fs as os
 from portage import checksum
 
 

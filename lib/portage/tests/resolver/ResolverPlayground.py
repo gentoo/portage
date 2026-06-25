@@ -8,8 +8,8 @@ import tempfile
 import portage
 
 from itertools import permutations
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.const import (
     GLOBAL_CONFIG_PATH,
     PORTAGE_BIN_PATH,

@@ -3,7 +3,7 @@
 
 import signal
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 

@@ -74,7 +74,7 @@ try:
     import portage
 
     portage._internal_caller = True
-    from portage import os
+    from portage import os_unicode_fs as os
     from portage.eapi import eapi_has_repo_deps
     from portage.util import writemsg, writemsg_stdout, no_color
 

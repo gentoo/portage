@@ -8,7 +8,7 @@ from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.elog import messages as elog_messages
 from portage.util import no_color
 

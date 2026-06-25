@@ -2,8 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.tests import TestCase
 from portage.util.install_mask import InstallMask, install_mask_dir
 

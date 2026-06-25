@@ -9,7 +9,7 @@ from portage.process import atexit_register
 from portage.elog.messages import collect_ebuild_messages, collect_messages
 from portage.elog.filtering import filter_loglevels
 from portage.localization import _
-from portage import os
+from portage import os_unicode_fs as os
 
 
 def _merge_logentries(a, b):

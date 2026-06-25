@@ -7,7 +7,7 @@ import errno
 
 import portage
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.const import MANIFEST2_HASH_DEFAULTS
 from portage.dbapi.porttree import FetchlistDict
 from portage.dep import use_reduce

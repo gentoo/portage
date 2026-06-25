@@ -3,8 +3,8 @@
 
 import tempfile
 
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.const import EBUILD_PHASES
 from portage.elog import elog_process
 from portage.package.ebuild.config import config

@@ -14,7 +14,7 @@ from typing import Any, Callable, Optional
 from unittest.runner import TextTestResult as _TextTestResult
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.util import no_color
 from portage import _encodings
 from portage import _unicode_decode

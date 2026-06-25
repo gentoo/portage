@@ -8,7 +8,7 @@ __all__ = (
     "format_unmatched_atom",
 )
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
 from portage.exception import InvalidDependString, SignatureException

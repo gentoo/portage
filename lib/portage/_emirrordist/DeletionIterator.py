@@ -5,7 +5,7 @@ import itertools
 import logging
 import stat
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.package.ebuild.fetch import DistfileName
 from .DeletionTask import DeletionTask
 
