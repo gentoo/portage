@@ -400,6 +400,16 @@ _internal_caller = False
 
 _sync_mode = False
 
+if sys.getfilesystemencoding().lower().replace("-", "") not in ("utf8",):
+    import warnings
+
+    warnings.warn(
+        "portage requires a UTF-8 locale. "
+        "Set PYTHONUTF8=1 or configure a UTF-8 locale.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
 import multiprocessing
 
 # Prefer the environment variable if set. Otherwise, change away from
