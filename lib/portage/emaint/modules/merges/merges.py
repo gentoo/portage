@@ -1,8 +1,9 @@
 # Copyright 2005-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.const import MERGING_IDENTIFIER, EPREFIX, PRIVATE_PATH, VDB_PATH
 from portage.dep import isvalidatom
 
@@ -22,9 +23,7 @@ class TrackingFile:
         @param tracking_path: file path used to keep track of failed merges
         @type tracking_path: String
         """
-        self._tracking_path = (
-            tracking_path if portage.utf8_mode else tracking_path.encode("utf-8", "backslashreplace")
-        )
+        self._tracking_path = tracking_path
 
     def save(self, failed_pkgs):
         """

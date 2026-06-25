@@ -15,8 +15,6 @@ from portage.exception import (
     ReadOnlyFileSystem,
 )
 from portage.const import VCS_DIRS
-from portage import os_unicode_merge as _os_merge
-from portage import os_unicode_fs as os
 
 __all__ = [
     "apply_permissions",
@@ -72,6 +70,7 @@ import traceback
 import glob
 from typing import Optional, TextIO
 
+import os
 import portage
 
 noiselimit = 0
@@ -103,7 +102,8 @@ def writemsg(mystr: str, noiselevel: int = 0, fd: Optional[TextIO] = None) -> No
         # avoid potential UnicodeEncodeError
         if isinstance(fd, io.TextIOBase):
             if isinstance(mystr, bytes):
-                if isinstance(mystr, bytes): mystr = mystr.decode("utf-8", "replace")
+                if isinstance(mystr, bytes):
+                    mystr = mystr.decode("utf-8", "replace")
         else:
             mystr = mystr.encode("utf-8", "backslashreplace")
             if fd in (sys.stdout, sys.stderr):
@@ -1030,9 +1030,7 @@ def pickle_read(filename, default=None, debug=0):
         return default
     data = None
     try:
-        myf = open(
-            filename.encode("utf-8", "strict"), "rb"
-        )
+        myf = open(filename.encode("utf-8", "strict"), "rb")
         mypickle = pickle.Unpickler(myf)
         data = mypickle.load()
         myf.close()
@@ -1765,8 +1763,6 @@ class ConfigProtect:
         """Update internal state for isprotected() calls.  Nonexistent paths
         are ignored."""
 
-        os = _os_merge
-
         self.protect = []
         self._dirs = set()
         for x in self.protect_list:
@@ -1848,8 +1844,6 @@ def new_protect_filename(mydest, newmd5=None, force=False):
     # ._cfg0000_foo
     # 0123456789012
 
-    os = _os_merge
-
     prot_num = -1
     last_pfile = ""
 
@@ -1889,9 +1883,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
                 try:
                     # Read symlink target as bytes, in case the
                     # target path has a bad encoding.
-                    pfile_link = os.readlink(
-                        old_pfile.encode("utf-8", "strict")
-                    )
+                    pfile_link = os.readlink(old_pfile.encode("utf-8", "strict"))
                 except OSError:
                     if e.errno != errno.ENOENT:
                         raise

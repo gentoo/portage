@@ -9,9 +9,9 @@ import shlex
 import stat
 import sys
 
+import os
 import portage
 
-from portage import os_unicode_fs as os
 from portage.repository.config import _find_bad_atoms
 from portage.sync import _SUBMODULE_PATH_MAP
 
@@ -1208,8 +1208,6 @@ def emerge_main(args: Optional[list[str]] = None):
 
     if args is None:
         args = sys.argv[1:]
-
-    args = portage._decode_argv(args)
 
     # Use system locale.
     try:

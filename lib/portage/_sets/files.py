@@ -5,8 +5,8 @@ import errno
 import re
 from itertools import chain
 
-import portage
-from portage import os_unicode_fs as os
+import os
+
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
@@ -156,13 +156,8 @@ class StaticFileSet(EditablePackageSet):
                 )
 
         try:
-            if isinstance(directory, bytes):
-                if isinstance(directory, bytes): directory = directory.decode("utf-8", "strict")
-            # Now verify that we can also encode it.
             directory.encode("utf-8", "strict")
-        except UnicodeError:
-            if isinstance(directory, bytes):
-                if isinstance(directory, bytes): directory = directory.decode("utf-8", "replace")
+        except UnicodeEncodeError:
             raise SetConfigError(
                 _(
                     "Directory path contains invalid character(s) for encoding '%s': '%s'"
@@ -170,30 +165,24 @@ class StaticFileSet(EditablePackageSet):
                 % ("utf-8", directory)
             )
 
-        vcs_dirs = [x.encode("utf-8", "backslashreplace") for x in VCS_DIRS]
+        vcs_dirs = set(VCS_DIRS)
         if os.path.isdir(directory):
             directory = normalize_path(directory)
 
             for parent, dirs, files in os.walk(directory):
-                if portage.utf8_mode:
-                    dirs_orig = dirs
-                    omit_dir = lambda d: dirs_orig.remove(os.fsdecode(d))
-                    parent = os.fsencode(parent)
-                    dirs = [os.fsencode(value) for value in dirs]
-                    files = [os.fsencode(value) for value in files]
-                else:
-                    omit_dir = lambda d: dirs.remove(d)
+                dirs_orig = dirs
+                omit_dir = lambda d: dirs_orig.remove(d)
                 try:
-                    if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
-                except UnicodeDecodeError:
+                    parent.encode("utf-8", "strict")
+                except UnicodeEncodeError:
                     continue
                 for d in dirs[:]:
-                    if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
+                    if d in vcs_dirs or d.startswith(".") or d.endswith("~"):
                         omit_dir(d)
                 for filename in files:
                     try:
-                        if isinstance(filename, bytes): filename = filename.decode("utf-8", "strict")
-                    except UnicodeDecodeError:
+                        filename.encode("utf-8", "strict")
+                    except UnicodeEncodeError:
                         continue
                     if filename.startswith(".") or filename.endswith("~"):
                         continue

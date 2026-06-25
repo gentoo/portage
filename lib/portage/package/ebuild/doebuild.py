@@ -10,7 +10,6 @@ import fnmatch
 from itertools import chain
 import logging
 import multiprocessing
-import os as _os
 import platform
 import pwd
 import re
@@ -28,16 +27,15 @@ import zlib
 
 import portage
 
+import os
+import shutil
 from portage import (
     bsd_chflags,
     eapi_is_supported,
     installation,
     merge,
-    os_unicode_fs as os,
-    selinux_unicode_fs as selinux,
-    shutil_unicode_fs as shutil,
+    selinux,
     unmerge,
-    os_unicode_merge as _os_merge,
 )
 from portage.const import (
     EBUILD_SH_ENV_FILE,
@@ -2110,17 +2108,17 @@ def spawn(
             stdout_fd = fd_pipes.get(1)
             if stdout_fd is not None:
                 try:
-                    subprocess_tty = _os.ttyname(stdout_fd)
+                    subprocess_tty = os.ttyname(stdout_fd)
                 except OSError:
                     pass
                 else:
                     try:
-                        parent_tty = _os.ttyname(sys.__stdout__.fileno())
+                        parent_tty = os.ttyname(sys.__stdout__.fileno())
                     except OSError:
                         parent_tty = None
 
                     if subprocess_tty != parent_tty:
-                        _os.chown(subprocess_tty, int(portage_uid), int(portage_gid))
+                        os.chown(subprocess_tty, int(portage_uid), int(portage_gid))
 
         if (
             "userpriv" in features
@@ -2501,8 +2499,8 @@ def _check_build_log(mysettings, out=None):
     try:
         with open(
             os.path.join(
-                    mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_CONFIGURE_OPTIONS"
-                ).encode("utf-8", "strict"),
+                mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_CONFIGURE_OPTIONS"
+            ).encode("utf-8", "strict"),
             encoding="utf-8",
             errors="replace",
         ) as qa_configure_opts_f:
@@ -2524,10 +2522,10 @@ def _check_build_log(mysettings, out=None):
     try:
         with open(
             os.path.join(
-                    mysettings["PORTAGE_BUILDDIR"],
-                    "build-info",
-                    "QA_AM_MAINTAINER_MODE",
-                ).encode("utf-8", "strict"),
+                mysettings["PORTAGE_BUILDDIR"],
+                "build-info",
+                "QA_AM_MAINTAINER_MODE",
+            ).encode("utf-8", "strict"),
             encoding="utf-8",
             errors="replace",
         ) as qa_am_maintainer_mode_f:
@@ -2573,7 +2571,8 @@ def _check_build_log(mysettings, out=None):
 
     try:
         for line in f:
-            if isinstance(line, bytes): line = line.decode("utf-8", "replace")
+            if isinstance(line, bytes):
+                line = line.decode("utf-8", "replace")
             if (
                 am_maintainer_mode_re.search(line) is not None
                 and am_maintainer_mode_exclude_re.search(line) is None
@@ -2817,8 +2816,6 @@ def _post_src_install_uid_fix(mysettings, out):
     """
     from portage.util._desktop_entry import validate_desktop_entry
 
-    os = _os_merge
-
     inst_uid = int(mysettings["PORTAGE_INST_UID"])
     inst_gid = int(mysettings["PORTAGE_INST_GID"])
 
@@ -2837,8 +2834,8 @@ def _post_src_install_uid_fix(mysettings, out):
     try:
         with open(
             os.path.join(
-                    mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_DESKTOP_FILE"
-                ).encode("utf-8", "strict"),
+                mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_DESKTOP_FILE"
+            ).encode("utf-8", "strict"),
             encoding="utf-8",
             errors="replace",
         ) as f:
@@ -2865,16 +2862,10 @@ def _post_src_install_uid_fix(mysettings, out):
         desktopfile_errors = []
 
         for parent, dirs, files in os.walk(destdir):
-            if portage.utf8_mode:
-                parent = os.fsencode(parent)
-                dirs = [os.fsencode(value) for value in dirs]
-                files = [os.fsencode(value) for value in files]
             try:
-                if isinstance(parent, bytes): parent = parent.decode("utf-8", "strict")
-            except UnicodeDecodeError:
-                new_parent = (parent.decode("utf-8", "replace") if isinstance(parent, bytes) else parent)
-                new_parent = new_parent.encode("ascii", "backslashreplace")
-                if isinstance(new_parent, bytes): new_parent = new_parent.decode("utf-8", "replace")
+                parent.encode("utf-8", "strict")
+            except UnicodeEncodeError:
+                new_parent = parent.encode("utf-8", "replace").decode("utf-8")
                 os.rename(parent, new_parent)
                 unicode_error = True
                 unicode_errors.append(new_parent[ed_len:])
@@ -2882,12 +2873,10 @@ def _post_src_install_uid_fix(mysettings, out):
 
             for fname in chain(dirs, files):
                 try:
-                    if isinstance(fname, bytes): fname = fname.decode("utf-8", "strict")
-                except UnicodeDecodeError:
-                    fpath = _os.path.join(parent.encode("utf-8"), fname)
-                    new_fname = (fname.decode("utf-8", "replace") if isinstance(fname, bytes) else fname)
-                    new_fname = new_fname.encode("ascii", "backslashreplace")
-                    if isinstance(new_fname, bytes): new_fname = new_fname.decode("utf-8", "replace")
+                    fname.encode("utf-8", "strict")
+                except UnicodeEncodeError:
+                    fpath = os.path.join(parent, fname)
+                    new_fname = fname.encode("utf-8", "replace").decode("utf-8")
                     new_fpath = os.path.join(parent, new_fname)
                     os.rename(fpath, new_fpath)
                     unicode_error = True
@@ -2955,11 +2944,7 @@ def _post_src_install_uid_fix(mysettings, out):
                         # a normal write might fail due to file permission
                         # settings on some operating systems such as HP-UX
                         write_atomic(
-                            (
-                                fpath
-                                if portage.utf8_mode
-                                else fpath.encode("utf-8", "strict")
-                            ),
+                            fpath,
                             new_contents,
                             mode="wb",
                         )
@@ -3112,7 +3097,9 @@ def _post_src_install_soname_symlinks(mysettings, out):
     for k in ("QA_PREBUILT", "QA_SONAME_NO_SYMLINK"):
         try:
             with open(
-                os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info", k).encode("utf-8", "strict"),
+                os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info", k).encode(
+                    "utf-8", "strict"
+                ),
                 encoding="utf-8",
                 errors="replace",
             ) as f:
@@ -3223,9 +3210,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
             continue
 
         filename = os.path.join(image_dir, entry.filename.lstrip(os.sep))
-        with open(
-            filename.encode("utf-8", "strict"), "rb"
-        ) as f:
+        with open(filename.encode("utf-8", "strict"), "rb") as f:
             elf_header = ELFHeader.read(f)
 
         # Compute the multilib category and write it back to the file.

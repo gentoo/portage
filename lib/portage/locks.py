@@ -27,8 +27,9 @@ import time
 import typing
 import warnings
 
+import os
 import portage
-from portage import os_unicode_fs as os
+
 from portage.exception import (
     DirectoryNotFound,
     FileNotFound,
@@ -42,14 +43,12 @@ from portage.util import writemsg
 from portage.util.install_mask import _raise_exc
 from portage.localization import _
 
-
 HARDLINK_FD = -2
 _HARDLINK_POLL_LATENCY = 3  # seconds
 
 # Used by emerge in order to disable the "waiting for lock" message
 # so that it doesn't interfere with the status display.
 _quiet = False
-
 
 _lock_fn = None
 _open_fds = {}
@@ -380,7 +379,8 @@ def _lockfile_iteration(
                 # still be in use.
                 os.close(myfd)
             if isinstance(lockfilename_path, bytes):
-                if isinstance(lockfilename_path, bytes): lockfilename_path = lockfilename_path.decode("utf-8", "strict")
+                if isinstance(lockfilename_path, bytes):
+                    lockfilename_path = lockfilename_path.decode("utf-8", "strict")
             if not isinstance(lockfilename_path, str):
                 raise
             link_success = hardlink_lockfile(
@@ -397,7 +397,7 @@ def _lockfile_iteration(
     fstat_result = None
     if isinstance(lockfilename, str) and myfd != HARDLINK_FD and unlinkfile:
         try:
-            (removed, fstat_result) = _lockfile_was_removed(myfd, lockfilename)
+            removed, fstat_result = _lockfile_was_removed(myfd, lockfilename)
         except Exception:
             # Do not leak the file descriptor here.
             os.close(myfd)
@@ -580,8 +580,7 @@ def hardlock_name(path):
     base, tail = os.path.split(path)
     return os.path.join(
         base,
-        ".%s.hardlock-%s-%s"
-        % (tail, portage._decode_argv([os.uname()[1]])[0], portage.getpid()),
+        f".{tail}.hardlock-{os.uname()[1]}-{portage.getpid()}",
     )
 
 
@@ -751,7 +750,7 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 
 
 def hardlock_cleanup(path, remove_all_locks=False):
-    myhost = portage._decode_argv([os.uname()[1]])[0]
+    myhost = os.uname()[1]
     mydl = os.listdir(path)
 
     results = []
