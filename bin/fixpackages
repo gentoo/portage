@@ -2,9 +2,19 @@
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import argparse
+import locale
 import os
 import sys
+
+if (
+    sys.getfilesystemencoding() != "utf-8"
+    or locale.getpreferredencoding(False) != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
+import argparse
 
 from os import path as osp
 

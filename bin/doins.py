@@ -6,6 +6,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import locale
+import os
+import sys
+
+if (
+    sys.getfilesystemencoding() != "utf-8"
+    or locale.getpreferredencoding(False) != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 """Core implementation of doins ebuild helper command.
 
 This script is designed to be executed by ebuild-helpers/doins.
@@ -15,13 +27,11 @@ import argparse
 import errno
 import grp
 import logging
-import os
 import pwd
 import shlex
 import shutil
 import stat
 import subprocess
-import sys
 
 from portage.util import movefile
 from portage.util.file_copy import copyfile
