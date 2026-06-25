@@ -86,11 +86,7 @@ def unquote(s):
             pos = start + 4
             a = array.array("B")
             a.append(int(s[start + 1 : pos], 8))
-            try:
-                # Python >= 3.2
-                result.append(a.tobytes())
-            except AttributeError:
-                result.append(a.tostring())
+            result.append(a.tobytes())
 
     return b"".join(result)
 

@@ -46,11 +46,7 @@ class AbstractPollTask(AsynchronousTask):
                 raise
 
         if buf is not None:
-            try:
-                # Python >=3.2
-                buf = buf.tobytes()
-            except AttributeError:
-                buf = buf.tostring()
+            buf = buf.tobytes()
 
         return buf
 
