@@ -1025,12 +1025,6 @@ def _exec(
     myargs = [opt_name]
     myargs.extend(mycommand[1:])
 
-    # Avoid a potential UnicodeEncodeError from os.execve().
-    myargs = [
-        x.encode("utf-8", "strict") if isinstance(x, str) else os.fsencode(x)
-        for x in myargs
-    ]
-
     # Use default signal handlers in order to avoid problems
     # killing subprocesses as reported in bug #353239.
     signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -1110,19 +1104,11 @@ def _exec(
             [
                 portage._python_interpreter,
                 os.path.join(portage._bin_path, "pid-ns-init"),
-                "" if uid is None else str(uid).encode("utf-8", "backslashreplace"),
-                "" if gid is None else str(gid).encode("utf-8", "backslashreplace"),
-                (
-                    ""
-                    if groups is None
-                    else ",".join(str(group) for group in groups).encode(
-                        "utf-8", "backslashreplace"
-                    )
-                ),
-                "" if umask is None else str(umask).encode("utf-8", "backslashreplace"),
-                ",".join(str(fd) for fd in fd_pipes).encode(
-                    "utf-8", "backslashreplace"
-                ),
+                "" if uid is None else str(uid),
+                "" if gid is None else str(gid),
+                "" if groups is None else ",".join(str(group) for group in groups),
+                "" if umask is None else str(umask),
+                ",".join(str(fd) for fd in fd_pipes),
                 binary,
             ]
             + myargs,
