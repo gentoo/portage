@@ -98,11 +98,7 @@ def _copyxattr(src, dest, exclude=None):
                     "does not support extended attribute '%s'"
                 )
                 % (
-                    (
-                        dest.decode("utf-8", "replace")
-                        if isinstance(dest, bytes)
-                        else dest
-                    ),
+                    dest,
                     (
                         attr.decode("utf-8", "replace")
                         if isinstance(attr, bytes)
@@ -112,11 +108,10 @@ def _copyxattr(src, dest, exclude=None):
             )
 
 
-def _cmpxattr(src: bytes, dest: bytes, exclude=None) -> bool:
+def _cmpxattr(src: str, dest: str, exclude=None) -> bool:
     """
     Compares extended attributes between |src| and |dest| and returns True
     if they are equal or xattrs are not supported, False otherwise.
-    Assumes all given paths are UTF-8 encoded.
     """
     try:
         src_attrs = xattr.list(src)
@@ -149,7 +144,6 @@ def movefile(
     sstat=None,
     mysettings=None,
     hardlink_candidates=None,
-    encoding="utf-8",
 ):
     """moves a file from src to dest, preserving all permissions and attributes; mtime will
     be preserved even when moving across filesystems.  Returns mtime as integer on success
@@ -159,8 +153,6 @@ def movefile(
     if mysettings is None:
         mysettings = portage.settings
 
-    src_bytes = src.encode(encoding, "strict")
-    dest_bytes = dest.encode(encoding, "strict")
     xattr_enabled = "xattr" in mysettings.features
     selinux_enabled = mysettings.selinux_enabled()
     if selinux_enabled:
@@ -256,7 +248,7 @@ def movefile(
             lchown(dest, sstat[stat.ST_UID], sstat[stat.ST_GID])
 
             try:
-                os.unlink(src_bytes)
+                os.unlink(src)
             except OSError:
                 pass
 
@@ -319,7 +311,7 @@ def movefile(
                     return None
                 hardlinked = True
                 try:
-                    os.unlink(src_bytes)
+                    os.unlink(src)
                 except OSError:
                     pass
                 break
@@ -345,16 +337,15 @@ def movefile(
     if renamefailed:
         if stat.S_ISREG(sstat[stat.ST_MODE]):
             dest_tmp = dest + "#new"
-            dest_tmp_bytes = dest_tmp.encode(encoding, "strict")
             success = False
             try:  # For safety copy then move it over.
-                _copyfile(src_bytes, dest_tmp_bytes)
-                _apply_stat(sstat, dest_tmp_bytes)
+                _copyfile(src, dest_tmp)
+                _apply_stat(sstat, dest_tmp)
                 if xattr_enabled:
                     try:
                         _copyxattr(
-                            src_bytes,
-                            dest_tmp_bytes,
+                            src,
+                            dest_tmp,
                             exclude=mysettings.get("PORTAGE_XATTR_EXCLUDE", ""),
                         )
                     except SystemExit:
@@ -369,8 +360,8 @@ def movefile(
                         for line in msg:
                             writemsg(f"!!! {line}\n", noiselevel=-1)
                         raise
-                _rename(dest_tmp_bytes, dest_bytes)
-                os.unlink(src_bytes)
+                _rename(dest_tmp, dest)
+                os.unlink(src)
                 success = True
             except Exception as e:
                 writemsg(
@@ -383,7 +374,7 @@ def movefile(
             finally:
                 if not success:
                     try:
-                        os.unlink(dest_tmp_bytes)
+                        os.unlink(dest_tmp)
                     except OSError:
                         pass
         else:

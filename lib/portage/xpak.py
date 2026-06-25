@@ -49,28 +49,25 @@ def addtolist(mylist, curdir):
     """(list, dir) --- Takes an array(list) and appends all files from dir down
     the directory tree. Returns nothing. list is modified."""
     if isinstance(curdir, bytes):
-        if isinstance(curdir, bytes):
-            curdir = curdir.decode("utf-8", "strict")
+        curdir = curdir.decode("utf-8", "strict")
     curdir = normalize_path(curdir)
     for parent, dirs, files in os.walk(curdir):
         if isinstance(parent, bytes):
-            if isinstance(parent, bytes):
-                parent = parent.decode("utf-8", "strict")
+            parent = parent.decode("utf-8", "strict")
         if parent != curdir:
             mylist.append(parent[len(curdir) + 1 :] + os.sep)
 
         for x in dirs:
             try:
                 if isinstance(x, bytes):
-                    (x.decode("utf-8", "strict") if isinstance(x, bytes) else x)
+                    x.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 dirs.remove(x)
 
         for x in files:
             try:
                 if isinstance(x, bytes):
-                    if isinstance(x, bytes):
-                        x = x.decode("utf-8", "strict")
+                    x = x.decode("utf-8", "strict")
             except UnicodeDecodeError:
                 continue
             mylist.append(os.path.join(parent, x)[len(curdir) + 1 :])
@@ -107,8 +104,8 @@ def xpak(rootdir, outfile=None):
     and under the name 'outfile' if it is specified. Otherwise it returns the
     xpak segment."""
 
-    if not isinstance(rootdir, bytes):
-        rootdir = os.fsencode(rootdir)
+    if isinstance(rootdir, bytes):
+        rootdir = rootdir.decode("utf-8", "strict")
 
     mylist = []
 
@@ -119,7 +116,6 @@ def xpak(rootdir, outfile=None):
         if x == "CONTENTS":
             # CONTENTS is generated during the merge process.
             continue
-        x = x
         with open(os.path.join(rootdir, x), "rb") as f:
             mydata[x] = f.read()
 
@@ -176,8 +172,7 @@ def xsplit(infile):
     'infile.index' contains the index segment.
     'infile.dat' contains the data segment."""
     if isinstance(infile, bytes):
-        if isinstance(infile, bytes):
-            infile = infile.decode("utf-8", "strict")
+        infile = infile.decode("utf-8", "strict")
     myfile = open(infile, "rb")
     mydat = myfile.read()
     myfile.close()
@@ -186,16 +181,10 @@ def xsplit(infile):
     if not splits:
         return False
 
-    myfile = open(
-        infile + (".index" if isinstance(infile, str) else b".index"),
-        "wb",
-    )
+    myfile = open(infile + ".index", "wb")
     myfile.write(splits[0])
     myfile.close()
-    myfile = open(
-        infile + (".dat" if isinstance(infile, str) else b".dat"),
-        "wb",
-    )
+    myfile = open(infile + ".dat", "wb")
     myfile.write(splits[1])
     myfile.close()
     return True
