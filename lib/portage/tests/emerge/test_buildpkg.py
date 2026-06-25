@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 import portage
-from portage import os
+import os
 from portage.const import (
     PORTAGE_PYM_PATH,
     USER_CONFIG_PATH,

@@ -179,27 +179,6 @@ except ImportError as e:
 
 utf8_mode = sys.getfilesystemencoding() == "utf-8"
 
-# We use utf_8 encoding everywhere. Previously, we used
-# sys.getfilesystemencoding() for the 'merge' encoding, but that had
-# various problems:
-#
-#   1) If the locale is ever changed then it can cause orphan files due
-#      to changed character set translation.
-#
-#   2) Ebuilds typically install files with utf_8 encoded file names,
-#      and then portage would be forced to rename those files to match
-#      sys.getfilesystemencoding(), possibly breaking things.
-#
-#   3) Automatic translation between encodings can lead to nonsensical
-#      file names when the source encoding is unknown by portage.
-#
-#   4) It's inconvenient for ebuilds to convert the encodings of file
-#      names to match the current locale, and upstreams typically encode
-#      file names with utf_8 encoding.
-#
-# So, instead of relying on sys.getfilesystemencoding(), we avoid the above
-# problems by using a constant utf_8 'merge' encoding for all locales, as
-# discussed in bug #382199 and bug #381509.
 _encodings = {
     "content": "utf_8",
     "fs": "utf_8",
@@ -207,14 +186,6 @@ _encodings = {
     "repo.content": "utf_8",
     "stdio": "utf_8",
 }
-
-
-def _decode_argv(argv):
-    # With Python 3, the surrogateescape encoding error handler makes it
-    # possible to access the original argv bytes, which can be useful
-    # if their actual encoding does no match the filesystem encoding.
-    fs_encoding = sys.getfilesystemencoding()
-    return [_unicode_decode(x.encode(fs_encoding, "surrogateescape")) for x in argv]
 
 
 def _unicode_encode(s, encoding=_encodings["content"], errors="backslashreplace"):
@@ -232,6 +203,14 @@ def _unicode_decode(s, encoding=_encodings["content"], errors="replace"):
 _native_string = _unicode_decode
 
 
+def _decode_argv(argv):
+    # With Python 3, the surrogateescape encoding error handler makes it
+    # possible to access the original argv bytes, which can be useful
+    # if their actual encoding does no match the filesystem encoding.
+    fs_encoding = sys.getfilesystemencoding()
+    return [x.encode(fs_encoding, "surrogateescape").decode() for x in argv]
+
+
 class _unicode_func_wrapper:
     """
     Wraps a function, converts arguments from unicode to bytes,
@@ -246,20 +225,21 @@ class _unicode_func_wrapper:
 
     __slots__ = ("_func", "_encoding")
 
-    def __init__(self, func, encoding=_encodings["fs"]):
+    def __init__(self, func, encoding="utf-8"):
         self._func = func
         self._encoding = encoding
 
     def _process_args(self, args, kwargs):
         encoding = self._encoding
-        wrapped_args = [
-            _unicode_encode(x, encoding=encoding, errors="strict") for x in args
-        ]
+
+        def _encode(s):
+            if isinstance(s, str):
+                s = s.encode(encoding, "strict")
+            return s
+
+        wrapped_args = [_encode(x) for x in args]
         if kwargs:
-            wrapped_kwargs = {
-                k: _unicode_encode(v, encoding=encoding, errors="strict")
-                for k, v in kwargs.items()
-            }
+            wrapped_kwargs = {k: _encode(v) for k, v in kwargs.items()}
         else:
             wrapped_kwargs = {}
 
@@ -267,6 +247,12 @@ class _unicode_func_wrapper:
 
     def __call__(self, *args, **kwargs):
         encoding = self._encoding
+
+        def _decode(s, errors="strict"):
+            if isinstance(s, bytes):
+                s = s.decode(encoding, errors)
+            return s
+
         wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
 
         rval = self._func(*wrapped_args, **wrapped_kwargs)
@@ -277,7 +263,7 @@ class _unicode_func_wrapper:
             decoded_rval = []
             for x in rval:
                 try:
-                    x = _unicode_decode(x, encoding=encoding, errors="strict")
+                    x = _decode(x)
                 except UnicodeDecodeError:
                     pass
                 else:
@@ -288,7 +274,7 @@ class _unicode_func_wrapper:
             else:
                 rval = decoded_rval
         else:
-            rval = _unicode_decode(rval, encoding=encoding, errors="replace")
+            rval = _decode(rval, errors="replace")
 
         return rval
 
@@ -300,7 +286,7 @@ class _unicode_module_wrapper:
 
     __slots__ = ("_mod", "_encoding", "_overrides", "_cache")
 
-    def __init__(self, mod, encoding=_encodings["fs"], overrides=None, cache=True):
+    def __init__(self, mod, encoding="utf-8", overrides=None, cache=True):
         object.__setattr__(self, "_mod", mod)
         object.__setattr__(self, "_encoding", encoding)
         object.__setattr__(self, "_overrides", overrides)
@@ -344,41 +330,43 @@ import os as _os
 
 _os_overrides = {
     id(_os.fdopen): _os.fdopen,
+    id(_os.mkfifo): _os.mkfifo,
     id(_os.popen): _os.popen,
     id(_os.read): _os.read,
     id(_os.system): _os.system,
     id(_os.waitpid): _os.waitpid,
 }
 
-
-_os_overrides[id(_os.mkfifo)] = _os.mkfifo
-
 if hasattr(_os, "statvfs"):
     _os_overrides[id(_os.statvfs)] = _os.statvfs
 
-os = _unicode_module_wrapper(_os, overrides=_os_overrides, encoding=_encodings["fs"])
-_os_merge = _unicode_module_wrapper(
-    _os, encoding=_encodings["merge"], overrides=_os_overrides
-)
+os_unicode_fs = _unicode_module_wrapper(_os, overrides=_os_overrides)
+os_unicode_merge = _unicode_module_wrapper(_os, overrides=_os_overrides)
+os = os_unicode_fs
+_os_merge = os_unicode_merge
 
 import shutil as _shutil
 
-shutil = _unicode_module_wrapper(_shutil, encoding=_encodings["fs"])
+shutil_unicode_fs = _unicode_module_wrapper(_shutil)
+shutil = shutil_unicode_fs
 
 # Imports below this point rely on the above unicode wrapper definitions.
 try:
     __import__("selinux")
     import portage._selinux
 
-    selinux = _unicode_module_wrapper(_selinux, encoding=_encodings["fs"])
-    _selinux_merge = _unicode_module_wrapper(_selinux, encoding=_encodings["merge"])
+    selinux_unicode_fs = _unicode_module_wrapper(_selinux)
+    selinux_unicode_merge = _unicode_module_wrapper(_selinux)
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
         sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
     del e
     _selinux = None
-    selinux = None
-    _selinux_merge = None
+    selinux_unicode_fs = None
+    selinux_unicode_merge = None
+
+selinux = selinux_unicode_fs
+_selinux_merge = selinux_unicode_merge
 
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
@@ -386,13 +374,13 @@ except (ImportError, OSError) as e:
 
 _python_interpreter = (
     sys.executable
-    if os.environ.get("VIRTUAL_ENV")
-    else os.path.realpath(sys.executable)
+    if os_unicode_fs.environ.get("VIRTUAL_ENV")
+    else os_unicode_fs.path.realpath(sys.executable)
 )
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
-_not_installed = os.path.isfile(
-    os.path.join(PORTAGE_BASE_PATH, ".portage_not_installed")
+_not_installed = os_unicode_fs.path.isfile(
+    os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".portage_not_installed")
 )
 
 # Api consumers included in portage should set this to True.
@@ -414,7 +402,7 @@ import multiprocessing
 
 # Prefer the environment variable if set. Otherwise, change away from
 # forkserver if in use.
-_multiprocessing_method = os.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD")
+_multiprocessing_method = os_unicode_fs.environ.get("PORTAGE_MULTIPROCESSING_START_METHOD")
 if not _multiprocessing_method:
     _multiprocessing_method = multiprocessing.get_start_method(allow_none=False)
     if _multiprocessing_method == "forkserver":
@@ -437,7 +425,7 @@ class _ForkWatcher:
 
 _ForkWatcher.hook(_ForkWatcher)
 
-os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
+_os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
 
 
 def getpid():
@@ -466,8 +454,8 @@ bsd_chflags = None
 if platform.system() in ("FreeBSD",):
     # TODO: remove this class?
     class bsd_chflags:
-        chflags = os.chflags
-        lchflags = os.lchflags
+        chflags = os_unicode_fs.chflags
+        lchflags = os_unicode_fs.lchflags
 
 
 def load_mod(name):
@@ -482,9 +470,9 @@ def load_mod(name):
 def getcwd():
     "this fixes situations where the current directory doesn't exist"
     try:
-        return os.getcwd()
+        return os_unicode_fs.getcwd()
     except OSError:  # dir doesn't exist
-        os.chdir("/")
+        os_unicode_fs.chdir("/")
         return "/"
 
 
@@ -504,11 +492,11 @@ def abssymlink(symlink, target=None):
     if target is not None:
         mylink = target
     else:
-        mylink = os.readlink(symlink)
+        mylink = os_unicode_fs.readlink(symlink)
     if mylink[0] != "/":
-        mydir = os.path.dirname(symlink)
+        mydir = os_unicode_fs.path.dirname(symlink)
         mylink = f"{mydir}/{mylink}"
-    return os.path.normpath(mylink)
+    return os_unicode_fs.path.normpath(mylink)
 
 
 _doebuild_manifest_exempt_depend = 0
@@ -618,13 +606,13 @@ def create_trees(
 ):
     if utf8_mode:
         config_root = (
-            os.fsdecode(config_root) if isinstance(config_root, bytes) else config_root
+            _os.fsdecode(config_root) if isinstance(config_root, bytes) else config_root
         )
         target_root = (
-            os.fsdecode(target_root) if isinstance(target_root, bytes) else target_root
+            _os.fsdecode(target_root) if isinstance(target_root, bytes) else target_root
         )
-        sysroot = os.fsdecode(sysroot) if isinstance(sysroot, bytes) else sysroot
-        eprefix = os.fsdecode(eprefix) if isinstance(eprefix, bytes) else eprefix
+        sysroot = _os.fsdecode(sysroot) if isinstance(sysroot, bytes) else sysroot
+        eprefix = _os.fsdecode(eprefix) if isinstance(eprefix, bytes) else eprefix
 
     if trees is None:
         trees = _trees_dict()
@@ -634,7 +622,7 @@ def create_trees(
         trees = _trees_dict(trees)
 
     if env is None:
-        env = os.environ
+        env = os_unicode_fs.environ
 
     settings = config(
         config_root=config_root,
@@ -714,7 +702,7 @@ if installation.TYPE == installation.TYPES.SOURCE:
             if VERSION is not self:
                 return VERSION
             VERSION = "HEAD"
-            if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
+            if os_unicode_fs.path.isdir(os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".git")):
                 try:
                     result = subprocess.run(
                         [
@@ -727,7 +715,7 @@ if installation.TYPE == installation.TYPES.SOURCE:
                         ],
                         capture_output=True,
                         cwd=PORTAGE_BASE_PATH,
-                        encoding=_encodings["stdio"],
+                        encoding="utf-8",
                     )
                     if result.returncode == 0:
                         # https://peps.python.org/pep-0440/

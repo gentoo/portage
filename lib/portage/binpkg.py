@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import tarfile
-from portage import os
+from portage import os_unicode_fs as os
 from portage.const import SUPPORTED_XPAK_EXTENSIONS, SUPPORTED_GPKG_EXTENSIONS
 from portage.exception import InvalidBinaryPackageFormat
 from portage.output import colorize

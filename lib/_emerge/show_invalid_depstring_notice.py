@@ -4,7 +4,7 @@
 import logging
 import textwrap
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.util import writemsg_level
 
 

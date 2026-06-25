@@ -10,7 +10,7 @@ from _emerge.ProgressHandler import ProgressHandler
 
 import portage
 from portage import eapi_is_supported
-from portage import os
+from portage import os_unicode_fs as os
 from portage.cache.cache_errors import CacheError
 from portage.eclass_cache import hashed_path
 from portage.util import writemsg_level

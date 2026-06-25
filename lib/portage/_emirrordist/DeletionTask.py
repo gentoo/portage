@@ -4,7 +4,7 @@
 import errno
 import logging
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.package.ebuild.fetch import ContentHashLayout
 from portage.util._async.FileCopier import FileCopier
 from _emerge.CompositeTask import CompositeTask

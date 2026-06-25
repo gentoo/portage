@@ -4,7 +4,7 @@
 __all__ = ("UseManager",)
 
 from _emerge.Package import Package
-from portage import os
+from portage import os_unicode_fs as os
 from portage.dep import (
     dep_getrepo,
     dep_getslot,

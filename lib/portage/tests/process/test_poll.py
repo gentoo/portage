@@ -9,7 +9,7 @@ import tempfile
 
 import pytest
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio

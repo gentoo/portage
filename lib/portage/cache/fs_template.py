@@ -4,7 +4,7 @@
 
 import os as _os
 from portage.cache import template
-from portage import os
+from portage import os_unicode_fs as os
 
 
 class FsBased(template.database):

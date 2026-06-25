@@ -5,8 +5,8 @@
 import tempfile
 
 import portage
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.const import PORTAGE_BIN_PATH
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase

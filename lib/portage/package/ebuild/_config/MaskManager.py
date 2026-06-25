@@ -5,7 +5,7 @@ __all__ = ("MaskManager",)
 
 import warnings
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.dep import ExtendedAtomDict, match_from_list
 from portage.localization import _
 from portage.repository.config import allow_profile_repo_deps

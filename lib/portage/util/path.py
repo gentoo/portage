@@ -3,7 +3,7 @@
 
 import errno
 
-from portage import os
+from portage import os_unicode_fs as os
 
 
 def first_existing(path):

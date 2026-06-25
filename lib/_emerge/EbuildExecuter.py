@@ -5,7 +5,7 @@ from _emerge.EbuildPhase import EbuildPhase
 from _emerge.TaskSequence import TaskSequence
 from _emerge.CompositeTask import CompositeTask
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.eapi import (
     eapi_has_src_prepare_and_src_configure,
     eapi_exports_replace_vars,

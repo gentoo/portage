@@ -4,8 +4,8 @@
 import tempfile
 
 import portage
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.dbapi.virtual import fakedbapi
 from portage.package.ebuild.config import config
 from portage.tests import TestCase

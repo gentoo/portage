@@ -3,7 +3,7 @@
 
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage import digraph
 from portage._sets.base import InternalPackageSet
 from portage.dep import Atom

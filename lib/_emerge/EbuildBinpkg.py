@@ -9,7 +9,7 @@ from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 
 
 class EbuildBinpkg(CompositeTask):

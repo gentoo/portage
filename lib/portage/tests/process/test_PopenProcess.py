@@ -4,7 +4,7 @@
 import subprocess
 import tempfile
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.tests import TestCase
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess

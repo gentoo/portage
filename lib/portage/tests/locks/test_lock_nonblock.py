@@ -7,8 +7,8 @@ import tempfile
 import traceback
 
 import portage
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs as os
+from portage import shutil_unicode_fs as shutil
 from portage.exception import TryAgain
 from portage.tests import TestCase
 

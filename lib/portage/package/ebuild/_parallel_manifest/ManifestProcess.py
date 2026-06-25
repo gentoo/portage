@@ -4,7 +4,7 @@
 import functools
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.exception import FileNotFound, PermissionDenied, PortagePackageException
 from portage.localization import _
 from portage.util._async.ForkProcess import ForkProcess

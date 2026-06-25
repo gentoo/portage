@@ -6,7 +6,7 @@ import asyncio
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.cache.cache_errors import CacheError
 from portage.dep import _repo_separator
 from portage.util._async.AsyncScheduler import AsyncScheduler

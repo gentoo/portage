@@ -5,7 +5,7 @@ import logging
 import textwrap
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.emaint.modules.logs.logs import CleanLogs
 from portage.news import count_unread_news, display_news_notifications
 from portage.output import colorize

@@ -5,7 +5,7 @@ import shlex
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 
 
 class MiscFunctionsProcess(AbstractEbuildProcess):

@@ -7,7 +7,7 @@ import time
 import threading
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.util._async.TaskScheduler import TaskScheduler
 from _emerge.CompositeTask import CompositeTask
 from .FetchIterator import FetchIterator

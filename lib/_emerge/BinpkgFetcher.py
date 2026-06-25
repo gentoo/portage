@@ -9,7 +9,7 @@ import shlex
 import stat
 import sys
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.binpkg import get_binpkg_format
 from portage.exception import FileNotFound
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture

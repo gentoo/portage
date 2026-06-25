@@ -8,7 +8,7 @@ import subprocess
 from _emerge.AsynchronousTask import AsynchronousTask
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.proxy.objectproxy import ObjectProxy
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess

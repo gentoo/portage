@@ -4,7 +4,7 @@
 import io
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.dep import Atom, _repo_name_re
 from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages

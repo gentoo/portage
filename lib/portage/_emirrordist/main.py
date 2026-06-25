@@ -6,7 +6,7 @@ import logging
 import sys
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.package.ebuild.fetch import ContentHashLayout
 from portage.util import normalize_path, _recursive_file_list
 from portage.util._async.run_main_scheduler import run_main_scheduler

@@ -3,7 +3,7 @@
 
 import functools
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.util._ctypes import load_libc
 from portage.util._async.ForkProcess import ForkProcess
 

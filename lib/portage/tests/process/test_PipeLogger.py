@@ -1,7 +1,7 @@
 # Copyright 2020-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs as os
 from portage.tests import TestCase
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util.futures import asyncio

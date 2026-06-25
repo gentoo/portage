@@ -6,7 +6,7 @@ import signal
 import sys
 import textwrap
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX

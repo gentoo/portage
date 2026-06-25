@@ -4,7 +4,7 @@
 from _emerge.Package import Package
 
 import portage
-from portage import os
+from portage import os_unicode_fs as os
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
