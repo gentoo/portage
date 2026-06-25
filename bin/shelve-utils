@@ -44,7 +44,7 @@ def main(argv=None):
     restore_command.add_argument("dest", help="output shelve file")
     restore_command.set_defaults(func=restore)
 
-    args = parser.parse_args(args=portage._decode_argv(argv or sys.argv)[1:])
+    args = parser.parse_args(args=(argv or sys.argv)[1:])
     args.func(args)
 
 

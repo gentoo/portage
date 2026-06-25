@@ -9,8 +9,8 @@ __all__ = [
     "load_default_config",
 ]
 
+import os
 import portage
-from portage import os_unicode_fs as os
 from portage import load_mod
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 from portage.const import VCS_DIRS
@@ -358,9 +358,6 @@ def load_default_config(settings, trees):
 
         dot = "."
         tilde = "~"
-        if not portage.utf8_mode:
-            dot = dot.encode("utf-8", "backslashreplace")
-            tilde = tilde.encode("utf-8", "backslashreplace")
 
         for sets_config_path in sets_config_paths:
             if os.path.isdir(sets_config_path):

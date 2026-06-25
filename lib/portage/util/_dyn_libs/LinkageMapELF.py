@@ -1,14 +1,13 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import collections
 import errno
 import itertools
 import logging
 import subprocess
 
-import portage
-from portage import os_unicode_merge as _os_merge
 from portage.cache.mappings import slot_dict_class
 from portage.const import EPREFIX
 from portage.dep.soname.multilib_category import compute_multilib_category
@@ -22,7 +21,6 @@ from portage.util import varexpand
 from portage.util import writemsg_level
 from portage.util._dyn_libs.NeededEntry import NeededEntry
 from portage.util.elf.header import ELFHeader
-
 
 # Map ELF e_machine values from NEEDED.ELF.2 to approximate multilib
 # categories. This approximation will produce incorrect results on x32
@@ -138,21 +136,6 @@ class LinkageMapELF:
 
             """
 
-            os = _os_merge
-
-            try:
-                obj.encode("utf-8", "strict")
-            except UnicodeEncodeError:
-                # The package appears to have been merged with a
-                # different value of sys.getfilesystemencoding(),
-                # so fall back to utf_8 if appropriate.
-                try:
-                    obj.encode("utf-8", "strict")
-                except UnicodeEncodeError:
-                    pass
-                else:
-                    os = portage.os_unicode_fs
-
             abs_path = os.path.join(root, obj.lstrip(os.sep))
             try:
                 object_stat = os.stat(abs_path)
@@ -213,7 +196,6 @@ class LinkageMapELF:
         @type preserve_paths: set
         """
 
-        os = _os_merge
         root = self._root
         root_len = len(root) - 1
         self._clear_cache()
@@ -280,9 +262,11 @@ class LinkageMapELF:
             else:
                 for l in proc.stdout:
                     try:
-                        if isinstance(l, bytes): l = l.decode("utf-8", "strict")
+                        if isinstance(l, bytes):
+                            l = l.decode("utf-8", "strict")
                     except UnicodeDecodeError:
-                        if isinstance(l, bytes): l = l.decode("utf-8", "replace")
+                        if isinstance(l, bytes):
+                            l = l.decode("utf-8", "replace")
                         writemsg_level(
                             _(
                                 "\nError decoding characters "
@@ -495,8 +479,6 @@ class LinkageMapELF:
 
         """
 
-        os = _os_merge
-
         class _LibraryCache:
             """
             Caches properties associated with paths.
@@ -694,7 +676,6 @@ class LinkageMapELF:
                 2. False if obj is not a master link
 
         """
-        os = _os_merge
         obj_key = self._obj_key(obj)
         if obj_key not in self._obj_properties:
             raise KeyError(f"{obj_key} ({obj}) not in object list")
@@ -798,8 +779,6 @@ class LinkageMapELF:
 
         """
 
-        os = _os_merge
-
         rValue = {}
 
         if not self._libs:
@@ -878,8 +857,6 @@ class LinkageMapELF:
         set-of-library-paths satisfy soname.
 
         """
-
-        os = _os_merge
 
         if not self._libs:
             self.rebuild()
