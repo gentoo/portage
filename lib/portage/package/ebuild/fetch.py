@@ -1813,8 +1813,16 @@ async def async_fetch(
                         if v is not None:
                             variables[k] = v
 
-                    myfetch = varexpand(locfetch, mydict=variables)
-                    myfetch = shlex.split(myfetch)
+                    fetch_wrapper = mysettings.get("FETCH_WRAPPER")
+                    if fetch_wrapper:
+                        wrapper_args = shlex.split(
+                            varexpand(fetch_wrapper, mydict=variables)
+                        )
+                        fetch_args = shlex.split(varexpand(locfetch, mydict=variables))
+                        myfetch = wrapper_args + [shlex.join(fetch_args)]
+                    else:
+                        myfetch = varexpand(locfetch, mydict=variables)
+                        myfetch = shlex.split(myfetch)
 
                     myret = -1
                     try:

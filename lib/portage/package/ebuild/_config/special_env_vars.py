@@ -287,6 +287,7 @@ environ_filter = frozenset(
         "EMERGE_DEFAULT_OPTS",
         "EMERGE_LOG_DIR",
         "EMERGE_WARNING_DELAY",
+        "FETCH_WRAPPER",
         "FETCHCOMMAND",
         "FETCHCOMMAND_FTP",
         "FETCHCOMMAND_HTTP",

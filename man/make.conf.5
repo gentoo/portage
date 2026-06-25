@@ -936,6 +936,27 @@ Placeholder	Meaning	Example
 .TE
 .RE
 .TP
+.B FETCH_WRAPPER
+An optional command prefix prepended to \fBFETCHCOMMAND\fR and
+\fBRESUMECOMMAND\fR at fetch time.  When set, the fetch command is
+expanded, each argument is individually shell\-quoted, and the result is
+passed as a single string argument to the wrapper.  This ensures that
+wrappers which re\-interpret arguments through a shell \(em most commonly
+\fBssh\fR(1), which concatenates post\-hostname arguments into a remote
+command string \(em receive a properly quoted command.
+.RS
+.PP
+Without \fBFETCH_WRAPPER\fR, an ssh\-based \fBFETCHCOMMAND\fR breaks when
+the command contains shell metacharacters such as the parentheses in the
+default user\-agent string.  Setting \fBFETCH_WRAPPER\fR avoids this and
+allows \fBFETCHCOMMAND\fR and \fBRESUMECOMMAND\fR to remain at their
+\fImake.globals\fR defaults.
+.PP
+.nf
+FETCH_WRAPPER="ssh \-i ~/.ssh/id_ed25519 user@host"
+.fi
+.RE
+.TP
 .B FFLAGS FCFLAGS
 Use these variables to set the desired optimization/CPU instruction settings
 for applications that you compile with a FORTRAN compiler. FFLAGS is usually
@@ -1434,6 +1455,7 @@ have been partially downloaded.  It should be defined using the same format
 as \fBFETCHCOMMAND\fR, and must include any additional option(s) that may
 be necessary in order to continue a partially downloaded file located at
 \\${DISTDIR}/\\${FILE}.
+Also see \fBFETCH_WRAPPER\fR.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging
