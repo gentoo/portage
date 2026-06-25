@@ -81,11 +81,7 @@ def encodeint(myint):
     a.append((myint >> 16) & 0xFF)
     a.append((myint >> 8) & 0xFF)
     a.append(myint & 0xFF)
-    try:
-        # Python >= 3.2
-        return a.tobytes()
-    except AttributeError:
-        return a.tostring()
+    return a.tobytes()
 
 
 def decodeint(mystring):

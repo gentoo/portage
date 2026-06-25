@@ -32,11 +32,7 @@ class ArrayFromfileEofTestCase(TestCase):
             if not a:
                 eof = True
             else:
-                try:
-                    # Python >=3.2
-                    data.append(a.tobytes())
-                except AttributeError:
-                    data.append(a.tostring())
+                data.append(a.tobytes())
 
         f.close()
 
