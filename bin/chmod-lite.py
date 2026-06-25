@@ -2,8 +2,17 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import locale
 import os
 import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
 
 from portage.util import apply_recursive_permissions
 

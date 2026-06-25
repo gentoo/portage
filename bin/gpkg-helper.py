@@ -2,8 +2,19 @@
 # Copyright 2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import argparse
+import locale
+import os
 import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
+import argparse
 import portage
 
 portage._internal_caller = True

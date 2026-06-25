@@ -5,7 +5,18 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+import locale
 import os
+import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 import signal
 
 
@@ -33,7 +44,6 @@ try:
     import errno
     import logging
     import pickle
-    import sys
     import time
 
     if os.path.isfile(
@@ -245,7 +255,7 @@ try:
                     )
 
                 else:
-                    (out, err, retval) = reply
+                    out, err, retval = reply
 
                     if out:
                         portage.util.writemsg_stdout(out, noiselevel=-1)

@@ -265,6 +265,7 @@ environ_filter = frozenset(
         # misc variables inherited from the calling environment
         "INFOPATH",
         "MANPATH",
+        "PYTHONUTF8",
         "USER",
         # variables that break bash
         "GLOBSORT",

@@ -2,7 +2,18 @@
 # Copyright 2009-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import locale
 import os
+import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 import signal
 
 
@@ -30,7 +41,6 @@ try:
     import argparse
     import shlex
     import stat
-    import sys
     import functools
     import logging
     import subprocess
@@ -748,16 +758,12 @@ try:
                         output.write(line)
                 output.write("\n")
             else:
-                output.write(
-                    textwrap.dedent(
-                        """\
+                output.write(textwrap.dedent("""\
                     # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
                     # your descriptions to your package's metadata.xml ONLY.
                     # * generated automatically using egencache *
 
-                    """
-                    )
-                )
+                    """))
 
             # The cmp function no longer exists in python3, so we'll
             # implement our own here under a slightly different name
@@ -944,16 +950,12 @@ try:
                 self.returncode |= 2
                 return
 
-            output.write(
-                textwrap.dedent(
-                    f"""\
+            output.write(textwrap.dedent(f"""\
                 # ChangeLog for {cp}
                 # Copyright 1999-{time.strftime("%Y")} Gentoo Foundation; Distributed under the GPL v2
                 # (auto-generated from git log)
 
-                """
-                )
-            )
+                """))
 
             # now grab all the commits
             revlist_cmd = ["git", self._work_tree, "rev-list"]
@@ -1031,7 +1033,7 @@ try:
                 if not changed:
                     continue
 
-                (ts, author) = cinfo[0].split(" ", 1)
+                ts, author = cinfo[0].split(" ", 1)
                 date = time.strftime("%d %b %Y", time.gmtime(float(ts)))
 
                 changed = [str(x) for x in sorted(changed)]

@@ -2,6 +2,18 @@
 # Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import locale
+import os
+import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 doc = """Dump and restore extended attributes.
 
 We use formats like that used by getfattr --dump.  This is meant for shell
@@ -15,12 +27,9 @@ __doc__ = doc
 
 import argparse
 import array
-import os
 import re
-import sys
 
 from portage.util._xattr import xattr
-
 
 _UNQUOTE_RE = re.compile(rb"\\[0-7]{3}")
 _FS_ENCODING = sys.getfilesystemencoding()

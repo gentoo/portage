@@ -3,12 +3,22 @@
 # Copyright 2015-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import locale
+import os
+import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 import asyncio
 import errno
-import os
 import socket
 import struct
-import sys
 
 if hasattr(asyncio, "ensure_future"):
     # Python >=3.4.4.

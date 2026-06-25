@@ -2,6 +2,18 @@
 # Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import locale
+import os
+import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 #
 # Typical usage:
 # dohtml -r docs/*
@@ -29,7 +41,6 @@
 #
 
 import os as _os
-import sys
 
 from portage import _unicode_encode, _unicode_decode, os, shutil
 from portage.util import normalize_path, writemsg
@@ -243,7 +254,7 @@ def parse_args():
 
 
 def main():
-    (options, args) = parse_args()
+    options, args = parse_args()
 
     if options.verbose:
         print("Allowed extensions:", options.allowed_exts)

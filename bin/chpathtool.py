@@ -2,15 +2,25 @@
 # Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import locale
+import os
+import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 doc = """Helper tool for converting installed files to custom prefixes.
 
 In other words, eprefixy ${D} for Gentoo/Prefix."""
 __doc__ = doc
 
 import argparse
-import os
 import stat
-import sys
 
 CONTENT_ENCODING = "utf_8"
 FS_ENCODING = "utf_8"

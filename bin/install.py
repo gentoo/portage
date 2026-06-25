@@ -2,11 +2,21 @@
 # Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import argparse
+import locale
 import os
+import sys
+
+if (
+    sys.getfilesystemencoding().lower() != "utf-8"
+    or locale.getpreferredencoding(False).lower() != "utf-8"
+):
+    os.environ["PYTHONUTF8"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
+import argparse
 import shlex
 import stat
-import sys
 import subprocess
 import traceback
 
@@ -62,7 +72,7 @@ def parse_args(args):
     # for known options in order for argparse to correctly
     # separate option arguments from file arguments in all
     # cases (it also allows for optparse compatibility).
-    (opts, args) = parser.parse_known_args(args)
+    opts, args = parser.parse_known_args(args)
 
     files = []
     i = 0
