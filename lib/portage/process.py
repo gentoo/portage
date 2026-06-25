@@ -43,16 +43,8 @@ try:
 except ImportError:
     max_fd_limit = 256
 
-# Support PEP 446 for Python >=3.4
-try:
-    _set_inheritable = os.set_inheritable
-except AttributeError:
-    _set_inheritable = None
-
-try:
-    _FD_CLOEXEC = fcntl.FD_CLOEXEC
-except AttributeError:
-    _FD_CLOEXEC = None
+_set_inheritable = os.set_inheritable
+_FD_CLOEXEC = fcntl.FD_CLOEXEC
 
 # Prefer /proc/self/fd if available (/dev/fd
 # doesn't work on solaris, see bug #474536).
@@ -111,21 +103,20 @@ def sanitize_fds():
     ensures that any unintentionally inherited file descriptors will
     not be inherited by child processes.
     """
-    if _set_inheritable is not None:
-        whitelist = frozenset(
-            [
-                portage._get_stdin().fileno(),
-                sys.__stdout__.fileno(),
-                sys.__stderr__.fileno(),
-            ]
-        )
+    whitelist = frozenset(
+        [
+            portage._get_stdin().fileno(),
+            sys.__stdout__.fileno(),
+            sys.__stderr__.fileno(),
+        ]
+    )
 
-        for fd in get_open_fds():
-            if fd not in whitelist:
-                try:
-                    _set_inheritable(fd, False)
-                except OSError:
-                    pass
+    for fd in get_open_fds():
+        if fd not in whitelist:
+            try:
+                _set_inheritable(fd, False)
+            except OSError:
+                pass
 
 
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
@@ -1427,27 +1418,21 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 
             if oldfd != newfd:
                 os.dup2(oldfd, newfd)
-                if _set_inheritable is not None:
-                    # Don't do this unless _set_inheritable is available,
-                    # since it's used below to ensure correct state, and
-                    # otherwise /dev/null stdin fails to inherit (at least
-                    # with Python versions from 3.1 to 3.3).
-                    if old_fdflags is None:
-                        old_fdflags = fcntl.fcntl(oldfd, fcntl.F_GETFD)
-                    fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
+                if old_fdflags is None:
+                    old_fdflags = fcntl.fcntl(oldfd, fcntl.F_GETFD)
+                fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
 
-            if _set_inheritable is not None:
-                inheritable_state = None
-                if not (old_fdflags is None or _FD_CLOEXEC is None):
-                    inheritable_state = not bool(old_fdflags & _FD_CLOEXEC)
+            inheritable_state = None
+            if old_fdflags is not None:
+                inheritable_state = not bool(old_fdflags & _FD_CLOEXEC)
 
-                if inheritable is not None:
-                    if inheritable_state is not inheritable:
-                        _set_inheritable(newfd, inheritable)
+            if inheritable is not None:
+                if inheritable_state is not inheritable:
+                    _set_inheritable(newfd, inheritable)
 
-                elif newfd in (0, 1, 2):
-                    if inheritable_state is not True:
-                        _set_inheritable(newfd, True)
+            elif newfd in (0, 1, 2):
+                if inheritable_state is not True:
+                    _set_inheritable(newfd, True)
 
         if oldfd not in fd_pipes:
             # If oldfd is not a key in fd_pipes, then it's safe
