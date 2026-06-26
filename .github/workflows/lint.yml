@@ -5,6 +5,7 @@ on: [ push, pull_request ]
 jobs:
   black:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: "Collect stragglers that Black misses"
@@ -19,6 +20,7 @@ jobs:
 
   pylint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     strategy:
       matrix:
         python-version:
