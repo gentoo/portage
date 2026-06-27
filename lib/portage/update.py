@@ -1,7 +1,6 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import errno
 import re
 import stat
 import sys
@@ -10,8 +9,9 @@ import warnings
 import os
 from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.eapi import _get_eapi_attrs
-from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
+from portage.exception import InvalidAtom, PortageException
 from portage.localization import _
+from portage.util.listdir import listdir
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -161,12 +161,7 @@ def grab_updates(updpath, prev_mtimes=None):
     the source package of a move that comes somewhere later in the entire
     sequence of files.
     """
-    try:
-        mylist = os.listdir(updpath)
-    except OSError as oe:
-        if oe.errno == errno.ENOENT:
-            raise DirectoryNotFound(updpath)
-        raise
+    mylist = listdir(updpath)
     if prev_mtimes is None:
         prev_mtimes = {}
 
