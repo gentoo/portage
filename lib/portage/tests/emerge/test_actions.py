@@ -1,9 +1,10 @@
-# Copyright 2022 Gentoo Authors
+# Copyright 2022-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from unittest.mock import MagicMock, patch
 
 from _emerge.actions import get_libc_version, run_action
+from _emerge.create_world_atom import create_world_atom
 
 from portage.const import LIBC_PACKAGE_ATOM
 from portage.dbapi.virtual import fakedbapi
@@ -49,6 +50,43 @@ class RunActionTestCase(TestCase):
         bt.populate.assert_called_once_with(
             getbinpkgs=False, getbinpkg_refresh=True, pretend=False, verbose=False
         )
+
+    def testCreateWorldAtomSlottedWithRepo(self):
+        pkg = MagicMock()
+        pkg.slot_atom = Atom("dev-libs/foo:1")
+        pkg.slot = "1"
+
+        arg_atom = Atom("=dev-libs/foo-1::gentoo", allow_repo=True)
+
+        args_set = MagicMock()
+        args_set.findAtomForPackage.return_value = arg_atom
+
+        portdb = MagicMock()
+        portdb.porttrees = ["/usr/portage"]
+        portdb.repositories.get_name_for_location.return_value = "gentoo"
+        portdb.match.side_effect = lambda a: (
+            ["dev-libs/foo-1"] if str(a) == "dev-libs/foo" else ["dev-libs/foo-1:1"]
+        )
+        slot_pkg_str = MagicMock()
+        slot_pkg_str.slot = "1"
+        portdb._pkg_str.return_value = slot_pkg_str
+
+        vardb = MagicMock()
+        vardb.match.return_value = ["dev-libs/foo-1"]
+
+        root_config = MagicMock()
+        root_config.trees = {
+            "porttree": MagicMock(dbapi=portdb),
+            "vartree": MagicMock(dbapi=vardb),
+        }
+        root_config.sets["selected"].findAtomForPackage.return_value = None
+        root_config.sets["system"].findAtomForPackage.return_value = None
+
+        result = create_world_atom(pkg, args_set, root_config, before_install=True)
+
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, str)
+        self.assertIn("::gentoo", result)
 
     def testGetSystemLibc(self):
         """
