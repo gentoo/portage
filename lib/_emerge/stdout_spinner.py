@@ -87,15 +87,6 @@ class stdout_spinner:
     def stop(self):
         self.driver.stop()
 
-    def cancel(self):
-        # Stop the spinner without printing a completion message.
-        self.stop()
-        if self.update in (self.update_twirl, self.update_scroll):
-            sys.stdout.write("\r\x1b[K")
-            sys.stdout.flush()
-            self.show_cursor()
-        self.update = self.update_quiet
-
     def _frame_index(self):
         return int((time.monotonic() - self.start_time) / self.min_display_latency)
 

@@ -24,9 +24,6 @@ Bug fixes:
 * emerge: Advance the dependency-calculation spinner smoothly during lengthy
   resolver operations (bug #649442).
 
-* emerge: Cancel the dependency-calculation spinner before printing diagnostics,
-  avoiding interleaved output (bug #831467).
-
 Cleanups:
 
 * emerge: Make --nospinner suppress spinner output entirely, instead of printing
