@@ -4,7 +4,6 @@
 from functools import partial
 import shlex
 import shutil
-import stat
 import subprocess
 import sys
 import time
@@ -130,16 +129,17 @@ src_install() {
         config_protect = "/etc"
 
         def modify_files(dir_path):
-            for name in os.listdir(dir_path):
-                path = os.path.join(dir_path, name)
-                st = os.lstat(path)
-                if stat.S_ISREG(st.st_mode):
-                    with open(path, mode="a", encoding="utf-8") as f:
-                        f.write("modified at %d\n" % time.time())
-                elif stat.S_ISLNK(st.st_mode):
-                    old_dest = os.readlink(path)
-                    os.unlink(path)
-                    os.symlink(old_dest + " modified at %d" % time.time(), path)
+            with os.scandir(dir_path) as it:
+                for entry in it:
+                    if entry.is_file(follow_symlinks=False):
+                        with open(entry.path, mode="a", encoding="utf-8") as f:
+                            f.write("modified at %d\n" % time.time())
+                    elif entry.is_symlink():
+                        old_dest = os.readlink(entry.path)
+                        os.unlink(entry.path)
+                        os.symlink(
+                            old_dest + " modified at %d" % time.time(), entry.path
+                        )
 
         def updated_config_files(count):
             self.assertEqual(
