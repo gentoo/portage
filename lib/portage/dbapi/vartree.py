@@ -6432,8 +6432,9 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                 path_bytes = path
 
                 if xattrs:
-                    # Compatible with GNU tar, which saves the xattrs
-                    # under the SCHILY.xattr namespace.
+                    # Compatible with GNU tar, which saves the xattrs under the
+                    # SCHILY.xattr namespace. The "surrogateescape" argument
+                    # ensures that the xattr value round-trips correctly.
                     for k in xattr.list(path_bytes):
                         tarinfo.pax_headers[
                             "SCHILY.xattr."
@@ -6444,7 +6445,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                             )
                         ] = xattr.get(
                             path_bytes, k.encode("utf-8", "backslashreplace")
-                        ).decode()
+                        ).decode("utf-8", "surrogateescape")
 
                 with open(path_bytes, "rb") as f:
                     tar.addfile(tarinfo, f)

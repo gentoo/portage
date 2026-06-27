@@ -18,6 +18,9 @@ Bug fixes:
 * env_update: Consider ld.so.conf includes too, so as to call ldconfig
   in more cases (bug #961463).
 
+* Fix xpak binary package creation for files with non-UTF-8 xattr values.
+  Previously, the process could abort or silently corrupt those values.
+
 portage-3.0.81 (2026-06-23)
 --------------
 
