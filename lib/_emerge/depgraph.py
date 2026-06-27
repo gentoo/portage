@@ -11135,7 +11135,7 @@ class depgraph:
 
             if not skip:
                 for a in all_added:
-                    if a.startswith(SETPREFIX):
+                    if isinstance(a, str) and a.startswith(SETPREFIX):
                         filename = "world_sets"
                     else:
                         filename = "world"
