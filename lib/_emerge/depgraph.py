@@ -5138,7 +5138,6 @@ class depgraph:
                         expanded_atoms = [candidate]
 
                 if len(expanded_atoms) > 1:
-                    writemsg("\n\n", noiselevel=-1)
                     ambiguous_package_name(
                         x,
                         expanded_atoms,
@@ -6524,6 +6523,12 @@ class depgraph:
                 raise self._autounmask_breakage()
             else:
                 return
+
+        # Dependency resolution has failed, and diagnostics are about to be
+        # printed. Cancel the spinner first, lest its animation thread
+        # interleave with them (bug 831467).
+        if self._frozen_config.spinner is not None:
+            self._frozen_config.spinner.cancel()
 
         missing_use_reasons = []
         missing_iuse_reasons = []
@@ -11784,6 +11789,13 @@ class _dep_check_composite_db(dbapi):
 
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
+    if spinner is not None:
+        # Cancel the spinner before printing search results, lest its animation
+        # thread interleave with them (bug 831467).
+        spinner.cancel()
+
+    writemsg("\n\n", noiselevel=-1)
+
     if "--quiet" in myopts:
         writemsg(
             f'!!! The short ebuild name "{arg}" is ambiguous. Please specify\n',
