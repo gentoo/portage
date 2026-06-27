@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import re
+import stat
 import sys
 import warnings
 
@@ -10,6 +11,7 @@ from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, PortageException
 from portage.localization import _
+from portage.util.listdir import listdir
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -159,27 +161,27 @@ def grab_updates(updpath, prev_mtimes=None):
     the source package of a move that comes somewhere later in the entire
     sequence of files.
     """
+    mylist = listdir(updpath)
     if prev_mtimes is None:
         prev_mtimes = {}
 
     update_data = []
-    with os.scandir(updpath) as mylist:
-        for myfile in mylist:
-            if myfile.name.startswith("."):
-                continue
-            if not myfile.is_file():
-                continue
-
-            mystat = myfile.stat()
-            if int(prev_mtimes.get(myfile.path, -1)) != mystat.st_mtime:
-                f = open(
-                    myfile.path,
-                    encoding="utf-8",
-                    errors="replace",
-                )
-                content = f.read()
-                f.close()
-                update_data.append((myfile.path, mystat, content))
+    for myfile in mylist:
+        if myfile.startswith("."):
+            continue
+        file_path = os.path.join(updpath, myfile)
+        mystat = os.stat(file_path)
+        if not stat.S_ISREG(mystat.st_mode):
+            continue
+        if int(prev_mtimes.get(file_path, -1)) != mystat[stat.ST_MTIME]:
+            f = open(
+                file_path,
+                encoding="utf-8",
+                errors="replace",
+            )
+            content = f.read()
+            f.close()
+            update_data.append((file_path, mystat, content))
     return update_data
 
 
