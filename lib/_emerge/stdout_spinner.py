@@ -94,6 +94,9 @@ class stdout_spinner:
             sys.stdout.write("\r\x1b[K")
             sys.stdout.flush()
             self.show_cursor()
+        elif self.update == self.update_static:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
         self.update = self.update_quiet
 
     def _frame_index(self):

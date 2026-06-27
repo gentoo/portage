@@ -11794,9 +11794,8 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
         # thread interleave with them (bug 831467).
         spinner.cancel()
 
-    writemsg("\n\n", noiselevel=-1)
-
     if "--quiet" in myopts:
+        writemsg("\n\n", noiselevel=-1)
         writemsg(
             f'!!! The short ebuild name "{arg}" is ambiguous. Please specify\n',
             noiselevel=-1,
