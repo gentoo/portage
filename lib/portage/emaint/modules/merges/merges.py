@@ -105,19 +105,20 @@ class MergesHandler:
         @return: dictionary of packages that failed to merges
         """
         failed_pkgs = {}
-        for cat in os.listdir(self._vardb_path):
-            pkgs_path = os.path.join(self._vardb_path, cat)
-            if not os.path.isdir(pkgs_path):
-                continue
-            pkgs = os.listdir(pkgs_path)
-            maxval = len(pkgs)
-            for i, pkg in enumerate(pkgs):
-                if onProgress:
-                    onProgress(maxval, i + 1)
-                if MERGING_IDENTIFIER in pkg:
-                    mtime = int(os.stat(os.path.join(pkgs_path, pkg)).st_mtime)
-                    pkg = os.path.join(cat, pkg)
-                    failed_pkgs[pkg] = mtime
+        with os.scandir(self._vardb_path) as it:
+            for cat in it:
+                if not cat.is_dir():
+                    continue
+                pkgs_path = cat
+                pkgs = os.listdir(pkgs_path)
+                maxval = len(pkgs)
+                for i, pkg in enumerate(pkgs):
+                    if onProgress:
+                        onProgress(maxval, i + 1)
+                    if MERGING_IDENTIFIER in pkg:
+                        mtime = int(os.stat(os.path.join(pkgs_path, pkg)).st_mtime)
+                        pkg = os.path.join(cat, pkg)
+                        failed_pkgs[pkg] = mtime
         return failed_pkgs
 
     def _failed_pkgs(self, onProgress=None):
