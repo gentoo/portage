@@ -103,12 +103,12 @@ class stdout_spinner:
         # No animation required. This is used when --nospinner is specified,
         # TERM has a value of "dumb", or sys.stdout.isatty() is false. Kept
         # distinct from update_quiet(), which suppresses the notice altogether.
-        pass
+        return True
 
     def update_scroll(self):
         frame = self._frame_index()
         if frame == self.last_frame:
-            return
+            return True
         seq_len = len(self.scroll_sequence)
         cycle_len = 2 * seq_len
         pos = frame % cycle_len
@@ -120,19 +120,21 @@ class stdout_spinner:
         sys.stdout.write(f"\r{self.scroll_prefix}{' ' * pos}{char}\x1b[K")
         self.last_frame = frame
         sys.stdout.flush()
+        return True
 
     def update_twirl(self):
         frame = self._frame_index()
         if frame == self.last_frame:
-            return
+            return True
         if self.last_frame >= 0:
             sys.stdout.write("\b")
         self.last_frame = frame
         sys.stdout.write(self.twirl_sequence[frame % len(self.twirl_sequence)])
         sys.stdout.flush()
+        return True
 
     def update_quiet(self):
-        pass
+        return True
 
     def hide_cursor(self):
         if self.update in (self.update_twirl, self.update_scroll):
