@@ -504,7 +504,9 @@ def action_build(
                         x
                         for x in favorites
                         if not (
-                            x.startswith(SETPREFIX) and not sets[x[1:]].world_candidate
+                            isinstance(x, str)
+                            and x.startswith(SETPREFIX)
+                            and not sets[x[1:]].world_candidate
                         )
                     ]
 
