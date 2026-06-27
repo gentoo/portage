@@ -751,15 +751,17 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 
 def hardlock_cleanup(path, remove_all_locks=False):
     myhost = os.uname()[1]
-    mydl = os.listdir(path)
 
     results = []
     mycount = 0
 
     mylist = {}
-    for x in mydl:
-        if os.path.isfile(path + "/" + x):
-            parts = x.split(".hardlock-")
+    with os.scandir(path) as mydl:
+        for x in mydl:
+            if not x.is_file():
+                continue
+
+            parts = x.name.split(".hardlock-")
             if len(parts) == 2:
                 filename = parts[0][1:]
                 hostpid = parts[1].split("-")
@@ -774,7 +776,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 
                 mycount += 1
 
-    results.append(_("Found %(count)s locks") % {"count": mycount})
+        results.append(_("Found %(count)s locks") % {"count": mycount})
 
     for x in mylist:
         if myhost in mylist[x] or remove_all_locks:
