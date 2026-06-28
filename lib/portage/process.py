@@ -292,8 +292,11 @@ _atexit_register_run_exitfuncs()
 
 class _dummy_list(list):
     def remove(self, item):
-        # TODO: Trigger a DeprecationWarning here, after stable portage
-        # has dummy spawned_pids.
+        warnings.warn(
+            "_dummy_list.remove() is no longer necessary for spawned_pids; drop the call",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
             list.remove(self, item)
         except ValueError:
