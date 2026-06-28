@@ -216,14 +216,6 @@ def _unicode_decode(s, encoding=_encodings["content"], errors="replace"):
 _native_string = _unicode_decode
 
 
-def _decode_argv(argv):
-    # With Python 3, the surrogateescape encoding error handler makes it
-    # possible to access the original argv bytes, which can be useful
-    # if their actual encoding does no match the filesystem encoding.
-    fs_encoding = sys.getfilesystemencoding()
-    return [x.encode(fs_encoding, "surrogateescape").decode() for x in argv]
-
-
 try:
     __import__("selinux")
     import portage._selinux
