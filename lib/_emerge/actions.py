@@ -2174,33 +2174,30 @@ def action_info(settings, trees, myopts, myfiles):
         sets_line += ", ".join(installed_sets)
         append(sets_line)
 
-    if "--verbose" in myopts:
-        myvars = list(settings)
-    else:
-        myvars = [
-            "GENTOO_MIRRORS",
-            "CONFIG_PROTECT",
-            "CONFIG_PROTECT_MASK",
-            "DISTDIR",
-            "ENV_UNSET",
-            "PKGDIR",
-            "PORTAGE_TMPDIR",
-            "PORTAGE_BINHOST",
-            "PORTAGE_BUNZIP2_COMMAND",
-            "PORTAGE_BZIP2_COMMAND",
-            "USE",
-            "CHOST",
-            "CFLAGS",
-            "CXXFLAGS",
-            "ACCEPT_KEYWORDS",
-            "ACCEPT_LICENSE",
-            "FEATURES",
-            "EMERGE_DEFAULT_OPTS",
-        ]
+    myvars = [
+        "GENTOO_MIRRORS",
+        "CONFIG_PROTECT",
+        "CONFIG_PROTECT_MASK",
+        "DISTDIR",
+        "ENV_UNSET",
+        "PKGDIR",
+        "PORTAGE_TMPDIR",
+        "PORTAGE_BINHOST",
+        "PORTAGE_BUNZIP2_COMMAND",
+        "PORTAGE_BZIP2_COMMAND",
+        "USE",
+        "CHOST",
+        "CFLAGS",
+        "CXXFLAGS",
+        "ACCEPT_KEYWORDS",
+        "ACCEPT_LICENSE",
+        "FEATURES",
+        "EMERGE_DEFAULT_OPTS",
+    ]
 
-        myvars.extend(
-            portage.util.grabfile(settings["PORTDIR"] + "/profiles/info_vars")
-        )
+    myvars.extend(
+        portage.util.grabfile(settings["PORTDIR"] + "/profiles/info_vars")
+    )
 
     myvars_ignore_defaults = {
         "PORTAGE_BZIP2_COMMAND": "bzip2",
