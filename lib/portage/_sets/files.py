@@ -112,7 +112,7 @@ class StaticFileSet(EditablePackageSet):
             self._mtime = mtime
 
     def singleBuilder(self, options, settings, trees):
-        if not "filename" in options:
+        if "filename" not in options:
             raise SetConfigError(_("no filename specified"))
         greedy = get_boolean(options, "greedy", False)
         filename = options["filename"]
@@ -139,7 +139,7 @@ class StaticFileSet(EditablePackageSet):
             os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets"),
         )
         name_pattern = options.get("name_pattern", "${name}")
-        if not "$name" in name_pattern and not "${name}" in name_pattern:
+        if "$name" not in name_pattern and "${name}" not in name_pattern:
             raise SetConfigError(_("name_pattern doesn't include ${name} placeholder"))
         greedy = get_boolean(options, "greedy", False)
         # look for repository path variables
@@ -213,7 +213,7 @@ class ConfigFileSet(PackageSet):
         self._setAtoms(iter(data))
 
     def singleBuilder(self, options, settings, trees):
-        if not "filename" in options:
+        if "filename" not in options:
             raise SetConfigError(_("no filename specified"))
         return ConfigFileSet(options["filename"])
 
@@ -225,7 +225,7 @@ class ConfigFileSet(PackageSet):
             "directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
         )
         name_pattern = options.get("name_pattern", "sets/package_$suffix")
-        if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
+        if "$suffix" not in name_pattern and "${suffix}" not in name_pattern:
             raise SetConfigError(_("name_pattern doesn't include $suffix placeholder"))
         for suffix in ["keywords", "use", "mask", "unmask"]:
             myname = name_pattern.replace("$suffix", suffix)

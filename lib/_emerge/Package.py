@@ -630,7 +630,7 @@ class Package(Task):
         # specifying FEATURES="-buildpkg-live"
         features = self._get_pkgsettings().features
         return (
-            ("buildpkg-live" in features or not "live" in self.properties)
+            ("buildpkg-live" in features or "live" not in self.properties)
             and not exclude.findAtomForPackage(self)
             and ("buildpkg" in features or self.syspkg_wanted())
         )

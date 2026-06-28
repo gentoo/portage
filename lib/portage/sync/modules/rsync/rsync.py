@@ -199,7 +199,7 @@ class RsyncSync(NewBase):
 
             try:
                 maxretries = int(self.settings["PORTAGE_RSYNC_RETRIES"])
-            except SystemExit as e:
+            except SystemExit:
                 raise  # Needed else can't exit
             except:
                 maxretries = -1  # default number of retries

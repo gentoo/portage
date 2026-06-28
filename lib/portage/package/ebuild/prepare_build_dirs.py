@@ -341,7 +341,7 @@ def _prepare_workdir(mysettings):
             raise ValueError(f"Invalid file mode: {mode}")
         else:
             workdir_mode = parsed_mode
-    except KeyError as e:
+    except KeyError:
         writemsg(
             _("!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n") % oct(workdir_mode)
         )

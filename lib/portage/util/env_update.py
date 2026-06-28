@@ -170,7 +170,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         for myconfig in config_list:
             if var in myconfig:
                 for item in myconfig[var].split():
-                    if item and not item in mylist:
+                    if item and item not in mylist:
                         mylist.append(item)
                 del myconfig[var]  # prepare for env.update(myconfig)
         if mylist:
@@ -182,7 +182,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         for myconfig in config_list:
             if var in myconfig:
                 for item in myconfig[var].split(":"):
-                    if item and not item in mylist:
+                    if item and item not in mylist:
                         mylist.append(item)
                 del myconfig[var]  # prepare for env.update(myconfig)
         if mylist:

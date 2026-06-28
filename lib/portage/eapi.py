@@ -223,7 +223,7 @@ class Eapi:
 
     def __init__(self, eapi_string: str):
         eapi_key = eapi_string.partition("-")[0]
-        if not eapi_key in self.ALL_EAPIS:
+        if eapi_key not in self.ALL_EAPIS:
             raise ValueError(f"'{eapi_string}' not recognized as a valid EAPI")
 
         self._eapi_val = int(eapi_key)

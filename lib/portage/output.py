@@ -208,7 +208,7 @@ def _parse_color_map(config_root="/", onerror=None):
 
             k = strip_quotes(split_line[0].strip())
             v = strip_quotes(split_line[1].strip())
-            if not k in _styles and not k in codes:
+            if k not in _styles and k not in codes:
                 e = ParseError(
                     _("'%s', line %s: Unknown variable: '%s'") % (myfile, lineno, k)
                 )

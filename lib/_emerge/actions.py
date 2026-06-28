@@ -3764,7 +3764,7 @@ def run_action(emerge_config):
     for fmt in emerge_config.target_config.settings.get(
         "PORTAGE_BINPKG_FORMAT", ""
     ).split():
-        if not fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
+        if fmt not in portage.const.SUPPORTED_BINPKG_FORMATS:
             if "--pkg-format" in emerge_config.opts:
                 problematic = "--pkg-format"
             else:
@@ -3914,7 +3914,7 @@ def run_action(emerge_config):
         if "python-trace" in emerge_config.target_config.settings.features:
             portage.debug.set_trace(True)
 
-    if not "--quiet" in emerge_config.opts:
+    if "--quiet" not in emerge_config.opts:
         if (
             "--nospinner" in emerge_config.opts
             or emerge_config.target_config.settings.get("TERM") == "dumb"
@@ -4051,7 +4051,7 @@ def run_action(emerge_config):
             _emerge.emergelog._emerge_log_dir = default_log_dir
             portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 
-    if not "--pretend" in emerge_config.opts:
+    if "--pretend" not in emerge_config.opts:
         time_fmt = "%b %d, %Y %H:%M:%S"
         time_str = time.strftime(time_fmt, time.localtime(time.time()))
         # Avoid potential UnicodeDecodeError in Python 2, since strftime

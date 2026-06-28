@@ -919,7 +919,7 @@ class ResolverPlaygroundTestCase:
     def compare_with_result(self, result):
         checks = dict.fromkeys(result.checks)
         for key, value in self._checks.items():
-            if not key in checks:
+            if key not in checks:
                 raise KeyError(f"Not an available check: '{key}'")
             checks[key] = value
 

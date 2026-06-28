@@ -29,7 +29,7 @@ def _combine_logentries(logentries):
     # generate a single string with all log messages
     rValue = []
     for phase in EBUILD_PHASES:
-        if not phase in logentries:
+        if phase not in logentries:
             continue
         previous_type = None
         for msgtype, msgcontent in logentries[phase]:
@@ -135,7 +135,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 
         # in case the filters matched all messages and no module overrides exist
         if len(default_logentries) == 0 and (
-            not ":" in mysettings.get("PORTAGE_ELOG_SYSTEM", "")
+            ":" not in mysettings.get("PORTAGE_ELOG_SYSTEM", "")
         ):
             continue
 
@@ -167,7 +167,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
                     m.process(mysettings, str(key), mod_logentries, mod_fulllog)
                 finally:
                     AlarmSignal.unregister()
-                if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
+                if hasattr(m, "finalize") and m.finalize not in _elog_atexit_handlers:
                     _elog_atexit_handlers.append(m.finalize)
                     atexit_register(m.finalize)
             except (ImportError, AttributeError) as e:

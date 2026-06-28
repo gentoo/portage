@@ -922,7 +922,7 @@ class config:
 
                 # package.bashrc
                 for profile in profiles_complex:
-                    if not "profile-bashrcs" in profile.profile_formats:
+                    if "profile-bashrcs" not in profile.profile_formats:
                         continue
                     self._pbashrcdict[profile] = portage.dep.ExtendedAtomDict(dict)
                     bashrc = grabdict_package(
@@ -2120,7 +2120,7 @@ class config:
                 allow_test = self.get("ALLOW_TEST", "").split()
                 restrict_test = (
                     "test" in restrict
-                    and not "all" in allow_test
+                    and "all" not in allow_test
                     and not ("test_network" in properties and "network" in allow_test)
                     and not (
                         "test_privileged" in properties and "privileged" in allow_test

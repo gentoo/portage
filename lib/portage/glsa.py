@@ -150,7 +150,7 @@ def getListElements(listnode):
     @rtype:		List of Strings
     @return:	a list that contains the value of the <li> elements
     """
-    if not listnode.nodeName in ("ul", "ol"):
+    if listnode.nodeName not in ("ul", "ol"):
         raise GlsaFormatException("Invalid function call: listnode is not <ul> or <ol>")
     rValue = [
         getText(li, format="strip")

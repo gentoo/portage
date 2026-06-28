@@ -979,7 +979,7 @@ class binarytree:
                 if not self._binrepos_conf:
                     writemsg(
                         _(
-                            f"!!! binrepos.conf is missing (or PORTAGE_BINHOST is unset), "
+                            "!!! binrepos.conf is missing (or PORTAGE_BINHOST is unset), "
                             "but use is requested.\n"
                         ),
                         noiselevel=-1,
@@ -1954,7 +1954,7 @@ class binarytree:
 
         try:
             binpkg_format = get_binpkg_format(full_path)
-        except InvalidBinaryPackageFormat as e:
+        except InvalidBinaryPackageFormat:
             writemsg(
                 f"!!! Invalid binary package: '{full_path}'\n",
                 noiselevel=-1,

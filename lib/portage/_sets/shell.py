@@ -45,7 +45,7 @@ class CommandOutputSet(PackageSet):
             self._setAtoms(stdout.splitlines())
 
     def singleBuilder(self, options, settings, trees):
-        if not "command" in options:
+        if "command" not in options:
             raise SetConfigError("no command specified")
         return CommandOutputSet(options["command"])
 

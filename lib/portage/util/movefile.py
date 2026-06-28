@@ -168,7 +168,7 @@ def movefile(
         if not sstat:
             sstat = os.lstat(src)
 
-    except SystemExit as e:
+    except SystemExit:
         raise
     except Exception as e:
         writemsg(
@@ -198,9 +198,9 @@ def movefile(
             try:
                 os.unlink(dest)
                 destexists = 0
-            except SystemExit as e:
+            except SystemExit:
                 raise
-            except Exception as e:
+            except Exception:
                 pass
 
     if stat.S_ISLNK(sstat[stat.ST_MODE]):
@@ -263,7 +263,7 @@ def movefile(
                 return os.stat(dest, follow_symlinks=False).st_mtime_ns
             else:
                 return sstat.st_mtime_ns
-        except SystemExit as e:
+        except SystemExit:
             raise
         except Exception as e:
             writemsg(f"!!! {_('failed to properly create symlink:')}\n", noiselevel=-1)

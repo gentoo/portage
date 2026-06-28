@@ -3489,7 +3489,7 @@ class depgraph:
                         previously_added = True
                         try:
                             arg_atoms = list(self._iter_atoms_for_pkg(pkg))
-                        except InvalidDependString as e:
+                        except InvalidDependString:
                             if not pkg.installed:
                                 # should have been masked before
                                 # it was selected
@@ -5478,7 +5478,7 @@ class depgraph:
                             )
                         return 0, myfavorites
 
-                except SystemExit as e:
+                except SystemExit:
                     raise  # Needed else can't exit
                 except Exception as e:
                     writemsg(

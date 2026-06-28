@@ -1089,7 +1089,7 @@ class gpkg:
                         image_safe = tar_safe_extract(image, "image")
                         image_safe.extractall(decompress_dir)
                         image_tar.close()
-                    except Exception as ex:
+                    except Exception:
                         writemsg(colorize("BAD", "!!!Extract failed.\n"))
                         raise
                     finally:

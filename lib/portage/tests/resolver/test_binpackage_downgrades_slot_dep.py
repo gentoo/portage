@@ -66,7 +66,7 @@ class BinpackageDowngradesSlotDepTestCase(TestCase):
         installed = {
             "dev-libs/libxml2-2.14.6": {
                 "IUSE": f"+python {python_use}",
-                "USE": f"python python_targets_python3_13",
+                "USE": "python python_targets_python3_13",
                 "SLOT": "2/16",
                 **common_metadata,
             },

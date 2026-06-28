@@ -234,7 +234,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
         if mydict is None:
             continue
         for y in mydict:
-            if not y in final_dict:
+            if y not in final_dict:
                 final_dict[y] = []
 
             for thing in mydict[y]:
@@ -320,7 +320,7 @@ def stack_lists(
                     new_list.clear()
                 elif str(token).startswith("-"):
                     matched = False
-                    if ignore_repo and not "::" in token:
+                    if ignore_repo and "::" not in token:
                         # Let -cat/pkg remove cat/pkg::repo.
                         to_be_removed = []
                         token_str = str(token)
@@ -871,7 +871,7 @@ def getconfig(
                 expand_map[key] = mykeys[key]
             else:
                 mykeys[key] = val
-    except SystemExit as e:
+    except SystemExit:
         raise
     except Exception as e:
         if isinstance(e, ParseError) or lex is None:
@@ -1036,7 +1036,7 @@ def pickle_read(filename, default=None, debug=0):
         myf.close()
         del mypickle, myf
         writemsg(_("pickle_read(): Loaded pickle. '") + filename + "'\n", 1)
-    except SystemExit as e:
+    except SystemExit:
         raise
     except Exception as e:
         writemsg(_("!!! Failed to load pickle: ") + str(e) + "\n", 1)

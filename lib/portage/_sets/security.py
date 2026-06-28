@@ -50,7 +50,7 @@ class SecuritySet(PackageSet):
             cpv = self._portdbapi.xmatch("match-all", atom)[0]
             pkg = self._portdbapi._pkg_str(cpv, None)
             cps = f"{pkg.cp}:{pkg.slot}"
-            if not cps in mydict:
+            if cps not in mydict:
                 mydict[cps] = (atom, cpv)
             else:
                 other_cpv = mydict[cps][1]
@@ -67,7 +67,7 @@ class SecuritySet(PackageSet):
         applied_list = glsa.get_applied_glsas(self._settings)
         for glsaid in glsaindexlist:
             myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
-            if not myglsa.isVulnerable() and not myglsa.nr in applied_list:
+            if not myglsa.isVulnerable() and myglsa.nr not in applied_list:
                 myglsa.inject()
 
     def singleBuilder(cls, options, settings, trees):

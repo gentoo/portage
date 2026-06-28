@@ -34,7 +34,7 @@ class database(fs_template.FsBased):
         path = os.path.join(self.portdir, "profiles/repo_name")
         try:
             return int(self.__get(path, "value_max_len"))
-        except NoValueException as e:
+        except NoValueException:
             maxattrlength = self.__calc_max(path)
             self.__set(path, "value_max_len", str(maxattrlength))
             return maxattrlength
@@ -76,7 +76,7 @@ class database(fs_template.FsBased):
     def __has_cache(self, path):
         try:
             self.__get(path, "_mtime_")
-        except NoValueException as e:
+        except NoValueException:
             return False
 
         return True
@@ -85,7 +85,7 @@ class database(fs_template.FsBased):
         try:
             return xattr.get(path, key, namespace=self.ns)
         except OSError as e:
-            if not default is None and errno.ENODATA == e.errno:
+            if default is not None and errno.ENODATA == e.errno:
                 return default
             raise NoValueException()
 
@@ -100,7 +100,7 @@ class database(fs_template.FsBased):
         path = self.__get_path(cpv)
         attrs = {key: value for key, value in xattr.get_all(path, namespace=self.ns)}
 
-        if not "_mtime_" in all:
+        if "_mtime_" not in all:
             raise KeyError(cpv)
 
         # We default to '' like other caches

@@ -2994,7 +2994,7 @@ class dblink:
                     mymd5 = None
                     try:
                         mymd5 = perf_md5(obj, calc_prelink=calc_prelink)
-                    except FileNotFound as e:
+                    except FileNotFound:
                         # the file has disappeared between now and our stat call
                         show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
                         continue

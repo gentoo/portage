@@ -41,7 +41,7 @@ class PackageSet:
         return bool(self._atoms or self._nonatoms)
 
     def supportsOperation(self, op):
-        if not op in OPERATIONS:
+        if op not in OPERATIONS:
             raise ValueError(op)
         return op in self._operations
 

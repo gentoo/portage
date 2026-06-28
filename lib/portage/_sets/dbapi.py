@@ -128,7 +128,7 @@ class OwnerSet(PackageSet):
         )
 
     def singleBuilder(cls, options, settings, trees):
-        if not "files" in options:
+        if "files" not in options:
             raise SetConfigError(_("no files given"))
 
         exclude_files = options.get("exclude-files")
@@ -237,7 +237,7 @@ class VariableSet(EverythingSet):
             )
 
         metadatadb = options.get("metadata-source", "vartree")
-        if not metadatadb in trees:
+        if metadatadb not in trees:
             raise SetConfigError(
                 _("invalid value '%s' for option metadata-source") % metadatadb
             )
@@ -346,7 +346,7 @@ class UnavailableSet(EverythingSet):
 
     def singleBuilder(cls, options, settings, trees):
         metadatadb = options.get("metadata-source", "porttree")
-        if not metadatadb in trees:
+        if metadatadb not in trees:
             raise SetConfigError(
                 _("invalid value '%s' for option " "metadata-source") % (metadatadb,)
             )
@@ -383,7 +383,7 @@ class CategorySet(PackageSet):
 
     def _builderGetRepository(cls, options, repositories):
         repository = options.get("repository", "porttree")
-        if not repository in repositories:
+        if repository not in repositories:
             raise SetConfigError(_("invalid repository class '%s'") % repository)
         return repository
 
@@ -395,11 +395,11 @@ class CategorySet(PackageSet):
     _builderGetVisible = classmethod(_builderGetVisible)
 
     def singleBuilder(cls, options, settings, trees):
-        if not "category" in options:
+        if "category" not in options:
             raise SetConfigError(_("no category given"))
 
         category = options["category"]
-        if not category in settings.categories:
+        if category not in settings.categories:
             raise SetConfigError(_("invalid category name '%s'") % category)
 
         repository = cls._builderGetRepository(options, trees.keys())
@@ -428,7 +428,7 @@ class CategorySet(PackageSet):
         visible = cls._builderGetVisible(options)
         name_pattern = options.get("name_pattern", "$category/*")
 
-        if not "$category" in name_pattern and not "${category}" in name_pattern:
+        if "$category" not in name_pattern and "${category}" not in name_pattern:
             raise SetConfigError(
                 _("name_pattern doesn't include $category placeholder")
             )
@@ -474,7 +474,7 @@ class AgeSet(EverythingSet):
             )
         try:
             age = int(options.get("age", "7"))
-        except ValueError as e:
+        except ValueError:
             raise SetConfigError(_("value of option 'age' is not an integer"))
         return AgeSet(vardb=trees["vartree"].dbapi, mode=mode, age=age)
 

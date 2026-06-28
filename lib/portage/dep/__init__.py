@@ -858,7 +858,7 @@ def _use_reduce_cached(
                         )
                     except SystemExit:
                         raise
-                    except Exception as e:
+                    except Exception:
                         missing_white_space_check(token, pos)
                         raise InvalidDependString(
                             _("Invalid token '%s', token %s") % (token, pos + 1)

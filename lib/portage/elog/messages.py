@@ -43,7 +43,7 @@ def collect_ebuild_messages(path):
                 _("!!! can't process invalid log file: %s\n") % filename, noiselevel=-1
             )
             continue
-        if not msgfunction in logentries:
+        if msgfunction not in logentries:
             logentries[msgfunction] = []
         lastmsgtype = None
         msgcontent = []

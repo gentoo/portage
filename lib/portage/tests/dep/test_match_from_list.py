@@ -43,7 +43,7 @@ class Package:
             if isinstance(flags, str):
                 flags = [flags]
             for flag in flags:
-                if not flag in self.all:
+                if flag not in self.all:
                     return False
             return True
 

@@ -120,7 +120,7 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     vdb_path = os.path.join(root_config.settings["EROOT"], portage.VDB_PATH)
     portage.util.ensure_dirs(vdb_path)
     vdb_lock = None
-    if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
+    if os.access(vdb_path, os.W_OK) and "--pretend" not in myopts:
         vardbapi.lock()
         vdb_lock = True
 

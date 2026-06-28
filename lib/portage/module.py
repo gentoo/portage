@@ -234,7 +234,7 @@ class Modules:
 
     def _check_compat(self, module):
         if self.compat_versions:
-            if not module.module_spec["version"] in self.compat_versions:
+            if module.module_spec["version"] not in self.compat_versions:
                 raise ModuleVersionError(
                     f"Error loading '{self._namepath}' plugin module: {module.module_spec['name']}, version: {module.module_spec['version']}\n"
                     "Module is not compatible with the current application version\n"

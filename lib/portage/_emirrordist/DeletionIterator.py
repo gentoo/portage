@@ -51,7 +51,7 @@ class DeletionIterator:
                 path = os.path.join(distdir, layout.get_path(filename))
                 try:
                     st = os.stat(path)
-                except OSError as e:
+                except OSError:
                     # is it a dangling symlink?
                     try:
                         if os.path.islink(path):

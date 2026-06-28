@@ -46,7 +46,7 @@ class test_lafilefixer(TestCase):
         yield b"dlname='libfoo.so.1'\n" + b"library_names='libfoo.so.1.0.2 libfoo.so.1 libfoo.so'\n" + b"old_library='libpdf.a'\n" + b"inherited_linker_flags=''\n" + b"inherited_linker_flags=''\n"
 
     def testlafilefixer(self):
-        from portage.util.lafilefixer import _parse_lafile_contents, rewrite_lafile
+        from portage.util.lafilefixer import rewrite_lafile
 
         for clean_contents in self.get_test_cases_clean():
             self.assertEqual(rewrite_lafile(clean_contents), (False, None))

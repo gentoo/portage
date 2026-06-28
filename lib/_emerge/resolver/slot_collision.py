@@ -827,7 +827,7 @@ class slot_conflict_handler:
                 if not atom.package:
                     continue
 
-                if ppkg in conflict_nodes and not ppkg in config:
+                if ppkg in conflict_nodes and ppkg not in config:
                     # The parent is part of a slot conflict itself and is
                     # not part of the current config.
                     continue
@@ -920,7 +920,7 @@ class slot_conflict_handler:
                 # to the same value as the installed package has it.
                 for flag in involved_flags:
                     if involved_flags[flag] == "enabled":
-                        if not flag in _pkg_use_enabled(pkg):
+                        if flag not in _pkg_use_enabled(pkg):
                             involved_flags[flag] = "contradiction"
                     elif involved_flags[flag] == "disabled":
                         if flag in _pkg_use_enabled(pkg):
@@ -1117,7 +1117,7 @@ class slot_conflict_handler:
         is_valid_solution = True
         for pkg in required_changes:
             for state in required_changes[pkg].values():
-                if not state in ("enabled", "disabled"):
+                if state not in ("enabled", "disabled"):
                     is_valid_solution = False
 
         if not is_valid_solution:

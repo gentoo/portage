@@ -29,7 +29,7 @@ SETPREFIX = "@"
 
 
 def get_boolean(options, name, default):
-    if not name in options:
+    if name not in options:
         return default
     if options[name].lower() in ("1", "yes", "on", "true"):
         return True
@@ -167,7 +167,7 @@ class SetConfig:
     def update(self, setname, options):
         parser = self._parser
         self.errors = []
-        if not setname in self.psets:
+        if setname not in self.psets:
             options["name"] = setname
             options["world-candidate"] = "False"
 
