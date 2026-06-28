@@ -103,7 +103,6 @@ try:
         + "suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify",
         "portage.xpak",
         "portage.gpkg",
-        "subprocess",
         "time",
     )
 
@@ -552,6 +551,8 @@ if installation.TYPE == installation.TYPES.SOURCE:
                 return VERSION
             VERSION = "HEAD"
             if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
+                import subprocess
+
                 try:
                     result = subprocess.run(
                         [
