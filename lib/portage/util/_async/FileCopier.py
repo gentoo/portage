@@ -1,7 +1,7 @@
 # Copyright 2013-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import os as _os
+import os
 
 from portage.util import apply_stat_permissions
 from portage.util.file_copy import copyfile
@@ -31,4 +31,4 @@ class FileCopier(AsyncTaskFuture):
     @staticmethod
     def _target(src_path, dest_path):
         copyfile(src_path, dest_path)
-        apply_stat_permissions(dest_path, _os.stat(src_path))
+        apply_stat_permissions(dest_path, os.stat(src_path))

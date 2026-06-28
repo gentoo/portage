@@ -1,7 +1,7 @@
 # Copyright 2010-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import os as _os
+import os
 import re
 
 from portage.exception import InvalidData
@@ -111,7 +111,7 @@ def rewrite_lafile(contents):
             # Two cases:
             # 1) /usr/lib64/libfoo.la, turn it into -lfoo and append -L/usr/lib64 to libladir
             # 2) libfoo.la, keep it
-            dirname, basename = _os.path.split(dep_libs_entry)
+            dirname, basename = os.path.split(dep_libs_entry)
 
             if not dirname or not basename.startswith(b"lib"):
                 if dep_libs_entry not in new_dep_libs:
