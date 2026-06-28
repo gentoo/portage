@@ -19,16 +19,6 @@ def file_get(
     """Takes a base url to connect to and read from.
     URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
-    if not fcmd:
-        warnings.warn(
-            "Use of portage.getbinpkg.file_get() without the fcmd "
-            "parameter is deprecated",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return file_get_lib(baseurl, dest, conn)
-
     variables = {}
 
     if fcmd_vars is not None:
