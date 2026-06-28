@@ -757,13 +757,13 @@ class Glsa:
                     for v in path["vul_atoms"]:
                         rValue = rValue or (
                             len(match(v, self.vardbapi)) > 0
-                            and None
-                            != getMinUpgrade(
+                            and getMinUpgrade(
                                 path["vul_atoms"],
                                 path["unaff_atoms"],
                                 self.portdbapi,
                                 self.vardbapi,
                             )
+                            is not None
                         )
         return rValue
 
