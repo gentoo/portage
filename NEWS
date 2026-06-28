@@ -87,6 +87,12 @@ Breaking changes:
 
 Features:
 
+* Add FEATURES="observability" to publish a machine-readable snapshot of the
+  running emerge process (which packages are building/merging, their current
+  ebuild phase, and elapsed time) to /run/portage/emerge-<pid>.json. Query it
+  with the new "portageq jobs" command or "emerge --status". A Unix socket
+  streams the same snapshots live to connected clients.
+
 * Add User-Agent to default wget FETCHCOMMAND and RESUMECOMMAND settings, as
   well as emirrordist, in order to avoid blocking by some web servers,
   particularly crates.io. (bug #682610)

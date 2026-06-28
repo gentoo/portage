@@ -251,6 +251,13 @@ Matches the search string against the description field as well as
 the package name.  \fBTake caution\fR as the descriptions are also
 matched as regular expressions.
 .TP
+.BR \-\-status
+Displays the packages that running \fBemerge\fR processes are currently
+building or merging, including the current ebuild phase and elapsed time.
+This requires the target \fBemerge\fR to have been started with
+FEATURES="observability" (see \fBmake.conf\fR(5)). For machine\-readable
+output, use \fBportageq jobs \-\-json\fR instead.
+.TP
 .BR \-\-sync
 Updates repositories, for which auto\-sync, sync\-type and sync\-uri attributes are
 set in repos.conf. A list of repos or aliases can be specified, in which case

@@ -141,6 +141,14 @@ class EbuildPhase(CompositeTask):
     _locked_phases = ("setup", "preinst", "postinst", "prerm", "postrm")
 
     def _start(self):
+        # Notify the observability monitor (if any) that this package has
+        # entered a new ebuild phase, so "what is building?" queries reflect
+        # the live phase.  Guarded since not every SchedulerInterface that
+        # runs phases (e.g. the standalone `ebuild` command) provides it.
+        notify_phase = getattr(self.scheduler, "notifyPhase", None)
+        if notify_phase is not None:
+            notify_phase(self.settings.mycpv, self.phase)
+
         future = asyncio.ensure_future(self._async_start(), loop=self.scheduler)
         self._start_task(AsyncTaskFuture(future=future), self._async_start_exit)
 
