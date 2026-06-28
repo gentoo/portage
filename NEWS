@@ -26,6 +26,9 @@ Features:
 * vartree: Avoid pruning preserved-libs database or syncing to disk if we
   installed no files.
 
+* Introduce FETCH_WRAPPER for use with FETCHCOMMAND and RESUMECOMMAND,
+  see make.conf(5) for details.
+
 Bug fixes:
 
 * Fix /dev/null device check for the Hurd.
