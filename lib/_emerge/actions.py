@@ -2195,9 +2195,7 @@ def action_info(settings, trees, myopts, myfiles):
         "EMERGE_DEFAULT_OPTS",
     ]
 
-    myvars.extend(
-        portage.util.grabfile(settings["PORTDIR"] + "/profiles/info_vars")
-    )
+    myvars.extend(portage.util.grabfile(settings["PORTDIR"] + "/profiles/info_vars"))
 
     myvars_ignore_defaults = {
         "PORTAGE_BZIP2_COMMAND": "bzip2",
