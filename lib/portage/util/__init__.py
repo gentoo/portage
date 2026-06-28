@@ -1884,7 +1884,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
                     # Read symlink target as bytes, in case the
                     # target path has a bad encoding.
                     pfile_link = os.readlink(old_pfile.encode("utf-8", "strict"))
-                except OSError:
+                except OSError as e:
                     if e.errno != errno.ENOENT:
                         raise
                 else:
