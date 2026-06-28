@@ -62,7 +62,6 @@ class database(flat_hash.database):
         d = {}
 
         for line in data:
-            hashed = False
             hashed_match = _hashed_re_match(line)
             if hashed_match is None:
                 d.clear()

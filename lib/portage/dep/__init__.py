@@ -1667,14 +1667,11 @@ class Atom:
             if allow_build_id is None:
                 allow_build_id = True
 
-        blocker_prefix = ""
         if s[:1] == "!":
             blocker = self._blocker(forbid_overlap=s[1:2] == "!")
             if blocker.overlap.forbid:
-                blocker_prefix = s[:2]
                 s = s[2:]
             else:
-                blocker_prefix = s[:1]
                 s = s[1:]
         else:
             blocker = None

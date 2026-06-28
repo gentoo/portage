@@ -160,4 +160,4 @@ class database(fs_template.FsBased):
                     pn_pv = file[:-7]
                     path = os.path.join(root, file)
                     if self.__has_cache(path):
-                        yield f"{cat}/{os.path.basename(root)}/{file[:-7]}"
+                        yield f"{cat}/{os.path.basename(root)}/{pn_pv}"

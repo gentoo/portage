@@ -177,7 +177,6 @@ class VariableSet(EverythingSet):
         if "DEPEND" in self._variable:
             include_atoms = []
             exclude_atoms = []
-            exclude_output_atoms = []
 
             # 'exclude_output' here refers to filtering out any packages
             # matching the 'includes' criteria
