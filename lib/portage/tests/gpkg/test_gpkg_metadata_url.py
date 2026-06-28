@@ -23,7 +23,7 @@ class test_gpkg_metadata_url_case(TestCase):
             import http.server
             import socketserver
         except ImportError:
-            self.skipTest("http server not exits")
+            self.skipTest("http server does not exist")
 
         Handler = partial(http.server.SimpleHTTPRequestHandler, directory=directory)
 
@@ -35,7 +35,7 @@ class test_gpkg_metadata_url_case(TestCase):
         try:
             import threading
         except ImportError:
-            self.skipTest("threading module not exists")
+            self.skipTest("threading module does not exist")
 
         httpd_future = Future()
         server = threading.Thread(
