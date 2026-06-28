@@ -5,9 +5,7 @@ doc = """SVN plug-in module for portage.
 Performs a svn up on repositories."""
 __doc__ = doc[:]
 
-from portage.localization import _
 from portage.sync.config_checks import CheckSyncConfig
-from portage.util import writemsg_level
 
 module_spec = {
     "name": "svn",

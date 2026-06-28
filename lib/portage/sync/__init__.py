@@ -6,7 +6,6 @@ import os
 from collections import OrderedDict
 
 from portage.module import Modules
-from portage.sync.controller import SyncManager
 from portage.sync.config_checks import check_type
 
 _SUBMODULE_PATH_MAP = OrderedDict(

@@ -6,7 +6,6 @@ import os
 import shlex
 import sys
 import time
-import warnings
 
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _

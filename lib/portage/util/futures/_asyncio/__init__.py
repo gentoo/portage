@@ -15,6 +15,7 @@ __all__ = (
     "get_event_loop",
     "set_child_watcher",
     "get_event_loop_policy",
+    "iscoroutinefunction",
     "set_event_loop_policy",
     "run",
     "shield",
@@ -28,6 +29,7 @@ import types
 import warnings
 import weakref
 
+from inspect import iscoroutinefunction
 import asyncio as _real_asyncio
 
 # pylint: disable=redefined-builtin
@@ -44,7 +46,6 @@ from asyncio import (
     wait_for,
 )
 
-from inspect import iscoroutinefunction
 import threading
 from typing import Optional
 

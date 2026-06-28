@@ -18,7 +18,6 @@ try:
         errno.ESTALE = -1
     import functools
     import re
-    import types
     import platform
 
 except ImportError as e:

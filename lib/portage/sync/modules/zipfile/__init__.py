@@ -7,8 +7,6 @@ location."""
 __doc__ = doc[:]
 
 
-import os
-
 from portage.sync.config_checks import CheckSyncConfig
 
 module_spec = {

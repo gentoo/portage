@@ -17,7 +17,6 @@ from portage.const import VCS_DIRS
 from portage.const import _ENABLE_SET_CONFIG
 from portage.exception import PackageSetNotFound
 from portage.localization import _
-from portage.util import writemsg_level
 from portage.util.configparser import (
     SafeConfigParser,
     NoOptionError,

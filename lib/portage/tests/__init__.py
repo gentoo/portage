@@ -2,23 +2,17 @@
 # Copyright 2006-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import argparse
 import multiprocessing
-import sys
-import time
+import os
 import unittest
-from pathlib import Path
+
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Optional
 
-from unittest.runner import TextTestResult as _TextTestResult
-
-import os
 import portage
 
-from portage.util import no_color
 from portage.const import PORTAGE_PYM_PATH
-from portage.output import colorize
 
 # This remains constant when the real value is a mock.
 EPREFIX_ORIG = portage.const.EPREFIX
