@@ -820,7 +820,6 @@ def dep_check(
     depstring,
     mydbapi,
     mysettings,
-    use="yes",
     mode=None,
     myuse=None,
     use_cache=1,
@@ -837,39 +836,16 @@ def dep_check(
     # check_config_instance(mysettings)
     if trees is None:
         trees = globals()["db"]
-    if use == "yes":
-        if myuse is None:
-            # default behavior
-            myusesplit = mysettings["PORTAGE_USE"].split()
-        else:
-            myusesplit = myuse
-            # We've been given useflags to use.
-            # print "USE FLAGS PASSED IN."
-            # print myuse
-            # if "bindist" in myusesplit:
-            # 	print "BINDIST is set!"
-            # else:
-            # 	print "BINDIST NOT set."
+
+    if myuse is None:
+        # default behavior
+        myusesplit = mysettings["PORTAGE_USE"].split()
     else:
-        # we are being run by autouse(), don't consult USE vars yet.
-        # WE ALSO CANNOT USE SETTINGS
-        myusesplit = []
+        myusesplit = myuse
+        # We've been given useflags to use.
 
     mymasks = set()
     useforce = set()
-    if use == "all":
-        # This is only for repoman, in order to constrain the use_reduce
-        # matchall behavior to account for profile use.mask/force. The
-        # ARCH/archlist code here may be redundant, since the profile
-        # really should be handling ARCH masking/forcing itself.
-        arch = mysettings.get("ARCH")
-        mymasks.update(mysettings.usemask)
-        mymasks.update(mysettings.archlist())
-        if arch:
-            mymasks.discard(arch)
-            useforce.add(arch)
-        useforce.update(mysettings.useforce)
-        useforce.difference_update(mymasks)
 
     # eapi code borrowed from _expand_new_virtuals()
     mytrees = trees[myroot]
@@ -900,7 +876,7 @@ def dep_check(
                 depstring,
                 uselist=myusesplit,
                 masklist=mymasks,
-                matchall=(use == "all"),
+                matchall=False,
                 excludeall=useforce,
                 opconvert=True,
                 token_class=Atom,
@@ -921,7 +897,6 @@ def dep_check(
             edebug,
             mydbapi,
             mysettings,
-            use=use,
             mode=mode,
             myuse=myuse,
             use_force=useforce,

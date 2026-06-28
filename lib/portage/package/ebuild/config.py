@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
-    "autouse",
     "best_from_dict",
     "check_config_instance",
     "config",
@@ -97,11 +96,6 @@ from portage.package.ebuild._config.helper import (
     ordered_by_atom_specificity,
     prune_incremental,
 )
-
-
-def autouse(myvartree, use_cache=1, mysettings=None):
-    warnings.warn("portage.autouse() is deprecated", DeprecationWarning, stacklevel=2)
-    return ""
 
 
 def check_config_instance(test):
