@@ -9,6 +9,7 @@ py.install_sources(
         'test_global_updates.py',
         'test_baseline.py',
         'test_libc_dep_inject.py',
+        'test_noreplace.py',
         '__init__.py',
         '__test__.py',
     ],
