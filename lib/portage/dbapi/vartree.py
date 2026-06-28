@@ -513,7 +513,6 @@ class vardbapi(dbapi):
         from portage.versions import _pkg_str
         from portage import listdir
 
-        returnme = []
         basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
         if use_cache:
