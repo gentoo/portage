@@ -9,7 +9,25 @@ Release notes take the form of the following optional categories:
 portage-3.0.82 (UNRELEASED)
 --------------
 
+This release drops the Python 2 unicode conversion layer and has Portage
+activate UTF-8 mode instead. The Atom class also gains several proper
+types and string conversions all over the place have been dropped.
+
+Breaking changes:
+
+* emerge: --info --verbose is now treated the same as --info, i.e. it will
+  no longer show all exported environment variables (bug #974465).
+
+* Importing `portage` as a library will require a UTF-8 locale be in effect:
+  Portage will warn when this isn't the case.
+
+Features:
+
+* vartree: Avoid pruning preserved-libs database or syncing to disk if we
+  installed no files.
+
 Bug fixes:
+
 * Fix /dev/null device check for the Hurd.
 
 * man: make.conf(5): Improve man text about disabling tests to not wrongly
@@ -27,10 +45,24 @@ Bug fixes:
 * emerge: Cancel the dependency-calculation spinner before printing diagnostics,
   avoiding interleaved output (bug #831467).
 
-Cleanups:
-
 * emerge: Make --nospinner suppress spinner output entirely, instead of printing
   repeated dots in place of the animated spinner.
+
+* env_update: Call ldconfig in more cases by considering ld.so.conf.d files. (bug #961463).
+
+Cleanups:
+
+* Atom: De-stringify, add type annotations, use proper attributes at
+  many callsites.
+
+* Remove Python 2-era unicode conversion layer.
+
+* cvstree: Remove obsolete repoman code.
+
+* Drop various functions deprecated for over a decade, as well as
+  some old unused function parameters that were themselves deprecated.
+
+* Use os.scandir() to reduce the number of syscalls made.
 
 portage-3.0.81 (2026-06-23)
 --------------
