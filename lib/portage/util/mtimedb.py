@@ -4,15 +4,10 @@
 __all__ = ["MtimeDB"]
 
 import copy
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-
 import errno
 import io
 import json
+import pickle
 
 import portage
 from portage.data import portage_gid, uid
