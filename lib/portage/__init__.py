@@ -21,15 +21,6 @@ try:
     import types
     import platform
 
-    # Temporarily delete these imports, to ensure that only the
-    # wrapped versions are imported by portage internals.
-    import os
-
-    del os
-    import shutil
-
-    del shutil
-
 except ImportError as e:
     sys.stderr.write(
         "\n\n"
@@ -226,8 +217,6 @@ except (ImportError, OSError) as e:
         sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
     del e
     _selinux = None
-    selinux_unicode_fs = None
-    selinux_unicode_merge = None
     selinux = None
 
 # ===========================================================================
