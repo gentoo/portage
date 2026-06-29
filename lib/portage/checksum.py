@@ -422,20 +422,19 @@ def verify_all(filename, mydict, strict=0):
         got = " ".join(got)
         return False, (_("Insufficient data for checksum verification"), got, expected)
 
-    for x in sorted(mydict):
-        if x == "size":
-            continue
-        elif x in hashfunc_keys:
-            myhash = perform_checksum(filename, x)[0]
-            if mydict[x] != myhash:
-                if strict:
-                    raise portage.exception.DigestException(
-                        f"Failed to verify '{filename}' on checksum type '{x}'"
-                    )
-                else:
-                    file_is_ok = False
-                    reason = (f"Failed on {x} verification", myhash, mydict[x])
-                    break
+    mychecksums = perform_multiple_checksums(filename, verifiable_hash_types)
+
+    for x in sorted(verifiable_hash_types):
+        myhash = mychecksums[x]
+        if mydict[x] != myhash:
+            if strict:
+                raise portage.exception.DigestException(
+                    f"Failed to verify '{filename}' on checksum type '{x}'"
+                )
+            else:
+                file_is_ok = False
+                reason = (f"Failed on {x} verification", myhash, mydict[x])
+                break
 
     return file_is_ok, reason
 
