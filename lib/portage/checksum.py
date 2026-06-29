@@ -181,6 +181,14 @@ hashfunc_keys = frozenset(hashfunc_map)
 # end actual hash functions
 
 
+def _raise_checksum_oserror(e, filename):
+    if e.errno in (errno.ENOENT, errno.ESTALE):
+        raise portage.exception.FileNotFound(filename)
+    elif e.errno == portage.exception.PermissionDenied.errno:
+        raise portage.exception.PermissionDenied(filename)
+    raise e
+
+
 def perform_md5(x):
     return perform_checksum(x, "MD5")[0]
 
@@ -374,11 +382,7 @@ def perform_checksum(filename, hashname="MD5"):
     try:
         myhash, mysize = hashfunc_map[hashname].checksum_file(filename)
     except OSError as e:
-        if e.errno in (errno.ENOENT, errno.ESTALE):
-            raise portage.exception.FileNotFound(filename)
-        elif e.errno == portage.exception.PermissionDenied.errno:
-            raise portage.exception.PermissionDenied(filename)
-        raise
+        _raise_checksum_oserror(e, filename)
     return myhash, mysize
 
 
