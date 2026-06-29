@@ -40,7 +40,7 @@ try:
         globals(),
         "portage.cache.cache_errors:CacheError",
         "portage.checksum",
-        "portage.checksum:perform_checksum,perform_md5,prelink_capable",
+        "portage.checksum:perform_checksum,perform_md5",
         "portage.data",
         "portage.data:lchown,ostype,portage_gid,portage_uid,secpass,"
         + "uid,userland,userpriv_groups,wheelgid",
@@ -126,7 +126,6 @@ try:
         SANDBOX_BINARY,
         BASH_BINARY,
         MOVE_BINARY,
-        PRELINK_BINARY,
         WORLD_FILE,
         MAKE_CONF_FILE,
         MAKE_DEFAULTS_FILE,
