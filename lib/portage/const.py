@@ -103,7 +103,6 @@ SANDBOX_BINARY = f"{BINARY_PREFIX}/usr/bin/sandbox"
 FAKEROOT_BINARY = f"{BINARY_PREFIX}/usr/bin/fakeroot"
 BASH_BINARY = f"{BINARY_PREFIX}/bin/bash"
 MOVE_BINARY = f"{BINARY_PREFIX}/bin/mv"
-PRELINK_BINARY = f"{BINARY_PREFIX}/usr/sbin/prelink"
 
 INVALID_ENV_FILE = "/etc/spork/is/not/valid/profile.env"
 MERGING_IDENTIFIER = "-MERGING-"
@@ -126,8 +125,6 @@ INCREMENTALS = (
     "ENV_UNSET",
     "FEATURES",
     "IUSE_IMPLICIT",
-    "PRELINK_PATH",
-    "PRELINK_PATH_MASK",
     "PROFILE_ONLY_VARIABLES",
     "USE",
     "USE_EXPAND",
@@ -220,7 +217,6 @@ SUPPORTED_FEATURES = frozenset(
         "parallel-install",
         "pid-sandbox",
         "pkgdir-index-trusted",
-        "prelink-checksums",
         "preserve-libs",
         "protect-owned",
         "python-trace",
