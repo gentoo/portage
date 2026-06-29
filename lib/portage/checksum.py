@@ -189,6 +189,35 @@ def _raise_checksum_oserror(e, filename):
     raise e
 
 
+def _checksum_file_serial(filename, hashnames):
+    checksums = {name: hashfunc_map[name]._hashobject() for name in hashnames}
+    with _open_file(filename) as f:
+        blocksize = HASHING_BLOCKSIZE
+        data = f.read(blocksize)
+        while data:
+            for checksum in checksums.values():
+                checksum.update(data)
+            data = f.read(blocksize)
+    return {name: checksum.hexdigest() for name, checksum in checksums.items()}
+
+
+def _perform_checksums(filename, hashes):
+    hashnames = [x for x in hashes if x != "size"]
+    want_size = "size" in hashes
+
+    rVal = {}
+    try:
+        statsize = os.stat(filename).st_size
+        if hashnames:
+            rVal.update(_checksum_file_serial(filename, hashnames))
+    except OSError as e:
+        _raise_checksum_oserror(e, filename)
+
+    if want_size:
+        rVal["size"] = statsize
+    return rVal
+
+
 def perform_md5(x):
     return perform_checksum(x, "MD5")[0]
 
@@ -198,8 +227,7 @@ def _perform_md5_merge(x, **kwargs):
 
 
 def perform_all(x):
-    mydict = {k: perform_checksum(x, k)[0] for k in hashfunc_keys}
-    return mydict
+    return perform_multiple_checksums(x, hashes=hashfunc_keys)
 
 
 def get_valid_checksum_keys():
@@ -399,14 +427,12 @@ def perform_multiple_checksums(filename, hashes=["MD5"]):
             return_value[hash_name] = (hash_result,size)
             for each given checksum
     """
-    rVal = {}
     for x in hashes:
         if x not in hashfunc_keys:
             raise portage.exception.DigestException(
                 f"{x} hash function not available (needs dev-python/pycrypto)"
             )
-        rVal[x] = perform_checksum(filename, x)[0]
-    return rVal
+    return _perform_checksums(filename, hashes)
 
 
 def checksum_str(data, hashname="MD5"):
