@@ -8,7 +8,9 @@ import functools
 import hashlib
 import os
 import portage
+import queue
 import stat
+import threading
 
 from portage.const import HASHING_BLOCKSIZE
 from portage.localization import _
@@ -201,6 +203,52 @@ def _checksum_file_serial(filename, hashnames):
     return {name: checksum.hexdigest() for name, checksum in checksums.items()}
 
 
+# hashlib releases the GIL during update(), so feeding one read to a
+# thread per hash runs the hashes on separate cores. Only worth the
+# thread/queue overhead above this size and with more than one hash.
+_CHECKSUM_PARALLEL_MIN_SIZE = 1024 * 1024
+# Bounded per-hash queue: a slow consumer applies backpressure instead of
+# buffering the whole file (depth * HASHING_BLOCKSIZE per hash).
+_CHECKSUM_PARALLEL_QUEUE_DEPTH = 32
+
+
+def _checksum_file_parallel(filename, hashnames):
+    results = {}
+    queues = []
+    threads = []
+
+    def worker(name, q):
+        checksum = hashfunc_map[name]._hashobject()
+        data = q.get()
+        while data is not None:
+            checksum.update(data)
+            data = q.get()
+        results[name] = checksum.hexdigest()
+
+    for name in hashnames:
+        q = queue.Queue(_CHECKSUM_PARALLEL_QUEUE_DEPTH)
+        t = threading.Thread(target=worker, args=(name, q))
+        queues.append(q)
+        threads.append(t)
+        t.start()
+
+    try:
+        with _open_file(filename) as f:
+            blocksize = HASHING_BLOCKSIZE
+            data = f.read(blocksize)
+            while data:
+                for q in queues:
+                    q.put(data)
+                data = f.read(blocksize)
+    finally:
+        for q in queues:
+            q.put(None)
+        for t in threads:
+            t.join()
+
+    return results
+
+
 def _perform_checksums(filename, hashes):
     hashnames = [x for x in hashes if x != "size"]
     want_size = "size" in hashes
@@ -209,7 +257,10 @@ def _perform_checksums(filename, hashes):
     try:
         statsize = os.stat(filename).st_size
         if hashnames:
-            rVal.update(_checksum_file_serial(filename, hashnames))
+            if len(hashnames) > 1 and statsize >= _CHECKSUM_PARALLEL_MIN_SIZE:
+                rVal.update(_checksum_file_parallel(filename, hashnames))
+            else:
+                rVal.update(_checksum_file_serial(filename, hashnames))
     except OSError as e:
         _raise_checksum_oserror(e, filename)
 
