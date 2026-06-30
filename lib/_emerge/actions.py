@@ -853,7 +853,7 @@ def action_depclean(
                 matched_packages = True
             else:
                 writemsg_level(
-                    f"--- Couldn't find '{x.replace('null/', '')}' to {action}.\n",
+                    f"--- Couldn't find '{str(x).replace('null/', '')}' to {action}.\n",
                     level=logging.WARN,
                     noiselevel=-1,
                 )

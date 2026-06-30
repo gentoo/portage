@@ -229,7 +229,7 @@ def _unmerge_display(
                 mymatch = vartree.dep_match(x)
             if not mymatch:
                 portage.writemsg(
-                    f"\n--- Couldn't find '{x.replace('null/', '')}' to {unmerge_action}.\n",
+                    f"\n--- Couldn't find '{str(x).replace('null/', '')}' to {unmerge_action}.\n",
                     noiselevel=-1,
                 )
                 continue
