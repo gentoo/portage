@@ -168,9 +168,10 @@ __save_ebuild_env() (
 		INSTALL_MASK
 		PKG_INSTALL_MASK
 
-		# CCACHE and DISTCC configuration variables.
+		# CCACHE, DISTCC, and SCCACHE configuration variables.
 		"${!CCACHE_@}"
 		"${!DISTCC_@}"
+		"${!SCCACHE_@}"
 	)
 
 	# Unset the collected variables before moving on to functions.

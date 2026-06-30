@@ -128,6 +128,7 @@ class EbuildPhase(CompositeTask):
         "packdebug",
         "preserve-libs",
         "sandbox",
+        "sccache",
         "selinux",
         "sesandbox",
         "splitdebug",
