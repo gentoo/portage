@@ -782,10 +782,6 @@ def getconfig(
         if f is not None:
             f.close()
 
-    # Since this file has unicode_literals enabled, and Python 2's
-    # shlex implementation does not support unicode, the following code
-    # uses _native_string() to encode unicode literals when necessary.
-
     # Workaround for avoiding a silent error in shlex that is
     # triggered by a source statement at the end of the file
     # without a trailing newline after the source statement.
