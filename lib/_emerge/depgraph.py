@@ -7644,6 +7644,9 @@ class depgraph:
         reinstall = False
         avoid_update = "--update" not in self._frozen_config.myopts
         dont_miss_updates = "--update" in self._frozen_config.myopts
+        binpkg_changed_deps = (
+            self._dynamic_config.myparams.get("binpkg_changed_deps", "n") != "n"
+        )
         use_ebuild_visibility = (
             self._frozen_config.myopts.get("--use-ebuild-visibility", "n") != "n"
         )
@@ -8044,10 +8047,6 @@ class depgraph:
                     )
                     changed_deps_report = self._dynamic_config.myparams.get(
                         "changed_deps_report"
-                    )
-                    binpkg_changed_deps = (
-                        self._dynamic_config.myparams.get("binpkg_changed_deps", "n")
-                        != "n"
                     )
                     respect_use = self._dynamic_config.myparams.get(
                         "binpkg_respect_use"
