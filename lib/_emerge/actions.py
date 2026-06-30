@@ -1836,11 +1836,9 @@ class _info_pkgs_ver:
     def __lt__(self, other):
         return portage.versions.vercmp(self.ver, other.ver) < 0
 
-    def toString(self):
+    def __str__(self):
         """
         This may return unicode if repo_name contains unicode.
-        Don't use __str__ and str() since unicode triggers compatibility
-        issues between python 2.x and 3.x.
         """
         return self.ver + self.repo_suffix + self.provide_suffix
 
@@ -2138,7 +2136,7 @@ def action_info(settings, trees, myopts, myfiles):
 
     for cp in sorted(cp_map):
         versions = sorted(cp_map[cp].values())
-        versions = ", ".join(ver.toString() for ver in versions)
+        versions = ", ".join(str(ver) for ver in versions)
         append(f"{(cp + ':').ljust(cp_max_len + 1)} {versions}")
 
     append("Repositories:\n")
