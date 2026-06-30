@@ -25,7 +25,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, followSymlinks=True):
                         ftype.append(0)
                     elif entry.is_dir(follow_symlinks=followSymlinks):
                         ftype.append(1)
-                    elif entry.is_symlink(follow_symlinks=followSymlinks):
+                    elif entry.is_symlink():
                         ftype.append(2)
                     else:
                         ftype.append(3)
