@@ -835,16 +835,11 @@ def has_ipv6():
                 # With ipv6.disable=0 and ipv6.disable_ipv6=1, socket creation
                 # succeeds, but then the bind call fails with this error:
                 # [Errno 99] Cannot assign requested address.
-                sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-                sock.bind(("::1", 0))
+                with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as sock:
+                    sock.bind(("::1", 0))
             except OSError:
                 __has_ipv6 = False
-            else:
-                __has_ipv6 = True
-            finally:
-                # python2.7 sockets do not support context management protocol
-                if sock is not None:
-                    sock.close()
+            __has_ipv6 = True
         else:
             __has_ipv6 = False
 
