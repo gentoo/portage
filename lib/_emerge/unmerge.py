@@ -326,7 +326,6 @@ def _unmerge_display(
             return 1, {}
     finally:
         if vdb_lock:
-            vartree.dbapi.flush_cache()
             vartree.dbapi.unlock()
 
     # generate a list of package sets that are directly or indirectly listed in "selected",

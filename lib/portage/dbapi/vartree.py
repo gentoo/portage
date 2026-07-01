@@ -806,9 +806,6 @@ class vardbapi(dbapi):
 
         return self.getpath(str(mycpv), filename=catsplit(mycpv)[1] + ".ebuild")
 
-    def flush_cache(self):
-        pass
-
     @property
     def _aux_cache(self):
         if self._aux_cache_obj is None:

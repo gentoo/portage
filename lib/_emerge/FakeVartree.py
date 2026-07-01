@@ -273,8 +273,6 @@ class FakeVartree(vartree):
             slot_counters[pkg.slot_atom] = pkg.counter
             pkg_vardb.cpv_inject(pkg)
 
-        real_vardb.flush_cache()
-
     def _pkg(self, cpv):
         """
         The RootConfig instance that will become the Package.root_config
