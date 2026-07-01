@@ -246,8 +246,6 @@ class MergeProcess(ForkProcess):
             # when not using the multiprocessing fork start method.
             QueryCommand._db = db
         portage.output.havecolor = not no_color(settings)
-        # Avoid wastful updates of the vdb cache.
-        vardb._flush_cache_enabled = False
 
         # In this subprocess we don't want PORTAGE_BACKGROUND to
         # suppress stdout/stderr output since they are pipes. We

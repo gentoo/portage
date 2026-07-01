@@ -15,7 +15,6 @@ import logging
 import multiprocessing
 import operator
 import os
-import pickle
 import platform
 import pwd
 import re
@@ -62,14 +61,11 @@ from portage.exception import (
 from portage.localization import _
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
-from portage.util.pickle import NoGlobalsUnpickler
-
 from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
 # Made global to fix importing on Python version upgrade:
 # https://bugs.gentoo.org/970375
 from ._SyncfsProcess import SyncfsProcess
-from ._VdbMetadataDelta import VdbMetadataDelta
 
 _METADATA_FILE = "metadata"
 # The exact set of fields the consolidated metadata file carries, and the set
@@ -296,12 +292,7 @@ class vardbapi(dbapi):
         r"^(\..*|" + MERGING_IDENTIFIER + ".*|" + "|".join(_excluded_dirs) + r")$"
     )
 
-    _aux_cache_version = "1"
     _owners_cache_version = "1"
-
-    # Number of uncached packages to trigger cache update, since
-    # it's wasteful to update it for every vdb change.
-    _aux_cache_threshold = 5
 
     _aux_cache_keys_re = re.compile(r"^NEEDED\..*$")
     _aux_multi_line_re = re.compile(r"^(CONTENTS|NEEDED\..*)$")
@@ -325,11 +316,6 @@ class vardbapi(dbapi):
         # Used by emerge to check whether any packages
         # have been added or removed.
         self._pkgs_changed = False
-
-        # The _aux_cache_threshold doesn't work as designed
-        # if the cache is flushed from a subprocess, so we
-        # use this to avoid waste vdb cache updates.
-        self._flush_cache_enabled = True
 
         # cache for category directory mtimes
         self.mtdircache = {}
@@ -373,13 +359,6 @@ class vardbapi(dbapi):
         # because callers such as FakeVartree replace it per instance.
         self._aux_cache_keys = set(_METADATA_FILE_FIELDS)
         self._aux_cache_obj = None
-        self._aux_cache_filename = os.path.join(
-            self._eroot, CACHE_PATH, "vdb_metadata.pickle"
-        )
-        self._cache_delta_filename = os.path.join(
-            self._eroot, CACHE_PATH, "vdb_metadata_delta.json"
-        )
-        self._cache_delta = VdbMetadataDelta(self)
         self._counter_path = os.path.join(self._eroot, CACHE_PATH, "counter")
 
         self._plib_registry = PreservedLibsRegistry(
@@ -830,45 +809,7 @@ class vardbapi(dbapi):
         return self.getpath(str(mycpv), filename=catsplit(mycpv)[1] + ".ebuild")
 
     def flush_cache(self):
-        """If the current user has permission and the internal aux_get cache has
-        been updated, save it to disk and mark it unmodified.  This is called
-        by emerge after it has loaded the full vdb for use in dependency
-        calculations.  Currently, the cache is only written if the user has
-        superuser privileges (since that's required to obtain a lock), but all
-        users have read access and benefit from faster metadata lookups (as
-        long as at least part of the cache is still valid)."""
-        from portage.data import secpass
-        from portage.util import apply_secpass_permissions, atomic_ofstream, ensure_dirs
-
-        if (
-            self._flush_cache_enabled
-            and self._aux_cache is not None
-            and secpass >= 2
-            and (
-                len(self._aux_cache["modified"]) >= self._aux_cache_threshold
-                or not os.path.exists(self._cache_delta_filename)
-            )
-        ):
-            ensure_dirs(os.path.dirname(self._aux_cache_filename))
-
-            self._owners.populate()  # index any unindexed contents
-            valid_nodes = set(self.cpv_all())
-            for cpv in list(self._aux_cache["packages"]):
-                if cpv not in valid_nodes:
-                    del self._aux_cache["packages"][cpv]
-            del self._aux_cache["modified"]
-            timestamp = time.time()
-            self._aux_cache["timestamp"] = timestamp
-
-            with atomic_ofstream(self._aux_cache_filename, "wb") as f:
-                pickle.dump(self._aux_cache, f, protocol=2)
-
-            apply_secpass_permissions(self._aux_cache_filename, mode=0o644)
-
-            self._cache_delta.initialize(timestamp)
-            apply_secpass_permissions(self._cache_delta_filename, mode=0o644)
-
-            self._aux_cache["modified"] = set()
+        pass
 
     @property
     def _aux_cache(self):
@@ -877,58 +818,11 @@ class vardbapi(dbapi):
         return self._aux_cache_obj
 
     def _aux_cache_init(self):
-        from portage.util import writemsg
-
-        aux_cache = None
-        open_kwargs = {}
-        try:
-            with open(
-                self._aux_cache_filename,
-                mode="rb",
-                **open_kwargs,
-            ) as f:
-                aux_cache = NoGlobalsUnpickler(f).load()
-        except (SystemExit, KeyboardInterrupt):
-            raise
-        except Exception as e:
-            if isinstance(e, EnvironmentError) and getattr(e, "errno", None) in (
-                errno.ENOENT,
-                errno.EACCES,
-            ):
-                pass
-            else:
-                writemsg(
-                    _("!!! Error loading '%s': %s\n") % (self._aux_cache_filename, e),
-                    noiselevel=-1,
-                )
-            del e
-
-        if (
-            not aux_cache
-            or not isinstance(aux_cache, dict)
-            or aux_cache.get("version") != self._aux_cache_version
-            or not aux_cache.get("packages")
-        ):
-            aux_cache = {"version": self._aux_cache_version}
-            aux_cache["packages"] = {}
-
-        owners = aux_cache.get("owners")
-        if owners is not None:
-            if (
-                not isinstance(owners, dict)
-                or "version" not in owners
-                or owners["version"] != self._owners_cache_version
-                or "base_names" not in owners
-                or not isinstance(owners["base_names"], dict)
-            ):
-                owners = None
-
-        if owners is None:
-            owners = {"base_names": {}, "version": self._owners_cache_version}
-            aux_cache["owners"] = owners
-
-        aux_cache["modified"] = set()
-        self._aux_cache_obj = aux_cache
+        self._aux_cache_obj = {
+            "packages": {},
+            "owners": {"base_names": {}, "version": self._owners_cache_version},
+            "modified": set(),
+        }
 
     def aux_get(self, mycpv, wants, myrepo=None):
         """This automatically caches selected keys that are frequently needed
@@ -1056,7 +950,12 @@ class vardbapi(dbapi):
         env_keys = []
         for x in wants:
             if x == "_mtime_":
-                results[x] = st[stat.ST_MTIME]
+                # Float, matching the value aux_get() seeds itself with. The
+                # pickle cache used to supply this on a warm cache, so reading
+                # it from disk had only ever produced the truncated int on a
+                # cache miss; with the pickle gone that would have become the
+                # value callers always see.
+                results[x] = st.st_mtime
                 continue
 
             # _read_metadata_file only returns a dict for a file whose format
@@ -1444,12 +1343,6 @@ class vardbapi(dbapi):
                     self.settings._init_dirs()
                     write_atomic(self._counter_path, str(counter))
             self._cached_counter = counter
-
-            # Since we hold a lock, this is a good opportunity
-            # to flush the cache. Note that this will only
-            # flush the cache periodically in the main process
-            # when _aux_cache_threshold is exceeded.
-            self.flush_cache()
         finally:
             self.unlock()
 
@@ -2223,12 +2116,6 @@ class dblink:
                 noiselevel=-1,
             )
             return
-
-        if self.dbdir is self.dbpkgdir:
-            (counter,) = self.vartree.dbapi.aux_get(self.mycpv, ["COUNTER"])
-            self.vartree.dbapi._cache_delta.recordEvent(
-                "remove", self.mycpv, self.settings["SLOT"].split("/")[0], counter
-            )
 
         shutil.rmtree(self.dbdir)
         # If empty, remove parent category directory.
@@ -5303,9 +5190,6 @@ class dblink:
             self.delete()
             _movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
             self._merged_path(self.dbpkgdir, os.lstat(self.dbpkgdir))
-            self.vartree.dbapi._cache_delta.recordEvent(
-                "add", self.mycpv, slot, counter
-            )
         finally:
             self.unlockdb()
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2025 Gentoo Authors
+# Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Benchmark VDB metadata read performance.
@@ -17,6 +17,7 @@ import argparse
 import os as _os
 import subprocess
 import sys
+import textwrap
 import time
 
 from os import path as osp
@@ -41,15 +42,13 @@ def _count_metadata_files(dbroot):
     with_meta = 0
     without_meta = 0
     try:
-        for cat in _os.listdir(dbroot):
-            catdir = _os.path.join(dbroot, cat)
-            if not _os.path.isdir(catdir):
+        for cat in _os.scandir(dbroot):
+            if not cat.is_dir():
                 continue
-            for pkg in _os.listdir(catdir):
-                pkgdir = _os.path.join(catdir, pkg)
-                if not _os.path.isdir(pkgdir):
+            for pkg in _os.scandir(cat.path):
+                if not pkg.is_dir():
                     continue
-                if _os.path.exists(_os.path.join(pkgdir, _METADATA_FILE)):
+                if _os.path.exists(_os.path.join(pkg.path, _METADATA_FILE)):
                     with_meta += 1
                 else:
                     without_meta += 1
@@ -61,8 +60,8 @@ def _count_metadata_files(dbroot):
 def _run_read_benchmark(vardb, keys, iterations):
     """
     Read all metadata keys for every installed package, repeated
-    `iterations` times. Calls _aux_get() directly to bypass the pickle
-    cache so results reflect actual file-read performance.
+    `iterations` times. Calls _aux_get() directly to bypass the
+    in-session cache so each pass reflects actual file-read performance.
     Returns (cpvs, list-of-per-iteration-durations-in-seconds).
     """
     cpvs = vardb.cpv_all()
@@ -159,16 +158,19 @@ def main(argv):
     if opts.strace:
         print("\nCounting openat() syscalls via strace (single pass)…")
         # Build a self-contained script for strace to execute.
-        script = f"""\
-import sys
-sys.path.insert(0, {repr(_os.path.join(_os.path.dirname(_os.path.dirname(_os.path.realpath(__file__))), "lib"))})
-import portage
-portage._internal_caller = True
-vardb = portage.db[{repr(eroot)}]["vartree"].dbapi
-keys = list(vardb._aux_cache_keys)
-for cpv in vardb.cpv_all():
-    vardb._aux_get(cpv, keys)
-"""
+        libdir = _os.path.join(
+            _os.path.dirname(_os.path.dirname(_os.path.realpath(__file__))), "lib"
+        )
+        script = textwrap.dedent(f"""
+            import sys
+            sys.path.insert(0, {libdir!r})
+            import portage
+            portage._internal_caller = True
+            vardb = portage.db[{eroot!r}]["vartree"].dbapi
+            keys = list(vardb._aux_cache_keys)
+            for cpv in vardb.cpv_all():
+                vardb._aux_get(cpv, keys)
+        """)
         count = _strace_open_count(script)
         if count is None:
             print("strace not available or failed to parse output.")

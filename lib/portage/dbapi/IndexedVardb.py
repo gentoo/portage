@@ -3,23 +3,13 @@
 
 import portage
 from portage.dep import Atom
-from portage.exception import InvalidData
-from portage.versions import _pkg_str
 
 
 class IndexedVardb:
     """
     A vardbapi interface that sacrifices validation in order to
-    improve performance. It takes advantage of vardbdbapi._aux_cache,
-    which is backed by vdb_metadata.pickle. Since _aux_cache is
-    not updated for every single merge/unmerge (see
-    _aux_cache_threshold), the list of packages is obtained directly
-    from the real vardbapi instance. If a package is missing from
-    _aux_cache, then its metadata is obtained using the normal
-    (validated) vardbapi.aux_get method.
-
-    For performance reasons, the match method only supports package
-    name and version constraints.
+    improve performance. For performance reasons, the match method
+    only supports package name and version constraints.
     """
 
     # Match returns unordered results.
@@ -42,27 +32,7 @@ class IndexedVardb:
         """
         if self._cp_map is not None:
             return iter(sorted(self._cp_map)) if sort else iter(self._cp_map)
-
-        delta_data = self._vardb._cache_delta.loadRace()
-        if delta_data is None:
-            return self._iter_cp_all()
-
-        self._vardb._cache_delta.applyDelta(delta_data)
-
-        self._cp_map = cp_map = {}
-        for cpv in self._vardb._aux_cache["packages"]:
-            try:
-                cpv = _pkg_str(cpv, db=self._vardb)
-            except InvalidData:
-                continue
-
-            cp_list = cp_map.get(cpv.cp)
-            if cp_list is None:
-                cp_list = []
-                cp_map[cpv.cp] = cp_list
-            cp_list.append(cpv)
-
-        return iter(sorted(self._cp_map)) if sort else iter(self._cp_map)
+        return self._iter_cp_all()
 
     def _iter_cp_all(self):
         self._cp_map = cp_map = {}
@@ -107,8 +77,6 @@ class IndexedVardb:
         ):
             pkg_data = None
         if pkg_data is None:
-            # It may be missing from _aux_cache due to
-            # _aux_cache_threshold.
             return self._vardb.aux_get(cpv, attrs)
         metadata = pkg_data[1]
         return [metadata.get(k, "") for k in attrs]
