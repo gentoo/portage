@@ -34,14 +34,8 @@ def read_configs(parser, paths):
     @param paths: list of paths to read
     @type paths: iterable
     """
-    # use read_file/readfp in order to control decoding of unicode
-    try:
-        # Python >=3.2
-        read_file = parser.read_file
-        source_kwarg = "source"
-    except AttributeError:
-        read_file = parser.readfp
-        source_kwarg = "filename"
+    read_file = parser.read_file
+    source_kwarg = "source"
 
     for p in paths:
         if isinstance(p, str):
