@@ -80,11 +80,6 @@ class MtimeDB(dict):
             except Exception as e:
                 try:
                     mypickle = pickle.Unpickler(io.BytesIO(content))
-                    try:
-                        mypickle.find_global = None
-                    except AttributeError:
-                        # Python >=3
-                        pass
                     d = mypickle.load()
                 except SystemExit:
                     raise
