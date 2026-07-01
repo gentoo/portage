@@ -821,21 +821,12 @@ class vardbapi(dbapi):
         self._aux_cache_obj = {
             "packages": {},
             "owners": {"base_names": {}, "version": self._owners_cache_version},
-            "modified": set(),
         }
 
     def aux_get(self, mycpv, wants, myrepo=None):
-        """This automatically caches selected keys that are frequently needed
-        by emerge for dependency calculations.  The cached metadata is
-        considered valid if the mtime of the package directory has not changed
-        since the data was cached.  The cache is stored in a pickled dict
-        object with the following format:
-
-        {version:"1", "packages":{cpv1:(mtime,{k1,v1, k2,v2, ...}), cpv2...}}
-
-        If an error occurs while loading the cache pickle or the version is
-        unrecognized, the cache will simple be recreated from scratch (it is
-        completely disposable).
+        """Return requested metadata for mycpv, using an in-session cache keyed
+        by package directory mtime. Metadata is re-read from the VDB when the
+        directory mtime changes (e.g. after a merge or aux_update).
         """
         from portage.eapi import _get_eapi_attrs
         from portage.versions import _get_slot_re
@@ -866,39 +857,17 @@ class vardbapi(dbapi):
         pull_me = cache_these.union(wants)
         mydata = {"_mtime_": mydir_mtime}
         cache_valid = False
-        cache_mtime = None
         metadata = None
         if pkg_data is not None:
-            if not isinstance(pkg_data, tuple) or len(pkg_data) != 2:
-                pkg_data = None
-            else:
-                cache_mtime, metadata = pkg_data
-                if not isinstance(cache_mtime, (float, int)) or not isinstance(
-                    metadata, dict
-                ):
-                    pkg_data = None
-
-        if pkg_data:
             cache_mtime, metadata = pkg_data
-            if isinstance(cache_mtime, float):
-                # Handle truncated mtime in order to avoid cache
-                # invalidation for livecd squashfs (bug 564222).
-                if (
-                    cache_mtime == mydir_stat.st_mtime
-                    or int(cache_mtime) == mydir_stat.st_mtime
-                ):
-                    cache_valid = True
-            else:
-                # Cache may contain integer mtime.
-                cache_valid = cache_mtime == mydir_stat[stat.ST_MTIME]
+            # Handle truncated mtime for livecd squashfs (bug 564222).
+            if (
+                cache_mtime == mydir_stat.st_mtime
+                or int(cache_mtime) == mydir_stat.st_mtime
+            ):
+                cache_valid = True
 
         if cache_valid:
-            # Migrate old metadata to unicode.
-            for k, v in metadata.items():
-                metadata[k] = (
-                    v.decode("utf-8", "replace") if isinstance(v, bytes) else v
-                )
-
             mydata.update(metadata)
             pull_me.difference_update(mydata)
 
@@ -913,7 +882,6 @@ class vardbapi(dbapi):
                 for aux_key in cache_these:
                     cache_data[aux_key] = mydata[aux_key]
                 self._aux_cache["packages"][str(mycpv)] = (mydir_mtime, cache_data)
-                self._aux_cache["modified"].add(mycpv)
 
         eapi_attrs = _get_eapi_attrs(mydata["EAPI"])
         if _get_slot_re(eapi_attrs).match(mydata["SLOT"]) is None:
@@ -1481,8 +1449,6 @@ class vardbapi(dbapi):
 
             for x in db._contents.keys():
                 self._add_path(x[eroot_len:], pkg_hash)
-
-            self._vardb._aux_cache["modified"].add(cpv)
 
         def _add_path(self, path, pkg_hash):
             """
@@ -3273,7 +3239,6 @@ class dblink:
         self.lockdb()
         try:
             owners = self.vartree.dbapi._owners.get_owners(flat_list)
-            self.vartree.dbapi.flush_cache()
         finally:
             self.unlockdb()
 
@@ -4900,7 +4865,6 @@ class dblink:
                 self.lockdb()
                 try:
                     owners = self.vartree.dbapi._owners.get_owners(collisions)
-                    self.vartree.dbapi.flush_cache()
 
                     for pkg in owners:
                         pkg = self.vartree.dbapi._pkg_str(pkg.mycpv, None)
