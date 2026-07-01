@@ -9,8 +9,6 @@ import re
 import socket
 import subprocess
 import sys
-from asyncio import Future
-from typing import Optional
 
 import os
 import portage
@@ -18,7 +16,6 @@ import portage.util.formatter as formatter
 
 from portage.const import COLOR_MAP_FILE
 from portage.exception import (
-    CommandNotFound,
     FileNotFound,
     ParseError,
     PermissionDenied,
@@ -550,34 +547,6 @@ def get_term_size(fd=None):
                 if val[0] >= 0 and val[1] >= 0:
                     return val
     return (0, 0)
-
-
-def set_term_size(lines: int, columns: int, fd: int) -> Optional[Future]:
-    """
-    Set the number of lines and columns for the tty that is connected to fd.
-    For portability, this simply calls `stty rows $lines columns $columns`.
-
-    If spawn succeeds and the event loop is running then an instance of
-    asyncio.Future is returned and the caller should wait for it in order
-    to prevent possible error messages like this:
-
-    [ERROR] Task was destroyed but it is pending!
-    """
-    from portage.process import spawn
-    from portage.util import writemsg
-    from portage.util.futures import asyncio
-
-    cmd = ["stty", "rows", str(lines), "columns", str(columns)]
-    try:
-        proc = spawn(cmd, env=os.environ, fd_pipes={0: fd}, returnproc=True)
-    except CommandNotFound:
-        writemsg(_("portage: stty: command not found\n"), noiselevel=-1)
-    else:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return asyncio.ensure_future(proc.wait(), loop=loop)
-        else:
-            loop.run_until_complete(proc.wait())
 
 
 class EOutput:

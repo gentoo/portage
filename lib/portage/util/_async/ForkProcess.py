@@ -97,8 +97,7 @@ class ForkProcess(SpawnProcess):
                         )
                     # When called via process.spawn, SpawnProcess
                     # will have created a pipe earlier, so it would be
-                    # redundant to do it here (it could also trigger spawn
-                    # recursion via set_term_size as in bug 923750).
+                    # redundant to do it here.
                     master_fd = None
                     slave_fd = None
 

@@ -104,11 +104,9 @@ def _create_pty_or_pipe(
         mode[1] &= ~termios.OPOST
         termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
 
-        # A pty allocated by Python has a default window size of 0x0. Setting
-        # the dimensions directly prevents child processes from observing that
-        # value, and avoids set_term_size(), which would otherwise spawn
-        # stty(1). The ioctl is issued directly because termios.tcsetwinsize()
-        # requires at least Python 3.11.
+        # A newly allocated pty has a window size of 0x0. Set the window size
+        # before exposing it to child processes. The ioctl is issued directly
+        # because termios.tcsetwinsize() requires at least Python 3.11.
         rows, columns = _get_term_size(copy_term_size)
         fcntl.ioctl(
             slave_fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0)
