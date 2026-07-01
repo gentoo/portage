@@ -292,8 +292,6 @@ class vardbapi(dbapi):
         r"^(\..*|" + MERGING_IDENTIFIER + ".*|" + "|".join(_excluded_dirs) + r")$"
     )
 
-    _owners_cache_version = "1"
-
     _aux_cache_keys_re = re.compile(r"^NEEDED\..*$")
     _aux_multi_line_re = re.compile(r"^(CONTENTS|NEEDED\..*)$")
     _pkg_str_aux_keys = dbapi._pkg_str_aux_keys + ("BUILD_ID", "BUILD_TIME", "_mtime_")
@@ -820,7 +818,7 @@ class vardbapi(dbapi):
     def _aux_cache_init(self):
         self._aux_cache_obj = {
             "packages": {},
-            "owners": {"base_names": {}, "version": self._owners_cache_version},
+            "owners": {"base_names": {}},
         }
 
     def aux_get(self, mycpv, wants, myrepo=None):
