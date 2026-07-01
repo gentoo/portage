@@ -310,9 +310,16 @@ else
 fi
 
 if hash setfattr 2>/dev/null; then
-	restore_xattrs() {
-		setfattr --restore=-
-	}
+	# The --physical option is supported by >=sys-apps/attr-2.6.0.
+	if setfattr --help | grep -q -- --physical; then
+		restore_xattrs() {
+			setfattr -h -P --restore=-
+		}
+	else
+		restore_xattrs() {
+			setfattr -h --restore=-
+		}
+	fi
 else
 	restore_xattrs() {
 		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
