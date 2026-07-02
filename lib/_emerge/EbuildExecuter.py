@@ -18,6 +18,50 @@ class EbuildExecuter(CompositeTask):
 
     _phases = ("prepare", "configure", "compile", "test", "install")
 
+    # src_* phases whose default (EAPI-provided) implementations are no-ops
+    # for a package with no source to act on. src_install is intentionally
+    # excluded: it creates ${D} and drives the install-time QA checks, so it
+    # always runs. Excluding src_install also sidesteps declarative variables
+    # such as DOCS, which can reference FILESDIR (present even for sourceless
+    # packages) and thus may do real work in the default src_install body.
+    _skippable_src_phases = frozenset(
+        ("unpack", "prepare", "configure", "compile", "test")
+    )
+
+    def _can_skip_source_phases(self):
+        """
+        Return True if unpack and the src_prepare/configure/compile/test
+        phases would only run no-op default bodies and can be skipped
+        entirely (avoiding one ebuild.sh subprocess spawn per phase).
+
+        This holds when the package has no source to unpack (empty SRC_URI,
+        hence empty ${A}, hence nothing for the default phase bodies to
+        configure/compile/install) and defines none of those phases itself.
+        Empty/virtual packages (DEFINED_PHASES=-) are the motivating case.
+        """
+        settings = self.settings
+        # The ebuild command's manual mode relies on running each phase.
+        if "noauto" in settings.features:
+            return False
+        # Live ebuilds fetch their source in src_unpack regardless of
+        # SRC_URI, so never skip unpack for them.
+        if "live" in settings.get("PROPERTIES", "").split():
+            return False
+
+        metadata = self.pkg._metadata
+        if metadata.get("SRC_URI", "").strip():
+            return False
+        defined_phases = frozenset(metadata.get("DEFINED_PHASES", "").split())
+        if defined_phases.intersection(self._skippable_src_phases):
+            return False
+
+        # pkg_setup (which has run by now) records whether PATCHES is set;
+        # the default src_prepare would apply it, so don't skip in that case.
+        if os.path.exists(os.path.join(settings["PORTAGE_BUILDDIR"], ".src_patches")):
+            return False
+
+        return True
+
     def _start(self):
         pkg = self.pkg
         scheduler = self.scheduler
@@ -50,6 +94,16 @@ class EbuildExecuter(CompositeTask):
             self.wait()
             return
 
+        if self._can_skip_source_phases():
+            # No source and no ebuild-defined src_* phases: unpack and
+            # src_prepare/configure/compile/test would only run no-op
+            # default bodies. Skip straight to src_install (which creates
+            # ${D} and runs the install QA checks). WORKDIR was already
+            # created by prepare_build_dirs(), so src_install can cd into
+            # it as usual.
+            self._start_phases(("install",))
+            return
+
         unpack_phase = EbuildPhase(
             background=self.background,
             phase="unpack",
@@ -73,14 +127,16 @@ class EbuildExecuter(CompositeTask):
             self.wait()
             return
 
-        ebuild_phases = TaskSequence(scheduler=self.scheduler)
-
-        pkg = self.pkg
         phases = self._phases
-        eapi = pkg.eapi
+        eapi = self.pkg.eapi
         if not eapi_has_src_prepare_and_src_configure(eapi):
             # skip src_prepare and src_configure
             phases = phases[2:]
+
+        self._start_phases(phases)
+
+    def _start_phases(self, phases):
+        ebuild_phases = TaskSequence(scheduler=self.scheduler)
 
         for phase in phases:
             ebuild_phases.add(
