@@ -76,6 +76,11 @@ Cleanups:
 
 * Use os.scandir() to reduce the number of syscalls made.
 
+Performance:
+
+* getbinpkg: Parse binary package indexes faster by storing package
+  entries in plain dicts instead of slot-dict instances.
+
 portage-3.0.81 (2026-06-23)
 --------------
 
