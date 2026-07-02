@@ -2205,25 +2205,36 @@ class dblink:
             try:
                 plib_registry.load()
 
-                unmerge_with_replacement = unmerge and preserve_paths is not None
-                if unmerge_with_replacement:
-                    # If self.mycpv is about to be unmerged and we
-                    # have a replacement package, we want to exclude
-                    # the irrelevant NEEDED data that belongs to
-                    # files which are being unmerged now.
-                    exclude_pkgs = (self.mycpv,)
-                else:
-                    exclude_pkgs = None
+                # An instance that owns no files (e.g. empty/virtual
+                # packages) has no libraries of its own to preserve and
+                # removes no files, so it cannot drop the last consumer of an
+                # already-preserved library and leave that library orphaned.
+                # The expensive system-wide linkmap rebuild and the
+                # preserve/prune scans below are therefore guaranteed no-ops.
+                # Registry unregistration on unmerge is still performed so any
+                # (empty) entry is cleaned up.
+                instance_owns_files = bool(self.getcontents())
 
-                self._linkmap_rebuild(
-                    exclude_pkgs=exclude_pkgs,
-                    include_file=needed,
-                    preserve_paths=preserve_paths,
-                )
+                unmerge_with_replacement = unmerge and preserve_paths is not None
+                if instance_owns_files:
+                    if unmerge_with_replacement:
+                        # If self.mycpv is about to be unmerged and we
+                        # have a replacement package, we want to exclude
+                        # the irrelevant NEEDED data that belongs to
+                        # files which are being unmerged now.
+                        exclude_pkgs = (self.mycpv,)
+                    else:
+                        exclude_pkgs = None
+
+                    self._linkmap_rebuild(
+                        exclude_pkgs=exclude_pkgs,
+                        include_file=needed,
+                        preserve_paths=preserve_paths,
+                    )
 
                 if unmerge:
                     unmerge_preserve = None
-                    if not unmerge_with_replacement:
+                    if instance_owns_files and not unmerge_with_replacement:
                         unmerge_preserve = self._find_libs_to_preserve(unmerge=True)
                     counter = self.vartree.dbapi.cpv_counter(self.mycpv)
                     try:
@@ -2249,7 +2260,11 @@ class dblink:
                         self.vartree.dbapi.removeFromContents(self, unmerge_preserve)
 
                 unmerge_no_replacement = unmerge and not unmerge_with_replacement
-                cpv_lib_map = self._find_unused_preserved_libs(unmerge_no_replacement)
+                cpv_lib_map = (
+                    self._find_unused_preserved_libs(unmerge_no_replacement)
+                    if instance_owns_files
+                    else None
+                )
                 if cpv_lib_map:
                     self._remove_preserved_libs(cpv_lib_map)
                     self.vartree.dbapi.lock()
@@ -4939,14 +4954,28 @@ class dblink:
             try:
                 plib_registry.load()
                 needed = os.path.join(inforoot, linkmap._needed_aux_key)
-                self._linkmap_rebuild(include_file=needed)
 
-                # Preserve old libs if they are still in use
-                # TODO: Handle cases where the previous instance
-                # has already been uninstalled but it still has some
-                # preserved libraries in the registry that we may
-                # want to preserve here.
-                preserve_paths = self._find_libs_to_preserve()
+                # preserve-libs can only preserve libraries owned by the
+                # instance being replaced (see _find_libs_to_preserve, which
+                # selects paths from self._installed_instance). If there is no
+                # replaced instance, or it owns no files (e.g. empty/virtual
+                # packages), then _find_libs_to_preserve() is guaranteed to
+                # return an empty set, so the expensive system-wide linkmap
+                # rebuild here would be a waste. Skip it.
+                installed_instance = self._installed_instance
+                if (
+                    self._preserve_libs
+                    and installed_instance is not None
+                    and installed_instance.getcontents()
+                ):
+                    self._linkmap_rebuild(include_file=needed)
+
+                    # Preserve old libs if they are still in use
+                    # TODO: Handle cases where the previous instance
+                    # has already been uninstalled but it still has some
+                    # preserved libraries in the registry that we may
+                    # want to preserve here.
+                    preserve_paths = self._find_libs_to_preserve()
             finally:
                 plib_registry.unlock()
                 self.vartree.dbapi._fs_unlock()
