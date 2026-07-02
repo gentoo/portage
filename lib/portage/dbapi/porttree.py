@@ -1144,7 +1144,7 @@ class portdbapi(dbapi):
 
     def cp_list(self, mycp, use_cache=1, mytree=None):
         from portage.util import writemsg
-        from portage.versions import pkgsplit, ver_regexp, _pkg_str
+        from portage.versions import ver_regexp, _pkg_str
 
         # NOTE: Cache can be safely shared with the match cache, since the
         # match cache uses the result from dep_expand for the cache_key.
