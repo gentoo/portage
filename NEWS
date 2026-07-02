@@ -30,6 +30,11 @@ Cleanups:
   preserved-libs registry, both of which have been written as JSON since
   March 2012.
 
+Performance:
+
+* getbinpkg: Parse binary package indexes faster by storing package
+  entries in plain dicts instead of slot-dict instances.
+
 portage-3.0.81 (2026-06-23)
 --------------
 

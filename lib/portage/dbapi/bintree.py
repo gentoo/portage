@@ -1336,7 +1336,7 @@ class binarytree:
                     pkg_paths[_instance_key(mycpv)] = mypath
                     self.dbapi.cpv_inject(mycpv)
                     update_pkgindex = True
-                    d = metadata.get(_instance_key(mycpv), pkgindex._pkg_slot_dict())
+                    d = metadata.get(_instance_key(mycpv), {})
                     if d:
                         try:
                             if int(d["_mtime_"]) != s[stat.ST_MTIME]:

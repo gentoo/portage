@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.output import colorize
-from portage.cache.mappings import slot_dict_class
 from portage.localization import _
 import portage
 from portage import os
@@ -874,9 +873,9 @@ class PackageIndex:
         inherited_keys=None,
         translated_keys=None,
     ):
-        self._pkg_slot_dict = None
+        self._allowed_pkg_keys = None
         if allowed_pkg_keys:
-            self._pkg_slot_dict = slot_dict_class(allowed_pkg_keys)
+            self._allowed_pkg_keys = frozenset(allowed_pkg_keys)
 
         self._default_header_data = default_header_data
         self._default_pkg_data = default_pkg_data
@@ -894,10 +893,7 @@ class PackageIndex:
 
     def _readpkgindex(self, pkgfile, pkg_entry=True):
         d = {}
-        allowed_keys = None
-        if self._pkg_slot_dict and pkg_entry:
-            d = self._pkg_slot_dict()
-            allowed_keys = d.allowed_keys
+        allowed_keys = self._allowed_pkg_keys if pkg_entry else None
 
         for line in pkgfile:
             line = line.rstrip("\n")
@@ -912,6 +908,10 @@ class PackageIndex:
             k = self._read_translation_map.get(k, k)
             if allowed_keys is not None and k not in allowed_keys:
                 continue
+            # Plain dicts retain their key objects. Intern recurring keys so
+            # that entries share those strings, rather than each retaining its
+            # own strings produced by split().
+            k = sys.intern(k)
             d[k] = v
         return d
 
