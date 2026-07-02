@@ -1082,6 +1082,20 @@ __ebuild_main() {
 			export SANDBOX_ON="0"
 		fi
 
+		# build-info holds the saved ebuild environment and a copy of the
+		# ebuild; it must exist before the first src phase so src_install is
+		# reachable when earlier no-op src phases are skipped. Guard on
+		# PORTAGE_BUILDDIR: the clean phase can run before prepare_build_dirs()
+		# (and tolerates a missing builddir), so an unguarded cd would create
+		# a stray build-info/ in the cwd.
+		if [[ -d ${PORTAGE_BUILDDIR} ]]; then
+			cd "${PORTAGE_BUILDDIR}"
+			if [[ ! -d build-info ]]; then
+				mkdir build-info
+				cp "${EBUILD}" "build-info/${PF}.ebuild"
+			fi
+		fi
+
 		case "${1}" in
 		configure|compile)
 
@@ -1110,12 +1124,6 @@ __ebuild_main() {
 				echo
 
 				sleep 5
-			fi
-
-			cd "${PORTAGE_BUILDDIR}"
-			if [[ ! -d build-info ]]; then
-				mkdir build-info
-				cp "${EBUILD}" "build-info/${PF}.ebuild"
 			fi
 
 			# Our custom version of libtool uses ${S} and ${D} to fix
