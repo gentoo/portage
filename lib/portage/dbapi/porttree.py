@@ -21,6 +21,7 @@ from portage.exception import (
 from portage.localization import _
 
 from portage import eclass_cache, eapi_is_supported, _eapi_is_deprecated
+from portage.versions import pkgsplit
 from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
@@ -521,8 +522,6 @@ class portdbapi(dbapi):
         the file we wanted.
         If myrepo is not None it will find packages from this repository(overlay)
         """
-        from portage.versions import pkgsplit
-
         if not mycpv:
             return (None, 0)
 
@@ -1661,8 +1660,6 @@ class portagetree:
 
     def getname(self, pkgname):
         """Deprecated. Use the portdbapi findname method instead."""
-        from portage.versions import pkgsplit
-
         warnings.warn(
             "The getname method of "
             "portage.dbapi.porttree.portagetree is deprecated. "
