@@ -85,7 +85,7 @@ pkgconfig_check() {
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
 			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/, or libfoo
 			# Only check lines with a known prefix in order to avoid false positives
-			if grep -E -q -e '^libdir=(/usr)?/lib\b' -e '^Libs(\.private)?:.*/lib\b' "${f}" ; then
+			if grep -E -q -e '^libdir=.*/lib\b' -e '^Libs(\.private)?:.*/lib\b' "${f}" ; then
 				bad_libdir+=( "${f//${D}}" )
 			fi
 		fi
