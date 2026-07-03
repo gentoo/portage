@@ -1,10 +1,23 @@
 # Copyright 2011-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
+import tempfile
+
 from portage.tests import TestCase
 
-from portage.checksum import checksum_str, _apply_hash_filter
-from portage.exception import DigestException
+from portage.checksum import (
+    checksum_str,
+    perform_all,
+    perform_multiple_checksums,
+    verify_all,
+    hashfunc_keys,
+    _apply_hash_filter,
+    _checksum_file_parallel,
+    _checksum_file_serial,
+    _CHECKSUM_PARALLEL_MIN_SIZE,
+)
+from portage.exception import DigestException, FileNotFound
 
 
 class ChecksumTestCase(TestCase):
@@ -120,6 +133,128 @@ class ChecksumTestCase(TestCase):
             )
         except DigestException:
             self.skipTest("SHA3_512 implementation not available")
+
+
+def _write_tempfile(test, content):
+    fd, path = tempfile.mkstemp()
+    with os.fdopen(fd, "wb") as f:
+        f.write(content)
+    test.addCleanup(os.unlink, path)
+    return path
+
+
+class PerformChecksumsTestCase(TestCase):
+    text = b"Some test string used to check if the hash works"
+    # Known-answer digests of self.text (see ChecksumTestCase above).
+    text_digests = {
+        "MD5": "094c3bf4732f59b39d577e9726f1e934",
+        "SHA1": "5c572017d4e4d49e4aa03a2eda12dbb54a1e2e4f",
+        "SHA256": "e3d4a1135181fe156d61455615bb6296198e8ca5b2f20ddeb85cb4cd27f62320",
+    }
+
+    def test_single_hash(self):
+        path = _write_tempfile(self, self.text)
+        result = perform_multiple_checksums(path, hashes=["MD5"])
+        self.assertEqual(result, {"MD5": self.text_digests["MD5"]})
+        # Digests are hex strings, not (hash, size) tuples.
+        self.assertIsInstance(result["MD5"], str)
+
+    def test_multiple_hashes(self):
+        path = _write_tempfile(self, self.text)
+        result = perform_multiple_checksums(path, hashes=self.text_digests.keys())
+        self.assertEqual(result, self.text_digests)
+
+    def test_size_pseudo_hash(self):
+        path = _write_tempfile(self, self.text)
+        result = perform_multiple_checksums(path, hashes=["MD5", "size"])
+        self.assertEqual(result["MD5"], self.text_digests["MD5"])
+        self.assertEqual(result["size"], len(self.text))
+
+    def test_size_only(self):
+        path = _write_tempfile(self, self.text)
+        self.assertEqual(
+            perform_multiple_checksums(path, hashes=["size"]),
+            {"size": len(self.text)},
+        )
+
+    def test_unknown_hash(self):
+        path = _write_tempfile(self, self.text)
+        self.assertRaises(
+            DigestException, perform_multiple_checksums, path, hashes=["BOGUS"]
+        )
+
+    def test_parallel_matches_serial(self):
+        # A file over the parallel threshold with more than one hash takes the
+        # thread-per-hash path; it must agree with the serial single-pass path.
+        content = bytes(range(256)) * ((2 * _CHECKSUM_PARALLEL_MIN_SIZE) // 256)
+        path = _write_tempfile(self, content)
+        hashes = self.text_digests.keys()
+
+        serial = _checksum_file_serial(path, hashes)
+        parallel = _checksum_file_parallel(path, hashes)
+        self.assertEqual(serial, parallel)
+
+        # perform_multiple_checksums auto-selects the parallel path here.
+        self.assertEqual(perform_multiple_checksums(path, hashes=hashes), serial)
+
+    def test_parallel_file_not_found(self):
+        self.assertRaises(
+            FileNotFound,
+            perform_multiple_checksums,
+            "/nonexistent/file/for/checksum",
+            hashes=["MD5", "SHA256"],
+        )
+
+    def test_perform_all(self):
+        path = _write_tempfile(self, self.text)
+        result = perform_all(path)
+        self.assertEqual(set(result), set(hashfunc_keys))
+        self.assertEqual(result["size"], len(self.text))
+        for name, digest in self.text_digests.items():
+            self.assertEqual(result[name], digest)
+
+
+class VerifyAllTestCase(TestCase):
+    text = PerformChecksumsTestCase.text
+    digests = dict(PerformChecksumsTestCase.text_digests)
+
+    def _mydict(self, **overrides):
+        mydict = dict(self.digests)
+        mydict["size"] = len(self.text)
+        mydict.update(overrides)
+        return mydict
+
+    def test_pass(self):
+        path = _write_tempfile(self, self.text)
+        self.assertTrue(verify_all(path, self._mydict())[0])
+
+    def test_checksum_mismatch(self):
+        path = _write_tempfile(self, self.text)
+        ok, reason = verify_all(path, self._mydict(MD5="0" * 32))
+        self.assertFalse(ok)
+        self.assertIn("MD5", reason[0])
+
+    def test_size_mismatch(self):
+        path = _write_tempfile(self, self.text)
+        ok, reason = verify_all(path, self._mydict(size=len(self.text) + 1))
+        self.assertFalse(ok)
+
+    def test_insufficient_data(self):
+        path = _write_tempfile(self, self.text)
+        ok, reason = verify_all(path, {"size": len(self.text)})
+        self.assertFalse(ok)
+        self.assertIn("Insufficient data", reason[0])
+
+    def test_strict_raises(self):
+        path = _write_tempfile(self, self.text)
+        self.assertRaises(
+            DigestException, verify_all, path, self._mydict(MD5="0" * 32), strict=1
+        )
+
+    def test_file_not_found(self):
+        self.assertRaises(
+            FileNotFound, verify_all, "/nonexistent/file/for/checksum", self._mydict()
+        )
 
 
 class ApplyHashFilterTestCase(TestCase):
