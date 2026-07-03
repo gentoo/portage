@@ -3,6 +3,7 @@
 
 import errno
 from portage.util import writemsg
+from portage.util.pickle import NoGlobalsUnpickler
 from portage.data import secpass
 import portage
 from portage import os
@@ -42,13 +43,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
     def _load(self):
         try:
             f = open(self._cache_filename, mode="rb")
-            mypickle = pickle.Unpickler(f)
-            try:
-                mypickle.find_global = None
-            except AttributeError:
-                # TODO: If py3k, override Unpickler.find_class().
-                pass
-            self._cache_data = mypickle.load()
+            self._cache_data = NoGlobalsUnpickler(f).load()
             f.close()
             del f
         except (SystemExit, KeyboardInterrupt):

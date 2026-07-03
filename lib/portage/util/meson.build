@@ -22,6 +22,7 @@ py.install_sources(
         'mtimedb.py',
         'netlink.py',
         'path.py',
+        'pickle.py',
         'portage_lru_cache.py',
         'shelve.py',
         'socks5.py',

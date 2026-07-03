@@ -9,6 +9,17 @@ Release notes take the form of the following optional categories:
 portage-3.0.82 (UNRELEASED)
 --------------
 
+portage-3.0.81.1 (UNRELEASED)
+--------------
+
+Security:
+
+* Add portage.util.pickle.NoGlobalsUnpickler, a pickle.Unpickler subclass
+  that rejects global references.
+
+* Use NoGlobalsUnpickler for vdb cache pickles, restoring the intended
+  restriction on resolving arbitrary objects during unpickling (bug #19147).
+
 portage-3.0.81 (2026-06-23)
 --------------
 
