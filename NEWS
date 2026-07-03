@@ -27,6 +27,12 @@ Security:
   attributes, avoiding newly-introduced warnings and preventing symbolic links
   from misdirecting the restore operation (bug #978288).
 
+* Add portage.util.pickle.NoGlobalsUnpickler, a pickle.Unpickler subclass
+  that rejects global references.
+
+* Use NoGlobalsUnpickler for vdb cache pickles, restoring the intended
+  restriction on resolving arbitrary objects during unpickling (bug #19147).
+
 Features:
 
 * vartree: Avoid pruning preserved-libs database or syncing to disk if we

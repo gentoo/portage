@@ -30,6 +30,7 @@ from portage.exception import (
 )
 from portage.localization import _
 from portage.util.futures import asyncio
+from portage.util.pickle import NoGlobalsUnpickler
 
 from portage import abssymlink, _movefile, bsd_chflags
 from portage import selinux as _selinux_merge
@@ -691,13 +692,7 @@ class vardbapi(dbapi):
                 mode="rb",
                 **open_kwargs,
             ) as f:
-                mypickle = pickle.Unpickler(f)
-                try:
-                    mypickle.find_global = None
-                except AttributeError:
-                    # TODO: If py3k, override Unpickler.find_class().
-                    pass
-                aux_cache = mypickle.load()
+                aux_cache = NoGlobalsUnpickler(f).load()
         except (SystemExit, KeyboardInterrupt):
             raise
         except Exception as e:
