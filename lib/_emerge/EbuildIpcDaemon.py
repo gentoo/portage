@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import io
 import logging
 import pickle
 
@@ -10,6 +11,7 @@ from portage.exception import TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
+from portage.util.pickle import NoGlobalsUnpickler
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
 
 
@@ -41,7 +43,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
             pass  # EAGAIN
         elif data:
             try:
-                obj = pickle.loads(data)
+                obj = NoGlobalsUnpickler(io.BytesIO(data)).load()
             except SystemExit:
                 raise
             except Exception:

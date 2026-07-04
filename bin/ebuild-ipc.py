@@ -42,6 +42,7 @@ try:
     signal.signal(signal.SIGUSR1, debug_signal)
 
     import errno
+    import io
     import logging
     import pickle
     import time
@@ -81,6 +82,7 @@ try:
     portage._disable_legacy_globals()
 
     from portage.util._eventloop.global_event_loop import global_event_loop
+    from portage.util.pickle import NoGlobalsUnpickler
     from _emerge.AbstractPollTask import AbstractPollTask
     from _emerge.PipeReader import PipeReader
 
@@ -244,7 +246,7 @@ try:
 
             else:
                 try:
-                    reply = pickle.loads(buf)
+                    reply = NoGlobalsUnpickler(io.BytesIO(buf)).load()
                 except SystemExit:
                     raise
                 except Exception as e:
