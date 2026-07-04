@@ -86,14 +86,19 @@ portage_mutable_filtered_vars=( AA HOSTNAME )
 # is to preserve various variables as they were at the time that the binary
 # package was built while protecting against the application of package renames.
 __filter_readonly_variables() {
-	local -a filtered_vars bash_vars
-	local IFS
+	local -a filtered_vars bash_vars qemu_env
+	local IFS x
+
+	# preserve QEMU vars for qemu-static
+	for x in ${!QEMU_@}; do
+		qemu_env+=( "${x}=${!x}" )
+	done
 
 	# Collect an initial list of special bash variables by instructing a
 	# hygienic instance of bash(1) to report them.
 	mapfile -t bash_vars < <(
 		# Like compgen -A variable but doesn't require readline support.
-		env -i -- "${BASH}" -c "printf %s\\\n $(printf '${!%s*} ' {A..Z} {a..z} _)" \
+		env -i -- "${qemu_env[@]}" "${BASH}" -c "printf %s\\\n $(printf '${!%s*} ' {A..Z} {a..z} _)" \
 		| grep -vx -e PATH -e SHELL
 	)
 	# Incorporate other variables that are known to either be set by or be
