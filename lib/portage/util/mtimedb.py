@@ -5,9 +5,7 @@ __all__ = ["MtimeDB"]
 
 import copy
 import errno
-import io
 import json
-import pickle
 
 import portage
 from portage.data import portage_gid, uid
@@ -28,12 +26,8 @@ _MTIMEDBKEYS = {
 class MtimeDB(dict):
     """The MtimeDB class is used to interact with a file storing the
     current resume lists.
-    It is a subclass of ``dict`` and it reads from/writes to JSON, by
-    default, although it can be configured to use ``pickle``.
+    It is a subclass of ``dict`` and it reads from/writes to JSON.
     """
-
-    # JSON read support has been available since portage-2.1.10.49.
-    _json_write = True
 
     _json_write_opts = {"ensure_ascii": False, "indent": "\t", "sort_keys": True}
 
@@ -78,13 +72,7 @@ class MtimeDB(dict):
             except SystemExit:
                 raise
             except Exception as e:
-                try:
-                    mypickle = pickle.Unpickler(io.BytesIO(content))
-                    d = mypickle.load()
-                except SystemExit:
-                    raise
-                except Exception:
-                    writemsg(_(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1)
+                writemsg(_(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1)
 
         if "old" in d:
             d["updates"] = d["old"]
@@ -120,12 +108,7 @@ class MtimeDB(dict):
         except OSError:
             pass
         else:
-            if self._json_write:
-                f.write(
-                    json.dumps(d, **self._json_write_opts).encode("utf-8", "strict")
-                )
-            else:
-                pickle.dump(d, f, protocol=2)
+            f.write(json.dumps(d, **self._json_write_opts).encode("utf-8", "strict"))
             f.close()
             apply_secpass_permissions(
                 self.filename, uid=uid, gid=portage_gid, mode=0o644
