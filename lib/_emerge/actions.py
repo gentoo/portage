@@ -385,7 +385,7 @@ def action_build(
                         )
                     else:
                         writemsg(
-                            f"  {task} requires {', '.join(atoms)}\n",
+                            f"  {task} requires {', '.join(str(a) for a in atoms)}\n",
                             noiselevel=-1,
                         )
 

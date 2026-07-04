@@ -2386,7 +2386,7 @@ class depgraph:
                         "_slot_operator_check_reverse_dependencies:",
                         f"   candidate package does not match atom '{atom}': {candidate_pkg}",
                         f"   parent: {parent}",
-                        f"   parent atoms: {' '.join(parent_atoms)}",
+                        f"   parent atoms: {' '.join(str(a) for a in parent_atoms)}",
                         "",
                     )
                     writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
