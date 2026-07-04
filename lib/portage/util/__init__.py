@@ -39,7 +39,6 @@ __all__ = [
     "map_dictlist_vals",
     "new_protect_filename",
     "normalize_path",
-    "pickle_read",
     "stack_dictlist",
     "stack_dicts",
     "stack_lists",
@@ -1012,32 +1011,6 @@ def varexpand(mystring, mydict=None, error_leader=None):
             pos += 1
 
     return "".join(newstring)
-
-
-# broken and removed, but can still be imported
-pickle_write = None
-
-
-def pickle_read(filename, default=None, debug=0):
-    import pickle
-
-    if not os.access(filename, os.R_OK):
-        writemsg(_("pickle_read(): File not readable. '") + filename + "'\n", 1)
-        return default
-    data = None
-    try:
-        myf = open(filename, "rb")
-        mypickle = pickle.Unpickler(myf)
-        data = mypickle.load()
-        myf.close()
-        del mypickle, myf
-        writemsg(_("pickle_read(): Loaded pickle. '") + filename + "'\n", 1)
-    except SystemExit:
-        raise
-    except Exception as e:
-        writemsg(_("!!! Failed to load pickle: ") + str(e) + "\n", 1)
-        data = default
-    return data
 
 
 def dump_traceback(msg, noiselevel=1):

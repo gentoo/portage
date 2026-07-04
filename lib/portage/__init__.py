@@ -88,7 +88,7 @@ try:
         + "apply_recursive_permissions,dump_traceback,getconfig,"
         + "grabdict,grabdict_package,grabfile,grabfile_package,"
         + "map_dictlist_vals,new_protect_filename,normalize_path,"
-        + "pickle_read,pickle_write,stack_dictlist,stack_dicts,"
+        + "stack_dictlist,stack_dicts,"
         + "stack_lists,unique_array,varexpand,writedict,writemsg,"
         + "writemsg_stdout,write_atomic",
         "portage.util.digraph:digraph",
