@@ -24,6 +24,11 @@ Security:
   preventing processes in the ebuild execution environment from executing
   arbitrary code in the main Portage process, outside the sandbox (bug #978478).
 
+Cleanups:
+
+* Drop the obsolete pickle read fallback for the mtimedb cache file,
+  which has been written as JSON since March 2012.
+
 portage-3.0.81 (2026-06-23)
 --------------
 
