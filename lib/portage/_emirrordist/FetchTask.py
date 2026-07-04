@@ -273,7 +273,7 @@ class FetchTask(CompositeTask):
 
     def _next_uri(self):
         remaining_tries = self.config.options.tries - len(self._tried_uris)
-        if remaining_tries > 0:
+        if remaining_tries > 0 or self._primaryuri_stack:
             if remaining_tries <= self.config.options.tries // 2:
                 while self._primaryuri_stack:
                     uri = self._primaryuri_stack.pop()
