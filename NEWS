@@ -86,8 +86,9 @@ Cleanups:
 
 * Use os.scandir() to reduce the number of syscalls made.
 
-* Drop the obsolete pickle read fallback for the mtimedb cache file,
-  which has been written as JSON since March 2012.
+* Drop obsolete pickle read fallbacks for the mtimedb cache file and
+  preserved-libs registry, both of which have been written as JSON since
+  March 2012.
 
 Performance:
 

@@ -4,7 +4,6 @@
 import errno
 import json
 import logging
-import pickle
 import stat
 
 import os
@@ -19,9 +18,6 @@ from portage.locks import lockfile, unlockfile
 
 class PreservedLibsRegistry:
     """This class handles the tracking of preserved library objects"""
-
-    # JSON read support has been available since portage-2.2.0_alpha89.
-    _json_write = True
 
     _json_write_opts = {
         "ensure_ascii": False,
@@ -89,28 +85,14 @@ class PreservedLibsRegistry:
             except SystemExit:
                 raise
             except Exception as e:
-                try:
-                    self._data = pickle.loads(content)
-                except SystemExit:
-                    raise
-                except Exception:
-                    writemsg_level(
-                        _("!!! Error loading '%s': %s\n") % (self._filename, e),
-                        level=logging.ERROR,
-                        noiselevel=-1,
-                    )
+                writemsg_level(
+                    _("!!! Error loading '%s': %s\n") % (self._filename, e),
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
 
         if self._data is None:
             self._data = {}
-        else:
-            for k, v in self._data.items():
-                if (
-                    isinstance(v, (list, tuple))
-                    and len(v) == 3
-                    and isinstance(v[2], set)
-                ):
-                    # convert set to list, for write with JSONEncoder
-                    self._data[k] = (v[0], v[1], list(v[2]))
 
         self._data_orig = self._data.copy()
         self.pruneNonExisting()
@@ -127,14 +109,11 @@ class PreservedLibsRegistry:
             return
         try:
             f = atomic_ofstream(self._filename, "wb")
-            if self._json_write:
-                f.write(
-                    json.dumps(self._data, **self._json_write_opts).encode(
-                        "utf-8", "strict"
-                    )
+            f.write(
+                json.dumps(self._data, **self._json_write_opts).encode(
+                    "utf-8", "strict"
                 )
-            else:
-                pickle.dump(self._data, f, protocol=2)
+            )
             f.close()
         except OSError as e:
             if e.errno != PermissionDenied.errno:
