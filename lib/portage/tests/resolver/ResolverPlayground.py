@@ -1012,7 +1012,7 @@ class ResolverPlaygroundTestCase:
                             if not got.index(node1) < got.index(node2):
                                 fail_msgs.append(
                                     "atoms: ("
-                                    + ", ".join(result.atoms)
+                                    + ", ".join(str(a) for a in result.atoms)
                                     + "), key: "
                                     + (
                                         "merge_order_assertions, expected: %s"
@@ -1055,7 +1055,7 @@ class ResolverPlaygroundTestCase:
             if got != expected:
                 fail_msgs.append(
                     "atoms: ("
-                    + ", ".join(result.atoms)
+                    + ", ".join(str(a) for a in result.atoms)
                     + "), key: "
                     + key
                     + ", expected: "
