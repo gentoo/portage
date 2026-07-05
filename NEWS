@@ -27,16 +27,6 @@ Security:
   attributes, avoiding newly-introduced warnings and preventing symbolic links
   from misdirecting the restore operation (bug #978288).
 
-* Add portage.util.pickle.NoGlobalsUnpickler, a pickle.Unpickler subclass
-  that rejects global references.
-
-* Use NoGlobalsUnpickler for vdb cache pickles, restoring the intended
-  restriction on resolving arbitrary objects during unpickling (bug #19147).
-
-* Use NoGlobalsUnpickler for the pickles exchanged over the ebuild-ipc FIFOs,
-  preventing processes in the ebuild execution environment from executing
-  arbitrary code in the main Portage process, outside the sandbox (bug #978478).
-
 Features:
 
 * vartree: Avoid pruning preserved-libs database or syncing to disk if we
@@ -85,6 +75,25 @@ Cleanups:
   some old unused function parameters that were themselves deprecated.
 
 * Use os.scandir() to reduce the number of syscalls made.
+
+portage-3.0.81.1 (2026-07-05)
+----------------
+
+[This release was done as a standalone tag.]
+
+Security:
+
+* Add portage.util.pickle.NoGlobalsUnpickler, a pickle.Unpickler subclass
+  that rejects global references.
+
+* Use NoGlobalsUnpickler for vdb cache pickles, restoring the intended
+  restriction on resolving arbitrary objects during unpickling (bug #19147).
+
+* Use NoGlobalsUnpickler for the pickles exchanged over the ebuild-ipc FIFOs,
+  preventing processes in the ebuild execution environment from executing
+  arbitrary code in the main Portage process, outside the sandbox (bug #978478).
+
+Cleanups:
 
 * Drop obsolete pickle read fallbacks for the mtimedb cache file and
   preserved-libs registry, both of which have been written as JSON since
