@@ -139,7 +139,7 @@ _ipc_phases = frozenset(
 
 # phases which execute in the global PID namespace
 _global_pid_phases = frozenset(
-    ["config", "depend", "preinst", "prerm", "postinst", "postrm"]
+    ["config", "preinst", "prerm", "postinst", "postrm"]
 )
 
 _phase_func_map = {
