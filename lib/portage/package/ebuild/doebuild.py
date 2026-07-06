@@ -521,7 +521,9 @@ def doebuild_environment(
     mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
     mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
     mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
-    mysettings["SANDBOX_LOG"] = os.path.join(mysettings["T"], "sandbox.log")
+    if mydo != "depend":
+        # EbuildMetadataPhase handles it for the depend phase
+        mysettings["SANDBOX_LOG"] = os.path.join(mysettings["T"], "sandbox.log")
     mysettings["FILESDIR"] = os.path.join(settings["PORTAGE_BUILDDIR"], "files")
 
     # Prefix forward compatibility
