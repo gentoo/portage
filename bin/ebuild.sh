@@ -641,6 +641,40 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 		unset PORTAGE_EXPLICIT_INHERIT
 
+		pre_source_sandbox() {
+			export SANDBOX_ON=1
+			# DENY seems to take priority over READ+WRITE so
+			# don't use it.
+			#export SANDBOX_DENY="/"
+			export SANDBOX_PREDICT=""
+			export SANDBOX_READ="${EBUILD}:${SANDBOX_LOG}"
+			export SANDBOX_WRITE="${SANDBOX_LOG}:/dev/null"
+			[[ ${PORTAGE_DEBUG} != 1 ]] || export SANDBOX_DEBUG=1
+
+			# We need inherit to work
+			for repo_location in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
+				local potential_location="${repo_location}/eclass"
+				if [[ -d ${potential_location} ]]; then
+					SANDBOX_READ+=":${potential_location}"
+				fi
+			done
+
+			# Give a nicer error message in case someone is confused
+			adddeny() { die "External commands disallowed while sourcing ebuild: ${FUNCNAME}" ; }
+			addpredict() { die "External commands disallowed while sourcing ebuild: ${FUNCNAME}" ; }
+			addread() { die "External commands disallowed while sourcing ebuild: ${FUNCNAME}" ; }
+			addwrite() { die "External commands disallowed while sourcing ebuild: ${FUNCNAME}" ; }
+
+			# Disallow any tampering
+			readonly SANDBOX_{ALLOW,ACTIVE,DENY,DEBUG,ON,PREDICT,READ,WRITE}
+		}
+
+		# We can't unset these post-sourcing because of `readonly`
+		# as we don't want the sourced ebuild to be able to modify
+		# the SANDBOX_* vars, but it's okay as the process shouldn't
+		# need to do anything interesting post-sourcing anyway.
+		[[ ${EBUILD_PHASE} = depend ]] && pre_source_sandbox
+
 		if [[ ${PORTAGE_DEBUG} != 1 || $- == *x* ]] ; then
 			source "${EBUILD}" || die "error sourcing ebuild"
 		else
@@ -741,7 +775,6 @@ if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word stri
 fi
 
 if [[ ${EBUILD_PHASE} = depend ]] ; then
-	export SANDBOX_ON="0"
 	set -f
 
 	metadata_keys=(
