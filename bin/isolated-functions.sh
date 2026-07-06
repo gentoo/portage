@@ -58,7 +58,8 @@ __dump_trace() {
 	eerror "Call stack:"
 	while (( n > ${strip} )) ; do
 		funcname=${FUNCNAME[${n} - 1]}
-		sourcefile=$(basename "${BASH_SOURCE[${n}]}")
+		sourcefile="${BASH_SOURCE[${n}]}"
+		sourcefile="${sourcefile##*/}"
 		lineno=${BASH_LINENO[${n} - 1]}
 		# Display function arguments
 		args=
@@ -99,7 +100,7 @@ __helpers_die() {
 die() {
 	local retval=$?
 
-	# restore PATH since die calls basename & sed
+	# restore PATH since die calls sed
 	# TODO: make it pure bash
 	[[ -n ${_PORTAGE_ORIG_PATH} ]] && PATH=${_PORTAGE_ORIG_PATH}
 
