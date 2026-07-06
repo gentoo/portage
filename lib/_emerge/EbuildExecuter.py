@@ -48,9 +48,11 @@ class EbuildExecuter(CompositeTask):
         if "live" in settings.get("PROPERTIES", "").split():
             return False
 
-        metadata = self.pkg._metadata
-        if metadata.get("SRC_URI", "").strip():
+        # A is the USE-resolved, variable-expanded list of files to fetch;
+        # pkg._metadata["SRC_URI"] is not populated in this context.
+        if self.settings.configdict["pkg"].get("A", "").strip():
             return False
+        metadata = self.pkg._metadata
         defined_phases = frozenset(metadata.get("DEFINED_PHASES", "").split())
         if defined_phases.intersection(self._skippable_src_phases):
             return False
