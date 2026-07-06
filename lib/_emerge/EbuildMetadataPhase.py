@@ -1,9 +1,14 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.SubProcess import SubProcess
+import fcntl
+import os
 import sys
+import tempfile
+
+from _emerge.SubProcess import SubProcess
 from portage.cache.mappings import slot_dict_class
+
 import portage
 
 from portage import os
@@ -12,7 +17,6 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util.futures import asyncio
 
-import fcntl
 
 
 class EbuildMetadataPhase(SubProcess):
@@ -125,6 +129,10 @@ class EbuildMetadataPhase(SubProcess):
         self._raw_metadata = []
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
+
+        settings["SANDBOX_LOG"] = tempfile.NamedTemporaryFile(
+            prefix="sandbox", delete_on_close=False
+        ).name
 
         retval = doebuild(
             ebuild_path,
