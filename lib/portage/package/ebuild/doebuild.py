@@ -138,9 +138,7 @@ _ipc_phases = frozenset(
 )
 
 # phases which execute in the global PID namespace
-_global_pid_phases = frozenset(
-    ["config", "preinst", "prerm", "postinst", "postrm"]
-)
+_global_pid_phases = frozenset(["config", "preinst", "prerm", "postinst", "postrm"])
 
 _phase_func_map = {
     "config": "pkg_config",
@@ -247,7 +245,10 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
             phase == "test" and "test_network" in settings["PORTAGE_PROPERTIES"].split()
         )
         or phase in _ipc_phases
-        or (phase != "depend" and "network-sandbox" in settings["PORTAGE_RESTRICT"].split())
+        or (
+            phase != "depend"
+            and "network-sandbox" in settings["PORTAGE_RESTRICT"].split()
+        )
     )
     kwargs["pidns"] = (
         "pid-sandbox" in settings.features and phase not in _global_pid_phases
