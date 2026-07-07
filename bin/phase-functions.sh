@@ -341,7 +341,8 @@ __dyn_clean() {
 		rm -f "${PORTAGE_BUILDDIR}"/.{ebuild_changed,logid,pretended,setuped,unpacked,prepared} \
 			"${PORTAGE_BUILDDIR}"/.{configured,compiled,tested,packaged,instprepped} \
 			"${PORTAGE_BUILDDIR}"/.die_hooks \
-			"${PORTAGE_BUILDDIR}"/.exit_status
+			"${PORTAGE_BUILDDIR}"/.exit_status \
+			"${PORTAGE_BUILDDIR}"/.src_patches
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info" \
 			"${PORTAGE_BUILDDIR}/.ipc"
