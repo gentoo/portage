@@ -40,6 +40,7 @@ from portage.dep.libc import find_libc_deps, strip_libc_deps
 from portage.dep._slot_operator import ignore_built_slot_operator_deps, strip_slots
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, _get_eapi_attrs
 from portage.exception import (
+    CorruptionKeyError,
     InvalidAtom,
     InvalidBinaryPackageFormat,
     InvalidData,
@@ -5497,6 +5498,8 @@ class depgraph:
 
                 except SystemExit as e:
                     raise  # Needed else can't exit
+                except CorruptionKeyError:
+                    raise  # Handled in depgraph.py's _pkg
                 except Exception as e:
                     writemsg(
                         f"\n\n!!! Problem in '{atom}' dependencies.\n", noiselevel=-1
@@ -8675,6 +8678,16 @@ class depgraph:
 
             try:
                 metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
+            except CorruptionKeyError as e:
+                portage.writemsg(
+                    colorize(
+                        "BAD",
+                        f"!!! Sandbox violation during 'depend' phase: {e}\n"
+                        + f"!!! Aborting. Please report this as a bug to the '{myrepo}' repository.\n",
+                    ),
+                    noiselevel=-1,
+                )
+                raise e
             except KeyError:
                 raise portage.exception.PackageNotFound(cpv)
 

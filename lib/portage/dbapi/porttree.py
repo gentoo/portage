@@ -853,6 +853,11 @@ class portdbapi(dbapi):
             proc.cancel()
             raise
 
+        if proc.returncode == 2:
+            from portage.exception import CorruptionKeyError
+
+            raise CorruptionKeyError(mycpv)
+
         return proc
 
     def _aux_get_return(

@@ -683,6 +683,8 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 			set +x
 		fi
 
+		[[ -s ${SANDBOX_LOG} ]] && die "Sandbox violations found, exiting"
+
 		if ___eapi_enables_failglob_in_global_scope; then
 			shopt -u failglob
 		fi
@@ -798,6 +800,8 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 	done
 	exec {PORTAGE_PIPE_FD}>&-
 	set +f
+
+	[[ -s ${SANDBOX_LOG} ]] && die "Sandbox violations found, exiting"
 else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
 	# declare them only after it has already run.

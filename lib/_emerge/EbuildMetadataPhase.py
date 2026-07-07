@@ -265,6 +265,16 @@ class EbuildMetadataPhase(SubProcess):
                 self.metadata = metadata
             else:
                 self.returncode = 1
+        elif self.returncode != os.EX_OK:
+            # Examine SANDBOX_LOG to determine if we have a general failure
+            # (say, a missing eclass) in which case we probably want to plough
+            # on, or if we have a sandbox violation, in which case we stop dead.
+            try:
+                if os.stat(self.settings["SANDBOX_LOG"]).st_size > 0:
+                    self.returncode = 2
+            except OSError:
+                # Some other, non-sandbox problem occurred.
+                pass
 
     def _eapi_invalid(self, metadata):
         from portage.package.ebuild._metadata_invalid import eapi_invalid
