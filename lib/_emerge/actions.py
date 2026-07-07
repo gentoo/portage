@@ -411,6 +411,8 @@ def action_build(
             success, mydepgraph, favorites = backtrack_depgraph(
                 settings, trees, myopts, myparams, myaction, myfiles, spinner
             )
+        except portage.exception.CorruptionKeyError as e:
+            return 1
         except portage.exception.PackageSetNotFound as e:
             root_config = trees[settings["EROOT"]]["root_config"]
             display_missing_pkg_set(root_config, e.value)
