@@ -125,8 +125,11 @@ class EbuildMetadataPhase(SubProcess):
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
 
+        tempfile_args = {}
+        if sys.version_info >= (3, 12):
+            tempfile_args["delete_on_close"] = False
         settings["SANDBOX_LOG"] = tempfile.NamedTemporaryFile(
-            prefix="sandbox", delete_on_close=False
+            prefix="sandbox", **tempfile_args
         ).name
 
         retval = doebuild(
