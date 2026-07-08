@@ -320,6 +320,12 @@ class EbuildPhase(CompositeTask):
             alist = self.settings.configdict["pkg"].get("A", "").split()
             _prepare_fake_distdir(self.settings, alist)
             _prepare_fake_filesdir(self.settings)
+        elif self.phase == "install":
+            # Ensure FILESDIR symlink exists for install phase, which may
+            # reference files via DOCS or other declarative variables.
+            # Skip if already set up by unpack phase.
+            if not os.path.islink(self.settings.get("FILESDIR", "")):
+                _prepare_fake_filesdir(self.settings)
 
         fd_pipes = self.fd_pipes
         if fd_pipes is None:
