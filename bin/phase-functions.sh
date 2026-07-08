@@ -1088,12 +1088,14 @@ __ebuild_main() {
 		# reachable when earlier no-op src phases are skipped. Guard on
 		# PORTAGE_BUILDDIR: the clean phase can run before prepare_build_dirs()
 		# (and tolerates a missing builddir), so an unguarded cd would create
-		# a stray build-info/ in the cwd.
+		# a stray build-info/ in the cwd. Guard the cp on EBUILD existing:
+		# for binary merges EBUILD points inside build-info/ and is extracted
+		# later by unpack_metadata(), so it does not exist at clean time.
 		if [[ -d ${PORTAGE_BUILDDIR} ]]; then
 			cd "${PORTAGE_BUILDDIR}"
 			if [[ ! -d build-info ]]; then
 				mkdir build-info
-				cp "${EBUILD}" "build-info/${PF}.ebuild"
+				[[ -e ${EBUILD} ]] && cp "${EBUILD}" "build-info/${PF}.ebuild"
 			fi
 		fi
 
