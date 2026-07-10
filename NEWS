@@ -21,12 +21,6 @@ Breaking changes:
 * Importing `portage` as a library will require a UTF-8 locale be in effect:
   Portage will warn when this isn't the case.
 
-Security:
-
-* estrip: Pass the -h and -P options to setfattr(1) when restoring extended
-  attributes, avoiding newly-introduced warnings and preventing symbolic links
-  from misdirecting the restore operation (bug #978288).
-
 Features:
 
 * vartree: Avoid pruning preserved-libs database or syncing to disk if we
@@ -36,8 +30,6 @@ Features:
   see make.conf(5) for details.
 
 Bug fixes:
-
-* Fix /dev/null device check for the Hurd.
 
 * man: make.conf(5): Improve man text about disabling tests to not wrongly
   refer to USE=test.
@@ -57,8 +49,6 @@ Bug fixes:
 * emerge: Make --nospinner suppress spinner output entirely, instead of printing
   repeated dots in place of the animated spinner.
 
-* env_update: Call ldconfig in more cases by considering ld.so.conf.d files. (bug #961463).
-
 * Set a non-zero window size for newly allocated ptys, so build processes
   can more reliably query their terminal dimensions (bug #978222).
 
@@ -75,6 +65,43 @@ Cleanups:
   some old unused function parameters that were themselves deprecated.
 
 * Use os.scandir() to reduce the number of syscalls made.
+
+portage-3.0.81.2 (2026-07-10)
+----------------
+
+[This release was done as a standalone tag.]
+
+Security:
+
+* ebuild.sh: Run the 'depend' phase for metadata generation under sandbox
+  (bug #978846).
+
+  sys-apps/sandbox isn't meant to be a full security measure and is considered
+  more of a QA tool, and we generally want people to only add repositories
+  they trust.
+
+  Nonetheless, it is unexpected that metadata generation (the 'depend' phase)
+  can result in arbitrary code execution, and we should do what we can to
+  prevent it.
+
+  Future work is documented in bug #978851 and bug #978852.
+
+* ebuild: Ignore RESTRICT=network-sandbox for the 'depend' phase (bug #978846).
+
+* pid-sandbox: Don't whitelist 'depend' phase (bug #978846).
+
+* estrip: Pass the -h and -P options to setfattr(1) when restoring extended
+  attributes, avoiding newly-introduced warnings and preventing symbolic links
+
+Bug fixes:
+
+* Fix /dev/null device check for the Hurd.
+
+* env_update: Consider ld.so.conf includes too, so as to call ldconfig
+  in more cases (bug #961463).
+
+* ebuild: Set SANDBOX_T to a non-T value during the 'depend' phase so that
+  sandbox logging is performed correctly (bug #543774).
 
 portage-3.0.81.1 (2026-07-05)
 ----------------
