@@ -6,6 +6,43 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.81.2 (2026-07-10)
+----------------
+
+[This release was done as a standalone tag.]
+
+Security:
+
+* ebuild.sh: Run the 'depend' phase for metadata generation under sandbox
+  (bug #978846).
+
+  sys-apps/sandbox isn't meant to be a full security measure and is considered
+  more of a QA tool, and we generally want people to only add repositories
+  they trust.
+
+  Nonetheless, it is unexpected that metadata generation (the 'depend' phase)
+  can result in arbitrary code execution, and we should do what we can to
+  prevent it.
+
+  Future work is documented in bug #978851 and bug #978852.
+
+* ebuild: Ignore RESTRICT=network-sandbox for the 'depend' phase (bug #978846).
+
+* pid-sandbox: Don't whitelist 'depend' phase (bug #978846).
+
+* estrip: Pass the -h and -P options to setfattr(1) when restoring extended
+  attributes, avoiding newly-introduced warnings and preventing symbolic links
+
+Bug fixes:
+
+* Fix /dev/null device check for the Hurd.
+
+* env_update: Consider ld.so.conf includes too, so as to call ldconfig
+  in more cases (bug #961463).
+
+* ebuild: Set SANDBOX_T to a non-T value during the 'depend' phase so that
+  sandbox logging is performed correctly (bug #543774).
+
 portage-3.0.81.1 (2026-07-05)
 ----------------
 
