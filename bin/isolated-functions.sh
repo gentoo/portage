@@ -100,10 +100,6 @@ __helpers_die() {
 die() {
 	local retval=$?
 
-	# restore PATH since die calls sed
-	# TODO: make it pure bash
-	[[ -n ${_PORTAGE_ORIG_PATH} ]] && PATH=${_PORTAGE_ORIG_PATH}
-
 	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
 
@@ -116,12 +112,6 @@ die() {
 	fi
 
 	set +e
-	if [[ -n "${QA_INTERCEPTORS}" ]]; then
-		# die was called from inside inherit. We need to clean up
-		# QA_INTERCEPTORS since sed is called below.
-		unset -f ${QA_INTERCEPTORS}
-		unset QA_INTERCEPTORS
-	fi
 	local n filespacing=0 linespacing=0
 	# setup spacing to make output easier to read
 	(( n = ${#FUNCNAME[@]} - 1 ))
@@ -151,34 +141,20 @@ die() {
 	if [[ ${BASH_SOURCE[main_index]##*/} == @(ebuild|misc-functions).sh ]]; then
 	__dump_trace 2 "${filespacing}" "${linespacing}"
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
-	# We cannot execute external commands like sed in the depend phase
-	if [[ ${EBUILD_PHASE} != depend ]]; then
-		eerror "The specific snippet of code:"
-		# This scans the file that called die and prints out the logic that
-		# ended in the call to die.  This really only handles lines that end
-		# with '|| die' and any preceding lines with line continuations (\).
-		# This tends to be the most common usage though, so let's do it.
-		# Due to the usage of appending to the hold space (even when empty),
-		# we always end up with the first line being a blank (thus the 2nd sed).
-		local -a sed_args=(
-			# When we get to the line that failed, append it to the hold
-			# space, move the hold space to the pattern space, then print
-			# out the pattern space and quit immediately.
-			-n -e "${BASH_LINENO[0]}{H;g;p;q}"
-			# If this line ends with a line continuation, append it to the
-			# hold space.
-			-e '/\\$/H'
-			# If this line does not end with a line continuation, erase the
-			# line and set the hold buffer to it (thus erasing the hold
-			# buffer in the process).
-			-e '/[^\]$/{s:^.*$::;h}'
-		)
-		sed "${sed_args[@]}" "${BASH_SOURCE[1]}" \
-			| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
-			| while read -r n; do
-			eerror "  ${n#RETAIN-LEADING-SPACE}"
-		done
-	fi
+	eerror "The specific snippet of code:"
+	# This scans the file that called die and prints out the logic that
+	# ended in the call to die.  This really only handles lines that end
+	# with '|| die' and any preceding lines with line continuations (\).
+	# This tends to be the most common usage though, so let's do it.
+	local -a lines
+	mapfile -t -n "${BASH_LINENO[0]}" lines <"${BASH_SOURCE[1]}"
+	# Loop backwards starting at the line preceding the target line,
+	# until we encounter a line without continuation.
+	(( n = ${#lines[@]} - 1 ))
+	while (( --n >= 0 )) && [[ ${lines[n]} == *\\ ]]; do :; done
+	while (( ++n < ${#lines[@]} )); do
+		eerror "  ${lines[n]}"
+	done
 	eerror
 	fi
 	eerror "If you need support, post the output of \`emerge --info '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`,"
