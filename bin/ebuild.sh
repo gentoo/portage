@@ -647,7 +647,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 			# don't use it.
 			#export SANDBOX_DENY="/"
 			export SANDBOX_PREDICT=""
-			export SANDBOX_READ="${EBUILD}:${SANDBOX_LOG}"
+			export SANDBOX_READ="${EBUILD}:${BASH_SOURCE[1]}:${SANDBOX_LOG}"
 			export SANDBOX_WRITE="${SANDBOX_LOG}:/dev/null"
 			[[ ${PORTAGE_DEBUG} != 1 ]] || export SANDBOX_DEBUG=1
 
