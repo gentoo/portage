@@ -454,6 +454,7 @@ __source_env_files() {
 		shift
 	fi
 
+	local x
 	for x in "${1}"/${CATEGORY}/{${PN},${PN}:${SLOT%/*},${P},${PF}}; do
 		__try_source "${argument[@]}" "${x}"
 	done
@@ -652,6 +653,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 			[[ ${PORTAGE_DEBUG} != 1 ]] || export SANDBOX_DEBUG=1
 
 			# We need inherit to work
+			local repo_location
 			for repo_location in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
 				local potential_location="${repo_location}/eclass"
 				if [[ -d ${potential_location} ]]; then
