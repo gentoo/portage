@@ -251,7 +251,7 @@ inherit() {
 		location=""
 		potential_location=""
 
-		ECLASS="${1}"
+		ECLASS="${1##*/}"
 		__export_funcs_var=__export_functions_${ECLASS_DEPTH}
 		unset ${__export_funcs_var}
 
@@ -271,7 +271,7 @@ inherit() {
 		fi
 
 		for repo_location in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
-			potential_location="${repo_location}/eclass/${1}.eclass"
+			potential_location="${repo_location}/eclass/${ECLASS}.eclass"
 			if [[ -f ${potential_location} ]]; then
 				location="${potential_location}"
 				debug-print "  eclass exists: ${location}"
