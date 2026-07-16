@@ -86,6 +86,7 @@ class stdout_spinner:
         self.last_frame = -1
         self.notice = ""
         self.notice_pending = False
+        self.show_cursor_atexit = False
         self.driver = _SpinnerDriver(self, self.min_display_latency)
 
     def displays_notice(self):
@@ -195,7 +196,9 @@ class stdout_spinner:
 
     def hide_cursor(self):
         if self.animates():
-            atexit_register(self.show_cursor)
+            if not self.show_cursor_atexit:
+                atexit_register(self.show_cursor)
+                self.show_cursor_atexit = True
             sys.stdout.write(self.hide_cursor_sequence)
             sys.stdout.flush()
 
