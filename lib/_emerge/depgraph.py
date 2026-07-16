@@ -11887,17 +11887,15 @@ def _spinner_start(spinner, myopts):
                 + "\n\n"
             )
 
-    show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
-    if not show_spinner:
+    if "--quiet" in myopts or "--nodeps" in myopts:
         spinner.mode = spinner.QUIET
 
-    if show_spinner:
-        if spinner.mode == spinner.STATIC:
-            portage.writemsg_stdout("Calculating dependencies ...")
-        else:
-            spinner.scroll_prefix = "Calculating dependencies "
-            portage.writemsg_stdout(spinner.scroll_prefix)
-            spinner.hide_cursor()
+    if spinner.mode == spinner.STATIC:
+        portage.writemsg_stdout("Calculating dependencies ...")
+    elif spinner.animates():
+        spinner.scroll_prefix = "Calculating dependencies "
+        portage.writemsg_stdout(spinner.scroll_prefix)
+        spinner.hide_cursor()
     spinner.start_time = time.monotonic()
     spinner.start()
 
