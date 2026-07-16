@@ -6531,7 +6531,7 @@ class depgraph:
         # printed. Cancel the spinner first, lest its animation thread
         # interleave with them (bug 831467).
         if self._frozen_config.spinner is not None:
-            self._frozen_config.spinner.cancel()
+            self._frozen_config.spinner.cancel_notice()
 
         missing_use_reasons = []
         missing_iuse_reasons = []
@@ -11804,7 +11804,7 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
     if spinner is not None:
         # Cancel the spinner before printing search results, lest its animation
         # thread interleave with them (bug 831467).
-        spinner.cancel()
+        spinner.cancel_notice()
 
     if "--quiet" in myopts:
         writemsg("\n\n", noiselevel=-1)
@@ -11890,30 +11890,15 @@ def _spinner_start(spinner, myopts):
     if "--quiet" in myopts or "--nodeps" in myopts:
         spinner.mode = spinner.QUIET
 
-    if spinner.mode == spinner.STATIC:
-        portage.writemsg_stdout("Calculating dependencies ...")
-    elif spinner.animates():
-        spinner.scroll_prefix = "Calculating dependencies "
-        portage.writemsg_stdout(spinner.scroll_prefix)
-        spinner.hide_cursor()
-    spinner.start_time = time.monotonic()
-    spinner.start()
+    spinner.begin_notice("Calculating dependencies")
 
 
 def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
     if spinner is None:
         return
 
-    spinner.stop()
-
-    if not spinner.displays_notice():
+    if not spinner.end_notice():
         return
-
-    if spinner.animates():
-        portage.writemsg_stdout("\rCalculating dependencies ... done!\x1b[K\n")
-        spinner.show_cursor()
-    else:
-        portage.writemsg_stdout(" done!\n")
 
     stop_time = time.monotonic()
     time_fmt = f"{stop_time - spinner.start_time:.2f}"

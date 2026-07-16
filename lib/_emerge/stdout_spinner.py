@@ -84,7 +84,8 @@ class stdout_spinner:
         self.min_display_latency = 0.08
         self.start_time = time.monotonic()
         self.last_frame = -1
-        self.scroll_prefix = ""
+        self.notice = ""
+        self.notice_pending = False
         self.driver = _SpinnerDriver(self, self.min_display_latency)
 
     def displays_notice(self):
@@ -100,16 +101,60 @@ class stdout_spinner:
     def stop(self):
         self.driver.stop()
 
-    def cancel(self):
-        # Stop the spinner without printing a completion message.
+    def begin_notice(self, notice):
+        # Render the given notice according to the current mode, then start the
+        # animation if applicable. It is eventually completed by end_notice(),
+        # interrupted by interrupt_notice(), or withdrawn by cancel_notice().
+        self.notice = notice
+        if self.mode == self.STATIC:
+            sys.stdout.write(f"{notice} ...")
+            sys.stdout.flush()
+        elif self.animates():
+            sys.stdout.write(f"{notice} ")
+            sys.stdout.flush()
+            self.hide_cursor()
+        self.notice_pending = self.displays_notice()
+        self.start_time = time.monotonic()
+        self.last_frame = -1
+        self.start()
+
+    def resume_notice(self):
+        # Render the notice anew, after having been interrupted.
+        self.begin_notice(self.notice)
+
+    def end_notice(self):
+        # Stop the spinner, then complete the pending notice. The return value
+        # indicates whether there was a displayed notice to complete.
         self.stop()
-        if self.animates():
-            sys.stdout.write("\r\x1b[K")
-            sys.stdout.flush()
+        if not self.notice_pending:
+            return False
+        self.notice_pending = False
+        if self.mode == self.STATIC:
+            sys.stdout.write(" done!\n")
+        else:
+            sys.stdout.write(f"\r{self.notice} ... done!\x1b[K\n")
             self.show_cursor()
-        elif self.mode == self.STATIC:
+        sys.stdout.flush()
+        return True
+
+    def interrupt_notice(self):
+        # Stop the spinner, then erase or terminate the pending notice so that
+        # further output may cleanly follow. Resumption remains possible, upon
+        # which the notice may be rendered anew.
+        self.stop()
+        if not self.notice_pending:
+            return
+        self.notice_pending = False
+        if self.mode == self.STATIC:
             sys.stdout.write("\n")
-            sys.stdout.flush()
+        else:
+            sys.stdout.write("\r\x1b[K")
+            self.show_cursor()
+        sys.stdout.flush()
+
+    def cancel_notice(self):
+        # Withdraw the pending notice and render nothing further.
+        self.interrupt_notice()
         self.mode = self.QUIET
 
     def _frame_index(self):
@@ -134,7 +179,7 @@ class stdout_spinner:
             char = darkgreen(self.scroll_sequence[pos])
         else:
             char = green(self.scroll_sequence[pos])
-        sys.stdout.write(f"\r{self.scroll_prefix}{' ' * pos}{char}\x1b[K")
+        sys.stdout.write(f"\r{self.notice} {' ' * pos}{char}\x1b[K")
         self.last_frame = frame
         sys.stdout.flush()
 
