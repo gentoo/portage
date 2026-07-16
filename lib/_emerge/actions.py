@@ -3787,7 +3787,7 @@ def run_action(emerge_config):
 
     spinner = stdout_spinner()
     if "candy" in emerge_config.target_config.settings.features:
-        spinner.update = spinner.update_scroll
+        spinner.mode = spinner.SCROLL
 
     if "--quiet" not in emerge_config.opts:
         portage.deprecated_profile_check(settings=emerge_config.target_config.settings)
@@ -3881,7 +3881,7 @@ def run_action(emerge_config):
         return 1
 
     if "--quiet" in emerge_config.opts:
-        spinner.update = spinner.update_quiet
+        spinner.mode = spinner.QUIET
         portage.util.noiselimit = -1
 
     if "--fetch-all-uri" in emerge_config.opts:
@@ -3915,14 +3915,14 @@ def run_action(emerge_config):
             or emerge_config.target_config.settings.get("TERM") == "dumb"
             or not sys.stdout.isatty()
         ):
-            spinner.update = spinner.update_static
+            spinner.mode = spinner.STATIC
 
     if "--debug" in emerge_config.opts:
         print("myaction", emerge_config.action)
         print("myopts", emerge_config.opts)
 
     if debug:
-        spinner.update = spinner.update_quiet
+        spinner.mode = spinner.QUIET
 
     if (
         not emerge_config.action

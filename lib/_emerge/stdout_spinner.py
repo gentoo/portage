@@ -43,6 +43,13 @@ class _SpinnerDriver:
 
 
 class stdout_spinner:
+    # The STATIC mode displays the notice without animation, whereas the QUIET
+    # mode suppresses the notice outright.
+    QUIET = "quiet"
+    STATIC = "static"
+    TWIRL = "twirl"
+    SCROLL = "scroll"
+
     scroll_msgs = [
         "Gentoo Rocks (" + platform.system() + ")",
         "Thank you for using Gentoo. :)",
@@ -70,7 +77,7 @@ class stdout_spinner:
     show_cursor_sequence = "\x1b[?25h"
 
     def __init__(self):
-        self.update = self.update_twirl
+        self.mode = self.TWIRL
         self.scroll_sequence = self.scroll_msgs[
             int(time.time() * 100) % len(self.scroll_msgs)
         ]
@@ -80,8 +87,14 @@ class stdout_spinner:
         self.scroll_prefix = ""
         self.driver = _SpinnerDriver(self, self.min_display_latency)
 
+    def displays_notice(self):
+        return self.mode != self.QUIET
+
+    def animates(self):
+        return self.mode in (self.TWIRL, self.SCROLL)
+
     def start(self):
-        if self.update in (self.update_twirl, self.update_scroll):
+        if self.animates():
             self.driver.start()
 
     def stop(self):
@@ -90,25 +103,26 @@ class stdout_spinner:
     def cancel(self):
         # Stop the spinner without printing a completion message.
         self.stop()
-        if self.update in (self.update_twirl, self.update_scroll):
+        if self.animates():
             sys.stdout.write("\r\x1b[K")
             sys.stdout.flush()
             self.show_cursor()
-        elif self.update == self.update_static:
+        elif self.mode == self.STATIC:
             sys.stdout.write("\n")
             sys.stdout.flush()
-        self.update = self.update_quiet
+        self.mode = self.QUIET
 
     def _frame_index(self):
         return int((time.monotonic() - self.start_time) / self.min_display_latency)
 
-    def update_static(self):
-        # No animation required. This is used when --nospinner is specified,
-        # TERM has a value of "dumb", or sys.stdout.isatty() is false. Kept
-        # distinct from update_quiet(), which suppresses the notice altogether.
-        pass
+    def update(self):
+        # Render an animation frame on behalf of the driver thread.
+        if self.mode == self.TWIRL:
+            self._render_twirl()
+        elif self.mode == self.SCROLL:
+            self._render_scroll()
 
-    def update_scroll(self):
+    def _render_scroll(self):
         frame = self._frame_index()
         if frame == self.last_frame:
             return
@@ -124,7 +138,7 @@ class stdout_spinner:
         self.last_frame = frame
         sys.stdout.flush()
 
-    def update_twirl(self):
+    def _render_twirl(self):
         frame = self._frame_index()
         if frame == self.last_frame:
             return
@@ -134,11 +148,8 @@ class stdout_spinner:
         sys.stdout.write(self.twirl_sequence[frame % len(self.twirl_sequence)])
         sys.stdout.flush()
 
-    def update_quiet(self):
-        pass
-
     def hide_cursor(self):
-        if self.update in (self.update_twirl, self.update_scroll):
+        if self.animates():
             atexit_register(self.show_cursor)
             sys.stdout.write(self.hide_cursor_sequence)
             sys.stdout.flush()
