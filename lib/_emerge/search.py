@@ -31,7 +31,6 @@ class search:
     def __init__(
         self,
         root_config,
-        spinner,
         searchdesc,
         verbose,
         usepkg,
@@ -49,9 +48,6 @@ class search:
         self.searchdesc = searchdesc
         self.searchkey = None
         self._results_specified = False
-        # Disable the spinner since search results are displayed
-        # incrementally.
-        self.spinner = None
         self.root_config = root_config
         self.setconfig = root_config.setconfig
         self.regex_auto = regex_auto
@@ -78,10 +74,6 @@ class search:
         self._dbs.append(vardb)
         self._portdb = portdb
         self._vardb = vardb
-
-    def _spinner_update(self):
-        if self.spinner:
-            self.spinner.update()
 
     def _cp_all(self):
         iterators = []
@@ -325,8 +317,6 @@ class search:
                     )
 
         for package in self._cp_all():
-            self._spinner_update()
-
             if match_category:
                 match_string = package[:]
             else:
@@ -355,7 +345,6 @@ class search:
 
         self.sdict = self.setconfig.getSets()
         for setname in self.sdict:
-            self._spinner_update()
             if match_category:
                 match_string = setname
             else:

@@ -11822,7 +11822,6 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
     s = search(
         root_config,
-        spinner,
         "--searchdesc" in myopts,
         "--quiet" not in myopts,
         myopts.get("--usepkg") is True,

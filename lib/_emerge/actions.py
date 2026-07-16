@@ -2418,13 +2418,12 @@ def action_regen(settings, portdb, max_jobs, max_load):
     return regen.returncode
 
 
-def action_search(root_config, myopts, myfiles, spinner):
+def action_search(root_config, myopts, myfiles):
     if not myfiles:
         print("emerge: no search terms provided.")
     else:
         searchinstance = search(
             root_config,
-            spinner,
             "--searchdesc" in myopts,
             "--quiet" not in myopts,
             myopts.get("--usepkg") is True,
@@ -4126,7 +4125,7 @@ def run_action(emerge_config):
     elif "search" == emerge_config.action:
         validate_ebuild_environment(emerge_config.trees)
         action_search(
-            emerge_config.target_config, emerge_config.opts, emerge_config.args, spinner
+            emerge_config.target_config, emerge_config.opts, emerge_config.args
         )
 
     elif emerge_config.action in (
