@@ -11844,7 +11844,7 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
     )
 
 
-def _spinner_start(spinner, myopts):
+def _start_resolution_display(spinner, myopts):
     if spinner is None:
         return
     if "--quiet" not in myopts and (
@@ -11893,15 +11893,8 @@ def _spinner_start(spinner, myopts):
     spinner.begin_notice("Calculating dependencies")
 
 
-def _spinner_stop(spinner, backtracked: int = -1, max_retries: int = -1):
-    if spinner is None:
-        return
-
-    if not spinner.end_notice():
-        return
-
-    stop_time = time.monotonic()
-    time_fmt = f"{stop_time - spinner.start_time:.2f}"
+def _show_resolution_report(start_time, backtracked: int = -1, max_retries: int = -1):
+    time_fmt = f"{time.monotonic() - start_time:.2f}"
 
     backtrack_info = ""
     if backtracked >= 0:
@@ -11928,14 +11921,16 @@ def backtrack_depgraph(
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
     backtracked, max_retries = -1, -1
-    _spinner_start(spinner, myopts)
+    start_time = time.monotonic()
+    _start_resolution_display(spinner, myopts)
     try:
         success, mydepgraph, favorites, backtracked, max_retries = _backtrack_depgraph(
             settings, trees, myopts, myparams, myaction, myfiles, spinner
         )
         return (success, mydepgraph, favorites)
     finally:
-        _spinner_stop(spinner, backtracked, max_retries)
+        if spinner is not None and spinner.end_notice():
+            _show_resolution_report(start_time, backtracked, max_retries)
 
 
 def _backtrack_depgraph(
@@ -12058,11 +12053,13 @@ def resume_depgraph(
     """
     Raises PackageSetNotFound if myfiles contains a missing package set.
     """
-    _spinner_start(spinner, myopts)
+    start_time = time.monotonic()
+    _start_resolution_display(spinner, myopts)
     try:
         return _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner)
     finally:
-        _spinner_stop(spinner)
+        if spinner is not None and spinner.end_notice():
+            _show_resolution_report(start_time)
 
 
 def _resume_depgraph(
