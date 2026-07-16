@@ -1013,7 +1013,18 @@ def _calc_depclean(
     if action == "depclean":
         emergelog(xterm_titles, " >>> depclean")
 
-    writemsg_level("\nCalculating dependencies  ")
+    def show_invalid_depstring(pkg, cause):
+        if spinner is not None:
+            # Interrupt the spinner notice before rendering the diagnostic.
+            spinner.interrupt_notice()
+        show_invalid_depstring_notice(pkg, cause)
+        if spinner is not None:
+            # Resume the spinner notice.
+            spinner.resume_notice()
+
+    if spinner is not None and spinner.displays_notice():
+        writemsg_level("\n")
+        spinner.begin_notice("Calculating dependencies")
     resolver_params = create_depgraph_params(myopts, "remove")
     resolver = depgraph(
         settings, trees, myopts, resolver_params, spinner, frozen_config=frozen_config
@@ -1036,15 +1047,12 @@ def _calc_depclean(
             # by an argument atom since we don't want to clean any
             # package if something depends on it.
             for pkg in vardb:
-                if spinner:
-                    spinner.update()
-
                 try:
                     if args_set.findAtomForPackage(pkg) is None:
                         protected_set.add("=" + pkg.cpv)
                         continue
                 except portage.exception.InvalidDependString as e:
-                    show_invalid_depstring_notice(pkg, str(e))
+                    show_invalid_depstring(pkg, str(e))
                     del e
                     protected_set.add("=" + pkg.cpv)
                     continue
@@ -1071,8 +1079,6 @@ def _calc_depclean(
         # that are also matched by argument atoms, but do not remove
         # them if they match the highest installed version.
         for pkg in vardb:
-            if spinner is not None:
-                spinner.update()
             pkgs_for_cp = vardb.match_pkgs(Atom(pkg.cp))
             if not pkgs_for_cp or pkg not in pkgs_for_cp:
                 raise AssertionError(
@@ -1099,7 +1105,7 @@ def _calc_depclean(
                     protected_set.add("=" + pkg.cpv)
                     continue
             except portage.exception.InvalidDependString as e:
-                show_invalid_depstring_notice(pkg, str(e))
+                show_invalid_depstring(pkg, str(e))
                 del e
                 protected_set.add("=" + pkg.cpv)
                 continue
@@ -1109,19 +1115,17 @@ def _calc_depclean(
         required_sets["__excluded__"] = InternalPackageSet()
 
         for pkg in vardb:
-            if spinner:
-                spinner.update()
-
             try:
                 if excluded_set.findAtomForPackage(pkg):
                     required_sets["__excluded__"].add("=" + pkg.cpv)
             except portage.exception.InvalidDependString as e:
-                show_invalid_depstring_notice(pkg, str(e))
+                show_invalid_depstring(pkg, str(e))
                 del e
                 required_sets["__excluded__"].add("=" + pkg.cpv)
 
     success = resolver._complete_graph(required_sets={eroot: required_sets})
-    writemsg_level("\b\b... done!\n")
+    if spinner is not None:
+        spinner.end_notice()
 
     resolver.display_problems()
 
@@ -1564,9 +1568,12 @@ def _calc_depclean(
                         resolver.display_problems()
                         return _depclean_result(1, [], False, 0, resolver)
 
-            writemsg_level("\nCalculating dependencies  ")
+            if spinner is not None and spinner.displays_notice():
+                writemsg_level("\n")
+                spinner.begin_notice("Calculating dependencies")
             success = resolver._complete_graph(required_sets={eroot: required_sets})
-            writemsg_level("\b\b... done!\n")
+            if spinner is not None:
+                spinner.end_notice()
             resolver.display_problems()
             if not success:
                 return _depclean_result(1, [], False, 0, resolver)
