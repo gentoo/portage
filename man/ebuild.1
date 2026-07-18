@@ -59,10 +59,8 @@ manually clean these files with \fIrm \-rf /var/tmp/portage\fR.
 Checks to see if all the sources specified in SRC_URI are available in
 DISTDIR (see \fBmake.conf\fR(5) for more information) and have a valid
 checksum.  If the sources aren't available, an attempt is made to
-download them from the locations specified in SRC_URI.  If multiple
-download locations are listed for a particular file, Portage pings
-each location to see which location is closer. (May not be true
-presently.)  The Gentoo Linux mirrors defined by GENTOO_MIRRORS is
+download them from the locations specified in SRC_URI.  The Gentoo Linux
+mirrors defined by GENTOO_MIRRORS is
 always considered first.  If for some reason the current or
 just\-downloaded sources' checksums don't match those recorded
 in files/digest\-[package]\-[version\-rev], a warning is printed
