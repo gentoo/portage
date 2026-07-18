@@ -6527,10 +6527,9 @@ class depgraph:
             else:
                 return
 
-        # Dependency resolution has failed, and diagnostics are about to be
-        # printed. Cancel the spinner first, lest its animation thread
-        # interleave with them (bug 831467).
-        if self._frozen_config.spinner is not None:
+        # Cancel the spinner before printing dependency failure diagnostics
+        # (bug 831467), but not for silent USE-change probes (bug 979438).
+        if self._frozen_config.spinner is not None and not collect_use_changes:
             self._frozen_config.spinner.cancel_notice()
 
         missing_use_reasons = []
