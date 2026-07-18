@@ -8,6 +8,15 @@ import re
 from portage.exception import FileNotFound, PermissionDenied
 from portage.util._ctypes import ctypes
 
+parallel_lzip = True
+
+if parallel_lzip:
+    lzip_cmd = "plzip -n {JOBS}"
+    lzip_pkg = "app-arch/plzip"
+else:
+    lzip_cmd = "lzip"
+    lzip_pkg = "app-arch/lzip"
+
 _compressors = {
     "bzip2": {
         "compress": "${PORTAGE_BZIP2_COMMAND} ${BINPKG_COMPRESS_FLAGS}",
@@ -26,9 +35,9 @@ _compressors = {
         "package": "app-arch/lz4",
     },
     "lzip": {
-        "compress": "lzip ${BINPKG_COMPRESS_FLAGS}",
-        "decompress": "lzip -d",
-        "package": "app-arch/lzip",
+        "compress": f"{lzip_cmd} ${{BINPKG_COMPRESS_FLAGS}}",
+        "decompress": f"{lzip_cmd} -d",
+        "package": lzip_pkg,
     },
     "lzop": {
         "compress": "lzop ${BINPKG_COMPRESS_FLAGS}",
