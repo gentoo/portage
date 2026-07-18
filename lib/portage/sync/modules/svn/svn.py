@@ -32,10 +32,15 @@ class SVNSync(NewBase):
             self._kwargs(kwargs)
         # initial checkout
         svn_root = self.repo.sync_uri
+        svn = "svn"
+        quiet = self.settings.get("PORTAGE_QUIET") == "1"
+        if quiet:
+            svn += " --quiet"
         exitcode = portage.process.spawn_bash(
-            "cd %s; exec svn co %s ."
+            "cd %s; exec %s co %s ."
             % (
                 shlex.quote(self.repo.location),
+                svn,
                 shlex.quote(svn_root),
             ),
             **self.spawn_kwargs,
@@ -60,8 +65,13 @@ class SVNSync(NewBase):
             return (exitcode, False)
 
         # svn update
+        svn = "svn"
+        quiet = self.settings.get("PORTAGE_QUIET") == "1"
+        if quiet:
+            svn += " --quiet"
+
         exitcode = portage.process.spawn_bash(
-            f"cd {shlex.quote(self.repo.location)}; exec svn update",
+            f"cd {shlex.quote(self.repo.location)}; exec {svn} update",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
@@ -78,8 +88,12 @@ class SVNSync(NewBase):
                 needs to be updated
         @rtype: (int, bool)
         """
+        svn = "svn"
+        quiet = self.settings.get("PORTAGE_QUIET") == "1"
+        if quiet:
+            svn += " --quiet"
         exitcode = portage.process.spawn_bash(
-            f"cd {shlex.quote(self.repo.location)}; exec svn upgrade",
+            f"cd {shlex.quote(self.repo.location)}; exec {svn} upgrade",
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
