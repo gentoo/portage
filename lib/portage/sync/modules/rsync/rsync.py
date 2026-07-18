@@ -476,6 +476,7 @@ class RsyncSync(NewBase):
                         )
                         exitcode = 1
                         verify_failure = True
+                        out.eend(1)
 
             if exitcode == 0 and not local_state_unchanged:
                 self.repo_storage.commit_update()
