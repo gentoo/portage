@@ -39,6 +39,7 @@ from ._VdbMetadataDelta import VdbMetadataDelta
 
 # Made global to fix importing on Python version upgrade:
 # https://bugs.gentoo.org/970375
+from portage.util.env_update import env_update
 from ._SyncfsProcess import SyncfsProcess
 
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -2322,7 +2323,6 @@ class dblink:
         )
         from portage.util import write_atomic
         from portage.util._async.SchedulerInterface import SchedulerInterface
-        from portage.util.env_update import env_update
         from portage.versions import catsplit, cpv_getkey
 
         if trimworld is not None:
@@ -4206,7 +4206,6 @@ class dblink:
             normalize_path,
             write_atomic,
         )
-        from portage.util.env_update import env_update
         from portage.util.install_mask import InstallMask, install_mask_dir
         from portage.util.writeable_check import get_ro_checker
         from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
