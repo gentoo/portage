@@ -9612,6 +9612,8 @@ class depgraph:
                 # Make sure that portage always has all of its
                 # RDEPENDs installed first, but ignore uninstalls
                 # (these occur when new portage blocks an older package version).
+                # find_smallest_cycle pre-filters replacement_portage via
+                # blocked_nodes, so this branch is rarely reached.
                 return False
             selected_nodes.add(node)
             for child in mygraph.child_nodes(node, ignore_priority=ignore_priority):
@@ -9762,7 +9764,27 @@ class depgraph:
                     # smallest cycle in order to try and identify and prefer
                     # these smaller independent cycles.
                     smallest_cycle = None
+                    smallest_size = None
                     ignore_priority = None
+
+                    # The replacement_portage special-case from gather_deps.
+                    # It tests priority_range, not the per-level priority, so
+                    # its result is the same for every level below: if new
+                    # portage still has non-uninstall RDEPENDs in the graph,
+                    # it must not be gathered into any cycle.
+                    blocked_nodes = None
+                    if (
+                        replacement_portage is not None
+                        and replacement_portage in mergeable_nodes
+                        and any(
+                            getattr(rdep, "operation", None) != "uninstall"
+                            for rdep in mygraph.child_nodes(
+                                replacement_portage,
+                                ignore_priority=priority_range.ignore_medium_soft,
+                            )
+                        )
+                    ):
+                        blocked_nodes = frozenset((replacement_portage,))
 
                     # Sort nodes for deterministic results.
                     nodes = sorted(nodes)
@@ -9773,18 +9795,21 @@ class depgraph:
                             local_priority_range.MEDIUM_SOFT + 1,
                         )
                     ):
+                        # Compute gather_deps success and closure size for every
+                        # candidate at this filter level in one O(V+E) pass.
+                        ok_nodes, closure_size, closure_members = _gather_deps_closures(
+                            mygraph, mergeable_nodes, priority, blocked_nodes
+                        )
                         for node in nodes:
                             if not mygraph.parent_nodes(node):
                                 continue
-                            selected_nodes = set()
-                            if gather_deps(
-                                priority, mergeable_nodes, selected_nodes, node
-                            ):
-                                if smallest_cycle is None or len(selected_nodes) < len(
-                                    smallest_cycle
-                                ):
-                                    smallest_cycle = selected_nodes
-                                    ignore_priority = priority
+                            if node not in ok_nodes:
+                                continue
+                            size = closure_size[node]
+                            if smallest_cycle is None or size < smallest_size:
+                                smallest_cycle = closure_members[node]
+                                smallest_size = size
+                                ignore_priority = priority
 
                         # Exit this loop with the lowest possible priority, which
                         # minimizes the use of installed packages to break cycles.
