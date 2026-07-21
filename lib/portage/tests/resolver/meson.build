@@ -35,6 +35,7 @@ py.install_sources(
         'test_eapi.py',
         'test_emptytree_reinstall_unsatisfiability.py',
         'test_features_test_use.py',
+        'test_gather_deps_closures.py',
         'test_imagemagick_graphicsmagick.py',
         'test_installkernel.py',
         'test_keywords.py',

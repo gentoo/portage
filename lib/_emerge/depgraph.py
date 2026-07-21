@@ -10,6 +10,7 @@ import time
 import warnings
 import collections
 from collections import deque, OrderedDict
+from collections.abc import Callable, Iterable
 from itertools import chain
 
 import os
@@ -66,6 +67,7 @@ from portage.util.portage_lru_cache import show_lru_cache_info
 from portage.versions import _pkg_str, catpkgsplit
 from portage.binpkg import get_binpkg_format
 
+from _emerge.AbstractDepPriority import AbstractDepPriority
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
 from _emerge.BlockerCache import BlockerCache
@@ -92,6 +94,7 @@ from _emerge.RootConfig import RootConfig
 from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
+from _emerge.Task import Task
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
@@ -121,6 +124,164 @@ _dep_check_graph_interface = collections.namedtuple(
         "want_update_pkg",
     ),
 )
+
+
+def _gather_deps_closures(
+    graph: digraph,
+    valid_nodes: Iterable[Task],
+    ignore_priority: Callable[[AbstractDepPriority], bool],
+    blocked_nodes: Optional[frozenset[Task]] = None,
+) -> tuple[set[Task], dict[Task, int], dict[Task, frozenset[Task]]]:
+    """
+    Compute, for every node in ``valid_nodes``, whether ``gather_deps`` (see
+    :meth:`depgraph._serialize_tasks`) would succeed starting from that node,
+    and if so the set of nodes it would gather (its dependency closure).
+
+    ``gather_deps(node)`` succeeds iff every node reachable from ``node``,
+    following child edges filtered by ``ignore_priority``, stays inside
+    ``valid_nodes`` and is not a member of ``blocked_nodes``. On success the
+    gathered set is exactly that reachable closure.
+
+    All nodes are handled in a single pass, via an iterative Tarjan SCC pass
+    over the induced subgraph followed by a reverse-topological sweep of the
+    condensation.
+
+    The nodes are the graph's Task instances (Package/Blocker); the routine
+    treats them purely as identity-hashable graph vertices and never inspects
+    their attributes.
+
+    @param graph: the digraph to analyze
+    @param valid_nodes: the Task nodes eligible to be gathered
+    @param ignore_priority: edge priority filter (as used by child_nodes),
+        called with each edge's AbstractDepPriority
+    @param blocked_nodes: Task nodes that, if reached, make gather_deps fail
+        (the hoisted replacement_portage pre-filter); may be None
+    @rtype: tuple
+    @return: (ok_nodes, closure_size, closure_members) where ok_nodes is the
+        set of nodes for which gather_deps succeeds and closure_size /
+        closure_members map each ok node to len(closure) and the frozenset
+        closure respectively. Members of a common cycle share one closure
+        frozenset object.
+    """
+    if blocked_nodes is None:
+        blocked_nodes = frozenset()
+    if not isinstance(valid_nodes, (set, frozenset)):
+        valid_nodes = frozenset(valid_nodes)
+
+    # An edge leaving valid_nodes always makes gather_deps fail, so record it
+    # once here rather than rediscovering it during the sweep below.
+    children = {}
+    escapes = {}
+    for node in valid_nodes:
+        kids = []
+        escaped = False
+        for child in graph.child_nodes(node, ignore_priority=ignore_priority):
+            if child in valid_nodes:
+                kids.append(child)
+            else:
+                escaped = True
+        children[node] = kids
+        escapes[node] = escaped
+
+    # Tarjan appends components to sccs in reverse-topological order, which the
+    # sweep below relies on to visit successors before predecessors.
+    index_counter = 0
+    stack = []
+    on_stack = set()
+    indices = {}
+    lowlink = {}
+    scc_id = {}
+    sccs: list[list[Task]] = []
+
+    for start in valid_nodes:
+        if start in indices:
+            continue
+        indices[start] = lowlink[start] = index_counter
+        index_counter += 1
+        stack.append(start)
+        on_stack.add(start)
+        work = [(start, iter(children[start]))]
+        while work:
+            node, it = work[-1]
+            advanced = False
+            for child in it:
+                if child not in indices:
+                    indices[child] = lowlink[child] = index_counter
+                    index_counter += 1
+                    stack.append(child)
+                    on_stack.add(child)
+                    work.append((child, iter(children[child])))
+                    advanced = True
+                    break
+                if child in on_stack and indices[child] < lowlink[node]:
+                    lowlink[node] = indices[child]
+            if advanced:
+                continue
+            if lowlink[node] == indices[node]:
+                comp = []
+                while True:
+                    w = stack.pop()
+                    on_stack.discard(w)
+                    scc_id[w] = len(sccs)
+                    comp.append(w)
+                    if w is node:
+                        break
+                sccs.append(comp)
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                if lowlink[node] < lowlink[parent]:
+                    lowlink[parent] = lowlink[node]
+
+    # A component is ok iff none of its nodes is blocked or escaping and every
+    # successor component is ok. Its closure is its own members plus the
+    # closures of its successors, computed earlier in this loop.
+    scc_ok: list[bool] = []
+    scc_reach: list[set[Task]] = []
+    for i, comp in enumerate(sccs):
+        ok = True
+        for node in comp:
+            if node in blocked_nodes or escapes[node]:
+                ok = False
+                break
+        if ok:
+            for node in comp:
+                for child in children[node]:
+                    cid = scc_id[child]
+                    if cid != i and not scc_ok[cid]:
+                        ok = False
+                        break
+                if not ok:
+                    break
+        if ok:
+            reach = set(comp)
+            for node in comp:
+                for child in children[node]:
+                    cid = scc_id[child]
+                    if cid != i:
+                        reach |= scc_reach[cid]
+            scc_ok.append(True)
+            scc_reach.append(reach)
+        else:
+            scc_ok.append(False)
+            # Placeholder: a not-ok component's reach is never read (guarded by
+            # scc_ok below and by the successor-ok check above).
+            scc_reach.append(set())
+
+    ok_nodes = set()
+    closure_size = {}
+    closure_members = {}
+    for i, comp in enumerate(sccs):
+        if not scc_ok[i]:
+            continue
+        members = frozenset(scc_reach[i])
+        size = len(members)
+        for node in comp:
+            ok_nodes.add(node)
+            closure_size[node] = size
+            closure_members[node] = members
+
+    return ok_nodes, closure_size, closure_members
 
 
 class _scheduler_graph_config:
