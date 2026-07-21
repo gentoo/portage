@@ -2606,8 +2606,6 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
     @rtype: List
     @return: A list of package atoms that match the given package atom
     """
-    from portage.util import writemsg
-
     if not candidate_list:
         return []
 
@@ -2635,6 +2633,8 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
     if ver and rev:
         operator = mydep.operator
         if not operator:
+            from portage.util import writemsg
+
             writemsg(f"!!! Invalid atom: {mydep}\n", noiselevel=-1)
             return []
     else:
@@ -2800,6 +2800,8 @@ def match_from_list(mydep: Union[str, Atom], candidate_list):
             try:
                 result = vercmp(pkg.version, mydep.version)
             except ValueError:  # pkgcmp may return ValueError during int() conversion
+                from portage.util import writemsg
+
                 writemsg(_("\nInvalid package name: %s\n") % x, noiselevel=-1)
                 raise
             if result is None:
