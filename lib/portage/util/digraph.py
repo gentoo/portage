@@ -285,6 +285,29 @@ class digraph:
         """Checks if the digraph is empty"""
         return len(self.nodes) == 0
 
+    def induced_subgraph(self, nodes):
+        """Return a new digraph containing only the given nodes, and the
+        edges of this graph whose endpoints are both in nodes.
+
+        Node order is this graph's insertion order restricted to nodes."""
+        if not isinstance(nodes, (set, frozenset, dict)):
+            nodes = frozenset(nodes)
+        sub = digraph()
+        sub_nodes = sub.nodes
+        order = [node for node in self.order if node in nodes]
+        for node in order:
+            sub_nodes[node] = ({}, {}, node)
+        for node in order:
+            for child, priorities in self.nodes[node][0].items():
+                if child in nodes:
+                    # Share one fresh priorities list between the child and
+                    # parent views of the edge, as add()/clone() do.
+                    priorities = priorities[:]
+                    sub_nodes[node][0][child] = priorities
+                    sub_nodes[child][1][node] = priorities
+        sub.order = order
+        return sub
+
     def clone(self):
         clone = digraph()
         clone.nodes = {}

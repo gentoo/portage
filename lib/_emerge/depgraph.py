@@ -9843,10 +9843,7 @@ class depgraph:
                         prefer_asap = False
                         continue
                 else:
-                    cycle_digraph = mygraph.copy()
-                    cycle_digraph.difference_update(
-                        [x for x in cycle_digraph if x not in selected_nodes]
-                    )
+                    cycle_digraph = mygraph.induced_subgraph(selected_nodes)
 
                     leaves = cycle_digraph.leaf_nodes()
                     if leaves:

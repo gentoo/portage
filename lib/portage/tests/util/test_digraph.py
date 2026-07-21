@@ -263,6 +263,49 @@ class DigraphTest(TestCase):
         self.assertEqual(g.root_nodes(ignore_priority=always_false), ["B"])
         self.assertEqual(g.root_nodes(ignore_priority=always_true), ["A", "B"])
 
+    def testInducedSubgraph(self):
+        # The result must match copy() + difference_update() of the complement.
+        def always_false(dummy):
+            return False
+
+        g = digraph()
+        g.add("A", "B", priority=1)
+        g.add("B", "C", priority=2)
+        g.add("C", "A", priority=-1)
+        g.add("D", "C")
+        g.add("E", None)
+
+        for keep in (
+            {"A", "B", "C"},
+            {"A", "C"},
+            {"A", "B", "C", "D", "E"},
+            {"E"},
+            set(),
+        ):
+            sub = g.induced_subgraph(keep)
+            ref = g.copy()
+            ref.difference_update([x for x in ref if x not in keep])
+            self.assertEqual(sub.order, ref.order)
+            self.assertEqual(set(sub.all_nodes()), set(ref.all_nodes()))
+            for node in sub:
+                self.assertEqual(
+                    sorted(map(str, sub.child_nodes(node))),
+                    sorted(map(str, ref.child_nodes(node))),
+                )
+                self.assertEqual(
+                    sorted(map(str, sub.parent_nodes(node))),
+                    sorted(map(str, ref.parent_nodes(node))),
+                )
+            self.assertEqual(sub.leaf_nodes(), ref.leaf_nodes())
+            self.assertEqual(
+                sub.leaf_nodes(ignore_priority=always_false),
+                ref.leaf_nodes(ignore_priority=always_false),
+            )
+            self.assertEqual(sub.root_nodes(), ref.root_nodes())
+            # order[-1] fallback used by _serialize_tasks must agree.
+            if sub.order:
+                self.assertEqual(sub.order[-1], ref.order[-1])
+
     def testChildNodesIter(self):
         def always_true(dummy):
             return True
