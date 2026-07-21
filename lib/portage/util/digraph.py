@@ -177,6 +177,22 @@ class digraph:
                     children.append(child)
         return children
 
+    def child_nodes_iter(self, node, ignore_priority=None):
+        """Yield all children of the specified node, in child_nodes() order"""
+        children = self.nodes[node][0]
+        if ignore_priority is None:
+            yield from children
+        elif hasattr(ignore_priority, "__call__"):
+            for child, priorities in children.items():
+                for priority in reversed(priorities):
+                    if not ignore_priority(priority):
+                        yield child
+                        break
+        else:
+            for child, priorities in children.items():
+                if ignore_priority < priorities[-1]:
+                    yield child
+
     def parent_nodes(self, node, ignore_priority=None):
         """Return all parents of the specified node"""
         if ignore_priority is None:
@@ -328,7 +344,7 @@ class digraph:
         while queue:
             parent, n = queue.popleft()
             yield parent, n
-            new = set(self.child_nodes(n, ignore_priority)) - enqueued
+            new = set(self.child_nodes_iter(n, ignore_priority)) - enqueued
             enqueued |= new
             queue.extend([(n, child) for child in new])
 

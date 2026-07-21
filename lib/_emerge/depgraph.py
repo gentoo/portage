@@ -175,7 +175,7 @@ def _gather_deps_closures(
     for node in valid_nodes:
         kids = []
         escaped = False
-        for child in graph.child_nodes(node, ignore_priority=ignore_priority):
+        for child in graph.child_nodes_iter(node, ignore_priority=ignore_priority):
             if child in valid_nodes:
                 kids.append(child)
             else:

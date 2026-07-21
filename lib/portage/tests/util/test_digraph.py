@@ -262,3 +262,25 @@ class DigraphTest(TestCase):
         self.assertEqual(g.root_nodes(), ["B"])
         self.assertEqual(g.root_nodes(ignore_priority=always_false), ["B"])
         self.assertEqual(g.root_nodes(ignore_priority=always_true), ["A", "B"])
+
+    def testChildNodesIter(self):
+        def always_true(dummy):
+            return True
+
+        def always_false(dummy):
+            return False
+
+        g = digraph()
+        g.add("A", "C", priority=1)
+        g.add("B", "C", priority=-1)
+        g.add("D", "C", priority=2)
+
+        for ip in (None, always_true, always_false, 0, 1, -2):
+            self.assertEqual(
+                list(g.child_nodes_iter("C", ignore_priority=ip)),
+                g.child_nodes("C", ignore_priority=ip),
+            )
+            self.assertEqual(
+                list(g.child_nodes_iter("A", ignore_priority=ip)),
+                g.child_nodes("A", ignore_priority=ip),
+            )
