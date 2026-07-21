@@ -2525,8 +2525,6 @@ def best_match_to_list(mypkg: Union[str, Atom], mylist: list) -> Optional[Atom]:
             - cp:slot with extended syntax	0
             - cp with extended syntax	-1
     """
-    from portage.util import cmp_sort_key
-
     operator_values = {
         "=": 6,
         "~": 5,
@@ -2583,6 +2581,8 @@ def best_match_to_list(mypkg: Union[str, Atom], mylist: list) -> Optional[Atom]:
                     v1 = getattr(cpv1, "version", None) or cpv_getversion(str(cpv1))
                     v2 = getattr(cpv2, "version", None) or cpv_getversion(str(cpv2))
                     return vercmp(v1, v2)
+
+                from portage.util import cmp_sort_key
 
                 cpv_list.sort(key=cmp_sort_key(cmp_cpv))
                 if cpv_list[0] is mypkg_cpv or cpv_list[-1] is mypkg_cpv:
