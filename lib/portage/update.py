@@ -8,6 +8,12 @@ import warnings
 
 import os
 from portage.const import USER_CONFIG_PATH, VCS_DIRS
+from portage.dep import (
+    Atom,
+    dep_getkey,
+    isvalidatom,
+    match_from_list,
+)
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, PortageException
 from portage.localization import _
@@ -16,7 +22,6 @@ ignored_dbentries = ("CONTENTS", "environment.bz2")
 
 
 def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
-    from portage.dep import Atom, isvalidatom, match_from_list
 
     if parent is not None:
         eapi = parent.eapi
@@ -186,7 +191,6 @@ def grab_updates(updpath, prev_mtimes=None):
 
 def parse_updates(mycontent):
     """Valid updates are returned as a list of split update commands."""
-    from portage.dep import Atom
     from portage.versions import _get_slot_re
 
     eapi_attrs = _get_eapi_attrs(None)
@@ -279,7 +283,6 @@ def update_config_files(
     match_callback - a callback which will be called with three arguments:
             match_callback(repo_name, old_atom, new_atom)
     and should return boolean value determining whether to perform the update"""
-    from portage.dep import isvalidatom
     from portage.util import (
         ConfigProtect,
         new_protect_filename,
@@ -440,7 +443,6 @@ def update_config_files(
 
 
 def dep_transform(mydep, oldkey, newkey):
-    from portage.dep import dep_getkey
 
     if dep_getkey(mydep) == oldkey:
         return mydep.replace(oldkey, newkey, 1)
