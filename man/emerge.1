@@ -1502,6 +1502,13 @@ statistics about its internal LRU caches.
 If this environment variable is set, then Portage will show
 a trace of all HTTP request.
 .TP
+.BR PORTAGE_SERIALIZE_FRONTIER_DISABLE
+If this environment variable is set, then Portage will disable the
+incremental leaf-frontier optimization in the task serialization step of
+dependency resolution and fall back to the previous implementation.
+This variable is internal and experimental; it may be removed or changed
+in a future release.
+.TP
 .BR PORTAGE_DO_NOT_EXPORT_PMS_VARS
 If this environment variable is set, then Portage will not export PMS
 variables regardless of the EAPI.  The variables are still available

@@ -80,6 +80,7 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.DepPriority import DepPriority
 from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
+from _emerge._serialize_frontier import _FrontierDigraph, _SerializeFrontier
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
@@ -9461,6 +9462,17 @@ class depgraph:
 
         mygraph = self._dynamic_config.digraph.copy()
 
+        # Wrap mygraph so an incremental leaf frontier stays in sync with every
+        # mutation, then drive the asap/leaf-scan selection from it instead of
+        # O(V) leaf_nodes() scans. PORTAGE_SERIALIZE_FRONTIER_DISABLE falls back
+        # to leaf_nodes(). See _serialize_frontier.
+        use_frontier = "PORTAGE_SERIALIZE_FRONTIER_DISABLE" not in os.environ
+        if use_frontier:
+            fdg = _FrontierDigraph()
+            fdg.nodes = mygraph.nodes
+            fdg.order = mygraph.order
+            mygraph = fdg
+
         removed_nodes = set()
 
         # Prune off all DependencyArg instances since they aren't
@@ -9505,6 +9517,10 @@ class depgraph:
         ignore_world = self._dynamic_config.myparams.get("ignore_world", False)
         asap_nodes = []
 
+        # Set to a _SerializeFrontier just before the selection loop, unless the
+        # frontier is disabled.
+        frontier = None
+
         def get_nodes(**kwargs):
             """
             Returns leaf nodes excluding Uninstall instances
@@ -9513,6 +9529,19 @@ class depgraph:
             return [
                 node
                 for node in mygraph.leaf_nodes(**kwargs)
+                if isinstance(node, Package)
+                and (node.operation != "uninstall" or node in scheduled_uninstalls)
+            ]
+
+        def frontier_leaves(ignore_priority):
+            """
+            Frontier equivalent of get_nodes(ignore_priority=...): the eligible
+            leaf nodes under `ignore_priority`, in mygraph.order.
+            """
+            level = frontier.level_of(ignore_priority)
+            return [
+                node
+                for node in frontier.ready_nodes(level)
                 if isinstance(node, Package)
                 and (node.operation != "uninstall" or node in scheduled_uninstalls)
             ]
@@ -9658,6 +9687,10 @@ class depgraph:
         # If no nodes are selected on the last iteration, it is due to
         # unresolved blockers or circular dependencies.
 
+        if use_frontier:
+            frontier = _SerializeFrontier(mygraph)
+            mygraph.frontier = frontier
+
         while mygraph:
             selected_nodes = None
             ignore_priority = None
@@ -9673,10 +9706,19 @@ class depgraph:
                 asap_nodes = [node for node in asap_nodes if mygraph.contains(node)]
                 for i in range(priority_range.SOFT, priority_range.MEDIUM_SOFT + 1):
                     ignore_priority = priority_range.ignore_priority[i]
+                    level = (
+                        frontier.level_of(ignore_priority)
+                        if frontier is not None
+                        else None
+                    )
                     for node in asap_nodes:
-                        if not mygraph.child_nodes(
-                            node, ignore_priority=ignore_priority
-                        ):
+                        if level is not None:
+                            is_leaf = frontier.is_leaf(node, level)
+                        else:
+                            is_leaf = not mygraph.child_nodes(
+                                node, ignore_priority=ignore_priority
+                            )
+                        if is_leaf:
                             selected_nodes = [node]
                             asap_nodes.remove(node)
                             break
@@ -9686,7 +9728,10 @@ class depgraph:
             if not selected_nodes and not (prefer_asap and asap_nodes):
                 for i in range(priority_range.NONE, priority_range.MEDIUM_SOFT + 1):
                     ignore_priority = priority_range.ignore_priority[i]
-                    nodes = get_nodes(ignore_priority=ignore_priority)
+                    if frontier is not None:
+                        nodes = frontier_leaves(ignore_priority)
+                    else:
+                        nodes = get_nodes(ignore_priority=ignore_priority)
                     if nodes:
                         # If there is a mixture of merges and uninstalls,
                         # do the uninstalls first.
