@@ -150,6 +150,8 @@ def insert_optional_args(args):
         "--autounmask-unrestricted-atoms": y_or_n,
         "--autounmask-write": y_or_n,
         "--binpkg-changed-deps": y_or_n,
+        "--binpkg-respect-use": y_or_n,
+        "--binpkg-user-patches": y_or_n,
         "--buildpkg": y_or_n,
         "--changed-deps": y_or_n,
         "--changed-slot": y_or_n,
@@ -158,7 +160,6 @@ def insert_optional_args(args):
         "--deep": valid_integers,
         "--depclean-lib-check": y_or_n,
         "--deselect": y_or_n,
-        "--binpkg-respect-use": y_or_n,
         "--fail-clean": y_or_n,
         "--fuzzy-search": y_or_n,
         "--getbinpkg": y_or_n,
@@ -390,7 +391,15 @@ def parse_opts(tmpcmdline, silent=False):
             "action": "store",
         },
         "--binpkg-changed-deps": {
-            "help": ("reject binary packages with outdated " "dependencies"),
+            "help": "ignore binary packages with outdated dependencies",
+            "choices": true_y_or_n,
+        },
+        "--binpkg-respect-use": {
+            "help": "ignore binary packages if their use flags don't match the current configuration",
+            "choices": true_y_or_n,
+        },
+        "--binpkg-user-patches": {
+            "help": "ignore from binary packages for which user patches exist",
             "choices": true_y_or_n,
         },
         "--buildpkg": {
@@ -538,11 +547,6 @@ def parse_opts(tmpcmdline, silent=False):
             + "Emerge will treat matching packages as if they are not "
             + "installed, and reinstall them if necessary. Implies --deep.",
             "action": "append",
-        },
-        "--binpkg-respect-use": {
-            "help": "discard binary packages if their use flags \
-				don't match the current configuration",
-            "choices": true_y_or_n,
         },
         "--getbinpkg": {
             "shortopt": "-g",
@@ -835,6 +839,18 @@ def parse_opts(tmpcmdline, silent=False):
         else:
             myoptions.binpkg_changed_deps = "n"
 
+    if myoptions.binpkg_respect_use is not None:
+        if myoptions.binpkg_respect_use in true_y:
+            myoptions.binpkg_respect_use = "y"
+        else:
+            myoptions.binpkg_respect_use = "n"
+
+    if myoptions.binpkg_user_patches is not None:
+        if myoptions.binpkg_user_patches in true_y:
+            myoptions.binpkg_user_patches = "y"
+        else:
+            myoptions.binpkg_user_patches = "n"
+
     if myoptions.buildpkg in true_y:
         myoptions.buildpkg = True
 
@@ -870,12 +886,6 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.deselect in true_y:
         myoptions.deselect = True
-
-    if myoptions.binpkg_respect_use is not None:
-        if myoptions.binpkg_respect_use in true_y:
-            myoptions.binpkg_respect_use = "y"
-        else:
-            myoptions.binpkg_respect_use = "n"
 
     if myoptions.complete_graph in true_y:
         myoptions.complete_graph = True

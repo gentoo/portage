@@ -1185,13 +1185,24 @@ if ___eapi_has_eapply_user; then
 		done
 
 		if (( ${#patch_by[@]} > 0 )); then
+			if [[ ! -d "${PORTAGE_BUILDDIR}"/build-info ]]; then
+				mkdir "${PORTAGE_BUILDDIR}"/build-info
+			fi
+			userpatch_digests=${PORTAGE_BUILDDIR}/build-info/user_patch.digests
+			userpatches_hash=${PORTAGE_BUILDDIR}/build-info/USER_PATCHES
+
 			printf -v hr "%$(( columns - 3 ))s"
 			hr=${hr//?/=}
 			einfo "${PORTAGE_COLOR_INFO}${hr}${PORTAGE_COLOR_NORMAL}"
 			einfo "Applying user patches from ${basedir} ..."
 			while IFS= read -rd '' basename; do
 				eapply -- "${patch_by[$basename]}"
+				hash=($(sha256sum "${patch_by[$basename]}"))
+				total+=$hash
+				echo $hash "$basename" >> $userpatch_digests
 			done < <(printf '%s\0' "${!patch_by[@]}" | LC_ALL=C sort -z)
+			hash=($(sha256sum <(printf '%s' $total)))
+			echo $hash > $userpatches_hash
 			einfo "User patches applied."
 			einfo "${PORTAGE_COLOR_INFO}${hr}${PORTAGE_COLOR_NORMAL}"
 		fi

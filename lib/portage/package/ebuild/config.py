@@ -91,6 +91,7 @@ from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.package.ebuild._config.UseManager import UseManager
 from portage.package.ebuild._config.LocationsManager import LocationsManager
 from portage.package.ebuild._config.MaskManager import MaskManager
+from portage.package.ebuild._config.UserPatches import UserPatches
 from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.package.ebuild._config.helper import (
     ordered_by_atom_specificity,
@@ -323,6 +324,7 @@ class config:
             # that they're not instantiated more than once
             self._keywords_manager_obj = clone._keywords_manager
             self._mask_manager_obj = clone._mask_manager
+            self._user_patches_obj = clone._user_patches
 
             # shared mutable attributes
             self._unknown_features = clone._unknown_features
@@ -376,6 +378,7 @@ class config:
             # lazily instantiated objects
             self._keywords_manager_obj = None
             self._mask_manager_obj = None
+            self._user_patches_obj = None
             self._virtuals_manager_obj = None
 
             locations_manager = LocationsManager(
@@ -1334,6 +1337,14 @@ class config:
         return self._mask_manager_obj
 
     @property
+    def _user_patches(self):
+        if self._user_patches_obj is None:
+            self._user_patches_obj = UserPatches(
+                self._locations_manager.abs_user_config
+            )
+        return self._user_patches_obj
+
+    @property
     def _virtuals_manager(self):
         if self._virtuals_manager_obj is None:
             self._virtuals_manager_obj = VirtualsManager(self.profiles)
@@ -1372,6 +1383,16 @@ class config:
                 for soname in sonames
             )
         return self._soname_provided
+
+    def userPatchDigest(self, pkg):
+        """Return the digest over all user patches applicable to pkg, where pkg
+        is any suitable type with cp, cpv, and slot attributes."""
+        return self._user_patches.digest(pkg, default="")
+
+    def userPatchFiles(self, pkg):
+        """Return the patch filenames of user patches applicable to pkg, where
+        pkg is any suitable type with cp, cpv, and slot attributes."""
+        return self._user_patches.patches(pkg)
 
     def expandLicenseTokens(self, tokens):
         """Take a token from ACCEPT_LICENSE or package.license and expand it
