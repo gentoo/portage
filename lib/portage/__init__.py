@@ -327,16 +327,25 @@ def getcwd():
 getcwd()
 
 
-def abssymlink(symlink, target=None):
+def abssymlink(symlink, target=None, srcroot=None):
     """
     This reads symlinks, resolving the relative symlinks,
-    and returning the absolute.
+    and returning the absolute target path. When srcroot
+    is not None, absolute symlink targets are interpreted
+    relative to srcroot instead of the filesystem root, as
+    if resolved inside a chroot.
     @param symlink: path of symlink (must be absolute)
     @param target: the target of the symlink (as returned
             by readlink)
+    @param srcroot: Root directory (usually ${D}) used when
+            resolving absolute symlink targets.
+    @type srcroot: String (Path)
     @rtype: str
     @return: the absolute path of the symlink target
     """
+    if not os.path.isabs(symlink):
+        raise ValueError(f"{symlink!r} is not an absolute path")
+
     if target is not None:
         mylink = target
     else:
@@ -344,7 +353,34 @@ def abssymlink(symlink, target=None):
     if mylink[0] != "/":
         mydir = os.path.dirname(symlink)
         mylink = f"{mydir}/{mylink}"
-    return os.path.normpath(mylink)
+    if srcroot is None:
+        return os.path.normpath(mylink)
+
+    srcroot = os.path.normpath(srcroot)
+    if not os.path.isabs(srcroot):
+        raise ValueError(f"{srcroot!r}: is not an absolute path")
+
+    # symlink and srcroot are both absolute paths.
+    prefix = os.path.commonpath([os.path.normpath(symlink), srcroot])
+
+    if prefix != srcroot:
+        raise ValueError(f"abssymlink: {symlink!r} is outside {srcroot!r}")
+
+    # relpath() may escape srcroot using ".."; collapse it without
+    # allowing traversal above srcroot.
+    rel = os.path.relpath(mylink, srcroot)
+    parts = []
+    for p in rel.split(os.sep):
+        if p == "" or p == ".":  # "//" or "/./"
+            continue
+        elif p == "..":
+            if parts:
+                parts.pop()
+            # else: ignore .. at root
+        else:
+            parts.append(p)
+
+    return os.path.join(srcroot, *parts)
 
 
 _doebuild_manifest_exempt_depend = 0
