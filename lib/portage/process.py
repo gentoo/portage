@@ -937,6 +937,47 @@ def _exec_wrapper(
         raise
 
 
+def _reset_pid_ns_for_children(libc):
+    """
+    Restore this process's pid_ns_for_children to its own pid namespace.
+
+    unshare(CLONE_NEWPID) does not move the caller into the new pid
+    namespace, it only sets pid_ns_for_children so that future children
+    are created there. That setting survives execve(2), and while it
+    differs from the caller's active pid namespace the kernel rejects
+    CLONE_THREAD with EINVAL. Any program exec'd in that state which
+    creates a thread during startup therefore fails to start.
+
+    setns(2) on /proc/self/ns/pid points pid_ns_for_children back at the
+    namespace this process already belongs to, which is a no-op for the
+    process itself but lifts the CLONE_THREAD restriction. Callers must
+    have forked the pid namespace's init process beforehand.
+
+    @param libc: the libc handle returned by load_libc()
+    """
+    if libc is None or not hasattr(libc, "setns"):
+        return
+
+    # from /usr/include/bits/sched.h
+    CLONE_NEWPID = 0x20000000
+
+    try:
+        fd = os.open("/proc/self/ns/pid", os.O_RDONLY)
+    except OSError:
+        # /proc is not mounted, so leave pid_ns_for_children alone.
+        return
+
+    try:
+        if libc.setns(fd, CLONE_NEWPID) != 0:
+            writemsg(
+                "Unable to reset pid_ns_for_children: %s\n"
+                % errno.errorcode.get(ctypes.get_errno(), "?"),
+                noiselevel=-1,
+            )
+    finally:
+        os.close(fd)
+
+
 def _exec(
     binary,
     mycommand,
@@ -1129,6 +1170,14 @@ def _exec(
             fd_pipes=None,
             close_fds=False,
         )
+
+        # Now that init has been forked, this process has no further
+        # use for pid_ns_for_children, and leaving it set would prevent
+        # the supervisor exec'd below from creating threads. qemu-user,
+        # which spawns an RCU thread during startup, fails outright in
+        # that state, breaking pid-sandbox for every binfmt_misc
+        # emulated chroot.
+        _reset_pid_ns_for_children(libc)
 
         # Execute a supervisor process which will forward
         # signals to init and forward exit status to the
