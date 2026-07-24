@@ -293,7 +293,7 @@ class circular_dependency_handler:
                         " (This change might require USE changes on parent packages.)"
                     )
                 suggestions.append(msg)
-                final_solutions.setdefault(pkg, set()).add(solution)
+                final_solutions.setdefault(pkg, set()).add((parent, solution))
 
         return final_solutions, suggestions
 
