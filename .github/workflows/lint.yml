@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: "Collect stragglers that Black misses"
         id: stragglers
         run: |
@@ -28,11 +28,14 @@ jobs:
           - '3.10'
           - '3.11'
           - '3.12'
+          - '3.13'
+          - '3.14'
+          # no pylint for py315 available
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install python dependencies
