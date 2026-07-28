@@ -1261,8 +1261,14 @@ def emerge_main(args: Optional[list[str]] = None):
     if myaction == "status":
         # Report what running emerge processes are currently building.
         # (For machine-readable output, use `portageq jobs --json`.)
-        from portage.const import EPREFIX
+        emerge_config = load_emerge_config(action=myaction, args=myfiles, opts=myopts)
+        if not "observability" in emerge_config.target_config.settings.features:
+            sys.stderr.write(
+                "Status reporting not possible because FEATURE=observability is not enabled\n"
+            )
+            return os.EX_USAGE
 
+        from portage.const import EPREFIX
         from _emerge._observability import format_snapshots, read_snapshots
 
         sys.stdout.write(format_snapshots(read_snapshots(EPREFIX)))
