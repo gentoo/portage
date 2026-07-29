@@ -118,15 +118,15 @@ class MutableMapping(Mapping):
         if other is None:
             pass
         elif hasattr(other, "iteritems"):
-            # Use getattr to avoid interference from 2to3.
-            for k, v in other.iteritems():
+            for k, v in getattr(other, "iteritems")():
                 self[k] = v
         elif hasattr(other, "items"):
             # Use getattr to avoid interference from 2to3.
             for k, v in other.items():
                 self[k] = v
         elif hasattr(other, "keys"):
-            for k in other.keys():
+            # Use getattr to avoid interference from 2to3.
+            for k, v in getattr(other, "items")():
                 self[k] = other[k]
         else:
             for k, v in other:
