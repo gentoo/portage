@@ -9,7 +9,12 @@ Release notes take the form of the following optional categories:
 portage-3.0.83 (UNRELEASED)
 --------------
 
-...
+Features:
+
+* Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
+  package merges. When enabled, Portage uses hashes and mtimes from the
+  VDB (var database) to skip writing files that are already identical on
+  disk, which saves I/O and reduces filesystem cache pressure.
 
 portage-3.0.82 (2026-08-22)
 --------------

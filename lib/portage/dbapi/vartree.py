@@ -25,6 +25,7 @@ import tempfile
 import textwrap
 import time
 import warnings
+from enum import Enum, auto
 from itertools import chain
 
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -341,6 +342,23 @@ def _explode_metadata_file(dbdir):
 
     os.unlink(path)
     return missing
+
+
+class MoveReason(Enum):
+    # Falsy reasons (Move not needed)
+    VDB_HASH_MATCHES = auto()
+    CONTENT_MATCHES = auto()
+
+    # Truthy reasons (Move needed)
+    FILE_MISSING_OR_NOT_REGULAR = auto()
+    MODE_DIFFERS = auto()
+    VDB_HASH_DIFFERS = auto()
+    XATTR_DIFFERS = auto()
+    CONTENT_DIFFERS = auto()
+    COMPARISON_EXCEPTION = auto()
+
+    def __bool__(self):
+        return self.value >= self.__class__.FILE_MISSING_OR_NOT_REGULAR.value
 
 
 class vardbapi(dbapi):
@@ -5619,7 +5637,26 @@ class dblink:
                         ).hexdigest()
 
                     elif stat.S_ISREG(mydmode):
-                        destmd5 = perform_md5(mydest)
+                        destmd5 = None
+                        # If the file hasn't been modified since it was installed, we can safely
+                        # reuse the MD5 hash recorded in the var database (VDB) instead of
+                        # reading the file from disk to compute it.
+                        if (
+                            "merge-use-vdb" in self.settings.features
+                            and self._installed_instance is not None
+                        ):
+                            k = self._installed_instance._match_contents(myrealdest)
+                            if k is not False:
+                                data = self._installed_instance.getcontents()[k]
+                                if data[0] == "obj":
+                                    vdb_mtime = data[1]
+                                    if (
+                                        str(mydstat.st_mtime_ns // 1000000000)
+                                        == vdb_mtime
+                                    ):
+                                        destmd5 = data[2]
+                        if destmd5 is None:
+                            destmd5 = perform_md5(mydest)
             except (FileNotFound, OSError) as e:
                 if isinstance(e, OSError) and e.errno != errno.ENOENT:
                     raise
@@ -5912,7 +5949,10 @@ class dblink:
                 # same way.  Unless moveme=0 (blocking directory)
                 if moveme:
                     # only replace the existing file if it differs, see #722270
-                    if self._needs_move(mysrc, mydest, mymode, mydmode):
+                    needs_move_reason = self._needs_move(
+                        mysrc, mydest, mymode, mydmode, mymd5, myrealdest
+                    )
+                    if needs_move_reason:
                         # Create hardlinks only for source files that already exist
                         # as hardlinks (having identical st_dev and st_ino).
                         hardlink_key = (mystat.st_dev, mystat.st_ino)
@@ -5941,7 +5981,11 @@ class dblink:
                         except OSError:
                             # utime can fail here with EPERM
                             pass
-                        zing = "==="
+                        zing = (
+                            "=V="
+                            if needs_move_reason == MoveReason.VDB_HASH_MATCHES
+                            else "==="
+                        )
 
                     try:
                         self._merged_path(mydest, os.lstat(mydest))
@@ -6359,7 +6403,7 @@ class dblink:
         finally:
             self.unlockdb()
 
-    def _needs_move(self, mysrc, mydest, mymode, mydmode):
+    def _needs_move(self, mysrc, mydest, mymode, mydmode, mymd5=None, myrealdest=None):
         """
         Checks whether the given file at |mysrc| needs to be moved to |mydest| or if
         they are identical.
@@ -6370,13 +6414,42 @@ class dblink:
         from portage.util import writemsg
         from portage.util.movefile import _cmpxattr
 
-        if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
-            return True
+        if mydmode is None or not stat.S_ISREG(mydmode):
+            return MoveReason.FILE_MISSING_OR_NOT_REGULAR
+        if mymode != mydmode:
+            return MoveReason.MODE_DIFFERS
+
+        # Instead of doing a full file content comparison, we can check if the file's
+        # modification time matches the one recorded in the var database (VDB).
+        # If it does, we assume the file hasn't been modified and can simply compare
+        # the incoming file's MD5 hash with the one in the VDB.
+        if (
+            "merge-use-vdb" in self.settings.features
+            and myrealdest is not None
+            and mymd5 is not None
+            and self._installed_instance is not None
+        ):
+            k = self._installed_instance._match_contents(myrealdest)
+            if k is not False:
+                data = self._installed_instance.getcontents()[k]
+                if data[0] == "obj":
+                    vdb_mtime = data[1]
+                    try:
+                        mydest_mtime = str(os.lstat(mydest).st_mtime_ns // 1000000000)
+                    except OSError:
+                        mydest_mtime = None
+                    if mydest_mtime == vdb_mtime:
+                        vdb_md5 = data[2]
+                        return (
+                            MoveReason.VDB_HASH_DIFFERS
+                            if mymd5 != vdb_md5
+                            else MoveReason.VDB_HASH_MATCHES
+                        )
 
         if "xattr" in self.settings.features:
             excluded_xattrs = self.settings.get("PORTAGE_XATTR_EXCLUDE", "")
             if not _cmpxattr(mysrc, mydest, exclude=excluded_xattrs):
-                return True
+                return MoveReason.XATTR_DIFFERS
 
         try:
             files_equal = filecmp.cmp(mysrc, mydest, shallow=False)
@@ -6388,9 +6461,13 @@ class dblink:
                 % (e, mysrc, mydest),
                 noiselevel=-1,
             )
-            return True
+            return MoveReason.COMPARISON_EXCEPTION
 
-        return not files_equal
+        return (
+            MoveReason.CONTENT_DIFFERS
+            if not files_equal
+            else MoveReason.CONTENT_MATCHES
+        )
 
 
 def merge(

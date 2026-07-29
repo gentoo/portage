@@ -8,6 +8,7 @@ py.install_sources(
         'test_emerge_slot_abi.py',
         'test_global_updates.py',
         'test_is_valid_package_atom.py',
+        'test_merge_use_vdb.py',
         'test_baseline.py',
         'test_libc_dep_inject.py',
         'test_noreplace.py',
