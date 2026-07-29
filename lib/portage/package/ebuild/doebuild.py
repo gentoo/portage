@@ -3,32 +3,38 @@
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
 
-import grp
-import gzip
 import errno
 import fnmatch
-from itertools import chain
+import grp
+import gzip
 import logging
 import multiprocessing
+import os
 import platform
 import pwd
 import re
 import shlex
+import shutil
 import signal
 import stat
 import subprocess
 import sys
 import tempfile
-from textwrap import wrap
 import time
-from typing import Union
 import warnings
 import zlib
+from itertools import chain
+from textwrap import wrap
+from typing import Union
+
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
+from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.EbuildPhase import EbuildPhase
+from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
+from _emerge.Package import Package
+from _emerge.RootConfig import RootConfig
 
 import portage
-
-import os
-import shutil
 from portage import (
     bsd_chflags,
     eapi_is_supported,
@@ -38,9 +44,9 @@ from portage import (
     unmerge,
 )
 from portage.const import (
-    EBUILD_SH_ENV_FILE,
-    EBUILD_SH_ENV_DIR,
     EBUILD_SH_BINARY,
+    EBUILD_SH_ENV_DIR,
+    EBUILD_SH_ENV_FILE,
     INVALID_ENV_FILE,
     MISC_SH_BINARY,
     PORTAGE_PYM_PACKAGES,
@@ -57,14 +63,14 @@ from portage.dep import (
 )
 from portage.dep.libc import find_libc_deps
 from portage.eapi import (
+    _get_eapi_attrs,
     eapi_exports_KV,
     eapi_exports_merge_type,
     eapi_exports_pms_vars,
     eapi_exports_replace_vars,
+    eapi_has_pkg_pretend,
     eapi_has_required_use,
     eapi_has_src_prepare_and_src_configure,
-    eapi_has_pkg_pretend,
-    _get_eapi_attrs,
 )
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
@@ -87,25 +93,19 @@ from portage.util import (
     apply_secpass_permissions,
     noiselimit,
     varexpand,
+    write_atomic,
     writemsg,
     writemsg_stdout,
-    write_atomic,
 )
-from portage.util.cpuinfo import get_cpu_count, makeopts_to_job_count
-from portage.util.lafilefixer import rewrite_lafile
+from portage.util._dyn_libs.dyn_libs import check_dyn_libs_inconsistent
 from portage.util.compression_probe import _compressors
+from portage.util.cpuinfo import get_cpu_count, makeopts_to_job_count
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
+from portage.util.lafilefixer import rewrite_lafile
 from portage.util.path import first_existing
 from portage.util.socks5 import get_socks5_proxy
-from portage.util._dyn_libs.dyn_libs import check_dyn_libs_inconsistent
 from portage.versions import _pkgsplit, pkgcmp
-from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
-from _emerge.EbuildBuildDir import EbuildBuildDir
-from _emerge.EbuildPhase import EbuildPhase
-from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
-from _emerge.Package import Package
-from _emerge.RootConfig import RootConfig
 
 _unsandboxed_phases = frozenset(
     [
@@ -842,10 +842,11 @@ def doebuild(
 
     """
     from _emerge.EbuildPhase import _setup_locale
+
+    from portage.package.ebuild._spawn_nofetch import spawn_nofetch
     from portage.package.ebuild.digestcheck import digestcheck
     from portage.package.ebuild.digestgen import digestgen
     from portage.package.ebuild.prepare_build_dirs import _prepare_fake_distdir
-    from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 
     if settings is None:
         raise TypeError("settings parameter is required")
@@ -1380,7 +1381,7 @@ def doebuild(
                 alist = _parse_uri_map(mysettings.mycpv, metadata, use=use)
                 aalist = _parse_uri_map(mysettings.mycpv, metadata)
             except InvalidDependString as e:
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!! {e!s}\n", noiselevel=-1)
                 writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv, noiselevel=-1)
                 del e
                 return 1
@@ -2208,7 +2209,7 @@ def spawn(
         # variable is set) PMS variables should not longer be exported.
 
         phase = mysettings.get("EBUILD_PHASE")
-        is_pms_ebuild_phase = phase in _phase_func_map.keys()
+        is_pms_ebuild_phase = phase in _phase_func_map
         # 'None' phase is MiscFunctionsProcess, e.g., where the qa checks run
         is_ebuild_phase_with_t = phase in [None, "package", "instprep"]
         # Copy the environment since we are removing the PMS variables from it.
@@ -2930,10 +2931,7 @@ def _post_src_install_uid_fix(mysettings, out):
                             "   %s is not a valid libtool archive, skipping\n"
                             % fpath[len(destdir) :]
                         )
-                        qa_msg = "QA Notice: invalid .la file found: {}, {}".format(
-                            fpath[len(destdir) :],
-                            e,
-                        )
+                        qa_msg = f"QA Notice: invalid .la file found: {fpath[len(destdir) :]}, {e}"
                         if has_lafile_header:
                             writemsg(msg, fd=out)
                             eqawarn(qa_msg, key=mysettings.mycpv, out=out)

@@ -395,8 +395,7 @@ class MetaDataXML:
                     maintainers.append(maintainer.email)
 
             for bugtracker in upstream.bugtrackers:
-                if bugtracker.startswith("mailto:"):
-                    bugtracker = bugtracker[7:]
+                bugtracker = bugtracker.removeprefix("mailto:")
                 maintainers.append(bugtracker)
 
         maintainers = list(unique_everseen(maintainers))

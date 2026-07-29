@@ -219,7 +219,7 @@ def preserve_xattrs(path, nofollow=False, namespace=None):
             if name not in old_attrs:
                 # Clear out new ones.
                 xattr.remove(path, name, **kwargs)
-            elif new_attrs[name] != old_attrs[name]:
+            elif value != old_attrs[name]:
                 # Update changed ones.
                 xattr.set(path, name, value, **kwargs)
 

@@ -27,9 +27,10 @@ digraph.leaf_nodes() path (frontier not built).
 
 from heapq import heappop, heappush
 
+from portage.util.digraph import digraph
+
 from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
-from portage.util.digraph import digraph
 
 
 def _build_levels():

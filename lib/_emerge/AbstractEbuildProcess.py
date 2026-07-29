@@ -3,32 +3,33 @@
 
 import functools
 import io
+import os
 import stat
 import textwrap
-from _emerge.SpawnProcess import SpawnProcess
-from _emerge.EbuildBuildDir import EbuildBuildDir
-from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
-import os
+
 import portage
-from portage.elog import messages as elog_messages
 from portage import installation
+from portage.elog import messages as elog_messages
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-
-from portage.util.futures import asyncio
 from portage.util import apply_secpass_permissions, no_color
+from portage.util.futures import asyncio
+
+from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
+from _emerge.SpawnProcess import SpawnProcess
 
 
 class AbstractEbuildProcess(SpawnProcess):
     __slots__ = (
-        "phase",
-        "settings",
         "_build_dir",
         "_build_dir_unlock",
-        "_ipc_daemon",
         "_exit_command",
         "_exit_timeout_id",
+        "_ipc_daemon",
         "_start_future",
+        "phase",
+        "settings",
     )
 
     _phases_without_builddir = (

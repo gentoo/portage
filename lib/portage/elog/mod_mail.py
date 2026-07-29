@@ -2,9 +2,9 @@
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import portage.mail
 import socket
 
+import portage.mail
 from portage.exception import PortageException
 from portage.localization import _
 from portage.util import writemsg
@@ -41,4 +41,4 @@ def process(mysettings, key, logentries, fulltext):
     try:
         portage.mail.send_mail(mysettings, mymessage)
     except PortageException as e:
-        writemsg(f"{str(e)}\n", noiselevel=-1)
+        writemsg(f"{e!s}\n", noiselevel=-1)

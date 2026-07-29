@@ -2,8 +2,8 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import get_operator
+from portage.tests import TestCase
 
 
 class GetOperator(TestCase):

@@ -7,13 +7,13 @@ import errno
 import fnmatch
 import os
 import stat
-import textwrap
 import tempfile
+import textwrap
 
 import portage
 from portage import (
-    bsd_chflags,
     _selinux,
+    bsd_chflags,
 )
 from portage.const import MOVE_BINARY
 from portage.eapi import eapi_rewrites_symlinks
@@ -421,7 +421,7 @@ def movefile(
         except OSError as e:
             writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
             writemsg(f"!!! {dest}\n", noiselevel=-1)
-            writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+            writemsg(f"!!! {e!s}\n", noiselevel=-1)
             return None
 
     if bsd_chflags:

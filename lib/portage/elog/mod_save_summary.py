@@ -3,10 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import time
 import os
-import portage
+import time
 
+import portage
 from portage.data import portage_gid, portage_uid
 from portage.localization import _
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs

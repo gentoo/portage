@@ -4,8 +4,8 @@
 __all__ = ["lazyimport"]
 
 import sys
-import types
 import threading
+import types
 
 from portage.proxy.objectproxy import ObjectProxy
 
@@ -60,7 +60,7 @@ def _unregister_module_proxy(name):
 
 
 class _LazyImport(ObjectProxy):
-    __slots__ = ("_scope", "_alias", "_name", "_target")
+    __slots__ = ("_alias", "_name", "_scope", "_target")
 
     def __init__(self, scope, alias, name):
         ObjectProxy.__init__(self)

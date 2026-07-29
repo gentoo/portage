@@ -16,8 +16,9 @@ from portage.util import writemsg_level
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
 from portage.util.futures._sync_decorator import _sync_methods
-from portage.util.futures.retry import retry
 from portage.util.futures.executor.fork import ForkExecutor
+from portage.util.futures.retry import retry
+
 from . import _SUBMODULE_PATH_MAP
 
 try:
@@ -148,7 +149,6 @@ class SyncBase:
         # it did not exist prior to sync, so that the config
         # and portdb properly account for its existence.
         """
-        pass
 
     def _get_submodule_paths(self):
         paths = []
@@ -195,9 +195,7 @@ class SyncBase:
                 if retry_overall_timeout < 0:
                     errors.append(
                         "sync-openpgp-key-refresh-retry-overall-timeout: "
-                        "value must be greater than or equal to zero: {}".format(
-                            retry_overall_timeout
-                        )
+                        f"value must be greater than or equal to zero: {retry_overall_timeout}"
                     )
                 elif retry_overall_timeout == 0:
                     retry_overall_timeout = None
@@ -215,7 +213,7 @@ class SyncBase:
                 if retry_delay_mult <= 0:
                     errors.append(
                         "sync-openpgp-key-refresh-retry-mult: "
-                        "value must be greater than zero: {}".format(retry_delay_mult)
+                        f"value must be greater than zero: {retry_delay_mult}"
                     )
 
         if self.repo.sync_openpgp_key_refresh_retry_delay_exp_base is None:
@@ -231,7 +229,7 @@ class SyncBase:
                 if retry_delay_exp_base <= 0:
                     errors.append(
                         "sync-openpgp-key-refresh-retry-delay-exp: "
-                        "value must be greater than zero: {}".format(retry_delay_mult)
+                        f"value must be greater than zero: {retry_delay_mult}"
                     )
 
         if errors:

@@ -2,10 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
-import textwrap
 import os
-import portage
+import textwrap
 
+import portage
 from portage.util import writemsg_level
 
 

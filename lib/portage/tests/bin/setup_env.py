@@ -2,15 +2,14 @@
 # Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import tempfile
-
 import os
 import shutil
+import tempfile
+
 import portage
-from portage.const import PORTAGE_BIN_PATH
-from portage.const import PORTAGE_PYM_PATH
-from portage.tests import TestCase
+from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH
 from portage.process import spawn
+from portage.tests import TestCase
 
 bindir = PORTAGE_BIN_PATH
 basedir = None

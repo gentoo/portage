@@ -7,14 +7,14 @@ import copy
 class BacktrackParameter:
     __slots__ = (
         "circular_dependency",
-        "needed_unstable_keywords",
-        "runtime_pkg_mask",
-        "needed_use_config_changes",
         "needed_license_changes",
+        "needed_p_mask_changes",
+        "needed_unstable_keywords",
+        "needed_use_config_changes",
         "prune_rebuilds",
         "rebuild_list",
         "reinstall_list",
-        "needed_p_mask_changes",
+        "runtime_pkg_mask",
         "slot_operator_mask_built",
         "slot_operator_replace_installed",
     )
@@ -79,9 +79,9 @@ class BacktrackParameter:
 
 class _BacktrackNode:
     __slots__ = (
-        "parameter",
         "depth",
         "mask_steps",
+        "parameter",
         "terminal",
     )
 
@@ -99,11 +99,11 @@ class _BacktrackNode:
 
 class Backtracker:
     __slots__ = (
-        "_max_depth",
-        "_unexplored_nodes",
         "_current_node",
+        "_max_depth",
         "_nodes",
         "_root",
+        "_unexplored_nodes",
     )
 
     def __init__(self, max_depth):
@@ -157,7 +157,7 @@ class Backtracker:
             entry_is_valid = False
             any_conflict_parents = False
 
-            for ppkg, patom in runtime_pkg_mask[pkg].get("slot conflict", set()):
+            for ppkg, patom in mask_info.get("slot conflict", set()):
                 any_conflict_parents = True
                 if ppkg not in runtime_pkg_mask:
                     entry_is_valid = True

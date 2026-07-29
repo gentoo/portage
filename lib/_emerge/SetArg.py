@@ -1,8 +1,9 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.DependencyArg import DependencyArg
 from portage._sets import SETPREFIX
+
+from _emerge.DependencyArg import DependencyArg
 
 
 class SetArg(DependencyArg):

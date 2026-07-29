@@ -3,8 +3,8 @@
 
 import shutil
 import tempfile
-
 from pathlib import Path
+
 from portage import Manifest
 from portage.tests import TestCase
 

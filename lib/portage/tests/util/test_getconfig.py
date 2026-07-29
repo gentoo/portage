@@ -1,13 +1,13 @@
 # Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import os
+import shutil
 import tempfile
 
+from portage.exception import ParseError
 from portage.tests import TestCase
 from portage.util import getconfig
-from portage.exception import ParseError
 
 
 class GetConfigTestCase(TestCase):

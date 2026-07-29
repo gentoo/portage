@@ -2,8 +2,8 @@
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import dep_getcpv
+from portage.tests import TestCase
 
 
 class DepGetCPV(TestCase):

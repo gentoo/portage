@@ -3,11 +3,10 @@
 
 __all__ = ("KeywordsManager",)
 
+import os
 import warnings
 
-import os
 import portage
-
 from portage.dep import ExtendedAtomDict
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity

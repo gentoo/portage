@@ -1,9 +1,9 @@
 # Copyright 2018-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import time
 
-import functools
 import pytest
 
 from portage.tests import TestCase
@@ -11,8 +11,8 @@ from portage.util._async.ForkProcess import ForkProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import (
-    iter_completed,
     async_iter_completed,
+    iter_completed,
 )
 
 

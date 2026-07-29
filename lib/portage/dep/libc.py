@@ -1,11 +1,10 @@
 # Copyright 2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.dep import Atom
+import portage.dbapi.porttree
 from portage.const import LIBC_PACKAGE_ATOM
 from portage.dbapi._expand_new_virt import expand_new_virt
-
-import portage.dbapi.porttree
+from portage.dep import Atom
 
 
 def find_libc_deps(portdb: portage.dbapi.porttree.dbapi, realized: bool = False):

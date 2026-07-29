@@ -3,24 +3,24 @@
 
 import errno
 import io
+import os
 import sys
 
-from _emerge.CompositeTask import CompositeTask
-import os
 import portage
-
 from portage.checksum import (
     _apply_hash_filter,
     _filter_unaccelarated_hashes,
     _hash_filter,
 )
 from portage.output import EOutput
-from portage.util._async.FileDigester import FileDigester
 from portage.package.ebuild.fetch import _checksum_failure_temp_file
+from portage.util._async.FileDigester import FileDigester
+
+from _emerge.CompositeTask import CompositeTask
 
 
 class BinpkgVerifier(CompositeTask):
-    __slots__ = ("logfile", "pkg", "_digests", "_pkg_path")
+    __slots__ = ("_digests", "_pkg_path", "logfile", "pkg")
 
     def _start(self):
         bintree = self.pkg.root_config.trees["bintree"]
@@ -112,8 +112,7 @@ class BinpkgVerifier(CompositeTask):
                 portage.output.havecolor = not self.background
 
             path = self._pkg_path
-            if path.endswith(".partial"):
-                path = path[: -len(".partial")]
+            path = path.removesuffix(".partial")
             eout = EOutput()
             eout.ebegin(
                 f"{os.path.basename(path)} {' '.join(sorted(self._digests))} ;-)"

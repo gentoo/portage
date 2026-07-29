@@ -5,12 +5,12 @@
 __all__ = ["database"]
 
 import errno
-
-from portage.cache import fs_template
-from portage.versions import catsplit
 import os
+
 from portage import cpv_getkey
+from portage.cache import fs_template
 from portage.util._xattr import xattr
+from portage.versions import catsplit
 
 
 class NoValueException(Exception):

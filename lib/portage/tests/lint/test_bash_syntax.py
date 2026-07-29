@@ -1,11 +1,11 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from itertools import chain
+import os
 import stat
 import subprocess
+from itertools import chain
 
-import os
 from portage.const import BASH_BINARY, PORTAGE_BASE_PATH, PORTAGE_BIN_PATH
 from portage.tests import TestCase
 

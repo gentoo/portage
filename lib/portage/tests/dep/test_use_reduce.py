@@ -1,9 +1,9 @@
 # Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
-from portage.exception import InvalidDependString
 from portage.dep import Atom, use_reduce
+from portage.exception import InvalidDependString
+from portage.tests import TestCase
 
 
 class UseReduceTestCase:

@@ -1,29 +1,29 @@
 # Copyright 2014-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
-import logging
 import grp
+import logging
+import os
 import pwd
+import sys
 import warnings
 
-import os
-import portage
+from _emerge.CompositeTask import CompositeTask
 
+import portage
+from portage.metadata import action_metadata
+from portage.output import create_color_func
+from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.progress import ProgressBar
 
 # from portage.emaint.defaults import DEFAULT_OPTIONS
 from portage.util import writemsg, writemsg_level
-from portage.output import create_color_func
+from portage.util._async.AsyncFunction import AsyncFunction
+from portage.util.hooks import get_hooks_from_dir
 
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from portage.package.ebuild.doebuild import _check_temp_dir
-from portage.metadata import action_metadata
-from portage.util.hooks import get_hooks_from_dir
-from portage.util._async.AsyncFunction import AsyncFunction
-from _emerge.CompositeTask import CompositeTask
 
 
 class TaskHandler:
@@ -394,7 +394,7 @@ class SyncRepo(CompositeTask):
     by SyncScheduler.
     """
 
-    __slots__ = ("sync_task", "sync_callback")
+    __slots__ = ("sync_callback", "sync_task")
 
     @property
     def kwargs(self):

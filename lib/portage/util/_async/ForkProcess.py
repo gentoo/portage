@@ -3,19 +3,18 @@
 
 import fcntl
 import multiprocessing
-import warnings
+import os
 import signal
 import sys
 import threading
-
+import warnings
 from typing import Optional
 
-import os
-import portage
+from _emerge.SpawnProcess import SpawnProcess
 
+import portage
 from portage.cache.mappings import slot_dict_class
 from portage.util.futures import asyncio
-from _emerge.SpawnProcess import SpawnProcess
 
 _registered_run_exitfuncs = None
 

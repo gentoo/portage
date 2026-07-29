@@ -3,9 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-from portage.tests import TestCase
-from portage.env.config import PackageKeywordsFile
 from tempfile import mkstemp
+
+from portage.env.config import PackageKeywordsFile
+from portage.tests import TestCase
 
 
 class PackageKeywordsFileTestCase(TestCase):

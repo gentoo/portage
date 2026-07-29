@@ -2,20 +2,18 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
-import logging
 import locale
+import logging
+import os
 import platform
 import shlex
 import stat
 import sys
+from typing import Optional
 
-import os
 import portage
-
 from portage.repository.config import _find_bad_atoms
 from portage.sync import _SUBMODULE_PATH_MAP
-
-from typing import Optional
 
 options = [
     "--alphabetical",
@@ -1166,8 +1164,10 @@ def parse_opts(tmpcmdline, silent=False):
 
 def profile_check(trees, myaction):
     import textwrap
-    from _emerge.actions import validate_ebuild_environment
+
     from portage.util import writemsg_level
+
+    from _emerge.actions import validate_ebuild_environment
 
     if myaction in ("help", "info", "search", "sync", "version"):
         return os.EX_OK
@@ -1201,11 +1201,12 @@ def emerge_main(args: Optional[list[str]] = None):
     Processes command line arguments (default: sys.argv[1:]) and decides
     what the current run of emerge should by creating `emerge_config`
     """
+    from portage.output import xtermTitleReset
+    from portage.util import writemsg_level
+
     from _emerge.actions import load_emerge_config, run_action
     from _emerge.emergelog import emergelog
     from _emerge.help import emerge_help
-    from portage.output import xtermTitleReset
-    from portage.util import writemsg_level
 
     if args is None:
         args = sys.argv[1:]
@@ -1214,7 +1215,7 @@ def emerge_main(args: Optional[list[str]] = None):
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error as e:
-        writemsg_level(f"setlocale: {e}\n", level=logging.WARN)
+        writemsg_level(f"setlocale: {e}\n", level=logging.WARNING)
 
     # Disable color until we're sure that it should be enabled (after
     # EMERGE_DEFAULT_OPTS has been parsed).
@@ -1260,8 +1261,9 @@ def emerge_main(args: Optional[list[str]] = None):
     if myaction == "status":
         # Report what running emerge processes are currently building.
         # (For machine-readable output, use `portageq jobs --json`.)
-        from _emerge._observability import read_snapshots, format_snapshots
         from portage.const import EPREFIX
+
+        from _emerge._observability import format_snapshots, read_snapshots
 
         sys.stdout.write(format_snapshots(read_snapshots(EPREFIX)))
         return os.EX_OK
@@ -1338,7 +1340,7 @@ def emerge_main(args: Optional[list[str]] = None):
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error as e:
-        writemsg_level(f"setlocale: {e}\n", level=logging.WARN)
+        writemsg_level(f"setlocale: {e}\n", level=logging.WARNING)
 
     tmpcmdline = []
     if "--ignore-default-opts" not in myopts:

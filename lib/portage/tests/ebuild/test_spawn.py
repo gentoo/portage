@@ -2,14 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import tempfile
 import os
-import portage
+import tempfile
 
+from _emerge.SpawnProcess import SpawnProcess
+
+import portage
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
-from _emerge.SpawnProcess import SpawnProcess
 
 
 class SpawnTestCase(TestCase):

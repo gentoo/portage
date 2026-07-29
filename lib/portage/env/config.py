@@ -6,16 +6,16 @@ __all__ = [
     "ConfigLoaderKlass",
     "GenericFile",
     "PackageKeywordsFile",
-    "PackageUseFile",
     "PackageMaskFile",
+    "PackageUseFile",
     "PortageModulesFile",
 ]
 
 from portage.cache.mappings import UserDict
 from portage.env.loaders import (
+    ItemFileLoader,
     KeyListFileLoader,
     KeyValuePairFileLoader,
-    ItemFileLoader,
 )
 
 

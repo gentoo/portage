@@ -9,25 +9,24 @@ import fcntl
 import io
 import logging
 import multiprocessing
+import os
 import platform
 import signal
 import socket
 import subprocess
 import sys
 import traceback
-import os
 import warnings
-
 from dataclasses import dataclass
 from functools import lru_cache, partial
-from typing import Any, Optional, Callable, Union
 from inspect import iscoroutinefunction
+from typing import Any, Callable, Optional, Union
 
 import portage
-from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
+from portage.const import BASH_BINARY, FAKEROOT_BINARY, SANDBOX_BINARY
 from portage.exception import CommandNotFound
 from portage.proxy.objectproxy import ObjectProxy
-from portage.util._ctypes import load_libc, LoadLibrary, ctypes
+from portage.util._ctypes import LoadLibrary, ctypes, load_libc
 
 try:
     from portage.util.netlink import RtNetlink
@@ -483,8 +482,7 @@ class MultiprocessingProcess(AbstractProcess):
                 if proc.exitcode is not None:
                     break
                 delay *= proc_join_interval_factor
-                if delay > proc_join_interval_max:
-                    delay = proc_join_interval_max
+                delay = min(delay, proc_join_interval_max)
                 await _asyncio.sleep(delay)
 
         # We can only safely create a new thread to await the join if
@@ -751,7 +749,7 @@ def spawn(
         return pid
 
     if returnpid and not isinstance(pid, int):
-        raise AssertionError(f"fork returned non-integer: {repr(pid)}")
+        raise AssertionError(f"fork returned non-integer: {pid!r}")
 
     # Add the pid to our local and the global pid lists.
     mypids.append(pid)

@@ -1,8 +1,8 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import dep_getrepo
+from portage.tests import TestCase
 
 
 class DepGetRepo(TestCase):

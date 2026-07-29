@@ -2,13 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import platform
+import shutil
 import tempfile
-
 from pathlib import Path
 
-import shutil
 import portage.process
-
 from portage.tests import TestCase
 
 

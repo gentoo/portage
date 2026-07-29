@@ -4,39 +4,38 @@
 import collections
 import io
 import logging
-import warnings
+import os
 import re
 import shlex
 import typing
-
-import os
-import portage
+import warnings
 from pathlib import Path
-from portage import eclass_cache
+
+import portage
+import portage.sync
+from portage import eclass_cache, manifest
 from portage._sets.base import WildcardPackageSet
 from portage.checksum import get_valid_checksum_keys
-from portage.dep import Atom
 from portage.const import PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH
+from portage.dep import Atom
 from portage.eapi import (
     eapi_allows_directories_on_profile_level_and_repository_level,
     eapi_has_profile_eapi_default,
     eapi_has_repo_deps,
 )
 from portage.env.loaders import KeyValuePairFileLoader
+from portage.localization import _
 from portage.util import (
+    _recursive_file_list,
     normalize_path,
     read_corresponding_eapi_file,
     stack_lists,
     writemsg,
     writemsg_level,
-    _recursive_file_list,
 )
-from portage.util.configparser import SafeConfigParser, ConfigParserError, read_configs
 from portage.util._path import isdir_raise_eaccess
+from portage.util.configparser import ConfigParserError, SafeConfigParser, read_configs
 from portage.util.path import first_existing
-from portage.localization import _
-from portage import manifest
-import portage.sync
 
 _profile_node = collections.namedtuple(
     "_profile_node",
@@ -136,6 +135,9 @@ class RepoConfig:
     """Stores config of one repository"""
 
     __slots__ = (
+        "_eapis_banned",
+        "_eapis_deprecated",
+        "_masters_orig",
         "aliases",
         "allow_missing_manifest",
         "allow_provide_virtual",
@@ -172,7 +174,6 @@ class RepoConfig:
         "sync_allow_hardlinks",
         "sync_depth",
         "sync_hooks_only_on_change",
-        "sync_openpgp_keyserver",
         "sync_openpgp_key_package",
         "sync_openpgp_key_path",
         "sync_openpgp_key_refresh",
@@ -181,6 +182,7 @@ class RepoConfig:
         "sync_openpgp_key_refresh_retry_delay_max",
         "sync_openpgp_key_refresh_retry_delay_mult",
         "sync_openpgp_key_refresh_retry_overall_timeout",
+        "sync_openpgp_keyserver",
         "sync_rcu",
         "sync_rcu_spare_snapshots",
         "sync_rcu_store_dir",
@@ -195,9 +197,6 @@ class RepoConfig:
         "usepkg_include",
         "user_location",
         "volatile",
-        "_eapis_banned",
-        "_eapis_deprecated",
-        "_masters_orig",
     )
 
     def __init__(self, name, repo_opts, local_config=True):
@@ -432,18 +431,21 @@ class RepoConfig:
             try:
                 # If the repository doesn't exist, we can't check its ownership,
                 # so err on the safe side.
-                if missing or not self.location:
-                    self.volatile = True
+                #
                 # On Prefix, you can't rely on the ownership as a proxy for user
                 # owned because the user typically owns everything.
                 # But we can't access if we're on Prefix here, so use whether
                 # we're under /var/db/repos instead.
-                elif not self.location.startswith("/var/db/repos"):
-                    self.volatile = True
+                #
                 # If the owner of the repository isn't root or Portage, it's
                 # an indication the user may expect to be able to safely make
                 # changes in the directory, so default to volatile.
-                elif Path(self.location).owner() not in ("root", "portage"):
+                if (
+                    missing
+                    or not self.location
+                    or not self.location.startswith("/var/db/repos")
+                    or Path(self.location).owner() not in ("root", "portage")
+                ):
                     self.volatile = True
                 else:
                     self.volatile = False
@@ -732,12 +734,7 @@ class RepoConfig:
         return "\n".join(repo_msg)
 
     def __repr__(self):
-        return (
-            "<portage.repository.config.RepoConfig(name={!r}, location={!r})>".format(
-                self.name,
-                self.location,
-            )
-        )
+        return f"<portage.repository.config.RepoConfig(name={self.name!r}, location={self.location!r})>"
 
     def __str__(self):
         d = {}

@@ -2,14 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
+import os
 import shlex
 import subprocess
 
 from _emerge.AsynchronousTask import AsynchronousTask
 
-import os
 import portage
-
 from portage.proxy.objectproxy import ObjectProxy
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
@@ -59,12 +58,12 @@ class BuildLogger(AsynchronousTask):
     """
 
     __slots__ = (
-        "env",
-        "log_path",
-        "log_filter_file",
         "_main_task",
         "_main_task_cancel",
         "_stdin",
+        "env",
+        "log_filter_file",
+        "log_path",
     )
 
     @property

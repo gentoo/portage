@@ -1,9 +1,9 @@
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from portage.dep import Atom, _repo_separator, match_from_list
 from portage.tests import TestCase
-from portage.dep import Atom, match_from_list, _repo_separator
-from portage.versions import catpkgsplit, _pkg_str
+from portage.versions import _pkg_str, catpkgsplit
 
 
 class Package:

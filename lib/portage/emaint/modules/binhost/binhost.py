@@ -2,11 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import os
 import stat
 
-import os
 import portage
-
 from portage.util import writemsg
 from portage.versions import _pkg_str
 
@@ -109,9 +108,7 @@ class BinhostHandler:
             except OSError as e:
                 timestamps[suffix] = None
                 if e.errno == errno.ENOENT:
-                    if suffix == "":
-                        errors.append(f"Missing index file: {pkgindex_file}")
-                    elif (
+                    if suffix == "" or (
                         suffix == ".gz"
                         and "compress-index" in bintree.settings.features
                     ):

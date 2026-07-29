@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 import portage
-from portage.tests import TestCase, FunctionStep
+from portage.tests import FunctionStep, TestCase
 
 
 class EmaintTestCase(TestCase):

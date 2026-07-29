@@ -1,9 +1,9 @@
 # Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import stat
 
-import os
 from portage import best
 from portage.const import WORLD_FILE
 from portage.data import secpass
@@ -16,7 +16,7 @@ from portage.update import (
     update_config_files,
     update_dbentry,
 )
-from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
+from portage.util import grabfile, write_atomic, writemsg, writemsg_stdout
 
 
 def _global_updates(root, trees, prev_mtimes, quiet=False, if_mtime_changed=True):

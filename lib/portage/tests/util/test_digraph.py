@@ -1,11 +1,10 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
-from portage.util.digraph import digraph
-
 # ~ from portage.util import noiselimit
 import portage.util
+from portage.tests import TestCase
+from portage.util.digraph import digraph
 
 
 class DigraphTest(TestCase):

@@ -41,6 +41,7 @@ if (
 #
 
 import shutil
+
 from portage.util import normalize_path, writemsg
 
 # Change back to original cwd _after_ all imports (bug #469338).

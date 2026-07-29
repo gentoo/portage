@@ -4,22 +4,19 @@
 import codecs
 import operator
 import os
-import portage
 import re
 import sys
 import xml.dom.minidom
-
 from functools import reduce
-
 from io import StringIO
+from urllib.request import urlopen as urllib_request_urlopen
 
+import portage
 from portage.const import PRIVATE_PATH
 from portage.dep import _slot_separator
 from portage.localization import _
 from portage.util import grabfile
 from portage.versions import pkgsplit, vercmp
-
-from urllib.request import urlopen as urllib_request_urlopen
 
 # Note: the space for rgt and rlt is important !!
 # FIXME: use slot deps instead, requires GLSA format versioning

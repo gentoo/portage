@@ -2,18 +2,18 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
+import os
 import pty
 import shutil
 import socket
 import tempfile
 
 import pytest
+from _emerge.PipeReader import PipeReader
 
-import os
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
-from _emerge.PipeReader import PipeReader
 
 
 class PipeReaderTestCase(TestCase):

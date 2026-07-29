@@ -1,17 +1,16 @@
 # Copyright 2012-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import shlex
 import shutil
 import subprocess
 import sys
 import textwrap
 
-import os
-
 import portage
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
-from portage.tests import TestCase, CommandStep, FunctionStep
+from portage.tests import CommandStep, FunctionStep, TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 

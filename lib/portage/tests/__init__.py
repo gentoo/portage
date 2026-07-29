@@ -5,13 +5,11 @@
 import multiprocessing
 import os
 import unittest
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import portage
-
 from portage.const import PORTAGE_PYM_PATH
 
 # This remains constant when the real value is a mock.

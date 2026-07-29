@@ -11,8 +11,10 @@ import operator
 import portage
 from portage.dep import Atom, match_from_list, use_reduce
 from portage.dep._dnf import (
-    dnf_convert as _dnf_convert,
     contains_disjunction as _contains_disjunction,
+)
+from portage.dep._dnf import (
+    dnf_convert as _dnf_convert,
 )
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
@@ -323,14 +325,14 @@ def dep_eval(deplist):
 
 class _dep_choice(SlotObject):
     __slots__ = (
-        "atoms",
-        "slot_map",
-        "cp_map",
         "all_available",
-        "all_installed_slots",
-        "new_slot_count",
-        "want_update",
         "all_in_graph",
+        "all_installed_slots",
+        "atoms",
+        "cp_map",
+        "new_slot_count",
+        "slot_map",
+        "want_update",
     )
 
 
@@ -1034,7 +1036,7 @@ def dep_wordreduce(mydeplist, mysettings, mydbapi, mode, use_cache=1):
     "Reduces the deplist to ones and zeros"
     deplist = mydeplist[:]
     for mypos, token in enumerate(deplist):
-        if isinstance(deplist[mypos], list):
+        if isinstance(token, list):
             # recurse
             deplist[mypos] = dep_wordreduce(
                 deplist[mypos], mysettings, mydbapi, mode, use_cache=use_cache

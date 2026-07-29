@@ -3,17 +3,18 @@
 
 import errno
 import logging
-
 import os
+
+from _emerge.CompositeTask import CompositeTask
+
 from portage.package.ebuild.fetch import ContentHashLayout
 from portage.util._async.FileCopier import FileCopier
-from _emerge.CompositeTask import CompositeTask
 
 logger = logging.getLogger(__name__)
 
 
 class DeletionTask(CompositeTask):
-    __slots__ = ("distfile", "distfile_path", "config")
+    __slots__ = ("config", "distfile", "distfile_path")
 
     def _start(self):
         if self.config.options.recycle_dir is not None:

@@ -3,6 +3,7 @@
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
 import os
+
 from portage.cache import template
 
 
@@ -41,7 +42,7 @@ class FsBased(template.database):
 
     def _ensure_dirs(self, path=None):
         """with path!=None, ensure beyond self.location.  otherwise, ensure self.location"""
-        from portage.util import ensure_dirs, apply_permissions
+        from portage.util import apply_permissions, ensure_dirs
 
         if path:
             path = os.path.dirname(path)

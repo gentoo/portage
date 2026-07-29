@@ -4,7 +4,6 @@
 __all__ = ("DefaultEventLoopPolicy",)
 
 import asyncio as _real_asyncio
-
 import fcntl
 import os
 

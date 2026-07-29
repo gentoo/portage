@@ -2,27 +2,25 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import os
 import re
 from itertools import chain
 
-import os
-
-from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
+from portage import cpv_getkey, portage_gid
+from portage._sets import SETPREFIX, SetConfigError, get_boolean
+from portage._sets.base import EditablePackageSet, PackageSet
 from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
-from portage.localization import _
-from portage.locks import lockfile, unlockfile
-from portage import portage_gid
-from portage._sets.base import PackageSet, EditablePackageSet
-from portage._sets import SetConfigError, SETPREFIX, get_boolean
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
-from portage import cpv_getkey
+from portage.localization import _
+from portage.locks import lockfile, unlockfile
+from portage.util import ensure_dirs, grabfile, normalize_path, write_atomic
 
 __all__ = [
-    "StaticFileSet",
     "ConfigFileSet",
-    "WorldSelectedSet",
+    "StaticFileSet",
     "WorldSelectedPackagesSet",
+    "WorldSelectedSet",
     "WorldSelectedSetsSet",
 ]
 
@@ -64,9 +62,8 @@ class StaticFileSet(EditablePackageSet):
                 value.append(line)
             else:
                 pass
-        else:
-            if key is not None:
-                setattr(self, key, " ".join(value))
+        if key is not None:
+            setattr(self, key, " ".join(value))
 
     def _validate(self, atom):
         return bool(atom[:1] == SETPREFIX or ValidAtomValidator(atom, allow_repo=True))
@@ -350,10 +347,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
         for x in worldlist:
             if x.cp == mykey:
                 matches = vardb.match(x, use_cache=0)
-                if not matches:
-                    # zap our world entry
-                    pass
-                elif len(matches) == 1 and matches[0] == cpv:
+                if not matches or (len(matches) == 1 and matches[0] == cpv):
                     # zap our world entry
                     pass
                 else:

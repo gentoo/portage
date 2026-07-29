@@ -3,10 +3,10 @@
 
 import random
 
+from _emerge.depgraph import _gather_deps_closures
+
 from portage.tests import TestCase
 from portage.util.digraph import digraph
-
-from _emerge.depgraph import _gather_deps_closures
 
 
 def _build(edges, extra_nodes=()):

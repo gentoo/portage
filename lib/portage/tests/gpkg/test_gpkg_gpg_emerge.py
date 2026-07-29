@@ -3,16 +3,16 @@
 # with full emerge calls to test how we control signature verification.
 
 import os
-import portage
 import shutil
+import subprocess
 import sys
 import tempfile
-import subprocess
 
+import portage
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.gpg import GPG
 from portage.process import find_binary
-from portage.tests import TestCase, CommandStep, FunctionStep
+from portage.tests import CommandStep, FunctionStep, TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 

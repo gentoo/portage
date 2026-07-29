@@ -9,19 +9,19 @@ from portage._sets.base import WildcardPackageSet
 from portage.localization import _
 from portage.repository.config import _find_bad_atoms
 from portage.util import _recursive_file_list, writemsg
-from portage.util.configparser import SafeConfigParser, ConfigParserError, read_configs
+from portage.util.configparser import ConfigParserError, SafeConfigParser, read_configs
 
 
 class BinRepoConfig:
     __slots__ = (
-        "frozen",
-        "openpgp_key_package",
-        "name",
-        "name_fallback",
         "fetchcommand",
+        "frozen",
         "getbinpkg_exclude",
         "getbinpkg_include",
         "location",
+        "name",
+        "name_fallback",
+        "openpgp_key_package",
         "priority",
         "resumecommand",
         "sync_uri",

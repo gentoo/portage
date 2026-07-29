@@ -2,15 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import os
 import shlex
 import subprocess
 
-import os
 import portage
-
-from portage.util import writemsg_level
-
 from portage.sync.syncbase import NewBase
+from portage.util import writemsg_level
 
 
 class MercurialSync(NewBase):
@@ -43,8 +41,7 @@ class MercurialSync(NewBase):
             return (1, False)
 
         sync_uri = self.repo.sync_uri
-        if sync_uri.startswith("file://"):
-            sync_uri = sync_uri[7:]
+        sync_uri = sync_uri.removeprefix("file://")
 
         hg_cmd_opts = ""
         if self.repo.module_specific_options.get("sync-mercurial-env"):

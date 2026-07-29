@@ -1,11 +1,12 @@
 # Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import shlex
+
+from portage._sets import SetConfigError, get_boolean
+from portage._sets.base import PackageSet
 from portage.exception import InvalidData
 from portage.localization import _
-from portage._sets.base import PackageSet
-from portage._sets import get_boolean, SetConfigError
-import shlex
 
 
 class LibraryConsumerSet(PackageSet):

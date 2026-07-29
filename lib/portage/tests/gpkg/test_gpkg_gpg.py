@@ -1,18 +1,18 @@
 # Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
+import io
 import os
 import shutil
-import io
 import tarfile
 import tempfile
 from os import urandom
 
+from portage.exception import InvalidSignature, MissingSignature
+from portage.gpg import GPG
+from portage.gpkg import gpkg
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.gpkg import gpkg
-from portage.gpg import GPG
-from portage.exception import MissingSignature, InvalidSignature
 
 
 class test_gpkg_gpg_case(TestCase):

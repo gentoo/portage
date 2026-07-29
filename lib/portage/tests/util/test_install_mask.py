@@ -1,9 +1,10 @@
 # Copyright 2018-2022 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import os
+import shutil
 import tempfile
+
 from portage.tests import TestCase
 from portage.util.install_mask import InstallMask, install_mask_dir
 
@@ -165,9 +166,7 @@ class InstallMaskTestCase(TestCase):
                 self.assertEqual(
                     install_mask.match(path),
                     expected,
-                    'unexpected match result for "{}" with path {}'.format(
-                        install_mask_str, path
-                    ),
+                    f'unexpected match result for "{install_mask_str}" with path {path}',
                 )
 
     def testSymlinkDir(self):

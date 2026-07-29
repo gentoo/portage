@@ -5,6 +5,7 @@ import os
 import signal
 
 from _emerge.AsynchronousTask import AsynchronousTask
+
 from portage.util.futures import asyncio
 
 

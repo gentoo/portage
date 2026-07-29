@@ -9,34 +9,32 @@ import glob
 import itertools
 import json
 import logging
+import os
 import random
 import re
 import shlex
+import shutil
 import stat
 import sys
 import tempfile
 import time
-
 from collections import OrderedDict
-from urllib.parse import urlparse
 from urllib.parse import quote as urlquote
+from urllib.parse import urlparse
 
 import portage
-
-import os
-import shutil
 from portage import (
-    selinux,
     _movefile,
+    selinux,
 )
 from portage.checksum import (
+    _apply_hash_filter,
+    _filter_unaccelarated_hashes,
+    _hash_filter,
+    checksum_str,
     get_valid_checksum_keys,
     perform_md5,
     verify_all,
-    _filter_unaccelarated_hashes,
-    _hash_filter,
-    _apply_hash_filter,
-    checksum_str,
 )
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, userpriv_groups
@@ -48,7 +46,8 @@ from portage.exception import (
 )
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
-from portage.output import colorize, EOutput
+from portage.output import EOutput, colorize
+from portage.process import spawn
 from portage.util import (
     apply_recursive_permissions,
     apply_secpass_permissions,
@@ -60,7 +59,6 @@ from portage.util import (
     writemsg_stdout,
 )
 from portage.util.futures import asyncio
-from portage.process import spawn
 
 _download_suffix = ".__download__"
 
@@ -639,9 +637,9 @@ class MirrorLayoutConfig:
 
     def read_from_file(self, f):
         from portage.util.configparser import (
+            ConfigParserError,
             SafeConfigParser,
             read_configs,
-            ConfigParserError,
         )
 
         cp = SafeConfigParser()
@@ -1203,7 +1201,7 @@ async def async_fetch(
             await _ensure_distdir(mysettings, mysettings["DISTDIR"])
         except PortageException as e:
             if not os.path.isdir(mysettings["DISTDIR"]):
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!! {e!s}\n", noiselevel=-1)
                 writemsg(
                     _("!!! Directory Not Found: DISTDIR='%s'\n")
                     % mysettings["DISTDIR"],
@@ -1311,11 +1309,7 @@ async def async_fetch(
                     ):
                         has_space_superuser = False
 
-                    if not has_space_superuser:
-                        has_space = False
-                    elif portage.data.secpass < 2:
-                        has_space = False
-                    elif userfetch:
+                    if not has_space_superuser or portage.data.secpass < 2 or userfetch:
                         has_space = False
 
             if distdir_writable and use_locks:
@@ -1922,7 +1916,7 @@ async def async_fetch(
                                 ):
                                     html404 = re.compile(
                                         "<title>.*(not found|404).*</title>",
-                                        re.I | re.M,
+                                        re.IGNORECASE | re.MULTILINE,
                                     )
                                     with open(
                                         download_path,
@@ -2053,9 +2047,7 @@ async def async_fetch(
                     " the ebuild for more information.\n\n"
                 ) % (mysettings["CATEGORY"], mysettings["PF"])
                 writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
-            elif restrict_fetch:
-                pass
-            elif listonly:
+            elif restrict_fetch or listonly:
                 pass
             elif not filedict[myfile]:
                 writemsg(
@@ -2067,10 +2059,7 @@ async def async_fetch(
                     _("!!! Couldn't download '%s'. Aborting.\n") % myfile, noiselevel=-1
                 )
 
-            if listonly:
-                failed_files.add(myfile)
-                continue
-            elif fetchonly:
+            if listonly or fetchonly:
                 failed_files.add(myfile)
                 continue
             return 0

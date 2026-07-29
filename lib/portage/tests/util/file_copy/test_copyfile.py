@@ -1,16 +1,16 @@
 # Copyright 2017, 2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import shutil
 import tempfile
 from unittest.mock import patch
 
 import pytest
 
-import os
-from portage.tests import TestCase
 from portage.checksum import perform_md5
-from portage.util.file_copy import copyfile, _fastcopy
+from portage.tests import TestCase
+from portage.util.file_copy import _fastcopy, copyfile
 
 
 class CopyFileTestCase(TestCase):

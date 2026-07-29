@@ -1,11 +1,11 @@
 # Copyright 2005-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
+
 from _emerge.Package import Package
 
-import os
 import portage
-
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 

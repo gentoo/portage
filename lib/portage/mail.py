@@ -5,11 +5,11 @@
 # is enabled, use a local import so that this module can still be
 # imported even though the 'email' module is missing.
 
+import os
 import sys
 
-import os
-from portage.localization import _
 import portage
+from portage.localization import _
 
 
 def _force_ascii_if_necessary(s):

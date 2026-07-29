@@ -2,11 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import os
 import re
 import shlex
 import subprocess
 
-import os
+from _emerge.CompositeTask import CompositeTask
+from _emerge.PipeReader import PipeReader
+
 from portage.const import MANIFEST2_IDENTIFIERS
 from portage.dep import _repo_separator
 from portage.exception import InvalidDependString
@@ -15,21 +18,20 @@ from portage.util import atomic_ofstream, grablines, varexpand, writemsg
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
-from _emerge.CompositeTask import CompositeTask
-from _emerge.PipeReader import PipeReader
+
 from .ManifestProcess import ManifestProcess
 
 
 class ManifestTask(CompositeTask):
     __slots__ = (
+        "_manifest_path",
         "cp",
         "distdir",
         "fetchlist_dict",
+        "force_sign_key",
         "gpg_cmd",
         "gpg_vars",
         "repo_config",
-        "force_sign_key",
-        "_manifest_path",
     )
 
     _PGP_HEADER = b"BEGIN PGP SIGNED MESSAGE"
@@ -136,8 +138,7 @@ class ManifestTask(CompositeTask):
         (intended to be the same format as that in gpg --verify output).
         """
         key_str = key_str.upper()
-        if key_str.startswith("0X"):
-            key_str = key_str[2:]
+        key_str = key_str.removeprefix("0X")
         key_str = key_str.rstrip("!")
         return key_str
 

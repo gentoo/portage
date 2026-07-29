@@ -1,16 +1,15 @@
 # Copyright 2022-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from unittest.mock import MagicMock, patch, call
 import io
 import os
 import sys
 import tempfile
+from unittest.mock import MagicMock, call, patch
 
-from portage.tests import TestCase
-
-from portage.dbapi.bintree import binarytree
 from portage.const import BINREPOS_CONF_FILE
+from portage.dbapi.bintree import binarytree
+from portage.tests import TestCase
 
 
 class BinarytreeTestCase(TestCase):
@@ -102,7 +101,7 @@ class BinarytreeTestCase(TestCase):
             getattr(multi_instance_bt, attr)
         # The next attribute is the difference between multi instance
         # and no multi instance:
-        getattr(multi_instance_bt, "_allocate_filename")
+        multi_instance_bt._allocate_filename
 
     @patch("portage.dbapi.bintree.binarytree._populate_local")
     def test_populate_without_updates_repos_nor_getbinspkgs(self, ppopulate_local):

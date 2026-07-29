@@ -1,24 +1,25 @@
 # Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from itertools import chain
 import warnings
+from itertools import chain
 
 import portage
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import (
     Atom,
-    check_required_use,
-    use_reduce,
-    paren_enclose,
-    _slot_separator,
     _repo_separator,
+    _slot_separator,
+    check_required_use,
+    paren_enclose,
+    use_reduce,
 )
 from portage.dep.soname.parse import parse_soname_deps
-from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
+from portage.versions import _pkg_str, _unknown_repo
+
 from _emerge.Task import Task
 
 
@@ -636,7 +637,7 @@ class Package(Task):
         )
 
     class _use_class:
-        __slots__ = ("enabled", "_expand", "_expand_hidden", "_force", "_pkg", "_mask")
+        __slots__ = ("_expand", "_expand_hidden", "_force", "_mask", "_pkg", "enabled")
 
         # Share identical frozenset instances when available.
         _frozensets = {}
@@ -754,8 +755,8 @@ class Package(Task):
             "_iuse_implicit_match",
             "_pkg",
             "all",
-            "enabled",
             "disabled",
+            "enabled",
             "tokens",
         )
 

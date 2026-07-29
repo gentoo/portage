@@ -5,9 +5,11 @@ import collections
 import logging
 import multiprocessing
 import operator
+import os
 import platform
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -17,28 +19,25 @@ import time
 import warnings
 from itertools import chain
 
-import os
-import shutil
 import portage
-
 from portage.binrepo.config import BinRepoConfigLoader
 from portage.const import (
-    BINREPOS_CONF_FILE,
     _DEPCLEAN_LIB_CHECK_DEFAULT,
+    BINREPOS_CONF_FILE,
     PORTAGE_BASE_PATH,
 )
-from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
+from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
 from portage.dep.libc import find_libc_deps
 from portage.exception import (
+    GPGException,
     InvalidAtom,
+    InvalidBinaryPackageFormat,
     InvalidData,
     ParseError,
-    GPGException,
-    InvalidBinaryPackageFormat,
 )
 from portage.output import (
     colorize,
@@ -51,31 +50,31 @@ from portage.output import (
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
+from portage._global_updates import _global_updates
+from portage._sets import SETPREFIX, load_default_config
+from portage._sets.base import InternalPackageSet, WildcardPackageSet
+from portage.binpkg import get_binpkg_format
+from portage.emaint.main import print_results
+from portage.gpg import GPG
+from portage.localization import _
+from portage.metadata import action_metadata
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.fetch import _hide_url_passwd
-from portage._sets import load_default_config, SETPREFIX
-from portage._sets.base import InternalPackageSet, WildcardPackageSet
+from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
 from portage.util import (
     cmp_sort_key,
     normalize_path,
-    writemsg,
     varexpand,
+    writemsg,
     writemsg_level,
     writemsg_stdout,
 )
-from portage.util.digraph import digraph
-from portage.util.path import first_existing
-from portage.util.SlotObject import SlotObject
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
-from portage._global_updates import _global_updates
-from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
-from portage.localization import _
-from portage.metadata import action_metadata
-from portage.emaint.main import print_results
-from portage.gpg import GPG
-from portage.binpkg import get_binpkg_format
+from portage.util.digraph import digraph
+from portage.util.path import first_existing
+from portage.util.SlotObject import SlotObject
 
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
@@ -358,7 +357,7 @@ def action_build(
                 for line in textwrap.wrap(msg, 72):
                     out.eerror(line)
             elif isinstance(e, portage.exception.PackageNotFound):
-                out.eerror("An expected package is " + f"not available: {str(e)}")
+                out.eerror("An expected package is " + f"not available: {e!s}")
                 out.eerror("")
                 msg = (
                     "The resume list contains one or more "
@@ -411,7 +410,7 @@ def action_build(
             success, mydepgraph, favorites = backtrack_depgraph(
                 settings, trees, myopts, myparams, myaction, myfiles, spinner
             )
-        except portage.exception.CorruptionKeyError as e:
+        except portage.exception.CorruptionKeyError:
             return 1
         except portage.exception.PackageSetNotFound as e:
             root_config = trees[settings["EROOT"]]["root_config"]
@@ -856,7 +855,7 @@ def action_depclean(
             else:
                 writemsg_level(
                     f"--- Couldn't find '{str(x).replace('null/', '')}' to {action}.\n",
-                    level=logging.WARN,
+                    level=logging.WARNING,
                     noiselevel=-1,
                 )
         if not matched_packages:
@@ -2025,8 +2024,7 @@ def action_info(settings, trees, myopts, myfiles):
         name = pkg.cp
         version = pkg.version
         # Omit app-shells category from the output.
-        if name.startswith("app-shells/"):
-            name = name[len("app-shells/") :]
+        name = name.removeprefix("app-shells/")
         sh_str = f"{name} {version}"
     else:
         sh_str = basename
@@ -2128,8 +2126,7 @@ def action_info(settings, trees, myopts, myfiles):
                     # additional virtual provider info
                     continue
 
-            if len(matched_cp) > cp_max_len:
-                cp_max_len = len(matched_cp)
+            cp_max_len = max(cp_max_len, len(matched_cp))
             repo = vardb.aux_get(cpv, ["repository"])[0]
             if repo:
                 repo_suffix = _repo_separator + repo
@@ -2696,7 +2693,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
 
 def adjust_configs(myopts, trees):
     for myroot, mytrees in trees.items():
-        mysettings = trees[myroot]["vartree"].settings
+        mysettings = mytrees["vartree"].settings
         mysettings.unlock()
 
         # For --usepkgonly mode, propagate settings from the binary package
@@ -2733,7 +2730,7 @@ def adjust_config(myopts, settings):
     try:
         CLEAN_DELAY = int(settings.get("CLEAN_DELAY", str(CLEAN_DELAY)))
     except ValueError as e:
-        portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+        portage.writemsg(f"!!! {e!s}\n", noiselevel=-1)
         portage.writemsg(
             f"!!! Unable to parse integer: CLEAN_DELAY='{settings['CLEAN_DELAY']}'\n",
             noiselevel=-1,
@@ -2747,7 +2744,7 @@ def adjust_config(myopts, settings):
             settings.get("EMERGE_WARNING_DELAY", str(EMERGE_WARNING_DELAY))
         )
     except ValueError as e:
-        portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+        portage.writemsg(f"!!! {e!s}\n", noiselevel=-1)
         portage.writemsg(
             "!!! Unable to parse integer: "
             f"EMERGE_WARNING_DELAY='{settings['EMERGE_WARNING_DELAY']}'\n",
@@ -2787,7 +2784,7 @@ def adjust_config(myopts, settings):
             portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n", noiselevel=-1)
             PORTAGE_DEBUG = 0
     except ValueError as e:
-        portage.writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+        portage.writemsg(f"!!! {e!s}\n", noiselevel=-1)
         portage.writemsg(
             f"!!! Unable to parse integer: PORTAGE_DEBUG='{settings['PORTAGE_DEBUG']}'\n",
             noiselevel=-1,
@@ -3215,7 +3212,7 @@ def config_protect_check(trees):
             if settings["ROOT"] != "/":
                 msg += f" for '{root}'"
             msg += "\n"
-            writemsg_level(msg, level=logging.WARN, noiselevel=-1)
+            writemsg_level(msg, level=logging.WARNING, noiselevel=-1)
 
 
 def apply_priorities(settings):
@@ -3456,7 +3453,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
     ARG_START = "{"
     ARG_END = "}"
 
-    for i in range(0, len(myfiles)):
+    for i in range(len(myfiles)):
         if myfiles[i].startswith(SETPREFIX):
             start = 0
             end = 0
@@ -3644,10 +3641,11 @@ def repo_name_duplicate_check(trees):
 
 def run_action(emerge_config):
     # skip global updates prior to sync, since it's called after sync
+    from portage.news import count_unread_news, display_news_notifications
+
     from _emerge.help import emerge_help
     from _emerge.post_emerge import display_news_notification, post_emerge
     from _emerge.stdout_spinner import stdout_spinner
-    from portage.news import count_unread_news, display_news_notifications
 
     configs = [emerge_config.target_config]
     if emerge_config.target_config.root != emerge_config.running_config.root:
@@ -4024,9 +4022,7 @@ def run_action(emerge_config):
                 break
     if disable_emergelog:
         pass
-    elif emerge_config.action in ("search", "info"):
-        disable_emergelog = True
-    elif portage.data.secpass < 1:
+    elif emerge_config.action in ("search", "info") or portage.data.secpass < 1:
         disable_emergelog = True
 
     import _emerge.emergelog

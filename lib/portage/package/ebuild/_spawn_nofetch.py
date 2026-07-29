@@ -1,19 +1,20 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import os
+import shutil
 import tempfile
+
+from _emerge.CompositeTask import CompositeTask
+from _emerge.EbuildPhase import EbuildPhase
 
 from portage.const import EBUILD_PHASES
 from portage.elog import elog_process
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import doebuild_environment
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
-from portage.util.futures import asyncio
 from portage.util._async.SchedulerInterface import SchedulerInterface
-from _emerge.CompositeTask import CompositeTask
-from _emerge.EbuildPhase import EbuildPhase
+from portage.util.futures import asyncio
 
 
 class SpawnNofetchWithoutBuilddir(CompositeTask):
@@ -45,7 +46,7 @@ class SpawnNofetchWithoutBuilddir(CompositeTask):
     variable is set in the config instance.
     """
 
-    __slots__ = ("ebuild_path", "fd_pipes", "portdb", "settings", "_private_tmpdir")
+    __slots__ = ("_private_tmpdir", "ebuild_path", "fd_pipes", "portdb", "settings")
 
     def _start(self):
         settings = self.settings

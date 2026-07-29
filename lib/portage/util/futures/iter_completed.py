@@ -5,8 +5,8 @@ import functools
 
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.TaskScheduler import TaskScheduler
-from portage.util.futures import asyncio
 from portage.util.cpuinfo import get_cpu_count
+from portage.util.futures import asyncio
 
 
 def iter_completed(futures, max_jobs=None, max_load=None, loop=None):

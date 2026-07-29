@@ -2,10 +2,8 @@
 # Copyright 2007-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import dep_getusedeps
-
-from portage.tests import test_cps, test_slots, test_versions, test_usedeps
+from portage.tests import TestCase, test_cps, test_slots, test_usedeps, test_versions
 
 
 class DepGetUseDeps(TestCase):

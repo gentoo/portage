@@ -3,9 +3,9 @@
 
 import threading
 
-from portage.util.futures import asyncio
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures import asyncio
 
 from _emerge.getloadavg import getloadavg
 
@@ -141,7 +141,6 @@ class PollScheduler:
         should return immediately (since there's no need to
         schedule anything after _terminate_tasks() has been called).
         """
-        pass
 
     def _schedule(self):
         """

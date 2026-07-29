@@ -7,9 +7,9 @@ in output.py
 
 __all__ = ()
 
+import os
 import re
 
-import os
 from portage._sets.base import InternalPackageSet
 from portage.exception import PackageSetNotFound
 from portage.localization import localized_size
@@ -17,8 +17,8 @@ from portage.output import (
     blue,
     colorize,
     create_color_func,
-    green,
     fuchsia,
+    green,
     red,
     teal,
     turquoise,
@@ -205,7 +205,7 @@ class _DisplayConfig:
             try:
                 mywidth = int(frozen_config.settings["COLUMNWIDTH"])
             except ValueError as e:
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!! {e!s}\n", noiselevel=-1)
                 writemsg(
                     f"!!! Unable to parse COLUMNWIDTH='{frozen_config.settings['COLUMNWIDTH']}'\n",
                     noiselevel=-1,
@@ -596,8 +596,8 @@ class PkgAttrDisplay(SlotObject):
         "new",
         "new_slot",
         "new_version",
-        "replace",
         "remote_binary",
+        "replace",
     )
 
     def __str__(self):

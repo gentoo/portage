@@ -1,10 +1,10 @@
 # Copyright 2011-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import tempfile
-
 import os
 import shutil
+import tempfile
+
 import portage
 from portage.dbapi.virtual import fakedbapi
 from portage.package.ebuild.config import config

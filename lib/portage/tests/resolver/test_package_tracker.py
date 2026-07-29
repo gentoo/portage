@@ -3,9 +3,10 @@
 
 import collections
 
+from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
+
 from portage.dep import Atom
 from portage.tests import TestCase
-from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
 
 
 class PackageTrackerTestCase(TestCase):

@@ -4,15 +4,16 @@
 
 __all__ = ["cache"]
 
+import errno
+import operator
+import os
 import shlex
 import stat
-import operator
 import warnings
-from portage.util import normalize_path
-import errno
-from portage.exception import FileNotFound, PermissionDenied
-import os
+
 from portage import checksum
+from portage.exception import FileNotFound, PermissionDenied
+from portage.util import normalize_path
 
 
 class hashed_path:

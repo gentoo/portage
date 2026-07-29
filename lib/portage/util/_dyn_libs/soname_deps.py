@@ -4,10 +4,10 @@
 import collections
 import fnmatch
 import functools
-from itertools import chain
 import os
 import re
 import shlex
+from itertools import chain
 
 from portage.util import (
     normalize_path,

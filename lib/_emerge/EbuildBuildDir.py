@@ -2,18 +2,17 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-
-from _emerge.AsynchronousLock import AsynchronousLock
-
 import os
-import portage
 
+import portage
 from portage.exception import PortageException
 from portage.util.SlotObject import SlotObject
 
+from _emerge.AsynchronousLock import AsynchronousLock
+
 
 class EbuildBuildDir(SlotObject):
-    __slots__ = ("scheduler", "settings", "locked", "_catdir", "_lock_obj")
+    __slots__ = ("_catdir", "_lock_obj", "locked", "scheduler", "settings")
 
     def __init__(self, **kwargs):
         SlotObject.__init__(self, **kwargs)

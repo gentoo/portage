@@ -4,10 +4,10 @@
 import os
 
 from portage.util import apply_stat_permissions
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
-from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 
 
 class FileCopier(AsyncTaskFuture):
@@ -15,7 +15,7 @@ class FileCopier(AsyncTaskFuture):
     Asynchronously copy a file.
     """
 
-    __slots__ = ("src_path", "dest_path")
+    __slots__ = ("dest_path", "src_path")
 
     def _start(self):
         self.future = asyncio.ensure_future(

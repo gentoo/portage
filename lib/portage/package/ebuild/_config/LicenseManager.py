@@ -4,13 +4,13 @@
 __all__ = ("LicenseManager",)
 
 import os
+
 from portage.dep import ExtendedAtomDict, use_reduce
 from portage.exception import InvalidDependString
 from portage.localization import _
-from portage.util import grabdict, grabdict_package, writemsg
-from portage.versions import cpv_getkey, _pkg_str
-
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
+from portage.util import grabdict, grabdict_package, writemsg
+from portage.versions import _pkg_str, cpv_getkey
 
 
 class LicenseManager:

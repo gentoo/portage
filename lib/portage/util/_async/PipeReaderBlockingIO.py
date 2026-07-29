@@ -20,7 +20,7 @@ class PipeReaderBlockingIO(AbstractPollTask):
     support in The Future (TM) may be possible.
     """
 
-    __slots__ = ("input_files", "_read_data", "_terminate", "_threads", "_thread_rlock")
+    __slots__ = ("_read_data", "_terminate", "_thread_rlock", "_threads", "input_files")
 
     def _start(self):
         self._terminate = threading.Event()

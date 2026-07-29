@@ -4,8 +4,8 @@
 import os
 from collections import deque
 
-from _emerge.CompositeTask import CompositeTask
 from _emerge.AsynchronousTask import AsynchronousTask
+from _emerge.CompositeTask import CompositeTask
 
 
 class TaskSequence(CompositeTask):

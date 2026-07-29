@@ -1,11 +1,10 @@
 # Copyright 2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import re
 
-import os
 import portage
-
 from portage.const import GLOBAL_CONFIG_PATH
 
 COMPAT_BINPKG_FORMAT = "xpak"
@@ -37,9 +36,7 @@ def main():
             content = f.read()
             compat_setting = f'BINPKG_FORMAT="{COMPAT_BINPKG_FORMAT}"'
             portage.output.EOutput().einfo(
-                "Setting make.globals default {} for backward compatibility".format(
-                    compat_setting
-                )
+                f"Setting make.globals default {compat_setting} for backward compatibility"
             )
             content = re.sub(
                 "^BINPKG_FORMAT=.*$", compat_setting, content, flags=re.MULTILINE

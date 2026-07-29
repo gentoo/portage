@@ -1,12 +1,12 @@
 # Copyright 2001-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import shlex
 import subprocess
 import sys
 import threading
 
-import os
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.exception import GPGException
 from portage.output import colorize

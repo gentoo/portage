@@ -1,10 +1,9 @@
 # Copyright 2018-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import asyncio as _real_asyncio
 import os
 import signal
-
-import asyncio as _real_asyncio
 from asyncio.events import AbstractEventLoop as _AbstractEventLoop
 
 try:

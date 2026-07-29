@@ -1,11 +1,12 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.DependencyArg import DependencyArg
-from _emerge.Package import Package
 import portage
 from portage._sets.base import InternalPackageSet
 from portage.dep import _repo_separator
+
+from _emerge.DependencyArg import DependencyArg
+from _emerge.Package import Package
 
 
 class PackageArg(DependencyArg):

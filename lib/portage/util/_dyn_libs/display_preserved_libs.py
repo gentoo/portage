@@ -2,8 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
-import portage
 
+import portage
 from portage.output import colorize
 
 

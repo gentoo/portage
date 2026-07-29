@@ -7,8 +7,8 @@ import os
 import pwd
 import stat
 
-from portage.tests.bin import setup_env
 from portage import tests
+from portage.tests.bin import setup_env
 
 doins = setup_env.doins
 exists_in_D = setup_env.exists_in_D

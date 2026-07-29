@@ -6,8 +6,6 @@ import os
 import tempfile
 from types import SimpleNamespace
 
-from portage.tests import TestCase
-
 from _emerge._observability import (
     ObservabilityMonitor,
     build_snapshot,
@@ -16,6 +14,8 @@ from _emerge._observability import (
     status_dir,
 )
 from _emerge.PackageMerge import PackageMerge as _RealPackageMerge
+
+from portage.tests import TestCase
 
 
 class _Pkg:

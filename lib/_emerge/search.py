@@ -2,13 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import difflib
-import re
 import os
-import portage
+import re
 
-from portage.dbapi.porttree import _parse_uri_map
+import portage
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
+from portage.dbapi.porttree import _parse_uri_map
 from portage.exception import InvalidBinaryPackageFormat
 from portage.localization import localized_size
 from portage.output import bold, darkgreen, green, red
@@ -268,16 +268,16 @@ class search:
             and re.search(r"[\^\$\*\[\]\{\}\|\?]|\.\+", self.searchkey) is not None
         ):
             try:
-                re.compile(self.searchkey, re.I)
+                re.compile(self.searchkey, re.IGNORECASE)
             except Exception:
                 pass
             else:
                 regexsearch = True
 
         if regexsearch:
-            self.searchre = re.compile(self.searchkey, re.I)
+            self.searchre = re.compile(self.searchkey, re.IGNORECASE)
         else:
-            self.searchre = re.compile(re.escape(self.searchkey), re.I)
+            self.searchre = re.compile(re.escape(self.searchkey), re.IGNORECASE)
 
             # Fuzzy search does not support regular expressions, therefore
             # it is disabled for regular expression searches.
@@ -322,9 +322,11 @@ class search:
             else:
                 match_string = package.split("/")[-1]
 
-            if self.searchre.search(match_string):
-                yield ("pkg", package)
-            elif fuzzy and fuzzy_search(match_string):
+            if (
+                self.searchre.search(match_string)
+                or fuzzy
+                and fuzzy_search(match_string)
+            ):
                 yield ("pkg", package)
             elif self.searchdesc:  # DESCRIPTION searching
                 # Use _first_cp to avoid an expensive visibility check,

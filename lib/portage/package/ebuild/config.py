@@ -8,9 +8,9 @@ __all__ = [
 ]
 
 import copy
-from itertools import chain
 import grp
 import logging
+import os
 import platform
 import pwd
 import re
@@ -18,11 +18,11 @@ import shlex
 import sys
 import traceback
 import warnings
+from itertools import chain
 
 from _emerge.Package import Package
-import os
-import portage
 
+import portage
 from portage import bsd_chflags, load_mod, selinux
 from portage.const import (
     CACHE_PATH,
@@ -40,62 +40,61 @@ from portage.const import (
 from portage.dbapi import dbapi
 from portage.dep import (
     Atom,
+    _repo_separator,
+    _slot_separator,
     isvalidatom,
     match_from_list,
     use_reduce,
-    _repo_separator,
-    _slot_separator,
 )
 from portage.eapi import (
+    _get_eapi_attrs,
     eapi_exports_AA,
     eapi_exports_merge_type,
-    eapi_supports_prefix,
     eapi_exports_replace_vars,
-    _get_eapi_attrs,
+    eapi_supports_prefix,
 )
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
+from portage.package.ebuild._config import special_env_vars
+from portage.package.ebuild._config.env_var_validation import validate_cmd_var
+from portage.package.ebuild._config.features_set import features_set
+from portage.package.ebuild._config.helper import (
+    ordered_by_atom_specificity,
+    prune_incremental,
+)
+from portage.package.ebuild._config.KeywordsManager import KeywordsManager
+from portage.package.ebuild._config.LicenseManager import LicenseManager
+from portage.package.ebuild._config.LocationsManager import LocationsManager
+from portage.package.ebuild._config.MaskManager import MaskManager
+from portage.package.ebuild._config.UseManager import UseManager
+from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.process import fakeroot_capable, sandbox_capable
 from portage.repository.config import (
     allow_profile_repo_deps,
     load_repository_config,
 )
 from portage.util import (
+    LazyItemsDict,
+    _eapi_cache,
     ensure_dirs,
     getconfig,
     grabdict,
     grabdict_package,
     grabfile,
     grabfile_package,
-    LazyItemsDict,
     normalize_path,
     stack_dictlist,
     stack_dicts,
     stack_lists,
     writemsg,
     writemsg_level,
-    _eapi_cache,
 )
+from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.util.install_mask import _raise_exc
 from portage.util.path import first_existing
-from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
-from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
-
-from portage.package.ebuild._config import special_env_vars
-from portage.package.ebuild._config.env_var_validation import validate_cmd_var
-from portage.package.ebuild._config.features_set import features_set
-from portage.package.ebuild._config.KeywordsManager import KeywordsManager
-from portage.package.ebuild._config.LicenseManager import LicenseManager
-from portage.package.ebuild._config.UseManager import UseManager
-from portage.package.ebuild._config.LocationsManager import LocationsManager
-from portage.package.ebuild._config.MaskManager import MaskManager
-from portage.package.ebuild._config.VirtualsManager import VirtualsManager
-from portage.package.ebuild._config.helper import (
-    ordered_by_atom_specificity,
-    prune_incremental,
-)
+from portage.versions import _pkg_str, catpkgsplit, catsplit, cpv_getkey
 
 
 def check_config_instance(test):
@@ -1306,7 +1305,7 @@ class config:
                     _("!!! Directory initialization failed: '%s'\n") % mydir,
                     noiselevel=-1,
                 )
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!! {e!s}\n", noiselevel=-1)
 
     @property
     def _keywords_manager(self):
@@ -2687,7 +2686,6 @@ class config:
     def setinst(self, mycpv, mydbapi):
         """This used to update the preferences for old-style virtuals.
         It is no-op now."""
-        pass
 
     def reload(self):
         """Reload things like /etc/profile.env that can change during runtime."""
@@ -3248,7 +3246,7 @@ class config:
         "set a value; will be thrown away at reset() time"
         if not isinstance(myvalue, str):
             raise ValueError(
-                f"Invalid type being used as a value: '{str(mykey)}': '{str(myvalue)}'"
+                f"Invalid type being used as a value: '{mykey!s}': '{myvalue!s}'"
             )
 
         # Avoid potential UnicodeDecodeError exceptions later.

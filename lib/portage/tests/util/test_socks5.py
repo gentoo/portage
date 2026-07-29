@@ -10,16 +10,15 @@ import struct
 import subprocess
 import tempfile
 import time
-
-import portage
-from portage.tests import TestCase, get_pythonpath
-from portage.util import socks5
-from portage.util.futures.executor.fork import ForkExecutor
-from portage.util._eventloop.global_event_loop import global_event_loop
-from portage.const import PORTAGE_BIN_PATH
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
+
+import portage
+from portage.const import PORTAGE_BIN_PATH
+from portage.tests import TestCase, get_pythonpath
+from portage.util import socks5
+from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures.executor.fork import ForkExecutor
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -165,9 +164,7 @@ def socks5_http_get_ipv4(proxy, host, port, path):
             raise AssertionError(repr(reply))
         struct.unpack("!B4sH", s.recv(7))  # contains proxied address info
         s.send(
-            "GET {} HTTP/1.1\r\nHost: {}:{}\r\nAccept: */*\r\nConnection: close\r\n\r\n".format(
-                path, host, port
-            ).encode()
+            f"GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nAccept: */*\r\nConnection: close\r\n\r\n".encode()
         )
         headers = []
         while True:

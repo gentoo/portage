@@ -2,13 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
+import os
 import platform
 import pty
 import struct
 import termios
 from typing import Optional
 
-import os
 from portage.util import writemsg
 
 # Disable the use of openpty on Solaris as it seems Python's openpty
@@ -93,7 +93,7 @@ def _create_pty_or_pipe(
             got_pty = True
         except OSError as e:
             _disable_openpty = True
-            writemsg(f"openpty failed: '{str(e)}'\n", noiselevel=-1)
+            writemsg(f"openpty failed: '{e!s}'\n", noiselevel=-1)
             del e
             master_fd, slave_fd = os.pipe()
 

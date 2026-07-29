@@ -131,6 +131,7 @@ _initialized_globals = set()
 
 def _get_global(k):
     import subprocess
+
     from portage.output import colorize
     from portage.util import writemsg
     from portage.util.path import first_existing

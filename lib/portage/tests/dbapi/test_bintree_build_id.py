@@ -1,9 +1,8 @@
 # Copyright 2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
-
 from portage.dbapi.bintree import binarytree
+from portage.tests import TestCase
 
 
 class BinarytreeBuildIdTestCase(TestCase):

@@ -7,16 +7,15 @@
 
 import errno
 import functools
+import os
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 
-import os
-import shutil
 import portage
-
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import varexpand

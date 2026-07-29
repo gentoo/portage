@@ -2,15 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
+import os
 import sys
 import textwrap
 
-import os
 import portage
-
+from portage.emaint.defaults import DEFAULT_OPTIONS
 from portage.module import Modules
 from portage.progress import ProgressBar
-from portage.emaint.defaults import DEFAULT_OPTIONS
 
 
 class OptionItem:

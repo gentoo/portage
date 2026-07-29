@@ -2,21 +2,21 @@
 # Copyright 2006-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import importlib
 import grp
+import importlib
 import os
 import os.path as osp
 import pwd
-import signal
-import tempfile
 import shutil
+import signal
 import sys
+import tempfile
 
 import pytest
 
 import portage
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.const import PORTAGE_BIN_PATH
+from portage.util._eventloop.global_event_loop import global_event_loop
 
 
 def debug_signal(signum, frame):

@@ -7,8 +7,8 @@ import shlex
 import sys
 import time
 
-from portage.localization import _
 import portage
+from portage.localization import _
 
 
 def file_get(
@@ -41,8 +41,8 @@ def file_get(
             filename = os.path.basename(variables["URI"])
         variables["FILE"] = filename
 
-    from portage.util import varexpand
     from portage.process import spawn
+    from portage.util import varexpand
 
     myfetch = [varexpand(x, mydict=variables) for x in shlex.split(fcmd)]
     fd_pipes = {

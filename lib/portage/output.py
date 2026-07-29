@@ -5,15 +5,13 @@ __docformat__ = "epytext"
 
 import errno
 import itertools
+import os
 import re
 import socket
 import subprocess
 import sys
 
-import os
 import portage
-import portage.util.formatter as formatter
-
 from portage.const import COLOR_MAP_FILE
 from portage.exception import (
     FileNotFound,
@@ -22,6 +20,7 @@ from portage.exception import (
     PortageException,
 )
 from portage.localization import _
+from portage.util import formatter
 
 havecolor = 1
 dotitles = 1
@@ -849,8 +848,7 @@ class TermProgressBar(ProgressBar):
 
     def _create_image(self):
         cols = self.term_columns
-        if cols > self._max_columns:
-            cols = self._max_columns
+        cols = min(cols, self._max_columns)
         min_columns = self._min_columns
         curval = self._curval
         maxval = self._maxval
@@ -942,7 +940,7 @@ def _init(config_root="/"):
     try:
         _parse_color_map(
             config_root=config_root,
-            onerror=lambda e: writemsg(f"{str(e)}\n", noiselevel=-1),
+            onerror=lambda e: writemsg(f"{e!s}\n", noiselevel=-1),
         )
     except FileNotFound:
         pass
@@ -950,7 +948,7 @@ def _init(config_root="/"):
         writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
         del e
     except PortageException as e:
-        writemsg(f"{str(e)}\n", noiselevel=-1)
+        writemsg(f"{e!s}\n", noiselevel=-1)
         del e
 
 

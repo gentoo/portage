@@ -1,25 +1,26 @@
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.AsynchronousLock import AsynchronousLock
-from _emerge.CompositeTask import CompositeTask
-from _emerge.SpawnProcess import SpawnProcess
-from urllib.parse import urlparse as urllib_parse_urlparse
+import os
 import shlex
 import stat
 import sys
-import os
-import portage
+from urllib.parse import urlparse as urllib_parse_urlparse
 
+import portage
 from portage.binpkg import get_binpkg_format
 from portage.exception import FileNotFound
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.FileCopier import FileCopier
 from portage.util._pty import _create_pty_or_pipe
 
+from _emerge.AsynchronousLock import AsynchronousLock
+from _emerge.CompositeTask import CompositeTask
+from _emerge.SpawnProcess import SpawnProcess
+
 
 class BinpkgFetcher(CompositeTask):
-    __slots__ = ("pkg", "pretend", "logfile", "pkg_path", "pkg_allocated_path")
+    __slots__ = ("logfile", "pkg", "pkg_allocated_path", "pkg_path", "pretend")
 
     def __init__(self, **kwargs):
         CompositeTask.__init__(self, **kwargs)
@@ -140,7 +141,7 @@ class BinpkgFetcher(CompositeTask):
 
 
 class _BinpkgFetcherProcess(SpawnProcess):
-    __slots__ = ("pkg", "pretend", "locked", "pkg_path", "_lock_obj")
+    __slots__ = ("_lock_obj", "locked", "pkg", "pkg_path", "pretend")
 
     def _start(self):
         pkg = self.pkg

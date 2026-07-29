@@ -3,29 +3,40 @@
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
-    "NewsManager",
-    "NewsItem",
-    "DisplayRestriction",
-    "DisplayProfileRestriction",
-    "DisplayKeywordRestriction",
     "DisplayInstalledRestriction",
+    "DisplayKeywordRestriction",
+    "DisplayProfileRestriction",
+    "DisplayRestriction",
+    "NewsItem",
+    "NewsManager",
     "count_unread_news",
     "display_news_notifications",
 ]
 
-from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Optional
-from re import Pattern, Match
 import fnmatch
 import logging
 import os
 import re
+from collections import OrderedDict
+from re import Match, Pattern
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     import portage.dbapi.vartree
     import portage.package.ebuild.config
 
 from portage.const import NEWS_LIB_PATH
+from portage.data import portage_gid
+from portage.dep import isvalidatom
+from portage.exception import (
+    InvalidLocation,
+    OperationNotPermitted,
+    PermissionDenied,
+    ReadOnlyFileSystem,
+)
+from portage.localization import _
+from portage.locks import lockfile, unlockfile
+from portage.output import colorize
 from portage.util import (
     apply_secpass_permissions,
     ensure_dirs,
@@ -33,17 +44,6 @@ from portage.util import (
     normalize_path,
     write_atomic,
     writemsg_level,
-)
-from portage.data import portage_gid
-from portage.dep import isvalidatom
-from portage.localization import _
-from portage.locks import lockfile, unlockfile
-from portage.output import colorize
-from portage.exception import (
-    InvalidLocation,
-    OperationNotPermitted,
-    PermissionDenied,
-    ReadOnlyFileSystem,
 )
 
 
@@ -94,8 +94,7 @@ class NewsManager:
             profile_path = normalize_path(
                 os.path.realpath(portdb.settings.profile_path)
             )
-            if profile_path.startswith(profiles_base):
-                profile_path = profile_path[len(profiles_base) :]
+            profile_path = profile_path.removeprefix(profiles_base)
         self._profile_path = profile_path
 
     def _unread_filename(self, repoid: str) -> str:

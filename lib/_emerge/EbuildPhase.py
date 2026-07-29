@@ -5,35 +5,28 @@ import functools
 import gzip
 import io
 import json
+import os
 import sys
 import tempfile
 
-from _emerge.AsynchronousLock import AsynchronousLock
-from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
-from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
-from _emerge.EbuildProcess import EbuildProcess
-from _emerge.CompositeTask import CompositeTask
-from _emerge.PackagePhase import PackagePhase
-from _emerge.TaskSequence import TaskSequence
-import os
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
+from portage.eapi import _get_eapi_attrs
+from portage.exception import InvalidBinaryPackageFormat
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
+from portage.package.ebuild.prepare_build_dirs import (
+    _prepare_fake_distdir,
+    _prepare_fake_filesdir,
+    _prepare_workdir,
+)
+from portage.util import ensure_dirs, writemsg
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+from portage.util._async.BuildLogger import BuildLogger
 from portage.util._dyn_libs.soname_deps_qa import (
     _get_all_provides,
     _get_unresolved_soname_deps,
 )
-from portage.package.ebuild.prepare_build_dirs import (
-    _prepare_workdir,
-    _prepare_fake_distdir,
-    _prepare_fake_filesdir,
-)
-from portage.eapi import _get_eapi_attrs
-from portage.util import writemsg, ensure_dirs
-from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
-from portage.util._async.BuildLogger import BuildLogger
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
-from portage.exception import InvalidBinaryPackageFormat
-from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 
 try:
     from portage.xml.metadata import MetaDataXML
@@ -45,6 +38,14 @@ except (ImportError, SystemError, RuntimeError, Exception):
     MetaDataXML = None
 
 import portage
+
+from _emerge.AsynchronousLock import AsynchronousLock
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
+from _emerge.CompositeTask import CompositeTask
+from _emerge.EbuildProcess import EbuildProcess
+from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
+from _emerge.PackagePhase import PackagePhase
+from _emerge.TaskSequence import TaskSequence
 
 
 async def _setup_locale(settings):
@@ -368,10 +369,10 @@ class EbuildPhase(CompositeTask):
         from portage.package.ebuild.doebuild import (
             _check_build_log,
             _post_phase_cmds,
-            _post_phase_userpriv_perms,
             _post_phase_emptydir_cleanup,
-            _post_src_install_write_metadata,
+            _post_phase_userpriv_perms,
             _post_src_install_uid_fix,
+            _post_src_install_write_metadata,
             _postinst_bsdflags,
             _preinst_bsdflags,
         )

@@ -2,14 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import asyncio
-
 import os
-import portage
 
+import portage
 from portage.dbapi.porttree import _async_manifest_fetchlist
 from portage.dep import _repo_separator
 from portage.localization import _
 from portage.util._async.AsyncScheduler import AsyncScheduler
+
 from .ManifestTask import ManifestTask
 
 

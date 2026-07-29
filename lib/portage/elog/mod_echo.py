@@ -3,9 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
-from portage.output import EOutput, colorize
+
 from portage.const import EBUILD_PHASES
 from portage.localization import _
+from portage.output import EOutput, colorize
 
 _items = []
 

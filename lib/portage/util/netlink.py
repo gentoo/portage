@@ -1,11 +1,9 @@
 # Copyright 2019-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import socket
 from io import BytesIO
 from os import strerror
-from struct import Struct
-
-import socket
 from socket import (
     AF_NETLINK,
     AF_UNSPEC,
@@ -14,6 +12,7 @@ from socket import (
     SOCK_DGRAM,
     inet_pton,
 )
+from struct import Struct
 
 IFA_LOCAL = 2
 IFF_UP = 0x1

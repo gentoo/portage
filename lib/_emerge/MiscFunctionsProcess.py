@@ -1,11 +1,12 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import shlex
 
-from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
-import os
 import portage
+
+from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 
 
 class MiscFunctionsProcess(AbstractEbuildProcess):

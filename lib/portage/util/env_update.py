@@ -5,16 +5,17 @@ __all__ = ["env_update"]
 
 import errno
 import glob
+import os
 import stat
 import subprocess
 import time
 
-import os
 import portage
-
 from portage.data import ostype
+from portage.dbapi.vartree import vartree
 from portage.exception import ParseError
 from portage.localization import _
+from portage.package.ebuild.config import config
 from portage.process import find_binary
 from portage.util import (
     atomic_ofstream,
@@ -26,8 +27,6 @@ from portage.util import (
     writemsg,
 )
 from portage.util.listdir import listdir
-from portage.dbapi.vartree import vartree
-from portage.package.ebuild.config import config
 
 
 def env_update(
@@ -144,7 +143,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         try:
             myconfig = getconfig(file_path, expand=False)
         except ParseError as e:
-            writemsg(f"!!! '{str(e)}'\n", noiselevel=-1)
+            writemsg(f"!!! '{e!s}'\n", noiselevel=-1)
             del e
             continue
         if myconfig is None:

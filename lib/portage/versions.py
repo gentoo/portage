@@ -11,16 +11,16 @@ __all__ = [
     "cpv_sort_key",
     "pkgcmp",
     "pkgsplit",
-    "ververify",
     "vercmp",
+    "ververify",
 ]
 
 import re
 import typing
 import warnings
+from collections.abc import Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Optional, Union
-from collections.abc import Sequence
 
 if TYPE_CHECKING:
     from portage.dep import Atom
@@ -162,7 +162,7 @@ def vercmp(ver1: str, ver2: str, silent: int = 1) -> Optional[int]:
         vlist1 = match1.group(2)[1:].split(".")
         vlist2 = match2.group(2)[1:].split(".")
 
-        for i in range(0, max(len(vlist1), len(vlist2))):
+        for i in range(max(len(vlist1), len(vlist2))):
             # Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
             # would be ambiguous if two versions that aren't literally equal
             # are given the same value (in sorting, for example).
@@ -201,7 +201,7 @@ def vercmp(ver1: str, ver2: str, silent: int = 1) -> Optional[int]:
     if len(match2.group(4)):
         list2.append(ord(match2.group(4)))
 
-    for i in range(0, max(len(list1), len(list2))):
+    for i in range(max(len(list1), len(list2))):
         if len(list1) <= i:
             return -1
         if len(list2) <= i:
@@ -216,7 +216,7 @@ def vercmp(ver1: str, ver2: str, silent: int = 1) -> Optional[int]:
     list1 = match1.group(5).split("_")[1:]
     list2 = match2.group(5).split("_")[1:]
 
-    for i in range(0, max(len(list1), len(list2))):
+    for i in range(max(len(list1), len(list2))):
         # Implicit _p0 is given a value of -1, so that 1 < 1_p0
         if len(list1) <= i:
             s1 = ("p", "-1")

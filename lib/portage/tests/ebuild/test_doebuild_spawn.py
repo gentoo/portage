@@ -1,22 +1,23 @@
 # Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import shlex
 import textwrap
 
-import os
+from _emerge.EbuildPhase import EbuildPhase
+from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
+from _emerge.Package import Package
+
 from portage import _python_interpreter
 from portage.const import EBUILD_SH_BINARY
+from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import spawn as doebuild_spawn
-from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
-from _emerge.EbuildPhase import EbuildPhase
-from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
-from _emerge.Package import Package
 
 
 class DoebuildSpawnTestCase(TestCase):

@@ -1,9 +1,10 @@
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.CompositeTask import CompositeTask
 from portage.dep import _repo_separator
 from portage.output import colorize
+
+from _emerge.CompositeTask import CompositeTask
 
 
 class PackageMerge(CompositeTask):
@@ -21,11 +22,7 @@ class PackageMerge(CompositeTask):
         if pkg.type_name == "binary":
             pkg_color = "PKG_BINARY_MERGE"
 
-        msg = "{} {}{}".format(
-            action_desc,
-            counter_str,
-            colorize(pkg_color, pkg.cpv + _repo_separator + pkg.repo),
-        )
+        msg = f"{action_desc} {counter_str}{colorize(pkg_color, pkg.cpv + _repo_separator + pkg.repo)}"
 
         if pkg.root_config.settings["ROOT"] != "/":
             msg += f" {preposition} {pkg.root}"

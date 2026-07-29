@@ -21,8 +21,8 @@ import subprocess
 import traceback
 
 import portage
-from portage.util.movefile import _copyxattr
 from portage.exception import OperationNotSupported
+from portage.util.movefile import _copyxattr
 
 # Change back to original cwd _after_ all imports (bug #469338).
 os.chdir(os.environ["__PORTAGE_HELPER_CWD"])

@@ -6,6 +6,7 @@ import errno
 import os
 
 from portage.util.futures import asyncio
+
 from _emerge.AsynchronousTask import AsynchronousTask
 
 

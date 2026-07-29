@@ -1,14 +1,14 @@
 # Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-__all__ = ["install_mask_dir", "InstallMask"]
+__all__ = ["InstallMask", "install_mask_dir"]
 
 import collections
 import errno
 import fnmatch
 import operator
-
 import os
+
 from portage.exception import (
     FileNotFound,
     IsADirectory,

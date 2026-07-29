@@ -1,21 +1,21 @@
 # Copyright Gentoo Foundation 2006-2020
 # Portage Unit Testing Functionality
 
+import io
 import os
 import shutil
-import io
 import tarfile
 import tempfile
 from os import urandom
 
-from portage.tests import TestCase
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.gpkg import gpkg
 from portage.exception import (
-    InvalidBinaryPackageFormat,
     DigestException,
+    InvalidBinaryPackageFormat,
     MissingSignature,
 )
+from portage.gpkg import gpkg
+from portage.tests import TestCase
+from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
 
 class test_gpkg_checksum_case(TestCase):

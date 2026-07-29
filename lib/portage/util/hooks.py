@@ -2,15 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
-
-from collections import OrderedDict
-
 import os
-import portage
-
-from portage.output import create_color_func
-from portage.util import writemsg_level, _recursive_file_list
+from collections import OrderedDict
 from warnings import warn
+
+import portage
+from portage.output import create_color_func
+from portage.util import _recursive_file_list, writemsg_level
 
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
@@ -27,7 +25,7 @@ def get_hooks_from_dir(rel_directory, prefix="/"):
         else:
             writemsg_level(
                 f" {warn('*')} {directory} hook: '{name}' is not executable\n",
-                level=logging.WARN,
+                level=logging.WARNING,
                 noiselevel=2,
             )
 

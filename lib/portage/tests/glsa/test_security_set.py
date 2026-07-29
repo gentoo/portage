@@ -2,15 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import portage
 
+import portage
+from portage.glsa import GlsaFormatException
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
     ResolverPlaygroundTestCase,
 )
-
-from portage.glsa import GlsaFormatException
 
 
 class SecuritySetTestCase(TestCase):

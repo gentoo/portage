@@ -3,9 +3,9 @@
 
 import locale
 import logging
+import os
 import time
 
-import os
 from portage.exception import PortageException
 from portage.localization import _
 from portage.output import EOutput

@@ -1,9 +1,9 @@
 # Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from portage.dep import Atom
 from portage.tests import TestCase
 from portage.update import parse_updates
-from portage.dep import Atom
 
 
 class ParseUpdatesTestCase(TestCase):

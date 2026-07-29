@@ -2,13 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import os
 import shlex
 
-import os
 import portage
-
-from portage.util import writemsg_level
 from portage.sync.syncbase import NewBase
+from portage.util import writemsg_level
 
 
 class CVSSync(NewBase):

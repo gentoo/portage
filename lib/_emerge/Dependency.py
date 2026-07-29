@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.util.SlotObject import SlotObject
+
 from _emerge.DepPriority import DepPriority
 
 
@@ -10,14 +11,14 @@ class Dependency(SlotObject):
         "atom",
         "blocker",
         "child",
+        "collapsed_parent",
+        "collapsed_priority",
         "depth",
-        "parent",
         "onlydeps",
+        "parent",
         "priority",
         "root",
         "want_update",
-        "collapsed_parent",
-        "collapsed_priority",
     )
 
     def __init__(self, **kwargs):

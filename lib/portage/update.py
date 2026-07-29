@@ -1,12 +1,12 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import re
 import stat
 import sys
 import warnings
 
-import os
 from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.dep import (
     Atom,
@@ -433,7 +433,7 @@ def update_config_files(
         try:
             write_atomic(updating_file, "".join(file_contents[x]))
         except PortageException as e:
-            writemsg(f"\n!!! {str(e)}\n", noiselevel=-1)
+            writemsg(f"\n!!! {e!s}\n", noiselevel=-1)
             writemsg(
                 _("!!! An error occurred while updating a config file:")
                 + f" '{updating_file}'\n",

@@ -2,11 +2,11 @@
 # Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import tempfile
 
-import os
-from portage.tests import TestCase, test_cps
 from portage._sets.files import ConfigFileSet
+from portage.tests import TestCase, test_cps
 
 
 class ConfigFileSetTestCase(TestCase):
@@ -18,7 +18,7 @@ class ConfigFileSetTestCase(TestCase):
             suffix=".testdata", prefix=self.__class__.__name__, text=True
         )
         f = os.fdopen(fd, "w")
-        for i in range(0, len(test_cps)):
+        for i in range(len(test_cps)):
             atom = test_cps[i]
             if i % 2 == 0:
                 f.write(atom + " abc def\n")

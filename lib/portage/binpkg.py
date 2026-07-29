@@ -1,10 +1,10 @@
 # Copyright 2001-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import tarfile
 
-import os
-from portage.const import SUPPORTED_XPAK_EXTENSIONS, SUPPORTED_GPKG_EXTENSIONS
+from portage.const import SUPPORTED_GPKG_EXTENSIONS, SUPPORTED_XPAK_EXTENSIONS
 from portage.exception import InvalidBinaryPackageFormat
 from portage.output import colorize
 from portage.util import writemsg
@@ -68,9 +68,7 @@ def get_binpkg_format(binpkg_path, check_file=False, remote=False):
         writemsg(
             colorize(
                 "WARN",
-                "File {} binpkg format mismatch, actual format: {}\n".format(
-                    binpkg_path, file_format
-                ),
+                f"File {binpkg_path} binpkg format mismatch, actual format: {file_format}\n",
             )
         )
 

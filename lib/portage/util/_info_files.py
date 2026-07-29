@@ -3,11 +3,11 @@
 
 import errno
 import logging
+import os
 import re
 import stat
 import subprocess
 
-import os
 import portage
 
 

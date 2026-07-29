@@ -6,7 +6,7 @@ from _emerge.Task import Task
 
 class Blocker(Task):
     __hash__ = Task.__hash__
-    __slots__ = ("root", "atom", "cp", "eapi", "priority", "satisfied")
+    __slots__ = ("atom", "cp", "eapi", "priority", "root", "satisfied")
 
     def __init__(self, **kwargs):
         Task.__init__(self, **kwargs)

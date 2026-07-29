@@ -2,16 +2,15 @@
 # Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
-from portage.news import NewsItem, NewsManager
-from portage.dbapi.virtual import fakedbapi
-
+import textwrap
 from dataclasses import dataclass
 from string import Template
 from typing import Optional
 from unittest.mock import MagicMock, mock_open, patch
 
-import textwrap
+from portage.dbapi.virtual import fakedbapi
+from portage.news import NewsItem, NewsManager
+from portage.tests import TestCase
 
 # The specification for news items is GLEP 42 ("Critical News Reporting"):
 # https://www.gentoo.org/glep/glep-0042.html

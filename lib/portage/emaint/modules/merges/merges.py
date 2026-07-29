@@ -2,15 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import portage
-
-from portage.const import MERGING_IDENTIFIER, EPREFIX, PRIVATE_PATH, VDB_PATH
-from portage.dep import isvalidatom
-
 import shutil
 import subprocess
 import sys
 import time
+
+import portage
+from portage.const import EPREFIX, MERGING_IDENTIFIER, PRIVATE_PATH, VDB_PATH
+from portage.dep import isvalidatom
 
 
 class TrackingFile:
@@ -254,7 +253,7 @@ class MergesHandler:
         try:
             self._tracking_file.save(failed_pkgs)
         except OSError as ex:
-            errors = [f"Unable to save failed merges to tracking file: {str(ex)}\n"]
+            errors = [f"Unable to save failed merges to tracking file: {ex!s}\n"]
             errors.append(", ".join(sorted(failed_pkgs)))
             return (False, errors)
         self._remove_failed_dirs(failed_pkgs)

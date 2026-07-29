@@ -5,8 +5,8 @@ import os
 import time
 
 from portage.tests import CommandStep, FunctionStep
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.emaint.EmaintTestCase import EmaintTestCase
+from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
 
 class EmainBinhostTestCase(EmaintTestCase):

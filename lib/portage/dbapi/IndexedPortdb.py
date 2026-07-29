@@ -7,13 +7,13 @@ import operator
 import os
 
 import portage
-from portage.dep import Atom
-from portage.exception import FileNotFound
 from portage.cache.index.IndexStreamIterator import IndexStreamIterator
 from portage.cache.index.pkg_desc_index import (
     pkg_desc_index_line_read,
     pkg_desc_index_node,
 )
+from portage.dep import Atom
+from portage.exception import FileNotFound
 from portage.util.iterators.MultiIterGroupBy import MultiIterGroupBy
 
 

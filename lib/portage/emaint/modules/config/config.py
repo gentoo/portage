@@ -2,8 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import portage
 
+import portage
 from portage.const import PRIVATE_PATH
 from portage.util import grabdict, writedict
 

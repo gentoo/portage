@@ -1,10 +1,10 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import time
 import os
-import portage
+import time
 
+import portage
 from portage.data import secpass
 from portage.output import xtermTitle
 

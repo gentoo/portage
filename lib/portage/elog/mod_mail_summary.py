@@ -2,13 +2,13 @@
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import socket
+import time
+
 import portage
 from portage.exception import AlarmSignal, PortageException
 from portage.localization import _
 from portage.util import writemsg
-
-import socket
-import time
 
 _config_keys = (
     "PORTAGE_ELOG_MAILURI",

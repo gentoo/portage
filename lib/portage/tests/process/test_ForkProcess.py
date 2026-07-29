@@ -3,10 +3,10 @@
 
 import functools
 import multiprocessing
+import os
 import tempfile
 from unittest.mock import patch
 
-import os
 from portage.tests import TestCase
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util.futures import asyncio

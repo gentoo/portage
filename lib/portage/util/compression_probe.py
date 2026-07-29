@@ -4,7 +4,6 @@
 import errno
 import re
 
-
 from portage.exception import FileNotFound, PermissionDenied
 from portage.util._ctypes import ctypes
 

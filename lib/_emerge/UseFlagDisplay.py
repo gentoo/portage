@@ -4,13 +4,12 @@
 import collections
 from itertools import chain
 
-from portage.output import red
+from portage.output import blue, red
 from portage.util import cmp_sort_key
-from portage.output import blue
 
 
 class UseFlagDisplay:
-    __slots__ = ("name", "enabled", "forced")
+    __slots__ = ("enabled", "forced", "name")
 
     def __init__(self, name, enabled, forced):
         self.name = name

@@ -3,9 +3,10 @@
 
 import pickle
 
-from portage.tests import TestCase
-from _emerge.Package import _PackageMetadataWrapperBase
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
+from _emerge.Package import _PackageMetadataWrapperBase
+
+from portage.tests import TestCase
 
 
 class PickleTestCase(TestCase):

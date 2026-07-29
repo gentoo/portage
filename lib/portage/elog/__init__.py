@@ -3,12 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+
 from portage.const import EBUILD_PHASES
-from portage.exception import AlarmSignal, PortageException
-from portage.process import atexit_register
-from portage.elog.messages import collect_ebuild_messages, collect_messages
 from portage.elog.filtering import filter_loglevels
+from portage.elog.messages import collect_ebuild_messages, collect_messages
+from portage.exception import AlarmSignal, PortageException
 from portage.localization import _
+from portage.process import atexit_register
 
 
 def _merge_logentries(a, b):
@@ -178,8 +179,8 @@ def elog_process(cpv, mysettings, phasefilter=None):
                     )
                     % str(s)
                 )
-                writemsg(f"{str(e)}\n", noiselevel=-1)
+                writemsg(f"{e!s}\n", noiselevel=-1)
             except AlarmSignal:
                 writemsg(f"Timeout in elog_process for system '{s}'\n", noiselevel=-1)
             except PortageException as e:
-                writemsg(f"{str(e)}\n", noiselevel=-1)
+                writemsg(f"{e!s}\n", noiselevel=-1)

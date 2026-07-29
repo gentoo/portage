@@ -2,11 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import os
 import textwrap
 
-import os
 import portage
-
 from portage.emaint.modules.logs.logs import CleanLogs
 from portage.news import count_unread_news, display_news_notifications
 from portage.output import colorize
@@ -14,9 +13,9 @@ from portage.util._dyn_libs.display_preserved_libs import display_preserved_libs
 from portage.util._info_files import chk_updated_info_files
 from portage.util.portage_lru_cache import show_lru_cache_info
 
+from ._flush_elog_mod_echo import _flush_elog_mod_echo
 from .chk_updated_cfg_files import chk_updated_cfg_files
 from .emergelog import emergelog
-from ._flush_elog_mod_echo import _flush_elog_mod_echo
 
 
 def clean_logs(settings):

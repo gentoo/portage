@@ -1,27 +1,29 @@
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import io
-import sys
 import functools
-import _emerge.emergelog
-from _emerge.EbuildPhase import EbuildPhase
-from _emerge.BinpkgFetcher import BinpkgFetcher
-from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
-from _emerge.CompositeTask import CompositeTask
-from _emerge.BinpkgVerifier import BinpkgVerifier
-from _emerge.EbuildMerge import EbuildMerge
-from _emerge.EbuildBuildDir import EbuildBuildDir
-from _emerge.SpawnProcess import SpawnProcess
+import io
+import logging
+import os
+import shutil
+import sys
+
+import portage
 from portage.eapi import eapi_exports_replace_vars
 from portage.output import colorize
 from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._dyn_libs.dyn_libs import check_dyn_libs_inconsistent
-import os
-import shutil
-import portage
-import logging
+
+import _emerge.emergelog
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
+from _emerge.BinpkgFetcher import BinpkgFetcher
+from _emerge.BinpkgVerifier import BinpkgVerifier
+from _emerge.CompositeTask import CompositeTask
+from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.EbuildMerge import EbuildMerge
+from _emerge.EbuildPhase import EbuildPhase
+from _emerge.SpawnProcess import SpawnProcess
 
 
 class Binpkg(CompositeTask):
@@ -176,16 +178,9 @@ class Binpkg(CompositeTask):
                 scheduler=self.scheduler,
             )
 
-            msg = " --- ({} of {}) Fetching Binary ({}::{})".format(
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-                fetcher.pkg_path,
-            )
-            short_msg = "emerge: ({} of {}) {} Fetch".format(
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
+            msg = f" --- ({pkg_count.curval} of {pkg_count.maxval}) Fetching Binary ({pkg.cpv}::{fetcher.pkg_path})"
+            short_msg = (
+                f"emerge: ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} Fetch"
             )
             self.logger.log(msg, short_msg=short_msg)
 
@@ -301,16 +296,9 @@ class Binpkg(CompositeTask):
             self.wait()
             return
 
-        msg = " === ({} of {}) Merging Binary ({}::{})".format(
-            pkg_count.curval,
-            pkg_count.maxval,
-            pkg.cpv,
-            pkg_path,
-        )
-        short_msg = "emerge: ({} of {}) {} Merge Binary".format(
-            pkg_count.curval,
-            pkg_count.maxval,
-            pkg.cpv,
+        msg = f" === ({pkg_count.curval} of {pkg_count.maxval}) Merging Binary ({pkg.cpv}::{pkg_path})"
+        short_msg = (
+            f"emerge: ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} Merge Binary"
         )
         logger.log(msg, short_msg=short_msg)
 

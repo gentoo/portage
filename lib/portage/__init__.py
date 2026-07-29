@@ -10,15 +10,15 @@ from portage import installation
 
 try:
     import asyncio
-    import sys
     import errno
+    import sys
 
     if not hasattr(errno, "ESTALE"):
         # ESTALE may not be defined on some systems, such as interix.
         errno.ESTALE = -1
     import functools
-    import re
     import platform
+    import re
 
 except ImportError as e:
     sys.stderr.write(
@@ -34,7 +34,7 @@ except ImportError as e:
 
 try:
     import portage.proxy.lazyimport
-    import portage.proxy as proxy
+    from portage import proxy
 
     proxy.lazyimport.lazyimport(
         globals(),
@@ -110,36 +110,36 @@ try:
 
     import portage.const
     from portage.const import (
-        VDB_PATH,
-        PRIVATE_PATH,
+        BASH_BINARY,
         CACHE_PATH,
-        DEPCACHE_PATH,
-        USER_CONFIG_PATH,
-        MODULES_FILE_PATH,
+        CONFIG_MEMORY_FILE,
+        CUSTOM_MIRRORS_FILE,
         CUSTOM_PROFILE_PATH,
+        DEPCACHE_PATH,
+        DEPRECATED_PROFILE_FILE,
+        EAPI,
+        EBUILD_SH_BINARY,
+        EBUILD_SH_ENV_FILE,
+        INCREMENTALS,
+        INVALID_ENV_FILE,
+        LOCALE_DATA_PATH,
+        MAKE_CONF_FILE,
+        MAKE_DEFAULTS_FILE,
+        MISC_SH_BINARY,
+        MODULES_FILE_PATH,
+        MOVE_BINARY,
         PORTAGE_BASE_PATH,
         PORTAGE_BIN_PATH,
         PORTAGE_PYM_PATH,
+        PRIVATE_PATH,
         PROFILE_PATH,
-        LOCALE_DATA_PATH,
-        EBUILD_SH_BINARY,
-        SANDBOX_BINARY,
-        BASH_BINARY,
-        MOVE_BINARY,
-        WORLD_FILE,
-        MAKE_CONF_FILE,
-        MAKE_DEFAULTS_FILE,
-        DEPRECATED_PROFILE_FILE,
-        USER_VIRTUALS_FILE,
-        EBUILD_SH_ENV_FILE,
-        INVALID_ENV_FILE,
-        CUSTOM_MIRRORS_FILE,
-        CONFIG_MEMORY_FILE,
-        INCREMENTALS,
-        EAPI,
-        MISC_SH_BINARY,
-        REPO_NAME_LOC,
         REPO_NAME_FILE,
+        REPO_NAME_LOC,
+        SANDBOX_BINARY,
+        USER_CONFIG_PATH,
+        USER_VIRTUALS_FILE,
+        VDB_PATH,
+        WORLD_FILE,
     )
 
 except ImportError as e:

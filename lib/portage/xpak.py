@@ -25,8 +25,8 @@ __all__ = [
     "listindex",
     "searchindex",
     "tbz2",
-    "xpak_mem",
     "xpak",
+    "xpak_mem",
     "xpand",
     "xsplit",
     "xsplit_mem",
@@ -34,10 +34,10 @@ __all__ = [
 
 import array
 import errno
-import tempfile
-
 import os
 import shutil
+import tempfile
+
 import portage
 from portage import normalize_path
 from portage.binpkg import get_binpkg_format

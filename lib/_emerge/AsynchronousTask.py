@@ -1,9 +1,9 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import signal
 
-import os
 from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 
@@ -121,7 +121,6 @@ class AsynchronousTask(SlotObject):
         Subclasses should implement this, as a template method
         to be called by AsynchronousTask.cancel().
         """
-        pass
 
     def _was_cancelled(self):
         """

@@ -3,12 +3,12 @@
 
 import logging
 import operator
-import sys
+import os
 import signal
+import sys
 
 from _emerge.ProgressHandler import ProgressHandler
 
-import os
 import portage
 from portage import eapi_is_supported
 from portage.cache.cache_errors import CacheError

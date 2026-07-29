@@ -5,12 +5,11 @@ import copy
 import functools
 import io
 import multiprocessing
+import os
 import signal
 import sys
 
-import os
 import portage
-
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import (
@@ -23,20 +22,21 @@ from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._pty import _create_pty_or_pipe
 from portage.util.futures import asyncio
+
 from _emerge.CompositeTask import CompositeTask
 
 
 class EbuildFetcher(CompositeTask):
     __slots__ = (
+        "_fetcher_proc",
         "config_pool",
         "ebuild_path",
-        "fetchonly",
         "fetchall",
+        "fetchonly",
         "logfile",
         "pkg",
-        "prefetch",
         "pre_exec",
-        "_fetcher_proc",
+        "prefetch",
     )
 
     def __init__(self, **kwargs):
@@ -102,17 +102,17 @@ class EbuildFetcher(CompositeTask):
 
 class _EbuildFetcherProcess(ForkProcess):
     __slots__ = (
-        "config_pool",
-        "ebuild_path",
-        "fetchonly",
-        "fetchall",
-        "pkg",
-        "prefetch",
-        "src_uri",
         "_digests",
         "_manifest",
         "_settings",
         "_uri_map",
+        "config_pool",
+        "ebuild_path",
+        "fetchall",
+        "fetchonly",
+        "pkg",
+        "prefetch",
+        "src_uri",
     )
 
     def async_already_fetched(self, settings):

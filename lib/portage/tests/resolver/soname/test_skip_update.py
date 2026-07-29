@@ -5,12 +5,12 @@ import sys
 from unittest.mock import patch
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
+from portage.output import colorize
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
     ResolverPlaygroundTestCase,
 )
-from portage.output import colorize
 
 
 class SonameSkipUpdateTestCase(TestCase):

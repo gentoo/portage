@@ -6,42 +6,41 @@ Portage: Lock management code
 """
 
 __all__ = [
-    "lockdir",
-    "unlockdir",
-    "lockfile",
-    "unlockfile",
-    "hardlock_name",
     "hardlink_is_mine",
     "hardlink_lockfile",
-    "unhardlink_lockfile",
     "hardlock_cleanup",
+    "hardlock_name",
+    "lockdir",
+    "lockfile",
+    "unhardlink_lockfile",
+    "unlockdir",
+    "unlockfile",
 ]
 
 import errno
 import fcntl
 import functools
 import multiprocessing
+import os
 import sys
 import tempfile
 import time
 import typing
 import warnings
 
-import os
 import portage
-
 from portage.exception import (
     DirectoryNotFound,
     FileNotFound,
     InvalidData,
-    TryAgain,
     OperationNotPermitted,
     PermissionDenied,
     ReadOnlyFileSystem,
+    TryAgain,
 )
+from portage.localization import _
 from portage.util import writemsg
 from portage.util.install_mask import _raise_exc
-from portage.localization import _
 
 HARDLINK_FD = -2
 _HARDLINK_POLL_LATENCY = 3  # seconds

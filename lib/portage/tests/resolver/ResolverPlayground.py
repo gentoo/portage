@@ -3,29 +3,11 @@
 
 import bz2
 import fnmatch
-import subprocess
-import tempfile
 import os
 import shutil
-import portage
-
+import subprocess
+import tempfile
 from itertools import permutations
-from portage.const import (
-    GLOBAL_CONFIG_PATH,
-    PORTAGE_BIN_PATH,
-    USER_CONFIG_PATH,
-    SUPPORTED_GENTOO_BINPKG_FORMATS,
-)
-from portage.process import find_binary
-from portage.dep import Atom, _repo_separator
-from portage.dbapi.bintree import binarytree
-from portage._sets import load_default_config
-from portage._sets.base import InternalPackageSet
-from portage.tests import cnf_path
-from portage.util import ensure_dirs, normalize_path
-from portage.versions import catsplit
-from portage.exception import InvalidBinaryPackageFormat
-from portage.gpg import GPG
 
 import _emerge
 from _emerge.actions import (
@@ -42,6 +24,24 @@ from _emerge.depgraph import (
 )
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+
+import portage
+from portage._sets import load_default_config
+from portage._sets.base import InternalPackageSet
+from portage.const import (
+    GLOBAL_CONFIG_PATH,
+    PORTAGE_BIN_PATH,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
+    USER_CONFIG_PATH,
+)
+from portage.dbapi.bintree import binarytree
+from portage.dep import Atom, _repo_separator
+from portage.exception import InvalidBinaryPackageFormat
+from portage.gpg import GPG
+from portage.process import find_binary
+from portage.tests import cnf_path
+from portage.util import ensure_dirs, normalize_path
+from portage.versions import catsplit
 
 
 def _combine_repo_config(conf, lines):
@@ -371,8 +371,7 @@ class ResolverPlayground:
                 if copyright_header is not None:
                     f.write(copyright_header)
                 f.write(f'EAPI="{eapi}"\n')
-                for k, v in metadata.items():
-                    f.write(f'{k}="{v}"\n')
+                f.writelines(f'{k}="{v}"\n' for k, v in metadata.items())
                 if misc_content is not None:
                     f.write(misc_content)
 
@@ -543,8 +542,7 @@ class ResolverPlayground:
 
             categories_file = os.path.join(profile_dir, "categories")
             with open(categories_file, "w") as f:
-                for cat in categories:
-                    f.write(cat + "\n")
+                f.writelines(cat + "\n" for cat in categories)
 
             # Create $REPO/profiles/license_groups
             license_file = os.path.join(profile_dir, "license_groups")
@@ -569,8 +567,7 @@ class ResolverPlayground:
                         ):
                             os.makedirs(os.path.dirname(file_name))
                     with open(file_name, "w") as f:
-                        for line in lines:
-                            f.write(f"{line}\n")
+                        f.writelines(f"{line}\n" for line in lines)
                         # Temporarily write empty value of masters until it becomes default.
                         # TODO: Delete all references to "# use implicit masters" when empty value becomes default.
                         if config_file == "layout.conf" and not any(
@@ -587,8 +584,7 @@ class ResolverPlayground:
                 with open(os.path.join(eclass_dir, f"{eclass_name}.eclass"), "w") as f:
                     if isinstance(eclass_content, str):
                         eclass_content = [eclass_content]
-                    for line in eclass_content:
-                        f.write(f"{line}\n")
+                    f.writelines(f"{line}\n" for line in eclass_content)
 
             # Temporarily write empty value of masters until it becomes default.
             if not repo_config or "layout.conf" not in repo_config:
@@ -628,8 +624,7 @@ class ResolverPlayground:
 
                         file_name = os.path.join(sub_profile_dir, config_file)
                         with open(file_name, "w") as f:
-                            for line in lines:
-                                f.write(f"{line}\n")
+                            f.writelines(f"{line}\n" for line in lines)
 
                 # Create profile symlink
                 os.symlink(
@@ -696,8 +691,7 @@ class ResolverPlayground:
 
             file_name = os.path.join(user_config_dir, config_file)
             with open(file_name, "w") as f:
-                for line in lines:
-                    f.write(f"{line}\n")
+                f.writelines(f"{line}\n" for line in lines)
 
         # Create /usr/share/portage/config/make.globals
         make_globals_path = os.path.join(
@@ -732,8 +726,7 @@ class ResolverPlayground:
         for sets_file, lines in sets.items():
             file_name = os.path.join(set_config_dir, sets_file)
             with open(file_name, "w") as f:
-                for line in lines:
-                    f.write(f"{line}\n")
+                f.writelines(f"{line}\n" for line in lines)
 
     def _create_world(self, world, world_sets):
         # Create /var/lib/portage/world
@@ -744,12 +737,10 @@ class ResolverPlayground:
         world_set_file = os.path.join(var_lib_portage, "world_sets")
 
         with open(world_file, "w") as f:
-            for atom in world:
-                f.write(f"{atom}\n")
+            f.writelines(f"{atom}\n" for atom in world)
 
         with open(world_set_file, "w") as f:
-            for atom in world_sets:
-                f.write(f"{atom}\n")
+            f.writelines(f"{atom}\n" for atom in world_sets)
 
     def _load_config(self):
         create_trees_kwargs = {}

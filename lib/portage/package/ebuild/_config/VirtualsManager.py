@@ -3,9 +3,9 @@
 
 __all__ = ("VirtualsManager",)
 
+import os
 from copy import deepcopy
 
-import os
 from portage.dep import Atom
 from portage.exception import InvalidAtom
 from portage.localization import _

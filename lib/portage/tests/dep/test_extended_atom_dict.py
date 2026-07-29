@@ -2,8 +2,8 @@
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import ExtendedAtomDict
+from portage.tests import TestCase
 
 
 class TestExtendedAtomDict(TestCase):

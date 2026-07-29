@@ -5,48 +5,48 @@ __all__ = (
     "ALL_COMPLETED",
     "FIRST_COMPLETED",
     "FIRST_EXCEPTION",
-    "ensure_future",
     "CancelledError",
     "Future",
     "InvalidStateError",
     "Lock",
     "TimeoutError",
+    "ensure_future",
     "get_child_watcher",
     "get_event_loop",
-    "set_child_watcher",
     "get_event_loop_policy",
     "iscoroutinefunction",
-    "set_event_loop_policy",
     "run",
+    "set_child_watcher",
+    "set_event_loop_policy",
     "shield",
     "sleep",
     "wait",
     "wait_for",
 )
 
+import asyncio as _real_asyncio
 import sys
+import threading
 import types
 import warnings
 import weakref
 
-from inspect import iscoroutinefunction
-import asyncio as _real_asyncio
-
 # pylint: disable=redefined-builtin
 from asyncio import (
     ALL_COMPLETED,
-    CancelledError,
     FIRST_COMPLETED,
     FIRST_EXCEPTION,
+    CancelledError,
     Future,
     InvalidStateError,
-    Lock as _Lock,
-    shield,
     TimeoutError,
+    shield,
     wait_for,
 )
-
-import threading
+from asyncio import (
+    Lock as _Lock,
+)
+from inspect import iscoroutinefunction
 from typing import Optional
 
 import portage

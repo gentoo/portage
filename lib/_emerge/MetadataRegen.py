@@ -2,15 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import asyncio
-
-from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-
 import os
-import portage
 
+import portage
 from portage.cache.cache_errors import CacheError
 from portage.dep import _repo_separator
 from portage.util._async.AsyncScheduler import AsyncScheduler
+
+from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 
 async def metadata_regen_retry(*args, max_tries=3, **kwargs) -> int:

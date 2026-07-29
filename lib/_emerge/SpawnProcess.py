@@ -2,18 +2,18 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
+import os
 import sys
 
-from _emerge.SubProcess import SubProcess
-import os
 import portage
-
 from portage.const import BASH_BINARY
 from portage.output import EOutput
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._pty import _create_pty_or_pipe
 from portage.util.futures import asyncio
+
+from _emerge.SubProcess import SubProcess
 
 
 class SpawnProcess(SubProcess):

@@ -1,24 +1,24 @@
 # Copyright 2010-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import tempfile
-import time
 import os
 import shutil
+import tempfile
+import time
+
+from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
+from _emerge.SpawnProcess import SpawnProcess
+
 from portage import _python_interpreter
-from portage.tests import TestCase
-from portage.const import PORTAGE_BIN_PATH
-from portage.const import PORTAGE_PYM_PATH
-from portage.const import BASH_BINARY
+from portage.const import BASH_BINARY, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH
 from portage.locks import hardlock_cleanup
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
+from portage.tests import TestCase
 from portage.util import ensure_dirs
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
-from _emerge.SpawnProcess import SpawnProcess
-from _emerge.EbuildBuildDir import EbuildBuildDir
-from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 
 
 class IpcDaemonTestCase(TestCase):

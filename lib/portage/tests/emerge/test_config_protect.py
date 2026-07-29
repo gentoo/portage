@@ -1,16 +1,15 @@
 # Copyright 2014-2015, 2023 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from functools import partial
+import os
 import shlex
 import shutil
 import subprocess
 import sys
 import time
+from functools import partial
 
-import os
 import portage
-
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.process import find_binary
 from portage.tests import TestCase

@@ -3,9 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import os
 import stat
 
-import os
 from portage.localization import _
 
 
@@ -22,10 +22,7 @@ class LoaderError(Exception):
         self.error_msg = error_msg
 
     def __str__(self):
-        return "Failed while loading resource: {}, error was: {}".format(
-            self.resource,
-            self.error_msg,
-        )
+        return f"Failed while loading resource: {self.resource}, error was: {self.error_msg}"
 
 
 def RecursiveFileLoader(filename):

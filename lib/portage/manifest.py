@@ -4,11 +4,12 @@
 import errno
 import itertools
 import logging
+import os
 import re
 import stat
 import warnings
 
-import os
+from portage.const import MANIFEST2_HASH_DEFAULTS, MANIFEST2_IDENTIFIERS
 from portage.exception import (
     DigestException,
     FileNotFound,
@@ -18,7 +19,6 @@ from portage.exception import (
     PortageException,
     PortagePackageException,
 )
-from portage.const import MANIFEST2_HASH_DEFAULTS, MANIFEST2_IDENTIFIERS
 from portage.localization import _
 
 _manifest_re = re.compile(
@@ -81,7 +81,7 @@ def parseManifest2(line):
 
 
 class ManifestEntry:
-    __slots__ = ("type", "name", "hashes")
+    __slots__ = ("hashes", "name", "type")
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -805,7 +805,7 @@ class Manifest:
             encoding="utf-8",
             errors="replace",
         ) as myfile:
-            line_splits = (line.split() for line in myfile.readlines())
+            line_splits = (line.split() for line in myfile)
             validation = (
                 True
                 for line_split in line_splits

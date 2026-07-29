@@ -1,11 +1,11 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import os
 import collections
 import errno
 import itertools
 import logging
+import os
 import subprocess
 
 from portage.cache.mappings import slot_dict_class
@@ -14,11 +14,13 @@ from portage.dep.soname.multilib_category import compute_multilib_category
 from portage.dep.soname.SonameAtom import SonameAtom
 from portage.exception import CommandNotFound, InvalidData
 from portage.localization import _
-from portage.util import getlibpaths
-from portage.util import grabfile
-from portage.util import normalize_path
-from portage.util import varexpand
-from portage.util import writemsg_level
+from portage.util import (
+    getlibpaths,
+    grabfile,
+    normalize_path,
+    varexpand,
+    writemsg_level,
+)
 from portage.util._dyn_libs.NeededEntry import NeededEntry
 from portage.util.elf.header import ELFHeader
 
@@ -54,12 +56,12 @@ class LinkageMapELF:
 
     class _obj_properties_class:
         __slots__ = (
+            "alt_paths",
             "arch",
             "needed",
+            "owner",
             "runpaths",
             "soname",
-            "alt_paths",
-            "owner",
         )
 
         def __init__(self, arch, needed, runpaths, soname, alt_paths, owner):

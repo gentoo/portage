@@ -3,10 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import sys
+
 from portage.const import EBUILD_PHASES
 from portage.localization import _
-
-import sys
 
 _log_levels = frozenset(
     [

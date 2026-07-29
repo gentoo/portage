@@ -1,9 +1,9 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from portage.dep.soname.SonameAtom import SonameAtom
 from portage.exception import InvalidData
 from portage.localization import _
-from portage.dep.soname.SonameAtom import SonameAtom
 
 _error_empty_category = _("Multilib category empty: %s")
 _error_missing_category = _("Multilib category missing: %s")

@@ -3,51 +3,6 @@
 
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
-import shutil
-import portage
-
-from portage.const import (
-    CACHE_PATH,
-    CONFIG_MEMORY_FILE,
-    MERGING_IDENTIFIER,
-    PACKDEBUG_PATH,
-    PORTAGE_PACKAGE_ATOM,
-    PRIVATE_PATH,
-    VDB_PATH,
-    SUPPORTED_GENTOO_BINPKG_FORMATS,
-)
-from portage.dbapi import dbapi
-from portage.exception import (
-    CommandNotFound,
-    CorruptionKeyError,
-    InvalidData,
-    InvalidLocation,
-    InvalidPackageName,
-    InvalidBinaryPackageFormat,
-    FileNotFound,
-    PermissionDenied,
-    UnsupportedAPIException,
-)
-from portage.localization import _
-from portage.util.futures import asyncio
-from portage.util.pickle import NoGlobalsUnpickler
-
-from portage import abssymlink, _movefile, bsd_chflags
-from portage import selinux as _selinux_merge
-from portage.util.futures.executor.fork import ForkExecutor
-from ._VdbMetadataDelta import VdbMetadataDelta
-
-# Made global to fix importing on Python version upgrade:
-# https://bugs.gentoo.org/970375
-from ._SyncfsProcess import SyncfsProcess
-
-from _emerge.EbuildBuildDir import EbuildBuildDir
-from _emerge.EbuildPhase import EbuildPhase
-from _emerge.emergelog import emergelog
-from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
-from _emerge.SpawnProcess import SpawnProcess
-from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
-
 import argparse
 import errno
 import filecmp
@@ -56,21 +11,65 @@ import functools
 import gc
 import grp
 import io
-from itertools import chain
 import logging
 import multiprocessing
-import os
 import operator
+import os
 import pickle
 import platform
 import pwd
 import re
 import shlex
+import shutil
 import stat
 import tempfile
 import textwrap
 import time
 import warnings
+from itertools import chain
+
+from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.EbuildPhase import EbuildPhase
+from _emerge.emergelog import emergelog
+from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
+from _emerge.SpawnProcess import SpawnProcess
+
+import portage
+from portage import _movefile, abssymlink, bsd_chflags
+from portage import selinux as _selinux_merge
+from portage.const import (
+    CACHE_PATH,
+    CONFIG_MEMORY_FILE,
+    MERGING_IDENTIFIER,
+    PACKDEBUG_PATH,
+    PORTAGE_PACKAGE_ATOM,
+    PRIVATE_PATH,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
+    VDB_PATH,
+)
+from portage.dbapi import dbapi
+from portage.exception import (
+    CommandNotFound,
+    CorruptionKeyError,
+    FileNotFound,
+    InvalidBinaryPackageFormat,
+    InvalidData,
+    InvalidLocation,
+    InvalidPackageName,
+    PermissionDenied,
+    UnsupportedAPIException,
+)
+from portage.localization import _
+from portage.util.futures import asyncio
+from portage.util.futures.executor.fork import ForkExecutor
+from portage.util.pickle import NoGlobalsUnpickler
+
+from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
+
+# Made global to fix importing on Python version upgrade:
+# https://bugs.gentoo.org/970375
+from ._SyncfsProcess import SyncfsProcess
+from ._VdbMetadataDelta import VdbMetadataDelta
 
 
 class vardbapi(dbapi):
@@ -103,8 +102,8 @@ class vardbapi(dbapi):
         now has a categories property that is generated from the
         available packages.
         """
-        from portage.util._dyn_libs.PreservedLibsRegistry import PreservedLibsRegistry
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        from portage.util._dyn_libs.PreservedLibsRegistry import PreservedLibsRegistry
 
         # Used by emerge to check whether any packages
         # have been added or removed.
@@ -238,8 +237,8 @@ class vardbapi(dbapi):
         to reenter a lock that was acquired by a parent process. However,
         a lock can be released only by the same process that acquired it.
         """
-        from portage.util import ensure_dirs
         from portage.locks import lockdir
+        from portage.util import ensure_dirs
 
         if self._lock_count:
             self._lock_count += 1
@@ -309,8 +308,8 @@ class vardbapi(dbapi):
         of problem, this method should be called in a subprocess
         (typically spawned by the MergeProcess class).
         """
-        from portage.util import ensure_dirs
         from portage.locks import lockfile
+        from portage.util import ensure_dirs
 
         lock, counter = self._slot_locks.get(slot_atom, (None, 0))
         if lock is None:
@@ -393,8 +392,8 @@ class vardbapi(dbapi):
 
     def move_ent(self, mylist, repo_match=None):
         from portage.dep import isjustname, isvalidatom
-        from portage.versions import catsplit
         from portage.util import ensure_dirs, write_atomic
+        from portage.versions import catsplit
 
         origcp = mylist[1]
         newcp = mylist[2]
@@ -456,7 +455,7 @@ class vardbapi(dbapi):
         return moves
 
     def cp_list(self, mycp, use_cache=1):
-        from portage.versions import catsplit, pkgsplit, _pkg_str
+        from portage.versions import _pkg_str, catsplit, pkgsplit
 
         mysplit = catsplit(mycp)
         if mysplit[0] == "*":
@@ -511,8 +510,8 @@ class vardbapi(dbapi):
         return list(self._iter_cpv_all())
 
     def _iter_cpv_all(self, use_cache=None, sort=False):
-        from portage.versions import _pkg_str
         from portage import listdir
+        from portage.versions import _pkg_str
 
         basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
@@ -643,7 +642,7 @@ class vardbapi(dbapi):
         users have read access and benefit from faster metadata lookups (as
         long as at least part of the cache is still valid)."""
         from portage.data import secpass
-        from portage.util import ensure_dirs, atomic_ofstream, apply_secpass_permissions
+        from portage.util import apply_secpass_permissions, atomic_ofstream, ensure_dirs
 
         if (
             self._flush_cache_enabled
@@ -719,15 +718,13 @@ class vardbapi(dbapi):
 
         owners = aux_cache.get("owners")
         if owners is not None:
-            if not isinstance(owners, dict):
-                owners = None
-            elif "version" not in owners:
-                owners = None
-            elif owners["version"] != self._owners_cache_version:
-                owners = None
-            elif "base_names" not in owners:
-                owners = None
-            elif not isinstance(owners["base_names"], dict):
+            if (
+                not isinstance(owners, dict)
+                or "version" not in owners
+                or owners["version"] != self._owners_cache_version
+                or "base_names" not in owners
+                or not isinstance(owners["base_names"], dict)
+            ):
                 owners = None
 
         if owners is None:
@@ -794,12 +791,12 @@ class vardbapi(dbapi):
         if pkg_data:
             cache_mtime, metadata = pkg_data
             if isinstance(cache_mtime, float):
-                if cache_mtime == mydir_stat.st_mtime:
-                    cache_valid = True
-
                 # Handle truncated mtime in order to avoid cache
                 # invalidation for livecd squashfs (bug 564222).
-                elif int(cache_mtime) == mydir_stat.st_mtime:
+                if (
+                    cache_mtime == mydir_stat.st_mtime
+                    or int(cache_mtime) == mydir_stat.st_mtime
+                ):
                     cache_valid = True
             else:
                 # Cache may contain integer mtime.
@@ -1172,7 +1169,7 @@ class vardbapi(dbapi):
                     _("!!! Unable to read COUNTER file: '%s'\n") % self._counter_path,
                     noiselevel=-1,
                 )
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!! {e!s}\n", noiselevel=-1)
             del e
 
         if self._cached_counter == counter:
@@ -1192,8 +1189,7 @@ class vardbapi(dbapi):
                     pkg_counter = int(self.aux_get(cpv, ["COUNTER"])[0])
                 except (KeyError, OverflowError, ValueError):
                     continue
-                if pkg_counter > max_counter:
-                    max_counter = pkg_counter
+                max_counter = max(max_counter, pkg_counter)
 
         return max_counter + 1
 
@@ -1252,9 +1248,9 @@ class vardbapi(dbapi):
         @param paths: paths of files to remove from contents
         @type paths: iterable
         """
+        from portage.util import normalize_path, writemsg_level
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
         from portage.util._dyn_libs.NeededEntry import NeededEntry
-        from portage.util import normalize_path, writemsg_level
 
         if not hasattr(pkg, "getcontents"):
             pkg = self._dblink(pkg)
@@ -1679,8 +1675,8 @@ class vartree:
         return {}
 
     def dep_bestmatch(self, mydep, use_cache=1):
-        from portage.versions import best
         from portage.dbapi.dep_expand import dep_expand
+        from portage.versions import best
 
         "compatibility method -- all matches, not just visible ones"
         # mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
@@ -1795,8 +1791,8 @@ class dblink:
         @param vartree: an instance of vartree corresponding to myroot.
         @type vartree: vartree
         """
-        from portage.versions import _pkg_str
         from portage.util import normalize_path
+        from portage.versions import _pkg_str
 
         if settings is None:
             raise TypeError("settings argument is required")
@@ -2001,8 +1997,7 @@ class dblink:
         """
         Get the installed files of a given package (aka what that package installed)
         """
-        from portage.util import normalize_path
-        from portage.util import writemsg
+        from portage.util import normalize_path, writemsg
 
         if self.contentscache is not None:
             return self.contentscache
@@ -2128,6 +2123,7 @@ class dblink:
         @return: Paths of protected configuration files which have been omitted.
         """
         import tarfile
+
         from portage.checksum import _perform_md5_merge as perform_md5
         from portage.util import ConfigProtect
 
@@ -2639,7 +2635,7 @@ class dblink:
     def _display_merge(self, msg, level=0, noiselevel=0):
         from portage.util import writemsg_level
 
-        if not self._verbose and noiselevel >= 0 and level < logging.WARN:
+        if not self._verbose and noiselevel >= 0 and level < logging.WARNING:
             return
         if self._scheduler is None:
             writemsg_level(msg, level=level, noiselevel=noiselevel)
@@ -2650,7 +2646,7 @@ class dblink:
             background = self.settings.get("PORTAGE_BACKGROUND") == "1"
 
             if background and log_path is None:
-                if level >= logging.WARN:
+                if level >= logging.WARNING:
                     writemsg_level(msg, level=level, noiselevel=noiselevel)
             else:
                 self._scheduler.output(
@@ -3455,8 +3451,8 @@ class dblink:
         self._installed_instance. Otherwise, paths are selected from
         self.
         """
-        from portage.util.digraph import digraph
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        from portage.util.digraph import digraph
 
         if (
             self._linkmap_broken
@@ -3628,8 +3624,8 @@ class dblink:
         """
         Find preserved libraries that don't have any consumers left.
         """
-        from portage.util.digraph import digraph
         from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF as LinkageMap
+        from portage.util.digraph import digraph
 
         if (
             self._linkmap_broken
@@ -3801,8 +3797,8 @@ class dblink:
     def _collision_protect(self, srcroot, destroot, mypkglist, file_list, symlink_list):
         from portage.output import colorize
         from portage.util import normalize_path
-        from portage.util.path import iter_parents
         from portage.util._compare_files import compare_files
+        from portage.util.path import iter_parents
 
         real_relative_paths = {}
 
@@ -4101,8 +4097,12 @@ class dblink:
             self._scheduler.output(msg, background=background, log_path=log_path)
 
     def _elog_process(self, phasefilter=None):
-        from portage.elog import elog_process, collect_ebuild_messages, collect_messages
-        from portage.elog import _merge_logentries
+        from portage.elog import (
+            _merge_logentries,
+            collect_ebuild_messages,
+            collect_messages,
+            elog_process,
+        )
 
         cpv = self.mycpv
         if self._pipe is None:
@@ -4195,11 +4195,12 @@ class dblink:
         secondhand is a list of symlinks that have been skipped due to their target
         not existing; we will merge these symlinks at a later time.
         """
-        from portage.dep import match_from_list, _slot_separator, _repo_separator
+        from portage.dep import _repo_separator, _slot_separator, match_from_list
         from portage.package.ebuild.doebuild import (
-            doebuild_environment,
             _merge_unicode_error,
+            doebuild_environment,
         )
+        from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
         from portage.util import (
             ensure_dirs,
             grabdict,
@@ -4209,7 +4210,6 @@ class dblink:
         from portage.util.env_update import env_update
         from portage.util.install_mask import InstallMask, install_mask_dir
         from portage.util.writeable_check import get_ro_checker
-        from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
         from portage.versions import (
             _pkg_str,
             _unknown_repo,
@@ -4792,13 +4792,7 @@ class dblink:
             if symlink_collisions:
                 abort = True
                 msg = symlink_abort_msg % (self.settings.mycpv,)
-            elif collision_protect:
-                abort = True
-                msg = (
-                    _("Package '%s' NOT merged due to file collisions.")
-                    % self.settings.mycpv
-                )
-            elif protect_owned and owners:
+            elif collision_protect or protect_owned and owners:
                 abort = True
                 msg = (
                     _("Package '%s' NOT merged due to file collisions.")
@@ -5325,6 +5319,7 @@ class dblink:
 
         """
         from hashlib import md5
+
         from portage.checksum import _perform_md5_merge as perform_md5
         from portage.eapi import eapi_rewrites_symlinks
         from portage.util import normalize_path
@@ -5460,8 +5455,7 @@ class dblink:
                 # or utf_8 (see bug #382021).
                 myabsto = abssymlink(mysrc, target=myto)
 
-                if myabsto.startswith(srcroot):
-                    myabsto = myabsto[len(srcroot) :]
+                myabsto = myabsto.removeprefix(srcroot)
                 myabsto = myabsto.lstrip(sep)
                 if (
                     self.settings
@@ -5648,9 +5642,7 @@ class dblink:
                             # Error handling should be equivalent to
                             # portage.util.ensure_dirs() for cases
                             # like bug #187518.
-                            if e.errno in (errno.EEXIST,):
-                                pass
-                            elif os.path.isdir(mydest):
+                            if e.errno in (errno.EEXIST,) or os.path.isdir(mydest):
                                 pass
                             else:
                                 raise
@@ -5672,9 +5664,7 @@ class dblink:
                         # Error handling should be equivalent to
                         # portage.util.ensure_dirs() for cases
                         # like bug #187518.
-                        if e.errno in (errno.EEXIST,):
-                            pass
-                        elif os.path.isdir(mydest):
+                        if e.errno in (errno.EEXIST,) or os.path.isdir(mydest):
                             pass
                         else:
                             raise
@@ -5831,9 +5821,9 @@ class dblink:
 
             elif protect_if_modified:
                 data = self._installed_instance.getcontents()[k]
-                if data[0] == "obj" and data[2] == dest_md5:
-                    protected = False
-                elif data[0] == "sym" and data[2] == dest_link:
+                if (data[0] == "obj" and data[2] == dest_md5) or (
+                    data[0] == "sym" and data[2] == dest_link
+                ):
                     protected = False
 
         if protected and dest_mode is not None:
@@ -6082,8 +6072,7 @@ class dblink:
             encoding="utf-8",
             errors="backslashreplace",
         ) as f:
-            for x in mylist:
-                f.write(f"{x}\n")
+            f.writelines(f"{x}\n" for x in mylist)
 
     def isregular(self):
         "Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
@@ -6332,6 +6321,7 @@ def write_contents(contents, root, f):
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=False):
     import tarfile
+
     from portage.util import normalize_path
     from portage.util._xattr import xattr
 

@@ -1,11 +1,11 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import subprocess
 import sys
 
 import portage
-import os
 from portage.const import (
     PORTAGE_PYM_PATH,
     USER_CONFIG_PATH,

@@ -5,6 +5,9 @@
 
 __all__ = [
     "Atom",
+    "_repo_name_re",
+    "_repo_separator",
+    "_slot_separator",
     "best_match_to_list",
     "cpvequal",
     "dep_getcpv",
@@ -25,16 +28,14 @@ __all__ = [
     "remove_slot",
     "strip_empty",
     "use_reduce",
-    "_repo_name_re",
-    "_repo_separator",
-    "_slot_separator",
 ]
 
 import re
 import warnings
-
 from functools import lru_cache
+from typing import TYPE_CHECKING, Optional, Union
 
+import portage.cache.mappings
 from portage.eapi import _eapi_attrs, _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
@@ -50,8 +51,6 @@ from portage.versions import (
     vercmp,
     ververify,
 )
-import portage.cache.mappings
-from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:
     from _emerge.Package import Package
@@ -1047,16 +1046,16 @@ class _use_dep:
     __slots__ = (
         "_eapi_attrs",
         "conditional",
-        "missing_enabled",
-        "missing_disabled",
         "disabled",
         "enabled",
-        "tokens",
+        "missing_disabled",
+        "missing_enabled",
         "required",
+        "tokens",
     )
 
     class _conditionals_class:
-        __slots__ = ("enabled", "disabled", "equal", "not_equal")
+        __slots__ = ("disabled", "enabled", "equal", "not_equal")
 
         def items(self):
             for k in self.__slots__:
@@ -1184,7 +1183,7 @@ class _use_dep:
         return f"[{','.join(self.tokens)}]"
 
     def __repr__(self):
-        return f"portage.dep._use_dep({repr(self.tokens)})"
+        return f"portage.dep._use_dep({self.tokens!r})"
 
     def evaluate_conditionals(self, use):
         """
@@ -1453,23 +1452,23 @@ class _use_dep:
 
 class Atom:
     __slots__ = (
-        "_string",
+        "_blocker_obj",
+        "_build_id",
         "_cp",
         "_cpv",
-        "_version",
-        "_repo",
-        "_slot",
-        "_sub_slot",
-        "_slot_operator",
-        "_operator",
-        "_blocker_obj",
         "_eapi",
         "_extended_syntax",
-        "_build_id",
-        "_use",
-        "_without_use",
-        "_unevaluated_atom",
+        "_operator",
         "_orig_atom",
+        "_repo",
+        "_slot",
+        "_slot_operator",
+        "_string",
+        "_sub_slot",
+        "_unevaluated_atom",
+        "_use",
+        "_version",
+        "_without_use",
     )
 
     def __str__(self) -> str:
@@ -2948,10 +2947,8 @@ def get_required_use_flags(required_use, eapi=None):
     used_flags = set()
 
     def register_token(token):
-        if token.endswith("?"):
-            token = token[:-1]
-        if token.startswith("!"):
-            token = token[1:]
+        token = token.removesuffix("?")
+        token = token.removeprefix("!")
         used_flags.add(token)
 
     for token in mysplit:

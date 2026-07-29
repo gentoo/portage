@@ -1,24 +1,23 @@
 # Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
+import re
 import shutil
 import sys
-import re
 import textwrap
 
-import os
 import portage
-
+from portage._global_updates import _do_global_updates
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.dep import Atom
 from portage.exception import CorruptionKeyError
+from portage.output import colorize
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.update import update_dbentry
 from portage.util import ensure_dirs
 from portage.versions import _pkg_str
-from portage._global_updates import _do_global_updates
-from portage.output import colorize
 
 
 class UpdateDbentryTestCase(TestCase):

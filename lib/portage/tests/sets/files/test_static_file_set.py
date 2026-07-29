@@ -2,11 +2,11 @@
 # Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import tempfile
 
-import os
-from portage.tests import TestCase, test_cps
 from portage._sets.files import StaticFileSet
+from portage.tests import TestCase, test_cps
 
 
 class StaticFileSetTestCase(TestCase):

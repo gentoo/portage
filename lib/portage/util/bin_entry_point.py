@@ -3,9 +3,9 @@
 
 __all__ = ["bin_entry_point"]
 
+import os
 import sys
 
-import os
 from portage.const import PORTAGE_BIN_PATH
 
 

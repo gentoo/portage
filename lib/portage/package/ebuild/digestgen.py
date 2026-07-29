@@ -4,16 +4,15 @@
 __all__ = ["digestgen"]
 
 import errno
-
 import os
-import portage
 
+import portage
 from portage.const import MANIFEST2_HASH_DEFAULTS
 from portage.dbapi.porttree import FetchlistDict
 from portage.dep import use_reduce
 from portage.exception import (
-    InvalidDependString,
     FileNotFound,
+    InvalidDependString,
     PermissionDenied,
     PortagePackageException,
 )
@@ -53,7 +52,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                 for myfile in fetchlist_dict[cpv]:
                     distfiles_map.setdefault(myfile, []).append(cpv)
             except InvalidDependString as e:
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"!!! {e!s}\n", noiselevel=-1)
                 del e
                 return 0
         mytree = os.path.dirname(os.path.dirname(mysettings["O"]))

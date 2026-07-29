@@ -2,12 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import multiprocessing
+import os
+import shutil
 import sys
 import tempfile
 import traceback
 
-import os
-import shutil
 import portage
 from portage.exception import TryAgain
 from portage.tests import TestCase

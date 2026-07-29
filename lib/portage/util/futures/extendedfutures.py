@@ -11,7 +11,7 @@ __all__ = (
 )
 
 import concurrent.futures
-from concurrent.futures import Future, CancelledError
+from concurrent.futures import CancelledError, Future
 
 try:
     from concurrent.futures import InvalidStateError

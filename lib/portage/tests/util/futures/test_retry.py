@@ -1,20 +1,18 @@
 # Copyright 2018-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from concurrent.futures import Future, ThreadPoolExecutor
 import contextlib
-
 import threading
-
-import weakref
 import time
+import weakref
+from concurrent.futures import Future, ThreadPoolExecutor
 
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
 from portage.util.futures import asyncio
-from portage.util.futures.retry import retry
 from portage.util.futures.executor.fork import ForkExecutor
+from portage.util.futures.retry import retry
 
 
 class SucceedLaterException(Exception):

@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+
 from portage.dep import _repo_separator
 from portage.output import colorize
 

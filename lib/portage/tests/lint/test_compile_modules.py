@@ -3,11 +3,11 @@
 
 import errno
 import itertools
+import os
 import stat
 import sys
 
-import os
-from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
+from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PACKAGES, PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.tests.lint.metadata import module_metadata, script_metadata
 

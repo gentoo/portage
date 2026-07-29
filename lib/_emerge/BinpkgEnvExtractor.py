@@ -2,13 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import os
 import shlex
+
+from portage.const import BASH_BINARY
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
-
-import os
-from portage.const import BASH_BINARY
 
 
 class BinpkgEnvExtractor(CompositeTask):

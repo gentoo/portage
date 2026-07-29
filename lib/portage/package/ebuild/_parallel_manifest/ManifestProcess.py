@@ -2,10 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-
 import os
-import portage
 
+import portage
 from portage.exception import FileNotFound, PermissionDenied, PortagePackageException
 from portage.localization import _
 from portage.util._async.ForkProcess import ForkProcess

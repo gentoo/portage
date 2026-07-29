@@ -4,14 +4,15 @@
 import errno
 import io
 import logging
+import os
 import pickle
 
-import os
 from portage.exception import TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
 from portage.util.pickle import NoGlobalsUnpickler
+
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
 
 

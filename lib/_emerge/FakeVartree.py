@@ -1,15 +1,10 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import warnings
 
-from _emerge.Package import Package
-from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
-from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
-
-import os
 import portage
-
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
 from portage.dep._slot_operator import find_built_slot_operator_atoms
@@ -17,6 +12,10 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
 from portage.update import grab_updates, parse_updates, update_dbentries
 from portage.versions import _pkg_str
+
+from _emerge.Package import Package
+from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
+from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
 
 
 class FakeVardbGetPath:

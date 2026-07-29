@@ -2,20 +2,20 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-
-from _emerge.CompositeTask import CompositeTask
-
 import os
+
 from portage.dbapi._MergeProcess import MergeProcess
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+
+from _emerge.CompositeTask import CompositeTask
 
 
 class EbuildMerge(CompositeTask):
     __slots__ = (
         "exit_hook",
         "find_blockers",
-        "logger",
         "ldpath_mtimes",
+        "logger",
         "pkg",
         "pkg_count",
         "pkg_path",
@@ -70,11 +70,7 @@ class EbuildMerge(CompositeTask):
         pkg_path = self.pkg_path
         logger = self.logger
         if "noclean" not in self.settings.features:
-            short_msg = "emerge: ({} of {}) {} Clean Post".format(
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-            )
+            short_msg = f"emerge: ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} Clean Post"
             logger.log(
                 f" === ({pkg_count.curval} of {pkg_count.maxval}) "
                 f"Post-Build Cleaning ({pkg.cpv}::{pkg_path})",

@@ -3,7 +3,7 @@
 
 
 class SonameAtom:
-    __slots__ = ("multilib_category", "soname", "_hash_key", "_hash_value")
+    __slots__ = ("_hash_key", "_hash_value", "multilib_category", "soname")
 
     # Distiguishes package atoms from other atom types
     package = False

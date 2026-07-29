@@ -3,9 +3,9 @@
 
 __all__ = ["digestcheck"]
 
+import os
 import warnings
 
-import os
 from portage.checksum import _hash_filter
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _

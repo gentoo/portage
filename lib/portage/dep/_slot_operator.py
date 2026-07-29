@@ -1,10 +1,11 @@
 # Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.Package import Package
+
 from portage.dep import Atom, paren_enclose, use_reduce
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
-from _emerge.Package import Package
 
 
 def strip_slots(dep_struct):

@@ -2,7 +2,7 @@
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
-from portage.cache import template, cache_errors
+from portage.cache import cache_errors, template
 from portage.cache.template import reconstruct_eclasses
 
 
@@ -168,7 +168,7 @@ class SQLDatabase(template.database):
             # so we store only what's handed to us and is a known key
             db_values = []
             for key in self._known_keys:
-                if key in values and values[key]:
+                if values.get(key):
                     db_values.append({"key": key, "value": values[key]})
 
             if len(db_values) > 0:

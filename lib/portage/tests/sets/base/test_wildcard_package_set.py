@@ -1,10 +1,10 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from portage._sets.base import WildcardPackageSet
 from portage.dep import Atom
 from portage.exception import InvalidAtom
 from portage.tests import TestCase
-from portage._sets.base import WildcardPackageSet
 
 
 class WildcardPackageSetTestCase(TestCase):

@@ -9,11 +9,11 @@ __all__ = (
 )
 
 import os
+
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
+from portage.dep import Atom, _repo_separator, _slot_separator, cpvequal
 from portage.exception import InvalidDependString, SignatureException
 from portage.localization import localized_size
-from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import (
     blue,
     colorize,
@@ -24,6 +24,7 @@ from portage.output import (
     nc_len,
     teal,
 )
+from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 
 bad = create_color_func("BAD")
 from portage._sets.base import InternalPackageSet
@@ -33,11 +34,11 @@ from portage.versions import best
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
 from _emerge.resolver.output_helpers import (
-    _DisplayConfig,
-    _tree_display,
-    _PackageCounters,
-    _create_use_string,
     PkgInfo,
+    _create_use_string,
+    _DisplayConfig,
+    _PackageCounters,
+    _tree_display,
 )
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
@@ -350,10 +351,7 @@ class Display:
                         pkg_info.repo_path_real
                     )
                 else:
-                    self.repoadd = "{}=>{}".format(
-                        self.conf.repo_display.repoStr(repo_path_prev),
-                        self.conf.repo_display.repoStr(pkg_info.repo_path_real),
-                    )
+                    self.repoadd = f"{self.conf.repo_display.repoStr(repo_path_prev)}=>{self.conf.repo_display.repoStr(pkg_info.repo_path_real)}"
             if self.repoadd:
                 repoadd_set.add(self.repoadd)
 
@@ -465,18 +463,9 @@ class Display:
             self.verboseadd = None
         else:
             if not pkg_info.merge:
-                myprint = "[{}] {}{}".format(
-                    self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
-                    self.indent,
-                    self.pkgprint(pkg.cp, pkg_info),
-                )
+                myprint = f"[{self.pkgprint(pkg_info.operation.ljust(13), pkg_info)}] {self.indent}{self.pkgprint(pkg.cp, pkg_info)}"
             else:
-                myprint = "[{} {}] {}{}".format(
-                    self.pkgprint(pkg.type_name, pkg_info),
-                    pkg_info.attr_display,
-                    self.indent,
-                    self.pkgprint(pkg.cp, pkg_info),
-                )
+                myprint = f"[{self.pkgprint(pkg.type_name, pkg_info)} {pkg_info.attr_display}] {self.indent}{self.pkgprint(pkg.cp, pkg_info)}"
             if (self.newlp - nc_len(myprint)) > 0:
                 myprint = myprint + (" " * (self.newlp - nc_len(myprint)))
             myprint = myprint + " " + darkblue("[" + ver_str + "]") + " "
@@ -511,19 +500,9 @@ class Display:
         else:
             if not pkg_info.merge:
                 addl = self.empty_space_in_brackets()
-                myprint = "[{}{}] {}{}".format(
-                    self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
-                    addl,
-                    self.indent,
-                    self.pkgprint(pkg.cp, pkg_info),
-                )
+                myprint = f"[{self.pkgprint(pkg_info.operation.ljust(13), pkg_info)}{addl}] {self.indent}{self.pkgprint(pkg.cp, pkg_info)}"
             else:
-                myprint = "[{} {}] {}{}".format(
-                    self.pkgprint(pkg.type_name, pkg_info),
-                    pkg_info.attr_display,
-                    self.indent,
-                    self.pkgprint(pkg.cp, pkg_info),
-                )
+                myprint = f"[{self.pkgprint(pkg.type_name, pkg_info)} {pkg_info.attr_display}] {self.indent}{self.pkgprint(pkg.cp, pkg_info)}"
             if (self.newlp - nc_len(myprint)) > 0:
                 myprint = myprint + (" " * (self.newlp - nc_len(myprint)))
             myprint = myprint + " " + green("[" + ver_str + "]") + " "
@@ -545,21 +524,9 @@ class Display:
             pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
         if not pkg_info.merge:
             addl = self.empty_space_in_brackets()
-            myprint = "[{}{}] {}{} {}".format(
-                self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
-                addl,
-                self.indent,
-                self.pkgprint(pkg_str, pkg_info),
-                pkg_info.oldbest,
-            )
+            myprint = f"[{self.pkgprint(pkg_info.operation.ljust(13), pkg_info)}{addl}] {self.indent}{self.pkgprint(pkg_str, pkg_info)} {pkg_info.oldbest}"
         else:
-            myprint = "[{} {}] {}{} {}".format(
-                self.pkgprint(pkg.type_name, pkg_info),
-                pkg_info.attr_display,
-                self.indent,
-                self.pkgprint(pkg_str, pkg_info),
-                pkg_info.oldbest,
-            )
+            myprint = f"[{self.pkgprint(pkg.type_name, pkg_info)} {pkg_info.attr_display}] {self.indent}{self.pkgprint(pkg_str, pkg_info)} {pkg_info.oldbest}"
         return myprint
 
     def print_messages(self, show_repos):
@@ -735,8 +702,7 @@ class Display:
         @rtype string
         """
         ver_str = pkg.cpv.version
-        if ver_str.endswith("-r0"):
-            ver_str = ver_str[:-3]
+        ver_str = ver_str.removesuffix("-r0")
         return ver_str
 
     def _get_installed_best(self, pkg, pkg_info):
@@ -884,15 +850,9 @@ class Display:
                             pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
                         if not pkg_info.merge:
                             addl = self.empty_space_in_brackets()
-                            myprint = "[{}{}] ".format(
-                                self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
-                                addl,
-                            )
+                            myprint = f"[{self.pkgprint(pkg_info.operation.ljust(13), pkg_info)}{addl}] "
                         else:
-                            myprint = "[{} {}] ".format(
-                                self.pkgprint(pkg.type_name, pkg_info),
-                                pkg_info.attr_display,
-                            )
+                            myprint = f"[{self.pkgprint(pkg.type_name, pkg_info)} {pkg_info.attr_display}] "
                         myprint += (
                             self.indent
                             + self.pkgprint(pkg_str, pkg_info)
@@ -1008,7 +968,7 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
 
     highlight_use = set()
     if atom.use:
-        use_atom = f"{atom.cp}[{str(atom.use)}]"
+        use_atom = f"{atom.cp}[{atom.use!s}]"
         use_atom_set = InternalPackageSet(initial_atoms=(use_atom,))
         if not use_atom_set.findAtomForPackage(pkg, modified_use=pkg_use_enabled(pkg)):
             missing_iuse = pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required)

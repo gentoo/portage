@@ -15,6 +15,7 @@ if (
 
 
 import argparse
+
 import portage
 
 portage._internal_caller = True

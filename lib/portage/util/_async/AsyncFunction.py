@@ -3,12 +3,13 @@
 
 import functools
 import multiprocessing
+import os
 import pickle
 import traceback
 
-import os
-from portage.util._async.ForkProcess import ForkProcess
 from _emerge.PipeReader import PipeReader
+
+from portage.util._async.ForkProcess import ForkProcess
 
 
 class AsyncFunction(ForkProcess):
@@ -19,8 +20,8 @@ class AsyncFunction(ForkProcess):
     """
 
     __slots__ = (
-        "result",
         "_async_func_reader",
+        "result",
     )
 
     def _start(self):

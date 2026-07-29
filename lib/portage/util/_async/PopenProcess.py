@@ -1,8 +1,9 @@
 # Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import portage
 from _emerge.SubProcess import SubProcess
+
+import portage
 
 
 class PopenProcess(SubProcess):

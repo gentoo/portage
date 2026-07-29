@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+
 from portage.dep.soname.parse import parse_soname_deps
 from portage.util._dyn_libs.NeededEntry import NeededEntry
 

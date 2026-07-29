@@ -2,10 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-
 import os
-from portage.util._ctypes import load_libc
+
 from portage.util._async.ForkProcess import ForkProcess
+from portage.util._ctypes import load_libc
 
 
 class SyncfsProcess(ForkProcess):

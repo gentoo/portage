@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-from portage.process import find_binary
 import shlex
+
+from portage.process import find_binary
 
 
 def validate_cmd_var(v):

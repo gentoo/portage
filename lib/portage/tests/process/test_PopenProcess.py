@@ -1,15 +1,16 @@
 # Copyright 2012-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import subprocess
 import tempfile
 
-import os
+from _emerge.PipeReader import PipeReader
+
 from portage.tests import TestCase
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
-from _emerge.PipeReader import PipeReader
 
 
 class PopenPipeTestCase(TestCase):

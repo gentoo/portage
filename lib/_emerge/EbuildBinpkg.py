@@ -2,14 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import os
 import sys
 import tempfile
 
+import portage
+
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
-
-import os
-import portage
 
 
 class EbuildBinpkg(CompositeTask):

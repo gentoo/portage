@@ -1,15 +1,14 @@
 # Copyright 2016-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import subprocess
 import sys
 
-import os
 import portage
-
 from portage.const import PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
-from portage.tests import TestCase, CommandStep, FunctionStep
+from portage.tests import CommandStep, FunctionStep, TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 

@@ -2,13 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
-from portage.cache import fs_template
-from portage.cache import cache_errors
 import errno
+import os
 import stat
 import tempfile
-import os
 
+from portage.cache import cache_errors, fs_template
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 

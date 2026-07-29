@@ -1,10 +1,10 @@
 # Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 from itertools import chain
 
-import os
-from portage.const import PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
+from portage.const import PORTAGE_PYM_PACKAGES, PORTAGE_PYM_PATH
 from portage.tests import TestCase
 
 

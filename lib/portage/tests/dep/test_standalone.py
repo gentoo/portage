@@ -1,9 +1,9 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import cpvequal
 from portage.exception import PortageException
+from portage.tests import TestCase
 
 
 class TestStandalone(TestCase):

@@ -1,45 +1,44 @@
 # Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import collections
 import errno
 import functools
 import logging
+import os
 import stat
 import textwrap
 import time
 import warnings
-import collections
-from collections import deque, OrderedDict
+from collections import OrderedDict, deque
 from collections.abc import Callable, Iterable
 from itertools import chain
 
-import os
 import portage
-
 from portage.const import (
     PORTAGE_PACKAGE_ATOM,
+    SUPPORTED_GPKG_EXTENSIONS,
+    SUPPORTED_XPAK_EXTENSIONS,
     USER_CONFIG_PATH,
     VCS_DIRS,
-    SUPPORTED_XPAK_EXTENSIONS,
-    SUPPORTED_GPKG_EXTENSIONS,
 )
 from portage.dbapi import dbapi
+from portage.dbapi._similar_name_search import similar_name_search
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi.DummyTree import DummyTree
 from portage.dbapi.IndexedPortdb import IndexedPortdb
-from portage.dbapi._similar_name_search import similar_name_search
 from portage.dep import (
     Atom,
+    _repo_separator,
     best_match_to_list,
-    extract_affecting_use,
     check_required_use,
+    extract_affecting_use,
     human_readable_required_use,
     match_from_list,
-    _repo_separator,
 )
-from portage.dep.libc import find_libc_deps, strip_libc_deps
 from portage.dep._slot_operator import ignore_built_slot_operator_deps, strip_slots
-from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, _get_eapi_attrs
+from portage.dep.libc import find_libc_deps, strip_libc_deps
+from portage.eapi import _get_eapi_attrs, eapi_has_required_use, eapi_has_strong_blocks
 from portage.exception import (
     CorruptionKeyError,
     InvalidAtom,
@@ -52,27 +51,38 @@ from portage.exception import (
 from portage.output import colorize, create_color_func, darkgreen, green
 
 bad = create_color_func("BAD")
-from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReason
+# Type annotation imports
+from typing import TYPE_CHECKING, Any, Optional, Union
+
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet, WildcardPackageSet
+from portage.binpkg import get_binpkg_format
 from portage.dep._slot_operator import evaluate_slot_operator_equal_deps
-from portage.util import ConfigProtect, new_protect_filename
-from portage.util import cmp_sort_key, writemsg, writemsg_stdout
-from portage.util import ensure_dirs, normalize_path
-from portage.util import writemsg_level, write_atomic
+from portage.package.ebuild.getmaskingstatus import _getmaskingstatus, _MaskReason
+from portage.util import (
+    ConfigProtect,
+    cmp_sort_key,
+    ensure_dirs,
+    new_protect_filename,
+    normalize_path,
+    write_atomic,
+    writemsg,
+    writemsg_level,
+    writemsg_stdout,
+)
+from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
-from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util.portage_lru_cache import show_lru_cache_info
 from portage.versions import _pkg_str, catpkgsplit
-from portage.binpkg import get_binpkg_format
 
+from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
+from _emerge._serialize_frontier import _FrontierDigraph, _SerializeFrontier
 from _emerge.AbstractDepPriority import AbstractDepPriority
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
 from _emerge.BlockerCache import BlockerCache
 from _emerge.BlockerDepPriority import BlockerDepPriority
-from .chk_updated_cfg_files import chk_updated_cfg_files
 from _emerge.countdown import countdown
 from _emerge.create_world_atom import create_world_atom
 from _emerge.Dependency import Dependency
@@ -80,10 +90,8 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.DepPriority import DepPriority
 from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
-from _emerge._serialize_frontier import _FrontierDigraph, _SerializeFrontier
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.FakeVartree import FakeVartree
-from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge.is_valid_package_atom import (
     insert_category_into_atom,
     is_valid_package_atom,
@@ -91,6 +99,12 @@ from _emerge.is_valid_package_atom import (
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
+from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
+from _emerge.resolver.circular_dependency import circular_dependency_handler
+from _emerge.resolver.DbapiProvidesIndex import DbapiProvidesIndex
+from _emerge.resolver.output import Display, format_unmatched_atom
+from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
+from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.RootConfig import RootConfig
 from _emerge.search import search
 from _emerge.SetArg import SetArg
@@ -100,15 +114,7 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
-from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
-from _emerge.resolver.DbapiProvidesIndex import DbapiProvidesIndex
-from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
-from _emerge.resolver.slot_collision import slot_conflict_handler
-from _emerge.resolver.circular_dependency import circular_dependency_handler
-from _emerge.resolver.output import Display, format_unmatched_atom
-
-# Type annotation imports
-from typing import Any, Optional, Union, TYPE_CHECKING
+from .chk_updated_cfg_files import chk_updated_cfg_files
 
 if TYPE_CHECKING:
     import _emerge.stdout_spinner.stdout_spinner
@@ -231,8 +237,7 @@ def _gather_deps_closures(
             work.pop()
             if work:
                 parent = work[-1][0]
-                if lowlink[node] < lowlink[parent]:
-                    lowlink[parent] = lowlink[node]
+                lowlink[parent] = min(lowlink[parent], lowlink[node])
 
     # A component is ok iff none of its nodes is blocked or escaping and every
     # successor component is ok. Its closure is its own members plus the
@@ -963,7 +968,7 @@ class depgraph:
                 yield proc
 
     class _dynamic_deps_proc_exit:
-        __slots__ = ("_pkg", "_fake_vartree")
+        __slots__ = ("_fake_vartree", "_pkg")
 
         def __init__(self, pkg, fake_vartree):
             self._pkg = pkg
@@ -2251,7 +2256,7 @@ class depgraph:
                 "",
                 "backtracking due to slot conflict:",
                 f"   first package:  {existing_node}",
-                f"  package(s) to mask: {str(to_be_masked)}",
+                f"  package(s) to mask: {to_be_masked!s}",
                 f"      slot: {slot_atom}",
                 "   parents: {}".format(
                     ", ".join(f"({ppkg}, '{atom}')" for ppkg, atom in all_parents)
@@ -3893,10 +3898,7 @@ class depgraph:
                 have_arg = False
                 if not selective:
                     for parent, atom in self._dynamic_config._parent_atoms[pkg]:
-                        if isinstance(parent, AtomArg):
-                            have_arg = True
-                            break
-                        elif (
+                        if isinstance(parent, AtomArg) or (
                             isinstance(parent, SetArg)
                             and parent.name
                             != "__auto_slot_operator_replace_installed__"
@@ -5649,7 +5651,7 @@ class depgraph:
                     writemsg(
                         f"\n\n!!! Problem in '{atom}' dependencies.\n", noiselevel=-1
                     )
-                    writemsg(f"!!! {str(e)} {str(getattr(e, '__module__', None))}\n")
+                    writemsg(f"!!! {e!s} {getattr(e, '__module__', None)!s}\n")
                     raise
 
         try:
@@ -6630,10 +6632,13 @@ class depgraph:
                                 continue
 
                         root_slot = (pkg.root, pkg.slot_atom)
-                        if pkg.built and root_slot in self._rebuild.rebuild_list:
-                            mreasons = ["need to rebuild from source"]
-                        elif (
-                            pkg.installed and root_slot in self._rebuild.reinstall_list
+                        if (
+                            pkg.built
+                            and root_slot in self._rebuild.rebuild_list
+                            or (
+                                pkg.installed
+                                and root_slot in self._rebuild.reinstall_list
+                            )
                         ):
                             mreasons = ["need to rebuild from source"]
                         elif (
@@ -7412,11 +7417,11 @@ class depgraph:
 
     class _AutounmaskLevel:
         __slots__ = (
-            "allow_use_changes",
-            "allow_unstable_keywords",
             "allow_license_changes",
             "allow_missing_keywords",
             "allow_unmasks",
+            "allow_unstable_keywords",
+            "allow_use_changes",
         )
 
         def __init__(self):
@@ -8153,9 +8158,7 @@ class depgraph:
                             continue
 
                     if atom_cp is None or pkg.cp == atom_cp:
-                        if highest_version is None:
-                            highest_version = pkg
-                        elif pkg > highest_version:
+                        if highest_version is None or pkg > highest_version:
                             highest_version = pkg
                     # At this point, we've found the highest visible
                     # match from the current repo. Any lower versions
@@ -11279,9 +11282,7 @@ class depgraph:
             self._show_merge_list()
             writemsg(
                 "\n!!! --quickpkg-direct requires all "
-                "dependencies to be merged for root '{}'.\n".format(
-                    self._frozen_config._running_root.root
-                ),
+                f"dependencies to be merged for root '{self._frozen_config._running_root.root}'.\n",
                 noiselevel=-1,
             )
             writemsg(
@@ -12212,11 +12213,12 @@ def _backtrack_depgraph(
         )
         success, favorites = mydepgraph.select_files(myfiles)
 
-        if success or mydepgraph.need_config_change():
-            break
-        elif not allow_backtracking:
-            break
-        elif backtracked >= max_retries:
+        if (
+            success
+            or mydepgraph.need_config_change()
+            or not allow_backtracking
+            or backtracked >= max_retries
+        ):
             break
         elif mydepgraph.need_restart():
             backtracked += 1

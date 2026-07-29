@@ -2,28 +2,29 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.cache.mappings import UserDict
-from portage.proxy.objectproxy import ObjectProxy
-from portage.localization import _
+from portage.const import VCS_DIRS
 from portage.exception import (
-    InvalidAtom,
-    PortageException,
     FileNotFound,
+    InvalidAtom,
     InvalidLocation,
     OperationNotPermitted,
     ParseError,
     PermissionDenied,
+    PortageException,
     ReadOnlyFileSystem,
 )
-from portage.const import VCS_DIRS
+from portage.localization import _
+from portage.proxy.objectproxy import ObjectProxy
 
 __all__ = [
+    "ConfigProtect",
+    "LazyItemsDict",
     "apply_permissions",
     "apply_recursive_permissions",
     "apply_secpass_permissions",
     "apply_stat_permissions",
     "atomic_ofstream",
     "cmp_sort_key",
-    "ConfigProtect",
     "dump_traceback",
     "ensure_dirs",
     "find_updated_config_files",
@@ -35,9 +36,9 @@ __all__ = [
     "grabfile_package",
     "grablines",
     "initialize_logger",
-    "LazyItemsDict",
     "map_dictlist_vals",
     "new_protect_filename",
+    "no_color",
     "normalize_path",
     "stack_dictlist",
     "stack_dicts",
@@ -50,15 +51,13 @@ __all__ = [
     "writemsg",
     "writemsg_level",
     "writemsg_stdout",
-    "no_color",
 ]
 
-from contextlib import AbstractContextManager
-from copy import deepcopy
 import errno
+import glob
 import io
-from itertools import chain, filterfalse
 import logging
+import os
 import re
 import shlex
 import stat
@@ -66,10 +65,11 @@ import string
 import sys
 import tempfile
 import traceback
-import glob
+from contextlib import AbstractContextManager
+from copy import deepcopy
+from itertools import chain, filterfalse
 from typing import Optional, TextIO
 
-import os
 import portage
 
 noiselimit = 0
@@ -666,7 +666,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
                 errors="replace",
             ) as myfile:
                 if remember_source_file:
-                    mylines = [(line, myfilename) for line in myfile.readlines()]
+                    mylines = [(line, myfilename) for line in myfile]
                 else:
                     mylines = myfile.readlines()
         except OSError as e:
@@ -1688,7 +1688,7 @@ class LazyItemsDict(UserDict):
         return result
 
     class _LazyItem:
-        __slots__ = ("func", "pargs", "kwargs", "singleton")
+        __slots__ = ("func", "kwargs", "pargs", "singleton")
 
         def __init__(self, func, pargs, kwargs, singleton):
             if not pargs:

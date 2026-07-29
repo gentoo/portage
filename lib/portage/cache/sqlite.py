@@ -2,15 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
+import os
 import re
 
-import os
 import portage
-from portage.cache import fs_template
-from portage.cache import cache_errors
-
-from portage.util import writemsg
+from portage.cache import cache_errors, fs_template
 from portage.localization import _
+from portage.util import writemsg
 
 
 class database(fs_template.FsBased):
@@ -319,7 +317,7 @@ class database(fs_template.FsBased):
             s = " ".join(update_statement)
             cursor.execute(s)
         except self._db_error as e:
-            writemsg(f"{cpv}: {str(e)}\n")
+            writemsg(f"{cpv}: {e!s}\n")
             raise
 
     def commit(self):

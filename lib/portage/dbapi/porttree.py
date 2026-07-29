@@ -1,44 +1,42 @@
 # Copyright 1998-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-__all__ = ["close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"]
+__all__ = ["FetchlistDict", "close_portdbapi_caches", "portagetree", "portdbapi"]
+
+import collections
+import contextlib
+import errno
+import os
+import shlex
+import threading
+import traceback
+import warnings
+from collections import OrderedDict
+from collections.abc import Sequence
+from typing import Optional, Union
+from urllib.parse import urlparse
+
+from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import portage
-
+from portage import _eapi_is_deprecated, eapi_is_supported, eclass_cache
 from portage.cache import volatile
 from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.dbapi import dbapi
 from portage.exception import (
-    PortageException,
-    PortageKeyError,
     FileNotFound,
     InvalidAtom,
     InvalidData,
     InvalidDependString,
     InvalidPackageName,
+    PortageException,
+    PortageKeyError,
 )
 from portage.localization import _
-
-from portage import eclass_cache, eapi_is_supported, _eapi_is_deprecated
-from portage.versions import pkgsplit
 from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
-from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-
-import contextlib
-import os
-import threading
-import traceback
-import warnings
-import errno
-import shlex
-
-import collections
-from collections import OrderedDict
-from collections.abc import Sequence
-from typing import Optional, Union
-from urllib.parse import urlparse
+from portage.versions import pkgsplit
 
 
 def close_portdbapi_caches():
@@ -1149,7 +1147,7 @@ class portdbapi(dbapi):
 
     def cp_list(self, mycp, use_cache=1, mytree=None):
         from portage.util import writemsg
-        from portage.versions import ver_regexp, _pkg_str
+        from portage.versions import _pkg_str, ver_regexp
 
         # NOTE: Cache can be safely shared with the match cache, since the
         # match cache uses the result from dep_expand for the cache_key.
@@ -1334,7 +1332,7 @@ class portdbapi(dbapi):
                 or list of _pkg_str (depends on level)
         """
         from portage.dbapi.dep_expand import dep_expand
-        from portage.dep import match_from_list, _match_slot
+        from portage.dep import _match_slot, match_from_list
         from portage.versions import _pkg_str
 
         mydep = dep_expand(origdep, mydb=self, settings=self.settings)

@@ -2,10 +2,10 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from portage._sets.base import InternalPackageSet
 from portage.dep import Atom
 from portage.exception import InvalidAtom
 from portage.tests import TestCase
-from portage._sets.base import InternalPackageSet
 
 
 class InternalPackageSetTestCase(TestCase):

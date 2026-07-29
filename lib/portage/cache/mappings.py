@@ -3,11 +3,11 @@
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
 __all__ = [
+    "LazyLoad",
     "Mapping",
     "MutableMapping",
-    "UserDict",
     "ProtectedDict",
-    "LazyLoad",
+    "UserDict",
     "slot_dict_class",
 ]
 
@@ -119,11 +119,11 @@ class MutableMapping(Mapping):
             pass
         elif hasattr(other, "iteritems"):
             # Use getattr to avoid interference from 2to3.
-            for k, v in getattr(other, "iteritems")():
+            for k, v in other.iteritems():
                 self[k] = v
         elif hasattr(other, "items"):
             # Use getattr to avoid interference from 2to3.
-            for k, v in getattr(other, "items")():
+            for k, v in other.items():
                 self[k] = v
         elif hasattr(other, "keys"):
             for k in other.keys():
@@ -192,7 +192,7 @@ class ProtectedDict(MutableMapping):
     the underlying dict from changes
     """
 
-    __slots__ = ("orig", "new", "blacklist")
+    __slots__ = ("blacklist", "new", "orig")
 
     def __init__(self, orig):
         self.orig = orig
@@ -238,7 +238,7 @@ class LazyLoad(Mapping):
     Lazy loading of values for a dict
     """
 
-    __slots__ = ("pull", "d")
+    __slots__ = ("d", "pull")
 
     def __init__(self, pull_items_func, initial_items=[]):
         self.d = {}
@@ -352,11 +352,11 @@ class _SlotDict:
             pass
         elif hasattr(other, "iteritems"):
             # Use getattr to avoid interference from 2to3.
-            for k, v in getattr(other, "iteritems")():
+            for k, v in other.iteritems():
                 self[k] = v
         elif hasattr(other, "items"):
             # Use getattr to avoid interference from 2to3.
-            for k, v in getattr(other, "items")():
+            for k, v in other.items():
                 self[k] = v
         elif hasattr(other, "keys"):
             for k in other.keys():

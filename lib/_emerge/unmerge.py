@@ -2,23 +2,23 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import os
 import signal
 import sys
 import textwrap
-import os
-import portage
 
-from portage.dbapi._expand_new_virt import expand_new_virt
-from portage.output import bold, colorize, darkgreen, green
+import portage
 from portage._sets import SETPREFIX
 from portage._sets.base import EditablePackageSet
-from portage.versions import cpv_sort_key, _pkg_str
+from portage.dbapi._expand_new_virt import expand_new_virt
+from portage.output import bold, colorize, darkgreen, green
+from portage.versions import _pkg_str, cpv_sort_key
 
+from _emerge.countdown import countdown
 from _emerge.emergelog import emergelog
 from _emerge.Package import Package
-from _emerge.UserQuery import UserQuery
 from _emerge.UninstallFailure import UninstallFailure
-from _emerge.countdown import countdown
+from _emerge.UserQuery import UserQuery
 
 
 def _unmerge_display(
@@ -167,7 +167,7 @@ def _unmerge_display(
                         )
                         return 1, {}
 
-                    for idx in range(0, sp_vdb_len):
+                    for idx in range(sp_vdb_len):
                         if idx >= sp_absx_len or sp_vdb[idx] != sp_absx[idx]:
                             print(sp_absx)
                             print(absx)

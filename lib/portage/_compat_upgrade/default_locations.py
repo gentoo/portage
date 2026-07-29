@@ -1,11 +1,10 @@
 # Copyright 2018-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import re
 
-import os
 import portage
-
 from portage.const import GLOBAL_CONFIG_PATH
 
 COMPAT_DISTDIR = "usr/portage/distfiles"
@@ -71,9 +70,7 @@ def main():
             if do_distdir:
                 compat_setting = f'DISTDIR="{compat_distdir}"'
                 out.einfo(
-                    "Setting make.globals default {} for backward compatibility".format(
-                        compat_setting
-                    )
+                    f"Setting make.globals default {compat_setting} for backward compatibility"
                 )
                 content = re.sub(
                     "^DISTDIR=.*$", compat_setting, content, flags=re.MULTILINE
@@ -81,9 +78,7 @@ def main():
             if do_pkgdir:
                 compat_setting = f'PKGDIR="{compat_pkgdir}"'
                 out.einfo(
-                    "Setting make.globals default {} for backward compatibility".format(
-                        compat_setting
-                    )
+                    f"Setting make.globals default {compat_setting} for backward compatibility"
                 )
                 content = re.sub(
                     "^PKGDIR=.*$", compat_setting, content, flags=re.MULTILINE
@@ -91,9 +86,7 @@ def main():
             if do_rpmdir:
                 compat_setting = f'RPMDIR="{compat_rpmdir}"'
                 out.einfo(
-                    "Setting make.globals default {} for backward compatibility".format(
-                        compat_setting
-                    )
+                    f"Setting make.globals default {compat_setting} for backward compatibility"
                 )
                 content = re.sub(
                     "^RPMDIR=.*$", compat_setting, content, flags=re.MULTILINE
@@ -109,9 +102,7 @@ def main():
             content = f.read()
             compat_setting = f"location = {compat_main_repo}"
             out.einfo(
-                "Setting repos.conf default {} for backward compatibility".format(
-                    compat_setting
-                )
+                f"Setting repos.conf default {compat_setting} for backward compatibility"
             )
             content = re.sub(
                 "^location =.*$", compat_setting, content, flags=re.MULTILINE

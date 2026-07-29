@@ -2,11 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
+import operator
+import warnings
+
 from portage.cache import cache_errors
 from portage.cache.cache_errors import InvalidRestriction
 from portage.cache.mappings import ProtectedDict
-import warnings
-import operator
 
 
 class database:

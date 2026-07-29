@@ -1,16 +1,15 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import tempfile
-
 import os
 import shutil
-import portage
+import tempfile
 
+import portage
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom
-from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
+from portage.package.ebuild.config import config
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -415,15 +414,13 @@ class ConfigTestCase(TestCase):
                 mode="w",
                 encoding="utf-8",
             ) as f:
-                for line in package_env:
-                    f.write(line + "\n")
+                f.writelines(line + "\n" for line in package_env)
 
             env_dir = os.path.join(user_config_dir, "env")
             os.makedirs(env_dir)
             for k, v in env_files.items():
                 with open(os.path.join(env_dir, k), mode="w", encoding="utf-8") as f:
-                    for line in v:
-                        f.write(line + "\n")
+                    f.writelines(line + "\n" for line in v)
 
             playground = ResolverPlayground(eprefix=eprefix, ebuilds=ebuilds)
             settings = config(clone=playground.settings)

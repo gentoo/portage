@@ -2,9 +2,9 @@
 # Copyright 2007-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from portage._sets.shell import CommandOutputSet
 from portage.process import find_binary
 from portage.tests import TestCase, test_cps
-from portage._sets.shell import CommandOutputSet
 
 
 class CommandOutputSetTestCase(TestCase):

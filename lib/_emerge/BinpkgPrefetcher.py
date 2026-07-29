@@ -2,16 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import os
 import sys
 
-from _emerge.BinpkgFetcher import BinpkgFetcher
-from _emerge.CompositeTask import CompositeTask
-from _emerge.BinpkgVerifier import BinpkgVerifier
-import os
 import portage
-
 from portage.elog import messages as elog_messages
 from portage.util import no_color
+
+from _emerge.BinpkgFetcher import BinpkgFetcher
+from _emerge.BinpkgVerifier import BinpkgVerifier
+from _emerge.CompositeTask import CompositeTask
 
 
 class BinpkgPrefetcher(CompositeTask):

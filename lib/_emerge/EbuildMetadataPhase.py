@@ -1,17 +1,16 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
-import os
 import fcntl
+import os
+import sys
 import tempfile
 
-from _emerge.SubProcess import SubProcess
-
+import portage
 from portage.cache.mappings import slot_dict_class
 from portage.util.futures import asyncio
 
-import portage
+from _emerge.SubProcess import SubProcess
 
 
 class EbuildMetadataPhase(SubProcess):
@@ -48,8 +47,9 @@ class EbuildMetadataPhase(SubProcess):
         self._registered = True
 
     async def _async_start(self):
-        from _emerge.EbuildPhase import _setup_locale
         from portage.package.ebuild.doebuild import doebuild
+
+        from _emerge.EbuildPhase import _setup_locale
 
         ebuild_path = self.ebuild_hash.location
 

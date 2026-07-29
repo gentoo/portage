@@ -12,7 +12,6 @@ except ImportError:
     selinux = None
 
 import portage
-
 from portage.localization import _
 
 

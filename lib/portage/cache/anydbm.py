@@ -9,11 +9,10 @@ try:
 except ImportError:
     gdbm = None
 
+import os
 import pickle
 
-import os
-from portage.cache import fs_template
-from portage.cache import cache_errors
+from portage.cache import cache_errors, fs_template
 
 
 class database(fs_template.FsBased):

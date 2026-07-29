@@ -2,17 +2,17 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import glob
+import os
 import shlex
 import time
 
-import os
-from portage.exception import PortageKeyError
-from portage.versions import best, catsplit, vercmp
+from portage._sets import SetConfigError, get_boolean
+from portage._sets.base import PackageSet
 from portage.dep import Atom, use_reduce
 from portage.dep._slot_operator import strip_slots
+from portage.exception import PortageKeyError
 from portage.localization import _
-from portage._sets.base import PackageSet
-from portage._sets import SetConfigError, get_boolean
+from portage.versions import best, catsplit, vercmp
 
 __all__ = [
     "CategorySet",
@@ -367,9 +367,8 @@ class CategorySet(PackageSet):
             s = "visible"
         else:
             s = "all"
-        self.description = "Package set containing {} packages of category {}".format(
-            s,
-            self._category,
+        self.description = (
+            f"Package set containing {s} packages of category {self._category}"
         )
 
     def load(self):

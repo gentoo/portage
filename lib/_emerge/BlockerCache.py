@@ -2,13 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import os
+import pickle
+
+import portage
+from portage.data import secpass
 from portage.dep import Atom
 from portage.util import writemsg
 from portage.util.pickle import NoGlobalsUnpickler
-from portage.data import secpass
-import os
-import portage
-import pickle
 
 
 class BlockerCache(portage.cache.mappings.MutableMapping):
@@ -57,7 +58,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
                 pass
             else:
                 writemsg(
-                    f"!!! Error loading '{self._cache_filename}': {str(e)}\n",
+                    f"!!! Error loading '{self._cache_filename}': {e!s}\n",
                     noiselevel=-1,
                 )
             del e

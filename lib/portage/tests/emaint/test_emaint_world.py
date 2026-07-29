@@ -2,18 +2,19 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+
 import pytest
 
 from portage.tests import CommandStep, FunctionStep
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.emaint.EmaintTestCase import EmaintTestCase
+from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
 
 class EmaintWorldTestCase(EmaintTestCase):
     def in_world(self, playground, atom):
         world_file = os.path.join(playground.eroot, "var", "lib", "portage", "world")
         with open(world_file) as f:
-            atoms = (line.strip() for line in f.readlines())
+            atoms = (line.strip() for line in f)
             return atom in atoms
 
     def testWorldInstalled(self):

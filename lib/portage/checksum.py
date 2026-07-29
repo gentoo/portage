@@ -7,11 +7,11 @@ import errno
 import functools
 import hashlib
 import os
-import portage
 import queue
 import stat
 import threading
 
+import portage
 from portage.const import HASHING_BLOCKSIZE
 from portage.localization import _
 
@@ -316,8 +316,8 @@ class _hash_filter:
     """
 
     __slots__ = (
-        "transparent",
         "_tokens",
+        "transparent",
     )
 
     def __init__(self, filter_str):

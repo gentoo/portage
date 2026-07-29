@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2024  Alexey Gladkov <gladkov.alexey@gmail.com>
 
+import logging
 import os
 import os.path
-import logging
-import zipfile
 import shutil
 import tempfile
 import urllib.request
+import zipfile
 
 import portage
-from portage.util import writemsg_level, writemsg_stdout
 from portage.sync.syncbase import SyncBase
+from portage.util import writemsg_level, writemsg_stdout
 
 
 class ZipFile(SyncBase):

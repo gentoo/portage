@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
+
 from portage.util.SlotObject import SlotObject
 
 

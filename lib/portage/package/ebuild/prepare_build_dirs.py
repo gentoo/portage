@@ -5,14 +5,13 @@ __all__ = ["prepare_build_dirs"]
 
 import errno
 import gzip
+import os
+import pwd
+import shutil
 import stat
 import time
-import pwd
 
-import os
-import shutil
 import portage
-
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import (
     DirectoryNotFound,
@@ -314,7 +313,7 @@ def _prepare_features_dirs(mysettings):
 
             except PortageException as e:
                 failure = True
-                writemsg(f"\n!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"\n!!! {e!s}\n", noiselevel=-1)
                 writemsg(
                     _("!!! Failed resetting perms on %s='%s'\n")
                     % (kwargs["basedir_var"], basedir),
@@ -385,7 +384,7 @@ def _prepare_workdir(mysettings):
                     mode=0o2770,
                 )
         except PortageException as e:
-            writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+            writemsg(f"!!! {e!s}\n", noiselevel=-1)
             writemsg(
                 _("!!! Permission issues with PORTAGE_LOGDIR='%s'\n")
                 % mysettings["PORTAGE_LOGDIR"],

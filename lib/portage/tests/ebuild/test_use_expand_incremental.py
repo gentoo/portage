@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -102,8 +103,7 @@ class UseExpandIncrementalTestCase(TestCase):
                         mode="w",
                         encoding="utf-8",
                     ) as f:
-                        for line in v:
-                            f.write(f"{line}\n")
+                        f.writelines(f"{line}\n" for line in v)
 
             # The config must be reloaded in order to account
             # for the above profile customizations.

@@ -1,9 +1,9 @@
 # Copyright 2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import use_reduce
 from portage.dep._dnf import dnf_convert
+from portage.tests import TestCase
 
 
 class DNFConvertTestCase(TestCase):

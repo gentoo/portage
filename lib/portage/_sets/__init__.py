@@ -3,24 +3,28 @@
 
 __all__ = [
     "SETPREFIX",
-    "get_boolean",
-    "SetConfigError",
     "SetConfig",
+    "SetConfigError",
+    "get_boolean",
     "load_default_config",
 ]
 
 import os
+
 import portage
 from portage import load_mod
-from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
-from portage.const import VCS_DIRS
-from portage.const import _ENABLE_SET_CONFIG
+from portage.const import (
+    _ENABLE_SET_CONFIG,
+    GLOBAL_CONFIG_PATH,
+    USER_CONFIG_PATH,
+    VCS_DIRS,
+)
 from portage.exception import PackageSetNotFound
 from portage.localization import _
 from portage.util.configparser import (
-    SafeConfigParser,
     NoOptionError,
     ParsingError,
+    SafeConfigParser,
     read_configs,
 )
 

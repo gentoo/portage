@@ -15,8 +15,8 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import os
-from os import path as osp
 import sys
+from os import path as osp
 
 if osp.isfile(
     osp.abspath(osp.join(osp.dirname(__file__), "../../../../.portage_not_installed"))

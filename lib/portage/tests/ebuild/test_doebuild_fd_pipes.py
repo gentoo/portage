@@ -2,17 +2,17 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import multiprocessing
-
 import os
-import portage
 
-from portage.tests import TestCase
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage.util._async.ForkProcess import ForkProcess
-from portage.util._async.TaskScheduler import TaskScheduler
 from _emerge.Package import Package
 from _emerge.PipeReader import PipeReader
+
+import portage
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
+from portage.tests import TestCase
+from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.util._async.ForkProcess import ForkProcess
+from portage.util._async.TaskScheduler import TaskScheduler
 
 
 class DoebuildFdPipesTestCase(TestCase):

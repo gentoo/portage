@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import syslog
+
 from portage.const import EBUILD_PHASES
 
 _pri = {

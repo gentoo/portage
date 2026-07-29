@@ -3,12 +3,12 @@
 
 """Tests for the portage.util._xattr module"""
 
+import subprocess
 from unittest import mock
 
-import subprocess
-
 from portage.tests import TestCase
-from portage.util._xattr import xattr as _xattr, _XattrSystemCommands, _XattrStub
+from portage.util._xattr import _XattrStub, _XattrSystemCommands
+from portage.util._xattr import xattr as _xattr
 
 orig_popen = subprocess.Popen
 

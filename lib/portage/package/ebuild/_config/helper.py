@@ -7,7 +7,8 @@ __all__ = (
 )
 
 from _emerge.Package import Package
-from portage.dep import best_match_to_list, _repo_separator
+
+from portage.dep import _repo_separator, best_match_to_list
 
 
 def ordered_by_atom_specificity(cpdict, pkg, repo=None):

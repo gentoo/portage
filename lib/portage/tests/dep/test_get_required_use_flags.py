@@ -1,9 +1,9 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import get_required_use_flags
 from portage.exception import InvalidDependString
+from portage.tests import TestCase
 
 
 class TestCheckRequiredUse(TestCase):

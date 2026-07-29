@@ -22,11 +22,10 @@ Everything here degrades silently: if the runtime directory is not
 writable (e.g. unprivileged, no /run) emerge proceeds unaffected.
 """
 
+import asyncio as _asyncio
 import json
 import os as _os
 import time
-
-import asyncio as _asyncio
 
 import portage
 import portage.exception

@@ -1,20 +1,19 @@
 # Copyright 2010-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import fcntl
 import functools
 import io
 import multiprocessing
+import os
 import platform
 
-import fcntl
-import os
 import portage
-
-from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage.util._ctypes import load_libc
 import portage.elog.messages
-from portage.util._async.ForkProcess import ForkProcess
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util import no_color
+from portage.util._async.ForkProcess import ForkProcess
+from portage.util._ctypes import load_libc
 
 
 class MergeProcess(ForkProcess):
@@ -24,26 +23,26 @@ class MergeProcess(ForkProcess):
     """
 
     __slots__ = (
-        "mycat",
-        "mypkg",
-        "settings",
-        "treetype",
-        "vartree",
-        "blockers",
-        "pkgloc",
-        "infloc",
-        "myebuild",
-        "mydbapi",
-        "postinst_failure",
-        "prev_mtimes",
-        "unmerge",
-        "_elog_reader_fd",
         "_buf",
         "_counter",
         "_dblink",
         "_elog_keys",
+        "_elog_reader_fd",
         "_locked_vdb",
         "_mtime_reader",
+        "blockers",
+        "infloc",
+        "mycat",
+        "mydbapi",
+        "myebuild",
+        "mypkg",
+        "pkgloc",
+        "postinst_failure",
+        "prev_mtimes",
+        "settings",
+        "treetype",
+        "unmerge",
+        "vartree",
     )
 
     def _start(self):

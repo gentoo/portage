@@ -2,16 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
-
 import os
-import portage
 
+import portage
 from portage.dep import Atom, _repo_name_re
 from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages
 from portage.exception import InvalidAtom
 from portage.package.ebuild._ipc.IpcCommand import IpcCommand
-from portage.util import normalize_path, no_color
+from portage.util import no_color, normalize_path
 from portage.versions import best
 
 

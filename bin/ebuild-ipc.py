@@ -81,15 +81,15 @@ try:
     portage._internal_caller = True
     portage._disable_legacy_globals()
 
-    from portage.util._eventloop.global_event_loop import global_event_loop
-    from portage.util.pickle import NoGlobalsUnpickler
     from _emerge.AbstractPollTask import AbstractPollTask
     from _emerge.PipeReader import PipeReader
+    from portage.util._eventloop.global_event_loop import global_event_loop
+    from portage.util.pickle import NoGlobalsUnpickler
 
     RETURNCODE_WRITE_FAILED = 2
 
     class FifoWriter(AbstractPollTask):
-        __slots__ = ("buf", "fifo", "_fd")
+        __slots__ = ("_fd", "buf", "fifo")
 
         def _start(self):
             try:

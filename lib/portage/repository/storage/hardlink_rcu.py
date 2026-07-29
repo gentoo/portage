@@ -2,17 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
-
 import os
-import portage
 
+from _emerge.SpawnProcess import SpawnProcess
+
+import portage
 from portage.repository.storage.interface import (
     RepoStorageException,
     RepoStorageInterface,
 )
 from portage.util.futures import asyncio
-
-from _emerge.SpawnProcess import SpawnProcess
 
 
 class HardlinkRcuRepoStorage(RepoStorageInterface):
@@ -93,8 +92,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
             self._spare_snapshots = 1
         else:
             self._spare_snapshots = repo.sync_rcu_spare_snapshots
-        if self._spare_snapshots < 0:
-            self._spare_snapshots = 0
+        self._spare_snapshots = max(self._spare_snapshots, 0)
         if repo.sync_rcu_ttl_days is None or repo.sync_rcu_ttl_days < 0:
             self._ttl_days = 1
         else:

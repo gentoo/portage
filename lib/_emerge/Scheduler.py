@@ -1,11 +1,11 @@
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from collections import deque
-import io
 import gc
 import gzip
+import io
 import logging
+import os
 import signal
 import sys
 import textwrap
@@ -13,8 +13,8 @@ import time
 import warnings
 import weakref
 import zlib
+from collections import deque
 
-import os
 import portage
 from portage import installation
 from portage.cache.mappings import slot_dict_class
@@ -24,17 +24,20 @@ from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
-from portage.util import ensure_dirs, writemsg, writemsg_level
-from portage.util.futures import asyncio
-from portage.util.path import first_existing
-from portage.util.SlotObject import SlotObject
-from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir, _prepare_self_update
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
+from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util.futures import asyncio
+from portage.util.path import first_existing
+from portage.util.SlotObject import SlotObject
 
 import _emerge
+from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
+from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
+from _emerge._observability import ObservabilityMonitor
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -43,18 +46,15 @@ from _emerge.BlockerDB import BlockerDB
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
-from _emerge.DepPriority import DepPriority
 from _emerge.depgraph import depgraph, resume_depgraph
+from _emerge.DepPriority import DepPriority
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.FakeVartree import FakeVartree
 from _emerge.getloadavg import getloadavg
-from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
-from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
-from _emerge._observability import ObservabilityMonitor
 from _emerge.MergeListItem import MergeListItem
 from _emerge.Package import Package
 from _emerge.PackageMerge import PackageMerge
@@ -83,7 +83,7 @@ class Scheduler(PollScheduler):
     )
 
     class _iface_class(SchedulerInterface):
-        __slots__ = ("fetch", "scheduleSetup", "scheduleUnpack", "notifyPhase")
+        __slots__ = ("fetch", "notifyPhase", "scheduleSetup", "scheduleUnpack")
 
     class _fetch_iface_class(SlotObject):
         __slots__ = ("log_file", "schedule")
@@ -126,7 +126,7 @@ class Scheduler(PollScheduler):
         long before the config instance actually becomes needed, like
         when prefetchers are constructed for the whole merge list."""
 
-        __slots__ = ("_root", "_allocate", "_deallocate")
+        __slots__ = ("_allocate", "_deallocate", "_root")
 
         def __init__(self, root, allocate, deallocate):
             self._root = root
@@ -2133,8 +2133,7 @@ class Scheduler(PollScheduler):
                 return False
 
             delay = self._job_delay_max * avg1 / self._max_load
-            if delay > self._job_delay_max:
-                delay = self._job_delay_max
+            delay = min(delay, self._job_delay_max)
             elapsed_seconds = current_time - self._previous_job_start_time
             # elapsed_seconds < 0 means the system clock has been adjusted
             if elapsed_seconds > 0 and elapsed_seconds < delay:
@@ -2582,7 +2581,7 @@ class Scheduler(PollScheduler):
                     else:
                         writemsg_level(
                             f'\n!!! Unable to record {atom} in "world"\n',
-                            level=logging.WARN,
+                            level=logging.WARNING,
                             noiselevel=-1,
                         )
         finally:

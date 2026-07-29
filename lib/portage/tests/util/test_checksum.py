@@ -4,20 +4,19 @@
 import os
 import tempfile
 
-from portage.tests import TestCase
-
 from portage.checksum import (
-    checksum_str,
-    perform_all,
-    perform_multiple_checksums,
-    verify_all,
-    hashfunc_keys,
+    _CHECKSUM_PARALLEL_MIN_SIZE,
     _apply_hash_filter,
     _checksum_file_parallel,
     _checksum_file_serial,
-    _CHECKSUM_PARALLEL_MIN_SIZE,
+    checksum_str,
+    hashfunc_keys,
+    perform_all,
+    perform_multiple_checksums,
+    verify_all,
 )
 from portage.exception import DigestException, FileNotFound
+from portage.tests import TestCase
 
 
 class ChecksumTestCase(TestCase):

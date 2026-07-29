@@ -8,17 +8,17 @@ import portage
 
 portage._internal_caller = True
 portage._sync_mode = True
-from portage.binrepo.config import BinRepoConfigLoader
-from portage.const import PORTAGE_BASE_PATH, BINREPOS_CONF_FILE
-from portage.output import bold, red, create_color_func
-from portage._global_updates import _global_updates
-from portage.sync.controller import SyncManager
-from portage.util.digraph import digraph
-from portage.util.futures import asyncio
-from portage.util._async.AsyncScheduler import AsyncScheduler
-
 import _emerge
 from _emerge.emergelog import emergelog
+
+from portage._global_updates import _global_updates
+from portage.binrepo.config import BinRepoConfigLoader
+from portage.const import BINREPOS_CONF_FILE, PORTAGE_BASE_PATH
+from portage.output import bold, create_color_func, red
+from portage.sync.controller import SyncManager
+from portage.util._async.AsyncScheduler import AsyncScheduler
+from portage.util.digraph import digraph
+from portage.util.futures import asyncio
 
 warn = create_color_func("WARN")
 
@@ -39,8 +39,8 @@ class SyncRepos:
         @param emerge_config: optional an emerge_config instance to use
         @param emerge_logging: boolean, defaults to False
         """
-        from _emerge.main import parse_opts
         from _emerge.actions import load_emerge_config
+        from _emerge.main import parse_opts
 
         if emerge_config is None:
             # need a basic options instance
@@ -128,10 +128,9 @@ class SyncRepos:
         """
         selected = []
         for repo in available:
-            if repo.name in repos:
-                selected.append(repo)
-            elif repo.aliases is not None and any(
-                alias in repos for alias in repo.aliases
+            if (repo.name in repos) or (
+                repo.aliases is not None
+                and any(alias in repos for alias in repo.aliases)
             ):
                 selected.append(repo)
         return selected
@@ -327,7 +326,6 @@ class SyncRepos:
                 early_update_packages[key_package] = f"OpenPGP keys ({repo.name})"
             except AttributeError:
                 continue
-        #
         binrepos_config_paths = []
         if portage._not_installed:
             binrepos_config_paths.append(
@@ -412,7 +410,7 @@ class SyncRepos:
 
     def _reload_config(self):
         """Reload the whole config from scratch."""
-        from _emerge.actions import load_emerge_config, adjust_configs
+        from _emerge.actions import adjust_configs, load_emerge_config
 
         load_emerge_config(emerge_config=self.emerge_config)
         adjust_configs(self.emerge_config.opts, self.emerge_config.trees)

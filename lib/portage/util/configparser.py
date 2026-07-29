@@ -15,14 +15,15 @@ __all__ = [
 # - RawConfigParser that provides no interpolation for values.
 
 import io
-
+from configparser import ConfigParser as SafeConfigParser
 from configparser import (
     Error as ConfigParserError,
+)
+from configparser import (
     NoOptionError,
     ParsingError,
     RawConfigParser,
 )
-from configparser import ConfigParser as SafeConfigParser
 
 
 def read_configs(parser, paths):

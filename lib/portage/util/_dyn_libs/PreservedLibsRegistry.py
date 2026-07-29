@@ -4,16 +4,15 @@
 import errno
 import json
 import logging
+import os
 import stat
 
-import os
 from portage import abssymlink
 from portage.exception import PermissionDenied
 from portage.localization import _
-from portage.util import atomic_ofstream
-from portage.util import writemsg_level
-from portage.versions import cpv_getkey
 from portage.locks import lockfile, unlockfile
+from portage.util import atomic_ofstream, writemsg_level
+from portage.versions import cpv_getkey
 
 
 class PreservedLibsRegistry:

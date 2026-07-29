@@ -4,39 +4,39 @@
 import functools
 import io
 import multiprocessing
+import os
 import shlex
+import shutil
 import signal
 import tempfile
 import types
 
-import os
-import shutil
-import portage
+from _emerge.EbuildFetcher import EbuildFetcher
+from _emerge.Package import Package
 
+import portage
+from portage._emirrordist.Config import Config as EmirrordistConfig
 from portage.checksum import checksum_str
 from portage.const import BASH_BINARY, MANIFEST2_HASH_DEFAULTS, PORTAGE_PYM_PATH
-from portage.tests import TestCase
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.tests.util.test_socks5 import AsyncHTTPServer
-from portage.util.configparser import ConfigParserError
-from portage.util.futures import asyncio
-from portage.util.futures.executor.fork import ForkExecutor
-from portage.util._async.SchedulerInterface import SchedulerInterface
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.fetch import (
     ContentHashLayout,
     DistfileName,
-    _download_suffix,
-    fetch,
     FilenameHashLayout,
     FlatLayout,
     MirrorLayoutConfig,
+    _download_suffix,
+    fetch,
 )
-from portage._emirrordist.Config import Config as EmirrordistConfig
-from _emerge.EbuildFetcher import EbuildFetcher
-from _emerge.Package import Package
+from portage.tests import TestCase
+from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.tests.util.test_socks5 import AsyncHTTPServer
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.configparser import ConfigParserError
+from portage.util.futures import asyncio
+from portage.util.futures.executor.fork import ForkExecutor
 
 
 class EbuildFetchTestCase(TestCase):
@@ -328,10 +328,7 @@ class EbuildFetchTestCase(TestCase):
 					mv -f "${DISTDIR}/${FILE}.__download__" "${DISTDIR}/${FILE}"
 				""" % orig_fetchcommand.replace("${FILE}", "${FILE}.__download__"))
             settings["FETCHCOMMAND"] = (
-                '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
-                    BASH_BINARY,
-                    temp_fetchcommand,
-                )
+                f'"{BASH_BINARY}" "{temp_fetchcommand}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'
             )
             settings.features.add("skiprocheck")
             settings.features.remove("distlocks")

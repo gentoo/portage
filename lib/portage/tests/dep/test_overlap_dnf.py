@@ -1,9 +1,9 @@
 # Copyright 2017-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.tests import TestCase
 from portage.dep import Atom, use_reduce
 from portage.dep.dep_check import _overlap_dnf
+from portage.tests import TestCase
 
 
 class OverlapDNFTestCase(TestCase):

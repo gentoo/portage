@@ -24,13 +24,12 @@ The test also works with pytest-xdist, e.g.::
 
 """
 
+import os
 import subprocess
 
 import pytest
 
-import os
 import portage
-
 from portage.const import (
     PORTAGE_PYM_PATH,
     USER_CONFIG_PATH,

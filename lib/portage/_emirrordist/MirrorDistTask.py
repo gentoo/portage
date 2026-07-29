@@ -3,22 +3,23 @@
 
 import errno
 import logging
-import time
-import threading
-
 import os
-import portage
+import threading
+import time
 
-from portage.util._async.TaskScheduler import TaskScheduler
 from _emerge.CompositeTask import CompositeTask
-from .FetchIterator import FetchIterator
+
+import portage
+from portage.util._async.TaskScheduler import TaskScheduler
+
 from .DeletionIterator import DeletionIterator
+from .FetchIterator import FetchIterator
 
 logger = logging.getLogger(__name__)
 
 
 class MirrorDistTask(CompositeTask):
-    __slots__ = ("_config", "_fetch_iterator", "_term_rlock", "_term_callback_handle")
+    __slots__ = ("_config", "_fetch_iterator", "_term_callback_handle", "_term_rlock")
 
     def __init__(self, config):
         CompositeTask.__init__(self, scheduler=config.event_loop)
@@ -144,8 +145,7 @@ class MirrorDistTask(CompositeTask):
         date_map = {}
         for filename, timestamp in self._config.deletion_db.items():
             date = timestamp + deletion_delay
-            if date < start_time:
-                date = start_time
+            date = max(date, start_time)
             date = time.strftime("%Y-%m-%d", time.gmtime(date))
             date_files = date_map.get(date)
             if date_files is None:

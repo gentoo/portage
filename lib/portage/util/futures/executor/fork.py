@@ -9,8 +9,8 @@ import os
 import traceback
 
 from portage.util._async.AsyncFunction import AsyncFunction
-from portage.util.futures import asyncio
 from portage.util.cpuinfo import get_cpu_count
+from portage.util.futures import asyncio
 
 
 class ForkExecutor:

@@ -3,10 +3,10 @@
 
 __all__ = ("LocationsManager",)
 
+import os
 import shlex
 import warnings
 
-import os
 import portage
 from portage import eapi_is_supported
 from portage.const import (
@@ -18,6 +18,11 @@ from portage.const import (
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.exception import DirectoryNotFound, InvalidLocation, ParseError
 from portage.localization import _
+from portage.repository.config import (
+    _portage1_profiles_allow_directories,
+    _profile_node,
+    parse_layout_conf,
+)
 from portage.util import (
     ensure_dirs,
     grabfile,
@@ -26,11 +31,6 @@ from portage.util import (
     writemsg,
 )
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
-from portage.repository.config import (
-    parse_layout_conf,
-    _portage1_profiles_allow_directories,
-    _profile_node,
-)
 
 _PORTAGE1_DIRECTORIES = frozenset(
     [
@@ -162,7 +162,7 @@ class LocationsManager:
                         _("!!! Unable to parse profile: '%s'\n") % self.profile_path,
                         noiselevel=-1,
                     )
-                    writemsg(f"!!! ParseError: {str(e)}\n", noiselevel=-1)
+                    writemsg(f"!!! ParseError: {e!s}\n", noiselevel=-1)
                 self.profiles = []
                 self.profiles_complex = []
 

@@ -1,18 +1,17 @@
 # Copyright 2012-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import sys
 import textwrap
 
-import os
 import portage
-
+from portage._global_updates import _do_global_updates
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
+from portage.output import colorize
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
-from portage._global_updates import _do_global_updates
-from portage.output import colorize
 
 
 class MoveSlotEntTestCase(TestCase):

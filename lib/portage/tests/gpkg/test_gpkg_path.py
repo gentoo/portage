@@ -1,17 +1,17 @@
 # Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
+import io
 import os
 import shutil
-import tempfile
 import tarfile
-import io
+import tempfile
 from os import urandom
 
-from portage.util._compare_files import compare_files
+from portage.gpkg import gpkg
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.gpkg import gpkg
+from portage.util._compare_files import compare_files
 
 
 class test_gpkg_path_case(TestCase):

@@ -2,14 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import os
 import sys
 import time
 
-import os
 import portage
-import portage.util.formatter as formatter
-
 from portage.output import xtermTitle
+from portage.util import formatter
 
 from _emerge.getloadavg import getloadavg
 

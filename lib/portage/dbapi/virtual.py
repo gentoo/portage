@@ -3,7 +3,7 @@
 
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
-from portage.versions import cpv_getkey, _pkg_str
+from portage.versions import _pkg_str, cpv_getkey
 
 
 class fakedbapi(dbapi):

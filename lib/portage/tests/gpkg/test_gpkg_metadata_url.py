@@ -1,20 +1,20 @@
 # Copyright 2022-2024 Gentoo Authors
 # Portage Unit Testing Functionality
 
+import io
 import os
 import shutil
-import io
 import tarfile
 import tempfile
+from concurrent.futures import Future
 from functools import partial
 from os import urandom
-from concurrent.futures import Future
 
+from portage.exception import InvalidSignature
+from portage.gpg import GPG
 from portage.gpkg import gpkg
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.exception import InvalidSignature
-from portage.gpg import GPG
 
 
 class test_gpkg_metadata_url_case(TestCase):

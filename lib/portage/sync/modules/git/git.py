@@ -1,19 +1,18 @@
 # Copyright 2005-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import datetime
 import logging
+import os
 import re
 import shlex
 import subprocess
-import datetime
 
-import os
 import portage
-
+from portage.const import TIMESTAMP_FORMAT
+from portage.output import EOutput, create_color_func
 from portage.util import writemsg_level
 from portage.util.futures import asyncio
-from portage.output import create_color_func, EOutput
-from portage.const import TIMESTAMP_FORMAT
 
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
@@ -21,8 +20,8 @@ warn = create_color_func("WARN")
 from portage.sync.syncbase import NewBase
 
 try:
-    from gemato.exceptions import GematoException
     import gemato.openpgp
+    from gemato.exceptions import GematoException
 except ImportError:
     gemato = None
 
@@ -59,8 +58,7 @@ class GitSync(NewBase):
             return (1, False)
 
         sync_uri = self.repo.sync_uri
-        if sync_uri.startswith("file://"):
-            sync_uri = sync_uri[7:]
+        sync_uri = sync_uri.removeprefix("file://")
 
         git_cmd_opts = ""
         if self.repo.module_specific_options.get("sync-git-env"):

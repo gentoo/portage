@@ -3,32 +3,32 @@
 
 __all__ = ("UseManager",)
 
+import os
+
 from _emerge.Package import Package
 
-import os
 from portage.dep import (
+    ExtendedAtomDict,
+    _get_useflag_re,
     dep_getrepo,
     dep_getslot,
-    ExtendedAtomDict,
     remove_slot,
-    _get_useflag_re,
 )
 from portage.eapi import (
-    eapi_supports_use_stable,
     eapi_supports_stable_use_forcing_and_masking,
+    eapi_supports_use_stable,
 )
 from portage.localization import _
+from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 from portage.repository.config import allow_profile_repo_deps
 from portage.util import (
-    grabfile,
     grabdict_package,
+    grabfile,
     read_corresponding_eapi_file,
     stack_lists,
     writemsg,
 )
 from portage.versions import _pkg_str
-
-from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
 
 class UseManager:

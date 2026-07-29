@@ -1,11 +1,12 @@
 # Copyright 2012-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import gzip
 import errno
+import gzip
 
 from portage.util import writemsg_level
 from portage.util.futures._asyncio.streams import _writer
+
 from ..SlotObject import SlotObject
 
 

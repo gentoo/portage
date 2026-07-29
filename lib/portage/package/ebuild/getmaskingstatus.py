@@ -4,7 +4,7 @@
 __all__ = ["getmaskingstatus"]
 
 import portage
-from portage import eapi_is_supported, _eapi_is_deprecated
+from portage import _eapi_is_deprecated, eapi_is_supported
 from portage.exception import InvalidDependString
 from portage.localization import _
 from portage.package.ebuild.config import config

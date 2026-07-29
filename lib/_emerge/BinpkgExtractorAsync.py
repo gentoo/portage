@@ -2,23 +2,24 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
-
-from _emerge.SpawnProcess import SpawnProcess
-import portage
-from portage.util.compression_probe import (
-    compression_probe,
-    _compressors,
-)
-from portage.util.cpuinfo import makeopts_to_job_count
-from portage.process import find_binary
-from portage.util import varexpand
-from portage.exception import InvalidBinaryPackageFormat
-from portage.binpkg import get_binpkg_format
 import shlex
 import signal
 import subprocess
 import tarfile
 import textwrap
+
+import portage
+from portage.binpkg import get_binpkg_format
+from portage.exception import InvalidBinaryPackageFormat
+from portage.process import find_binary
+from portage.util import varexpand
+from portage.util.compression_probe import (
+    _compressors,
+    compression_probe,
+)
+from portage.util.cpuinfo import makeopts_to_job_count
+
+from _emerge.SpawnProcess import SpawnProcess
 
 
 class BinpkgExtractorAsync(SpawnProcess):

@@ -1,12 +1,12 @@
 # Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import portage.glsa as glsa
+from portage import glsa
+from portage._sets import get_boolean
 from portage._sets.base import PackageSet
 from portage.versions import vercmp
-from portage._sets import get_boolean
 
-__all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
+__all__ = ["AffectedSet", "NewAffectedSet", "NewGlsaSet", "SecuritySet"]
 
 
 class SecuritySet(PackageSet):

@@ -4,8 +4,8 @@
 
 from itertools import permutations
 
-from portage.tests import TestCase
 from portage.dep import Atom, best_match_to_list
+from portage.tests import TestCase
 
 
 class Test_best_match_to_list(TestCase):

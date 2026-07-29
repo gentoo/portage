@@ -47,7 +47,7 @@ def _sync_methods(obj, loop=None):
 
 
 class _ObjectAttrWrapper(ObjectProxy):
-    __slots__ = ("_obj", "_attr_wrapper")
+    __slots__ = ("_attr_wrapper", "_obj")
 
     def __init__(self, obj, attr_wrapper):
         object.__setattr__(self, "_obj", obj)

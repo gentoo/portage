@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-from portage.exception import PortageException
+
 from portage.cache.mappings import ProtectedDict
+from portage.exception import PortageException
 from portage.localization import _
 from portage.util import writemsg
 

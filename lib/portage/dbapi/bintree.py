@@ -1,49 +1,13 @@
 # Copyright 1998-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-__all__ = ["bindbapi", "binarytree"]
-
-import os
-import portage
-
-from portage.binrepo.config import BinRepoConfigLoader
-from portage.cache.mappings import slot_dict_class
-from portage.const import (
-    BINREPOS_CONF_FILE,
-    CACHE_PATH,
-    PORTAGE_BASE_PATH,
-    SUPPORTED_XPAK_EXTENSIONS,
-    SUPPORTED_GPKG_EXTENSIONS,
-    SUPPORTED_GENTOO_BINPKG_FORMATS,
-)
-from portage.dbapi.virtual import fakedbapi
-from portage.dep import Atom, use_reduce, paren_enclose
-from portage.exception import (
-    AlarmSignal,
-    CorruptionKeyError,
-    InvalidPackageName,
-    InvalidBinaryPackageFormat,
-    ParseError,
-    PortageException,
-    PortagePackageException,
-    SignatureException,
-)
-from portage._sets.base import WildcardPackageSet
-from portage.localization import _
-from portage.output import colorize
-from portage.package.ebuild.profile_iuse import iter_iuse_vars
-from portage.sync.revision_history import get_repo_revision_history
-from portage.util import ensure_dirs
-from portage.util.file_copy import copyfile
-from portage.util.futures import asyncio
-from portage.util.futures.executor.fork import ForkExecutor
-from portage.binpkg import get_binpkg_format
-from portage import _movefile
+__all__ = ["binarytree", "bindbapi"]
 
 import codecs
 import errno
 import io
 import json
+import os
 import shlex
 import stat
 import subprocess
@@ -57,6 +21,41 @@ from gzip import GzipFile
 from itertools import chain
 from pathlib import PurePath
 from urllib.parse import urlparse
+
+import portage
+from portage import _movefile
+from portage._sets.base import WildcardPackageSet
+from portage.binpkg import get_binpkg_format
+from portage.binrepo.config import BinRepoConfigLoader
+from portage.cache.mappings import slot_dict_class
+from portage.const import (
+    BINREPOS_CONF_FILE,
+    CACHE_PATH,
+    PORTAGE_BASE_PATH,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
+    SUPPORTED_GPKG_EXTENSIONS,
+    SUPPORTED_XPAK_EXTENSIONS,
+)
+from portage.dbapi.virtual import fakedbapi
+from portage.dep import Atom, paren_enclose, use_reduce
+from portage.exception import (
+    AlarmSignal,
+    CorruptionKeyError,
+    InvalidBinaryPackageFormat,
+    InvalidPackageName,
+    ParseError,
+    PortageException,
+    PortagePackageException,
+    SignatureException,
+)
+from portage.localization import _
+from portage.output import colorize
+from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.sync.revision_history import get_repo_revision_history
+from portage.util import ensure_dirs
+from portage.util.file_copy import copyfile
+from portage.util.futures import asyncio
+from portage.util.futures.executor.fork import ForkExecutor
 
 
 class UseCachedCopyOfRemoteIndex(Exception):
@@ -387,6 +386,7 @@ class bindbapi(fakedbapi):
         @type dest_dir: str
         """
         from _emerge.BinpkgExtractorAsync import BinpkgExtractorAsync
+
         from portage.util._async.SchedulerInterface import SchedulerInterface
         from portage.versions import _pkg_str
 
@@ -1234,9 +1234,7 @@ class binarytree:
                     if myfile.endswith(".xpak"):
                         multi_instance = True
                         build_id = self._parse_build_id(myfile)
-                        if build_id < 1:
-                            invalid_name = True
-                        elif myfile != f"{mypf}-{build_id}.xpak":
+                        if build_id < 1 or myfile != f"{mypf}-{build_id}.xpak":
                             invalid_name = True
                         else:
                             mypkg = mypkg[: -len(str(build_id)) - 1]
@@ -1474,12 +1472,16 @@ class binarytree:
     ):
         from portage.package.ebuild.fetch import _hide_url_passwd
         from portage.util import atomic_ofstream, writemsg
-        from portage.util.time import unix_to_iso_time
         from portage.util._urlopen import (
-            urlopen as _urlopen,
             have_pep_476 as _have_pep_476,
+        )
+        from portage.util._urlopen import (
             http_to_timestamp,
         )
+        from portage.util._urlopen import (
+            urlopen as _urlopen,
+        )
+        from portage.util.time import unix_to_iso_time
         from portage.versions import _pkg_str
 
         binrepo_name = repo.name or repo.name_fallback
@@ -2081,7 +2083,7 @@ class binarytree:
                 writemsg(
                     colorize(
                         "WARN",
-                        f"Failed to remove package: {pkg_path} {str(err)}",
+                        f"Failed to remove package: {pkg_path} {err!s}",
                     )
                 )
         finally:
@@ -2390,8 +2392,7 @@ class binarytree:
         profiles_base = os.path.join(portdir, "profiles") + os.path.sep
         if self.settings.profile_path:
             profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
-            if profile_path.startswith(profiles_base):
-                profile_path = profile_path[len(profiles_base) :]
+            profile_path = profile_path.removeprefix(profiles_base)
             header["PROFILE"] = profile_path
         header["VERSION"] = str(self._pkgindex_version)
         base_uri = self.settings.get("PORTAGE_BINHOST_HEADER_URI")
@@ -2885,9 +2886,9 @@ class binarytree:
 
     def digestCheck(self, pkg):
         from portage.checksum import (
-            _hash_filter,
             _apply_hash_filter,
             _check_distfile,
+            _hash_filter,
             verify_all,
         )
         from portage.output import EOutput

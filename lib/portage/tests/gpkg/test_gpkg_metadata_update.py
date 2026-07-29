@@ -6,10 +6,10 @@ import shutil
 import tempfile
 from os import urandom
 
-from portage.util._compare_files import compare_files
+from portage.gpkg import gpkg
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
-from portage.gpkg import gpkg
+from portage.util._compare_files import compare_files
 
 
 class test_gpkg_metadata_case(TestCase):
