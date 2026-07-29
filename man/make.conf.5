@@ -625,6 +625,16 @@ failures for greater parallelism.
 The queue can be flushed by sending the SIGUSR2 signal to \fBemerge\fR(1).
 This feature is enabled by default.
 .TP
+.B merge\-use\-vdb
+When this feature is enabled, Portage uses the file hashes and modification
+times recorded in the package database to determine if a file needs to be
+replaced on the live filesystem.  This avoids reading the live filesystem files
+directly, saving disk I/O, unless the file's mtime differs from the time it was
+installed.  Note that this feature must be disabled if Portage is being used to
+repair corrupted files.  Otherwise, Portage will trust the package database and
+fail to overwrite the corrupted files on the live filesystem.  This feature is
+disabled by default.
+.TP
 .B metadata\-transfer
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 In versions of portage >=2.1.5, this feature is disabled by

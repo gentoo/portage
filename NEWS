@@ -23,6 +23,11 @@ Breaking changes:
 
 Features:
 
+* Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
+  package merges. When enabled, Portage uses hashes and mtimes from the
+  VDB (var database) to skip writing files that are already identical on
+  disk, which saves I/O and reduces filesystem cache pressure.
+
 * Add FEATURES="cgroup" to account each source build's CPU time, peak memory,
   and I/O in a per-build cgroup v2. No limits are imposed. Totals are written
   to the build log and, with FEATURES="observability", included in the live
