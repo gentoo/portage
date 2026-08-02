@@ -96,46 +96,25 @@ static void parse_slot_raw(const char *raw, int rlen,
         return;
     }
 
-    const char *slash = memchr(raw, '/', rlen);
-    char slot_op = 0;
+    /* Past the bare ":=" / ":*" forms above, the only operator is a trailing
+     * '=', and it always comes last -- what precedes it is "slot" or
+     * "slot/sub_slot". */
+    int len = rlen;
+    int slot_op = len > 0 && raw[len - 1] == '=';
+    if (slot_op)
+        len--;
 
-    if (!slash) {
-        int slen = rlen;
-        if (slen > 0 && raw[slen - 1] == '=') {
-            slot_op = '=';
-            slen--;
-        }
-        *out_slot = PyUnicode_FromStringAndSize(raw, slen);
+    const char *slash = memchr(raw, '/', len);
+    if (slash) {
+        *out_slot = PyUnicode_FromStringAndSize(raw, (int)(slash - raw));
+        *out_sub  = PyUnicode_FromStringAndSize(slash + 1,
+                                                len - (int)(slash + 1 - raw));
+    } else {
+        *out_slot = PyUnicode_FromStringAndSize(raw, len);
         *out_sub  = Py_NewRef(Py_None);
-    } else {
-        int main_len = (int)(slash - raw);
-        if (main_len > 0 && raw[main_len - 1] == '=') {
-            slot_op = '=';
-            main_len--;
-        }
-        *out_slot = PyUnicode_FromStringAndSize(raw, main_len);
-
-        const char *sub = slash + 1;
-        int sub_len = rlen - (int)(sub - raw);
-        if (sub_len == 1 && (sub[0] == '*' || sub[0] == '=')) {
-            *out_sub = Py_NewRef(Py_None);
-            slot_op = sub[0];
-        } else {
-            if (sub_len > 0 && sub[sub_len - 1] == '=') {
-                slot_op = '=';
-                sub_len--;
-            }
-            *out_sub = PyUnicode_FromStringAndSize(sub, sub_len);
-        }
     }
 
-    if (slot_op == '=') {
-        *out_op = Py_NewRef(interned.slot_op_eq);
-    } else if (slot_op == '*') {
-        *out_op = Py_NewRef(interned.slot_op_star);
-    } else {
-        *out_op = Py_NewRef(Py_None);
-    }
+    *out_op = slot_op ? Py_NewRef(interned.slot_op_eq) : Py_NewRef(Py_None);
 }
 
 /* Split the raw text between '[' and ']' into one string per flag:
@@ -658,6 +637,32 @@ py_parse(UNUSED PyObject *self, PyObject *args, PyObject *kwargs)
     return Py_NewRef(result);
 }
 
+/*
+ * scan_atom(s) -> Atom
+ *
+ * Parse a single atom string; the whole string must be exactly one atom.
+ * Raises ValueError on anything the scanner does not fully consume -- in
+ * particular repository specs ("::repo") and build-ids, which it does not
+ * handle -- so the caller can fall back to the pure-Python regex path.
+ */
+static PyObject *
+py_scan_atom(UNUSED PyObject *self, PyObject *arg)
+{
+    Py_ssize_t  n;
+    const char *s = PyUnicode_AsUTF8AndSize(arg, &n);
+    if (!s)
+        return NULL;
+
+    DepScanner p = { s, s + n, NULL };
+    AtomInfo   info;
+    memset(&info, 0, sizeof(info));
+    if (!scan_atom(&p, &info) || p.cur != p.end) {
+        PyErr_SetString(PyExc_ValueError, p.err ? p.err : "invalid atom");
+        return NULL;
+    }
+    return build_atom_obj(&info, s, (int)n);
+}
+
 static PyMethodDef methods[] = {
     {
         .ml_name  = "parse",
@@ -672,6 +677,16 @@ static PyMethodDef methods[] = {
             "sublist, an inactive one contributes nothing.",
     },
     {
+        .ml_name  = "scan_atom",
+        .ml_meth  = py_scan_atom,
+        .ml_flags = METH_O,
+        .ml_doc   =
+            "scan_atom(s) -> Atom\n"
+            "Parse a string that must be exactly one atom. Raises ValueError\n"
+            "for anything the scanner does not fully consume, including repo\n"
+            "specs and build-ids, so the caller can fall back to the regex.",
+    },
+    {
         .ml_name  = "classify_use_deps",
         .ml_meth  = py_classify_use_deps,
         .ml_flags = METH_O,
@@ -679,7 +694,7 @@ static PyMethodDef methods[] = {
             "classify_use_deps(tokens) -> tuple\n"
             "Classify pre-split use-dep tokens into (enabled_fs, disabled_fs,\n"
             "missing_enabled_fs, missing_disabled_fs, conditional_dict_or_None,\n"
-            "required_fs). Raises ValueError if a token cannot be classified.",
+            "required_fs). Raises ValueError if a token cannot be classified."
     },
     { NULL, NULL, 0, NULL },
 };

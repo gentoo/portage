@@ -68,34 +68,46 @@ if TYPE_CHECKING:
     from _emerge.Package import Package
 
 
-def _c_atom_from_c(catom, eapi, eapi_attrs, uselist, matchall):
-    """Construct a portage.dep.Atom from a _parser.Atom, bypassing __init__ regex."""
-    a = Atom.__new__(Atom)
-    a._string = str(catom)
-    a._cp = catom.cp
-    a._repo = None
-    a._slot = catom.slot
-    a._sub_slot = catom.sub_slot
-    a._slot_operator = catom.slot_operator
-    ver = catom.version
+def _c_fill_atom_fields(atom, catom, eapi):
+    """Copy the scalar fields of a _parser.Atom onto a portage.dep.Atom.
+
+    Everything except _string, _use and _unevaluated_atom, which the two
+    callers set differently.  The C scanner reports the "=*" glob as operator
+    "=" with a trailing "*" on the version, so undo that here.
+    """
     op = catom.operator
+    ver = catom.version
+    cpv = catom.cpv
     if op == "=" and ver is not None and ver.endswith("*"):
         op = "=*"
         ver = ver[:-1]
-    a._operator = op
-    a._version = ver
-    a._cpv = catom.cpv[:-1] if op == "=*" else catom.cpv
-    a._eapi = eapi
-    a._extended_syntax = False
-    a._build_id = None
-    a._unevaluated_atom = a
-    a._orig_atom = None
+        cpv = cpv[:-1]
+    atom._cp = catom.cp
+    atom._cpv = cpv
+    atom._version = ver
+    atom._operator = op
+    atom._slot = catom.slot
+    atom._sub_slot = catom.sub_slot
+    atom._slot_operator = catom.slot_operator
+    atom._repo = None
+    atom._eapi = eapi
+    atom._extended_syntax = False
+    atom._build_id = None
+    atom._orig_atom = None
     blocker_str = catom.blocker
-    a._blocker_obj = (
+    atom._blocker_obj = (
         Atom._blocker(forbid_overlap=blocker_str == "!!")
         if blocker_str is not None
         else None
     )
+
+
+def _c_atom_from_c(catom, eapi, eapi_attrs, uselist, matchall):
+    """Construct a portage.dep.Atom from a _parser.Atom, bypassing __init__ regex."""
+    a = Atom.__new__(Atom)
+    a._string = str(catom)
+    _c_fill_atom_fields(a, catom, eapi)
+    a._unevaluated_atom = a
     use_tokens = catom.use
     if use_tokens is not None:
         en, dis, miss_en, miss_dis, cond, req = _c_dep_parser.classify_use_deps(
@@ -1814,6 +1826,59 @@ class Atom:
         def __init__(self, forbid_overlap=False):
             self.overlap = self._overlap(forbid=forbid_overlap)
 
+    def _c_fast_init(self, catom, eapi, eapi_attrs, unevaluated_atom):
+        """Populate this Atom from a C scan_atom result.
+
+        Raises InvalidAtom/TypeError for the same cases as the regex path.
+        """
+        use_tokens = catom.use
+        if use_tokens is not None:
+            # _use_dep validates conflicting flags, same as the regex path.
+            self._use = _use_dep(list(use_tokens), eapi_attrs)
+        else:
+            self._use = None
+
+        _c_fill_atom_fields(self, catom, eapi)
+        self._unevaluated_atom = unevaluated_atom if unevaluated_atom else self
+
+        if eapi is None:
+            return
+
+        if not isinstance(eapi, str):
+            raise TypeError(
+                f"expected eapi argument of {str}, got {type(eapi)}: {eapi}"
+            )
+
+        if self._slot and not eapi_attrs.slot_deps:
+            raise InvalidAtom(
+                f"Slot deps are not allowed in EAPI {eapi}: '{self}'",
+                category="EAPI.incompatible",
+            )
+
+        if self._use:
+            if not eapi_attrs.use_deps:
+                raise InvalidAtom(
+                    f"Use deps are not allowed in EAPI {eapi}: '{self}'",
+                    category="EAPI.incompatible",
+                )
+            if not eapi_attrs.use_dep_defaults and (
+                self._use.missing_enabled or self._use.missing_disabled
+            ):
+                raise InvalidAtom(
+                    f"Use dep defaults are not allowed in EAPI {eapi}: '{self}'",
+                    category="EAPI.incompatible",
+                )
+
+        if (
+            self._blocker_obj
+            and self._blocker_obj.overlap.forbid
+            and not eapi_attrs.strong_blocks
+        ):
+            raise InvalidAtom(
+                f"Strong blocks are not allowed in EAPI {eapi}: '{self}'",
+                category="EAPI.incompatible",
+            )
+
     def __init__(
         self,
         s,
@@ -1852,6 +1917,28 @@ class Atom:
                 allow_repo = True
             if allow_build_id is None:
                 allow_build_id = True
+
+        # Fast path: parse the atom in C for the common case. scan_atom is
+        # byte-exact with the regex path or raises ValueError (repo specs,
+        # build-ids, wildcards, anything invalid), in which case we fall
+        # through to the pure-Python regex path below. Wildcards, an injected
+        # _use, flag validation, and virtual-expansion originals are handled
+        # only by the regex path.
+        if (
+            _c_dep_parser is not None
+            and not allow_wildcard
+            and _use is None
+            and is_valid_flag is None
+            and orig_atom is None
+            and (eapi is None or eapi_attrs.slot_operator)
+        ):
+            try:
+                catom = _c_dep_parser.scan_atom(s)
+            except ValueError:
+                catom = None
+            if catom is not None:
+                self._c_fast_init(catom, eapi, eapi_attrs, unevaluated_atom)
+                return
 
         if s[:1] == "!":
             blocker = self._blocker(forbid_overlap=s[1:2] == "!")

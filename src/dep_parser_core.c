@@ -135,7 +135,10 @@ int scan_version(DepScanner *p)
  * optional '=' operator, or a bare ':=' / ':*'.
  *
  *   "0"     "myslot"   "0/53"   "0="   "0/53="   "="   "*"   -> consumed
- *   "/slot"  "-slot"                                        -> rejected
+ *   "/slot"  "-slot"   "0/="    "0/*"  "0=/53"              -> rejected
+ *
+ * ':=' and ':*' are only the whole slot dep; they are not a sub-slot, and the
+ * '=' operator only ever comes last.
  *
  * Slot names share the category character set, except that the first
  * character may not be '+'. */
@@ -151,32 +154,29 @@ int scan_slot(DepScanner *p)
         return 1;
     }
 
-    if (!is_nw_char(*s))
+    /* PMS: a slot name's first character must be [A-Za-z0-9_] ('+' is a slot
+     * char only after the first position). */
+    if (!is_nw_char(*s) || *s == '+')
         return 0;
 
     s++;
     while (s < p->end && is_slot_char(*s)) {
         s++;
     }
-    if (s < p->end && *s == '=') {
-        s++;
-    }
 
     if (s < p->end && *s == '/') {
         s++;
-        if (s < p->end && (*s == '*' || *s == '=')) {
-            s++;
-        } else if (s < p->end && is_nw_char(*s)) {
-            s++;
-            while (s < p->end && is_slot_char(*s)) {
-                s++;
-            }
-            if (s < p->end && *s == '=') {
-                s++;
-            }
-        } else {
+        if (s >= p->end || !is_nw_char(*s) || *s == '+')
             return 0;
+
+        s++;
+        while (s < p->end && is_slot_char(*s)) {
+            s++;
         }
+    }
+
+    if (s < p->end && *s == '=') {
+        s++;
     }
 
     p->cur = s;
@@ -291,7 +291,9 @@ int scan_atom(DepScanner *p, AtomInfo *info)
 
     /* category */
     const char *cat = s;
-    if (s >= p->end || !is_nw_char(*s))
+    /* PMS: the first character must be [A-Za-z0-9_]; '+' (a name-word char
+     * elsewhere) is not allowed to lead a category. */
+    if (s >= p->end || !is_nw_char(*s) || *s == '+')
         goto fail;
 
     s++;
@@ -410,8 +412,29 @@ after_pkgver:
             p->cur++;
         }
 
-        if (op && !ver)
+        /* An operator requires a version and a version requires an operator:
+         * ">=cat/pkg" and a bare "cat/pkg-1" are both invalid atoms. */
+        if ((op != NULL) != (ver != NULL))
             goto fail;
+
+        /* PMS: a package name must not end in a hyphen followed by a version.
+         * The trailing version may itself span a "-rN" revision, so check every
+         * '-' position: if the whole remainder after any '-' is a full version,
+         * the atom is invalid (e.g. "<cat/bar-2-0", "=cat/bar-1-r1-1-r1"). */
+        for (const char *t = pkg; t < pkg_end; t++) {
+            if (*t != '-')
+                continue;
+            DepScanner vt = { t + 1, pkg_end, NULL };
+            if (scan_version(&vt) && vt.cur == pkg_end)
+                goto fail;
+        }
+
+        /* A trailing '*' (the "=*" glob form) is only valid with the '='
+         * operator, e.g. "=cat/pkg-1.2*"; reject it with any other operator. */
+        if (ver && ver_len > 0 && ver[ver_len - 1] == '*' &&
+            !(op_len == 1 && op[0] == '=')) {
+            goto fail;
+        }
 
         if (info) {
             SPAN_SET(info, block);

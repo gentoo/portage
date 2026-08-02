@@ -242,6 +242,15 @@ static void test_scan_slot(void)
         { "",        0, NULL     },
         { "/slot",   0, NULL     },
         { "-slot",   0, NULL     },
+        { "+slot",   0, NULL     },
+        /* ":=" and ":*" are the whole slot dep, never a sub-slot. */
+        { "0/*",     0, NULL     },
+        { "0/=",     0, NULL     },
+        { "0/",      0, NULL     },
+        { "0/+sub",  0, NULL     },
+        /* The '=' operator comes last, so "0=" is all that is consumed here
+         * and the caller rejects the atom on the leftover "/53". */
+        { "0=/53",   1, "0="     },
     };
 
     for (int i = 0; i < ARRAY_SIZE(cases); i++) {

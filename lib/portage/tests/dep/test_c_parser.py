@@ -906,6 +906,276 @@ class TestLongAtoms(TestCase):
         )
 
 
+class _AtomParityMixin:
+    """Helpers for asserting that _parser.scan_atom + Atom._c_fast_init agrees
+    with the pure-Python regex path, both on what it accepts and on the fields
+    it produces."""
+
+    def setUp(self):
+        if _orig_c_dep_parser is None:
+            self.skipTest("_parser extension not available")
+
+    def _both(self, s, **kw):
+        with _use_c_parser(False):
+            try:
+                py = Atom(s, **kw)
+                py_exc = None
+            except Exception as e:
+                py, py_exc = None, type(e)
+        try:
+            c = Atom(s, **kw)
+            c_exc = None
+        except Exception as e:
+            c, c_exc = None, type(e)
+        return (py, py_exc), (c, c_exc)
+
+    def _assert_same(self, s, **kw):
+        (py, pe), (c, ce) = self._both(s, **kw)
+        self.assertEqual(pe, ce, f"{s!r}: exception {pe} vs {ce}")
+        if pe is None:
+            for attr in (
+                "_cp",
+                "_cpv",
+                "_version",
+                "_operator",
+                "_slot",
+                "_sub_slot",
+                "_slot_operator",
+                "_repo",
+                "_build_id",
+                "_extended_syntax",
+            ):
+                self.assertEqual(getattr(py, attr), getattr(c, attr), f"{s!r}: {attr}")
+            self.assertEqual(str(py._use or ""), str(c._use or ""), f"{s!r}: use")
+            self.assertEqual(str(py), str(c))
+
+
+class TestScanAtom(_AtomParityMixin, TestCase):
+    """Test that _parser.scan_atom + Atom._c_fast_init matches the pure-Python
+    regex path for both valid atoms and invalid ones."""
+
+    def test_valid_atoms(self):
+        for s in (
+            "sys-apps/portage",
+            "=sys-apps/portage-2.1",
+            ">=dev-libs/foo-1.2.3-r1:0/1=[a,-b,c?,!d?,e=]",
+            "!!media-libs/x:2",
+            "~cat/pkg-1.0",
+            "cat/pkg:0/1=",
+            "dev-libs/gtk+",
+        ):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+                self._assert_same(s, eapi=None)
+
+    def test_glob_only_with_equals(self):
+        self._assert_same("=cat/pkg-1.2*", eapi="8")
+        self._assert_same(">=cat/pkg-1.2*", eapi="8")  # invalid -> both reject
+        self._assert_same("<cat/pkg-1*", eapi="8")
+
+    def test_version_requires_operator(self):
+        self._assert_same("cat/pkg-1", eapi="8")  # invalid
+        self._assert_same("cat/pkg-1.2.3", eapi="8")  # invalid
+
+    def test_name_must_not_end_in_version(self):
+        for s in ("<cat/bar-2-0", "=foo/bar-1-r1-1-r1", "=cat/libc-2-9999"):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")  # invalid, both reject
+
+    def test_leading_plus_rejected(self):
+        for s in ("+cat/pkg", "cat/pkg:+slot", "cat/pkg:0/+sub"):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+
+    def test_conflicting_use_rejected(self):
+        self._assert_same("cat/pkg[a(+),-a]", eapi="8")
+        self._assert_same("cat/pkg[a,a]", eapi="8")
+
+    def test_repo_and_build_id_fall_back(self):
+        # scan_atom rejects these; the regex path handles them when allowed.
+        self._assert_same("cat/pkg::gentoo", eapi=None, allow_repo=True)
+        self._assert_same("=cat/pkg-1-3", eapi=None, allow_build_id=True)
+
+    def test_eapi_incompatibility(self):
+        self._assert_same("cat/pkg:0", eapi="0")  # slot deps invalid in EAPI 0
+        self._assert_same("cat/pkg[a]", eapi="1")  # use deps invalid in EAPI 1
+        self._assert_same("cat/pkg[a(+)]", eapi="4")  # defaults invalid in EAPI 4
+
+
+class TestScanAtomNameGrammar(_AtomParityMixin, TestCase):
+    """Category, package-name, version and revision edge cases, adapted from
+    pkgcore's tests/ebuild/test_cpv.py.
+
+    The corpus only supplies awkward shapes; it does not assert which of them
+    are valid. Portage's own regex path is the reference, and every string is
+    checked for parity against it, so a C scanner that is stricter or laxer
+    than portage anywhere in this grammar fails."""
+
+    # Names that are legal per PMS 3.1.1/3.1.2, including the ones that look
+    # like they should not be: a bare "_" category, a category with a dot in
+    # it, and package names ending in hyphens or in a hyphen-digit sequence
+    # that is not a version.
+    GOOD_CATS = (
+        "dev-util",
+        "dev+",
+        "DEV-UTIL+",
+        "aaa0",
+        "aaa-0",
+        "multi--hyphen",
+        "_dev",
+        "_",
+        "cross-hppa2.0-unknown-linux-gnu",
+    )
+    BAD_CATS = (
+        "",
+        ".reject",
+        " reject",
+        "-",
+        "+",
+        "dev-util ",
+        "multi/blah/depth",
+        "multi//depth",
+    )
+    GOOD_PKGS = (
+        "diffball",
+        "a9",
+        "a9+",
+        "a-100dpi",
+        "diff-mode-",
+        "multi--hyphen",
+        "timidity--",
+        "frob---",
+        "diffball-9-",
+        "7z",
+        "xf86-video-r128",
+        "emacs-cvs",
+    )
+    # "diffball-9" and "bar-11-r3" are rejected because an unversioned atom's
+    # name may not end in something that parses as a version.
+    BAD_PKGS = (
+        "diffball ",
+        "diffball-9",
+        "a-3D",
+        "-df",
+        "+dfa",
+        "timidity--9f",
+        "ormaybe---13_beta",
+        "bar-11-r3",
+    )
+
+    GOOD_VERS = ("1", "2.3.4", "2.3.4a", "02.3", "2.03", "3d")
+    BAD_VERS = ("2.3a.4", "2.a.3", "2.3_", "2.3 ", "2.3.", "cvs.2", "3D")
+    GOOD_REVS = ("", "-r0", "-r1", "-r300", "-r1000000000000000000")
+    BAD_REVS = ("-r", "-ra", "-R1")
+
+    SIMPLE_SUFS = ("_alpha", "_beta", "_pre", "_p", "_rc")
+    GOOD_SUFS = SIMPLE_SUFS + tuple(f"{x}{n}" for n, x in enumerate(SIMPLE_SUFS))
+    BAD_SUFS = ("_a", "_9", "_") + tuple(f"{x} " for x in SIMPLE_SUFS)
+
+    def test_category_grammar(self):
+        for cat in self.GOOD_CATS + self.BAD_CATS:
+            with self.subTest(cat=cat):
+                self._assert_same(f"{cat}/diffball", eapi="8")
+
+    def test_package_name_grammar(self):
+        for pkg in self.GOOD_PKGS + self.BAD_PKGS:
+            with self.subTest(pkg=pkg):
+                self._assert_same(f"dev-util/{pkg}", eapi="8")
+
+    def test_category_package_matrix(self):
+        for cat in self.GOOD_CATS:
+            for pkg in self.GOOD_PKGS:
+                with self.subTest(cat=cat, pkg=pkg):
+                    self._assert_same(f"{cat}/{pkg}", eapi="8")
+
+    def test_version_grammar(self):
+        for ver in self.GOOD_VERS + self.BAD_VERS:
+            with self.subTest(ver=ver):
+                self._assert_same(f"=dev-util/diffball-{ver}", eapi="8")
+                self._assert_same(f"~dev-util/diffball-{ver}", eapi="8")
+
+    def test_revision_grammar(self):
+        for rev in self.GOOD_REVS + self.BAD_REVS:
+            with self.subTest(rev=rev):
+                self._assert_same(f"=dev-util/diffball-2.3.4{rev}", eapi="8")
+
+    def test_version_suffix_grammar(self):
+        for suf in self.GOOD_SUFS + self.BAD_SUFS:
+            with self.subTest(suf=suf):
+                self._assert_same(f"=dev-util/diffball-1{suf}", eapi="8")
+                self._assert_same(f"=dev-util/diffball-1{suf}-r1", eapi="8")
+
+    def test_version_suffix_and_revision_matrix(self):
+        for ver in self.GOOD_VERS:
+            for rev in self.GOOD_REVS + self.BAD_REVS:
+                with self.subTest(ver=ver, rev=rev):
+                    self._assert_same(f"=dev-util/diffball-{ver}{rev}", eapi="8")
+
+    def test_version_glob_grammar(self):
+        for ver in self.GOOD_VERS + self.BAD_VERS:
+            with self.subTest(ver=ver):
+                self._assert_same(f"=dev-util/diffball-{ver}*", eapi="8")
+
+    def test_package_name_containing_version_like_words(self):
+        # A hyphen-digit run only terminates the name if what follows it is a
+        # complete version, so these all stay part of the package name.
+        for s in (
+            "dev-util/diffball-blah-monkeys",
+            "bah/f-100dpi",
+            "dev-ut-asdf/emacs-cvs",
+            "bbb-9/foon",
+            "dev-util/foo-123-bar",
+            "app-text/foo-2abc",
+            "app-text/foo-2_bar",
+        ):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+
+    def test_slot_grammar(self):
+        # ":=" and ":*" are whole slot deps, not sub-slots, and the "="
+        # operator only ever comes last.
+        for s in (
+            "cat/pkg:0",
+            "cat/pkg:0/53",
+            "cat/pkg:0=",
+            "cat/pkg:0/53=",
+            "cat/pkg:=",
+            "cat/pkg:*",
+            "cat/pkg:my-slot_2.1/other+sub=",
+            "cat/pkg:0/*",  # invalid
+            "cat/pkg:0/=",  # invalid
+            "cat/pkg:0=/53",  # invalid
+            "cat/pkg:0=/53=",  # invalid
+            "cat/pkg:0/",  # invalid
+            "cat/pkg:",  # invalid
+            "cat/pkg:/53",  # invalid
+            "cat/pkg:-slot",  # invalid
+            "cat/pkg:0//53",  # invalid
+            "cat/pkg:0/53/54",  # invalid
+            "cat/pkg:*=",  # invalid
+            "cat/pkg:=*",  # invalid
+        ):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+
+    def test_truncated_atoms(self):
+        for s in ("cat/", "cat/pkg[", "cat/pkg[a", "cat/pkg[]", "cat", "/pkg", "/"):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+
+    def test_pathological_name(self):
+        # https://github.com/pkgcore/pkgcore/issues/463 and the oversized name
+        # from pkgcore's test_cpv.py, which also exercises the heap fallback in
+        # join_atom_string().
+        cat = "dev-java"
+        pkg = (
+            "log5j-777777777777777777777777777777777-777777777777777777"
+            "-7777777777777777777-7777777-7dev-q!7778"
+        )
+        self._assert_same(f"{cat}/{pkg}", eapi="8")
+        self._assert_same("cross-hppa2.0-unknown-linux-gnu/gcc", eapi="8")
+
+
 class TestCParserMalformedGroups(TestCase):
     """Whitespace and delimiter errors in group syntax. Every one of these has
     a distinct error path in scan_item()/scan_group_contents(), and each must
