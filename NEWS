@@ -29,6 +29,10 @@ Features:
 * Introduce FETCH_WRAPPER for use with FETCHCOMMAND and RESUMECOMMAND,
   see make.conf(5) for details.
 
+* dep: Add a native C dependency-string parser, used by use_reduce() and
+  Atom construction. Set PORTAGE_NATIVE_DEP_PARSER=0 in the environment to
+  fall back to the pure-Python implementation; see emerge(1) for details.
+
 Bug fixes:
 
 * man: make.conf(5): Improve man text about disabling tests to not wrongly
