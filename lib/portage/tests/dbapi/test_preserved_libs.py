@@ -46,3 +46,63 @@ class FindUnneededPreservedNodesTestCase(TestCase):
             [("baz", "libbar"), ("libbar", "libfoo")], ["libfoo", "libbar"]
         )
         self.assertEqual(_find_unneeded_preserved_nodes(graph, preserved), set())
+
+    def testCycle(self):
+        # bug 652382: preserved libs which only consume each other must
+        # not keep each other alive. Cycles are not limited to two libs.
+        graph, preserved = self._build(
+            [("libfoo", "libbar"), ("libbar", "libbaz"), ("libbaz", "libfoo")],
+            ["libfoo", "libbar", "libbaz"],
+        )
+        self.assertEqual(
+            _find_unneeded_preserved_nodes(graph, preserved),
+            {"libfoo", "libbar", "libbaz"},
+        )
+
+    def testCycleWithInstalledConsumer(self):
+        # A cycle is needed if anything outside of it still consumes part
+        # of it.
+        graph, preserved = self._build(
+            [
+                ("libfoo", "libbar"),
+                ("libbar", "libbaz"),
+                ("libbaz", "libfoo"),
+                ("app", "libbar"),
+            ],
+            ["libfoo", "libbar", "libbaz"],
+        )
+        self.assertEqual(_find_unneeded_preserved_nodes(graph, preserved), set())
+
+    def testCycleFromBugReport(self):
+        # The graphite2 / freetype / harfbuzz / libpng case, in which
+        # freetype and harfbuzz consume each other, and graphite2 and
+        # libpng are consumed by harfbuzz and freetype respectively.
+        graph, preserved = self._build(
+            [
+                ("libharfbuzz", "libgraphite2"),
+                ("libharfbuzz", "libfreetype"),
+                ("libfreetype", "libharfbuzz"),
+                ("libfreetype", "libpng16"),
+            ],
+            ["libgraphite2", "libfreetype", "libharfbuzz", "libpng16"],
+        )
+        self.assertEqual(
+            _find_unneeded_preserved_nodes(graph, preserved),
+            {"libgraphite2", "libfreetype", "libharfbuzz", "libpng16"},
+        )
+
+    def testUnneededCycleAndNeededLib(self):
+        # An unneeded cycle is removed even though an unrelated preserved
+        # lib is still needed.
+        graph, preserved = self._build(
+            [
+                ("libfoo", "libbar"),
+                ("libbar", "libfoo"),
+                ("baz", "libqux"),
+            ],
+            ["libfoo", "libbar", "libqux"],
+        )
+        self.assertEqual(
+            _find_unneeded_preserved_nodes(graph, preserved),
+            {"libfoo", "libbar"},
+        )

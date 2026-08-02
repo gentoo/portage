@@ -1734,13 +1734,14 @@ def _find_unneeded_preserved_nodes(lib_graph, preserved_nodes):
     consumers, find the preserved libraries which are not needed by
     anything.
 
-    Repeatedly take the preserved libraries which have no consumers left
-    and drop them from the graph, which may in turn leave other preserved
-    libraries without consumers.
+    A preserved library is needed if it has a consumer which is not itself
+    a preserved library, or if it has a consumer which is a preserved
+    library that is needed. Anything else is unneeded, including a group of
+    preserved libraries which consume each other in a cycle but which
+    nothing outside of the group consumes (bug 652382).
 
     @param lib_graph: graph in which an edge from a consumer (parent) to a
-            library (child) means that the consumer links against the library.
-            It is modified in place.
+            library (child) means that the consumer links against the library
     @type lib_graph: digraph
     @param preserved_nodes: the subset of nodes in lib_graph which are
             preserved libraries
@@ -1748,16 +1749,27 @@ def _find_unneeded_preserved_nodes(lib_graph, preserved_nodes):
     @rtype: set
     @return: the subset of preserved_nodes which is not needed
     """
-    unneeded_nodes = set()
+    needed_nodes = set()
+    stack = []
 
-    while lib_graph:
-        root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
-        if not root_nodes:
-            break
-        lib_graph.difference_update(root_nodes)
-        unneeded_nodes.update(root_nodes)
+    for preserved_node in preserved_nodes:
+        for consumer_node in lib_graph.parent_nodes(preserved_node):
+            if consumer_node not in preserved_nodes:
+                needed_nodes.add(preserved_node)
+                stack.append(preserved_node)
+                break
 
-    return unneeded_nodes
+    # Anything consumed by a needed preserved library is needed as well.
+    # This is what keeps a cycle alive when something outside of it still
+    # consumes part of it.
+    while stack:
+        node = stack.pop()
+        for child_node in lib_graph.child_nodes(node):
+            if child_node in preserved_nodes and child_node not in needed_nodes:
+                needed_nodes.add(child_node)
+                stack.append(child_node)
+
+    return preserved_nodes.difference(needed_nodes)
 
 
 class dblink:
