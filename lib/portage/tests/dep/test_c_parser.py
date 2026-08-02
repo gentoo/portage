@@ -607,13 +607,19 @@ class TestCFastVsPython(TestCase):
         if _orig_c_dep_parser is None:
             self.skipTest("_parser extension not available")
 
-    def _compare(self, depstr, uselist=None, matchall=False, eapi="8"):
-        kw = dict(token_class=Atom, matchall=matchall, eapi=eapi, uselist=uselist or [])
+    def _compare(self, depstr, uselist=None, matchall=False, eapi="8", flat=False):
+        kw = dict(
+            token_class=Atom,
+            matchall=matchall,
+            eapi=eapi,
+            uselist=uselist or [],
+            flat=flat,
+        )
         with _use_c_parser(False):
             py_result = use_reduce(depstr, **kw)
         c_result = use_reduce(depstr, **kw)
         ok, msg = _result_equal(c_result, py_result)
-        self.assertTrue(ok, f"{depstr!r}: {msg}")
+        self.assertTrue(ok, f"{depstr!r} (flat={flat}): {msg}")
 
     def test_simple_atom(self):
         self._compare("dev-libs/foo")
@@ -757,6 +763,60 @@ class TestCFastVsPython(TestCase):
         # Empty || after USE evaluation yields a placeholder atom in EAPI 7+.
         self._compare("|| ( foo? ( dev-libs/a ) )", uselist=[], eapi="8")
         self._compare("|| ( foo? ( dev-libs/a ) )", uselist=[], eapi="6")
+
+    def test_flat_simple(self):
+        self._compare("dev-libs/a dev-libs/b", matchall=True, flat=True)
+
+    def test_flat_or_group(self):
+        self._compare("|| ( dev-libs/a dev-libs/b )", matchall=True, flat=True)
+
+    def test_flat_nested_or(self):
+        # Nested any-of groups keep a '||' token per level in flat mode.
+        self._compare(
+            "|| ( dev-libs/a || ( dev-libs/b dev-libs/c ) )",
+            matchall=True,
+            flat=True,
+        )
+
+    def test_flat_use_conditional_active(self):
+        self._compare("foo? ( dev-libs/a dev-libs/b )", uselist=["foo"], flat=True)
+
+    def test_flat_use_conditional_inactive(self):
+        self._compare("foo? ( dev-libs/a dev-libs/b )", uselist=[], flat=True)
+
+    def test_flat_nested_conditionals(self):
+        self._compare(
+            "a? ( dev-libs/a b? ( dev-libs/b ) ) c? ( dev-libs/c )",
+            uselist=["a", "c"],
+            flat=True,
+        )
+
+    def test_flat_conditional_or_mix(self):
+        self._compare(
+            "foo? ( || ( dev-libs/a dev-libs/b ) ) dev-libs/c",
+            uselist=["foo"],
+            flat=True,
+        )
+
+    def test_flat_atoms_with_use(self):
+        self._compare(
+            "dev-libs/a[x] foo? ( =dev-libs/b-1[y?] )", uselist=["foo"], flat=True
+        )
+
+    def test_flat_matchall(self):
+        self._compare(
+            "a? ( dev-libs/a ) !b? ( dev-libs/b ) || ( dev-libs/c dev-libs/d )",
+            matchall=True,
+            flat=True,
+        )
+
+    def test_flat_complex(self):
+        self._compare(
+            "dev-libs/A >=dev-libs/B-2.0 || ( dev-libs/C dev-libs/D ) "
+            "foo? ( =dev-libs/E-1.0:0[bar,baz?] || ( dev-libs/F dev-libs/G ) )",
+            uselist=["foo"],
+            flat=True,
+        )
 
     def test_invalid_raises_same_exception(self):
         bad_cases = [

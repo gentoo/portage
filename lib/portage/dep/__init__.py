@@ -200,9 +200,24 @@ def _c_normalize_seq(seq, empty_always_true, under_anyof=False):
     return out
 
 
-def _c_fast_use_reduce(depstr, uselist, matchall, eapi):
+def _c_flatten_result(items, out, eapi, eapi_attrs, uselist, matchall):
+    """Recursively flatten the C parse tree into use_reduce(flat=True) form.
+    Nested || groups produce repeated '||' tokens, matching the Python path."""
+    for item in items:
+        if isinstance(item, str):
+            out.append(item)
+        elif isinstance(item, list):
+            _c_flatten_result(item, out, eapi, eapi_attrs, uselist, matchall)
+        else:
+            out.append(_c_atom_from_c(item, eapi, eapi_attrs, uselist, matchall))
+    return out
+
+
+def _c_fast_use_reduce(depstr, uselist, matchall, eapi, flat):
     raw = _c_dep_parser.parse(depstr, uselist=uselist, matchall=matchall)
     eapi_attrs = _get_eapi_attrs(eapi)
+    if flat:
+        return _c_flatten_result(raw, [], eapi, eapi_attrs, uselist, matchall)
     result = _c_convert_result(raw, eapi, eapi_attrs, uselist, matchall)
     return _c_normalize_seq(result, eapi_attrs.empty_groups_always_true)
 
@@ -1109,7 +1124,6 @@ def use_reduce(
         and token_class is Atom
         and not is_src_uri
         and not opconvert
-        and not flat
         and is_valid_flag is None
         and subset is None
         and not matchnone
@@ -1119,7 +1133,7 @@ def use_reduce(
         and (eapi is None or _get_eapi_attrs(eapi).slot_operator)
     ):
         try:
-            return _c_fast_use_reduce(depstr, uselist, matchall, eapi)
+            return _c_fast_use_reduce(depstr, uselist, matchall, eapi, flat)
         except ValueError as e:
             raise InvalidDependString(str(e)) from e
 
