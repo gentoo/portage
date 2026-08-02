@@ -30,6 +30,7 @@ __all__ = [
     "use_reduce",
 ]
 
+import os
 import re
 import warnings
 from functools import lru_cache
@@ -57,6 +58,10 @@ try:
     # extension has not been built, as in the lint-only CI job.
     import portage.dep._parser as _c_dep_parser
 except ImportError:
+    _c_dep_parser = None
+
+# PORTAGE_NATIVE_DEP_PARSER=0 forces the pure-Python path.  See emerge(1).
+if os.environ.get("PORTAGE_NATIVE_DEP_PARSER") == "0":
     _c_dep_parser = None
 
 if TYPE_CHECKING:

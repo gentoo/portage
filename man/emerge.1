@@ -1509,6 +1509,17 @@ dependency resolution and fall back to the previous implementation.
 This variable is internal and experimental; it may be removed or changed
 in a future release.
 .TP
+.BR PORTAGE_NATIVE_DEP_PARSER
+If this environment variable is set to \fI0\fR, then Portage will not use
+the native C dependency\-string parser and will fall back to the
+pure\-Python implementation.  Both paths are expected to produce identical
+results; the variable exists to verify that, and to work around a defect in
+the native parser should one be found.  It is read once, when the
+\fBportage.dep\fR module is imported, so it must be set in the environment
+before Portage starts.
+This variable is internal and experimental; it may be removed or changed
+in a future release.
+.TP
 .BR PORTAGE_DO_NOT_EXPORT_PMS_VARS
 If this environment variable is set, then Portage will not export PMS
 variables regardless of the EAPI.  The variables are still available
