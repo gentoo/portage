@@ -19,3 +19,44 @@ run_command(
     capture : false,
     check : true
 )
+
+dep_parser_ext = py.extension_module(
+    '_parser',
+    'dep_parser_core.c',
+    'dep_parser.c',
+    include_directories : include_directories('.'),
+    dependencies : py.dependency(),
+    subdir : 'portage' / 'dep',
+    install : true,
+)
+
+run_command(
+    [
+        'ln', '-srnf',
+        dep_parser_ext.full_path(),
+        meson.project_source_root() / 'lib' / 'portage' / 'dep/'
+    ],
+    capture : false,
+    check : true
+)
+
+test_parser = executable(
+    'test_parser',
+    'dep_parser_core.c',
+    'test_parser.c',
+    include_directories : include_directories('.'),
+)
+
+test('parser', test_parser)
+
+if get_option('fuzzing')
+    fuzz_parser = executable(
+        'fuzz_parser',
+        'dep_parser_core.c',
+        'fuzz_parser.c',
+        include_directories : include_directories('.'),
+        c_args : ['-fsanitize=fuzzer'],
+        link_args : ['-fsanitize=fuzzer'],
+        build_by_default : false,
+    )
+endif

@@ -57,3 +57,7 @@ option('rsync-verify', type : 'boolean', value : true,
 option('xattr', type : 'boolean', value : false,
     description : 'Preserve extended attributes when installing files'
 )
+
+option('fuzzing', type : 'boolean', value : false,
+    description : 'Build the libFuzzer harness for the native dependency parser'
+)
