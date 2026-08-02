@@ -627,7 +627,11 @@ py_parse(UNUSED PyObject *self, PyObject *args, PyObject *kwargs)
 
     AUTO_PY useset = NULL;
     if (py_uselist != Py_None) {
-        useset = PyFrozenSet_New(py_uselist);
+        /* use_reduce() has already frozen its uselist, so the common case is
+         * a frozenset that can be reused instead of copied. */
+        useset = PyFrozenSet_CheckExact(py_uselist)
+            ? Py_NewRef(py_uselist)
+            : PyFrozenSet_New(py_uselist);
         if (!useset) {
             return NULL;
         }

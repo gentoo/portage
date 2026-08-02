@@ -52,8 +52,84 @@ from portage.versions import (
     ververify,
 )
 
+try:
+    # Not "from . import _parser": pylint reports import-self for that when the
+    # extension has not been built, as in the lint-only CI job.
+    import portage.dep._parser as _c_dep_parser
+except ImportError:
+    _c_dep_parser = None
+
 if TYPE_CHECKING:
     from _emerge.Package import Package
+
+
+def _c_atom_from_c(catom, eapi, eapi_attrs, uselist, matchall):
+    """Construct a portage.dep.Atom from a _parser.Atom, bypassing __init__ regex."""
+    a = Atom.__new__(Atom)
+    a._string = str(catom)
+    a._cp = catom.cp
+    a._repo = None
+    a._slot = catom.slot
+    a._sub_slot = catom.sub_slot
+    a._slot_operator = catom.slot_operator
+    ver = catom.version
+    op = catom.operator
+    if op == "=" and ver is not None and ver.endswith("*"):
+        op = "=*"
+        ver = ver[:-1]
+    a._operator = op
+    a._version = ver
+    a._cpv = catom.cpv[:-1] if op == "=*" else catom.cpv
+    a._eapi = eapi
+    a._extended_syntax = False
+    a._build_id = None
+    a._unevaluated_atom = a
+    a._orig_atom = None
+    blocker_str = catom.blocker
+    a._blocker_obj = (
+        Atom._blocker(forbid_overlap=blocker_str == "!!")
+        if blocker_str is not None
+        else None
+    )
+    use_tokens = catom.use
+    if use_tokens is not None:
+        en, dis, miss_en, miss_dis, cond, req = _c_dep_parser.classify_use_deps(
+            use_tokens
+        )
+        a._use = _use_dep(
+            use_tokens,
+            eapi_attrs,
+            enabled_flags=en,
+            disabled_flags=dis,
+            missing_enabled=miss_en,
+            missing_disabled=miss_dis,
+            conditional=cond,
+            required=req,
+        )
+        if not matchall and a._use.conditional:
+            a = a.evaluate_conditionals(uselist)
+    else:
+        a._use = None
+    return a
+
+
+def _c_convert_result(items, eapi, eapi_attrs, uselist, matchall):
+    result = []
+    for item in items:
+        if isinstance(item, str):
+            result.append(item)
+        elif isinstance(item, list):
+            result.append(_c_convert_result(item, eapi, eapi_attrs, uselist, matchall))
+        else:
+            result.append(_c_atom_from_c(item, eapi, eapi_attrs, uselist, matchall))
+    return result
+
+
+def _c_fast_use_reduce(depstr, uselist, matchall, eapi):
+    raw = _c_dep_parser.parse(depstr, uselist=uselist, matchall=matchall)
+    eapi_attrs = _get_eapi_attrs(eapi)
+    return _c_convert_result(raw, eapi, eapi_attrs, uselist, matchall)
+
 
 # \w is [a-zA-Z0-9_]
 
@@ -949,6 +1025,27 @@ def use_reduce(
         excludeall = frozenset(excludeall)
     if subset is not None:
         subset = frozenset(subset)
+
+    if (
+        _c_dep_parser is not None
+        # The fast path builds portage.dep.Atom directly, so it cannot serve
+        # a caller that asked for some other token class.
+        and token_class is Atom
+        and not is_src_uri
+        and not opconvert
+        and not flat
+        and is_valid_flag is None
+        and subset is None
+        and not matchnone
+        and not masklist
+        and not excludeall
+        # C grammar is EAPI 5+ only; eapi=None is permissive.
+        and (eapi is None or _get_eapi_attrs(eapi).slot_operator)
+    ):
+        try:
+            return _c_fast_use_reduce(depstr, uselist, matchall, eapi)
+        except ValueError as e:
+            raise InvalidDependString(str(e)) from e
 
     result = _use_reduce_cached(
         depstr,
