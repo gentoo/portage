@@ -5,6 +5,7 @@ py.install_sources(
         'test_bintree_build_id.py',
         'test_fakedbapi.py',
         'test_portdb_cache.py',
+        'test_preserved_libs.py',
         '__init__.py',
         '__test__.py',
     ],

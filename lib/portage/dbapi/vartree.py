@@ -1728,6 +1728,38 @@ class vartree:
         self.populated = 1
 
 
+def _find_unneeded_preserved_nodes(lib_graph, preserved_nodes):
+    """
+    Given a graph of libraries in which the parents of a node are its
+    consumers, find the preserved libraries which are not needed by
+    anything.
+
+    Repeatedly take the preserved libraries which have no consumers left
+    and drop them from the graph, which may in turn leave other preserved
+    libraries without consumers.
+
+    @param lib_graph: graph in which an edge from a consumer (parent) to a
+            library (child) means that the consumer links against the library.
+            It is modified in place.
+    @type lib_graph: digraph
+    @param preserved_nodes: the subset of nodes in lib_graph which are
+            preserved libraries
+    @type preserved_nodes: set
+    @rtype: set
+    @return: the subset of preserved_nodes which is not needed
+    """
+    unneeded_nodes = set()
+
+    while lib_graph:
+        root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
+        if not root_nodes:
+            break
+        lib_graph.difference_update(root_nodes)
+        unneeded_nodes.update(root_nodes)
+
+    return unneeded_nodes
+
+
 class dblink:
     """
     This class provides an interface to the installed package database
@@ -3718,35 +3750,30 @@ class dblink:
                     break
 
         cpv_lib_map = {}
-        while lib_graph:
-            root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
-            if not root_nodes:
-                break
-            lib_graph.difference_update(root_nodes)
-            unlink_list = set()
-            for node in root_nodes:
-                unlink_list.update(node.alt_paths)
-            unlink_list = sorted(unlink_list)
-            for obj in unlink_list:
-                cpv = path_cpv_map.get(obj)
-                if cpv is None:
-                    # This means that a symlink is in the preserved libs
-                    # registry, but the actual lib it points to is not.
-                    self._display_merge(
-                        _(
-                            "!!! symlink to lib is preserved, "
-                            "but not the lib itself:\n!!! '%s'\n"
-                        )
-                        % (obj,),
-                        level=logging.ERROR,
-                        noiselevel=-1,
+        unlink_list = set()
+        for node in _find_unneeded_preserved_nodes(lib_graph, preserved_nodes):
+            unlink_list.update(node.alt_paths)
+
+        for obj in sorted(unlink_list):
+            cpv = path_cpv_map.get(obj)
+            if cpv is None:
+                # This means that a symlink is in the preserved libs
+                # registry, but the actual lib it points to is not.
+                self._display_merge(
+                    _(
+                        "!!! symlink to lib is preserved, "
+                        "but not the lib itself:\n!!! '%s'\n"
                     )
-                    continue
-                removed = cpv_lib_map.get(cpv)
-                if removed is None:
-                    removed = set()
-                    cpv_lib_map[cpv] = removed
-                removed.add(obj)
+                    % (obj,),
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+                continue
+            removed = cpv_lib_map.get(cpv)
+            if removed is None:
+                removed = set()
+                cpv_lib_map[cpv] = removed
+            removed.add(obj)
 
         return cpv_lib_map
 
