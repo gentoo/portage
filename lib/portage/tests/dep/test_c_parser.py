@@ -1001,6 +1001,27 @@ class TestScanAtom(_AtomParityMixin, TestCase):
         self._assert_same("cat/pkg[a]", eapi="1")  # use deps invalid in EAPI 1
         self._assert_same("cat/pkg[a(+)]", eapi="4")  # defaults invalid in EAPI 4
 
+    def test_is_valid_flag(self):
+        # The conditional-flag-in-IUSE check runs in the fast path too.
+        def accept_all(flag):
+            return True
+
+        def reject_x(flag):
+            return not flag.startswith("x")
+
+        self._assert_same("cat/pkg[a?,!b?]", eapi="8", is_valid_flag=accept_all)
+        self._assert_same("cat/pkg[x?]", eapi="8", is_valid_flag=reject_x)  # invalid
+        self._assert_same("cat/pkg[x=]", eapi="8", is_valid_flag=reject_x)  # invalid
+        # Non-conditional flags are not validated by is_valid_flag.
+        self._assert_same("cat/pkg[x,-y]", eapi="8", is_valid_flag=reject_x)
+
+    def test_wildcard_falls_back(self):
+        # Extended/wildcard atoms fail scan_atom and use the regex path;
+        # results (extended_syntax etc.) must still match.
+        for s in ("*/*", "cat/*", "*/pkg", "dev-*/foo", "=cat/pkg-*1*"):
+            with self.subTest(s=s):
+                self._assert_same(s, allow_wildcard=True)
+
 
 class TestScanAtomNameGrammar(_AtomParityMixin, TestCase):
     """Category, package-name, version and revision edge cases, adapted from

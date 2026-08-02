@@ -1826,7 +1826,23 @@ class Atom:
         def __init__(self, forbid_overlap=False):
             self.overlap = self._overlap(forbid=forbid_overlap)
 
-    def _c_fast_init(self, catom, eapi, eapi_attrs, unevaluated_atom):
+    def _validate_conditional_flags(self, is_valid_flag):
+        """Raise if a USE-conditional flag in this atom is not in IUSE.
+
+        Mirrors the check the regex path performs in __init__.
+        """
+        for conditional_type, flags in self._use.conditional.items():
+            for flag in flags:
+                if is_valid_flag(flag):
+                    continue
+                conditional_str = _use_dep._conditional_strings[conditional_type]
+                raise InvalidAtom(
+                    f"USE flag '{flag}' referenced in conditional "
+                    f"'{conditional_str % flag}' in atom '{self}' is not in IUSE",
+                    category="IUSE.missing",
+                )
+
+    def _c_fast_init(self, catom, eapi, eapi_attrs, is_valid_flag, unevaluated_atom):
         """Populate this Atom from a C scan_atom result.
 
         Raises InvalidAtom/TypeError for the same cases as the regex path.
@@ -1868,6 +1884,8 @@ class Atom:
                     f"Use dep defaults are not allowed in EAPI {eapi}: '{self}'",
                     category="EAPI.incompatible",
                 )
+            if is_valid_flag is not None and self._use.conditional:
+                self._validate_conditional_flags(is_valid_flag)
 
         if (
             self._blocker_obj
@@ -1918,17 +1936,13 @@ class Atom:
             if allow_build_id is None:
                 allow_build_id = True
 
-        # Fast path: parse the atom in C for the common case. scan_atom is
-        # byte-exact with the regex path or raises ValueError (repo specs,
-        # build-ids, wildcards, anything invalid), in which case we fall
-        # through to the pure-Python regex path below. Wildcards, an injected
-        # _use, flag validation, and virtual-expansion originals are handled
-        # only by the regex path.
+        # Try the C fast path. scan_atom raises ValueError for anything it
+        # can't handle (wildcards, repo specs, build-ids); we fall through to
+        # the regex path. allow_wildcard is safe: __init__ tries strict regex
+        # first, so actual wildcard atoms fail scan_atom and fall back naturally.
         if (
             _c_dep_parser is not None
-            and not allow_wildcard
             and _use is None
-            and is_valid_flag is None
             and orig_atom is None
             and (eapi is None or eapi_attrs.slot_operator)
         ):
@@ -1937,7 +1951,9 @@ class Atom:
             except ValueError:
                 catom = None
             if catom is not None:
-                self._c_fast_init(catom, eapi, eapi_attrs, unevaluated_atom)
+                self._c_fast_init(
+                    catom, eapi, eapi_attrs, is_valid_flag, unevaluated_atom
+                )
                 return
 
         if s[:1] == "!":
