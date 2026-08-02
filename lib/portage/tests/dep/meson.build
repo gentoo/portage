@@ -2,6 +2,7 @@ py.install_sources(
     [
         'test_atom.py',
         'test_check_required_use.py',
+        'test_c_parser.py',
         'test_extended_atom_dict.py',
         'test_extract_affecting_use.py',
         'test_standalone.py',
