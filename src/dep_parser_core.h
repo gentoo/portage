@@ -73,7 +73,9 @@ typedef struct {
     void *ctx;
     /* Called for each atom token. Returns 1 on success, 0 on error. */
     int (*on_atom)(void *ctx, const char *start, int len, const AtomInfo *info);
-    /* Called before/after || ^^ ?? group contents. */
+    /* Called before/after group contents.  op is "||", "^^" or "??";
+     * an empty op means a plain all-of group, which nests but has no
+     * operator token of its own. */
     int (*on_group_start)(void *ctx, const char *op, int op_len);
     int (*on_group_end)(void *ctx);
     /* Returns 1 if the use flag is active, 0 if not, -1 on error. */

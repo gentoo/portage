@@ -517,7 +517,8 @@ static int scan_item(DepScanner *p, DepVisitor *v)
 
     const char *s = p->cur;
 
-    /* naked group: ( items ) - all-of, inline */
+    /* Plain "( items )": reported as a group with an empty operator rather
+     * than inlined, so a conjunction inside an any-of keeps its nesting. */
     if (s < p->end && *s == '(') {
         p->cur = s + 1;
         if (p->cur >= p->end || !is_whitespace(*p->cur)) {
@@ -526,11 +527,14 @@ static int scan_item(DepScanner *p, DepVisitor *v)
         }
         skip_whitespace(p);
 
+        if (!v->on_group_start(v->ctx, "", 0))
+            return 0;
+
         if (!scan_group_contents(p, v))
             return 0;
 
         p->cur++;  /* consume ')' */
-        return 1;
+        return v->on_group_end(v->ctx);
     }
 
     int         is_group_op = 0;
@@ -602,16 +606,20 @@ static int scan_item(DepScanner *p, DepVisitor *v)
             return 0;
 
         if (active) {
-            if (!scan_group_contents(p, v)) {
+            /* active conditional: emit as naked all-of to preserve nesting */
+            if (!v->on_group_start(v->ctx, "", 0))
                 return 0;
-            }
+            if (!scan_group_contents(p, v))
+                return 0;
+            p->cur++;  /* consume ')' */
+            return v->on_group_end(v->ctx);
         } else {
             if (!scan_group_contents(p, &skip_visitor)) {
                 return 0;
             }
+            p->cur++;  /* consume ')' */
+            return 1;
         }
-        p->cur++;  /* consume ')' */
-        return 1;
     }
 }
 

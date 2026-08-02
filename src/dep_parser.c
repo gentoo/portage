@@ -377,14 +377,19 @@ static int py_on_group_end(void *vctx)
     PyObject *sublist  = ctx->frames[ctx->depth].list;
     PyObject *parent   = ctx->frames[ctx->depth - 1].list;
 
-    int rc = PyList_Append(parent, group_op);
-    Py_DECREF(group_op);
-    if (rc < 0) {
-        Py_DECREF(sublist);
-        return 0;
+    /* Empty operator = naked all-of: append only the sublist. */
+    if (PyUnicode_GET_LENGTH(group_op) != 0) {
+        int rc = PyList_Append(parent, group_op);
+        Py_DECREF(group_op);
+        if (rc < 0) {
+            Py_DECREF(sublist);
+            return 0;
+        }
+    } else {
+        Py_DECREF(group_op);
     }
 
-    rc = PyList_Append(parent, sublist);
+    int rc = PyList_Append(parent, sublist);
     Py_DECREF(sublist);
     return rc >= 0;
 }

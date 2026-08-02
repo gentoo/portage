@@ -719,6 +719,45 @@ class TestCFastVsPython(TestCase):
     def test_slot_operator_bare_eq(self):
         self._compare("dev-libs/foo:=", matchall=True)
 
+    def test_anyof_conjunction_alternative(self):
+        # ( a b ) inside || is a conjunction and must stay nested, not flattened.
+        self._compare("|| ( ( dev-libs/a dev-libs/b ) dev-libs/c )", matchall=True)
+
+    def test_anyof_conjunction_second(self):
+        self._compare("|| ( dev-libs/a ( dev-libs/b dev-libs/c ) )", matchall=True)
+
+    def test_anyof_two_conjunctions(self):
+        self._compare(
+            "|| ( ( dev-libs/a dev-libs/b ) ( dev-libs/c dev-libs/d ) )",
+            matchall=True,
+        )
+
+    def test_anyof_active_conditional_conjunction(self):
+        # An active USE-conditional group inside || is also a conjunction.
+        self._compare(
+            "|| ( foo? ( dev-libs/a dev-libs/b ) dev-libs/c )", uselist=["foo"]
+        )
+
+    def test_anyof_nested_anyof_flattens(self):
+        self._compare("|| ( dev-libs/a || ( dev-libs/b dev-libs/c ) )", matchall=True)
+
+    def test_anyof_naked_wrapping_anyof(self):
+        # ( || ( b c ) ) inside || flattens its alternatives up.
+        self._compare(
+            "|| ( ( || ( dev-libs/b dev-libs/c ) ) dev-libs/a )", matchall=True
+        )
+
+    def test_anyof_deeply_nested_conjunctions(self):
+        self._compare(
+            "|| ( ( dev-libs/a ( dev-libs/b dev-libs/c ) ) dev-libs/e )",
+            matchall=True,
+        )
+
+    def test_anyof_empty_conditional_eapi7(self):
+        # Empty || after USE evaluation yields a placeholder atom in EAPI 7+.
+        self._compare("|| ( foo? ( dev-libs/a ) )", uselist=[], eapi="8")
+        self._compare("|| ( foo? ( dev-libs/a ) )", uselist=[], eapi="6")
+
     def test_invalid_raises_same_exception(self):
         bad_cases = [
             "|| ( dev-libs/a dev-libs/b",
@@ -753,6 +792,15 @@ class TestDeepNesting(TestCase):
         for depth in (1, 8, 31, 32, 33, 64, 65, 200):
             with self.subTest(depth=depth):
                 depstr = "( " * depth + "dev-libs/a" + " )" * depth
+                self.assertEqual(
+                    self._reduce(depstr, use_c=True),
+                    self._reduce(depstr, use_c=False),
+                )
+
+    def test_nesting_parity_any_of(self):
+        for depth in (1, 8, 31, 32, 33, 64, 65, 200):
+            with self.subTest(depth=depth):
+                depstr = "|| ( " * depth + "dev-libs/a" + " )" * depth
                 self.assertEqual(
                     self._reduce(depstr, use_c=True),
                     self._reduce(depstr, use_c=False),

@@ -130,10 +130,81 @@ def _c_convert_result(items, eapi, eapi_attrs, uselist, matchall):
     return result
 
 
+def _c_normalize_alts(group, empty_always_true):
+    """Reduce the alternatives of one || group to use_reduce's non-flat form."""
+    alts = []
+    i = 0
+    n = len(group)
+    while i < n:
+        item = group[i]
+        if isinstance(item, str):  # a nested '||'
+            i += 1
+            nested = _c_normalize_alts(group[i], empty_always_true)
+            if nested:
+                alts.extend(nested)
+            elif not empty_always_true:
+                # empty nested || -> placeholder atom (EAPI 7+)
+                alts.append([Atom("__const__/empty-any-of")])
+        elif isinstance(item, list):
+            # conjunction: normalize under_anyof to suppress bracket removal
+            sub = _c_normalize_seq(item, empty_always_true, under_anyof=True)
+            if len(sub) == 1:
+                # ( X ) alternative -> X
+                alts.append(sub[0])
+            elif len(sub) == 2 and sub[0] == "||":
+                # ( || ( ... ) ) alternative -> its alternatives flatten into
+                # the enclosing any-of.
+                alts.extend(sub[1])
+            elif sub:
+                alts.append(sub)
+        else:
+            alts.append(item)
+        i += 1
+    return alts
+
+
+def _c_normalize_seq(seq, empty_always_true, under_anyof=False):
+    """Reduce a C parse (sub)tree to use_reduce's non-flat form.
+
+    under_anyof: this sequence is an alternative of an enclosing || group;
+    use_reduce keeps redundant brackets there, suppressing conjunction inlining."""
+    out = []
+    i = 0
+    n = len(seq)
+    while i < n:
+        item = seq[i]
+        if isinstance(item, str):  # '||'
+            i += 1
+            alts = _c_normalize_alts(seq[i], empty_always_true)
+            if not alts:
+                # || ( ) -> dropped (EAPI < 7) or a const placeholder (EAPI 7+).
+                if not empty_always_true:
+                    out.append(Atom("__const__/empty-any-of"))
+            elif len(alts) == 1:
+                # || ( X ) -> X
+                alt = alts[0]
+                if isinstance(alt, list) and not under_anyof:
+                    out.extend(alt)
+                else:
+                    out.append(alt)
+            else:
+                out.append("||")
+                out.append(alts)
+        elif isinstance(item, list):
+            out.extend(
+                _c_normalize_seq(item, empty_always_true, under_anyof=under_anyof)
+            )
+        else:
+            out.append(item)
+        i += 1
+    return out
+
+
 def _c_fast_use_reduce(depstr, uselist, matchall, eapi):
     raw = _c_dep_parser.parse(depstr, uselist=uselist, matchall=matchall)
     eapi_attrs = _get_eapi_attrs(eapi)
-    return _c_convert_result(raw, eapi, eapi_attrs, uselist, matchall)
+    result = _c_convert_result(raw, eapi, eapi_attrs, uselist, matchall)
+    return _c_normalize_seq(result, eapi_attrs.empty_groups_always_true)
 
 
 # \w is [a-zA-Z0-9_]
