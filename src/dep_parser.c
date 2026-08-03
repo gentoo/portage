@@ -699,41 +699,45 @@ static PyMethodDef methods[] = {
     { NULL, NULL, 0, NULL },
 };
 
+static int module_exec(PyObject *m)
+{
+    if (!init_globals())
+        return -1;
+
+    return atom_add_to_module(m);
+}
+
+static PyModuleDef_Slot slots[] = {
+    { Py_mod_exec, (void *)module_exec },
+#ifdef Py_mod_multiple_interpreters
+    /* The interned strings and the Atom type are process-wide statics, so the
+     * module must only ever be loaded into the main interpreter. */
+    { Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED },
+#endif
+#ifdef Py_mod_gil
+    /* Safe to run without the GIL: the character-class table and the interned
+     * strings are written once during module exec and only read afterwards,
+     * the scanner keeps all of its state on the stack or in a per-call
+     * context, and Atom is an ordinary refcounted object with no mutable
+     * fields. */
+    { Py_mod_gil, Py_MOD_GIL_NOT_USED },
+#endif
+    { 0, NULL },
+};
+
 static struct PyModuleDef module = {
     .m_base    = PyModuleDef_HEAD_INIT,
     .m_name    = MODULE_NAME,
     .m_doc     = NULL,
-    .m_size    = -1,
+    .m_size    = 0,
     .m_methods = methods,
+    .m_slots   = slots,
 };
 
 PyMODINIT_FUNC
 PyInit__parser(void)
 {
-    if (!init_globals())
-        return NULL;
-
-    PyObject *m = PyModule_Create(&module);
-    if (!m)
-        return NULL;
-
-    if (atom_add_to_module(m) < 0) {
-        Py_DECREF(m);
-        return NULL;
-    }
-
-#ifdef Py_GIL_DISABLED
-    /* Safe to run without the GIL: the character-class table and the interned
-     * strings are written once here and only read afterwards, the scanner
-     * keeps all of its state on the stack or in a per-call context, and Atom
-     * is an ordinary refcounted object with no mutable fields. */
-    if (PyUnstable_Module_SetGIL(m, Py_MOD_GIL_NOT_USED) < 0) {
-        Py_DECREF(m);
-        return NULL;
-    }
-#endif
-
-    return m;
+    return PyModuleDef_Init(&module);
 }
 
 /* vim: set ts=4 sw=4 et: */

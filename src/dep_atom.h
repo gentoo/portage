@@ -143,12 +143,7 @@ static inline PyObject *atom_new(
 /* Register AtomType with a module.  Call after PyType_Ready. */
 static inline int atom_add_to_module(PyObject *m)
 {
-    Py_INCREF(&AtomType);
-    if (PyModule_AddObject(m, "Atom", (PyObject *)&AtomType) < 0) {
-        Py_DECREF(&AtomType);
-        return -1;
-    }
-    return 0;
+    return PyModule_AddType(m, &AtomType);
 }
 
 /* vim: set ts=4 sw=4 et: */
