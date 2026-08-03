@@ -221,20 +221,30 @@ try:
 
     def jobs(argv):
         import json as _json
-        from _emerge._observability import read_snapshots, format_snapshots
+        from _emerge._observability import (
+            format_snapshots,
+            missing_feature_hint,
+            read_snapshots,
+        )
         from portage.const import EPREFIX
 
         snapshots = read_snapshots(EPREFIX)
+        hint = missing_feature_hint(snapshots)
+        if hint is not None:
+            sys.stderr.write(hint)
+
         if "--json" in argv:
+            # Still valid JSON with nothing to report.
             print(_json.dumps(snapshots, sort_keys=True, indent=2))
-        else:
+        elif hint is None:
             sys.stdout.write(format_snapshots(snapshots))
         return 0
 
     docstrings["jobs"] = """[--json]
 		Show packages currently being built/merged by running emerge
-		processes (requires FEATURES="observability").  With --json, emit
-		the raw status snapshots.
+		processes (requires the observed emerge to have been started with
+		FEATURES="observability").  With --json, emit the raw status
+		snapshots.
 		"""
     jobs.__doc__ = docstrings["jobs"]
 
