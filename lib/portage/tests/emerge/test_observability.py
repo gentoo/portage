@@ -10,6 +10,7 @@ from _emerge._observability import (
     ObservabilityMonitor,
     build_snapshot,
     format_snapshots,
+    missing_feature_hint,
     read_snapshots,
     status_dir,
 )
@@ -158,6 +159,17 @@ class ObservabilitySnapshotTestCase(TestCase):
 
             monitor.close()
             self.assertFalse(os.path.exists(path))
+
+    def test_hint_when_nothing_read_and_feature_absent(self):
+        self.assertIn("observability", missing_feature_hint([], features=set()))
+
+    def test_no_hint_when_nothing_read_but_feature_present(self):
+        self.assertIsNone(missing_feature_hint([], features={"observability"}))
+
+    def test_no_hint_when_something_was_read(self):
+        # The feature is enabled for the emerge being observed, not for the
+        # process observing it, so a readable snapshot is never held back.
+        self.assertIsNone(missing_feature_hint([{"emerge_pid": 1}], features=set()))
 
     def test_stale_file_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:

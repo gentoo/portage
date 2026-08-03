@@ -202,6 +202,31 @@ def format_snapshots(snapshots):
     return "\n".join(lines) + "\n"
 
 
+NOT_ENABLED_HINT = (
+    "Nothing to report. Note that emerge only publishes status when it is "
+    'started with FEATURES="observability"; see make.conf(5).\n'
+)
+
+
+def missing_feature_hint(snapshots, features=None):
+    """Return a hint about FEATURES="observability", or None.
+
+    There is only something to say when nothing was read, since the
+    feature applies to the emerge being observed rather than to the one
+    observing it.
+
+    `features` defaults to this configuration's FEATURES, looked up only
+    when it is needed, since loading the config is not cheap.
+    """
+    if snapshots:
+        return None
+    if features is None:
+        features = portage.settings.features
+    if "observability" in features:
+        return None
+    return NOT_ENABLED_HINT
+
+
 class ObservabilityMonitor:
     """Owns the status file and streaming socket for one Scheduler.
 

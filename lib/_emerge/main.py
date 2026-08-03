@@ -1263,9 +1263,19 @@ def emerge_main(args: Optional[list[str]] = None):
         # (For machine-readable output, use `portageq jobs --json`.)
         from portage.const import EPREFIX
 
-        from _emerge._observability import format_snapshots, read_snapshots
+        from _emerge._observability import (
+            format_snapshots,
+            missing_feature_hint,
+            read_snapshots,
+        )
 
-        sys.stdout.write(format_snapshots(read_snapshots(EPREFIX)))
+        snapshots = read_snapshots(EPREFIX)
+        hint = missing_feature_hint(snapshots)
+        if hint is not None:
+            sys.stderr.write(hint)
+            return 1
+
+        sys.stdout.write(format_snapshots(snapshots))
         return os.EX_OK
     if myaction == "sync":
         # need to set this to True now in order for the repository config
