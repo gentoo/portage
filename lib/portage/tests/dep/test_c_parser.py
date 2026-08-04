@@ -8,6 +8,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import _testcapi
+except ImportError:
+    _testcapi = None
+else:
+    # PyPy ships a _testcapi module, but not the allocator hooks that the
+    # allocation-failure sweep needs.
+    if not all(hasattr(_testcapi, x) for x in ("set_nomemory", "remove_mem_hooks")):
+        _testcapi = None
+
 import portage
 import portage.dep as _dep_mod
 from portage.dep import Atom, _get_eapi_attrs, _use_dep, use_reduce
@@ -1469,3 +1479,134 @@ class TestKillSwitch(TestCase):
         for value in ("1", "", "no"):
             with self.subTest(value=value):
                 self.assertEqual(self._probe(value), "False")
+
+
+class TestCParserAllocFailure(TestCase):
+    """Every allocation the C parser makes can fail, and each failure has its
+    own cleanup path that no ordinary test reaches.  _testcapi.set_nomemory(n,
+    n + 1) makes the nth allocation fail, so sweeping n over a whole call
+    exercises those paths one at a time.
+
+    A failed allocation must surface as MemoryError, must not crash, and must
+    not leave the parser unusable: the group-frame stack and the half-built
+    Atom of the aborted call have to be released.
+
+    set_nomemory() hooks CPython's own allocator, so these tests skip wherever
+    it is unavailable: _testcapi is a test-support module that is not installed
+    everywhere, and PyPy provides the module without the memory hooks."""
+
+    # Large enough that the sweep runs past the last allocation of every case
+    # here; _sweep() fails if a case ever outgrows it.
+    SWEEP_LIMIT = 400
+
+    PARSE_CASES = (
+        ("dev-libs/a", (), False),
+        ("=sys-apps/portage-2.1-r1:0/1=[doc,a=,!b=,c?,!d?,-e]", (), True),
+        ("|| ( dev-libs/a dev-libs/b )", (), True),
+        ("|| ( ( dev-libs/a dev-libs/b ) dev-libs/c )", (), True),
+        ("foo? ( dev-libs/a dev-libs/b )", ("foo",), False),
+        ("foo? ( dev-libs/a )", (), False),
+        (
+            "dev-libs/A >=dev-libs/B-2.0 || ( dev-libs/C dev-libs/D ) "
+            "foo? ( =dev-libs/E-1.0:0[bar,baz?] )",
+            ("foo",),
+            False,
+        ),
+        # Long enough to miss the on-stack buffer in join_atom_string().
+        ("=cat/" + "a" * 300 + "-1.0", (), True),
+        # Deeper than PY_PARSE_INLINE_DEPTH, so the group-frame stack moves to
+        # the heap (PyMem_New) and then grows again (PyMem_Realloc).
+        ("( " * 40 + "dev-libs/a" + " )" * 40, (), True),
+        ("( " * 70 + "dev-libs/a" + " )" * 70, (), True),
+    )
+
+    ATOM_CASES = (
+        "sys-apps/portage",
+        ">=dev-libs/foo-1.2.3-r1:0/1=[a,-b,c?,!d?,e=]",
+        "!!media-libs/x:2",
+        "=cat/pkg-1.2*",
+    )
+
+    USE_DEP_CASES = (
+        ("foo",),
+        ("foo", "-bar", "!baz?", "qux=", "quux(+)"),
+        ("a", "b?", "!c?", "d=", "!e=", "-f", "g(+)", "h(-)"),
+    )
+
+    def setUp(self):
+        if _orig_c_dep_parser is None:
+            self.skipTest("_parser extension not available")
+        if _testcapi is None:
+            self.skipTest("_testcapi memory hooks not available")
+        self._parser = _orig_c_dep_parser
+
+    def _sweep(self, fn, *args, **kwargs):
+        """Call fn(*args, **kwargs) once per allocation index, failing that
+        allocation."""
+        failed = []
+        for n in range(self.SWEEP_LIMIT):
+            _testcapi.set_nomemory(n, n + 1)
+            try:
+                fn(*args, **kwargs)
+            except MemoryError:
+                failed.append(n)
+            finally:
+                _testcapi.remove_mem_hooks()
+        self.assertTrue(failed, "no allocation failure was injected")
+        # A failure in the last stretch of the sweep means the call allocates
+        # more than SWEEP_LIMIT times, so its deepest error paths were never
+        # reached and the limit needs raising.
+        self.assertLess(
+            failed[-1],
+            self.SWEEP_LIMIT - 50,
+            f"SWEEP_LIMIT={self.SWEEP_LIMIT} too low for this case",
+        )
+
+    def test_parse(self):
+        for depstr, uselist, matchall in self.PARSE_CASES:
+            with self.subTest(depstr=depstr):
+                kw = dict(uselist=uselist, matchall=matchall)
+                expected = self._parser.parse(depstr, **kw)
+                self._sweep(self._parser.parse, depstr, **kw)
+                self.assertEqual(self._parser.parse(depstr, **kw), expected)
+
+    def test_scan_atom(self):
+        for s in self.ATOM_CASES:
+            with self.subTest(s=s):
+                expected = str(self._parser.scan_atom(s))
+                self._sweep(self._parser.scan_atom, s)
+                self.assertEqual(str(self._parser.scan_atom(s)), expected)
+
+    def test_classify_use_deps(self):
+        for tokens in self.USE_DEP_CASES:
+            with self.subTest(tokens=tokens):
+                expected = self._parser.classify_use_deps(tokens)
+                self._sweep(self._parser.classify_use_deps, tokens)
+                self.assertEqual(self._parser.classify_use_deps(tokens), expected)
+
+    def test_bad_argument_types(self):
+        """Argument conversion failures are error paths of their own, and no
+        allocation sweep reaches them."""
+        for arg in (42, None, b"dev-libs/a", ["dev-libs/a"]):
+            with self.subTest(arg=arg):
+                with self.assertRaises(TypeError):
+                    self._parser.parse(arg)
+                with self.assertRaises(TypeError):
+                    self._parser.scan_atom(arg)
+        # classify_use_deps() wants a sequence, and its items must be strings.
+        for arg in (42, None):
+            with self.subTest(arg=arg):
+                with self.assertRaises(TypeError):
+                    self._parser.classify_use_deps(arg)
+        with self.assertRaises(TypeError):
+            self._parser.classify_use_deps((42,))
+
+    def test_atom_fast_path(self):
+        """Atom() drives scan_atom() plus _c_fast_init(), so a failure here
+        can also leave a partly initialized portage.dep.Atom behind."""
+        for s in self.ATOM_CASES:
+            with self.subTest(s=s):
+                expected = Atom(s, eapi="8")
+                self._sweep(Atom, s, eapi="8")
+                ok, msg = _atoms_equal(Atom(s, eapi="8"), expected)
+                self.assertTrue(ok, f"{s!r}: {msg}")
