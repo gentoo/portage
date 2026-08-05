@@ -208,12 +208,13 @@ def _unmerge_display(
         for x in candidate_catpkgs:
             # cycle through all our candidate deps and determine
             # what will and will not get unmerged
+            x_str = str(x)  # this could be an Atom, stringify
             try:
                 mymatch = vartree.dbapi.match(x)
             except portage.exception.AmbiguousPackageName as errpkgs:
                 print(
                     '\n\n!!! The short ebuild name "'
-                    + x
+                    + x_str
                     + '" is ambiguous.  Please specify'
                 )
                 print(
@@ -225,11 +226,11 @@ def _unmerge_display(
                 print()
                 sys.exit(1)
 
-            if not mymatch and x[0] not in "<>=~":
+            if not mymatch and x_str[0] not in "<>=~":
                 mymatch = vartree.dep_match(x)
             if not mymatch:
                 portage.writemsg(
-                    f"\n--- Couldn't find '{str(x).replace('null/', '')}' to {unmerge_action}.\n",
+                    f"\n--- Couldn't find '{x_str.replace('null/', '')}' to {unmerge_action}.\n",
                     noiselevel=-1,
                 )
                 continue
