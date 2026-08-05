@@ -151,7 +151,7 @@ def _expand_new_virtuals(
                     mysettings._populate_treeVirtuals_if_needed(myvartree)
                 mychoices = mysettings.getvirtuals().get(mykey, [])
                 for y in mychoices:
-                    a.append(Atom(x.replace(x.cp, y.cp, 1)))
+                    a.append(x.with_cp(y.cp))
                 if not a:
                     newsplit.append(x)
                 elif is_disjunction:
@@ -272,7 +272,7 @@ def _expand_new_virtuals(
         if not a and mychoices:
             # Check for a virtual package.provided match.
             for y in mychoices:
-                new_atom = Atom(x.replace(x.cp, y.cp, 1))
+                new_atom = x.with_cp(y.cp)
                 if match_from_list(new_atom, pprovideddict.get(new_atom.cp, [])):
                     a.append(new_atom)
                     if atom_graph is not None:
