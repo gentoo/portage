@@ -65,6 +65,9 @@ Bug fixes:
 * Set a non-zero window size for newly allocated ptys, so build processes
   can more reliably query their terminal dimensions (bug #978222).
 
+* emerge: Don't report that there are unsatisfied fetch restricted downloads
+  when all the remaining unsatisfied downloads are not restricted (bug #830763).
+
 Cleanups:
 
 * Atom: De-stringify, add type annotations, use proper attributes at

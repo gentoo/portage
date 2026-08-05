@@ -635,7 +635,7 @@ class Display:
                 self.counters.restrict_fetch += 1
             pkg_info.attr_display.fetch_restrict = True
             if not self.portdb.getfetchsizes(
-                pkg.cpv, useflags=pkg_info.use, myrepo=pkg.repo
+                pkg.cpv, useflags=pkg_info.use, myrepo=pkg.repo, only_restricted=True
             ):
                 pkg_info.attr_display.fetch_restrict_satisfied = True
                 if pkg_info.ordered:
