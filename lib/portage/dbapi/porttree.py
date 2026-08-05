@@ -882,7 +882,7 @@ class portdbapi(dbapi):
 
         return returnme
 
-    def getFetchMap(self, mypkg, useflags=None, mytree=None):
+    def getFetchMap(self, mypkg, useflags=None, mytree=None, only_restricted=False):
         """
         Get the SRC_URI metadata as a dict which maps each file name to a
         set of alternative URIs.
@@ -901,10 +901,18 @@ class portdbapi(dbapi):
         """
         loop = self._event_loop
         return loop.run_until_complete(
-            self.async_fetch_map(mypkg, useflags=useflags, mytree=mytree, loop=loop)
+            self.async_fetch_map(
+                mypkg,
+                useflags=useflags,
+                mytree=mytree,
+                loop=loop,
+                only_restricted=only_restricted,
+            )
         )
 
-    def async_fetch_map(self, mypkg, useflags=None, mytree=None, loop=None):
+    def async_fetch_map(
+        self, mypkg, useflags=None, mytree=None, loop=None, only_restricted=False
+    ):
         """
         Asynchronous form of getFetchMap.
 
@@ -943,7 +951,7 @@ class portdbapi(dbapi):
                     result.set_exception(aux_get_future.exception())
                 return
 
-            eapi, myuris = aux_get_future.result()
+            eapi, myuris, restrict = aux_get_future.result()
 
             if not eapi_is_supported(eapi):
                 # Convert this to an InvalidDependString exception
@@ -958,14 +966,19 @@ class portdbapi(dbapi):
             try:
                 result.set_result(
                     _parse_uri_map(
-                        mypkg, {"EAPI": eapi, "SRC_URI": myuris}, use=useflags
+                        mypkg,
+                        {"EAPI": eapi, "SRC_URI": myuris, "RESTRICT": restrict},
+                        use=useflags,
+                        only_restricted=only_restricted,
                     )
                 )
             except Exception as e:
                 result.set_exception(e)
 
         aux_get_future = asyncio.ensure_future(
-            self.async_aux_get(mypkg, ["EAPI", "SRC_URI"], mytree=mytree, loop=loop),
+            self.async_aux_get(
+                mypkg, ["EAPI", "SRC_URI", "RESTRICT"], mytree=mytree, loop=loop
+            ),
             loop,
         )
         result.add_done_callback(
@@ -974,7 +987,9 @@ class portdbapi(dbapi):
         aux_get_future.add_done_callback(aux_get_done)
         return result
 
-    def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
+    def getfetchsizes(
+        self, mypkg, useflags=None, debug=0, myrepo=None, only_restricted=False
+    ):
         from portage.package.ebuild.fetch import _download_suffix
         from portage.util import writemsg
 
@@ -992,7 +1007,9 @@ class portdbapi(dbapi):
                 writemsg(_("[empty/missing/bad digest]: %s\n") % (mypkg,))
             return {}
         filesdict = {}
-        myfiles = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
+        myfiles = self.getFetchMap(
+            mypkg, useflags=useflags, mytree=mytree, only_restricted=only_restricted
+        )
         # XXX: maybe this should be improved: take partial downloads
         # into account? check checksums?
         for myfile in myfiles:
@@ -1808,8 +1825,15 @@ def _async_manifest_fetchlist(
     return result
 
 
-def _parse_uri_map(cpv, metadata, use=None):
+def _parse_uri_map(cpv, metadata, use=None, only_restricted=False):
     from portage.dep import use_reduce
+
+    restricted = only_restricted and "fetch" in use_reduce(
+        metadata.get("RESTRICT", ""),
+        uselist=use,
+        matchall=(use is None),
+        eapi=metadata["EAPI"],
+    )
 
     myuris = use_reduce(
         metadata.get("SRC_URI", ""),
@@ -1824,6 +1848,10 @@ def _parse_uri_map(cpv, metadata, use=None):
     myuris.reverse()
     while myuris:
         uri = myuris.pop()
+
+        if restricted and (uri.startswith("mirror+") or uri.startswith("fetch+")):
+            continue
+
         if myuris and myuris[-1] == "->":
             myuris.pop()
             distfile = myuris.pop()
