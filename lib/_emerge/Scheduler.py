@@ -356,16 +356,6 @@ class Scheduler(PollScheduler):
             except OSError:
                 pass
 
-        self._running_portage = None
-        portage_match = self._running_root.trees["vartree"].dbapi.match(
-            portage.const.PORTAGE_PACKAGE_ATOM
-        )
-        if portage_match:
-            cpv = portage_match.pop()
-            self._running_portage = self._pkg(
-                cpv, "installed", self._running_root, installed=True
-            )
-
     def _handle_self_update(self):
         if installation.TYPE != installation.TYPES.SYSTEM:
             return os.EX_OK
