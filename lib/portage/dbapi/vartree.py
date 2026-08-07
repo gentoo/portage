@@ -5953,12 +5953,7 @@ class dblink:
             returncode = proc.wait()
 
         if returncode is None or returncode != os.EX_OK:
-            try:
-                proc = subprocess.Popen(["sync"])
-            except OSError:
-                pass
-            else:
-                proc.wait()
+            os.sync()
 
     @_slot_locked
     def merge(
