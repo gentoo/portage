@@ -63,10 +63,6 @@ from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
-# Made global to fix importing on Python version upgrade:
-# https://bugs.gentoo.org/970375
-from ._SyncfsProcess import SyncfsProcess
-
 _METADATA_FILE = "metadata"
 # The exact set of fields the consolidated metadata file carries, and the set
 # vardbapi caches. Membership is bounded by what _aux_get() may serve as "" on
@@ -6101,6 +6097,8 @@ class dblink:
         disk and avoid data-loss in the event of a power failure. This method
         does nothing if FEATURES=merge-sync is disabled.
         """
+        import subprocess
+        from portage.dbapi._SyncfsProcess import SyncfsProcess
 
         if not self._device_path_map or "merge-sync" not in self.settings.features:
             return
