@@ -226,7 +226,8 @@ def missing_feature_hint(snapshots, features=None):
     if snapshots:
         return None
     if features is None:
-        features = portage.settings.features
+        settings = getattr(portage, "settings", None)
+        features = settings.features if settings is not None else frozenset()
     if "observability" in features:
         return None
     return NOT_ENABLED_HINT
