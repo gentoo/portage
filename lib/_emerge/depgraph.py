@@ -120,6 +120,10 @@ from .chk_updated_cfg_files import chk_updated_cfg_files
 if TYPE_CHECKING:
     import _emerge.stdout_spinner.stdout_spinner
 
+# Set by the test suite: check every probe cache hit against a fresh
+# computation, which catches a missing _invalidate_probe_caches() call.
+_verify_probe_caches = False
+
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
     "_dep_check_graph_interface",
@@ -704,6 +708,8 @@ class _dynamic_depgraph_config:
         self._highest_pkg_cache_cp_map = {}
         self._flatten_atoms_cache = {}
         self._changed_deps_pkgs = {}
+        # Cleared by depgraph._invalidate_probe_caches().
+        self._select_atoms_probe_cache = {}
 
         # Binary packages that have been rejected because they
         # didn't match the user's config. It maps packages to a set
@@ -3238,9 +3244,34 @@ class depgraph:
 
         return available_pkg is not None
 
+    def _invalidate_probe_caches(self):
+        """
+        Drop cached probe results. Call this wherever state read by the
+        probes changes; calling it too often only lowers the hit rate.
+        """
+        self._dynamic_config._select_atoms_probe_cache.clear()
+
     def _select_atoms_probe(self, root, pkg):
-        selected_atoms = []
         use = self._pkg_use_enabled(pkg)
+        if "--debug" in self._frozen_config.myopts:
+            # Keep the per-call debug output.
+            return self._select_atoms_probe_uncached(root, pkg, use)
+
+        key = (root, pkg, use)
+        cache = self._dynamic_config._select_atoms_probe_cache
+        try:
+            cached = cache[key]
+        except KeyError:
+            cached = cache[key] = self._select_atoms_probe_uncached(root, pkg, use)
+            return cached
+
+        if _verify_probe_caches:
+            if cached != self._select_atoms_probe_uncached(root, pkg, use):
+                raise AssertionError(f"stale _select_atoms_probe result for {pkg}")
+        return cached
+
+    def _select_atoms_probe_uncached(self, root, pkg, use):
+        selected_atoms = []
         for k in pkg._dep_keys:
             v = pkg._metadata.get(k)
             if not v:
@@ -3844,6 +3875,7 @@ class depgraph:
         Adds a package to the depgraph, queues dependencies, and handles
         slot conflicts.
         """
+        self._invalidate_probe_caches()
         debug = "--debug" in self._frozen_config.myopts
         myparent = None
         priority = None
@@ -4352,6 +4384,7 @@ class depgraph:
         Remove a package and all its then parentless digraph
         children from all depgraph datastructures.
         """
+        self._invalidate_probe_caches()
         debug = "--debug" in self._frozen_config.myopts
         if debug:
             writemsg_level(
@@ -6184,6 +6217,7 @@ class depgraph:
         self._dynamic_config._highest_pkg_cache_cp_map.clear()
         for trees in self._dynamic_config._filtered_trees.values():
             trees["porttree"].dbapi._clear_cache()
+        self._invalidate_probe_caches()
 
     def _greedy_slots(self, root_config, atom, blocker_lookahead=False):
         """
@@ -8090,6 +8124,7 @@ class depgraph:
             changes = _use_changes(
                 new_use, new_changes, required_use_satisfied=required_use_satisfied
             )
+            self._invalidate_probe_caches()
             self._dynamic_config._needed_use_config_changes[pkg] = changes
             backtrack_infos = self._dynamic_config._backtrack_infos
             backtrack_infos.setdefault("config", {})
@@ -8999,6 +9034,7 @@ class depgraph:
         # _select_package has just changed implementations.
         for trees in self._dynamic_config._filtered_trees.values():
             trees["porttree"].dbapi._clear_cache()
+        self._invalidate_probe_caches()
 
         args = self._dynamic_config._initial_arg_list[:]
         for root in self._frozen_config.roots:
