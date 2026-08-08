@@ -23,6 +23,12 @@ Breaking changes:
 
 Features:
 
+* Add FEATURES="cgroup" to account each source build's CPU time, peak memory,
+  and I/O in a per-build cgroup v2. No limits are imposed. Totals are written
+  to the build log and, with FEATURES="observability", included in the live
+  status snapshot. Configurable via PORTAGE_CGROUP_ROOT (default
+  /sys/fs/cgroup/portage); requires root and cgroup v2.
+
 * vartree: Avoid pruning preserved-libs database or syncing to disk if we
   installed no files.
 

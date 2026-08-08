@@ -448,6 +448,14 @@ like "File not recognized: File truncated"), try recompiling the application
 with ccache disabled before reporting a bug. Unless you are doing development
 work, do not enable ccache.
 .TP
+.B cgroup
+Place each source build's process tree in its own cgroup v2 under
+\fIPORTAGE_CGROUP_ROOT\fR (default \fI/sys/fs/cgroup/portage\fR), so the kernel
+accounts the build's CPU time, peak memory, and I/O. The totals are reported in
+the build log and, with FEATURES="observability", in the live status snapshot.
+No limits are imposed. Requires root and a cgroup v2 unified hierarchy;
+degrades silently otherwise.
+.TP
 .B clean\-logs
 Enable automatic execution of the command specified by the
 PORTAGE_LOGDIR_CLEAN variable. The default PORTAGE_LOGDIR_CLEAN setting will
@@ -1136,6 +1144,13 @@ This variable should contain a command that is suitable for portage to call
 for bzip2 compression operations. \fBPORTAGE_BZIP2_COMMAND\fR will also be
 called for extraction operation, with -d appended, unless the
 \fBPORTAGE_BUNZIP2_COMMAND\fR variable is set.
+.TP
+\fBPORTAGE_CGROUP_ROOT\fR = \fI[path]\fR
+Base cgroup v2 directory under which FEATURES="cgroup" creates one leaf cgroup
+per source build. Defaults to \fI/sys/fs/cgroup/portage\fR, or to a
+\fIportage\fR subdirectory of the cgroup emerge itself runs in when that cgroup
+has been delegated every controller needed, as with a systemd service started
+with \fIDelegate=yes\fR.
 .TP
 \fBPORTAGE_CHECKSUM_FILTER\fR = \fI[space delimited list of hash names]\fR
 This variable may be used to filter the hash functions that are used to
