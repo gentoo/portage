@@ -43,6 +43,11 @@ from portage.tests import cnf_path
 from portage.util import ensure_dirs, normalize_path
 from portage.versions import catsplit
 
+# Fixed mtime for binary packages created in a remote binhost, so that
+# they never collide with the local PKGDIR copies of the same packages
+# (see _create_binpkgs).
+_BINREPO_MTIME = 1000000000
+
 
 def _combine_repo_config(conf, lines):
     merged = lines.copy()
@@ -276,7 +281,7 @@ class ResolverPlayground:
 
         for binrepo, binpkgs in binrepos.items():
             binrepo_dir = self._get_binrepo_dir(binrepo)
-            self._create_binpkgs(binrepo_dir, binpkgs)
+            self._create_binpkgs(binrepo_dir, binpkgs, mtime=_BINREPO_MTIME)
 
         portage.util.noiselimit = 0
 
@@ -398,10 +403,18 @@ class ResolverPlayground:
                     f"command failed with returncode {result.returncode}: {egencache_cmd}"
                 )
 
-    def _create_binpkgs(self, repo_dir, binpkgs):
+    def _create_binpkgs(self, repo_dir, binpkgs, mtime=None):
         # When using BUILD_ID, there can be multiple instances for the
         # same cpv. Therefore, binpkgs may be an iterable instead of
         # a dict.
+        #
+        # A binary package instance is identified by
+        # (cpv, build_id, file_size, build_time, mtime), so a package created
+        # here in two different repositories differs only by file mtime.
+        # Callers creating a remote binhost pass an explicit mtime to keep
+        # those instances distinct from the local PKGDIR copies regardless of
+        # how the two creation times happen to fall relative to a one-second
+        # boundary.
         items = getattr(binpkgs, "items", None)
         items = items() if items is not None else binpkgs
         binpkg_format = self.settings.get(
@@ -459,6 +472,9 @@ class ResolverPlayground:
                 t.compress(os.path.dirname(binpkg_path), metadata)
             else:
                 raise InvalidBinaryPackageFormat(binpkg_format)
+
+            if mtime is not None:
+                os.utime(binpkg_path, (mtime, mtime))
 
         bintree = binarytree(pkgdir=repo_dir, settings=self.settings)
         bintree.populate(force_reindex=True)
