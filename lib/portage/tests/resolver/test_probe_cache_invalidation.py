@@ -36,6 +36,49 @@ class ProbeCacheInvalidationTestCase(TestCase):
         finally:
             playground.cleanup()
 
+    def testUseChange(self):
+        """
+        _slot_operator_update_probe() reads the USE of the replacement
+        parent, so its result has to follow autounmask USE changes.
+        """
+        ebuilds = {
+            "dev-libs/C-1": {"EAPI": "8", "SLOT": "0/1"},
+            "dev-libs/C-2": {"EAPI": "8", "SLOT": "0/2"},
+            "app-misc/P-1": {
+                "EAPI": "8",
+                "IUSE": "foo",
+                "RDEPEND": "foo? ( dev-libs/C:= ) !foo? ( <dev-libs/C-2:= )",
+            },
+        }
+        installed = {
+            "dev-libs/C-1": {"EAPI": "8", "SLOT": "0/1"},
+            "app-misc/P-1": {
+                "EAPI": "8",
+                "IUSE": "foo",
+                "RDEPEND": "<dev-libs/C-2:0/1=",
+            },
+        }
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, installed=installed, world=["app-misc/P"]
+        )
+        try:
+            dg = playground.run(
+                ["@world"], {"--update": True, "--deep": True, "--pretend": True}
+            ).depgraph
+            dep = next(
+                dep
+                for deps in dg._dynamic_config._slot_operator_deps.values()
+                for dep in deps
+                if dep.parent.installed
+            )
+            ebuild = next(dg._iter_similar_available(dep.parent, dep.parent.slot_atom))
+
+            self.assertIsNone(dg._slot_operator_update_probe(dep))
+            dg._pkg_use_enabled(ebuild, target_use={"foo": True})
+            self.assertIsNotNone(dg._slot_operator_update_probe(dep))
+        finally:
+            playground.cleanup()
+
     def testDebug(self):
         """
         With --debug the probes always run, keeping their debug output.
