@@ -710,6 +710,7 @@ class _dynamic_depgraph_config:
         self._changed_deps_pkgs = {}
         # Cleared by depgraph._invalidate_probe_caches().
         self._select_atoms_probe_cache = {}
+        self._slot_op_update_probe_cache = {}
 
         # Binary packages that have been rejected because they
         # didn't match the user's config. It maps packages to a set
@@ -2255,6 +2256,8 @@ class depgraph:
         lead to conflict. These atoms only match a subset of the
         packages that have been pulled into a given slot.
         """
+        # Adds parent atoms below.
+        self._invalidate_probe_caches()
         root = conflict.root
         slot_atom = conflict.atom
         slot_nodes = conflict.pkgs
@@ -2797,6 +2800,45 @@ class depgraph:
     def _slot_operator_update_probe(
         self, dep, new_child_slot=False, slot_conflict=False, autounmask_level=None
     ):
+        # With autounmask_level set, the probe can register autounmask
+        # changes, so it always has to run.
+        if autounmask_level is not None or "--debug" in self._frozen_config.myopts:
+            return self._slot_operator_update_probe_uncached(
+                dep, new_child_slot, slot_conflict, autounmask_level
+            )
+
+        # Callers reassign dep.child, so key on it rather than on dep.
+        key = (
+            dep.parent,
+            dep.child,
+            bool(dep.atom.package),
+            new_child_slot,
+            slot_conflict,
+        )
+        cache = self._dynamic_config._slot_op_update_probe_cache
+        try:
+            cached = cache[key]
+        except KeyError:
+            cached = cache[key] = self._slot_operator_update_probe_uncached(
+                dep, new_child_slot, slot_conflict
+            )
+            return cached
+
+        if _verify_probe_caches:
+            fresh = self._slot_operator_update_probe_uncached(
+                dep, new_child_slot, slot_conflict
+            )
+            if (fresh and (fresh.parent, fresh.child, fresh.atom)) != (
+                cached and (cached.parent, cached.child, cached.atom)
+            ):
+                raise AssertionError(
+                    f"stale _slot_operator_update_probe result for {dep.parent}"
+                )
+        return cached
+
+    def _slot_operator_update_probe_uncached(
+        self, dep, new_child_slot=False, slot_conflict=False, autounmask_level=None
+    ):
         """
         slot/sub-slot := operators tend to prevent updates from getting pulled in,
         since installed packages pull in packages with the slot/sub-slot that they
@@ -3250,6 +3292,7 @@ class depgraph:
         probes changes; calling it too often only lowers the hit rate.
         """
         self._dynamic_config._select_atoms_probe_cache.clear()
+        self._dynamic_config._slot_op_update_probe_cache.clear()
 
     def _select_atoms_probe(self, root, pkg):
         use = self._pkg_use_enabled(pkg)
