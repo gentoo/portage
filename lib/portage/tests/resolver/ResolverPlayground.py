@@ -526,8 +526,6 @@ class ResolverPlayground:
                     f.write(f"{v}\n")
                 if _in_metadata_file(k):
                     metadata_kv[k] = str(v)
-            if metadata_kv:
-                _write_metadata_file(vdb_pkg_dir, metadata_kv)
 
             ebuild_path = os.path.join(vdb_pkg_dir, a.cpv.split("/")[1] + ".ebuild")
             with open(ebuild_path, "w") as f:
@@ -539,6 +537,13 @@ class ResolverPlayground:
             with bz2.BZ2File(env_path, mode="w") as f:
                 with open(ebuild_path, "rb") as inputfile:
                     f.write(inputfile.read())
+
+            # Written last: the metadata file records the package directory's
+            # mtime and is rejected if it no longer matches, so creating any
+            # further entry in the directory afterwards would invalidate it and
+            # leave tests silently exercising only the per-field fallback.
+            if metadata_kv:
+                _write_metadata_file(vdb_pkg_dir, metadata_kv)
 
     def _create_profile(
         self, ebuilds, eclasses, installed, profile, repo_configs, user_config, sets

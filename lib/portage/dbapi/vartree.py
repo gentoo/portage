@@ -110,6 +110,7 @@ _METADATA_FILE_FIELDS = frozenset(
 )
 _METADATA_FILE_FORMAT_VERSION = 1
 _METADATA_FORMAT_PREFIX = "#format="
+_METADATA_DIR_MTIME_PREFIX = "#dir_mtime="
 
 
 def _in_metadata_file(fname):
@@ -117,27 +118,36 @@ def _in_metadata_file(fname):
     return fname in _METADATA_FILE_FIELDS
 
 
-def _read_metadata_file(path):
+def _read_metadata_file(path, dir_st=None):
     """Parse KEY=value\\n metadata file.
 
     Returns dict[str, str], or None if the file is not a snapshot this
     portage version can use.
 
-    A returned dict is treated as a *complete* snapshot: every field matching
-    _METADATA_FIELD_RE that existed when the file was written is present, so a
-    field missing from it is served as empty rather than falling back to a
-    per-field read.  That holds only while reader and writer agree on which
-    fields get written, so a file whose "#format=" header is absent or does
-    not match _METADATA_FILE_FORMAT_VERSION is rejected, and the caller falls
-    back to the individual files.
+    A returned dict is treated as a *complete* snapshot: every field accepted
+    by _in_metadata_file() that existed when the file was written is present,
+    so a field missing from it is served as empty rather than falling back to
+    a per-field read. Two things must hold for that to be sound, and a file
+    failing either is rejected so the caller falls back to the individual
+    files:
 
-    The field set is therefore part of the format: bump
-    _METADATA_FILE_FORMAT_VERSION on any change to _METADATA_FILE_FIELDS, in
-    either direction. Adding a field would otherwise make an older file
-    lacking it read as saying it is empty, and dropping one would do the same
-    to an older portage reading a newer file. A version this portage does not
-    know is rejected, so both skews fall back to the individual files rather
-    than serving a wrong answer.
+    - Reader and writer must agree on which fields get written, so the
+      "#format=" header must match _METADATA_FILE_FORMAT_VERSION. The field
+      set is therefore part of the format: bump that constant on any change to
+      _METADATA_FILE_FIELDS, in either direction. Adding a field would
+      otherwise make an older file lacking it read as saying it is empty, and
+      dropping one would do the same to an older portage reading a newer file.
+      A version this portage does not know is rejected, so both skews fall
+      back to the individual files rather than serving a wrong answer.
+    - The package directory must not have changed since the file was written,
+      so the recorded "#dir_mtime=" must match the directory's st_mtime_ns.
+      This is the same freshness signal vdb_metadata.pickle validated against,
+      and it is what makes a stale file fall back rather than lie. Pass dir_st
+      when the caller already stat()ed the directory; otherwise it is stat()ed
+      here.
+
+    "#dir_mtime=" is written last, so a file left truncated by an interrupted
+    write lacks it and is rejected rather than read as a short snapshot.
 
     Other lines beginning with '#' are ignored.
     """
@@ -145,6 +155,7 @@ def _read_metadata_file(path):
 
     result = {}
     version = None
+    dir_mtime = None
     with open(path, encoding=_encodings["repo.content"], errors="replace") as f:
         for line in f:
             line = line.rstrip("\n")
@@ -154,12 +165,28 @@ def _read_metadata_file(path):
                         version = int(line[len(_METADATA_FORMAT_PREFIX) :])
                     except ValueError:
                         return None
+                    # Written first, so a file we cannot use is abandoned
+                    # before parsing the rest of it.
+                    if version != _METADATA_FILE_FORMAT_VERSION:
+                        return None
+                elif line.startswith(_METADATA_DIR_MTIME_PREFIX):
+                    try:
+                        dir_mtime = int(line[len(_METADATA_DIR_MTIME_PREFIX) :])
+                    except ValueError:
+                        return None
                 continue
             if "=" not in line:
                 continue
             k, v = line.split("=", 1)
             result[k] = v
-    if version != _METADATA_FILE_FORMAT_VERSION:
+    if version is None or dir_mtime is None:
+        return None
+    if dir_st is None:
+        try:
+            dir_st = os.stat(os.path.dirname(path))
+        except OSError:
+            return None
+    if dir_mtime != dir_st.st_mtime_ns:
         return None
     return result
 
@@ -171,18 +198,22 @@ def _write_metadata_file(dbdir, data):
     values are whitespace-normalized here (the same normalization _aux_get
     applies to single-line fields). Doing it here stops a caller that passes a
     raw multi-line value from silently truncating the file.
+
+    The "#dir_mtime=" line the reader validates against is appended after the
+    atomic write rather than included in it: write_atomic() renames into
+    place, and that rename bumps dbdir's mtime, so a value recorded before it
+    would never match. Appending does not create or remove a directory entry,
+    so it leaves dbdir's mtime alone and the recorded value stays true.
     """
     from portage import _encodings
     from portage.util import write_atomic
 
-    content = f"#format={_METADATA_FILE_FORMAT_VERSION}\n"
+    path = os.path.join(dbdir, _METADATA_FILE)
+    content = f"{_METADATA_FORMAT_PREFIX}{_METADATA_FILE_FORMAT_VERSION}\n"
     content += "".join(f"{k}={' '.join(v.split())}\n" for k, v in sorted(data.items()))
-    write_atomic(
-        os.path.join(dbdir, _METADATA_FILE),
-        content,
-        mode="w",
-        encoding=_encodings["repo.content"],
-    )
+    write_atomic(path, content, mode="w", encoding=_encodings["repo.content"])
+    with open(path, mode="a", encoding=_encodings["repo.content"]) as f:
+        f.write(f"{_METADATA_DIR_MTIME_PREFIX}{os.stat(dbdir).st_mtime_ns}\n")
 
 
 def _consolidate_to_metadata_file(dbdir):
@@ -969,7 +1000,9 @@ class vardbapi(dbapi):
 
         metadata_data = None
         try:
-            metadata_data = _read_metadata_file(os.path.join(mydir, _METADATA_FILE))
+            metadata_data = _read_metadata_file(
+                os.path.join(mydir, _METADATA_FILE), dir_st=st
+            )
         except OSError:
             pass
 
@@ -1113,20 +1146,17 @@ class vardbapi(dbapi):
                     os.unlink(os.path.join(self.getpath(cpv), k))
                 except OSError:
                     pass
-                # Remove from metadata file if present.
-                metadata_path = os.path.join(self.getpath(cpv), _METADATA_FILE)
-                try:
-                    existing = _read_metadata_file(metadata_path)
-                    if existing is None:
-                        # Rejected: rebuild the whole snapshot rather than
-                        # patching one written under a field set we no longer
-                        # agree on.
-                        _consolidate_to_metadata_file(self.getpath(cpv))
-                    elif k in existing:
-                        del existing[k]
-                        _write_metadata_file(self.getpath(cpv), existing)
-                except OSError:
-                    pass
+        # Writing or removing an individual file changes the package
+        # directory, so a metadata file it had no longer validates. Rebuild it
+        # once here rather than patching each field: a rejected file is only
+        # ignored, but leaving it that way would cost a per-field read on
+        # every later aux_get() for this package.
+        pkgdir = self.getpath(cpv)
+        if os.path.exists(os.path.join(pkgdir, _METADATA_FILE)):
+            try:
+                _consolidate_to_metadata_file(pkgdir)
+            except OSError:
+                pass
         self._bump_mtime(cpv)
 
     @staticmethod
@@ -5073,9 +5103,6 @@ class dblink:
         ) as f:
             f.write(f"{counter}")
 
-        # Consolidate all per-field metadata files into a single metadata file.
-        _consolidate_to_metadata_file(self.dbtmpdir)
-
         self.updateprotect()
 
         # if we have a file containing previously-merged config file md5sums, grab it.
@@ -5213,6 +5240,15 @@ class dblink:
             finally:
                 self.unlockdb()
             showMessage(_(">>> Original instance of package unmerged safely.\n"))
+
+        # Consolidate the per-field metadata files into a single metadata
+        # file. This has to be the last write into dbtmpdir: the file records
+        # the directory's mtime and is rejected if the directory changes
+        # afterwards, and CONTENTS is written above via a rename that would
+        # otherwise invalidate it for every freshly merged package. Renaming
+        # dbtmpdir into place below does not alter its own mtime, so the
+        # recorded value survives the move.
+        _consolidate_to_metadata_file(self.dbtmpdir)
 
         # We hold both directory locks.
         self.dbdir = self.dbpkgdir
@@ -6235,22 +6271,6 @@ class dblink:
             kwargs["mode"] = "w"
             kwargs["encoding"] = "utf-8"
         write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
-
-        # Keep the metadata file in sync if it exists.
-        if isinstance(data, str) and _in_metadata_file(fname):
-            metadata_path = os.path.join(self.dbdir, _METADATA_FILE)
-            try:
-                existing = _read_metadata_file(metadata_path)
-            except OSError:
-                return
-            if existing is None:
-                # Stale format: the individual file above is already current,
-                # so rebuild the snapshot instead of patching one written
-                # under a field set we no longer agree on.
-                _consolidate_to_metadata_file(self.dbdir)
-                return
-            existing[fname] = " ".join(data.split())
-            _write_metadata_file(self.dbdir, existing)
 
     def getelements(self, ename):
         if not os.path.exists(self.dbdir + "/" + ename):

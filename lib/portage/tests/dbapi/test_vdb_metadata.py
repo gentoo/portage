@@ -66,10 +66,18 @@ class VdbMetadataReadWriteTestCase(TestCase):
         result = _read_metadata_file(path)
         self.assertEqual(result, data)
 
-    def _write_raw(self, content):
+    def _write_raw(self, content, stamp=True):
+        """Write raw metadata content, appending a valid #dir_mtime= by default.
+
+        The stamp is taken after the file exists, since creating it changes the
+        directory mtime the reader validates against.
+        """
         path = os.path.join(self._tmpdir, _METADATA_FILE)
         with open(path, "w") as f:
             f.write(content)
+        if stamp:
+            with open(path, "a") as f:
+                f.write(f"#dir_mtime={os.stat(self._tmpdir).st_mtime_ns}\n")
         return path
 
     def test_rejects_missing_format_header(self):
@@ -86,11 +94,45 @@ class VdbMetadataReadWriteTestCase(TestCase):
         path = self._write_raw("#format=bogus\nEAPI=8\n")
         self.assertIsNone(_read_metadata_file(path))
 
-    def test_other_comments_ignored(self):
+    def test_rejects_missing_dir_mtime(self):
+        # An interrupted write leaves the file without its trailing
+        # #dir_mtime=, and a short snapshot must not be read as complete.
         path = self._write_raw(
-            f"#format={_METADATA_FILE_FORMAT_VERSION}\n# a comment\nEAPI=8\n"
+            f"#format={_METADATA_FILE_FORMAT_VERSION}\nEAPI=8\n", stamp=False
         )
+        self.assertIsNone(_read_metadata_file(path))
+
+    def test_rejects_stale_dir_mtime(self):
+        # Anything that changes the package directory after the file was
+        # written invalidates it, so the caller falls back to per-field reads.
+        path = self._write_raw(f"#format={_METADATA_FILE_FORMAT_VERSION}\nEAPI=8\n")
         self.assertEqual(_read_metadata_file(path), {"EAPI": "8"})
+        os.utime(self._tmpdir, ns=(0, 0))
+        self.assertIsNone(_read_metadata_file(path))
+
+    def test_rejects_non_integer_dir_mtime(self):
+        path = self._write_raw(
+            f"#format={_METADATA_FILE_FORMAT_VERSION}\nEAPI=8\n#dir_mtime=bogus\n",
+            stamp=False,
+        )
+        self.assertIsNone(_read_metadata_file(path))
+
+    def test_dir_st_argument_used(self):
+        # _aux_get passes the stat it already holds; it must be honored.
+        path = self._write_raw(f"#format={_METADATA_FILE_FORMAT_VERSION}\nEAPI=8\n")
+        st = os.stat(self._tmpdir)
+        self.assertEqual(_read_metadata_file(path, dir_st=st), {"EAPI": "8"})
+        os.utime(self._tmpdir, ns=(0, 0))
+        # A caller passing the pre-change stat still validates against it.
+        self.assertEqual(_read_metadata_file(path, dir_st=st), {"EAPI": "8"})
+        self.assertIsNone(_read_metadata_file(path, dir_st=os.stat(self._tmpdir)))
+
+    def test_write_then_read_survives_rename(self):
+        # write_atomic() renames into place, bumping the directory mtime; the
+        # stamp is taken afterwards so the file it just wrote is readable.
+        _write_metadata_file(self._tmpdir, {"EAPI": "8", "SLOT": "0"})
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        self.assertEqual(_read_metadata_file(path), {"EAPI": "8", "SLOT": "0"})
 
     def test_format_version_header_written(self):
         _write_metadata_file(self._tmpdir, {"EAPI": "8"})
@@ -107,11 +149,9 @@ class VdbMetadataReadWriteTestCase(TestCase):
         self.assertEqual(result["EAPI"], "8")
 
     def test_comment_lines_ignored(self):
-        path = os.path.join(self._tmpdir, _METADATA_FILE)
-        with open(path, "w") as f:
-            f.write("#format=1\n")
-            f.write("# another comment\n")
-            f.write("EAPI=8\n")
+        path = self._write_raw(
+            f"#format={_METADATA_FILE_FORMAT_VERSION}\n# another comment\nEAPI=8\n"
+        )
         result = _read_metadata_file(path)
         self.assertEqual(result, {"EAPI": "8"})
 
@@ -130,6 +170,22 @@ class VdbMetadataReadWriteTestCase(TestCase):
         path = os.path.join(self._tmpdir, _METADATA_FILE)
         result = _read_metadata_file(path)
         self.assertEqual(result["HOMEPAGE"], "https://example.com/?foo=bar")
+
+    def test_value_with_hash(self):
+        # A '#' inside a value must not be mistaken for a comment: only a
+        # line *starting* with '#' is one.
+        data = {"HOMEPAGE": "https://example.com/#anchor"}
+        _write_metadata_file(self._tmpdir, data)
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        result = _read_metadata_file(path)
+        self.assertEqual(result["HOMEPAGE"], "https://example.com/#anchor")
+
+    def test_value_with_dots_and_hash(self):
+        data = {"HOMEPAGE": "http://127.0.0.1/?a=1#anchor"}
+        _write_metadata_file(self._tmpdir, data)
+        path = os.path.join(self._tmpdir, _METADATA_FILE)
+        result = _read_metadata_file(path)
+        self.assertEqual(result["HOMEPAGE"], "http://127.0.0.1/?a=1#anchor")
 
     def test_empty_value(self):
         data = {"IUSE": "", "EAPI": "8"}
