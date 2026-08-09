@@ -55,6 +55,16 @@ Features:
   Set PORTAGE_FORK_DEP_CALC=0 in the environment to calculate in the current
   process instead. See emerge(1) for details.
 
+* emerge: Add --merge-wait-scope to control which packages are treated as
+  system packages for the purpose of merge-wait, i.e. merged only while no
+  build jobs are running, and never in parallel with another merge. Previously
+  this was always the @system set plus its transitive runtime dependencies,
+  around a quarter of all packages on a typical installation. The scope can now
+  be narrowed to "system", "toolchain", or "none"; the default "deep" preserves
+  the previous behavior. Since FEATURES="merge-wait" holds back every package
+  regardless, narrowing the scope helps parallelism most in combination with
+  FEATURES="-merge-wait" or FEATURES="parallel-install".
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 
