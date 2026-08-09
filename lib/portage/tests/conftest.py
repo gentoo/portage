@@ -9,6 +9,7 @@ import os.path as osp
 import pwd
 import shutil
 import signal
+import subprocess
 import sys
 import tempfile
 
@@ -66,10 +67,10 @@ def prepare_environment():
         path.insert(0, PORTAGE_BIN_PATH)
         os.environ["PATH"] = ":".join(path)
 
-    try:
-        # Copy GnuPG test keys to temporary directory
-        gpg_path = tempfile.mkdtemp(prefix="gpg_")
+    # Copy GnuPG test keys to temporary directory
+    gpg_path = tempfile.mkdtemp(prefix="gpg_")
 
+    try:
         shutil.copytree(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), ".gnupg"),
             gpg_path,
@@ -83,6 +84,17 @@ def prepare_environment():
 
     finally:
         global_event_loop().close()
+        # Signing spawns a gpg-agent and scdaemon which daemonize, so they
+        # outlive the test session unless they are shut down here.
+        try:
+            subprocess.run(
+                ["gpgconf", "--homedir", gpg_path, "--kill", "all"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            # No gpgconf, so no agent can have been started either.
+            pass
         shutil.rmtree(gpg_path, ignore_errors=True)
 
 
