@@ -247,6 +247,7 @@ class Scheduler(PollScheduler):
         max_jobs = myopts.get("--jobs", 1)
         self._set_max_jobs(max_jobs)
         self._running_root = trees[trees._running_eroot]["root_config"]
+        self._merge_wait_scope = myopts.get("--merge-wait-scope", "deep")
         self._jobs_tmpdir_require_free_gb = myopts.get("--jobs-tmpdir-require-free-gb")
         if self._jobs_tmpdir_require_free_gb is None:
             # dev-lang/rust-1.77.1: ~16 GiB
@@ -606,7 +607,9 @@ class Scheduler(PollScheduler):
 
         deep_system_deps = self._deep_system_deps
         deep_system_deps.clear()
-        deep_system_deps.update(_find_deep_system_runtime_deps(self._digraph))
+        deep_system_deps.update(
+            _find_deep_system_runtime_deps(self._digraph, scope=self._merge_wait_scope)
+        )
         deep_system_deps.difference_update(
             [pkg for pkg in deep_system_deps if pkg.operation != "merge"]
         )

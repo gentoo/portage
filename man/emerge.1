@@ -709,7 +709,10 @@ effects of disabling this option is to allow the \-\-jobs option to
 spawn jobs without accounting for the possibility of implicit dependencies
 on packages that belong to the @system set. This option interacts with
 the \fImerge\-wait\fR and \fIparallel\-install\fR features as discussed
-in the \fBmake.conf\fR(5) man page.
+in the \fBmake.conf\fR(5) man page. See also the
+\fB\-\-merge\-wait\-scope\fR option, which narrows the set of packages that
+other packages are assumed to implicitly depend on, rather than dropping
+the assumption entirely.
 .TP
 .BR \-j\ [JOBS] ", "  \-\-jobs[=JOBS]
 Specifies the number of packages to build simultaneously. If this option is
@@ -744,6 +747,34 @@ This option is recommended for use in combination with \fB\-\-jobs\fR in
 order to avoid excess load. See \fBmake\fR(1) for information about
 analogous options that should be configured via \fBMAKEOPTS\fR in
 \fBmake.conf\fR(5).
+.TP
+.BR "\-\-merge\-wait\-scope < deep | system | toolchain | none >"
+Specifies which packages are treated as system packages for the purpose of
+merge\-wait, i.e. merged only while no build jobs are running, and never in
+parallel with another merge even when \fIparallel\-install\fR is enabled.
+Dependencies on system packages are frequently unspecified, so merging them
+while unrelated builds are in flight risks random build failures.
+.br
+\fBdeep\fR (the default) selects the \fB@system\fR set together with its
+transitive runtime dependencies, which on a typical installation is around
+a quarter of all packages. \fBsystem\fR selects only the \fB@system\fR set
+itself, \fBtoolchain\fR only the core toolchain, and \fBnone\fR nothing at
+all. Narrowing the scope trades away the protection described above.
+.br
+Note that this option does not disable the \fImerge\-wait\fR feature, which
+is enabled by default and holds back every package regardless of this
+setting. Since a package which is held back can only be merged once every
+build slot has gone idle, each one acts as a barrier which limits
+parallelism, and the effect grows with \fB\-\-jobs\fR. Narrowing the scope therefore only increases parallelism for
+packages which are not held back anyway, so it is most useful together with
+\fBFEATURES="\-merge\-wait"\fR, which leaves only system packages held back,
+or with \fBFEATURES="parallel\-install"\fR, which merges the packages outside
+the scope in parallel batches. See \fBmake.conf\fR(5).
+.br
+\fB\-\-merge\-wait\-scope=none\fR resembles
+\fB\-\-implicit\-system\-deps=n\fR, but affects only the scheduler. Unlike
+\fB\-\-implicit\-system\-deps=n\fR, it does not change the dependency
+calculation.
 .TP
 .BR "\-\-misspell\-suggestions < y | n >"
 Enable or disable misspell suggestions. By default, emerge will show
