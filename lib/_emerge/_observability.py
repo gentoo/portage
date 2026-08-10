@@ -33,6 +33,7 @@ from portage import os
 from portage.const import PORTAGE_RUN_PATH
 from portage.util import atomic_ofstream, ensure_dirs, writemsg_level
 from portage.util.futures import asyncio
+from portage.util.human_readable import bytes_to_human
 
 from _emerge.PackageMerge import PackageMerge as _PackageMerge
 
@@ -181,6 +182,27 @@ def _pid_alive(pid):
     return True
 
 
+def _format_cpu(val, task):
+    cpu_s = val / 1e6
+    elapsed = task.get("elapsed")
+    if elapsed is not None and elapsed > 0:
+        parallelism = cpu_s / elapsed
+        return f"{cpu_s:.2f}s ({parallelism:.2f}x)"
+    return f"{cpu_s:.2f}s"
+
+
+_RESOURCE_FIELDS = (
+    ("cpu_usec", "CPU", _format_cpu),
+    ("mem_current", "Mem", lambda v, t: bytes_to_human(v)),
+    ("mem_peak", "MaxMem", lambda v, t: bytes_to_human(v)),
+    ("mem_swap_current", "Swap", lambda v, t: bytes_to_human(v)),
+    ("mem_swap_peak", "MaxSwap", lambda v, t: bytes_to_human(v)),
+    ("mem_zswap_current", "ZSwap", lambda v, t: bytes_to_human(v)),
+    ("io_read_bytes", "I/O R", lambda v, t: bytes_to_human(v)),
+    ("io_write_bytes", "I/O W", lambda v, t: bytes_to_human(v)),
+)
+
+
 def format_snapshots(snapshots):
     """Render snapshots as a human-readable table."""
     if not snapshots:
@@ -203,7 +225,20 @@ def format_snapshots(snapshots):
             elapsed = task.get("elapsed")
             elapsed_str = f"{max(0, int(elapsed))}s" if elapsed is not None else "-"
             phase = task.get("phase") or task.get("kind") or "-"
-            lines.append(f"  {task.get('cpv', '?'):<45} {phase:<10} {elapsed_str:>7}")
+            line = f"  {task.get('cpv', '?'):<45} {phase:<10} {elapsed_str:>7}"
+
+            resources = task.get("resources")
+            if resources:
+                res_strs = []
+                for field, label, formatter in _RESOURCE_FIELDS:
+                    val = resources.get(field)
+                    if val is not None:
+                        res_strs.append(f"{label}: {formatter(val, task)}")
+
+                if res_strs:
+                    line += f"  [{', '.join(res_strs)}]"
+
+            lines.append(line)
     return "\n".join(lines) + "\n"
 
 
