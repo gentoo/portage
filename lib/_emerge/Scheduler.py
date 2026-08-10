@@ -413,9 +413,19 @@ class Scheduler(PollScheduler):
         cpv = build.pkg.cpv
         stats = self._cgroup.read_stats(cpv)
         if stats:
+            elapsed = None
+            times = self._observability._build_times.get(str(cpv))
+            if times is not None and times[0] is not None and times[1] is not None:
+                elapsed = times[1] - times[0]
+
             parts = []
             if "cpu_usec" in stats:
-                parts.append(f"cpu {stats['cpu_usec'] / 1e6:.1f}s")
+                cpu_s = stats["cpu_usec"] / 1e6
+                if elapsed is not None and elapsed > 0:
+                    parallelism = cpu_s / elapsed
+                    parts.append(f"cpu {cpu_s:.1f}s ({parallelism:.2f}x)")
+                else:
+                    parts.append(f"cpu {cpu_s:.1f}s")
             if "mem_peak" in stats:
                 parts.append(f"peak-mem {bytes_to_human(stats['mem_peak'])}")
             if stats.get("mem_swap_peak"):
