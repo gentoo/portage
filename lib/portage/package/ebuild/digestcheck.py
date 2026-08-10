@@ -109,8 +109,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
     for parent, dirs, files in os.walk(filesdir):
         try:
             if isinstance(parent, bytes):
-                if isinstance(parent, bytes):
-                    parent = parent.decode("utf-8", "strict")
+                parent = parent.decode("utf-8", "strict")
         except UnicodeDecodeError:
             if isinstance(parent, bytes):
                 parent = parent.decode("utf-8", "replace")
