@@ -414,6 +414,7 @@ class ObservabilityMonitor:
             )
 
     async def _client_connected(self, reader, writer):
+        self.update()
         if self._last_snapshot is not None:
             data = (json.dumps(self._last_snapshot, sort_keys=True) + "\n").encode(
                 "utf_8"
