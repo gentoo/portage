@@ -157,8 +157,27 @@ def status_dir(eprefix=""):
 def read_snapshots(eprefix=""):
     """Read all live emerge status files; return a list of snapshot dicts."""
     import glob
+    import socket
 
     snapshots = []
+
+    # Try reading from sockets first to trigger a fresh snapshot
+    for path in sorted(glob.glob(os.path.join(status_dir(eprefix), "emerge-*.sock"))):
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                s.connect(path)
+                with s.makefile("r", encoding="utf_8") as f:
+                    line = f.readline()
+                    if line:
+                        snapshot = json.loads(line)
+                        pid = snapshot.get("emerge_pid")
+                        if isinstance(pid, int) and pid > 0 and _pid_alive(pid):
+                            snapshots.append(snapshot)
+        except (OSError, ValueError, socket.timeout, json.JSONDecodeError):
+            pass
+
+    # Fall back to json files, e.g., in case we run into the socket timeout above.
     for path in sorted(glob.glob(os.path.join(status_dir(eprefix), "emerge-*.json"))):
         try:
             with open(path, encoding="utf_8") as f:
@@ -168,7 +187,14 @@ def read_snapshots(eprefix=""):
         pid = snapshot.get("emerge_pid")
         if not isinstance(pid, int) or pid <= 0 or not _pid_alive(pid):
             continue
-        snapshots.append(snapshot)
+        # If we successfully read a live snapshot for this PID via the socket,
+        # skip the JSON fallback to avoid duplicating the same process in the output.
+        # Note: the socket connect above triggers an update() server-side which rewrites
+        # the JSON status file. So by the time this loop runs, the JSON is fresh too
+        # and either would do, but the socket snapshot is the one we know is current.
+        if not any(s.get("emerge_pid") == pid for s in snapshots):
+            snapshots.append(snapshot)
+
     return snapshots
 
 
