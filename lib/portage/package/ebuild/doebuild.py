@@ -2072,7 +2072,7 @@ def spawn(
         keywords["unshare_mount"] = mountns
         keywords["unshare_pid"] = pidns
         if "cgroup" in features and mysettings.mycpv is not None:
-            from portage.util.cgroup import ensure_leaf, DEFAULT_CGROUP_ROOT
+            from portage.util.cgroup import DEFAULT_CGROUP_ROOT, ensure_leaf
 
             leaf = ensure_leaf(
                 mysettings.get("PORTAGE_CGROUP_ROOT", DEFAULT_CGROUP_ROOT),

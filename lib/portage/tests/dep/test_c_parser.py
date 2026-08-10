@@ -545,9 +545,8 @@ class TestClassifyUseDeps(TestCase):
 
     def test_invalid_token_raises(self):
         for bad in ("!foo", "!!foo", "?", "=", "foo??", ""):
-            with self.subTest(token=bad):
-                with self.assertRaises(ValueError):
-                    self._parser.classify_use_deps((bad,))
+            with self.subTest(token=bad), self.assertRaises(ValueError):
+                self._parser.classify_use_deps((bad,))
 
     def test_matches_python_use_dep(self):
         eapi_attrs = _get_eapi_attrs("8")
@@ -1375,9 +1374,8 @@ class TestCAtomObjectProtocol(TestCase):
     def test_ordering_is_not_implemented(self):
         a, b = self._atom("dev-libs/a"), self._atom("dev-libs/b")
         for op in (operator.lt, operator.le, operator.gt, operator.ge):
-            with self.subTest(op=op.__name__):
-                with self.assertRaises(TypeError):
-                    op(a, b)
+            with self.subTest(op=op.__name__), self.assertRaises(TypeError):
+                op(a, b)
 
 
 class TestCParserEapiGuard(TestCase):
@@ -1595,9 +1593,8 @@ class TestCParserAllocFailure(TestCase):
                     self._parser.scan_atom(arg)
         # classify_use_deps() wants a sequence, and its items must be strings.
         for arg in (42, None):
-            with self.subTest(arg=arg):
-                with self.assertRaises(TypeError):
-                    self._parser.classify_use_deps(arg)
+            with self.subTest(arg=arg), self.assertRaises(TypeError):
+                self._parser.classify_use_deps(arg)
         with self.assertRaises(TypeError):
             self._parser.classify_use_deps((42,))
 

@@ -24,17 +24,17 @@ from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
-from portage.util import ensure_dirs, writemsg, writemsg_level
-from portage.util.cgroup import CgroupManager, DEFAULT_CGROUP_ROOT
-from portage.util.futures import asyncio
-from portage.util.human_readable import bytes_to_human
-from portage.util.path import first_existing
-from portage.util.SlotObject import SlotObject
-from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir, _prepare_self_update
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
+from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util.cgroup import DEFAULT_CGROUP_ROOT, CgroupManager
+from portage.util.futures import asyncio
+from portage.util.human_readable import bytes_to_human
+from portage.util.path import first_existing
+from portage.util.SlotObject import SlotObject
 
 import _emerge
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
@@ -421,9 +421,9 @@ class Scheduler(PollScheduler):
                 parts.append(f"cpu {stats['cpu_usec'] / 1e6:.1f}s")
             if "mem_peak" in stats:
                 parts.append(f"peak-mem {bytes_to_human(stats['mem_peak'])}")
-            if "mem_swap_peak" in stats and stats["mem_swap_peak"]:
+            if stats.get("mem_swap_peak"):
                 parts.append(f"peak-swap {bytes_to_human(stats['mem_swap_peak'])}")
-            if "mem_zswap_current" in stats and stats["mem_zswap_current"]:
+            if stats.get("mem_zswap_current"):
                 parts.append(f"zswap {bytes_to_human(stats['mem_zswap_current'])}")
             if "io_read_bytes" in stats:
                 parts.append(

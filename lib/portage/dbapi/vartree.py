@@ -5933,7 +5933,6 @@ class dblink:
         disk and avoid data-loss in the event of a power failure. This method
         does nothing if FEATURES=merge-sync is disabled.
         """
-        import subprocess
 
         if not self._device_path_map or "merge-sync" not in self.settings.features:
             return
