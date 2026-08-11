@@ -510,6 +510,7 @@ __generate_packdebug() {
 		return
 	fi
 
+	__vecho ">>> Creating packdebug tarball"
 	install -d "${debugpath}"/"${CATEGORY}"{,/"${PN}"} \
 		|| die "Failed to generate target debug directory"
 
@@ -533,6 +534,7 @@ __generate_packdebug() {
 	# in the real image but not in the binpkg. Unfortunately, we can't
 	# easily leverage PKG_INSTALL_MASK because of when it runs.
 	mv "${debugpath}" "${PORTAGE_BUILDDIR}/image/${EPREFIX}/usr/lib/debug/". || die
+	__vecho ">>> Done."
 }
 
 __dyn_package() {

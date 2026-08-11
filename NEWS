@@ -45,6 +45,8 @@ Features:
   Atom construction. Set PORTAGE_NATIVE_DEP_PARSER=0 in the environment to
   fall back to the pure-Python implementation; see emerge(1) for details.
 
+* Log when creating packdebug tarballs.
+
 Bug fixes:
 
 * man: make.conf(5): Improve man text about disabling tests to not wrongly
