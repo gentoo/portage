@@ -546,7 +546,6 @@ __dyn_package() {
 	# in there in case any tools were built with -pg in CFLAGS.
 	cd "${T}" || die
 
-	__vecho ">>> Creating binpkg"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for ${PKGDIR} and/or ${PKGDIR}/All.
 	export SANDBOX_ON="0"
@@ -580,6 +579,7 @@ __dyn_package() {
 		fi
 	fi
 
+	__vecho ">>> Creating binpkg"
 	if [[ "${BINPKG_FORMAT}" == "xpak" ]]; then
 		local tar_options=""
 
