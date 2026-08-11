@@ -382,13 +382,29 @@ class ObservabilityMonitor:
                 noiselevel=-1,
             )
 
-    def _client_connected(self, reader, writer):
-        self._writers.append(writer)
+    async def _client_connected(self, reader, writer):
         if self._last_snapshot is not None:
             data = (json.dumps(self._last_snapshot, sort_keys=True) + "\n").encode(
                 "utf_8"
             )
-            self._send(writer, data)
+            if not self._send(writer, data):
+                return
+        self._writers.append(writer)
+        try:
+            # Clients are not expected to send anything; this waits for the
+            # peer to go away.  Without it a disconnected client is never
+            # forgotten: asyncio's stream protocol keeps the transport open
+            # after EOF, to permit half-close, so nothing else notices.
+            # A client that shuts down only its write side is therefore
+            # treated as gone: read the stream without half-closing.
+            while await reader.read(4096):
+                pass
+        except OSError:
+            pass
+        finally:
+            if writer in self._writers:
+                self._writers.remove(writer)
+            writer.close()
 
     def _broadcast(self, snapshot):
         if not self._writers:

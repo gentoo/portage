@@ -1,6 +1,7 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import asyncio
 import json
 import os
 import tempfile
@@ -17,6 +18,7 @@ from _emerge._observability import (
 from _emerge.PackageMerge import PackageMerge as _RealPackageMerge
 
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 
 
 class _Pkg:
@@ -177,6 +179,43 @@ class ObservabilitySnapshotTestCase(TestCase):
 
             monitor.close()
             self.assertFalse(os.path.exists(path))
+
+    def test_client_disconnect_removes_writer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=99)
+            sched = _make_scheduler(eprefix=tmp, tasks=[build])
+            monitor = ObservabilityMonitor(sched)
+            monitor.note_task_started(build)
+
+            async def exercise():
+                monitor.update(force=True)
+                for _ in range(100):
+                    if monitor._server is not None:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertIsNotNone(monitor._server)
+
+                reader, writer = await asyncio.open_unix_connection(
+                    monitor._socket_path
+                )
+                snap = json.loads(await reader.readline())
+                self.assertEqual(snap["tasks"][0]["cpv"], "dev-libs/foo-1.2")
+                self.assertEqual(len(monitor._writers), 1)
+
+                writer.close()
+                await writer.wait_closed()
+                # The server side must forget the client on EOF alone, without
+                # needing a broadcast to discover the write is going nowhere.
+                for _ in range(100):
+                    if not monitor._writers:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertEqual(monitor._writers, [])
+
+            try:
+                global_event_loop().run_until_complete(exercise())
+            finally:
+                monitor.close()
 
     def test_hint_when_nothing_read_and_feature_absent(self):
         self.assertIn("observability", missing_feature_hint([], features=set()))
