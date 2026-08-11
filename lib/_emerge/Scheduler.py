@@ -233,10 +233,7 @@ class Scheduler(PollScheduler):
         self._observability = ObservabilityMonitor(self)
         self._cgroup = None
         if "cgroup" in settings.features:
-            cg = CgroupManager(
-                settings.get("PORTAGE_CGROUP_ROOT", DEFAULT_CGROUP_ROOT),
-                verbose="--verbose" in myopts,
-            )
+            cg = CgroupManager(settings.get("PORTAGE_CGROUP_ROOT", DEFAULT_CGROUP_ROOT))
             if cg.setup():
                 self._cgroup = cg
                 settings.unlock()

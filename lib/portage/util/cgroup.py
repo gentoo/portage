@@ -59,10 +59,6 @@ def _warn(msg: str) -> None:
     writemsg_level(f"!!! cgroup: {msg}\n", level=logging.WARNING, noiselevel=-1)
 
 
-def _info(msg: str) -> None:
-    writemsg_level(f"cgroup: {msg}\n", level=logging.INFO)
-
-
 def _debug(msg: str) -> None:
     writemsg_level(f"cgroup: {msg}\n", level=logging.DEBUG, noiselevel=2)
 
@@ -453,19 +449,17 @@ class CgroupManager:
     via settings.
     """
 
-    def __init__(self, root: str = DEFAULT_CGROUP_ROOT, verbose: bool = False) -> None:
+    def __init__(self, root: str = DEFAULT_CGROUP_ROOT) -> None:
         self.root = root
         self.emerge_root = os.path.join(root, f"emerge-{os.getpid()}")
         self.enabled = False
-        self.verbose = verbose
         self._seen: set[str] = set()
 
     def setup(self) -> bool:
         """Initialize the base and per-emerge cgroups. Sets self.enabled."""
         if not ensure_base(self.root):
             return False
-        if self.verbose:
-            _info(f"using {self.root}")
+        _debug(f"using {self.root}")
         cleanup_stale(self.root)
         try:
             os.makedirs(self.emerge_root, exist_ok=True)
