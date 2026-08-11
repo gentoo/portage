@@ -47,6 +47,8 @@ Features:
 
 * Log when creating packdebug tarballs.
 
+* Log when creating binpkgs (bug #930213).
+
 Bug fixes:
 
 * man: make.conf(5): Improve man text about disabling tests to not wrongly
