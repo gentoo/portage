@@ -1,5 +1,5 @@
 # portage: news management code
-# Copyright 2006-2025 Gentoo Authors
+# Copyright 2006-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -430,10 +430,10 @@ class DisplayInstalledRestriction(DisplayRestriction):
         self.format = news_format
 
     def isValid(self) -> bool:
-        if fnmatch.fnmatch(self.format, "1.*"):
-            return isvalidatom(self.atom, eapi="0")
         if fnmatch.fnmatch(self.format, "2.*"):
             return isvalidatom(self.atom, eapi="5")
+        elif fnmatch.fnmatch(self.format, "1.*"):
+            return isvalidatom(self.atom, eapi="0")
         return isvalidatom(self.atom)
 
     def checkRestriction(self, **kwargs) -> Optional[Match[str]]:
