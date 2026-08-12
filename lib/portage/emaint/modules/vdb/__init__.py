@@ -29,7 +29,9 @@ module_spec = {
                 "remove": {
                     "short": "-R",
                     "long": "--remove",
-                    "help": "Remove consolidated metadata files",
+                    "help": "Undo --fix: restore any per-field file that only "
+                    "the metadata file still holds, then remove the metadata "
+                    "files",
                     "status": "Removing VDB metadata files for %s",
                     "action": "store_true",
                     "func": "remove",

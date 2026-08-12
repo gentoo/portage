@@ -4,12 +4,14 @@
 import os
 import tempfile
 
+import portage
 from portage.tests import TestCase
 from portage.dbapi.vartree import (
     _METADATA_FILE,
     _METADATA_FILE_FIELDS,
     _METADATA_FILE_FORMAT_VERSION,
     _consolidate_to_metadata_file,
+    _explode_metadata_file,
     _in_metadata_file,
     _read_metadata_file,
     _write_metadata_file,
@@ -338,6 +340,138 @@ class VdbConsolidateTestCase(TestCase):
         self.assertFalse(os.path.exists(os.path.join(self._tmpdir, "EAPI")))
         result = _read_metadata_file(os.path.join(self._tmpdir, _METADATA_FILE))
         self.assertEqual(result["EAPI"], "8")
+
+
+class VdbExplodeTestCase(TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _write_field(self, name, value):
+        with open(os.path.join(self._tmpdir, name), "w") as f:
+            f.write(value + "\n")
+
+    def _read_field(self, name):
+        with open(os.path.join(self._tmpdir, name)) as f:
+            return f.read()
+
+    def test_no_metadata_file_is_not_an_error(self):
+        self.assertEqual(_explode_metadata_file(self._tmpdir), [])
+
+    def test_removes_file_and_keeps_individual_files(self):
+        self._write_field("EAPI", "8")
+        self._write_field("SLOT", "0")
+        _consolidate_to_metadata_file(self._tmpdir)
+        # Nothing to restore: the individual files were never removed.
+        self.assertEqual(_explode_metadata_file(self._tmpdir), [])
+        self.assertFalse(os.path.exists(os.path.join(self._tmpdir, _METADATA_FILE)))
+        self.assertEqual(self._read_field("EAPI"), "8\n")
+        self.assertEqual(self._read_field("SLOT"), "0\n")
+
+    def test_round_trip_through_delete_individual(self):
+        # The case that makes this the inverse rather than an unlink: after
+        # --delete-individual-files the metadata file is the only copy.
+        self._write_field("EAPI", "8")
+        self._write_field("SLOT", "0/0")
+        self._write_field("USE", "foo bar")
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
+        self.assertFalse(os.path.exists(os.path.join(self._tmpdir, "EAPI")))
+
+        self.assertEqual(_explode_metadata_file(self._tmpdir), ["EAPI", "SLOT", "USE"])
+        self.assertFalse(os.path.exists(os.path.join(self._tmpdir, _METADATA_FILE)))
+        self.assertEqual(self._read_field("EAPI"), "8\n")
+        self.assertEqual(self._read_field("SLOT"), "0/0\n")
+        self.assertEqual(self._read_field("USE"), "foo bar\n")
+
+    def test_non_metadata_files_untouched(self):
+        self._write_field("EAPI", "8")
+        with open(os.path.join(self._tmpdir, "CONTENTS"), "w") as f:
+            f.write("obj /usr/bin/foo abc123 1234567890\n")
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
+        _explode_metadata_file(self._tmpdir)
+        self.assertEqual(
+            self._read_field("CONTENTS"), "obj /usr/bin/foo abc123 1234567890\n"
+        )
+
+    def test_refuses_when_sole_copy_is_unusable(self):
+        # Individual files gone and the snapshot no longer validates: the
+        # values cannot be trusted and deleting the file would lose them.
+        from portage.exception import PortageException
+
+        self._write_field("EAPI", "8")
+        self._write_field("SLOT", "0")
+        _consolidate_to_metadata_file(self._tmpdir, delete_individual=True)
+        os.utime(self._tmpdir, ns=(0, 0))
+
+        self.assertRaises(PortageException, _explode_metadata_file, self._tmpdir)
+        # Nothing destroyed: the file is still there to be recovered from.
+        self.assertTrue(os.path.exists(os.path.join(self._tmpdir, _METADATA_FILE)))
+
+    def test_removes_unusable_file_when_individual_files_present(self):
+        # A stale file is just garbage when every field it names still has its
+        # own file, so it is removed rather than refused.
+        self._write_field("EAPI", "8")
+        _consolidate_to_metadata_file(self._tmpdir)
+        os.utime(self._tmpdir, ns=(0, 0))
+
+        self.assertEqual(_explode_metadata_file(self._tmpdir), [])
+        self.assertFalse(os.path.exists(os.path.join(self._tmpdir, _METADATA_FILE)))
+        self.assertEqual(self._read_field("EAPI"), "8\n")
+
+
+class VdbEmaintRoundTripTestCase(TestCase):
+    def testFixDeleteIndividualThenRemoveRestoresVdb(self):
+        """'emaint vdb --remove' undoes --fix --delete-individual-files.
+
+        Without the restore step it would unlink the only remaining copy of
+        every field and leave an unreadable VDB behind.
+        """
+        from portage.emaint.modules.vdb.vdb import VdbMetadata
+
+        pkgs = {
+            "dev-libs/A-1": {"EAPI": "7", "SLOT": "0", "RDEPEND": "dev-libs/B"},
+            "dev-libs/B-1": {"EAPI": "7", "SLOT": "0"},
+        }
+        playground = ResolverPlayground(ebuilds=pkgs, installed=pkgs)
+        # The module resolves the vardb through the global portage.db, the way
+        # it does under a real emaint run.
+        had_db = hasattr(portage, "db")
+        saved_db = getattr(portage, "db", None)
+        portage.db = playground.trees
+        try:
+            settings = playground.settings
+            vardb = playground.trees[playground.eroot]["vartree"].dbapi
+            pkgdir = vardb.getpath("dev-libs/A-1")
+            module = VdbMetadata()
+
+            status, _msgs = module.fix(
+                settings=settings, options={"delete_individual_files": True}
+            )
+            self.assertTrue(status)
+            self.assertFalse(os.path.exists(os.path.join(pkgdir, "RDEPEND")))
+            self.assertTrue(os.path.exists(os.path.join(pkgdir, _METADATA_FILE)))
+
+            status, _msgs = module.remove(settings=settings)
+            self.assertTrue(status)
+            self.assertFalse(os.path.exists(os.path.join(pkgdir, _METADATA_FILE)))
+            self.assertTrue(os.path.exists(os.path.join(pkgdir, "RDEPEND")))
+
+            # The values have to survive the round trip, not just the files.
+            vardb._aux_cache_obj = None
+            self.assertEqual(
+                vardb.aux_get("dev-libs/A-1", ["RDEPEND", "SLOT", "EAPI"]),
+                ["dev-libs/B", "0", "7"],
+            )
+        finally:
+            if had_db:
+                portage.db = saved_db
+            else:
+                del portage.db
+            playground.cleanup()
 
 
 class VdbMetadataAuxGetTestCase(TestCase):

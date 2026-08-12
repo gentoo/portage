@@ -6,6 +6,7 @@ from portage import os
 from portage.dbapi.vartree import (
     _METADATA_FILE,
     _consolidate_to_metadata_file,
+    _explode_metadata_file,
     _read_metadata_file,
 )
 
@@ -84,19 +85,24 @@ class VdbMetadata:
         return (True, None)
 
     def remove(self, **kwargs):
-        """Remove consolidated metadata files from all VDB package directories."""
+        """Undo --fix: restore individual per-field files, drop the metadata file.
+
+        The reverse of what fix() did, including the --delete-individual-files
+        case: a field the metadata file is the only remaining copy of is
+        written back to its own file before the metadata file goes away.
+        """
         settings = kwargs.get("settings", getattr(portage, "settings", {}))
 
         errors = []
+        restored = 0
         for cpv, pkgdir in _iter_pkg_dirs(settings):
-            metadata_path = os.path.join(pkgdir, _METADATA_FILE)
             try:
-                os.unlink(metadata_path)
-            except FileNotFoundError:
-                pass
-            except OSError as e:
+                restored += len(_explode_metadata_file(pkgdir))
+            except Exception as e:
                 errors.append(f"{cpv}: {e}")
 
         if errors:
             return (False, errors)
+        if restored:
+            return (True, [f"Restored {restored} individual VDB files."])
         return (True, None)

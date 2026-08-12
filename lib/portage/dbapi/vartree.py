@@ -285,6 +285,68 @@ def _consolidate_to_metadata_file(dbdir, delete_individual=False):
             _stamp_metadata_file(dbdir)
 
 
+def _explode_metadata_file(dbdir):
+    """Remove the metadata file, restoring any field it alone still holds.
+
+    The inverse of _consolidate_to_metadata_file(). Normally the individual
+    files are still there and this just unlinks the metadata file, but after a
+    delete_individual=True run the metadata file is the only copy of the
+    fields it carries, so those are written back to their own files first.
+
+    Restoring before unlinking means a field is never absent from disk. An
+    interrupted run leaves the metadata file in place; it is stale by then, so
+    the reader rejects it and falls back to the individual files that now
+    exist.
+
+    Refuses to unlink a metadata file that is the only copy of some field but
+    is not a snapshot this portage version can trust, since deleting it would
+    destroy that field and restoring from it could write a stale value. That
+    means a corrupted or downgraded VDB, and guessing is worse than stopping.
+
+    Returns the sorted list of field names restored. Raises PortageException
+    if the metadata file cannot be safely removed.
+    """
+    from portage import _encodings
+    from portage.exception import PortageException
+
+    path = os.path.join(dbdir, _METADATA_FILE)
+
+    # Parsed without validating format version or dir mtime, only to learn
+    # which fields the file claims. Values from it are used solely to restore
+    # fields the validated read below also vouches for.
+    claimed = {}
+    try:
+        with open(path, encoding=_encodings["repo.content"], errors="replace") as f:
+            for line in f:
+                line = line.rstrip("\n")
+                if line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                claimed[k] = v
+    except FileNotFoundError:
+        return []
+
+    missing = sorted(k for k in claimed if not os.path.exists(os.path.join(dbdir, k)))
+
+    if missing:
+        trusted = _read_metadata_file(path)
+        if trusted is None:
+            raise PortageException(
+                f"{path}: refusing to remove, it is the only copy of "
+                f"{', '.join(missing)} and is not a usable snapshot"
+            )
+        for fname in missing:
+            with open(
+                os.path.join(dbdir, fname),
+                mode="w",
+                encoding=_encodings["repo.content"],
+            ) as f:
+                f.write(f"{trusted.get(fname, '')}\n")
+
+    os.unlink(path)
+    return missing
+
+
 class vardbapi(dbapi):
     _excluded_dirs = ["CVS", "lost+found"]
     _excluded_dirs = [re.escape(x) for x in _excluded_dirs]
