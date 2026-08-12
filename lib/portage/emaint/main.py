@@ -153,9 +153,7 @@ class TaskHandler:
 
 def print_results(results):
     if results:
-        print()
         print("\n".join(results))
-        print("\n")
 
 
 def emaint_main(myargv):
