@@ -1,4 +1,4 @@
-# Copyright 1998-2025 Gentoo Authors
+# Copyright 1998-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -275,6 +275,8 @@ _ForkWatcher.hook(_ForkWatcher)
 
 os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
 
+portage._uname = None
+
 
 def getpid():
     """
@@ -295,6 +297,15 @@ def _get_stdin():
     if not sys.__stdin__.closed:
         return sys.__stdin__
     return sys.stdin
+
+
+def uname():
+    """
+    Cached version of os.uname().
+    """
+    if portage._uname is None:
+        portage._uname = os.uname()
+    return portage._uname
 
 
 bsd_chflags = None

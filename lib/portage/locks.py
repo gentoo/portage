@@ -577,7 +577,7 @@ def unlockfile(mytuple):
 
 def hardlock_name(path):
     base, tail = os.path.split(path)
-    myhost = os.uname()[1]
+    myhost = portage.uname()[1]
     return os.path.join(
         base,
         f".{tail}.hardlock-{myhost}-{portage.getpid()}",
@@ -750,7 +750,7 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 
 
 def hardlock_cleanup(path, remove_all_locks=False):
-    myhost = os.uname()[1]
+    myhost = portage.uname()[1]
 
     results = []
     mycount = 0
