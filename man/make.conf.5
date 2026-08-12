@@ -550,7 +550,9 @@ except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
 .B getbinpkg
 Force emerges to always try to fetch files from the remote binhosts configured
 in \fBbinrepos.conf\fR or \fIPORTAGE_BINHOST\fR (deprecated).
-See \fBmake.conf\fR(5) for more information.
+See \fBmake.conf\fR(5) for more information.  This option cannot be set
+via \fBpackage.env\fR, use the experimental binpkg selection options in
+\fBbinrepos.conf\fR instead.
 .TP
 .B gpg-keepalive
 Run GnuPG unlock command every 5 mins to avoid passphrase expiry.
