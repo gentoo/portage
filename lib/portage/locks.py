@@ -1,4 +1,4 @@
-# Copyright 2004-2023 Gentoo Authors
+# Copyright 2004-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """
@@ -577,9 +577,10 @@ def unlockfile(mytuple):
 
 def hardlock_name(path):
     base, tail = os.path.split(path)
+    myhost = os.uname()[1]
     return os.path.join(
         base,
-        f".{tail}.hardlock-{os.uname()[1]}-{portage.getpid()}",
+        f".{tail}.hardlock-{myhost}-{portage.getpid()}",
     )
 
 
