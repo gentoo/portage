@@ -133,9 +133,9 @@ class NewsManager:
             return
 
         news_dir: str = self._news_dir(repoid)
-        try:
-            news: list[str] = os.listdir(news_dir)
-        except OSError:
+        news: list[str] = os.listdir(news_dir)
+
+        if not news:
             return
 
         skip_filename: str = self._skip_filename(repoid)
@@ -212,7 +212,11 @@ class NewsManager:
         """
 
         if update:
-            self.updateItems(repoid)
+            try:
+                self.updateItems(repoid)
+            except OSError:
+                # Repository doesn't have any news items
+                return 0
 
         unread_filename = self._unread_filename(repoid)
         unread_lock: Optional[bool] = None
