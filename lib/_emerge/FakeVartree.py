@@ -190,6 +190,17 @@ class FakeVartree(vartree):
             aux_dict = dict(zip(aux_keys, self._aux_get(pkg.cpv, aux_keys)))
             perform_global_updates(pkg.cpv, aux_dict, self.dbapi, self._global_updates)
 
+    def dynamic_deps_applied(self, pkg):
+        """True if the dynamic-deps apply has already run for ``pkg`` on this
+        instance.
+
+        depgraph._load_vdb() runs once per depgraph, but the FakeVartree lives
+        in frozen_config and is therefore shared by every backtracking depgraph.
+        The preload must not run twice over the same instance: the first pass
+        rewrites Package._metadata via aux_update(), so a second pass would be
+        deriving live dependencies for metadata that is no longer the vdb's."""
+        return pkg.cpv in self._aux_get_history
+
     def dynamic_deps_preload(self, pkg, metadata):
         if metadata is not None:
             metadata = {k: metadata.get(k, "") for k in self._portdb_keys}

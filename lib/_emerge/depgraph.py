@@ -937,6 +937,12 @@ class depgraph:
         for pkg in fake_vartree.dbapi:
             self._dynamic_config._package_tracker.add_installed_pkg(pkg)
             self._add_installed_sonames(pkg)
+            if fake_vartree.dynamic_deps_applied(pkg):
+                # An earlier depgraph sharing this FakeVartree already applied
+                # dynamic deps to this instance, and doing it again would only
+                # re-derive the same result from metadata that first pass
+                # rewrote.
+                continue
             ebuild_path, repo_path = portdb.findname2(pkg.cpv, myrepo=pkg.repo)
             if ebuild_path is None:
                 fake_vartree.dynamic_deps_preload(pkg, None)
