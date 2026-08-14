@@ -913,36 +913,42 @@ class depgraph:
             if preload_installed_pkgs:
                 vardb = fake_vartree.dbapi
 
-                if not dynamic_deps:
-                    for pkg in vardb:
-                        self._dynamic_config._package_tracker.add_installed_pkg(pkg)
-                        self._add_installed_sonames(pkg)
-                else:
-                    max_jobs = self._frozen_config.myopts.get("--jobs")
-                    max_load = self._frozen_config.myopts.get("--load-average")
-                    scheduler = TaskScheduler(
-                        self._dynamic_deps_preload(fake_vartree),
-                        max_jobs=max_jobs,
-                        max_load=max_load,
-                        event_loop=fake_vartree._portdb._event_loop,
-                    )
-                    scheduler.start()
-                    scheduler.wait()
+                # The package tracker and the installed-soname map belong to
+                # _dynamic_config, which is constructed anew for every
+                # backtracking depgraph, so they must be repopulated on every
+                # pass.
+                for pkg in vardb:
+                    self._dynamic_config._package_tracker.add_installed_pkg(pkg)
+                    self._add_installed_sonames(pkg)
+
+                if dynamic_deps:
+                    # The FakeVartree, in contrast, belongs to frozen_config and
+                    # is shared by every backtracking depgraph, so the
+                    # dynamic-deps apply only has to run for the instances it
+                    # has not already run for.
+                    pending = [
+                        pkg
+                        for pkg in vardb
+                        if not fake_vartree.dynamic_deps_applied(pkg)
+                    ]
+                    if pending:
+                        max_jobs = self._frozen_config.myopts.get("--jobs")
+                        max_load = self._frozen_config.myopts.get("--load-average")
+                        scheduler = TaskScheduler(
+                            self._dynamic_deps_preload(fake_vartree, pending),
+                            max_jobs=max_jobs,
+                            max_load=max_load,
+                            event_loop=fake_vartree._portdb._event_loop,
+                        )
+                        scheduler.start()
+                        scheduler.wait()
 
         self._dynamic_config._vdb_loaded = True
 
-    def _dynamic_deps_preload(self, fake_vartree):
+    def _dynamic_deps_preload(self, fake_vartree, pkgs):
         portdb = fake_vartree._portdb
         config_pool = []
-        for pkg in fake_vartree.dbapi:
-            self._dynamic_config._package_tracker.add_installed_pkg(pkg)
-            self._add_installed_sonames(pkg)
-            if fake_vartree.dynamic_deps_applied(pkg):
-                # An earlier depgraph sharing this FakeVartree already applied
-                # dynamic deps to this instance, and doing it again would only
-                # re-derive the same result from metadata that first pass
-                # rewrote.
-                continue
+        for pkg in pkgs:
             ebuild_path, repo_path = portdb.findname2(pkg.cpv, myrepo=pkg.repo)
             if ebuild_path is None:
                 fake_vartree.dynamic_deps_preload(pkg, None)
