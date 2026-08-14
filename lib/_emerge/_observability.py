@@ -245,6 +245,11 @@ class ObservabilityMonitor:
     # rate-limiting intent.
     _min_write_latency = 1.0
 
+    # Republish this often (seconds) even when no task event occurs, so that
+    # the live gauges (elapsed time, cgroup counters, task PIDs) keep moving
+    # through a phase that runs for hours.
+    _refresh_interval = 2.0
+
     def __init__(self, scheduler):
         self._scheduler = scheduler
         settings = scheduler.settings
@@ -264,6 +269,7 @@ class ObservabilityMonitor:
         self._server_started = False
         self._last_write = 0
         self._last_snapshot = None
+        self._refresh_handle = None
 
         if not self.enabled:
             return
@@ -314,7 +320,9 @@ class ObservabilityMonitor:
         if not force and (now - self._last_write) < self._min_write_latency:
             return
         self._last_write = now
+        self._publish()
 
+    def _publish(self):
         try:
             snapshot = build_snapshot(self)
         except Exception as e:
@@ -330,6 +338,29 @@ class ObservabilityMonitor:
         self._write_status_file(snapshot)
         self._ensure_server()
         self._broadcast(snapshot)
+        self._schedule_refresh()
+
+    def _schedule_refresh(self):
+        if not self.enabled or self._refresh_handle is not None:
+            return
+        try:
+            self._refresh_handle = self._scheduler._event_loop.call_later(
+                self._refresh_interval, self._refresh
+            )
+        except RuntimeError:
+            # The loop is closed (shutdown in progress), so there will be no
+            # further refreshes. Task events still publish.
+            self._refresh_handle = None
+
+    def _refresh(self):
+        self._refresh_handle = None
+        # A publish that fails disables the monitor, but the handle armed by
+        # the previous one is still pending at that point.
+        if not self.enabled:
+            return
+        # Publish without advancing _last_write: the rate limit is there for
+        # bursty task events, not for this timer.
+        self._publish()
 
     def _write_status_file(self, snapshot):
         try:
@@ -427,6 +458,12 @@ class ObservabilityMonitor:
             return False
 
     def close(self):
+        # Nothing may publish after this: a later update() would re-arm the
+        # timer and recreate the status file unlinked below.
+        self.enabled = False
+        if self._refresh_handle is not None:
+            self._refresh_handle.cancel()
+            self._refresh_handle = None
         for writer in self._writers:
             try:
                 writer.close()
