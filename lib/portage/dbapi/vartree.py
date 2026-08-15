@@ -856,7 +856,7 @@ class vardbapi(dbapi):
             # clear cache entry
             self.mtdircache[mycat] = curmtime
             self.matchcache[mycat] = {}
-        if mydep not in self.matchcache[mycat]:
+        if cache_key not in self.matchcache[mycat]:
             mymatch = list(
                 self._iter_match(mydep, self.cp_list(mydep.cp, use_cache=use_cache))
             )
