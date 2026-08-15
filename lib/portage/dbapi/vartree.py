@@ -689,16 +689,24 @@ class vardbapi(dbapi):
 
         return moves
 
-    def cp_list(self, mycp, use_cache=1):
+    def cp_list(self, mycp, use_cache=1, _cat_mtime=None):
+        """
+        @param _cat_mtime: st_mtime_ns of the category directory, for internal
+                callers that have already stat()ed it. Saves a redundant stat()
+                of the same directory.
+        """
         from portage.versions import _pkg_str, catsplit, pkgsplit
 
         mysplit = catsplit(mycp)
         if mysplit[0] == "*":
             mysplit[0] = mysplit[0][1:]
-        try:
-            mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
-        except OSError:
-            mystat = 0
+        if _cat_mtime is not None:
+            mystat = _cat_mtime
+        else:
+            try:
+                mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
+            except OSError:
+                mystat = 0
         if use_cache and mycp in self.cpcache:
             cpc = self.cpcache[mycp]
             if cpc[0] == mystat:
@@ -858,7 +866,10 @@ class vardbapi(dbapi):
             self.matchcache[mycat] = {}
         if cache_key not in self.matchcache[mycat]:
             mymatch = list(
-                self._iter_match(mydep, self.cp_list(mydep.cp, use_cache=use_cache))
+                self._iter_match(
+                    mydep,
+                    self.cp_list(mydep.cp, use_cache=use_cache, _cat_mtime=curmtime),
+                )
             )
             self.matchcache[mycat][cache_key] = mymatch
         return self.matchcache[mycat][cache_key][:]
