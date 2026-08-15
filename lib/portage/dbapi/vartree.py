@@ -700,25 +700,33 @@ class vardbapi(dbapi):
         mysplit = catsplit(mycp)
         if mysplit[0] == "*":
             mysplit[0] = mysplit[0][1:]
+        cat_dir = self.getpath(mysplit[0])
+        cat_missing = False
         if _cat_mtime is not None:
             mystat = _cat_mtime
         else:
             try:
-                mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
-            except OSError:
+                mystat = os.stat(cat_dir).st_mtime_ns
+            except OSError as e:
                 mystat = 0
+                cat_missing = e.errno == errno.ENOENT
         if use_cache and mycp in self.cpcache:
             cpc = self.cpcache[mycp]
             if cpc[0] == mystat:
                 return cpc[1][:]
-        cat_dir = self.getpath(mysplit[0])
-        try:
-            dir_list = os.listdir(cat_dir)
-        except OSError as e:
-            if e.errno == PermissionDenied.errno:
-                raise PermissionDenied(cat_dir)
-            del e
+        if cat_missing:
+            # The stat() above already reported ENOENT, so listdir() can only
+            # report it again. Any other stat() failure falls through, since
+            # listdir() is what turns EACCES into PermissionDenied.
             dir_list = []
+        else:
+            try:
+                dir_list = os.listdir(cat_dir)
+            except OSError as e:
+                if e.errno == PermissionDenied.errno:
+                    raise PermissionDenied(cat_dir)
+                del e
+                dir_list = []
 
         returnme = []
         for x in dir_list:
@@ -855,22 +863,31 @@ class vardbapi(dbapi):
             return list(
                 self._iter_match(mydep, self.cp_list(mydep.cp, use_cache=use_cache))
             )
+        cat_missing = False
         try:
             curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
-        except OSError:
+        except OSError as e:
             curmtime = 0
+            cat_missing = e.errno == errno.ENOENT
 
         if mycat not in self.matchcache or self.mtdircache[mycat] != curmtime:
             # clear cache entry
             self.mtdircache[mycat] = curmtime
             self.matchcache[mycat] = {}
         if cache_key not in self.matchcache[mycat]:
-            mymatch = list(
-                self._iter_match(
-                    mydep,
-                    self.cp_list(mydep.cp, use_cache=use_cache, _cat_mtime=curmtime),
+            if cat_missing:
+                # Nothing is installed in a category that has no directory,
+                # so there is nothing for cp_list() to list.
+                mymatch = []
+            else:
+                mymatch = list(
+                    self._iter_match(
+                        mydep,
+                        self.cp_list(
+                            mydep.cp, use_cache=use_cache, _cat_mtime=curmtime
+                        ),
+                    )
                 )
-            )
             self.matchcache[mycat][cache_key] = mymatch
         return self.matchcache[mycat][cache_key][:]
 
