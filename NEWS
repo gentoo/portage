@@ -21,6 +21,15 @@ Breaking changes:
 * Importing `portage` as a library will require a UTF-8 locale be in effect:
   Portage will warn when this isn't the case.
 
+* Remove prelink support. sys-devel/prelink was treecleaned in 2022, so none
+  of this code could run any more. FEATURES="prelink-checksums" and the
+  PRELINK_BINARY, PRELINK_PATH and PRELINK_PATH_MASK variables are gone, as
+  is the generation of /etc/prelink.conf by env-update (bug #833909).
+
+* vartree: Remove the /var/cache/edb/vdb_metadata.pickle cross-session cache
+  (and vdb_metadata_delta.json). The per-package metadata file described
+  below replaces it. Tools reading the pickle directly will need updating.
+
 Features:
 
 * Add FEATURES="cgroup" to account each source build's CPU time, peak memory,
@@ -47,6 +56,42 @@ Features:
   Atom construction. Set PORTAGE_NATIVE_DEP_PARSER=0 in the environment to
   fall back to the pure-Python implementation; see emerge(1) for details.
 
+* vartree: Write a consolidated per-package "metadata" file in the VDB and
+  prefer it when reading installed-package metadata. This cuts most of the
+  per-field open()s: a full pass over 1742 installed packages went from
+  301.7 ms and 41012 openat() calls to 32.9 ms and 2689. The individual
+  per-field files are still written, so external readers of the VDB are
+  unaffected.
+
+* emaint: Add a "vdb" module which reports how many installed packages have
+  the consolidated metadata file, and populates it with --fix. The
+  --delete-individual-files option additionally removes the per-field files
+  to save disk space; this breaks tools which read them directly, so it is
+  opt-in. --remove restores the per-field files and removes the metadata
+  file again.
+
+* checksum: Read a file once when computing multiple hashes, instead of once
+  per hash. Files of at least 1 MiB additionally hash on a thread per digest,
+  which hashlib permits since it releases the GIL. Measured ~1.86x on a
+  300 MiB file with the default BLAKE2B+SHA512 digest. This affects every
+  fetch and verification, Manifest regeneration, and binpkg index hashing.
+
+* Skip the src_unpack, src_prepare, src_configure, src_compile and src_test
+  phases for packages with no source and no src_* phase functions of their
+  own, avoiding an ebuild.sh fork per phase for empty and virtual packages.
+  Disabled for FEATURES="noauto" and PROPERTIES="live".
+
+* resolver: Speed up dependency calculation on large graphs. Cycle detection
+  now computes dependency closures in a single batched pass per filter level,
+  and merge-order serialization tracks leaves incrementally instead of
+  rescanning the whole graph. Merge order is unchanged. Set
+  PORTAGE_SERIALIZE_FRONTIER_DISABLE in the environment to fall back to the
+  old leaf scan.
+
+* depgraph: Do not re-apply dynamic dependencies to installed packages on
+  every backtracking pass. Besides being wasted work, repeat passes derived
+  dependencies from metadata an earlier pass had already rewritten.
+
 * Log when creating packdebug tarballs.
 
 * Log when creating binpkgs (bug #930213).
@@ -71,6 +116,15 @@ Bug fixes:
 * Set a non-zero window size for newly allocated ptys, so build processes
   can more reliably query their terminal dimensions (bug #978222).
 
+* vartree: Remove preserved libraries which are only consumed by each other.
+  A group of preserved libraries forming a consumer cycle was never removed
+  from the preserved libs registry, and neither were the libraries consumed
+  only by that cycle (bug #652382).
+
+* vartree: Fix the vardbapi.match() cache being looked up with a key it never
+  stores, so that every match() call recomputed its result and re-stat()ed
+  the category directory.
+
 * emerge: Don't report that there are unsatisfied fetch restricted downloads
   when all the remaining unsatisfied downloads are not restricted (bug #830763).
 
@@ -85,6 +139,8 @@ Cleanups:
 
 * Drop various functions deprecated for over a decade, as well as
   some old unused function parameters that were themselves deprecated.
+
+* Remove compatibility code for Python versions older than 3.7.
 
 * Use os.scandir() to reduce the number of syscalls made.
 
