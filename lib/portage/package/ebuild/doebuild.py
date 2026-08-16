@@ -3352,6 +3352,34 @@ def _merge_unicode_error(errors):
     return lines
 
 
+def _rebind_loaded_modules(orig_pym_path, new_pym_path):
+    """
+    Rewrite the __path__ of loaded portage packages to point at a
+    temporary backup copy of the running version of portage. Submodule
+    imports are resolved via the __path__ of the parent package rather
+    than via sys.path, so this is what allows a process which has
+    already imported portage to import anything else after the
+    installed copy is replaced or removed (bug 976616).
+    """
+
+    orig_prefix = orig_pym_path.rstrip(os.sep) + os.sep
+
+    def _remap(path):
+        # The __path__ entries are not necessarily resolved, unlike
+        # orig_pym_path.
+        resolved = os.path.realpath(path)
+        if resolved.startswith(orig_prefix):
+            return os.path.join(new_pym_path, resolved[len(orig_prefix) :])
+        return path
+
+    for name, module in list(sys.modules.items()):
+        if name.partition(".")[0] not in PORTAGE_PYM_PACKAGES:
+            continue
+        path = getattr(module, "__path__", None)
+        if path is not None:
+            module.__path__ = [_remap(x) for x in path]
+
+
 def _prepare_self_update(settings):
     """
     Call this when portage is updating itself, in order to create
@@ -3392,6 +3420,11 @@ def _prepare_self_update(settings):
     # Update sys.path used to unpickle child process arguments for
     # multiprocessing forkserver and spawn start methods (bug 965976).
     sys.path.insert(0, portage._pym_path)
+
+    # The sys.path update above does nothing for this process, which
+    # has already imported portage, or for anything forked from it
+    # (bug 976616).
+    _rebind_loaded_modules(orig_pym_path, portage._pym_path)
 
     if multiprocessing.get_start_method() == "forkserver":
 
