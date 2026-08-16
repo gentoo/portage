@@ -88,8 +88,10 @@ def build_snapshot(monitor):
         # Prefer the build's own start/finish times (continuous across the
         # build -> merge hand-off) over the per-task start time.
         times = monitor._build_times.get(cpv)
+        frozen_res = None
         if times is not None:
             start, build_finished = times[0], times[1]
+            frozen_res = times[2] if len(times) > 2 else None
         else:
             start, build_finished = monitor._task_start.get(id(task)), None
 
@@ -116,7 +118,9 @@ def build_snapshot(monitor):
             "start_time": start,
             "elapsed": elapsed,
         }
-        if cgroup is not None:
+        if frozen_res is not None:
+            entry["resources"] = frozen_res
+        elif cgroup is not None:
             res = cgroup.read_stats(str(pkg.cpv))
             if res:
                 entry["resources"] = res
@@ -323,7 +327,7 @@ class ObservabilityMonitor:
         if not isinstance(task, _PackageMerge):
             pkg = _task_pkg(task)
             if pkg is not None:
-                self._build_times[str(pkg.cpv)] = [now, None]
+                self._build_times[str(pkg.cpv)] = [now, None, None]
 
     def note_task_finished(self, task):
         if not self.enabled:
@@ -340,6 +344,11 @@ class ObservabilityMonitor:
             times = self._build_times.get(cpv)
             if times is not None:
                 times[1] = time.time()
+                cgroup = getattr(self._scheduler, "_cgroup", None)
+                if cgroup is not None:
+                    res = cgroup.read_stats(cpv)
+                    if res:
+                        times[2] = res
 
     def note_phase(self, cpv, phase):
         if not self.enabled:
