@@ -91,7 +91,7 @@ class DepcleanWithInstalledMaskedTestCase(TestCase):
     def testDepcleanWithInstalledMasked(self):
         """
         Test case for bug 332719.
-        emerge --declean ignores that B is masked by license and removes C.
+        emerge --depclean ignores that B is masked by license and removes C.
         The next emerge -uDN world doesn't take B and installs C again.
         """
         ebuilds = {
