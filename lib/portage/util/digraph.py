@@ -384,6 +384,63 @@ class digraph:
                 return paths[child]
         return None
 
+    def strongly_connected_components(self, ignore_priority=None):
+        """
+        Return the strongly connected components of the graph, computed
+        with an iterative Tarjan pass, in reverse topological order.
+        Components of a single node that has no edge to itself are
+        included as well.
+        """
+        index_counter = 0
+        indices = {}
+        lowlink = {}
+        stack = []
+        on_stack = set()
+        components = []
+
+        for root in self.order:
+            if root in indices:
+                continue
+
+            work = [(root, None)]
+            while work:
+                node, children = work[-1]
+                if children is None:
+                    indices[node] = index_counter
+                    lowlink[node] = index_counter
+                    index_counter += 1
+                    stack.append(node)
+                    on_stack.add(node)
+                    children = list(
+                        self.child_nodes_iter(node, ignore_priority=ignore_priority)
+                    )
+                    work[-1] = (node, children)
+
+                if children:
+                    child = children.pop()
+                    if child not in indices:
+                        work.append((child, None))
+                    elif child in on_stack:
+                        lowlink[node] = min(lowlink[node], indices[child])
+                    continue
+
+                if lowlink[node] == indices[node]:
+                    component = []
+                    while True:
+                        member = stack.pop()
+                        on_stack.discard(member)
+                        component.append(member)
+                        if member == node:
+                            break
+                    components.append(component)
+
+                work.pop()
+                if work:
+                    parent = work[-1][0]
+                    lowlink[parent] = min(lowlink[parent], lowlink[node])
+
+        return components
+
     def get_cycles(self, ignore_priority=None, max_length=None):
         """
         Returns all cycles that have at most length 'max_length'.

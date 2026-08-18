@@ -326,3 +326,31 @@ class DigraphTest(TestCase):
                 list(g.child_nodes_iter("A", ignore_priority=ip)),
                 g.child_nodes("A", ignore_priority=ip),
             )
+
+
+class DigraphSccTest(TestCase):
+    def testStronglyConnectedComponents(self):
+        graph = digraph()
+        graph.add("B", "A")
+        graph.add("A", "B")
+        graph.add("C", "B")
+        graph.add("D", "C")
+        graph.add("E", None)
+
+        components = graph.strongly_connected_components()
+        self.assertEqual(
+            sorted(sorted(component) for component in components),
+            [["A", "B"], ["C"], ["D"], ["E"]],
+        )
+
+        # A component is only reported once, no matter how many cycles
+        # its members are part of.
+        graph = digraph()
+        graph.add("B", "A")
+        graph.add("C", "B")
+        graph.add("A", "C")
+        graph.add("A", "B")
+        components = graph.strongly_connected_components()
+        self.assertEqual(
+            sorted(sorted(component) for component in components), [["A", "B", "C"]]
+        )
