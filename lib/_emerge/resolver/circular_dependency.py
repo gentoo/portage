@@ -73,6 +73,31 @@ class circular_dependency_handler:
             tempgraph.remove(node)
         return tuple(display_order)
 
+    def _dep_string(self, parent, priority):
+        """
+        Return the dependency string of parent that the given priority
+        was derived from, or None if the priority does not correspond to
+        a dependency string that USE flags can influence.
+        """
+        if not isinstance(parent, Package):
+            return None
+        if priority.buildtime:
+            return " ".join(parent._metadata[k] for k in Package._buildtime_keys)
+        if priority.runtime:
+            return parent._metadata["RDEPEND"]
+        if priority.runtime_post:
+            return parent._metadata["PDEPEND"]
+        return None
+
+    def _parent_atom(self, parent, pkg):
+        """
+        Return the atom of parent that pulls in pkg, or None.
+        """
+        for ppkg, atom in self.all_parent_atoms.get(pkg, ()):
+            if ppkg == parent:
+                return atom
+        return None
+
     def _prepare_circular_dep_message(self):
         """
         Like digraph.debug_print(), but prints only the shortest cycle.
@@ -121,18 +146,18 @@ class circular_dependency_handler:
         for pos, pkg in enumerate(self.shortest_cycle):
             parent = self.shortest_cycle[pos - 1]
             priorities = self.graph.nodes[parent][0][pkg]
-            parent_atoms = self.all_parent_atoms.get(pkg)
 
-            if priorities[-1].buildtime:
-                dep = " ".join(parent._metadata[k] for k in Package._buildtime_keys)
-            elif priorities[-1].runtime:
-                dep = parent._metadata["RDEPEND"]
+            if priorities[-1].buildtime or priorities[-1].runtime:
+                dep = self._dep_string(parent, priorities[-1])
+            else:
+                # The edge does not come from a dependency string that
+                # we can manipulate with USE flags.
+                continue
 
-            for ppkg, atom in parent_atoms:
-                if ppkg == parent:
-                    changed_parent = ppkg
-                    parent_atom = atom
-                    break
+            parent_atom = self._parent_atom(parent, pkg)
+            if dep is None or parent_atom is None:
+                continue
+            changed_parent = parent
 
             if parent_atom.package:
                 parent_atom = parent_atom.unevaluated_atom
