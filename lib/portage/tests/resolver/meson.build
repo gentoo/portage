@@ -40,6 +40,7 @@ py.install_sources(
         'test_installkernel.py',
         'test_keywords.py',
         'test_merge_order.py',
+        'test_merge_order_cycles.py',
         'test_missing_iuse_and_evaluated_atoms.py',
         'test_multirepo.py',
         'test_multislot.py',
