@@ -46,13 +46,21 @@ class circular_dependency_handler:
         self.solutions, self.suggestions = self._find_suggestions()
 
     def _find_cycles(self):
-        shortest_cycle = None
-        cycles = self.graph.get_cycles(
-            ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft
-        )
-        for cycle in cycles:
-            if not shortest_cycle or len(cycle) < len(shortest_cycle):
-                shortest_cycle = cycle
+        # Ignoring soft dependencies usually gives the most relevant
+        # cycles, but a cycle can consist entirely of dependencies that
+        # would be ignored at that level. Lower the threshold until a
+        # cycle is found, so that we never report a cycle without being
+        # able to show it (bug 929010).
+        ignore_priorities = DepPrioritySatisfiedRange.ignore_priority
+        highest = ignore_priorities.index(DepPrioritySatisfiedRange.ignore_medium_soft)
+        for ignore_priority in reversed(ignore_priorities[: highest + 1]):
+            shortest_cycle = None
+            cycles = self.graph.get_cycles(ignore_priority=ignore_priority)
+            for cycle in cycles:
+                if not shortest_cycle or len(cycle) < len(shortest_cycle):
+                    shortest_cycle = cycle
+            if shortest_cycle is not None:
+                break
         return cycles, shortest_cycle
 
     def _prepare_reduced_merge_list(self):
@@ -332,6 +340,11 @@ class circular_dependency_handler:
                 ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft
             )
             if not root_nodes:
+                break
+            if len(root_nodes) == len(graph.order):
+                # Pruning would leave nothing to display, so show the
+                # last non-empty state instead of nothing at all
+                # (bug 929010).
                 break
             graph.difference_update(root_nodes)
 
