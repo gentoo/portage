@@ -4,6 +4,7 @@
 import collections
 import errno
 import functools
+import json
 import logging
 import os
 import stat
@@ -10415,6 +10416,10 @@ class depgraph:
         )
         handler = self._dynamic_config._circular_dependency_handler
 
+        if self._frozen_config.myopts.get("--circular-deps-report") == "json":
+            self._show_circular_deps_json(handler)
+            return
+
         self._frozen_config.myopts.pop("--quiet", None)
         self._frozen_config.myopts["--verbose"] = True
         self._frozen_config.myopts["--tree"] = True
@@ -10527,6 +10532,72 @@ class depgraph:
                 + "optional dependencies.\n",
                 noiselevel=-1,
             )
+
+    def _show_circular_deps_json(self, handler):
+        """
+        Report the cycle in a machine readable form, for use by
+        tinderboxes and other automated consumers.
+        """
+        report = {
+            # A cycle can pass through a node that is not a package, so
+            # fall back to its string form rather than dropping it and
+            # reporting something that is not a cycle.
+            "cycles": [
+                [node.cpv if isinstance(node, Package) else str(node) for node in cycle]
+                for cycle in handler.cycles
+            ],
+            "shortest_cycle": [],
+            "solutions": [],
+            "test_dep_parents": sorted(pkg.cpv for pkg in handler.test_dep_parents),
+            "masked_alternatives": [],
+            # Without these, an empty "solutions" cannot be told apart
+            # from a search that was never run.
+            "search_truncated": sorted(pkg.cpv for pkg in handler.search_truncated),
+            "max_affecting_use": handler.max_affecting_use,
+        }
+
+        for pos, pkg in enumerate(handler.shortest_cycle or []):
+            parent = handler.shortest_cycle[pos - 1]
+            if not isinstance(pkg, Package) or not isinstance(parent, Package):
+                # Only packages have a cpv to report.
+                continue
+            priorities = handler.graph.nodes[parent][0][pkg]
+            report["shortest_cycle"].append(
+                {
+                    "parent": parent.cpv,
+                    "child": pkg.cpv,
+                    "priority": str(priorities[-1]),
+                    "affecting_use": sorted(
+                        handler._affecting_use(parent, pkg, priorities[-1])
+                    ),
+                }
+            )
+
+        # These are lists rather than objects keyed by cpv, since two
+        # packages in the graph can share a cpv.
+        for pkg, solutions in sorted(
+            handler.parent_solutions.items(), key=lambda x: x[0].cpv
+        ):
+            report["solutions"].append(
+                {
+                    "package": pkg.cpv,
+                    "use_changes": [dict(solution) for solution in solutions],
+                }
+            )
+
+        for pkg, alternatives in sorted(
+            handler.masked_alternatives.items(), key=lambda x: x[0].cpv
+        ):
+            report["masked_alternatives"].append(
+                {
+                    "package": pkg.cpv,
+                    "alternatives": sorted(
+                        alternative.cpv for alternative in alternatives
+                    ),
+                }
+            )
+
+        portage.writemsg_stdout(json.dumps(report, indent=2) + "\n", noiselevel=-1)
 
     def _show_merge_list(self):
         if self._dynamic_config._serialized_tasks_cache is not None and not (

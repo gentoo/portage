@@ -1,6 +1,10 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import io
+import json
+from contextlib import redirect_stdout
+
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -9,6 +13,7 @@ from portage.tests.resolver.ResolverPlayground import (
 from portage.util.digraph import digraph
 
 from _emerge.DepPriority import DepPriority
+from _emerge.main import parse_opts
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 
 
@@ -425,5 +430,104 @@ class CircularSearchTruncatedTestCase(TestCase):
             self.assertEqual(result.success, False)
             self.assertEqual(result.circular_dependency_search_truncated, set())
             self.assertNotEqual(result.circular_dependency_solutions, {})
+        finally:
+            playground.cleanup()
+
+
+class CircularDependencyJsonReportTestCase(TestCase):
+    """
+    --circular-deps-report=json describes the cycle in a form that
+    automated consumers can parse.
+    """
+
+    def testJsonReport(self):
+        ebuilds = {
+            "media-libs/freetype-1": {
+                "DEPEND": "harfbuzz? ( media-libs/harfbuzz )",
+                "IUSE": "+harfbuzz",
+                "EAPI": "8",
+            },
+            "media-libs/harfbuzz-1": {
+                "DEPEND": "media-libs/freetype",
+                "EAPI": "8",
+            },
+        }
+
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            result = playground.run(
+                ["media-libs/freetype"], options={"--circular-deps-report": "json"}
+            )
+            self.assertEqual(result.success, False)
+
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result.depgraph.display_problems()
+            report = json.loads(output.getvalue())
+
+            self.assertEqual(
+                {edge["parent"] for edge in report["shortest_cycle"]},
+                {"media-libs/freetype-1", "media-libs/harfbuzz-1"},
+            )
+            self.assertTrue(
+                any(
+                    edge["affecting_use"] == ["harfbuzz"]
+                    for edge in report["shortest_cycle"]
+                )
+            )
+            # The flag belongs to freetype, which is the package the
+            # change has to be applied to, not to harfbuzz, which is the
+            # package the change gets rid of the dependency on.
+            self.assertEqual(
+                report["solutions"],
+                [
+                    {
+                        "package": "media-libs/freetype-1",
+                        "use_changes": [{"harfbuzz": False}],
+                    }
+                ],
+            )
+            self.assertEqual(report["search_truncated"], [])
+            self.assertEqual(report["max_affecting_use"], 10)
+        finally:
+            playground.cleanup()
+
+    def testDefaultFormat(self):
+        # Without a format, the option selects the text report rather
+        # than failing to parse.
+        opts = parse_opts(["--circular-deps-report", "dev-libs/A"], silent=True)[1]
+        self.assertNotEqual(opts.get("--circular-deps-report"), "json")
+
+    def testJsonReportSearchTruncated(self):
+        flags = [f"flag{i}" for i in range(12)]
+        dep = " ".join(f"{flag}? ( dev-libs/B )" for flag in flags)
+
+        ebuilds = {
+            "dev-libs/A-1": {
+                "DEPEND": dep,
+                "IUSE": " ".join(f"+{flag}" for flag in flags),
+                "EAPI": "8",
+            },
+            "dev-libs/B-1": {
+                "DEPEND": "dev-libs/A",
+                "EAPI": "8",
+            },
+        }
+
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            result = playground.run(
+                ["dev-libs/A"],
+                options={"--circular-deps-report": "json", "--autounmask-use": "n"},
+            )
+            self.assertEqual(result.success, False)
+
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result.depgraph.display_problems()
+            report = json.loads(output.getvalue())
+
+            self.assertEqual(report["solutions"], [])
+            self.assertEqual(report["search_truncated"], ["dev-libs/A-1"])
         finally:
             playground.cleanup()

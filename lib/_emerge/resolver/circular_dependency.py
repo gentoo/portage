@@ -33,6 +33,10 @@ class circular_dependency_handler:
         # Packages for which the search for a USE change was given up
         # on, so that the user is not told that no solution exists.
         self.search_truncated = set()
+        # Solutions, keyed by the package whose USE flags have to
+        # change. Unlike self.solutions, this identifies the package
+        # that the change applies to.
+        self.parent_solutions = {}
 
         if "--debug" in depgraph._frozen_config.myopts:
             # Show this debug output before doing the calculations
@@ -556,6 +560,7 @@ class circular_dependency_handler:
                     )
                 suggestions.append(msg)
                 final_solutions.setdefault(pkg, set()).add(solution)
+                self.parent_solutions.setdefault(changed_parent, set()).add(solution)
 
         return final_solutions, suggestions
 

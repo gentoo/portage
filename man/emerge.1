@@ -522,6 +522,15 @@ changed since installation. This option also implies the
 \fB\-\-changed\-use\fR option does not trigger reinstallation when
 flags that the user has not enabled are added or removed.
 .TP
+.BR "\-\-circular\-deps\-report [ text | json ]"
+Selects the format of the circular dependency report. The default,
+\fItext\fR, is the human readable report. With \fIjson\fR, the cycles,
+the USE flags responsible for each edge, the suggested USE changes, the
+packages whose test dependencies are involved, any masked packages that
+could be used instead and the packages whose search for a USE change was
+given up on are written to stdout as a JSON object, for consumption by
+automated tools.
+.TP
 .BR "\-\-color < y | n >"
 Enable or disable color output.  This option will override \fINO_COLOR\fR
 and \fINOCOLOR\fR (see \fBmake.conf\fR(5)) and may also be used to force

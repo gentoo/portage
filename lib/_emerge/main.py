@@ -152,6 +152,7 @@ def insert_optional_args(args):
         "--changed-deps": y_or_n,
         "--changed-slot": y_or_n,
         "--changed-deps-report": y_or_n,
+        "--circular-deps-report": ("text", "json"),
         "--complete-graph": y_or_n,
         "--deep": valid_integers,
         "--depclean-lib-check": y_or_n,
@@ -413,6 +414,12 @@ def parse_opts(tmpcmdline, silent=False):
         "--changed-slot": {
             "help": ("replace installed packages with " "outdated SLOT metadata"),
             "choices": true_y_or_n,
+        },
+        "--circular-deps-report": {
+            "help": "format of the circular dependency report",
+            # "True" is what insert_optional_args() substitutes when no
+            # format follows the option, and means the default format.
+            "choices": ("True", "text", "json"),
         },
         "--config-root": {
             "help": "specify the location for portage configuration files",
