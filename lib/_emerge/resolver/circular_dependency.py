@@ -45,6 +45,8 @@ class circular_dependency_handler:
         self.circular_dep_message = self._prepare_circular_dep_message()
         # Suggestions, in machine and human readable form
         self.solutions, self.suggestions = self._find_suggestions()
+        # Packages in the cycle whose test dependencies are involved
+        self.test_dep_parents = self._find_test_dep_parents()
 
     def _find_cycles(self):
         # Ignoring soft dependencies usually gives the most relevant
@@ -183,6 +185,25 @@ class circular_dependency_handler:
         if affecting_use:
             description += f", USE={' '.join(sorted(affecting_use))}"
         return description
+
+    def _find_test_dep_parents(self):
+        """
+        Return the packages in the cycle that pull in a cycle member via
+        their test dependencies (bug 416871, bug 703348). These cycles
+        can be avoided without changing the installed USE configuration,
+        by disabling FEATURES=test for the affected packages.
+        """
+        parents = set()
+        if not self.shortest_cycle:
+            return frozenset(parents)
+
+        for pos, pkg in enumerate(self.shortest_cycle):
+            parent = self.shortest_cycle[pos - 1]
+            priorities = self.graph.nodes[parent][0][pkg]
+            if "test" in self._affecting_use(parent, pkg, priorities[-1]):
+                parents.add(parent)
+
+        return frozenset(parents)
 
     def _prepare_circular_dep_message(self):
         """

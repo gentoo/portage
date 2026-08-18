@@ -1076,6 +1076,9 @@ class ResolverPlaygroundTestCase:
             elif key == "forced_rebuilds" and expected is not None:
                 expected = {k: set(v) for k, v in expected.items()}
 
+            elif key == "circular_dependency_test_parents" and expected is not None:
+                expected = set(expected)
+
             elif key == "circular_dependency_message" and expected is not None:
                 # The expected value is a list of substrings that the
                 # rendered message has to contain.
@@ -1148,6 +1151,7 @@ class ResolverPlaygroundResult:
         "slot_collision_solutions",
         "circular_dependency_solutions",
         "circular_dependency_message",
+        "circular_dependency_test_parents",
         "needed_p_mask_changes",
         "unsatisfied_deps",
         "forced_rebuilds",
@@ -1157,6 +1161,7 @@ class ResolverPlaygroundResult:
     )
     optional_checks = (
         "circular_dependency_message",
+        "circular_dependency_test_parents",
         "forced_rebuilds",
         "required_use_unsatisfied",
         "unsatisfied_deps",
@@ -1176,6 +1181,7 @@ class ResolverPlaygroundResult:
         self.slot_collision_solutions = None
         self.circular_dependency_solutions = None
         self.circular_dependency_message = None
+        self.circular_dependency_test_parents = None
         self.unsatisfied_deps = frozenset()
         self.forced_rebuilds = None
         self.required_use_unsatisfied = None
@@ -1235,6 +1241,9 @@ class ResolverPlaygroundResult:
                 zip([x.cpv for x in sol.keys()], sol.values())
             )
             self.circular_dependency_message = handler.circular_dep_message
+            self.circular_dependency_test_parents = {
+                pkg.cpv for pkg in handler.test_dep_parents
+            }
 
         if self.depgraph._dynamic_config._unsatisfied_deps_for_display:
             self.unsatisfied_deps = {

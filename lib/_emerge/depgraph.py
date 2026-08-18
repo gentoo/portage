@@ -10432,6 +10432,26 @@ class depgraph:
         if handler.circular_dep_message is not None:
             portage.writemsg(handler.circular_dep_message, noiselevel=-1)
 
+        if handler.test_dep_parents:
+            writemsg(
+                "\n\n"
+                + prefix
+                + "This cycle involves test dependencies. If you do not\n"
+                + prefix
+                + "need to run the test suites of the packages listed below,\n"
+                + prefix
+                + 'disable FEATURES=test for them. Put FEATURES="-test" in\n'
+                + prefix
+                + "/etc/portage/env/no-test.conf, then add the following to\n"
+                + prefix
+                + '/etc/portage/package.env (see "package.env" in the\n'
+                + prefix
+                + "portage(5) man page for more details):\n\n",
+                noiselevel=-1,
+            )
+            for pkg in sorted(handler.test_dep_parents, key=lambda x: x.cpv):
+                writemsg(f"={pkg.cpv} no-test.conf\n", noiselevel=-1)
+
         suggestions = handler.suggestions
         if suggestions:
             writemsg("\n\nIt might be possible to break this cycle\n", noiselevel=-1)

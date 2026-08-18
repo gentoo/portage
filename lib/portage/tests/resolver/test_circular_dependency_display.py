@@ -196,3 +196,91 @@ class CircularDependencyUseDisplayTestCase(TestCase):
             )
         finally:
             playground.cleanup()
+
+
+class CircularTestDependencyTestCase(TestCase):
+    """
+    Cycles caused by test dependencies are identified as such, so that
+    the user can be pointed at FEATURES=test instead of a USE change
+    that FEATURES=test would have to be disabled for anyway
+    (bug 416871, bug 703348).
+    """
+
+    def testTestDepCycle(self):
+        ebuilds = {
+            "dev-libs/A-1": {
+                "DEPEND": "test? ( dev-libs/B )",
+                "IUSE": "test",
+                "EAPI": "8",
+            },
+            "dev-libs/B-1": {
+                "DEPEND": "dev-libs/A",
+                "EAPI": "8",
+            },
+        }
+
+        user_config = {
+            "make.conf": ('USE="test"',),
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A"],
+                success=False,
+                circular_dependency_test_parents=["dev-libs/A-1"],
+                circular_dependency_solutions={
+                    "dev-libs/B-1": frozenset([frozenset([("test", False)])])
+                },
+            ),
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    def testTestDepCycleWithAnotherFlag(self):
+        # A second flag pulls in the same dependency, so disabling
+        # FEATURES=test alone does not break the cycle. The package is
+        # still worth naming, since the test suite is the part the user
+        # can most easily do without.
+        ebuilds = {
+            "dev-libs/A-1": {
+                "DEPEND": "test? ( dev-libs/B ) doc? ( dev-libs/B )",
+                "IUSE": "test doc",
+                "EAPI": "8",
+            },
+            "dev-libs/B-1": {
+                "DEPEND": "dev-libs/A",
+                "EAPI": "8",
+            },
+        }
+
+        user_config = {
+            "make.conf": ('USE="test doc"',),
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A"],
+                options={"--autounmask-use": "n"},
+                success=False,
+                circular_dependency_test_parents=["dev-libs/A-1"],
+                circular_dependency_solutions={
+                    "dev-libs/B-1": frozenset(
+                        [frozenset([("doc", False), ("test", False)])]
+                    )
+                },
+            ),
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
