@@ -1522,6 +1522,15 @@ dependency resolution and fall back to the previous implementation.
 This variable is internal and experimental; it may be removed or changed
 in a future release.
 .TP
+.BR PORTAGE_CIRCULAR_MAX_USE_FLAGS
+The number of USE flags that Portage explores per dependency when it
+looks for a USE change that breaks a circular dependency (default:
+\fI10\fR).  The number of combinations grows exponentially with this
+value, so raising it can make the search much slower.  When the search
+is given up on because a dependency is affected by more flags than this,
+the affected packages are named in the circular dependency report.  It
+may also be set in \fBmake.conf\fR(5).
+.TP
 .BR PORTAGE_NATIVE_DEP_PARSER
 If this environment variable is set to \fI0\fR, then Portage will not use
 the native C dependency\-string parser and will fall back to the

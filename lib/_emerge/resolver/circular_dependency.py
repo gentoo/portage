@@ -20,12 +20,19 @@ from _emerge.Package import Package
 
 
 class circular_dependency_handler:
+    # Default number of USE flags that are explored per cycle edge. The
+    # number of combinations is exponential in this, so raising it can be
+    # slow (bug 555698, bug 374397).
     MAX_AFFECTING_USE = 10
 
     def __init__(self, depgraph, graph):
         self.depgraph = depgraph
         self.graph = graph
         self.all_parent_atoms = depgraph._dynamic_config._parent_atoms
+        self.max_affecting_use = self._get_max_affecting_use()
+        # Packages for which the search for a USE change was given up
+        # on, so that the user is not told that no solution exists.
+        self.search_truncated = set()
 
         if "--debug" in depgraph._frozen_config.myopts:
             # Show this debug output before doing the calculations
@@ -342,6 +349,30 @@ class circular_dependency_handler:
         use, changes = needed_use_config_change
         return frozenset(changes.keys())
 
+    def _get_max_affecting_use(self):
+        """
+        Return the number of USE flags to explore per cycle edge, which
+        PORTAGE_CIRCULAR_MAX_USE_FLAGS can raise when the extra search
+        time is acceptable.
+        """
+        settings = self.depgraph._frozen_config.settings
+        value = settings.get("PORTAGE_CIRCULAR_MAX_USE_FLAGS")
+        if value:
+            try:
+                limit = int(value)
+            except ValueError:
+                limit = 0
+            if limit >= 1:
+                return limit
+            writemsg_level(
+                f"!!! Invalid PORTAGE_CIRCULAR_MAX_USE_FLAGS: {value}\n"
+                f"!!! Expected an integer greater than zero, using "
+                f"{self.MAX_AFFECTING_USE} instead.\n",
+                level=logging.ERROR,
+                noiselevel=-1,
+            )
+        return self.MAX_AFFECTING_USE
+
     def _find_suggestions(self):
         if not self.shortest_cycle:
             return None, None
@@ -409,7 +440,7 @@ class circular_dependency_handler:
                 total_flags = set()
                 total_flags.update(affecting_use, required_use_flags)
                 total_flags.difference_update(untouchable_flags)
-                if len(total_flags) <= self.MAX_AFFECTING_USE:
+                if len(total_flags) <= self.max_affecting_use:
                     affecting_use = total_flags
 
             affecting_use = tuple(affecting_use)
@@ -417,7 +448,7 @@ class circular_dependency_handler:
             if not affecting_use:
                 continue
 
-            if len(affecting_use) > self.MAX_AFFECTING_USE:
+            if len(affecting_use) > self.max_affecting_use:
                 # Limit the number of combinations explored (bug #555698).
                 # First, discard irrelevant flags that are not enabled.
                 # Since extract_affecting_use doesn't distinguish between
@@ -428,9 +459,10 @@ class circular_dependency_handler:
                     flag for flag in affecting_use if flag in current_use
                 )
 
-                if len(affecting_use) > self.MAX_AFFECTING_USE:
+                if len(affecting_use) > self.max_affecting_use:
                     # There are too many USE combinations to explore in
                     # a reasonable amount of time.
+                    self.search_truncated.add(parent)
                     continue
 
             # We iterate over all possible settings of these use flags and gather

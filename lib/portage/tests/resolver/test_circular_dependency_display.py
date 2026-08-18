@@ -354,3 +354,76 @@ class CircularMaskedAlternativeTestCase(TestCase):
                 self.assertEqual(test_case.test_success, True, test_case.fail_msg)
         finally:
             playground.cleanup()
+
+
+class CircularSearchTruncatedTestCase(TestCase):
+    """
+    The search for USE changes is limited, because the number of
+    combinations is exponential in the number of flags. Say so instead
+    of reporting that no solution exists.
+    """
+
+    def testSearchTruncated(self):
+        flags = [f"flag{i}" for i in range(12)]
+        dep = " ".join(f"{flag}? ( dev-libs/B )" for flag in flags)
+
+        ebuilds = {
+            "dev-libs/A-1": {
+                "DEPEND": dep,
+                "IUSE": " ".join(f"+{flag}" for flag in flags),
+                "EAPI": "8",
+            },
+            "dev-libs/B-1": {
+                "DEPEND": "dev-libs/A",
+                "EAPI": "8",
+            },
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A"],
+                options={"--autounmask-use": "n"},
+                success=False,
+                circular_dependency_solutions={},
+                circular_dependency_search_truncated=["dev-libs/A-1"],
+            ),
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    def testMaxUseFlagsRaised(self):
+        # PORTAGE_CIRCULAR_MAX_USE_FLAGS is high enough to cover the 12
+        # flags, so the search runs and finds a solution.
+        flags = [f"flag{i}" for i in range(12)]
+        dep = " ".join(f"{flag}? ( dev-libs/B )" for flag in flags)
+
+        ebuilds = {
+            "dev-libs/A-1": {
+                "DEPEND": dep,
+                "IUSE": " ".join(f"+{flag}" for flag in flags),
+                "EAPI": "8",
+            },
+            "dev-libs/B-1": {
+                "DEPEND": "dev-libs/A",
+                "EAPI": "8",
+            },
+        }
+
+        user_config = {
+            "make.conf": ('PORTAGE_CIRCULAR_MAX_USE_FLAGS="16"',),
+        }
+
+        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
+        try:
+            result = playground.run(["dev-libs/A"], options={"--autounmask-use": "n"})
+            self.assertEqual(result.success, False)
+            self.assertEqual(result.circular_dependency_search_truncated, set())
+            self.assertNotEqual(result.circular_dependency_solutions, {})
+        finally:
+            playground.cleanup()

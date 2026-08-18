@@ -10432,6 +10432,23 @@ class depgraph:
         if handler.circular_dep_message is not None:
             portage.writemsg(handler.circular_dep_message, noiselevel=-1)
 
+        if handler.search_truncated:
+            writemsg(
+                "\n\n"
+                + prefix
+                + "The search for USE changes was given up on for the following\n"
+                + prefix
+                + "packages, because they have too many USE flags that affect the\n"
+                + prefix
+                + "dependency. Raise PORTAGE_CIRCULAR_MAX_USE_FLAGS (currently "
+                + f"{handler.max_affecting_use})\n"
+                + prefix
+                + "to search harder:\n",
+                noiselevel=-1,
+            )
+            for pkg in sorted(handler.search_truncated, key=lambda x: x.cpv):
+                writemsg(f"- {pkg.cpv}\n", noiselevel=-1)
+
         if handler.masked_alternatives:
             writemsg(
                 "\n\n"

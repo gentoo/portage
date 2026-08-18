@@ -1081,6 +1081,7 @@ class ResolverPlaygroundTestCase:
                 in (
                     "circular_dependency_test_parents",
                     "circular_dependency_masked_alternatives",
+                    "circular_dependency_search_truncated",
                 )
                 and expected is not None
             ):
@@ -1160,6 +1161,7 @@ class ResolverPlaygroundResult:
         "circular_dependency_message",
         "circular_dependency_test_parents",
         "circular_dependency_masked_alternatives",
+        "circular_dependency_search_truncated",
         "needed_p_mask_changes",
         "unsatisfied_deps",
         "forced_rebuilds",
@@ -1171,6 +1173,7 @@ class ResolverPlaygroundResult:
         "circular_dependency_message",
         "circular_dependency_test_parents",
         "circular_dependency_masked_alternatives",
+        "circular_dependency_search_truncated",
         "forced_rebuilds",
         "required_use_unsatisfied",
         "unsatisfied_deps",
@@ -1192,6 +1195,7 @@ class ResolverPlaygroundResult:
         self.circular_dependency_message = None
         self.circular_dependency_test_parents = None
         self.circular_dependency_masked_alternatives = None
+        self.circular_dependency_search_truncated = None
         self.unsatisfied_deps = frozenset()
         self.forced_rebuilds = None
         self.required_use_unsatisfied = None
@@ -1253,6 +1257,9 @@ class ResolverPlaygroundResult:
             self.circular_dependency_message = handler.circular_dep_message
             self.circular_dependency_test_parents = {
                 pkg.cpv for pkg in handler.test_dep_parents
+            }
+            self.circular_dependency_search_truncated = {
+                pkg.cpv for pkg in handler.search_truncated
             }
             self.circular_dependency_masked_alternatives = {
                 alternative.cpv

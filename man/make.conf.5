@@ -1184,6 +1184,14 @@ PORTAGE_CHECKSUM_FILTER="* \-whirlpool"
 PORTAGE_CHECKSUM_FILTER="\-* sha256"
 .fi
 .TP
+\fBPORTAGE_CIRCULAR_MAX_USE_FLAGS\fR = \fI[integer]\fR
+The number of USE flags that Portage explores per dependency when it looks
+for a USE change that breaks a circular dependency. The number of
+combinations grows exponentially with this value, so raising it can make
+the search much slower.
+.br
+Defaults to 10.
+.TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
 This variable contains the name of the command used to compress documentation
 during the install phase. If set as an empty string, the documentation shall
