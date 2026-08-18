@@ -1076,7 +1076,14 @@ class ResolverPlaygroundTestCase:
             elif key == "forced_rebuilds" and expected is not None:
                 expected = {k: set(v) for k, v in expected.items()}
 
-            elif key == "circular_dependency_test_parents" and expected is not None:
+            elif (
+                key
+                in (
+                    "circular_dependency_test_parents",
+                    "circular_dependency_masked_alternatives",
+                )
+                and expected is not None
+            ):
                 expected = set(expected)
 
             elif key == "circular_dependency_message" and expected is not None:
@@ -1152,6 +1159,7 @@ class ResolverPlaygroundResult:
         "circular_dependency_solutions",
         "circular_dependency_message",
         "circular_dependency_test_parents",
+        "circular_dependency_masked_alternatives",
         "needed_p_mask_changes",
         "unsatisfied_deps",
         "forced_rebuilds",
@@ -1162,6 +1170,7 @@ class ResolverPlaygroundResult:
     optional_checks = (
         "circular_dependency_message",
         "circular_dependency_test_parents",
+        "circular_dependency_masked_alternatives",
         "forced_rebuilds",
         "required_use_unsatisfied",
         "unsatisfied_deps",
@@ -1182,6 +1191,7 @@ class ResolverPlaygroundResult:
         self.circular_dependency_solutions = None
         self.circular_dependency_message = None
         self.circular_dependency_test_parents = None
+        self.circular_dependency_masked_alternatives = None
         self.unsatisfied_deps = frozenset()
         self.forced_rebuilds = None
         self.required_use_unsatisfied = None
@@ -1243,6 +1253,11 @@ class ResolverPlaygroundResult:
             self.circular_dependency_message = handler.circular_dep_message
             self.circular_dependency_test_parents = {
                 pkg.cpv for pkg in handler.test_dep_parents
+            }
+            self.circular_dependency_masked_alternatives = {
+                alternative.cpv
+                for alternatives in handler.masked_alternatives.values()
+                for alternative in alternatives
             }
 
         if self.depgraph._dynamic_config._unsatisfied_deps_for_display:

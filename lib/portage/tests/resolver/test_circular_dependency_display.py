@@ -284,3 +284,73 @@ class CircularTestDependencyTestCase(TestCase):
                 self.assertEqual(test_case.test_success, True, test_case.fail_msg)
         finally:
             playground.cleanup()
+
+
+class CircularMaskedAlternativeTestCase(TestCase):
+    """
+    A bootstrap package that is not keyworded is never considered for a
+    || ( ) choice, because those are evaluated with autounmask disabled.
+    Report it as a way out of the resulting cycle (bug 971256).
+    """
+
+    def testMaskedBootstrapAlternative(self):
+        ebuilds = {
+            "dev-lang/go-2": {
+                "BDEPEND": "|| ( dev-lang/go dev-lang/go-bootstrap )",
+                "EAPI": "8",
+            },
+            "dev-lang/go-bootstrap-1": {
+                "EAPI": "8",
+                "KEYWORDS": "",
+            },
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-lang/go"],
+                success=False,
+                circular_dependency_masked_alternatives=["dev-lang/go-bootstrap-1"],
+                circular_dependency_solutions={},
+            ),
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    def testUseDependencyAlternative(self):
+        # The cycle member is pulled in by an atom with a conditional
+        # USE dependency, which the || ( ) group has to be matched
+        # against in its unevaluated form.
+        ebuilds = {
+            "dev-lang/go-2": {
+                "BDEPEND": "|| ( dev-lang/go[cgo?] dev-lang/go-bootstrap )",
+                "IUSE": "+cgo",
+                "EAPI": "8",
+            },
+            "dev-lang/go-bootstrap-1": {
+                "EAPI": "8",
+                "KEYWORDS": "",
+            },
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-lang/go"],
+                success=False,
+                circular_dependency_masked_alternatives=["dev-lang/go-bootstrap-1"],
+                circular_dependency_solutions={},
+            ),
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()

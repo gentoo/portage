@@ -47,6 +47,8 @@ class circular_dependency_handler:
         self.solutions, self.suggestions = self._find_suggestions()
         # Packages in the cycle whose test dependencies are involved
         self.test_dep_parents = self._find_test_dep_parents()
+        # Masked packages that could be used instead of a cycle member
+        self.masked_alternatives = self._find_masked_alternatives()
 
     def _find_cycles(self):
         # Ignoring soft dependencies usually gives the most relevant
@@ -204,6 +206,105 @@ class circular_dependency_handler:
                 parents.add(parent)
 
         return frozenset(parents)
+
+    def _iter_any_of_alternatives(self, dep, parent_atom):
+        """
+        Yield the atoms of every || ( ) group of dep that contains
+        parent_atom, except those of the choice that contains it.
+        """
+        # Compare unevaluated atoms, since parent_atom and the atoms of
+        # dep are not necessarily evaluated with the same USE flags.
+        unevaluated_atom = parent_atom.unevaluated_atom
+
+        def _is_parent_atom(node):
+            return isinstance(node, Atom) and node.unevaluated_atom == unevaluated_atom
+
+        def _flatten(node):
+            if isinstance(node, list):
+                for child in node:
+                    yield from _flatten(child)
+            else:
+                yield node
+
+        def _walk(node):
+            if not isinstance(node, list):
+                return
+            if node and node[0] == "||":
+                choices = [list(_flatten(choice)) for choice in node[1:]]
+                matched = [any(_is_parent_atom(x) for x in c) for c in choices]
+                if any(matched):
+                    for choice, choice_matched in zip(choices, matched):
+                        if choice_matched:
+                            continue
+                        yield from choice
+            for child in node:
+                yield from _walk(child)
+
+        yield from _walk(dep)
+
+    def _find_masked_alternatives(self):
+        """
+        Return a mapping of cycle member to masked packages that could
+        satisfy a || ( ) choice instead of it. Cycles that involve a
+        bootstrap package which is not keyworded are common, and the
+        masked candidate is never considered because || ( ) preferences
+        are evaluated with autounmask disabled (bug 971256).
+        """
+        alternatives = {}
+        if not self.shortest_cycle:
+            return alternatives
+
+        for pos, pkg in enumerate(self.shortest_cycle):
+            parent = self.shortest_cycle[pos - 1]
+            priorities = self.graph.nodes[parent][0][pkg]
+            dep = self._dep_string(parent, priorities[-1])
+            parent_atom = self._parent_atom(parent, pkg)
+            if not dep or parent_atom is None or not parent_atom.package:
+                continue
+
+            try:
+                dep = use_reduce(
+                    dep,
+                    uselist=self.depgraph._pkg_use_enabled(parent),
+                    is_valid_flag=parent.iuse.is_valid_flag,
+                    opconvert=True,
+                    token_class=Atom,
+                    eapi=parent.eapi,
+                )
+            except InvalidDependString:
+                continue
+
+            for atom in self._iter_any_of_alternatives(dep, parent_atom):
+                if not isinstance(atom, Atom) or not atom.package or atom.blocker:
+                    continue
+                candidates = list(
+                    self.depgraph._iter_match_pkgs_any(parent.root_config, atom)
+                )
+                if any(x.installed or x.visible for x in candidates):
+                    # An acceptable package exists, so it was rejected
+                    # for some other reason and unmasking would not help.
+                    continue
+
+                maskable = [x for x in candidates if self._maskable_by_config(x)]
+                if maskable:
+                    alternatives.setdefault(pkg, set()).add(max(maskable))
+
+        return alternatives
+
+    def _maskable_by_config(self, pkg):
+        """
+        Return True if every mask on pkg can be lifted with a
+        configuration change (keywords, package.mask, license).
+        """
+        # Imported here because _emerge.depgraph imports this module.
+        from _emerge.depgraph import _get_masking_status
+
+        pkgsettings = self.depgraph._frozen_config.pkgsettings[pkg.root]
+        root_config = self.depgraph._frozen_config.roots[pkg.root]
+        mreasons = _get_masking_status(pkg, pkgsettings, root_config)
+        if not mreasons:
+            return False
+        return all(reason.unmask_hint is not None for reason in mreasons)
 
     def _prepare_circular_dep_message(self):
         """

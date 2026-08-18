@@ -10432,6 +10432,25 @@ class depgraph:
         if handler.circular_dep_message is not None:
             portage.writemsg(handler.circular_dep_message, noiselevel=-1)
 
+        if handler.masked_alternatives:
+            writemsg(
+                "\n\n"
+                + prefix
+                + "The following masked packages could be used instead of a\n"
+                + prefix
+                + "package in the cycle. Unmasking them, for example via\n"
+                + prefix
+                + "/etc/portage/package.accept_keywords, might solve it:\n",
+                noiselevel=-1,
+            )
+            for pkg, alternatives in sorted(
+                handler.masked_alternatives.items(), key=lambda x: x[0].cpv
+            ):
+                for alternative in sorted(alternatives, key=lambda x: x.cpv):
+                    writemsg(
+                        f"- {alternative.cpv} (instead of {pkg.cpv})\n", noiselevel=-1
+                    )
+
         if handler.test_dep_parents:
             writemsg(
                 "\n\n"
