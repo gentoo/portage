@@ -1076,6 +1076,23 @@ class ResolverPlaygroundTestCase:
             elif key == "forced_rebuilds" and expected is not None:
                 expected = {k: set(v) for k, v in expected.items()}
 
+            elif key == "circular_dependency_message" and expected is not None:
+                # The expected value is a list of substrings that the
+                # rendered message has to contain.
+                missing = [x for x in expected if got is None or x not in got]
+                if missing:
+                    fail_msgs.append(
+                        "atoms: ("
+                        + ", ".join(str(a) for a in result.atoms)
+                        + "), key: "
+                        + key
+                        + ", missing: "
+                        + str(missing)
+                        + ", got: "
+                        + str(got)
+                    )
+                continue
+
             if got != expected:
                 fail_msgs.append(
                     "atoms: ("
@@ -1130,6 +1147,7 @@ class ResolverPlaygroundResult:
         "unstable_keywords",
         "slot_collision_solutions",
         "circular_dependency_solutions",
+        "circular_dependency_message",
         "needed_p_mask_changes",
         "unsatisfied_deps",
         "forced_rebuilds",
@@ -1138,6 +1156,7 @@ class ResolverPlaygroundResult:
         "virtual_cycle",
     )
     optional_checks = (
+        "circular_dependency_message",
         "forced_rebuilds",
         "required_use_unsatisfied",
         "unsatisfied_deps",
@@ -1156,6 +1175,7 @@ class ResolverPlaygroundResult:
         self.needed_p_mask_changes = None
         self.slot_collision_solutions = None
         self.circular_dependency_solutions = None
+        self.circular_dependency_message = None
         self.unsatisfied_deps = frozenset()
         self.forced_rebuilds = None
         self.required_use_unsatisfied = None
@@ -1214,6 +1234,7 @@ class ResolverPlaygroundResult:
             self.circular_dependency_solutions = dict(
                 zip([x.cpv for x in sol.keys()], sol.values())
             )
+            self.circular_dependency_message = handler.circular_dep_message
 
         if self.depgraph._dynamic_config._unsatisfied_deps_for_display:
             self.unsatisfied_deps = {

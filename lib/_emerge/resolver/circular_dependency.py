@@ -5,6 +5,7 @@ import logging
 from itertools import chain, product
 
 from portage.dep import (
+    Atom,
     check_required_use,
     extract_affecting_use,
     get_required_use_flags,
@@ -106,6 +107,83 @@ class circular_dependency_handler:
                 return atom
         return None
 
+    def _affecting_use(self, parent, pkg, priority):
+        """
+        Return the USE flags of parent that are responsible for the
+        dependency on pkg (bug 310613).
+        """
+        dep = self._dep_string(parent, priority)
+        parent_atom = self._parent_atom(parent, pkg)
+        if not dep or parent_atom is None or not parent_atom.package:
+            return frozenset()
+
+        try:
+            affecting_use = extract_affecting_use(
+                dep, parent_atom.unevaluated_atom, eapi=parent.eapi
+            )
+        except InvalidDependString:
+            return frozenset()
+
+        # extract_affecting_use() returns every flag that the dependency
+        # is nested under, including flags whose current setting is not
+        # what pulls it in. Blame the flags that the dependency goes away
+        # without, so that a flag under "!flag? ( )" is named while it is
+        # disabled, and an unconditional dependency that also appears
+        # under "flag? ( )" is blamed on nothing.
+        unevaluated_atom = parent_atom.unevaluated_atom
+        use = frozenset(self.depgraph._pkg_use_enabled(parent))
+        flipped = use ^ frozenset(affecting_use)
+
+        responsible = {
+            flag
+            for flag in affecting_use
+            if not self._depends_on(parent, dep, use ^ {flag}, unevaluated_atom)
+        }
+
+        if not self._depends_on(parent, dep, flipped, unevaluated_atom):
+            # No flag is enough on its own, but together they do control
+            # the dependency, as in "a? ( x ) b? ( x )" with both
+            # enabled. Blame each flag that keeps it alive by itself.
+            responsible.update(
+                flag
+                for flag in affecting_use
+                if self._depends_on(parent, dep, flipped ^ {flag}, unevaluated_atom)
+            )
+
+        return frozenset(responsible)
+
+    def _depends_on(self, parent, dep, use, unevaluated_atom):
+        """
+        Return True if dep still pulls in unevaluated_atom when the USE
+        flags of parent are set to use.
+        """
+        try:
+            atoms = use_reduce(
+                dep,
+                uselist=use,
+                is_valid_flag=parent.iuse.is_valid_flag,
+                flat=True,
+                token_class=Atom,
+                eapi=parent.eapi,
+            )
+        except InvalidDependString:
+            # Assume the worst, so that a flag is not blamed for a
+            # dependency that we cannot evaluate.
+            return True
+
+        return any(
+            isinstance(atom, Atom) and atom.unevaluated_atom == unevaluated_atom
+            for atom in atoms
+        )
+
+    def _edge_description(self, parent, pkg):
+        priorities = self.graph.nodes[parent][0][pkg]
+        description = str(priorities[-1])
+        affecting_use = self._affecting_use(parent, pkg, priorities[-1])
+        if affecting_use:
+            description += f", USE={' '.join(sorted(affecting_use))}"
+        return description
+
     def _prepare_circular_dep_message(self):
         """
         Like digraph.debug_print(), but prints only the shortest cycle.
@@ -117,17 +195,15 @@ class circular_dependency_handler:
         indent = ""
         for pos, pkg in enumerate(self.shortest_cycle):
             parent = self.shortest_cycle[pos - 1]
-            priorities = self.graph.nodes[parent][0][pkg]
             if pos > 0:
-                msg.append(indent + f"{pkg} ({priorities[-1]})")
+                msg.append(indent + f"{pkg} ({self._edge_description(parent, pkg)})")
             else:
                 msg.append(indent + f"{pkg} depends on")
             indent += " "
 
         pkg = self.shortest_cycle[0]
         parent = self.shortest_cycle[-1]
-        priorities = self.graph.nodes[parent][0][pkg]
-        msg.append(indent + f"{pkg} ({priorities[-1]})")
+        msg.append(indent + f"{pkg} ({self._edge_description(parent, pkg)})")
 
         return "\n".join(msg)
 
