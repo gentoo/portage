@@ -54,6 +54,7 @@ from _emerge.BlockerDB import BlockerDB
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
+from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.depgraph import depgraph, resume_depgraph
 from _emerge.DepPriority import DepPriority
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -226,6 +227,8 @@ class Scheduler(PollScheduler):
         # being merged, these packages go to merge_wait_queue, to be merged
         # when no other packages are building.
         self._deep_system_deps = set()
+        # Packages that are part of a dependency cycle.
+        self._cyclic_nodes = set()
 
         # Holds packages to merge which will satisfy currently unsatisfied
         # deep runtime dependencies of system packages. If this is not empty
@@ -561,6 +564,7 @@ class Scheduler(PollScheduler):
             self._mergelist = []
             self._world_atoms = None
             self._deep_system_deps.clear()
+            self._cyclic_nodes.clear()
             return
 
         self._graph_config = graph_config
@@ -595,6 +599,7 @@ class Scheduler(PollScheduler):
 
         self._find_system_deps()
         self._prune_digraph()
+        self._find_cyclic_nodes()
         self._prevent_builddir_collisions()
         if "--debug" in self.myopts:
             writemsg("\nscheduler digraph:\n\n", noiselevel=-1)
@@ -643,6 +648,23 @@ class Scheduler(PollScheduler):
             if not removed_nodes:
                 break
             removed_nodes.clear()
+
+    def _find_cyclic_nodes(self):
+        """
+        Find the packages that are part of a dependency cycle. Within a
+        cycle, post-merge dependencies do not have to delay a build,
+        since the merge order has already decided to ignore them, and
+        waiting for them serializes builds that could run in parallel
+        (bug 452172).
+        """
+        self._cyclic_nodes.clear()
+        if self._digraph is None:
+            return
+        for component in self._digraph.strongly_connected_components(
+            ignore_priority=DepPrioritySatisfiedRange.ignore_soft
+        ):
+            if len(component) > 1:
+                self._cyclic_nodes.update(component)
 
     def _prevent_builddir_collisions(self):
         """
@@ -2001,6 +2023,17 @@ class Scheduler(PollScheduler):
 
         return chosen_pkg
 
+    def _ignore_priority(self, pkg):
+        """
+        Return the ignore_priority to use for the dependencies of pkg
+        when deciding whether its build can start. Post-merge
+        dependencies within a cycle are ignored, since the merge order
+        already ignores them.
+        """
+        if pkg in self._cyclic_nodes:
+            return DepPrioritySatisfiedRange.ignore_medium_post
+        return None
+
     def _dependent_on_scheduled_merges(self, pkg, later):
         """
         Traverse the subgraph of the given packages deep dependencies
@@ -2021,7 +2054,7 @@ class Scheduler(PollScheduler):
 
         dependent = False
         traversed_nodes = {pkg}
-        direct_deps = graph.child_nodes(pkg)
+        direct_deps = graph.child_nodes(pkg, ignore_priority=self._ignore_priority(pkg))
         node_stack = direct_deps
         direct_deps = frozenset(direct_deps)
         while node_stack:
@@ -2041,7 +2074,9 @@ class Scheduler(PollScheduler):
             # Don't traverse children of uninstall nodes since
             # those aren't dependencies in the usual sense.
             if node.operation != "uninstall":
-                node_stack.extend(graph.child_nodes(node))
+                node_stack.extend(
+                    graph.child_nodes(node, ignore_priority=self._ignore_priority(node))
+                )
 
         return dependent
 
