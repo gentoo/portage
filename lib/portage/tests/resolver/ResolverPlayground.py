@@ -1073,7 +1073,9 @@ class ResolverPlaygroundTestCase:
                 # unsatisfied_deps can be a dict for depclean-like actions
                 expected = expected if isinstance(expected, dict) else set(expected)
 
-            elif key == "forced_rebuilds" and expected is not None:
+            elif (
+                key in ("forced_rebuilds", "cycle_suggestions") and expected is not None
+            ):
                 expected = {k: set(v) for k, v in expected.items()}
 
             elif (
@@ -1302,6 +1304,7 @@ class ResolverPlaygroundDepcleanResult:
         "req_pkg_count",
         "graph_order",
         "unsatisfied_deps",
+        "cycle_suggestions",
     )
     optional_checks = (
         "cleanlist",
@@ -1309,6 +1312,7 @@ class ResolverPlaygroundDepcleanResult:
         "req_pkg_count",
         "graph_order",
         "unsatisfied_deps",
+        "cycle_suggestions",
     )
 
     def __init__(self, atoms, rval, cleanlist, ordered, req_pkg_count, depgraph):
@@ -1320,6 +1324,12 @@ class ResolverPlaygroundDepcleanResult:
         self.graph_order = [
             _mergelist_str(node, depgraph) for node in depgraph._dynamic_config.digraph
         ]
+        self.cycle_suggestions = {
+            pkg.cpv: {member.cpv for member in members}
+            for pkg, members in (
+                depgraph._dynamic_config._depclean_cycle_suggestions.items()
+            )
+        }
         self.unsatisfied_deps = {}
         for dep in depgraph._dynamic_config._initially_unsatisfied_deps:
             if isinstance(dep.parent, Package):

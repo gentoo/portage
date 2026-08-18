@@ -684,6 +684,9 @@ class _dynamic_depgraph_config:
         self._unsatisfied_deps_for_display = []
         self._unsatisfied_blockers_for_display = None
         self._circular_deps_for_display = None
+        # Packages that --depclean cannot remove because they are kept
+        # alive by a dependency cycle, mapped to the cycle members.
+        self._depclean_cycle_suggestions = {}
         self._dep_stack = []
         self._dep_disjunctive_stack = []
         self._unsatisfied_deps = []

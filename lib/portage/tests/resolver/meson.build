@@ -29,6 +29,7 @@ py.install_sources(
         'test_complete_if_new_subslot_without_revbump.py',
         'test_cross_dep_priority.py',
         'test_depclean.py',
+        'test_depclean_cycle.py',
         'test_depclean_order.py',
         'test_depclean_slot_unavailable.py',
         'test_depth.py',
