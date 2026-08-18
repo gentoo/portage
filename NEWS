@@ -86,6 +86,38 @@ Cleanups:
 
 * Use os.scandir() to reduce the number of syscalls made.
 
+portage-3.0.81.3 (2026-08-18)
+----------------
+
+[This release was done as a standalone tag.]
+
+This release fixes Portage upgrading itself and is needed for larger
+Portage changes in the upcoming non-point release.
+
+Security:
+
+* ebuild.sh: inherit: strip any path components.
+
+  This is a minor fix as the sandboxing added earlier should handle it,
+  but it makes some further possible work easier.
+
+Bug fixes:
+
+* doebuild: rebind loaded module paths for self update (bug #976616).
+
+  This fixes crashes when upgrading Portage or rebuilding it for a different
+  Python implementation.
+
+* isolated-functions.sh: Don't call sed in die().
+
+  Followup to the global-scope sandboxing changes.
+
+* ebuild.sh: allow reading ourselves in die().
+
+  Followup to the global-scope sandboxing changes.
+
+* sync: git: don't print the key being used with --quiet.
+
 portage-3.0.81.2 (2026-07-10)
 ----------------
 
