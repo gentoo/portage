@@ -25,15 +25,17 @@ Features:
 
 * Add FEATURES="cgroup" to account each source build's CPU time, peak memory,
   and I/O in a per-build cgroup v2. No limits are imposed. Totals are written
-  to the build log and, with FEATURES="observability", included in the live
-  status snapshot. Configurable via PORTAGE_CGROUP_ROOT (default
+  to the build log, along with the average number of CPUs the build kept
+  busy, and, with FEATURES="observability", included in the live status
+  snapshot. Configurable via PORTAGE_CGROUP_ROOT (default
   /sys/fs/cgroup/portage); requires root and cgroup v2.
 
 * Add FEATURES="observability" to publish a machine-readable snapshot of the
   running emerge process (which packages are building/merging, their current
-  ebuild phase, and elapsed time) to /run/portage/emerge-<pid>.json. Query it
-  with the new "portageq jobs" command or "emerge --status". A Unix socket
-  streams the same snapshots live to connected clients.
+  ebuild phase, elapsed time, and cgroup resource usage where available) to
+  /run/portage/emerge-<pid>.json. Query it with the new "portageq jobs"
+  command or "emerge --status". A Unix socket streams the same snapshots
+  live to connected clients.
 
 * vartree: Avoid pruning preserved-libs database or syncing to disk if we
   installed no files.

@@ -254,6 +254,12 @@ matched as regular expressions.
 .BR \-\-status
 Displays the packages that running \fBemerge\fR processes are currently
 building or merging, including the current ebuild phase and elapsed time.
+When the observed \fBemerge\fR also has FEATURES="cgroup" enabled, each
+package's CPU time, average parallelism, peak memory and I/O totals are
+shown alongside. The figures for a package that has finished building are
+those from the end of its build, so they do not drift while it waits to
+merge.
+.br
 This requires the target \fBemerge\fR to have been started with
 FEATURES="observability" (see \fBmake.conf\fR(5)). For machine\-readable
 output, use \fBportageq jobs \-\-json\fR instead.
