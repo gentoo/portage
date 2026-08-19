@@ -514,6 +514,53 @@ class ObservabilitySnapshotTestCase(TestCase):
         self.assertEqual(monitor._phases, {})
         self.assertIsNone(monitor.build_elapsed("dev-libs/foo-1.2"))
 
+    def test_connect_publishes_a_current_snapshot(self):
+        # Rate limiting bounds IO from bursty task events; it must not hand
+        # a connecting client the state as it was up to a second ago.
+        with tempfile.TemporaryDirectory() as tmp:
+            build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=99)
+            sched = _make_scheduler(eprefix=tmp, tasks=[build])
+            monitor = ObservabilityMonitor(sched)
+            monitor.note_task_started(build)
+
+            async def exercise():
+                monitor.update(force=True)
+                for _ in range(100):
+                    if monitor._server is not None:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertIsNotNone(monitor._server)
+
+                # A second task appears, with no event to publish it, and
+                # the rate limit would suppress an unforced update.
+                later = EbuildBuild(_Pkg("sys-apps/bar-3"), pid=100)
+                sched._running_tasks[id(later)] = later
+                monitor.note_task_started(later)
+                monitor._last_write = time.time()
+
+                reader, writer = await asyncio.open_unix_connection(
+                    monitor._socket_path
+                )
+                try:
+                    snap = json.loads(await reader.readline())
+                finally:
+                    writer.close()
+                    await writer.wait_closed()
+
+                self.assertEqual(
+                    sorted(t["cpv"] for t in snap["tasks"]),
+                    ["dev-libs/foo-1.2", "sys-apps/bar-3"],
+                )
+                # The status file is rewritten too, which is what makes it
+                # safe for read_snapshots() to fall back to it.
+                with open(monitor._status_path, encoding="utf_8") as f:
+                    self.assertEqual(len(json.load(f)["tasks"]), 2)
+
+            try:
+                global_event_loop().run_until_complete(exercise())
+            finally:
+                monitor.close()
+
     def test_hint_when_nothing_read_and_feature_absent(self):
         self.assertIn("observability", missing_feature_hint([], features=set()))
 
