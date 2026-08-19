@@ -182,6 +182,23 @@ def build_snapshot(monitor):
     }
 
 
+# Counters that describe the cgroup as it is right now. They stop meaning
+# anything once the build is over and its cgroup has been destroyed, so they
+# are dropped rather than frozen; the peaks and the monotonic totals stay.
+_TRANSIENT_RESOURCE_FIELDS = frozenset(
+    ("mem_current", "mem_swap_current", "mem_zswap_current")
+)
+
+
+def freeze_resources(stats):
+    """Keep the counters from stats that outlive the cgroup, or None."""
+    if not stats:
+        return None
+    return {
+        k: v for k, v in stats.items() if k not in _TRANSIENT_RESOURCE_FIELDS
+    } or None
+
+
 def status_dir(eprefix=""):
     """Directory where running emerge processes publish status files."""
     if eprefix:
@@ -425,7 +442,7 @@ class ObservabilityMonitor:
         """
         times = self._build_times.get(str(cpv))
         if times is not None:
-            times.resources = stats or None
+            times.resources = freeze_resources(stats)
 
     def build_elapsed(self, cpv):
         """Wall-clock duration of the build of cpv, or None if unknown.

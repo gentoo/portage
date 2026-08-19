@@ -201,6 +201,39 @@ class ObservabilitySnapshotTestCase(TestCase):
         entry = build_snapshot(monitor)["tasks"][0]
         self.assertEqual(entry["resources"]["cpu_usec"], 4_000_000)
 
+    def test_transient_counters_are_not_frozen(self):
+        # memory.current and friends describe a cgroup that no longer
+        # exists once the build is done; the peaks and totals do not.
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        monitor = ObservabilityMonitor(_make_scheduler(tasks=[build]))
+        monitor.note_task_started(build)
+        monitor.note_task_finished(build)
+        monitor.note_build_resources(
+            "dev-libs/foo-1.2",
+            {
+                "cpu_usec": 1_000_000,
+                "mem_current": 111,
+                "mem_peak": 222,
+                "mem_swap_current": 333,
+                "mem_swap_peak": 444,
+                "mem_zswap_current": 555,
+                "io_read_bytes": 0,
+                "io_write_bytes": 666,
+            },
+        )
+
+        frozen = monitor._build_times["dev-libs/foo-1.2"].resources
+        self.assertEqual(
+            sorted(frozen),
+            [
+                "cpu_usec",
+                "io_read_bytes",
+                "io_write_bytes",
+                "mem_peak",
+                "mem_swap_peak",
+            ],
+        )
+
     def test_disabled_when_feature_absent(self):
         sched = _make_scheduler(features=(), tasks=[])
         monitor = ObservabilityMonitor(sched)
