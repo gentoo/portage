@@ -412,6 +412,9 @@ class Scheduler(PollScheduler):
             return
         cpv = build.pkg.cpv
         stats = self._cgroup.read_stats(cpv)
+        # The only read of these counters: the cgroup goes away below, and
+        # the monitor keeps what it is given for the merge to report.
+        self._observability.note_build_resources(cpv, stats)
         if stats:
             elapsed = self._observability.build_elapsed(cpv)
 

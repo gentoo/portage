@@ -188,6 +188,8 @@ class ObservabilitySnapshotTestCase(TestCase):
         monitor = ObservabilityMonitor(sched)
         monitor.note_task_started(build)
         monitor.note_task_finished(build)
+        cpv = "dev-libs/foo-1.2"
+        monitor.note_build_resources(cpv, sched._cgroup.read_stats(cpv))
 
         # A later read of the cgroup must not leak into the snapshot.
         live["cpu_usec"] = 9_000_000
@@ -428,6 +430,30 @@ class SchedulerCgroupLogTestCase(TestCase):
         sched._logger = SimpleNamespace(log=lambda msg: None)
         sched._cgroup_finish(build)
         return "".join(messages)
+
+    def test_final_counters_reach_the_monitor(self):
+        # _cgroup_finish() is the last reader before the cgroup is
+        # destroyed, so what it read is what the merge has to report.
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        build.settings = _Settings()
+        monitor = ObservabilityMonitor(_make_scheduler())
+        monitor.note_task_started(build)
+        monitor.note_task_finished(build)
+
+        sched = Scheduler.__new__(Scheduler)
+        sched._observability = monitor
+        sched._cgroup = SimpleNamespace(
+            read_stats=lambda cpv: {"cpu_usec": 5_000_000},
+            destroy=lambda cpv: None,
+        )
+        sched._sched_iface = SimpleNamespace(output=lambda msg, log_path=None: None)
+        sched._logger = SimpleNamespace(log=lambda msg: None)
+        sched._cgroup_finish(build)
+
+        self.assertEqual(
+            monitor._build_times["dev-libs/foo-1.2"].resources,
+            {"cpu_usec": 5_000_000},
+        )
 
     def test_build_duration_comes_from_the_monitor(self):
         # The log line divides CPU time by the build's wall clock, which

@@ -398,9 +398,16 @@ class ObservabilityMonitor:
             times = self._build_times.get(cpv)
             if times is not None:
                 times.finished = time.time()
-                cgroup = getattr(self._scheduler, "_cgroup", None)
-                if cgroup is not None:
-                    times.resources = cgroup.read_stats(cpv) or None
+
+    def note_build_resources(self, cpv, stats):
+        """Keep the final cgroup counters for the build of cpv.
+
+        Called just before the cgroup is destroyed, so that a package that
+        has moved on to merging goes on reporting what its build used.
+        """
+        times = self._build_times.get(str(cpv))
+        if times is not None:
+            times.resources = stats or None
 
     def build_elapsed(self, cpv):
         """Wall-clock duration of the build of cpv, or None if unknown.
