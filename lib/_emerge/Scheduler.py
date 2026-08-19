@@ -39,7 +39,7 @@ from portage.util.SlotObject import SlotObject
 import _emerge
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
-from _emerge._observability import ObservabilityMonitor
+from _emerge._observability import ObservabilityMonitor, average_parallelism
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -416,16 +416,16 @@ class Scheduler(PollScheduler):
         # the monitor keeps what it is given for the merge to report.
         self._observability.note_build_resources(cpv, stats)
         if stats:
-            elapsed = self._observability.build_elapsed(cpv)
-
             parts = []
             if "cpu_usec" in stats:
                 cpu_s = stats["cpu_usec"] / 1e6
-                if elapsed is not None and elapsed > 0:
-                    parallelism = cpu_s / elapsed
-                    parts.append(f"cpu {cpu_s:.1f}s ({parallelism:.2f}x)")
-                else:
+                parallelism = average_parallelism(
+                    stats["cpu_usec"], self._observability.build_elapsed(cpv)
+                )
+                if parallelism is None:
                     parts.append(f"cpu {cpu_s:.1f}s")
+                else:
+                    parts.append(f"cpu {cpu_s:.1f}s ({parallelism:.2f}x)")
             if "mem_peak" in stats:
                 parts.append(f"peak-mem {bytes_to_human(stats['mem_peak'])}")
             if stats.get("mem_swap_peak"):

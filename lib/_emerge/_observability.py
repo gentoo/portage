@@ -240,13 +240,23 @@ def _pid_alive(pid):
     return True
 
 
+def average_parallelism(cpu_usec, elapsed):
+    """Mean number of CPUs kept busy over elapsed seconds, or None.
+
+    None when elapsed is unknown or non-positive, i.e. whenever the
+    quotient would not mean anything.
+    """
+    if not elapsed or elapsed <= 0:
+        return None
+    return (cpu_usec / 1e6) / elapsed
+
+
 def _format_cpu(val, task):
     cpu_s = val / 1e6
-    elapsed = task.get("elapsed")
-    if elapsed is not None and elapsed > 0:
-        parallelism = cpu_s / elapsed
-        return f"{cpu_s:.2f}s ({parallelism:.2f}x)"
-    return f"{cpu_s:.2f}s"
+    parallelism = average_parallelism(val, task.get("elapsed"))
+    if parallelism is None:
+        return f"{cpu_s:.2f}s"
+    return f"{cpu_s:.2f}s ({parallelism:.2f}x)"
 
 
 _RESOURCE_FIELDS = (

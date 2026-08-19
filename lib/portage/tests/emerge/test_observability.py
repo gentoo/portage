@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from _emerge._observability import (
     ObservabilityMonitor,
     _BuildTimes,
+    average_parallelism,
     build_snapshot,
     format_snapshots,
     missing_feature_hint,
@@ -385,6 +386,11 @@ class ObservabilitySnapshotTestCase(TestCase):
             monitor.update(force=True)
             self.assertFalse(os.path.exists(path))
             self.assertEqual(loop.calls, [])
+
+    def test_average_parallelism_without_a_usable_duration(self):
+        for elapsed in (None, 0, -1):
+            with self.subTest(elapsed=elapsed):
+                self.assertIsNone(average_parallelism(1_000_000, elapsed))
 
     def test_build_timing_is_recorded_while_disabled(self):
         # FEATURES="cgroup" reports build parallelism from this timing and
