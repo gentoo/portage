@@ -386,6 +386,25 @@ class ObservabilitySnapshotTestCase(TestCase):
             self.assertFalse(os.path.exists(path))
             self.assertEqual(loop.calls, [])
 
+    def test_build_timing_is_recorded_while_disabled(self):
+        # FEATURES="cgroup" reports build parallelism from this timing and
+        # does not imply FEATURES="observability".
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        sched = _make_scheduler(features=(), tasks=[build])
+        monitor = ObservabilityMonitor(sched)
+        self.assertFalse(monitor.enabled)
+
+        monitor.note_task_started(build)
+        monitor._build_times["dev-libs/foo-1.2"].start = time.time() - 40
+        self.assertAlmostEqual(monitor.build_elapsed("dev-libs/foo-1.2"), 40, delta=1)
+
+        monitor.note_task_finished(build)
+        frozen = monitor.build_elapsed("dev-libs/foo-1.2")
+        self.assertAlmostEqual(frozen, 40, delta=1)
+        self.assertIsNone(monitor.build_elapsed("no-such/pkg-1"))
+        # Nothing that only the published snapshot needs is kept.
+        self.assertEqual(monitor._task_start, {})
+
     def test_hint_when_nothing_read_and_feature_absent(self):
         self.assertIn("observability", missing_feature_hint([], features=set()))
 
@@ -460,3 +479,28 @@ class SchedulerCgroupLogTestCase(TestCase):
         # only the monitor knows.
         msg = self._cgroup_finish(("observability",), {"cpu_usec": 800_000_000})
         self.assertIn("cpu 800.0s (20.00x)", msg)
+
+    def test_parallelism_without_the_observability_feature(self):
+        # FEATURES="cgroup" does not imply FEATURES="observability", and
+        # used to lose the parallelism suffix with no hint as to why.
+        msg = self._cgroup_finish((), {"cpu_usec": 800_000_000})
+        self.assertIn("cpu 800.0s (20.00x)", msg)
+
+    def test_no_parallelism_without_a_build_duration(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        build.settings = _Settings()
+        messages = []
+        sched = Scheduler.__new__(Scheduler)
+        sched._observability = ObservabilityMonitor(_make_scheduler(features=()))
+        sched._cgroup = SimpleNamespace(
+            read_stats=lambda cpv: {"cpu_usec": 800_000_000},
+            destroy=lambda cpv: None,
+        )
+        sched._sched_iface = SimpleNamespace(
+            output=lambda msg, log_path=None: messages.append(msg)
+        )
+        sched._logger = SimpleNamespace(log=lambda msg: None)
+        sched._cgroup_finish(build)
+
+        self.assertIn("cpu 800.0s", "".join(messages))
+        self.assertNotIn("x)", "".join(messages))

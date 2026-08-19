@@ -329,8 +329,10 @@ def missing_feature_hint(snapshots, features=None):
 class ObservabilityMonitor:
     """Owns the status file and streaming socket for one Scheduler.
 
-    All public methods are no-ops when the feature is disabled, so the
-    Scheduler can call them unconditionally.
+    The Scheduler calls the public methods unconditionally. Everything
+    that publishes is a no-op when the feature is disabled; build timing is
+    still recorded, since FEATURES="cgroup" reports build parallelism from
+    it and is independent of this feature.
     """
 
     # Don't rewrite the status file more often than this (seconds), to
@@ -374,18 +376,17 @@ class ObservabilityMonitor:
         self._socket_path = os.path.join(run_dir, f"emerge-{pid}.sock")
 
     def note_task_started(self, task):
-        if not self.enabled:
-            return
         now = time.time()
-        self._task_start[id(task)] = now
+        if self.enabled:
+            self._task_start[id(task)] = now
+        # Build timing is recorded either way: FEATURES="cgroup" reports a
+        # build's average parallelism from it.
         if not isinstance(task, _PackageMerge):
             pkg = _task_pkg(task)
             if pkg is not None:
                 self._build_times[str(pkg.cpv)] = _BuildTimes(now)
 
     def note_task_finished(self, task):
-        if not self.enabled:
-            return
         self._task_start.pop(id(task), None)
         pkg = _task_pkg(task)
         if pkg is None:
