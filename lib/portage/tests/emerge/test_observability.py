@@ -5,10 +5,12 @@ import asyncio
 import json
 import os
 import tempfile
+import time
 from types import SimpleNamespace
 
 from _emerge._observability import (
     ObservabilityMonitor,
+    _BuildTimes,
     build_snapshot,
     format_snapshots,
     missing_feature_hint,
@@ -16,6 +18,7 @@ from _emerge._observability import (
     status_dir,
 )
 from _emerge.PackageMerge import PackageMerge as _RealPackageMerge
+from _emerge.Scheduler import Scheduler
 
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -70,6 +73,15 @@ class _FakeLoop:
         pending, self.calls = self.calls, []
         for _delay, callback in pending:
             callback()
+
+
+def _set_build_times(monitor, cpv, start, finished=None, resources=None):
+    """Install a synthetic build timing record for cpv on monitor."""
+    times = _BuildTimes(start)
+    times.finished = finished
+    times.resources = resources
+    monitor._build_times[cpv] = times
+    return times
 
 
 def _make_scheduler(features=("observability",), eprefix="", tasks=None, loop=None):
@@ -159,14 +171,32 @@ class ObservabilitySnapshotTestCase(TestCase):
         monitor.note_task_started(waiting)
         # Build started 100s ago and finished building 40s ago: elapsed should
         # freeze at the 60s build duration, not the ~100s since it started.
-        import time as _t
-
-        now = _t.time()
-        monitor._build_times["dev-libs/foo-1.2"] = [now - 100, now - 40]
+        now = time.time()
+        _set_build_times(monitor, "dev-libs/foo-1.2", now - 100, now - 40)
 
         entry = build_snapshot(monitor)["tasks"][0]
         self.assertEqual(entry["start_time"], now - 100)
         self.assertAlmostEqual(entry["elapsed"], 60, delta=1)
+
+    def test_resources_frozen_at_build_completion(self):
+        # The cgroup is destroyed once the build is over, so the counters
+        # captured at completion are the only ones left to report.
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        sched = _make_scheduler(tasks=[build])
+        live = {"cpu_usec": 4_000_000, "mem_peak": 4096}
+        sched._cgroup = SimpleNamespace(read_stats=lambda cpv: dict(live))
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(build)
+        monitor.note_task_finished(build)
+
+        # A later read of the cgroup must not leak into the snapshot.
+        live["cpu_usec"] = 9_000_000
+        merge = PackageMerge(build)
+        sched._running_tasks = {id(merge): merge}
+        monitor.note_task_started(merge)
+
+        entry = build_snapshot(monitor)["tasks"][0]
+        self.assertEqual(entry["resources"]["cpu_usec"], 4_000_000)
 
     def test_disabled_when_feature_absent(self):
         sched = _make_scheduler(features=(), tasks=[])
@@ -373,3 +403,34 @@ class ObservabilitySnapshotTestCase(TestCase):
             with open(os.path.join(d, "emerge-2147480000.json"), "w") as f:
                 json.dump({"emerge_pid": 2147480000, "tasks": []}, f)
             self.assertEqual(read_snapshots(tmp), [])
+
+
+class SchedulerCgroupLogTestCase(TestCase):
+    def _cgroup_finish(self, features, stats):
+        """Run Scheduler._cgroup_finish() and return what it logged."""
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        build.settings = _Settings()
+        monitor = ObservabilityMonitor(_make_scheduler(features=features))
+        monitor.note_task_started(build)
+        # 40s of wall clock for the build.
+        monitor._build_times["dev-libs/foo-1.2"].start = time.time() - 40
+        monitor.note_task_finished(build)
+
+        messages = []
+        sched = Scheduler.__new__(Scheduler)
+        sched._observability = monitor
+        sched._cgroup = SimpleNamespace(
+            read_stats=lambda cpv: stats, destroy=lambda cpv: None
+        )
+        sched._sched_iface = SimpleNamespace(
+            output=lambda msg, log_path=None: messages.append(msg)
+        )
+        sched._logger = SimpleNamespace(log=lambda msg: None)
+        sched._cgroup_finish(build)
+        return "".join(messages)
+
+    def test_build_duration_comes_from_the_monitor(self):
+        # The log line divides CPU time by the build's wall clock, which
+        # only the monitor knows.
+        msg = self._cgroup_finish(("observability",), {"cpu_usec": 800_000_000})
+        self.assertIn("cpu 800.0s (20.00x)", msg)

@@ -413,10 +413,7 @@ class Scheduler(PollScheduler):
         cpv = build.pkg.cpv
         stats = self._cgroup.read_stats(cpv)
         if stats:
-            elapsed = None
-            times = self._observability._build_times.get(str(cpv))
-            if times is not None and times[0] is not None and times[1] is not None:
-                elapsed = times[1] - times[0]
+            elapsed = self._observability.build_elapsed(cpv)
 
             parts = []
             if "cpu_usec" in stats:
