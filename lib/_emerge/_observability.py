@@ -421,6 +421,20 @@ class ObservabilityMonitor:
             return None
         return times.elapsed(time.time())
 
+    def forget_build(self, task):
+        """Drop what is kept for a build that will not be merged.
+
+        note_task_finished() leaves the record in place so that the merge
+        can go on reporting the build's duration and resource usage. A
+        build that produces no merge task has to say so, or nothing ever
+        drops it.
+        """
+        pkg = _task_pkg(task)
+        if pkg is not None:
+            cpv = str(pkg.cpv)
+            self._build_times.pop(cpv, None)
+            self._phases.pop(cpv, None)
+
     def note_phase(self, cpv, phase):
         if not self.enabled:
             return

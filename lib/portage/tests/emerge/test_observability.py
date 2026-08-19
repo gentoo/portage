@@ -405,6 +405,23 @@ class ObservabilitySnapshotTestCase(TestCase):
         # Nothing that only the published snapshot needs is kept.
         self.assertEqual(monitor._task_start, {})
 
+    def test_forget_build_drops_the_record(self):
+        # A build that produces no merge task -- it failed, or emerge was
+        # interrupted -- would otherwise keep its record for the rest of
+        # the run, since only the merge drops it.
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        monitor = ObservabilityMonitor(_make_scheduler(tasks=[build]))
+        monitor.note_task_started(build)
+        monitor.note_phase("dev-libs/foo-1.2", "compile")
+        monitor.note_task_finished(build)
+        # Still there: a merge would go on reporting the build's duration.
+        self.assertIn("dev-libs/foo-1.2", monitor._build_times)
+
+        monitor.forget_build(build)
+        self.assertEqual(monitor._build_times, {})
+        self.assertEqual(monitor._phases, {})
+        self.assertIsNone(monitor.build_elapsed("dev-libs/foo-1.2"))
+
     def test_hint_when_nothing_read_and_feature_absent(self):
         self.assertIn("observability", missing_feature_hint([], features=set()))
 

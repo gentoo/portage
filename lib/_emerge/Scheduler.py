@@ -1622,6 +1622,7 @@ class Scheduler(PollScheduler):
         if build.returncode == os.EX_OK and self._terminated_tasks:
             # We've been interrupted, so we won't
             # add this to the merge queue.
+            self._observability.forget_build(build)
             self.curval += 1
             self._deallocate_config(build.settings)
         elif build.returncode == os.EX_OK:
@@ -1648,6 +1649,7 @@ class Scheduler(PollScheduler):
                 merge.addExitListener(self._merge_exit)
                 self._status_display.merges = len(self._task_queues.merge)
         else:
+            self._observability.forget_build(build)
             settings = build.settings
             build_dir = settings.get("PORTAGE_BUILDDIR")
             build_log = settings.get("PORTAGE_LOG_FILE")
