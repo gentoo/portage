@@ -23,8 +23,10 @@ writable (e.g. unprivileged, no /run) emerge proceeds unaffected.
 """
 
 import asyncio as _asyncio
+import glob
 import json
 import os as _os
+import socket
 import time
 
 import portage
@@ -206,48 +208,84 @@ def status_dir(eprefix=""):
     return PORTAGE_RUN_PATH
 
 
+# How long to wait for one emerge to answer on its socket. The waits are
+# serial, so this is the per-emerge cost of falling back to the status file
+# when an emerge's main loop is too busy to serve the connection.
+_SOCKET_TIMEOUT = 0.5
+
+
+def _status_path_pid(path):
+    """The pid encoded in an emerge-<pid>.{json,sock} path, or None."""
+    stem, _, _suffix = os.path.basename(path).rpartition(".")
+    name, _, pid = stem.partition("-")
+    if name != "emerge" or not pid.isdigit():
+        return None
+    return int(pid)
+
+
+def _snapshot_is_live(snapshot, path):
+    """True if snapshot came from a live emerge that still owns path.
+
+    A status file or socket left behind by an emerge that died without
+    cleaning up is claimed by an unrelated process as soon as its pid is
+    recycled, so the pid has to agree with the name it was published under.
+    """
+    if not isinstance(snapshot, dict):
+        return False
+    pid = snapshot.get("emerge_pid")
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    if pid != _status_path_pid(path):
+        return False
+    return _pid_alive(pid)
+
+
+def _read_socket_snapshot(path, timeout):
+    """Read one snapshot from an emerge status socket, or None."""
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.settimeout(timeout)
+            sock.connect(path)
+            with sock.makefile("r", encoding="utf_8") as f:
+                line = f.readline()
+        # socket.timeout is an OSError and JSONDecodeError is a ValueError,
+        # so this covers a refused connection, an emerge that never answers
+        # and a truncated line alike.
+        return json.loads(line) if line else None
+    except (OSError, ValueError):
+        return None
+
+
 def read_snapshots(eprefix=""):
-    """Read all live emerge status files; return a list of snapshot dicts."""
-    import glob
-    import socket
+    """Read all live emerge status snapshots; return a list of snapshot dicts.
 
-    snapshots = []
+    Each emerge's socket is tried first: connecting makes it publish a
+    snapshot built at that moment, whereas its status file is only as fresh
+    as the last publish. The status file is the fallback for an emerge
+    whose socket does not answer within _SOCKET_TIMEOUT, which happens when
+    its main loop is busy.
+    """
+    by_pid = {}
 
-    # Try reading from sockets first to trigger a fresh snapshot
-    for path in sorted(glob.glob(os.path.join(status_dir(eprefix), "emerge-*.sock"))):
-        try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.settimeout(0.5)
-                s.connect(path)
-                with s.makefile("r", encoding="utf_8") as f:
-                    line = f.readline()
-                    if line:
-                        snapshot = json.loads(line)
-                        pid = snapshot.get("emerge_pid")
-                        if isinstance(pid, int) and pid > 0 and _pid_alive(pid):
-                            snapshots.append(snapshot)
-        except (OSError, ValueError, socket.timeout, json.JSONDecodeError):
-            pass
+    for path in glob.glob(os.path.join(status_dir(eprefix), "emerge-*.sock")):
+        snapshot = _read_socket_snapshot(path, _SOCKET_TIMEOUT)
+        if snapshot is not None and _snapshot_is_live(snapshot, path):
+            by_pid[snapshot["emerge_pid"]] = snapshot
 
-    # Fall back to json files, e.g., in case we run into the socket timeout above.
-    for path in sorted(glob.glob(os.path.join(status_dir(eprefix), "emerge-*.json"))):
+    for path in glob.glob(os.path.join(status_dir(eprefix), "emerge-*.json")):
+        if _status_path_pid(path) in by_pid:
+            continue
         try:
             with open(path, encoding="utf_8") as f:
                 snapshot = json.load(f)
         except (OSError, ValueError):
             continue
-        pid = snapshot.get("emerge_pid")
-        if not isinstance(pid, int) or pid <= 0 or not _pid_alive(pid):
-            continue
-        # If we successfully read a live snapshot for this PID via the socket,
-        # skip the JSON fallback to avoid duplicating the same process in the output.
-        # Note: the socket connect above triggers an update() server-side which rewrites
-        # the JSON status file. So by the time this loop runs, the JSON is fresh too
-        # and either would do, but the socket snapshot is the one we know is current.
-        if not any(s.get("emerge_pid") == pid for s in snapshots):
-            snapshots.append(snapshot)
+        if _snapshot_is_live(snapshot, path):
+            by_pid[snapshot["emerge_pid"]] = snapshot
 
-    return snapshots
+    # Order by pid rather than by path, so that the result does not depend
+    # on which transport answered for which emerge.
+    return [by_pid[pid] for pid in sorted(by_pid)]
 
 
 def _pid_alive(pid):

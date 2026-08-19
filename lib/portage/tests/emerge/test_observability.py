@@ -4,10 +4,13 @@
 import asyncio
 import json
 import os
+import socket
 import tempfile
+import threading
 import time
 from types import SimpleNamespace
 
+from _emerge import _observability
 from _emerge._observability import (
     ObservabilityMonitor,
     _BuildTimes,
@@ -74,6 +77,57 @@ class _FakeLoop:
         pending, self.calls = self.calls, []
         for _delay, callback in pending:
             callback()
+
+
+class _FakeStatusSocket:
+    """Stand-in for a running emerge's status socket.
+
+    Serves one canned line per connection, optionally after a delay, so
+    that both the happy path and the timeout fallback can be exercised.
+    """
+
+    def __init__(self, path, payload, delay=0.0):
+        self._payload = payload
+        self._delay = delay
+        self._stop = False
+        self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._sock.settimeout(0.1)
+        self._sock.bind(path)
+        self._sock.listen(4)
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _serve(self):
+        while not self._stop:
+            try:
+                conn, _addr = self._sock.accept()
+            except TimeoutError:
+                continue
+            except OSError:
+                return
+            with conn:
+                if self._delay:
+                    time.sleep(self._delay)
+                try:
+                    conn.sendall(json.dumps(self._payload).encode("utf_8") + b"\n")
+                except OSError:
+                    pass
+
+    def close(self):
+        self._stop = True
+        self._thread.join(timeout=10)
+        self._sock.close()
+
+
+def _write_status_file(directory, pid, payload):
+    with open(
+        os.path.join(directory, f"emerge-{pid}.json"), "w", encoding="utf_8"
+    ) as f:
+        json.dump(payload, f)
+
+
+def _snapshot(pid, cpv):
+    return {"type": "snapshot", "schema": 1, "emerge_pid": pid, "tasks": [{"cpv": cpv}]}
 
 
 def _set_build_times(monitor, cpv, start, finished=None, resources=None):
@@ -513,6 +567,157 @@ class ObservabilitySnapshotTestCase(TestCase):
         self.assertEqual(monitor._build_times, {})
         self.assertEqual(monitor._phases, {})
         self.assertIsNone(monitor.build_elapsed("dev-libs/foo-1.2"))
+
+    def test_socket_wins_over_the_status_file(self):
+        # The socket answer is built when we ask; the file is only as fresh
+        # as the last publish. The same emerge must appear once, not twice.
+        pid = os.getpid()
+        with tempfile.TemporaryDirectory() as tmp:
+            d = status_dir(tmp)
+            os.makedirs(d)
+            _write_status_file(d, pid, _snapshot(pid, "stale/pkg-1"))
+            server = _FakeStatusSocket(
+                os.path.join(d, f"emerge-{pid}.sock"), _snapshot(pid, "fresh/pkg-1")
+            )
+            try:
+                found = read_snapshots(tmp)
+            finally:
+                server.close()
+
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0]["tasks"][0]["cpv"], "fresh/pkg-1")
+
+    def test_status_file_used_when_the_socket_times_out(self):
+        # An emerge whose main loop is busy never answers; its status file
+        # is still readable and is what we fall back to.
+        pid = os.getpid()
+        with tempfile.TemporaryDirectory() as tmp:
+            d = status_dir(tmp)
+            os.makedirs(d)
+            _write_status_file(d, pid, _snapshot(pid, "from/file-1"))
+            server = _FakeStatusSocket(
+                os.path.join(d, f"emerge-{pid}.sock"),
+                _snapshot(pid, "from/socket-1"),
+                delay=0.5,
+            )
+            timeout = _observability._SOCKET_TIMEOUT
+            _observability._SOCKET_TIMEOUT = 0.05
+            try:
+                found = read_snapshots(tmp)
+            finally:
+                _observability._SOCKET_TIMEOUT = timeout
+                server.close()
+
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0]["tasks"][0]["cpv"], "from/file-1")
+
+    def test_socket_pid_must_match_the_name_it_is_published_under(self):
+        # A socket left behind by an emerge that was killed is answered by
+        # whatever inherits its pid. _pid_alive() cannot tell the
+        # difference, but the pid in the name can.
+        pid = os.getpid()
+        with tempfile.TemporaryDirectory() as tmp:
+            d = status_dir(tmp)
+            os.makedirs(d)
+            server = _FakeStatusSocket(
+                os.path.join(d, f"emerge-{pid}.sock"),
+                _snapshot(os.getppid(), "impostor/pkg-1"),
+            )
+            try:
+                self.assertEqual(read_snapshots(tmp), [])
+            finally:
+                server.close()
+
+    def test_status_file_pid_must_match_the_name_it_is_published_under(self):
+        pid = os.getpid()
+        with tempfile.TemporaryDirectory() as tmp:
+            d = status_dir(tmp)
+            os.makedirs(d)
+            _write_status_file(d, pid, _snapshot(os.getppid(), "impostor/pkg-1"))
+            self.assertEqual(read_snapshots(tmp), [])
+
+    def test_snapshots_are_ordered_by_pid(self):
+        # Which transport answered for which emerge must not reorder the
+        # result: one comes from a socket here and the other from a file.
+        pids = sorted({os.getpid(), os.getppid()})
+        if len(pids) < 2:
+            self.skipTest("need two distinct live pids")
+        with tempfile.TemporaryDirectory() as tmp:
+            d = status_dir(tmp)
+            os.makedirs(d)
+            _write_status_file(d, pids[1], _snapshot(pids[1], "second/pkg-1"))
+            server = _FakeStatusSocket(
+                os.path.join(d, f"emerge-{pids[0]}.sock"),
+                _snapshot(pids[0], "first/pkg-1"),
+            )
+            try:
+                found = read_snapshots(tmp)
+            finally:
+                server.close()
+
+            self.assertEqual([s["emerge_pid"] for s in found], pids)
+
+    def test_unreadable_socket_does_not_hide_the_status_file(self):
+        # No listener on the socket path at all: connect fails immediately.
+        pid = os.getpid()
+        with tempfile.TemporaryDirectory() as tmp:
+            d = status_dir(tmp)
+            os.makedirs(d)
+            _write_status_file(d, pid, _snapshot(pid, "from/file-1"))
+            with open(os.path.join(d, f"emerge-{pid}.sock"), "w"):
+                pass
+            found = read_snapshots(tmp)
+
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0]["tasks"][0]["cpv"], "from/file-1")
+
+    def test_read_snapshots_over_a_real_server_socket(self):
+        # End to end over the wire the monitor actually serves: the
+        # snapshot read is the one the connect itself caused to be
+        # published, not the one in the status file.
+        with tempfile.TemporaryDirectory() as tmp:
+            build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=99)
+            sched = _make_scheduler(eprefix=tmp, tasks=[build])
+            sched._cgroup = SimpleNamespace(
+                read_stats=lambda cpv: {"cpu_usec": 2_000_000, "mem_peak": 4096}
+            )
+            monitor = ObservabilityMonitor(sched)
+            monitor.note_task_started(build)
+
+            async def exercise():
+                monitor.update(force=True)
+                for _ in range(100):
+                    if monitor._server is not None:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertIsNotNone(monitor._server)
+
+                # Only in the status file at this point, and the rate limit
+                # would keep an unforced publish from picking it up.
+                later = EbuildBuild(_Pkg("sys-apps/bar-3"), pid=100)
+                sched._running_tasks[id(later)] = later
+                monitor.note_task_started(later)
+                monitor._last_write = time.time()
+
+                # read_snapshots() blocks, so it cannot run on this loop.
+                return await asyncio.get_event_loop().run_in_executor(
+                    None, read_snapshots, tmp
+                )
+
+            try:
+                found = global_event_loop().run_until_complete(exercise())
+            finally:
+                monitor.close()
+
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0]["emerge_pid"], os.getpid())
+            self.assertEqual(
+                sorted(t["cpv"] for t in found[0]["tasks"]),
+                ["dev-libs/foo-1.2", "sys-apps/bar-3"],
+            )
+            rendered = format_snapshots(found)
+            self.assertIn("CPU: 2.00s", rendered)
+            self.assertIn("MaxMem: 4.00 KiB", rendered)
 
     def test_connect_publishes_a_current_snapshot(self):
         # Rate limiting bounds IO from bursty task events; it must not hand
