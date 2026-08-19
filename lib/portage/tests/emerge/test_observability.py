@@ -527,6 +527,22 @@ class ObservabilitySnapshotTestCase(TestCase):
             line,
         )
 
+    def test_zero_valued_resources_are_still_reported(self):
+        # Zero bytes of I/O is a fact about the build, not a missing value.
+        snap = {
+            "emerge_pid": 1,
+            "jobs": {"running": 1, "completed": 0, "total": 1, "failed": 0},
+            "tasks": [
+                {
+                    "cpv": "dev-libs/foo-1.2",
+                    "phase": "compile",
+                    "elapsed": 1.0,
+                    "resources": {"io_read_bytes": 0, "io_write_bytes": 0},
+                }
+            ],
+        }
+        self.assertIn("I/O R: 0.00 B, I/O W: 0.00 B", format_snapshots([snap]))
+
     def test_average_parallelism_without_a_usable_duration(self):
         for elapsed in (None, 0, -1):
             with self.subTest(elapsed=elapsed):
@@ -839,13 +855,40 @@ class SchedulerCgroupLogTestCase(TestCase):
         # The log line divides CPU time by the build's wall clock, which
         # only the monitor knows.
         msg = self._cgroup_finish(("observability",), {"cpu_usec": 800_000_000})
-        self.assertIn("cpu 800.0s (20.00x)", msg)
+        self.assertIn("CPU: 800.00s (20.00x)", msg)
 
     def test_parallelism_without_the_observability_feature(self):
         # FEATURES="cgroup" does not imply FEATURES="observability", and
         # used to lose the parallelism suffix with no hint as to why.
         msg = self._cgroup_finish((), {"cpu_usec": 800_000_000})
-        self.assertIn("cpu 800.0s (20.00x)", msg)
+        self.assertIn("CPU: 800.00s (20.00x)", msg)
+
+    def test_summary_matches_the_status_rendering(self):
+        # One renderer drives both, so the log line and the "emerge
+        # --status" bracket cannot drift apart.
+        stats = {
+            "cpu_usec": 800_000_000,
+            "mem_peak": 4096,
+            "io_read_bytes": 0,
+            "io_write_bytes": 8192,
+        }
+        msg = self._cgroup_finish((), stats)
+        self.assertIn(
+            "=== Resource usage for dev-libs/foo-1.2 "
+            "[CPU: 800.00s (20.00x), MaxMem: 4.00 KiB, "
+            "I/O R: 0.00 B, I/O W: 8.00 KiB]",
+            msg,
+        )
+
+    def test_transient_counters_are_left_out_of_the_summary(self):
+        # The build is over and its cgroup is about to be destroyed, so
+        # what it happens to be using right now is not worth logging.
+        msg = self._cgroup_finish(
+            (),
+            {"cpu_usec": 800_000_000, "mem_current": 1024, "mem_peak": 4096},
+        )
+        self.assertIn("MaxMem: 4.00 KiB", msg)
+        self.assertNotIn("Mem: 1.00 KiB", msg)
 
     def test_no_parallelism_without_a_build_duration(self):
         build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
@@ -863,5 +906,5 @@ class SchedulerCgroupLogTestCase(TestCase):
         sched._logger = SimpleNamespace(log=lambda msg: None)
         sched._cgroup_finish(build)
 
-        self.assertIn("cpu 800.0s", "".join(messages))
+        self.assertIn("CPU: 800.00s", "".join(messages))
         self.assertNotIn("x)", "".join(messages))

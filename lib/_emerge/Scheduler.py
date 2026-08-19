@@ -39,7 +39,7 @@ from portage.util.SlotObject import SlotObject
 import _emerge
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
-from _emerge._observability import ObservabilityMonitor, average_parallelism
+from _emerge._observability import ObservabilityMonitor, format_resources
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -411,39 +411,18 @@ class Scheduler(PollScheduler):
         if self._cgroup is None:
             return
         cpv = build.pkg.cpv
-        stats = self._cgroup.read_stats(cpv)
         # The only read of these counters: the cgroup goes away below, and
-        # the monitor keeps what it is given for the merge to report.
-        self._observability.note_build_resources(cpv, stats)
-        if stats:
-            parts = []
-            if "cpu_usec" in stats:
-                cpu_s = stats["cpu_usec"] / 1e6
-                parallelism = average_parallelism(
-                    stats["cpu_usec"], self._observability.build_elapsed(cpv)
-                )
-                if parallelism is None:
-                    parts.append(f"cpu {cpu_s:.1f}s")
-                else:
-                    parts.append(f"cpu {cpu_s:.1f}s ({parallelism:.2f}x)")
-            if "mem_peak" in stats:
-                parts.append(f"peak-mem {bytes_to_human(stats['mem_peak'])}")
-            if stats.get("mem_swap_peak"):
-                parts.append(f"peak-swap {bytes_to_human(stats['mem_swap_peak'])}")
-            if stats.get("mem_zswap_current"):
-                parts.append(f"zswap {bytes_to_human(stats['mem_zswap_current'])}")
-            if "io_read_bytes" in stats:
-                parts.append(
-                    "io {} / {} r/w".format(
-                        bytes_to_human(stats["io_read_bytes"]),
-                        bytes_to_human(stats.get("io_write_bytes", 0)),
-                    )
-                )
-            if parts:
-                msg = f"=== Resource usage for {cpv}: {', '.join(parts)}"
-                log_path = build.settings.get("PORTAGE_LOG_FILE")
-                self._sched_iface.output(f"{msg}\n", log_path=log_path)
-                self._logger.log(f" {msg}")
+        # what the monitor keeps is what the merge goes on reporting. Log
+        # exactly that, rendered the way "emerge --status" renders it.
+        resources = self._observability.note_build_resources(
+            cpv, self._cgroup.read_stats(cpv)
+        )
+        rendered = format_resources(resources, self._observability.build_elapsed(cpv))
+        if rendered:
+            msg = f"=== Resource usage for {cpv} [{rendered}]"
+            log_path = build.settings.get("PORTAGE_LOG_FILE")
+            self._sched_iface.output(f"{msg}\n", log_path=log_path)
+            self._logger.log(f" {msg}")
         self._cgroup.destroy(cpv)
 
     def _init_graph(self, graph_config):

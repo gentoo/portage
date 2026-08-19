@@ -313,24 +313,46 @@ def average_parallelism(cpu_usec, elapsed):
     return (cpu_usec / 1e6) / elapsed
 
 
-def _format_cpu(val, task):
-    cpu_s = val / 1e6
-    parallelism = average_parallelism(val, task.get("build_elapsed"))
+def _format_cpu(cpu_usec, build_elapsed):
+    cpu_s = cpu_usec / 1e6
+    parallelism = average_parallelism(cpu_usec, build_elapsed)
     if parallelism is None:
         return f"{cpu_s:.2f}s"
     return f"{cpu_s:.2f}s ({parallelism:.2f}x)"
 
 
+def _format_bytes(value, _build_elapsed):
+    # Same signature as _format_cpu(), which is the one that needs the
+    # duration, so that _RESOURCE_FIELDS can call either the same way.
+    return bytes_to_human(value)
+
+
 _RESOURCE_FIELDS = (
     ("cpu_usec", "CPU", _format_cpu),
-    ("mem_current", "Mem", lambda v, t: bytes_to_human(v)),
-    ("mem_peak", "MaxMem", lambda v, t: bytes_to_human(v)),
-    ("mem_swap_current", "Swap", lambda v, t: bytes_to_human(v)),
-    ("mem_swap_peak", "MaxSwap", lambda v, t: bytes_to_human(v)),
-    ("mem_zswap_current", "ZSwap", lambda v, t: bytes_to_human(v)),
-    ("io_read_bytes", "I/O R", lambda v, t: bytes_to_human(v)),
-    ("io_write_bytes", "I/O W", lambda v, t: bytes_to_human(v)),
+    ("mem_current", "Mem", _format_bytes),
+    ("mem_peak", "MaxMem", _format_bytes),
+    ("mem_swap_current", "Swap", _format_bytes),
+    ("mem_swap_peak", "MaxSwap", _format_bytes),
+    ("mem_zswap_current", "ZSwap", _format_bytes),
+    ("io_read_bytes", "I/O R", _format_bytes),
+    ("io_write_bytes", "I/O W", _format_bytes),
 )
+
+
+def format_resources(resources, build_elapsed=None):
+    """Render cgroup counters as "Label: value" pairs, or "" if there are none.
+
+    A counter the kernel did report is rendered even when it is zero: no
+    I/O at all is a fact about the build, not a missing measurement.
+    """
+    if not resources:
+        return ""
+    parts = []
+    for key, label, formatter in _RESOURCE_FIELDS:
+        value = resources.get(key)
+        if value is not None:
+            parts.append(f"{label}: {formatter(value, build_elapsed)}")
+    return ", ".join(parts)
 
 
 def format_snapshots(snapshots):
@@ -357,16 +379,11 @@ def format_snapshots(snapshots):
             phase = task.get("phase") or task.get("kind") or "-"
             line = f"  {task.get('cpv', '?'):<45} {phase:<10} {elapsed_str:>7}"
 
-            resources = task.get("resources")
-            if resources:
-                res_strs = []
-                for field, label, formatter in _RESOURCE_FIELDS:
-                    val = resources.get(field)
-                    if val is not None:
-                        res_strs.append(f"{label}: {formatter(val, task)}")
-
-                if res_strs:
-                    line += f"  [{', '.join(res_strs)}]"
+            rendered = format_resources(
+                task.get("resources"), task.get("build_elapsed")
+            )
+            if rendered:
+                line += f"  [{rendered}]"
 
             lines.append(line)
     return "\n".join(lines) + "\n"
@@ -473,14 +490,18 @@ class ObservabilityMonitor:
                 times.finished = time.time()
 
     def note_build_resources(self, cpv, stats):
-        """Keep the final cgroup counters for the build of cpv.
+        """Keep the final cgroup counters for the build of cpv, and return them.
 
         Called just before the cgroup is destroyed, so that a package that
-        has moved on to merging goes on reporting what its build used.
+        has moved on to merging goes on reporting what its build used. The
+        counters that only describe a live cgroup are dropped, so the caller
+        gets back what it is worth reporting from here on.
         """
+        resources = freeze_resources(stats)
         times = self._build_times.get(str(cpv))
         if times is not None:
-            times.resources = freeze_resources(stats)
+            times.resources = resources
+        return resources
 
     def build_elapsed(self, cpv):
         """Wall-clock duration of the build of cpv, or None if unknown.
