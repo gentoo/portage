@@ -387,6 +387,59 @@ class ObservabilitySnapshotTestCase(TestCase):
             self.assertFalse(os.path.exists(path))
             self.assertEqual(loop.calls, [])
 
+    def test_parallelism_is_frozen_through_merge_wait_and_merge(self):
+        # cpu_usec stops advancing when the build ends, so the parallelism
+        # derived from it must be divided by the build's own duration and
+        # not by a wall clock that keeps running through the merge.
+        for merge_wait in (True, False):
+            with self.subTest(merge_wait=merge_wait):
+                merge = PackageMerge(EbuildBuild(_Pkg("dev-libs/foo-1.2")))
+                sched = _make_scheduler(tasks=[merge])
+                if merge_wait:
+                    sched._merge_wait_queue = [merge]
+                monitor = ObservabilityMonitor(sched)
+                monitor.note_task_started(merge)
+                # 40s of building earning 800s of CPU, finished 60s ago.
+                now = time.time()
+                _set_build_times(
+                    monitor,
+                    "dev-libs/foo-1.2",
+                    now - 100,
+                    now - 60,
+                    {"cpu_usec": 800_000_000},
+                )
+
+                entry = build_snapshot(monitor)["tasks"][0]
+                self.assertAlmostEqual(entry["build_elapsed"], 40, delta=1)
+                self.assertIn("(20.0", format_snapshots([build_snapshot(monitor)]))
+
+    def test_format_snapshots_renders_resources(self):
+        snap = {
+            "emerge_pid": 4242,
+            "jobs": {"running": 1, "completed": 0, "total": 1, "failed": 0},
+            "tasks": [
+                {
+                    "cpv": "dev-libs/foo-1.2",
+                    "phase": "compile",
+                    "elapsed": 30.0,
+                    "build_elapsed": 30.0,
+                    "resources": {
+                        "cpu_usec": 60_000_000,
+                        "mem_current": 1024,
+                        "mem_peak": 2048,
+                        "io_read_bytes": 0,
+                        "io_write_bytes": 4096,
+                    },
+                }
+            ],
+        }
+        line = format_snapshots([snap]).splitlines()[1]
+        self.assertIn(
+            "[CPU: 60.00s (2.00x), Mem: 1.00 KiB, MaxMem: 2.00 KiB, "
+            "I/O R: 0.00 B, I/O W: 4.00 KiB]",
+            line,
+        )
+
     def test_average_parallelism_without_a_usable_duration(self):
         for elapsed in (None, 0, -1):
             with self.subTest(elapsed=elapsed):

@@ -123,6 +123,12 @@ def build_snapshot(monitor):
             start, build_finished = monitor._task_start.get(id(task)), None
             frozen_res = None
 
+        # Duration of the build itself, which stops advancing once the build
+        # is done. "elapsed" below keeps running through the merge, so it is
+        # the wrong denominator for anything derived from the build's own
+        # cgroup counters.
+        build_elapsed = times.elapsed(now) if times is not None else None
+
         # A package waiting to merge is done building: freeze its elapsed time at
         # build completion rather than letting the wait inflate it.
         if waiting and build_finished is not None and start is not None:
@@ -145,6 +151,7 @@ def build_snapshot(monitor):
             "pid": _task_pid(task),
             "start_time": start,
             "elapsed": elapsed,
+            "build_elapsed": build_elapsed,
         }
         if frozen_res is not None:
             entry["resources"] = frozen_res
@@ -253,7 +260,7 @@ def average_parallelism(cpu_usec, elapsed):
 
 def _format_cpu(val, task):
     cpu_s = val / 1e6
-    parallelism = average_parallelism(val, task.get("elapsed"))
+    parallelism = average_parallelism(val, task.get("build_elapsed"))
     if parallelism is None:
         return f"{cpu_s:.2f}s"
     return f"{cpu_s:.2f}s ({parallelism:.2f}x)"
