@@ -26,6 +26,11 @@ Features:
   atoms, USE dependencies, USE flag names and flag sets that packages have in
   common cuts the peak of "emerge -puDN @world" by about 46% (bug #240320).
 
+* emerge: Run pkg_pretend phases concurrently, subject to --jobs and
+  --load-average. Output from each package is still shown one package at a
+  time, in merge order (bug #579526).
+
+
 portage-3.0.82 (2026-08-22)
 --------------
 
