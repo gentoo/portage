@@ -1221,97 +1221,105 @@ class Scheduler(PollScheduler):
         if rval != os.EX_OK and not keep_going:
             return rval
 
-        while True:
-            received_signal = []
+        try:
+            while True:
+                received_signal = []
 
-            def sighandler(signum, frame):
-                signal.signal(signal.SIGINT, signal.SIG_IGN)
-                signal.signal(signal.SIGTERM, signal.SIG_IGN)
-                portage.util.writemsg(f"\n\nExiting on signal {signum}\n")
-                self.terminate()
-                received_signal.append(128 + signum)
+                def sighandler(signum, frame):
+                    signal.signal(signal.SIGINT, signal.SIG_IGN)
+                    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+                    portage.util.writemsg(f"\n\nExiting on signal {signum}\n")
+                    self.terminate()
+                    received_signal.append(128 + signum)
 
-            def sigusr2handler(signum, frame):
-                self._flush_merge_wait_queue = True
+                def sigusr2handler(signum, frame):
+                    self._flush_merge_wait_queue = True
 
-            earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
-            earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
-            earlier_sigcont_handler = signal.signal(
-                signal.SIGCONT, self._sigcont_handler
-            )
-            signal.siginterrupt(signal.SIGCONT, False)
-            earlier_sigusr2_handler = signal.signal(signal.SIGUSR2, sigusr2handler)
+                earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
+                earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
+                earlier_sigcont_handler = signal.signal(
+                    signal.SIGCONT, self._sigcont_handler
+                )
+                signal.siginterrupt(signal.SIGCONT, False)
+                earlier_sigusr2_handler = signal.signal(signal.SIGUSR2, sigusr2handler)
 
-            earlier_sigwinch_handler = signal.signal(
-                signal.SIGWINCH, self._sigwinch_handler
-            )
-            try:
-                rval = self._merge()
-            finally:
-                # Restore previous handlers
-                if earlier_sigint_handler is not None:
-                    signal.signal(signal.SIGINT, earlier_sigint_handler)
-                else:
-                    signal.signal(signal.SIGINT, signal.SIG_DFL)
-                if earlier_sigterm_handler is not None:
-                    signal.signal(signal.SIGTERM, earlier_sigterm_handler)
-                else:
-                    signal.signal(signal.SIGTERM, signal.SIG_DFL)
-                if earlier_sigcont_handler is not None:
-                    signal.signal(signal.SIGCONT, earlier_sigcont_handler)
-                else:
-                    signal.signal(signal.SIGCONT, signal.SIG_DFL)
-                if earlier_sigusr2_handler is not None:
-                    signal.signal(signal.SIGUSR2, earlier_sigusr2_handler)
-                else:
-                    signal.signal(signal.SIGUSR2, signal.SIG_DFL)
+                earlier_sigwinch_handler = signal.signal(
+                    signal.SIGWINCH, self._sigwinch_handler
+                )
+                try:
+                    rval = self._merge()
+                finally:
+                    # Restore previous handlers
+                    if earlier_sigint_handler is not None:
+                        signal.signal(signal.SIGINT, earlier_sigint_handler)
+                    else:
+                        signal.signal(signal.SIGINT, signal.SIG_DFL)
+                    if earlier_sigterm_handler is not None:
+                        signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+                    else:
+                        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+                    if earlier_sigcont_handler is not None:
+                        signal.signal(signal.SIGCONT, earlier_sigcont_handler)
+                    else:
+                        signal.signal(signal.SIGCONT, signal.SIG_DFL)
+                    if earlier_sigusr2_handler is not None:
+                        signal.signal(signal.SIGUSR2, earlier_sigusr2_handler)
+                    else:
+                        signal.signal(signal.SIGUSR2, signal.SIG_DFL)
 
-                if earlier_sigwinch_handler is not None:
-                    signal.signal(signal.SIGWINCH, earlier_sigwinch_handler)
-                else:
-                    signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+                    if earlier_sigwinch_handler is not None:
+                        signal.signal(signal.SIGWINCH, earlier_sigwinch_handler)
+                    else:
+                        signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
-            self._termination_check()
-            if received_signal:
-                sys.exit(received_signal[0])
+                self._termination_check()
+                if received_signal:
+                    sys.exit(received_signal[0])
 
-            if rval == os.EX_OK or fetchonly or not keep_going:
-                break
-            if "resume" not in mtimedb:
-                break
-            mergelist = self._mtimedb["resume"].get("mergelist")
-            if not mergelist:
-                break
+                if rval == os.EX_OK or fetchonly or not keep_going:
+                    break
+                if "resume" not in mtimedb:
+                    break
+                mergelist = self._mtimedb["resume"].get("mergelist")
+                if not mergelist:
+                    break
 
-            if not failed_pkgs:
-                break
+                if not failed_pkgs:
+                    break
 
-            for failed_pkg in failed_pkgs:
-                mergelist.remove(list(failed_pkg.pkg))
+                for failed_pkg in failed_pkgs:
+                    mergelist.remove(list(failed_pkg.pkg))
 
-            self._failed_pkgs_all.extend(failed_pkgs)
-            del failed_pkgs[:]
+                self._failed_pkgs_all.extend(failed_pkgs)
+                del failed_pkgs[:]
 
-            if not mergelist:
-                break
+                if not mergelist:
+                    break
 
-            if not self._calc_resume_list():
-                break
+                if not self._calc_resume_list():
+                    break
 
-            clear_caches(self.trees)
-            if not self._mergelist:
-                break
+                clear_caches(self.trees)
+                if not self._mergelist:
+                    break
 
-            self._save_resume_list()
-            self._pkg_count.curval = 0
-            self._pkg_count.maxval = len(
-                [
-                    x
-                    for x in self._mergelist
-                    if isinstance(x, Package) and x.operation == "merge"
-                ]
-            )
-            self._status_display.maxval = self._pkg_count.maxval
+                self._save_resume_list()
+                self._pkg_count.curval = 0
+                self._pkg_count.maxval = len(
+                    [
+                        x
+                        for x in self._mergelist
+                        if isinstance(x, Package) and x.operation == "merge"
+                    ]
+                )
+                self._status_display.maxval = self._pkg_count.maxval
+        finally:
+            # _merge() runs once per --keep-going pass, but the monitor and
+            # the cgroup manager are created once per Scheduler and nothing
+            # recreates them, so they can only be torn down out here.
+            self._observability.close()
+            if self._cgroup is not None:
+                self._cgroup.close()
 
         # Cleanup any callbacks that have been registered with the global
         # event loop by calls to the terminate method.
@@ -1759,9 +1767,6 @@ class Scheduler(PollScheduler):
             self._main_loop()
         finally:
             self._main_loop_cleanup()
-            self._observability.close()
-            if self._cgroup is not None:
-                self._cgroup.close()
             portage.locks._quiet = False
             portage.elog.remove_listener(self._elog_listener)
             if display_callback.handle is not None:

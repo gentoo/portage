@@ -468,8 +468,9 @@ class CgroupManager:
             return False
         _enable_subtree_control(self.emerge_root)
         self.enabled = True
-        # close() is called from Scheduler.merge(), but that is skipped if
-        # we exit via an unhandled exception or a signal handler.
+        # close() is called from Scheduler.merge(), once the --keep-going
+        # loop is done, but that is skipped if we die before the loop or
+        # take a signal we do not handle.
         atexit.register(self.close)
         return True
 

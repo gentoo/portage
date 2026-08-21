@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import asyncio
+import contextlib
+import io
 import json
 import os
 import socket
@@ -908,3 +910,93 @@ class SchedulerCgroupLogTestCase(TestCase):
 
         self.assertIn("CPU: 800.00s", "".join(messages))
         self.assertNotIn("x)", "".join(messages))
+
+
+class KeepGoingTeardownTestCase(TestCase):
+    def _run_keep_going_merge(self, tmpdir):
+        monitor = ObservabilityMonitor(_make_scheduler(eprefix=tmpdir))
+        monitor._last_snapshot = {"type": "snapshot", "schema": 1}
+        monitor._write_status_file(monitor._last_snapshot)
+
+        cgroup = SimpleNamespace(enabled=True, closed=0)
+
+        def cgroup_close():
+            cgroup.enabled = False
+            cgroup.closed += 1
+
+        cgroup.close = cgroup_close
+
+        # What a client polling at the start of each pass would have seen.
+        seen = []
+        failed_pkg = SimpleNamespace(
+            pkg=["dev-libs", "foo-1"],
+            returncode=1,
+            postinst_failure=False,
+            build_log=None,
+        )
+
+        sched = Scheduler.__new__(Scheduler)
+
+        def fake_merge():
+            seen.append(
+                (
+                    monitor.enabled,
+                    cgroup.enabled,
+                    os.path.exists(monitor._status_path),
+                )
+            )
+            if len(seen) == 1:
+                sched._failed_pkgs.append(failed_pkg)
+                return 1
+            return os.EX_OK
+
+        sched.myopts = {"--keep-going": True}
+        sched.trees = {}
+        sched._observability = monitor
+        sched._cgroup = cgroup
+        sched._merge = fake_merge
+        sched._background = False
+        sched._build_opts = SimpleNamespace(fetchonly=False)
+        sched._failed_pkgs = []
+        sched._failed_pkgs_all = []
+        sched._failed_pkgs_die_msgs = []
+        sched._post_mod_echo_msgs = []
+        sched._mergelist = ["dev-libs/bar-1"]
+        sched._mtimedb = {
+            "resume": {"mergelist": [["dev-libs", "foo-1"], ["dev-libs", "bar-1"]]}
+        }
+        sched._pkg_count = SimpleNamespace(curval=0, maxval=1)
+        sched._status_display = SimpleNamespace(maxval=1, quiet=False)
+        sched._logger = SimpleNamespace(log=lambda msg: None)
+        sched._save_resume_list = lambda: None
+        sched._background_mode = lambda: False
+        sched._handle_self_update = lambda: os.EX_OK
+        sched._generate_digests = lambda: os.EX_OK
+        sched._check_manifests = lambda: os.EX_OK
+        sched._termination_check = lambda: None
+        sched._calc_resume_list = lambda: True
+        sched._cleanup = lambda: None
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            rval = sched.merge()
+
+        return monitor, cgroup, seen
+
+    def test_publishing_survives_a_keep_going_restart(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _monitor, cgroup, seen = self._run_keep_going_merge(tmpdir)
+
+            self.assertEqual(len(seen), 2)
+            # The second pass is the one that used to run blind: no
+            # monitor, no cgroup accounting and no status file to read.
+            self.assertEqual(seen[1], (True, True, True))
+            self.assertEqual(cgroup.closed, 1)
+
+    def test_teardown_still_happens_once_the_loop_is_done(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            monitor, cgroup, _seen = self._run_keep_going_merge(tmpdir)
+
+            self.assertFalse(monitor.enabled)
+            self.assertEqual(cgroup.closed, 1)
+            self.assertFalse(os.path.exists(monitor._status_path))
