@@ -2511,7 +2511,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
     # For backward compat, leading '=' is not required.
     for x in files:
         if is_valid_package_atom(x, allow_repo=True) or (
-            ignore_missing_eq and is_valid_package_atom("=" + x)
+            ignore_missing_eq and is_valid_package_atom("=" + str(x))
         ):
             try:
                 atom = dep_expand(x, mydb=vardb, settings=settings)

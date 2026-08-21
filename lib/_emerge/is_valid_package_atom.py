@@ -1,9 +1,9 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import re
 
-from portage.dep import isvalidatom
+from portage.dep import Atom, isvalidatom
 
 
 def insert_category_into_atom(atom, category):
@@ -17,7 +17,8 @@ def insert_category_into_atom(atom, category):
 
 
 def is_valid_package_atom(x, allow_repo=False, allow_build_id=True):
-    if "/" not in x.split(":")[0]:
+    # An Atom always carries a category, so only strings need the placeholder.
+    if not isinstance(x, Atom) and "/" not in x.split(":")[0]:
         x2 = insert_category_into_atom(x, "cat")
         if x2 is not None:
             x = x2
