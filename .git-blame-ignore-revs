@@ -16,3 +16,29 @@ a83507be7ce04d3ac421f9cbe8b63816809b0f4e
 3d55e159c473075c7b2f87c92293b0df6fa57563
 # */*: retrun black w/ 26.5.1
 bcd5c8e67c03b02804995f4a8663732c31072a83
+
+# gpkg: black
+fcc1d9989a6f1c1a3f32a9c6ce32a11cd126f3f5
+
+# */*: rerun black
+a22424e497b9e4c2e16d1e8dc41f0dc0ec32a64d
+
+# OnlydepsMinimalTestCase: black formatting
+5305ca67f1199dd1278e7f4fdc68b8f381f3def5
+
+# gpkg: placate black
+fa7fb4c5119aa077a0731e1f8892ea0791a4968b
+
+# save-ebuild-env.sh: reformat identifier lists, one per line
+13d7b83a2ecf1afb07be78c22bee27d794199793
+
+# Exclude all other commits by WolfgangESanyer@gmail.com due to large reformatting changes mis-attributing authorship.
+8a9242bca27294946f9d750693bd2eb7417b7779
+1b1c4323d73d095f5ee2816201b5780f6a7ea14b
+e4afca3ed07f0e11f9918e1560074d7e5550be53
+afcdeffeb038523df511ee4efc3a98cc602499ed
+38b9c0742a2f349dc130cc131ef460cbb114b5c3
+016d5a48d230123f662f3da4ae7d900d365582aa
+58c1b364419ffef8aeb1cb383a2d433314cacd09
+71dbd16c41e68bc31a1c7d2e7ba90c7eee5138b7
+0971f2e89390058a1b35a6288a2f2c396a2ad038
