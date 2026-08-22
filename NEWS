@@ -6,7 +6,12 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.82 (UNRELEASED)
+portage-3.0.83 (UNRELEASED)
+--------------
+
+...
+
+portage-3.0.82 (2026-08-22)
 --------------
 
 This release drops the Python 2 unicode conversion layer and has Portage
