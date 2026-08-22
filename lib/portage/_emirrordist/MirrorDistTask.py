@@ -140,7 +140,6 @@ class MirrorDistTask(CompositeTask):
         start_time = self._config.start_time
         dry_run = self._config.options.dry_run
         deletion_delay = self._config.options.deletion_delay
-        distfiles_db = self._config.distfiles_db
 
         date_map = {}
         for filename, timestamp in self._config.deletion_db.items():
@@ -168,9 +167,7 @@ class MirrorDistTask(CompositeTask):
                 )
             lines.append(f"{date}\n")
             for filename in date_files:
-                cpv = "unknown"
-                if distfiles_db is not None:
-                    cpv = distfiles_db.get(filename, cpv)
+                cpv = self._config.lookup_cpv(filename)
                 lines.append(f"\t{filename}\t{cpv}\n")
 
         if not dry_run:

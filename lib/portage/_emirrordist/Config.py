@@ -69,6 +69,7 @@ class Config:
             self.recycle_db = self._open_shelve(options.recycle_db, "recycle")
 
         self.distfiles_db = None
+        self.distfiles_db_unreadable = False
         if getattr(options, "distfiles_db", None) is not None:
             self.distfiles_db = self._open_shelve(options.distfiles_db, "distfiles")
 
@@ -87,6 +88,36 @@ class Config:
             options.layout_conf = os.path.join(self.distfiles, "layout.conf")
         self.layout_conf.read_from_file(options.layout_conf)
         self.layouts = self.layout_conf.get_all_layouts()
+
+    def lookup_cpv(self, filename):
+        """
+        Return the cpv that filename belongs to, or "unknown" if the
+        distfiles db holds no usable entry for it.
+        """
+        if self.distfiles_db is None:
+            return "unknown"
+        try:
+            return self.distfiles_db[filename]
+        except KeyError:
+            return "unknown"
+        except Exception:
+            # Entries written before bug 766459 was fixed are pickled
+            # _pkg_str object graphs, and classes in those graphs have
+            # since changed shape, so they no longer unpickle. The failure
+            # seen so far is AttributeError, restoring the old attributes
+            # onto an Atom that no longer has a __dict__ (bug 981223), but
+            # that is not the only way an old entry can go wrong: the graph
+            # reaches a live portdbapi and everything it holds, its rows are
+            # up to eight years old, and whether such an entry fails at all
+            # depends on the interpreter reading it, as pypy loads one that
+            # CPython rejects. Catch broadly. The cpv only annotates a log
+            # line, so any failure to read it is better carried on from than
+            # raised.
+            logger.debug(f"unreadable distfiles db entry for '{filename}'")
+            if not self.distfiles_db_unreadable:
+                self.distfiles_db_unreadable = True
+                logger.warning("distfiles db has unreadable entries")
+            return "unknown"
 
     def _open_log(self, log_desc, log_path, mode):
         if log_path is None or getattr(self.options, "dry_run", False):
