@@ -270,7 +270,7 @@ class _EbuildFetcherProcess(ForkProcess):
         if pre_exec is not None:
             pre_exec()
 
-        if sys.version_info >= (3, 14):
+        if multiprocessing.get_start_method() == "forkserver":
             # Since we typically drop privileges for userfetch here,
             # a forkserver shared with the parent would open privilege
             # escalation issues that are better to avoid, therefore
