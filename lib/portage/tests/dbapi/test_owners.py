@@ -108,6 +108,14 @@ class OwnersTestCase(TestCase):
             {"dev-libs/A-1": {"usr/bin/tool"}, "dev-libs/B-1": {"usr/bin/tool"}},
         )
 
+    def test_repeated_basename_yields_once(self):
+        # A basename asked for several times in one call is answered once,
+        # not once per occurrence.
+        self.assertEqual(
+            self._owners("tool", "tool", "tool"),
+            {"dev-libs/A-1": {"usr/bin/tool"}, "dev-libs/B-1": {"usr/bin/tool"}},
+        )
+
     def test_batched_query(self):
         self.assertEqual(
             self._owners(
@@ -167,6 +175,11 @@ class OwnersTestCase(TestCase):
         self.assertEqual(self._owners("libD.so"), {})
         self._write_contents("dev-libs/C-1", ("usr/target/libC.so", "usr/lib/libD.so"))
         self.assertEqual(self._owners("libD.so"), {"dev-libs/C-1": {"usr/lib/libD.so"}})
+
+    def test_clear(self):
+        self.assertEqual(self._owners("libB.so"), {"dev-libs/B-1": {"usr/lib/libB.so"}})
+        self.vardb._owners.clear()
+        self.assertEqual(self._owners("libB.so"), {"dev-libs/B-1": {"usr/lib/libB.so"}})
 
     def test_get_owners(self):
         owners = self.vardb._owners.get_owners([self._abs("usr/bin/tool"), "libA.so"])

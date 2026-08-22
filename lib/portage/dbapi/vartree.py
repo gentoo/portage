@@ -8,7 +8,6 @@ import errno
 import filecmp
 import fnmatch
 import functools
-import gc
 import grp
 import io
 import logging
@@ -21,6 +20,7 @@ import re
 import shlex
 import shutil
 import stat
+import sys
 import tempfile
 import textwrap
 import time
@@ -913,7 +913,6 @@ class vardbapi(dbapi):
     def _aux_cache_init(self):
         self._aux_cache_obj = {
             "packages": {},
-            "owners": {"base_names": {}},
         }
 
     def aux_get(self, mycpv, wants, myrepo=None):
@@ -1515,113 +1514,108 @@ class vardbapi(dbapi):
         self._bump_mtime(pkg.mycpv)
         pkg._clear_contents_cache()
 
-    class _owners_cache:
-        """
-        This class maintains an hash table that serves to index package
-        contents by mapping the basename of file to a list of possible
-        packages that own it. This is used to optimize owner lookups
-        by narrowing the search down to a smaller number of packages.
-        """
-
-        from hashlib import md5
-
-        _new_hash = md5
-        _hash_bits = 16
-        _hex_chars = _hash_bits // 4
-
-        def __init__(self, vardb):
-            self._vardb = vardb
-
-        def add(self, cpv):
-            eroot_len = len(self._vardb._eroot)
-            pkg_hash = self._hash_pkg(cpv)
-            db = self._vardb._dblink(cpv)
-            if not db.getcontents():
-                # Empty path is a code used to represent empty contents.
-                self._add_path("", pkg_hash)
-
-            for x in db._contents.keys():
-                self._add_path(x[eroot_len:], pkg_hash)
-
-        def _add_path(self, path, pkg_hash):
-            """
-            Empty path is a code that represents empty contents.
-            """
-            if path:
-                name = os.path.basename(path.rstrip(os.path.sep))
-                if not name:
-                    return
-            else:
-                name = path
-            name_hash = self._hash_str(name)
-            base_names = self._vardb._aux_cache["owners"]["base_names"]
-            pkgs = base_names.get(name_hash)
-            if pkgs is None:
-                pkgs = {}
-                base_names[name_hash] = pkgs
-            pkgs[pkg_hash] = None
-
-        def _hash_str(self, s):
-            h = self._new_hash()
-            # Always use a constant utf_8 encoding here, since
-            # the "default" encoding can change.
-            h.update(s.encode("utf-8", "backslashreplace"))
-            h = h.hexdigest()
-            h = h[-self._hex_chars :]
-            h = int(h, 16)
-            return h
-
-        def _hash_pkg(self, cpv):
-            counter, mtime = self._vardb.aux_get(cpv, ["COUNTER", "_mtime_"])
-            try:
-                counter = int(counter)
-            except ValueError:
-                counter = 0
-            return (str(cpv), counter, mtime)
-
     class _owners_db:
+        """
+        Answers "which packages own this path" from an index of the CONTENTS
+        of every installed package.
+        """
+
         def __init__(self, vardb):
             self._vardb = vardb
+            self.clear()
 
-        def populate(self):
-            self._populate()
+        def clear(self):
+            """
+            Drop the index. The next lookup rebuilds it.
+            """
+            # directory -> {basename: owning cpv}, or a tuple of cpvs for the
+            # rare path claimed by more than one package. On a
+            # case-insensitive filesystem the paths are lowercased.
+            self._dir_owners = {}
+            # cpv -> ((COUNTER, mtime), {directory: [basename, ...]}) for the
+            # packages currently indexed.
+            self._indexed_pkgs = {}
+            # CONTENTS may record a directory under any of the paths that
+            # reach it (e.g. through a symlinked libdir), so map each
+            # (st_dev, st_ino) to the directories recorded for it. Rebuilt
+            # after the index changes.
+            self._inode_dirs = None
 
-        def _populate(self):
-            owners_cache = vardbapi._owners_cache(self._vardb)
-            cached_hashes = set()
-            base_names = self._vardb._aux_cache["owners"]["base_names"]
+        def _update_path_index(self):
+            """
+            Bring the index in line with the installed packages. Only
+            packages installed, rewritten or removed since the last call are
+            (re)read.
+            """
+            identities = self._vardb._pkg_identities()
+            indexed = self._indexed_pkgs
 
-            # Take inventory of all cached package hashes.
-            for name, hash_values in list(base_names.items()):
-                if not isinstance(hash_values, dict):
-                    del base_names[name]
-                    continue
-                cached_hashes.update(hash_values)
+            for cpv, (identity, _) in list(indexed.items()):
+                if identities.get(cpv) != identity:
+                    self._remove_pkg_paths(cpv)
 
-            # Create sets of valid package hashes and uncached packages.
-            uncached_pkgs = set()
-            hash_pkg = owners_cache._hash_pkg
-            valid_pkg_hashes = set()
-            for cpv in self._vardb.cpv_all():
-                hash_value = hash_pkg(cpv)
-                valid_pkg_hashes.add(hash_value)
-                if hash_value not in cached_hashes:
-                    uncached_pkgs.add(cpv)
+            for cpv, identity in identities.items():
+                if cpv not in indexed:
+                    self._add_pkg_paths(cpv, identity)
 
-            # Cache any missing packages.
-            for cpv in uncached_pkgs:
-                owners_cache.add(cpv)
+        def _add_pkg_paths(self, cpv, identity):
+            dir_owners = self._dir_owners
+            pkg_dirs = {}
+            for key in self._vardb._dblink(cpv)._contents.keys():
+                parent, name = os.path.split(key)
+                # Share each directory string between packages.
+                parent = sys.intern(parent)
+                pkg_dirs.setdefault(parent, []).append(name)
 
-            # Delete any stale cache.
-            stale_hashes = cached_hashes.difference(valid_pkg_hashes)
-            if stale_hashes:
-                for base_name_hash, bucket in list(base_names.items()):
-                    for hash_value in stale_hashes.intersection(bucket):
-                        del bucket[hash_value]
-                    if not bucket:
-                        del base_names[base_name_hash]
+                names = dir_owners.get(parent)
+                if names is None:
+                    names = dir_owners[parent] = {}
+                owners = names.get(name)
+                if owners is None:
+                    names[name] = cpv
+                elif isinstance(owners, tuple):
+                    names[name] = owners + (cpv,)
+                else:
+                    names[name] = (owners, cpv)
 
-            return owners_cache
+            self._indexed_pkgs[cpv] = (identity, pkg_dirs)
+            self._inode_dirs = None
+
+        def _remove_pkg_paths(self, cpv):
+            dir_owners = self._dir_owners
+            for parent, pkg_names in self._indexed_pkgs.pop(cpv)[1].items():
+                names = dir_owners[parent]
+                for name in pkg_names:
+                    owners = names[name]
+                    if isinstance(owners, tuple):
+                        remaining = tuple(x for x in owners if x != cpv)
+                        names[name] = remaining if len(remaining) > 1 else remaining[0]
+                    else:
+                        del names[name]
+                if not names:
+                    del dir_owners[parent]
+
+            self._inode_dirs = None
+
+        def _dir_aliases(self, parent):
+            """
+            Return the recorded directories that are the given directory.
+            """
+            try:
+                st = os.stat(parent)
+            except OSError:
+                return ()
+
+            if self._inode_dirs is None:
+                self._inode_dirs = {}
+                for path in self._dir_owners:
+                    try:
+                        s = os.stat(path)
+                    except OSError:
+                        continue
+                    self._inode_dirs.setdefault((s.st_dev, s.st_ino), []).append(path)
+
+            return self._inode_dirs.get((st.st_dev, st.st_ino), ())
 
         def get_owners(self, path_iter):
             """
@@ -1650,147 +1644,62 @@ class vardbapi(dbapi):
 
         def iter_owners(self, path_iter):
             """
-            Iterate over tuples of (dblink, path). In order to avoid
-            consuming too many resources for too much time, resources
-            are only allocated for the duration of a given iter_owners()
-            call. Therefore, to maximize reuse of resources when searching
-            for multiple files, it's best to search for them all in a single
-            call.
+            Iterate over tuples of (dblink, path).
+
+            Absolute paths are looked up directly. Bare basenames need a scan
+            of the whole index, so batch them into one call.
             """
+            from portage.util import normalize_path
 
-            if not isinstance(path_iter, list):
-                path_iter = list(path_iter)
-            owners_cache = self._populate()
             vardb = self._vardb
-            root = vardb._eroot
-            hash_pkg = owners_cache._hash_pkg
-            hash_str = owners_cache._hash_str
-            base_names = self._vardb._aux_cache["owners"]["base_names"]
+            root_len = len(vardb._eroot)
+            destroot = vardb.settings["ROOT"]
             case_insensitive = "case-insensitive-fs" in vardb.settings.features
+            self._update_path_index()
+            dir_owners = self._dir_owners
+            dblinks = {}
 
-            dblink_cache = {}
+            def owner(cpv, key):
+                link = dblinks.get(cpv)
+                if link is None:
+                    link = dblinks[cpv] = vardb._dblink(cpv)
+                return (link, link._contents.unmap_key(key)[root_len:])
 
-            def dblink(cpv):
-                x = dblink_cache.get(cpv)
-                if x is None:
-                    if len(dblink_cache) > 20:
-                        # Ensure that we don't run out of memory.
-                        raise StopIteration()
-                    x = self._vardb._dblink(cpv)
-                    dblink_cache[cpv] = x
-                return x
+            def owners_of(names, name):
+                owners = names.get(name)
+                if owners is None:
+                    return ()
+                if isinstance(owners, tuple):
+                    return owners
+                return (owners,)
 
-            while path_iter:
-                path = path_iter.pop()
-                if case_insensitive:
-                    path = path.lower()
-                is_basename = os.sep != path[:1]
-                if is_basename:
-                    name = path
-                else:
-                    name = os.path.basename(path.rstrip(os.path.sep))
-
-                if not name:
+            basenames = set()
+            for path in path_iter:
+                if os.sep != path[:1]:
+                    if path:
+                        basenames.add(path.lower() if case_insensitive else path)
                     continue
 
-                name_hash = hash_str(name)
-                pkgs = base_names.get(name_hash)
-                owners = []
-                if pkgs is not None:
-                    try:
-                        for hash_value in pkgs:
-                            if (
-                                not isinstance(hash_value, tuple)
-                                or len(hash_value) != 3
-                            ):
-                                continue
-                            cpv, counter, mtime = hash_value
-                            if not isinstance(cpv, str):
-                                continue
-                            try:
-                                current_hash = hash_pkg(cpv)
-                            except KeyError:
-                                continue
-
-                            if current_hash != hash_value:
-                                continue
-
-                            if is_basename:
-                                for p in dblink(cpv)._contents.keys():
-                                    if os.path.basename(p) == name:
-                                        owners.append(
-                                            (
-                                                cpv,
-                                                dblink(cpv)._contents.unmap_key(p)[
-                                                    len(root) :
-                                                ],
-                                            )
-                                        )
-                            else:
-                                key = dblink(cpv)._match_contents(path)
-                                if key is not False:
-                                    owners.append((cpv, key[len(root) :]))
-
-                    except StopIteration:
-                        path_iter.append(path)
-                        del owners[:]
-                        dblink_cache.clear()
-                        gc.collect()
-                        yield from self._iter_owners_low_mem(path_iter)
-                        return
-                    else:
-                        for cpv, p in owners:
-                            yield (dblink(cpv), p)
-
-        def _iter_owners_low_mem(self, path_list):
-            """
-            This implementation will make a short-lived dblink instance (and
-            parse CONTENTS) for every single installed package. This is
-            slower and but uses less memory than the method which uses the
-            basename cache.
-            """
-
-            if not path_list:
-                return
-
-            case_insensitive = "case-insensitive-fs" in self._vardb.settings.features
-            path_info_list = []
-            for path in path_list:
+                destfile = normalize_path(os.path.join(destroot, path.lstrip(os.sep)))
                 if case_insensitive:
-                    path = path.lower()
-                is_basename = os.sep != path[:1]
-                if is_basename:
-                    name = path
-                else:
-                    name = os.path.basename(path.rstrip(os.path.sep))
-                path_info_list.append((path, name, is_basename))
+                    destfile = destfile.lower()
+                parent, name = os.path.split(destfile)
 
-            # Do work via the global event loop, so that it can be used
-            # for indication of progress during the search (bug #461412).
-            event_loop = asyncio._safe_loop()
-            root = self._vardb._eroot
+                # Report a package once, preferring the literal path over one
+                # under an alias of its parent.
+                matched = {}
+                for d in (parent, *self._dir_aliases(parent)):
+                    for cpv in owners_of(dir_owners.get(d, {}), name):
+                        matched.setdefault(cpv, os.path.join(d, name))
 
-            def search_pkg(cpv, search_future):
-                dblnk = self._vardb._dblink(cpv)
-                results = []
-                for path, name, is_basename in path_info_list:
-                    if is_basename:
-                        for p in dblnk._contents.keys():
-                            if os.path.basename(p) == name:
-                                results.append(
-                                    (dblnk, dblnk._contents.unmap_key(p)[len(root) :])
-                                )
-                    else:
-                        key = dblnk._match_contents(path)
-                        if key is not False:
-                            results.append((dblnk, key[len(root) :]))
-                search_future.set_result(results)
+                for cpv, key in matched.items():
+                    yield owner(cpv, key)
 
-            for cpv in self._vardb.cpv_all():
-                search_future = event_loop.create_future()
-                event_loop.call_soon(search_pkg, cpv, search_future)
-                event_loop.run_until_complete(search_future)
-                yield from search_future.result()
+            if basenames:
+                for parent, names in dir_owners.items():
+                    for name in basenames:
+                        for cpv in owners_of(names, name):
+                            yield owner(cpv, os.path.join(parent, name))
 
 
 class vartree:

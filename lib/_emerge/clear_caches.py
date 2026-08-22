@@ -9,6 +9,7 @@ def clear_caches(trees):
         d["porttree"].dbapi.melt()
         d["porttree"].dbapi._aux_cache.clear()
         d["bintree"].dbapi._clear_cache()
+        d["vartree"].dbapi._owners.clear()
         if d["vartree"].dbapi._linkmap is None:
             # preserve-libs is entirely disabled
             pass
