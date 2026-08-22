@@ -107,6 +107,10 @@ Features:
   every backtracking pass. Besides being wasted work, repeat passes derived
   dependencies from metadata an earlier pass had already rewritten.
 
+* emerge: Run pkg_pretend phases concurrently, subject to --jobs and
+  --load-average. Output from each package is still shown one package at a
+  time, in merge order (bug #579526).
+
 * Log when creating packdebug tarballs.
 
 * Log when creating binpkgs (bug #930213).

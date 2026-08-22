@@ -1,6 +1,7 @@
 # Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import gc
 import gzip
 import io
@@ -8,6 +9,7 @@ import logging
 import os
 import signal
 import sys
+import tempfile
 import textwrap
 import time
 import warnings
@@ -32,6 +34,7 @@ from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util.cgroup import DEFAULT_CGROUP_ROOT, CgroupManager
 from portage.util.futures import asyncio
+from portage.util.futures.iter_completed import async_iter_completed
 from portage.util.human_readable import bytes_to_human
 from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
@@ -121,6 +124,17 @@ class Scheduler(PollScheduler):
 
     class _failed_pkg(SlotObject):
         __slots__ = ("build_dir", "build_log", "pkg", "postinst_failure", "returncode")
+
+    class _pretend_result(SlotObject):
+        __slots__ = (
+            "build_dir",
+            "build_log",
+            "index",
+            "msgs",
+            "output",
+            "pkg",
+            "returncode",
+        )
 
     class _ConfigPool:
         """Interface for a task to temporarily allocate a config
@@ -887,272 +901,403 @@ class Scheduler(PollScheduler):
 
         return prefetcher
 
+    def _pkg_needs_pretend(self, pkg):
+        return (
+            isinstance(pkg, Package)
+            and pkg.operation != "uninstall"
+            and pkg.eapi not in ("0", "1", "2", "3")
+            and "pretend" in pkg.defined_phases
+        )
+
     async def _run_pkg_pretend(self, loop=None):
         """
         Since pkg_pretend output may be important, this method sends all
         output directly to stdout (regardless of options like --quiet or
         --jobs).
+
+        When more than one job is allowed, the phases run concurrently and
+        their output is buffered, then replayed in mergelist order.
         """
+        loop = asyncio._wrap_loop(loop or self._sched_iface)
+
+        pretend_pkgs = [x for x in self._mergelist if self._pkg_needs_pretend(x)]
+        if not pretend_pkgs:
+            return os.EX_OK
+
+        max_jobs = self._max_jobs
+        if max_jobs is True:
+            max_jobs = len(pretend_pkgs)
+        max_jobs = max(1, min(max_jobs, len(pretend_pkgs)))
+
+        # A max_load of True disables load average throttling, which is
+        # what we want when the user has not requested --load-average.
+        max_load = True if self._max_load is None else self._max_load
+
+        # With a single job there is nothing to interleave.
+        buffered = max_jobs > 1
+
+        def future_generator():
+            for index, pkg in enumerate(pretend_pkgs):
+                yield asyncio.ensure_future(
+                    self._run_pkg_pretend_one(index, pkg, buffered, loop), loop=loop
+                )
 
         failures = 0
-        sched_iface = loop = asyncio._wrap_loop(loop or self._sched_iface)
+        results = {}
+        next_index = 0
 
-        for x in self._mergelist:
-            if not isinstance(x, Package):
-                continue
+        for done_set_future in async_iter_completed(
+            future_generator(),
+            max_jobs=max_jobs,
+            max_load=max_load,
+            loop=loop,
+        ):
+            for future in await done_set_future:
+                result = future.result()
+                results[result.index] = result
 
-            if x.operation == "uninstall":
-                continue
-
-            if x.eapi in ("0", "1", "2", "3"):
-                continue
-
-            if "pretend" not in x.defined_phases:
-                continue
+            while next_index in results:
+                failures += self._emit_pkg_pretend_result(results.pop(next_index))
+                next_index += 1
 
             self._termination_check()
             if self._terminated_tasks:
                 raise asyncio.CancelledError
 
-            root_config = x.root_config
-            settings = self._allocate_config(root_config.root)
-            settings.setcpv(x)
+        if failures:
+            return FAILURE
+        return os.EX_OK
 
-            color = "PKG_BINARY_MERGE" if x.built else "INFORM"
-            self._status_msg(f"Running pre-merge checks for {colorize(color, x.cpv)}")
+    def _emit_pkg_pretend_result(self, result):
+        """
+        Send buffered pkg_pretend output to stdout and record a failure if
+        the job failed.
 
-            if not x.built:
-                # Get required SRC_URI metadata (it's not cached in x.metadata
-                # because some packages have an extremely large SRC_URI value).
-                portdb = root_config.trees["porttree"].dbapi
-                (settings.configdict["pkg"]["SRC_URI"],) = await portdb.async_aux_get(
-                    x.cpv, ["SRC_URI"], myrepo=x.repo, loop=loop
-                )
+        @rtype: int
+        @return: the number of failures (0 or 1)
+        """
+        for msg in result.msgs:
+            msg()
 
-            # setcpv/package.env allows for per-package PORTAGE_TMPDIR so we
-            # have to validate it for each package
-            rval = _check_temp_dir(settings)
-            if rval != os.EX_OK:
-                failures += 1
-                self._record_pkg_failure(x, settings, FAILURE)
-                self._deallocate_config(settings)
-                continue
+        if result.output:
+            # Use the file descriptor that unbuffered phase output would
+            # have gone to, and flush first so that pending output does not
+            # appear afterwards.
+            sys.stdout.flush()
+            sys.__stdout__.buffer.write(result.output)
+            sys.__stdout__.buffer.flush()
 
-            build_dir_path = os.path.join(
-                os.path.realpath(settings["PORTAGE_TMPDIR"]),
-                "portage",
-                x.category,
-                x.pf,
+        if result.returncode == os.EX_OK:
+            return 0
+
+        self._record_pkg_failure(
+            result.pkg, result.build_dir, result.build_log, result.returncode
+        )
+        return 1
+
+    def _read_pretend_log(self, capture_path):
+        """
+        Return the contents of a buffered pkg_pretend log, and remove it.
+        """
+        try:
+            with open(capture_path, "rb") as f:
+                return f.read()
+        finally:
+            os.unlink(capture_path)
+
+    async def _run_pkg_pretend_one(self, index, x, buffered, loop):
+        """
+        Run the pkg_pretend phase for a single package. If buffered is True
+        then all output is captured in the returned result, so that the
+        caller can replay it in mergelist order.
+
+        @rtype: Scheduler._pretend_result
+        """
+        sched_iface = loop
+
+        self._termination_check()
+        if self._terminated_tasks:
+            raise asyncio.CancelledError
+
+        msgs = []
+        capture_path = None
+        real_log_path = None
+        result = self._pretend_result(index=index, msgs=msgs, output=b"", pkg=x)
+
+        def add_msg(func, *args, **kwargs):
+            if buffered:
+                msgs.append(functools.partial(func, *args, **kwargs))
+            else:
+                func(*args, **kwargs)
+
+        def finish(returncode, settings):
+            result.build_dir = settings.get("PORTAGE_BUILDDIR")
+            result.build_log = (
+                real_log_path if buffered else settings.get("PORTAGE_LOG_FILE")
             )
-            existing_builddir = os.path.isdir(build_dir_path)
-            settings["PORTAGE_BUILDDIR"] = build_dir_path
-            build_dir = EbuildBuildDir(scheduler=sched_iface, settings=settings)
-            await build_dir.async_lock()
-            current_task = None
+            result.returncode = returncode
+            return result
 
-            try:
-                # Clean up the existing build dir, in case pkg_pretend
-                # checks for available space (bug #390711).
-                if existing_builddir:
-                    if x.built:
-                        tree = "bintree"
-                        infloc = os.path.join(build_dir_path, "build-info")
-                        ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
-                    else:
-                        tree = "porttree"
-                        portdb = root_config.trees["porttree"].dbapi
-                        ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
-                        if ebuild_path is None:
-                            raise AssertionError(f"ebuild not found for '{x.cpv}'")
-                    portage.package.ebuild.doebuild.doebuild_environment(
-                        ebuild_path,
-                        "clean",
-                        settings=settings,
-                        db=self.trees[settings["EROOT"]][tree].dbapi,
-                    )
-                    clean_phase = EbuildPhase(
-                        background=False,
-                        phase="clean",
-                        scheduler=sched_iface,
-                        settings=settings,
-                    )
-                    current_task = clean_phase
-                    clean_phase.start()
-                    await clean_phase.async_wait()
-                    current_task = None
+        root_config = x.root_config
+        settings = self._allocate_config(root_config.root)
+        settings.setcpv(x)
 
+        color = "PKG_BINARY_MERGE" if x.built else "INFORM"
+        add_msg(
+            self._status_msg, f"Running pre-merge checks for {colorize(color, x.cpv)}"
+        )
+
+        if not x.built:
+            # Get required SRC_URI metadata (it's not cached in x.metadata
+            # because some packages have an extremely large SRC_URI value).
+            portdb = root_config.trees["porttree"].dbapi
+            (settings.configdict["pkg"]["SRC_URI"],) = await portdb.async_aux_get(
+                x.cpv, ["SRC_URI"], myrepo=x.repo, loop=loop
+            )
+
+        # setcpv/package.env allows for per-package PORTAGE_TMPDIR so we
+        # have to validate it for each package
+        rval = _check_temp_dir(settings)
+        if rval != os.EX_OK:
+            finish(FAILURE, settings)
+            self._deallocate_config(settings)
+            return result
+
+        build_dir_path = os.path.join(
+            os.path.realpath(settings["PORTAGE_TMPDIR"]),
+            "portage",
+            x.category,
+            x.pf,
+        )
+        existing_builddir = os.path.isdir(build_dir_path)
+        settings["PORTAGE_BUILDDIR"] = build_dir_path
+        build_dir = EbuildBuildDir(scheduler=sched_iface, settings=settings)
+        await build_dir.async_lock()
+        current_task = None
+
+        try:
+            # Clean up the existing build dir, in case pkg_pretend
+            # checks for available space (bug #390711).
+            if existing_builddir:
                 if x.built:
                     tree = "bintree"
-                    bintree = root_config.trees["bintree"].dbapi.bintree
-                    fetched = False
-
-                    # Display fetch on stdout, so that it's always clear what
-                    # is consuming time here.
-                    if bintree.download_required(x.cpv):
-                        fetcher = self._get_prefetcher(x)
-                        if fetcher is not None and not fetcher.isAlive():
-                            # Cancel it because it hasn't started yet.
-                            fetcher.cancel()
-                            fetcher = None
-                        if fetcher is None:
-                            fetcher = BinpkgFetcher(pkg=x, scheduler=loop)
-                            fetcher.start()
-                            # We only set the fetched value when fetcher
-                            # is a BinpkgFetcher, since BinpkgPrefetcher
-                            # handles fetch, verification, and the
-                            # bintree.inject call which moves the file.
-                            fetched = fetcher.pkg_path
-                        else:
-                            msg = (
-                                "Fetching in the background:",
-                                fetcher.pkg_path,
-                                "To view fetch progress, run in another terminal:",
-                                f"tail -f {self._fetch_log}",
-                            )
-                            out = portage.output.EOutput()
-                            for l in msg:
-                                out.einfo(l)
-                        if await fetcher.async_wait() != os.EX_OK:
-                            failures += 1
-                            self._record_pkg_failure(x, settings, fetcher.returncode)
-                            continue
-
-                    if fetched is False:
-                        filename = bintree.getname(x.cpv)
-                    else:
-                        filename = fetched
-                    verifier = BinpkgVerifier(
-                        pkg=x, scheduler=sched_iface, _pkg_path=filename
-                    )
-                    current_task = verifier
-                    verifier.start()
-                    if await verifier.async_wait() != os.EX_OK:
-                        failures += 1
-                        self._record_pkg_failure(x, settings, verifier.returncode)
-                        continue
-
-                    current_task = None
-                    if fetched and bintree.get_local_repo_location(x.cpv):
-                        os.rename(fetched, fetcher.pkg_allocated_path)
-                    elif fetched:
-                        injected_pkg = None
-                        stdout_orig = sys.stdout
-                        stderr_orig = sys.stderr
-                        out = io.StringIO()
-                        try:
-                            sys.stdout = out
-                            sys.stderr = out
-
-                            injected_pkg = bintree.inject(
-                                x.cpv,
-                                current_pkg_path=fetched,
-                                allocated_pkg_path=fetcher.pkg_allocated_path,
-                            )
-                        finally:
-                            sys.stdout = stdout_orig
-                            sys.stderr = stderr_orig
-
-                        output_value = out.getvalue()
-                        if injected_pkg is None:
-                            msg = ["Binary package is not usable:"]
-                            if output_value:
-                                msg.extend(
-                                    "\t" + line for line in output_value.splitlines()
-                                )
-                            self._elog("eerror", msg)
-
-                            failures += 1
-                            self._record_pkg_failure(x, settings, 1)
-                            continue
-
                     infloc = os.path.join(build_dir_path, "build-info")
-                    ensure_dirs(infloc)
-                    try:
-                        await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
-                    except portage.exception.SignatureException as e:
-                        writemsg(
-                            f"!!! Invalid binary package: '{bintree.getname(x.cpv)}', {e}\n",
-                            noiselevel=-1,
-                        )
-                        failures += 1
-                        self._record_pkg_failure(x, settings, 1)
-                        continue
                     ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
-                    settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
-                    settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
-
                 else:
                     tree = "porttree"
                     portdb = root_config.trees["porttree"].dbapi
                     ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
                     if ebuild_path is None:
                         raise AssertionError(f"ebuild not found for '{x.cpv}'")
-                    settings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
-                    if self._build_opts.buildpkgonly:
-                        settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
-                    else:
-                        settings.configdict["pkg"]["MERGE_TYPE"] = "source"
-
                 portage.package.ebuild.doebuild.doebuild_environment(
                     ebuild_path,
-                    "pretend",
+                    "clean",
                     settings=settings,
                     db=self.trees[settings["EROOT"]][tree].dbapi,
                 )
-
-                prepare_build_dirs(root_config.root, settings, cleanup=0)
-
-                vardb = root_config.trees["vartree"].dbapi
-                settings["REPLACING_VERSIONS"] = " ".join(
-                    {
-                        portage.versions.cpv_getversion(match)
-                        for match in vardb.match(x.slot_atom) + vardb.match("=" + x.cpv)
-                    }
+                clean_phase = EbuildPhase(
+                    background=buffered,
+                    phase="clean",
+                    scheduler=sched_iface,
+                    settings=settings,
                 )
-                pretend_phase = EbuildPhase(
-                    phase="pretend", scheduler=sched_iface, settings=settings
+                current_task = clean_phase
+                clean_phase.start()
+                await clean_phase.async_wait()
+                current_task = None
+
+            if x.built:
+                tree = "bintree"
+                bintree = root_config.trees["bintree"].dbapi.bintree
+                fetched = False
+
+                # Display fetch on stdout, so that it's always clear what
+                # is consuming time here.
+                if bintree.download_required(x.cpv):
+                    fetcher = self._get_prefetcher(x)
+                    if fetcher is not None and not fetcher.isAlive():
+                        # Cancel it because it hasn't started yet.
+                        fetcher.cancel()
+                        fetcher = None
+                    if fetcher is None:
+                        fetcher = BinpkgFetcher(pkg=x, scheduler=loop)
+                        fetcher.start()
+                        # We only set the fetched value when fetcher
+                        # is a BinpkgFetcher, since BinpkgPrefetcher
+                        # handles fetch, verification, and the
+                        # bintree.inject call which moves the file.
+                        fetched = fetcher.pkg_path
+                    else:
+                        msg = (
+                            "Fetching in the background:",
+                            fetcher.pkg_path,
+                            "To view fetch progress, run in another terminal:",
+                            f"tail -f {self._fetch_log}",
+                        )
+                        out = portage.output.EOutput()
+                        for l in msg:
+                            add_msg(out.einfo, l)
+                    if await fetcher.async_wait() != os.EX_OK:
+                        return finish(fetcher.returncode, settings)
+
+                if fetched is False:
+                    filename = bintree.getname(x.cpv)
+                else:
+                    filename = fetched
+                verifier = BinpkgVerifier(
+                    pkg=x, scheduler=sched_iface, _pkg_path=filename
                 )
+                current_task = verifier
+                verifier.start()
+                if await verifier.async_wait() != os.EX_OK:
+                    return finish(verifier.returncode, settings)
 
-                current_task = pretend_phase
-                pretend_phase.start()
-                ret = await pretend_phase.async_wait()
-                # Leave current_task assigned in order to trigger clean
-                # on success in the below finally block.
-                if ret != os.EX_OK:
-                    failures += 1
-                    self._record_pkg_failure(x, settings, ret)
-            finally:
-                if current_task is not None:
-                    if current_task.isAlive():
-                        current_task.cancel()
+                current_task = None
+                if fetched and bintree.get_local_repo_location(x.cpv):
+                    os.rename(fetched, fetcher.pkg_allocated_path)
+                elif fetched:
+                    injected_pkg = None
+                    stdout_orig = sys.stdout
+                    stderr_orig = sys.stderr
+                    out = io.StringIO()
+                    try:
+                        sys.stdout = out
+                        sys.stderr = out
 
-                portage.elog.elog_process(x.cpv, settings)
+                        injected_pkg = bintree.inject(
+                            x.cpv,
+                            current_pkg_path=fetched,
+                            allocated_pkg_path=fetcher.pkg_allocated_path,
+                        )
+                    finally:
+                        sys.stdout = stdout_orig
+                        sys.stderr = stderr_orig
 
-                if current_task is not None and current_task.returncode == os.EX_OK:
-                    clean_phase = EbuildPhase(
-                        background=False,
-                        phase="clean",
-                        scheduler=sched_iface,
-                        settings=settings,
+                    output_value = out.getvalue()
+                    if injected_pkg is None:
+                        msg = ["Binary package is not usable:"]
+                        if output_value:
+                            msg.extend(
+                                "\t" + line for line in output_value.splitlines()
+                            )
+                        add_msg(
+                            writemsg,
+                            "".join(f"!!! {line}\n" for line in msg),
+                            noiselevel=-1,
+                        )
+
+                        return finish(1, settings)
+
+                infloc = os.path.join(build_dir_path, "build-info")
+                ensure_dirs(infloc)
+                try:
+                    await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
+                except portage.exception.SignatureException as e:
+                    add_msg(
+                        writemsg,
+                        f"!!! Invalid binary package: '{bintree.getname(x.cpv)}', {e}\n",
+                        noiselevel=-1,
                     )
-                    clean_phase.start()
-                    await clean_phase.async_wait()
+                    return finish(1, settings)
+                ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+                settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
+                settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
-                await build_dir.async_unlock()
-                self._deallocate_config(settings)
+            else:
+                tree = "porttree"
+                portdb = root_config.trees["porttree"].dbapi
+                ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
+                if ebuild_path is None:
+                    raise AssertionError(f"ebuild not found for '{x.cpv}'")
+                settings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
+                if self._build_opts.buildpkgonly:
+                    settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
+                else:
+                    settings.configdict["pkg"]["MERGE_TYPE"] = "source"
 
-        if failures:
-            return FAILURE
-        return os.EX_OK
+            portage.package.ebuild.doebuild.doebuild_environment(
+                ebuild_path,
+                "pretend",
+                settings=settings,
+                db=self.trees[settings["EROOT"]][tree].dbapi,
+            )
 
-    def _record_pkg_failure(self, pkg, settings, ret):
+            prepare_build_dirs(root_config.root, settings, cleanup=0)
+
+            if buffered:
+                # Redirect phase output to a temporary file, so that it can
+                # be replayed in mergelist order once this job completes.
+                real_log_path = settings.get("PORTAGE_LOG_FILE")
+                fd, capture_path = tempfile.mkstemp(
+                    dir=settings["T"], suffix=".pretend.log"
+                )
+                os.close(fd)
+                settings["PORTAGE_LOG_FILE"] = capture_path
+
+            vardb = root_config.trees["vartree"].dbapi
+            settings["REPLACING_VERSIONS"] = " ".join(
+                {
+                    portage.versions.cpv_getversion(match)
+                    for match in vardb.match(x.slot_atom) + vardb.match("=" + x.cpv)
+                }
+            )
+            pretend_phase = EbuildPhase(
+                background=buffered,
+                phase="pretend",
+                scheduler=sched_iface,
+                settings=settings,
+            )
+
+            current_task = pretend_phase
+            pretend_phase.start()
+            ret = await pretend_phase.async_wait()
+            # Leave current_task assigned in order to trigger clean
+            # on success in the below finally block.
+            return finish(ret, settings)
+        finally:
+            if current_task is not None:
+                if current_task.isAlive():
+                    current_task.cancel()
+
+            if capture_path is not None:
+                # Collect the phase output before the clean phase below
+                # removes it, and restore the real log file before settings
+                # is returned to the config pool.
+                result.output = self._read_pretend_log(capture_path)
+                if real_log_path is None:
+                    settings.pop("PORTAGE_LOG_FILE", None)
+                else:
+                    settings["PORTAGE_LOG_FILE"] = real_log_path
+                    if result.output:
+                        self._sched_iface.output(
+                            result.output.decode("utf-8", "replace"),
+                            log_path=real_log_path,
+                            background=True,
+                        )
+
+            portage.elog.elog_process(x.cpv, settings)
+
+            if current_task is not None and current_task.returncode == os.EX_OK:
+                clean_phase = EbuildPhase(
+                    background=buffered,
+                    phase="clean",
+                    scheduler=sched_iface,
+                    settings=settings,
+                )
+                clean_phase.start()
+                await clean_phase.async_wait()
+
+            await build_dir.async_unlock()
+            self._deallocate_config(settings)
+
+    def _record_pkg_failure(self, pkg, build_dir, build_log, ret):
         """Record a package failure. This eliminates the package
         from the --keep-going merge list, and immediately calls
         _failed_pkg_msg if we have not been terminated."""
         self._failed_pkgs.append(
             self._failed_pkg(
-                build_dir=settings.get("PORTAGE_BUILDDIR"),
-                build_log=settings.get("PORTAGE_LOG_FILE"),
+                build_dir=build_dir,
+                build_log=build_log,
                 pkg=pkg,
                 returncode=ret,
             )
