@@ -122,9 +122,7 @@ class DeletionTask(CompositeTask):
             self.returncode = 1
 
     def _success(self):
-        cpv = "unknown"
-        if self.config.distfiles_db is not None:
-            cpv = self.config.distfiles_db.get(self.distfile, cpv)
+        cpv = self.config.lookup_cpv(self.distfile)
 
         self.config.delete_count += 1
         self.config.log_success(f"{cpv}\t{self.distfile}\tremoved")
