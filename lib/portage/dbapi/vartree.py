@@ -581,6 +581,21 @@ class vardbapi(dbapi):
         except OSError:
             ensure_dirs(catdir)
 
+    def _pkg_identities(self):
+        """
+        Return a cpv -> (COUNTER, mtime) mapping of the installed packages.
+        Rewriting a package's vdb files changes its directory mtime.
+        """
+        aux_keys = ["COUNTER", "_mtime_"]
+        identities = {}
+        for cpv in self.cpv_all():
+            try:
+                identities[cpv] = tuple(self.aux_get(cpv, aux_keys))
+            except KeyError:
+                # Removed while we were looking.
+                continue
+        return identities
+
     def cpv_exists(self, mykey, myrepo=None):
         "Tells us whether an actual ebuild exists on disk (no masking)"
         return os.path.exists(self.getpath(mykey))
