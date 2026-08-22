@@ -1,7 +1,7 @@
 project(
     'portage',
     'c',
-    version : '3.0.81',
+    version : '3.0.82',
     license : 'GPL-2.0-only',
     meson_version : '>=0.58.0'
 )

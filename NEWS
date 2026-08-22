@@ -13,6 +13,10 @@ This release drops the Python 2 unicode conversion layer and has Portage
 activate UTF-8 mode instead. The Atom class also gains several proper
 types and string conversions all over the place have been dropped.
 
+There are significant performance improvements in dependency resolution,
+executing phases (by skipping them in some special but common cases for
+virtuals), and metadata handling.
+
 Breaking changes:
 
 * emerge: --info --verbose is now treated the same as --info, i.e. it will
@@ -53,8 +57,9 @@ Features:
   see make.conf(5) for details.
 
 * dep: Add a native C dependency-string parser, used by use_reduce() and
-  Atom construction. Set PORTAGE_NATIVE_DEP_PARSER=0 in the environment to
-  fall back to the pure-Python implementation; see emerge(1) for details.
+  Atom construction. If debugging is required, set PORTAGE_NATIVE_DEP_PARSER=0
+  in the environment to fall back to the pure-Python implementation;
+  see emerge(1) for details.
 
 * vartree: Write a consolidated per-package "metadata" file in the VDB and
   prefer it when reading installed-package metadata. This cuts most of the
@@ -96,6 +101,12 @@ Features:
 
 * Log when creating binpkgs (bug #930213).
 
+* EbuildPhase: Prefer C.UTF-8 where possible (bug #913903).
+
+  This pairs with the ::gentoo 40178ec5671e4e30c62370e179b2e645a55e288c change.
+
+* emerge: Print coreutils implementation and version in emerge --info.
+
 Bug fixes:
 
 * man: make.conf(5): Improve man text about disabling tests to not wrongly
@@ -127,6 +138,11 @@ Bug fixes:
 
 * emerge: Don't report that there are unsatisfied fetch restricted downloads
   when all the remaining unsatisfied downloads are not restricted (bug #830763).
+
+* spawn: Pass through QEMU_* for the benefit of qemu-user (bug #978685).
+
+* spawn: Move process supervisor code from pid-ns-init to workaround
+  sandbox issues with qemu-user (bug #703278).
 
 Cleanups:
 
