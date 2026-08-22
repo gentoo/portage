@@ -5656,7 +5656,7 @@ class dblink:
                 # os.readlink() call inside abssymlink(), since that
                 # call is unsafe if the merge encoding is not ascii
                 # or utf_8 (see bug #382021).
-                myabsto = abssymlink(mysrc, target=myto)
+                myabsto = abssymlink(mysrc, target=myto, srcroot=srcroot)
 
                 myabsto = myabsto.removeprefix(srcroot)
                 myabsto = myabsto.lstrip(sep)
