@@ -1657,7 +1657,7 @@ def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests, fetchonly):
         fetch,
     )
 
-    if sys.version_info >= (3, 14):
+    if multiprocessing.get_start_method() == "forkserver":
         # Since we typically drop privileges for userfetch here,
         # a forkserver shared with the parent would open privilege
         # escalation issues that are better to avoid, therefore
