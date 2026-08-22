@@ -5,6 +5,7 @@ import functools
 import io
 import logging
 import os
+import re
 import shutil
 import sys
 
@@ -370,6 +371,66 @@ class Binpkg(CompositeTask):
                 f.write(v + "\n")
             finally:
                 f.close()
+
+        # report any user patches applied when binary was built
+        user_patch_digests = os.path.join(infloc, "user_patch.digests")
+        if os.path.exists(user_patch_digests):
+            with open(user_patch_digests, "rb") as f:
+                tokens = f.read().strip(b"\0").split(b"\0")
+            hashes = tokens[0::2]
+            basenames = tokens[1::2]
+            hashes_ok = all(re.match(rb"^[0-9A-Fa-f]{64}$", h) for h in hashes)
+            basenames_ok = all(re.match(rb"[^/]+\.(patch|diff)$", b) for b in basenames)
+            count_ok = len(hashes) == len(basenames) == len(tokens) / 2
+
+            out = portage.output.EOutput()
+            if count_ok and hashes_ok and basenames_ok:
+                digests = {
+                    h.decode().lower(): os.fsdecode(f)
+                    for h, f in zip(hashes, basenames)
+                }
+
+                horiz_term_bar = lambda: out.ebinfo(
+                    colorize("PKG_BINARY_MERGE", (out.term_columns - 3) * "=")
+                )
+                min_digest = 8
+                min_basename = 25
+                max_basename = max(out.term_columns - min_digest - 6, min_basename)
+
+                out.ebinfo("This binary package was built with user patches applied:")
+                horiz_term_bar()
+                for digest, basename in digests.items():
+                    basename = re.sub("[\x01-\x1f\x7f]", "?", basename)
+                    max_digest = max(out.term_columns - len(basename) - 6, min_digest)
+                    basename = basename[:max_basename]
+                    digest = digest[:max_digest]
+                    out.ebinfo(
+                        "%s%*s%s"
+                        % (
+                            basename,
+                            out.term_columns - len(basename) - len(digest) - 4,
+                            "",
+                            digest,
+                        )
+                    )
+                horiz_term_bar()
+
+                if (
+                    self.pkg not in self.settings._user_patches
+                    or self.settings._user_patches[self.pkg] != pkg.user_patches
+                ):
+                    out.ewarn("")
+                    out.ewarn(
+                        "User patches in binary package different than configured for ebuild!!!"
+                    )
+                    out.ewarn("")
+                out.ebinfo("")
+            else:
+                out.ewarn("")
+                out.ewarn(
+                    "This binary package has invalid user patch digest metadata!!!"
+                )
+                out.ewarn("")
 
         # Store the md5sum in the vdb.
         if pkg_path is not None:

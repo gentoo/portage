@@ -5,6 +5,7 @@
 
 __all__ = [
     "Atom",
+    "_build_id_separator",
     "_repo_name_re",
     "_repo_separator",
     "_slot_separator",
@@ -252,6 +253,8 @@ _repo_name_re = re.compile(rf"^{_repo_name}\Z", re.ASCII)
 _extended_cat = r"[\w+*][\w+.*-]*"
 
 _slot_dep_re_cache = {}
+
+_build_id_separator = "-"
 
 
 def _get_slot_dep_re(eapi_attrs: _eapi_attrs) -> re.Pattern:
