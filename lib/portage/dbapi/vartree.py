@@ -1791,46 +1791,13 @@ class vardbapi(dbapi):
 class vartree:
     "this tree will scan a var/db/pkg database located at root (passed to init)"
 
-    def __init__(
-        self, root=None, virtual=DeprecationWarning, categories=None, settings=None
-    ):
+    def __init__(self, categories=None, settings=None):
         if settings is None:
             settings = portage.settings
-
-        if root is not None and root != settings["ROOT"]:
-            warnings.warn(
-                "The 'root' parameter of the "
-                "portage.dbapi.vartree.vartree"
-                " constructor is now unused. Use "
-                "settings['ROOT'] instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if virtual is not DeprecationWarning:
-            warnings.warn(
-                "The 'virtual' parameter of the "
-                "portage.dbapi.vartree.vartree"
-                " constructor is unused",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         self.settings = settings
         self.dbapi = vardbapi(settings=settings, vartree=self)
         self.populated = 1
-
-    @property
-    def root(self):
-        warnings.warn(
-            "The root attribute of "
-            "portage.dbapi.vartree.vartree"
-            " is deprecated. Use "
-            "settings['ROOT'] instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self.settings["ROOT"]
 
     def getpath(self, mykey, filename=None):
         return self.dbapi.getpath(mykey, filename=filename)
