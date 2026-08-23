@@ -3018,26 +3018,6 @@ class config:
                 elif k in self:
                     self.configlist[-1][k] = ""
 
-    @property
-    def virts_p(self):
-        warnings.warn(
-            "portage config.virts_p attribute "
-            + "is deprecated, use config.get_virts_p()",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.get_virts_p()
-
-    @property
-    def virtuals(self):
-        warnings.warn(
-            "portage config.virtuals attribute "
-            + "is deprecated, use config.getvirtuals()",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.getvirtuals()
-
     def get_virts_p(self):
         # Ensure that we don't trigger the _treeVirtuals
         # assertion in VirtualsManager._compile_virtuals().
