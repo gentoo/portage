@@ -23,3 +23,22 @@ class StackDictListTestCase(TestCase):
             self.assertEqual(
                 stack_dictlist([test[0], test[1]], incremental=test[2]), test[3]
             )
+
+    def testStackDictListAtomValues(self):
+        from portage.dep import Atom
+        from portage.util import stack_dictlist
+
+        virt = Atom("virtual/editor")
+        result = stack_dictlist(
+            [
+                {virt: [Atom("app-editors/vim"), Atom("app-editors/emacs")]},
+                {virt: ["-app-editors/vim", Atom("app-editors/nano")]},
+            ],
+            incremental=True,
+        )
+
+        self.assertEqual(
+            result, {virt: [Atom("app-editors/emacs"), Atom("app-editors/nano")]}
+        )
+        for provider in result[virt]:
+            self.assertIsInstance(provider, Atom)

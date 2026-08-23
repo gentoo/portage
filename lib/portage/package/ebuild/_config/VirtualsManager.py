@@ -232,7 +232,7 @@ class VirtualsManager:
         virts = self.getvirtuals()
         virts_p = {}
         for x in virts:
-            vkeysplit = x.split("/")
+            vkeysplit = str(x).split("/")
             if vkeysplit[1] not in virts_p:
                 virts_p[vkeysplit[1]] = virts[x]
         self._virts_p = virts_p

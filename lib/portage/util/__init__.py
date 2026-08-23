@@ -242,9 +242,9 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
                         if thing == "-*":
                             final_dict[y] = []
                             continue
-                        elif thing[:1] == "-":
+                        elif str(thing)[:1] == "-":
                             try:
-                                final_dict[y].remove(thing[1:])
+                                final_dict[y].remove(str(thing)[1:])
                             except ValueError:
                                 pass
                             continue
