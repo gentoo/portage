@@ -374,7 +374,6 @@ class vardbapi(dbapi):
 
     def __init__(
         self,
-        _unused_param=DeprecationWarning,
         categories=None,
         settings=None,
         vartree=None,
@@ -404,16 +403,6 @@ class vardbapi(dbapi):
         if settings is None:
             settings = portage.settings
         self.settings = settings
-
-        if _unused_param is not DeprecationWarning:
-            warnings.warn(
-                "The first parameter of the "
-                "portage.dbapi.vartree.vardbapi"
-                " constructor is now unused. Instead "
-                "settings['ROOT'] is used.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         self._eroot = settings["EROOT"]
         self._dbroot = self._eroot + VDB_PATH
