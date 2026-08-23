@@ -1452,9 +1452,10 @@ class config:
 
         abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"], USER_VIRTUALS_FILE)
         if os.path.exists(abs_user_virtuals):
-            writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
-            writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
-            writemsg("!!! this new location.\n\n")
+            writemsg("\n!!! /etc/portage/virtuals is deprecated and ignored.\n")
+            writemsg("!!! Support for PROVIDE virtuals was removed in\n")
+            writemsg("!!! portage-2.3.25; use GLEP 37 virtual packages\n")
+            writemsg("!!! instead. Please remove this file.\n\n")
 
         if not sandbox_capable and (
             "sandbox" in self.features or "usersandbox" in self.features
