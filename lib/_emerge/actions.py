@@ -1,4 +1,4 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -16,7 +16,6 @@ import sys
 import tempfile
 import textwrap
 import time
-import warnings
 from itertools import chain
 
 import portage
@@ -2460,23 +2459,8 @@ def action_search(root_config, myopts, myfiles):
 
 def action_sync(
     emerge_config,
-    trees=DeprecationWarning,
-    mtimedb=DeprecationWarning,
-    opts=DeprecationWarning,
-    action=DeprecationWarning,
 ):
     from portage.emaint.modules.sync.sync import SyncRepos
-
-    if not isinstance(emerge_config, _emerge_config):
-        warnings.warn(
-            "_emerge.actions.action_sync() now expects "
-            "an _emerge_config instance as the first parameter",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        emerge_config = load_emerge_config(
-            action=action, args=[], trees=trees, opts=opts
-        )
 
     syncer = SyncRepos(emerge_config)
     return_messages = "--quiet" not in emerge_config.opts
