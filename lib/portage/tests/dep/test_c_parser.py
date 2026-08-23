@@ -1013,7 +1013,20 @@ class TestScanAtom(_AtomParityMixin, TestCase):
                 self._assert_same(s, eapi="8")
 
     def test_conflicting_use_rejected(self):
-        self._assert_same("cat/pkg[a(+),-a]", eapi="8")
+        # A flag's missing-USE default must be spelled the same way at every
+        # occurrence.  Repeating a flag is otherwise fine.
+        for s in (
+            "cat/pkg[a(+),-a]",
+            "cat/pkg[a(+),a(-)]",
+            "cat/pkg[a(-),a]",
+            "cat/pkg[a,a(+)]",
+            "cat/pkg[a(+),b,-a(+)]",
+            "cat/pkg[a,-a]",
+            "cat/pkg[a(+),-a(+)]",
+        ):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+                self._assert_use_reduce_same(s)
         self._assert_same("cat/pkg[a,a]", eapi="8")
 
     def test_repo_and_build_id_fall_back(self):

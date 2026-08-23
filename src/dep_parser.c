@@ -551,6 +551,33 @@ py_classify_use_deps(UNUSED PyObject *self, PyObject *arg)
             SET_LAZY(cneq); SET_ADD(cneq, flag);
         }
 
+        /* A flag's missing-USE default has to be spelled the same way at
+         * every occurrence, so "[a(+),a(-)]" and "[a(+),-a]" are invalid.
+         * _use_dep rejects them when it tokenizes the use deps itself, and
+         * this shortcut has to reject them too. */
+        PyObject *conflicts[2];
+        if (def > 0) {
+            conflicts[0] = md;
+            conflicts[1] = req;
+        } else if (def < 0) {
+            conflicts[0] = me;
+            conflicts[1] = req;
+        } else {
+            conflicts[0] = me;
+            conflicts[1] = md;
+        }
+
+        for (int j = 0; j < ARRAY_SIZE(conflicts); j++) {
+            int dup = PySet_Contains(conflicts[j], flag);
+            if (dup < 0)
+                return NULL;
+
+            if (dup) {
+                PyErr_Format(PyExc_ValueError, "invalid use dep token: %R", tok);
+                return NULL;
+            }
+        }
+
         /* required = flags without a default */
         if (!def)         SET_ADD(req, flag);
         if (def > 0)      SET_ADD(me,  flag);
