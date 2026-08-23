@@ -308,28 +308,16 @@ int scan_atom(DepScanner *p, AtomInfo *info)
 
     /* first name-word */
     const char *pkg = s;
-    if (s >= p->end)
+    /* PMS: as for a category, only the first character is restricted, and
+     * '+' may not lead.  A word of nothing but digits is a name like any
+     * other ("games-emulation/81-libretro"); it cannot be mistaken for a
+     * version, which is only reached through the '-' segment loop below. */
+    if (s >= p->end || !is_nw_char(*s) || *s == '+')
         goto fail;
 
-    if (is_alpha_c(*s) || *s == '_') {
+    s++;
+    while (s < p->end && is_nw_char(*s)) {
         s++;
-        while (s < p->end && is_nw_char(*s)) {
-            s++;
-        }
-    } else if (is_digit_c(*s)) {
-        while (s < p->end && is_digit_c(*s)) {
-            s++;
-        }
-
-        if (s >= p->end || (!is_alpha_c(*s) && *s != '_'))
-            goto fail;
-
-        s++;
-        while (s < p->end && is_nw_char(*s)) {
-            s++;
-        }
-    } else {
-        goto fail;
     }
 
     {
