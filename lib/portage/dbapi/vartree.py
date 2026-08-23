@@ -62,6 +62,7 @@ from portage.exception import (
 from portage.localization import _
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
+
 from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
 _METADATA_FILE = "metadata"
