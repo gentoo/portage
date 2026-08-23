@@ -1,4 +1,4 @@
-# Copyright 2010-2025 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -17,7 +17,6 @@ import re
 import shlex
 import sys
 import traceback
-import warnings
 from itertools import chain
 
 from _emerge.Package import Package
@@ -40,10 +39,7 @@ from portage.const import (
 from portage.dbapi import dbapi
 from portage.dep import (
     Atom,
-    _repo_separator,
-    _slot_separator,
     isvalidatom,
-    match_from_list,
     use_reduce,
 )
 from portage.eapi import (
@@ -2405,40 +2401,6 @@ class config:
         return self._mask_manager.getRawMaskAtom(
             cpv, metadata["SLOT"], metadata.get("repository")
         )
-
-    def _getProfileMaskAtom(self, cpv, metadata):
-        """
-        Take a package and return a matching profile atom, or None if no
-        such atom exists. Note that a profile atom may or may not have a "*"
-        prefix.
-
-        @param cpv: The package name
-        @type cpv: String
-        @param metadata: A dictionary of raw package metadata
-        @type metadata: dict
-        @rtype: String
-        @return: A matching profile atom string or None if one is not found.
-        """
-
-        warnings.warn(
-            "The config._getProfileMaskAtom() method is deprecated.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        cp = cpv_getkey(cpv)
-        profile_atoms = self.prevmaskdict.get(cp)
-        if profile_atoms:
-            pkg = "".join((cpv, _slot_separator, metadata["SLOT"]))
-            repo = metadata.get("repository")
-            if repo and repo != Package.UNKNOWN_REPO:
-                pkg = "".join((pkg, _repo_separator, repo))
-            pkg_list = [pkg]
-            for x in profile_atoms:
-                if match_from_list(x, pkg_list):
-                    continue
-                return x
-        return None
 
     def _isStable(self, pkg):
         return self._keywords_manager.isStable(
