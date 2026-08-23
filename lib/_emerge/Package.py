@@ -1,7 +1,6 @@
-# Copyright 1999-2021 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import warnings
 from itertools import chain
 
 import portage
@@ -200,15 +199,6 @@ class Package(Task):
     @property
     def restrict(self):
         return self._metadata.restrict
-
-    @property
-    def metadata(self):
-        warnings.warn(
-            "_emerge.Package.Package.metadata is deprecated",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self._metadata
 
     # These are calculated on-demand, so that they are calculated
     # after FakeVartree applies its metadata tweaks.
