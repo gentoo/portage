@@ -1,4 +1,4 @@
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
 
@@ -9,7 +9,6 @@ import operator
 import os
 import shlex
 import stat
-import warnings
 
 from portage import checksum
 from portage.exception import FileNotFound, PermissionDenied
@@ -56,14 +55,7 @@ class cache:
     Maintains the cache information about eclasses used in ebuild.
     """
 
-    def __init__(self, porttree_root, overlays=None):
-        if overlays is not None:
-            warnings.warn(
-                "overlays parameter of portage.eclass_cache.cache constructor is deprecated and no longer used",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
+    def __init__(self, porttree_root):
         self.eclasses = {}  # {"Name": hashed_path}
         self._eclass_locations = {}
         self._eclass_locations_str = None
