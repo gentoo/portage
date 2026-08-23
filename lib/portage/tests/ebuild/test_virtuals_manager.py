@@ -4,6 +4,7 @@
 import os
 import shutil
 import tempfile
+import warnings
 
 import portage
 from portage.dep import Atom
@@ -111,3 +112,15 @@ class VirtualsManagerTestCase(TestCase):
             virtuals_manager.get_virts_p(),
             {"editor": [Atom("app-editors/vim")]},
         )
+
+    def testDeprecationWarning(self):
+        profile = self._profile("profile", ["virtual/editor app-editors/vim"])
+        self.assertWarnsRegex(UserWarning, "is deprecated", VirtualsManager, [profile])
+
+    def testNoDeprecationWarning(self):
+        empty = self._profile("empty", [])
+        missing = self._profile("missing")
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            VirtualsManager([empty, missing])
+        self.assertEqual([str(x.message) for x in recorded], [])

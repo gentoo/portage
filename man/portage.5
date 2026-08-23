@@ -584,11 +584,9 @@ doc
 .BR virtuals
 The virtuals file controls default preferences for virtuals that
 are defined via the \fBPROVIDE\fR ebuild variable (see
-\fBebuild\fR(5)). Since Gentoo now uses \fBGLEP 37\fR virtuals
-instead of \fBPROVIDE\fR virtuals, the virtuals file is
-irrelevant for all Gentoo ebuilds. However, it is still possible
-for third\-parties to distribute ebuilds that make use of
-\fBPROVIDE\fR.
+\fBebuild\fR(5)). Support for \fBPROVIDE\fR was removed in
+portage\-2.3.25, so this file is deprecated and its use generates
+a warning. Use \fBGLEP 37\fR virtual packages instead.
 
 .I Format:
 .nf
