@@ -1181,6 +1181,22 @@ class TestScanAtomNameGrammar(_AtomParityMixin, TestCase):
             with self.subTest(s=s):
                 self._assert_same(s, eapi="8")
 
+    def test_hyphens_that_do_not_start_a_version(self):
+        # A '-' that is not followed by a complete version is an ordinary
+        # name character, wherever it appears, so these names run to the end
+        # of the token rather than ending at the '-'.
+        for s in (
+            "dev-util/diff-mode-",
+            "dev-util/timidity--",
+            "dev-util/frob---",
+            "dev-util/diffball-9-",
+            "dev-util/foo-2048+",
+            "dev-util/foo-9-bar",
+        ):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+                self._assert_use_reduce_same(s)
+
     def test_all_digit_name_word(self):
         # bug 981298: a name word made only of digits is a name, not a
         # version, so "games-emulation/81-libretro" is an ordinary

@@ -328,11 +328,10 @@ int scan_atom(DepScanner *p, AtomInfo *info)
 
         /* additional '-' segments: name-word or version */
         for (;;) {
-            if (s >= p->end || *s != '-' || s + 1 >= p->end)
+            if (s >= p->end || *s != '-')
                 break;
 
-            char nxt = s[1];
-            if (is_digit_c(nxt)) {
+            if (s + 1 < p->end && is_digit_c(s[1])) {
                 DepScanner tmp = { s + 1, p->end, NULL };
                 if (scan_version(&tmp)) {
                     ver = s + 1;
@@ -341,30 +340,15 @@ int scan_atom(DepScanner *p, AtomInfo *info)
                     s = tmp.cur;
                     goto after_pkgver;
                 }
+            }
 
-                const char *t = s + 1;
-                while (t < p->end && is_digit_c(*t)) {
-                    t++;
-                }
-
-                if (t < p->end && (is_alpha_c(*t) || *t == '_')) {
-                    t++;
-                    while (t < p->end && is_nw_char(*t)) {
-                        t++;
-                    }
-                    s = t;
-                } else if (t < p->end && *t == '-') {
-                    s = t;
-                } else {
-                    break;
-                }
-            } else if (is_alpha_c(nxt) || nxt == '_') {
-                s += 2;
-                while (s < p->end && is_nw_char(*s)) {
-                    s++;
-                }
-            } else {
-                break;
+            /* Not a version, so this '-' is an ordinary name character, and
+             * it needs no successor: PMS forbids a name from starting with
+             * '-', not from ending with one.  "dev-util/timidity--" and
+             * "dev-util/diffball-9-" are names. */
+            s++;
+            while (s < p->end && is_nw_char(*s)) {
+                s++;
             }
         }
         pkg_end = s;
