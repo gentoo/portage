@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import gc
@@ -10,7 +10,6 @@ import signal
 import sys
 import textwrap
 import time
-import warnings
 import weakref
 import zlib
 from collections import deque
@@ -157,20 +156,10 @@ class Scheduler(PollScheduler):
         mtimedb,
         myopts,
         spinner,
-        mergelist=None,
         favorites=None,
         graph_config=None,
     ):
         PollScheduler.__init__(self, main=True)
-
-        if mergelist is not None:
-            warnings.warn(
-                "The mergelist parameter of the "
-                + "_emerge.Scheduler constructor is now unused. Use "
-                + "the graph_config parameter instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         self.settings = settings
         self.target_root = settings["EROOT"]
