@@ -768,7 +768,6 @@ _doebuild_commands_without_builddir = (
 def doebuild(
     myebuild,
     mydo,
-    _unused=DeprecationWarning,
     settings=None,
     debug=0,
     listonly=0,
@@ -852,15 +851,6 @@ def doebuild(
         raise TypeError("settings parameter is required")
     mysettings = settings
     myroot = settings["EROOT"]
-
-    if _unused is not DeprecationWarning:
-        warnings.warn(
-            "The third parameter of the "
-            "portage.doebuild() is deprecated. Instead "
-            "settings['EROOT'] is used.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
     if not tree:
         writemsg("Warning: tree not specified to doebuild\n")
