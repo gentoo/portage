@@ -1,4 +1,4 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import stat
-import warnings
 
 from portage.const import MANIFEST2_HASH_DEFAULTS, MANIFEST2_IDENTIFIERS
 from portage.exception import (
@@ -117,7 +116,6 @@ class Manifest:
         pkgdir,
         distdir=None,
         fetchlist_dict=None,
-        manifest1_compat=DeprecationWarning,
         from_scratch=False,
         thin=False,
         allow_missing=False,
@@ -135,14 +133,6 @@ class Manifest:
             distfiles."""
         from portage.checksum import get_valid_checksum_keys
         from portage.repository.config import _find_invalid_path_char
-
-        if manifest1_compat is not DeprecationWarning:
-            warnings.warn(
-                "The manifest1_compat parameter of the "
-                "portage.manifest.Manifest constructor is deprecated.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         if find_invalid_path_char is None:
             find_invalid_path_char = _find_invalid_path_char
