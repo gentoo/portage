@@ -814,15 +814,6 @@ class binarytree:
 
         return moves
 
-    def prevent_collision(self, cpv):
-        warnings.warn(
-            "The "
-            "portage.dbapi.bintree.binarytree.prevent_collision "
-            "method is deprecated.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
     def _ensure_dir(self, path):
         """
         Create the specified directory. Also, copy gid and group mode
