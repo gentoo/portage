@@ -1,10 +1,9 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["digestcheck"]
 
 import os
-import warnings
 
 from portage.checksum import _hash_filter
 from portage.exception import DigestException, FileNotFound
@@ -13,22 +12,12 @@ from portage.output import EOutput
 from portage.util import writemsg
 
 
-def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
+def digestcheck(myfiles, mysettings, strict=False, mf=None):
     """
     Verifies checksums. Assumes all files have been downloaded.
     @rtype: int
     @return: 1 on success and 0 on failure
     """
-
-    if justmanifest is not None:
-        warnings.warn(
-            "The justmanifest parameter of the "
-            + "portage.package.ebuild.digestcheck.digestcheck()"
-            + " function is now unused.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        justmanifest = None
 
     if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
         return 1
