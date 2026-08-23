@@ -938,6 +938,22 @@ class _AtomParityMixin:
             c, c_exc = None, type(e)
         return (py, py_exc), (c, c_exc)
 
+    def _assert_use_reduce_same(self, s, eapi="8"):
+        """Assert that both paths accept or reject s identically.
+
+        Atom() falls back to the regex path when scan_atom rejects a string,
+        so _assert_same passes even for a scanner that rejects too much.
+        use_reduce has no such fallback: a token the C parser will not scan
+        as an atom is a hard error there."""
+        results = []
+        for use_c in (False, True):
+            with _use_c_parser(use_c):
+                try:
+                    results.append(str(use_reduce(s, token_class=Atom, eapi=eapi)))
+                except InvalidDependString:
+                    results.append(None)
+        self.assertEqual(results[0], results[1], f"{s!r}: use_reduce mismatch")
+
     def _assert_same(self, s, **kw):
         (py, pe), (c, ce) = self._both(s, **kw)
         self.assertEqual(pe, ce, f"{s!r}: exception {pe} vs {ce}")
@@ -1077,6 +1093,10 @@ class TestScanAtomNameGrammar(_AtomParityMixin, TestCase):
         "frob---",
         "diffball-9-",
         "7z",
+        "81",
+        "2048",
+        "81-libretro",
+        "12+",
         "xf86-video-r128",
         "emacs-cvs",
     )
@@ -1160,6 +1180,27 @@ class TestScanAtomNameGrammar(_AtomParityMixin, TestCase):
         ):
             with self.subTest(s=s):
                 self._assert_same(s, eapi="8")
+
+    def test_all_digit_name_word(self):
+        # bug 981298: a name word made only of digits is a name, not a
+        # version, so "games-emulation/81-libretro" is an ordinary
+        # unversioned atom.
+        for s in (
+            "games-emulation/81-libretro",
+            "games-emulation/2048-libretro",
+            "games-arcade/2048",
+            "cat/81",
+            "cat/81:0",
+            "cat/81[foo]",
+            "!cat/81",
+            "cat/81-r1",
+            "=cat/81-1.0",
+            "=games-emulation/81-libretro-1.2-r3",
+            "cat/81-1.0",
+        ):
+            with self.subTest(s=s):
+                self._assert_same(s, eapi="8")
+                self._assert_use_reduce_same(s)
 
     def test_slot_grammar(self):
         # ":=" and ":*" are whole slot deps, not sub-slots, and the "="
