@@ -9,6 +9,7 @@ py.install_sources(
         'test_prepare_self_update.py',
         'test_spawn.py',
         'test_use_expand_incremental.py',
+        'test_virtuals_manager.py',
         '__init__.py',
         '__test__.py',
     ],
