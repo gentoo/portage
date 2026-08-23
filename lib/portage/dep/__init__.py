@@ -1,4 +1,4 @@
-# Copyright 2003-2025 Gentoo Authors
+# Copyright 2003-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """deps.py -- Portage dependency resolution functions"""
@@ -14,8 +14,6 @@ __all__ = [
     "dep_getkey",
     "dep_getslot",
     "dep_getusedeps",
-    "dep_opconvert",
-    "flatten",
     "get_operator",
     "isjustname",
     "isspecific",
@@ -23,10 +21,8 @@ __all__ = [
     "match_from_list",
     "match_to_list",
     "paren_enclose",
-    "paren_normalize",
     "paren_reduce",
     "remove_slot",
-    "strip_empty",
     "use_reduce",
 ]
 
@@ -455,24 +451,6 @@ def cpvequal(cpv1: Union[str, _pkg_str], cpv2: Union[str, _pkg_str]) -> bool:
     return vercmp(cpv1.version, cpv2.version) == 0
 
 
-def strip_empty(myarr):
-    """
-    Strip all empty elements from an array
-
-    @param myarr: The list of elements
-    @type myarr: List
-    @rtype: Array
-    @return: The array with empty elements removed
-    """
-    warnings.warn(
-        _("%s is deprecated and will be removed without replacement.")
-        % ("portage.dep.strip_empty",),
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return [x for x in myarr if x]
-
-
 def paren_reduce(mystr, _deprecation_warn=True):
     """
     Take a string and convert all paren enclosed entities into sublists and
@@ -589,51 +567,6 @@ def paren_reduce(mystr, _deprecation_warn=True):
         raise InvalidDependString(_("malformed syntax: '%s'") % mystr)
 
     return stack[0]
-
-
-class paren_normalize(list):
-    """Take a dependency structure as returned by paren_reduce or use_reduce
-    and generate an equivalent structure that has no redundant lists."""
-
-    def __init__(self, src):
-        if portage._internal_caller:
-            warnings.warn(
-                _("%s is deprecated and will be removed without replacement.")
-                % ("portage.dep.paren_normalize",),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        list.__init__(self)
-        self._zap_parens(src, self)
-
-    def _zap_parens(self, src, dest, disjunction=False):
-        if not src:
-            return dest
-        i = iter(src)
-        for x in i:
-            if isinstance(x, str):
-                if x in ("||", "^^"):
-                    y = self._zap_parens(next(i), [], disjunction=True)
-                    if len(y) == 1:
-                        dest.append(y[0])
-                    else:
-                        dest.append(x)
-                        dest.append(y)
-                elif x.endswith("?"):
-                    dest.append(x)
-                    dest.append(self._zap_parens(next(i), []))
-                else:
-                    dest.append(x)
-            else:
-                if disjunction:
-                    x = self._zap_parens(x, [])
-                    if len(x) == 1:
-                        dest.append(x[0])
-                    else:
-                        dest.append(x)
-                else:
-                    self._zap_parens(x, dest)
-        return dest
 
 
 _ParenEncloseType = list[Union[str, "Atom", "_ParenEncloseType"]]
@@ -1167,78 +1100,6 @@ def use_reduce(
 
     # The list returned by this function may be modified, so return a copy.
     return result[:]
-
-
-def dep_opconvert(deplist):
-    """
-    Iterate recursively through a list of deps, if the
-    dep is a '||' or '&&' operator, combine it with the
-    list of deps that follows..
-
-    Example usage:
-            >>> test = ["blah", "||", ["foo", "bar", "baz"]]
-            >>> dep_opconvert(test)
-            ['blah', ['||', 'foo', 'bar', 'baz']]
-
-    @param deplist: A list of deps to format
-    @type deplist: List
-    @rtype: List
-    @return:
-            The new list with the new ordering
-    """
-    if portage._internal_caller:
-        warnings.warn(
-            _(
-                "%s is deprecated. Use %s with the opconvert parameter set to True instead."
-            )
-            % ("portage.dep.dep_opconvert", "portage.dep.use_reduce"),
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-    retlist = []
-    x = 0
-    while x != len(deplist):
-        if isinstance(deplist[x], list):
-            retlist.append(dep_opconvert(deplist[x]))
-        elif deplist[x] == "||":
-            retlist.append([deplist[x]] + dep_opconvert(deplist[x + 1]))
-            x += 1
-        else:
-            retlist.append(deplist[x])
-        x += 1
-    return retlist
-
-
-def flatten(mylist):
-    """
-    Recursively traverse nested lists and return a single list containing
-    all non-list elements that are found.
-
-    @param mylist: A list containing nested lists and non-list elements.
-    @type mylist: List
-    @rtype: List
-    @return: A single list containing only non-list elements.
-
-    Example usage:
-            >>> flatten([1, [2, 3, [4]]])
-            [1, 2, 3, 4]
-    """
-    if portage._internal_caller:
-        warnings.warn(
-            _("%s is deprecated and will be removed without replacement.")
-            % ("portage.dep.flatten",),
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-    newlist = []
-    for x in mylist:
-        if isinstance(x, list):
-            newlist.extend(flatten(x))
-        else:
-            newlist.append(x)
-    return newlist
 
 
 class _use_dep:
