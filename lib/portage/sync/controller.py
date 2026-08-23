@@ -1,4 +1,4 @@
-# Copyright 2014-2024 Gentoo Authors
+# Copyright 2014-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import grp
@@ -6,7 +6,6 @@ import logging
 import os
 import pwd
 import sys
-import warnings
 
 from _emerge.CompositeTask import CompositeTask
 
@@ -102,17 +101,6 @@ class SyncManager:
     @property
     def module_names(self):
         return self.module_controller.module_names
-
-    def __getattr__(self, name):
-        if name == "async":
-            warnings.warn(
-                "portage.sync.controller.SyncManager.async "
-                "has been renamed to sync_async",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return self.sync_async
-        raise AttributeError(name)
 
     def get_module_descriptions(self, mod):
         desc = self.module_controller.get_func_descriptions(mod)
