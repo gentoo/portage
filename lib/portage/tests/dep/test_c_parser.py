@@ -974,6 +974,12 @@ class _AtomParityMixin:
             self.assertEqual(str(py._use or ""), str(c._use or ""), f"{s!r}: use")
             self.assertEqual(str(py), str(c))
 
+        # Atom() accepting through the regex fallback proves nothing about
+        # the scanner, so check the no-fallback path too.  Only Atom()
+        # takes allow_wildcard and friends, so those cases opt out.
+        if not set(kw) - {"eapi"}:
+            self._assert_use_reduce_same(s, **kw)
+
 
 class TestScanAtom(_AtomParityMixin, TestCase):
     """Test that _parser.scan_atom + Atom._c_fast_init matches the pure-Python
