@@ -5,7 +5,6 @@ import os
 import tempfile
 
 import portage
-from portage.tests import TestCase
 from portage.dbapi.vartree import (
     _METADATA_FILE,
     _METADATA_FILE_FIELDS,
@@ -17,6 +16,7 @@ from portage.dbapi.vartree import (
     _write_metadata_file,
     vardbapi,
 )
+from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
 
