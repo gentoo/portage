@@ -1,11 +1,10 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import re
 import stat
 import sys
-import warnings
 
 from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.dep import (
@@ -126,32 +125,6 @@ def update_dbentries(update_iter, mydata, eapi=None, parent=None):
                     mycontent = mycontent.encode("utf-8", "backslashreplace")
                 updated_items[k] = mycontent
     return updated_items
-
-
-def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
-    """Performs update commands which result in search and replace operations
-    for each of the files in dbdir (excluding CONTENTS and environment.bz2).
-    Returns True when actual modifications are necessary and False otherwise."""
-    from portage.util import write_atomic
-
-    warnings.warn(
-        "portage.update.fixdbentries() is deprecated", DeprecationWarning, stacklevel=2
-    )
-
-    mydata = {}
-    for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
-        file_path = os.path.join(dbdir, myfile)
-        with open(
-            file_path,
-            encoding="utf-8",
-            errors="replace",
-        ) as f:
-            mydata[myfile] = f.read()
-    updated_items = update_dbentries(update_iter, mydata, eapi=eapi, parent=parent)
-    for myfile, mycontent in updated_items.items():
-        file_path = os.path.join(dbdir, myfile)
-        write_atomic(file_path, mycontent, encoding="utf-8")
-    return len(updated_items) > 0
 
 
 def grab_updates(updpath, prev_mtimes=None):

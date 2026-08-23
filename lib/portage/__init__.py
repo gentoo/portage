@@ -80,7 +80,7 @@ try:
         "portage.package.ebuild.prepare_build_dirs:prepare_build_dirs",
         "portage.process",
         "portage.process:atexit_register,run_exitfuncs",
-        "portage.update:dep_transform,fixdbentries,grab_updates,"
+        "portage.update:dep_transform,grab_updates,"
         + "parse_updates,update_config_files,update_dbentries,"
         + "update_dbentry",
         "portage.util",
