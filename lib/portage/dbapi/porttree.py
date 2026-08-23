@@ -1622,18 +1622,6 @@ class portagetree:
         self.dbapi = portdbapi(mysettings=settings)
 
     @property
-    def portroot(self):
-        """Deprecated. Use the portdbapi getRepositoryPath method instead."""
-        warnings.warn(
-            "The portroot attribute of "
-            "portage.dbapi.porttree.portagetree is deprecated. Use the "
-            "portdbapi getRepositoryPath method instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self.settings["PORTDIR"]
-
-    @property
     def root(self):
         warnings.warn(
             "The root attribute of "
@@ -1677,21 +1665,6 @@ class portagetree:
         """new behavior: these are all *unmasked* nodes.  There may or may not be available
         masked package for nodes in this nodes list."""
         return self.dbapi.cp_all()
-
-    def getname(self, pkgname):
-        """Deprecated. Use the portdbapi findname method instead."""
-        warnings.warn(
-            "The getname method of "
-            "portage.dbapi.porttree.portagetree is deprecated. "
-            "Use the portdbapi findname method instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if not pkgname:
-            return ""
-        mysplit = pkgname.split("/")
-        psplit = pkgsplit(mysplit[1])
-        return "/".join([self.portroot, mysplit[0], psplit[0], mysplit[1]]) + ".ebuild"
 
     def getslot(self, mycatpkg):
         "Get a slot for a catpkg; assume it exists."
