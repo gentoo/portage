@@ -97,26 +97,9 @@ from _emerge.UserQuery import UserQuery
 
 def action_build(
     emerge_config,
-    trees=DeprecationWarning,
-    mtimedb=DeprecationWarning,
-    myopts=DeprecationWarning,
-    myaction=DeprecationWarning,
-    myfiles=DeprecationWarning,
     spinner=None,
 ):
     from _emerge.chk_updated_cfg_files import chk_updated_cfg_files
-
-    if not isinstance(emerge_config, _emerge_config):
-        warnings.warn(
-            "_emerge.actions.action_build() now expects "
-            "an _emerge_config instance as the first parameter",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        emerge_config = load_emerge_config(
-            action=myaction, args=myfiles, trees=trees, opts=myopts
-        )
-        adjust_configs(emerge_config.opts, emerge_config.trees)
 
     settings, trees, mtimedb = emerge_config
     myopts = emerge_config.opts
