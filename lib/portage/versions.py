@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2025 Gentoo Authors
+# Copyright 1998-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -17,7 +17,6 @@ __all__ = [
 
 import re
 import typing
-import warnings
 from collections.abc import Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -527,21 +526,6 @@ def cpv_getkey(mycpv: Union[_pkg_str, str], eapi: Any = None) -> Optional[str]:
     mysplit = catpkgsplit(mycpv, eapi=eapi)
     if mysplit is not None:
         return mysplit[0] + "/" + mysplit[1]
-
-    warnings.warn(
-        "portage.versions.cpv_getkey() " + f"called with invalid cpv: '{mycpv}'",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    myslash = mycpv.split("/", 1)
-    mysplit = _pkgsplit(myslash[-1], eapi=eapi)
-    if mysplit is None:
-        return None
-    mylen = len(myslash)
-    if mylen == 2:
-        return myslash[0] + "/" + mysplit[0]
-    return mysplit[0]
 
 
 def cpv_getversion(mycpv: Union[str, _pkg_str], eapi: Any = None) -> Optional[str]:
