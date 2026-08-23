@@ -173,29 +173,6 @@ class portdbapi(dbapi):
     def _categories(self):
         return self.settings.categories
 
-    @property
-    def porttree_root(self):
-        warnings.warn(
-            "portage.dbapi.porttree.portdbapi.porttree_root is deprecated in favor of portage.repository.config.RepoConfig.location "
-            "(available as repositories[repo_name].location attribute of instances of portage.dbapi.porttree.portdbapi class)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.settings.repositories.mainRepoLocation()
-
-    @property
-    def eclassdb(self):
-        warnings.warn(
-            "portage.dbapi.porttree.portdbapi.eclassdb is deprecated in favor of portage.repository.config.RepoConfig.eclass_db "
-            "(available as repositories[repo_name].eclass_db attribute of instances of portage.dbapi.porttree.portdbapi class)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        main_repo = self.repositories.mainRepo()
-        if main_repo is None:
-            return None
-        return main_repo.eclass_db
-
     def __init__(self, _unused_param=DeprecationWarning, mysettings=None):
         """
         @param _unused_param: deprecated, use mysettings['PORTDIR'] instead
