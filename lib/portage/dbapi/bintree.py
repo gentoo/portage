@@ -16,7 +16,6 @@ import textwrap
 import time
 import traceback
 import urllib
-import warnings
 from gzip import GzipFile
 from itertools import chain
 from pathlib import PurePath
@@ -630,18 +629,6 @@ class binarytree:
                 chain(*self._pkgindex_translated_keys),
             )
         )
-
-    @property
-    def root(self):
-        warnings.warn(
-            "The root attribute of "
-            "portage.dbapi.bintree.binarytree"
-            " is deprecated. Use "
-            "settings['ROOT'] instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self.settings["ROOT"]
 
     def move_ent(self, mylist, repo_match=None):
         from portage.dep import isjustname, isvalidatom

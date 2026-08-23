@@ -446,18 +446,6 @@ class vardbapi(dbapi):
 
         return os.access(first_existing(self._dbroot), os.W_OK)
 
-    @property
-    def root(self):
-        warnings.warn(
-            "The root attribute of "
-            "portage.dbapi.vartree.vardbapi"
-            " is deprecated. Use "
-            "settings['ROOT'] instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self.settings["ROOT"]
-
     def getpath(self, mykey, filename=None):
         # This is an optimized hotspot, so don't use unicode-wrapped
         # os module and don't use os.path.join().

@@ -1,8 +1,7 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import warnings
 
 import portage
 from portage.const import VDB_PATH
@@ -94,18 +93,6 @@ class FakeVartree(vartree):
         self._portdb_keys = Package._dep_keys + ("EAPI", "KEYWORDS")
         self._portdb = portdb
         self._global_updates = None
-
-    @property
-    def root(self):
-        warnings.warn(
-            "The root attribute of "
-            "_emerge.FakeVartree.FakeVartree"
-            " is deprecated. Use "
-            "settings['ROOT'] instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self.settings["ROOT"]
 
     def _match_wrapper(self, cpv, use_cache=1):
         """
