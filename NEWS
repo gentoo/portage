@@ -9,6 +9,12 @@ Release notes take the form of the following optional categories:
 portage-3.0.83 (UNRELEASED)
 --------------
 
+Breaking changes:
+
+* Output a deprecation warning when a profile 'virtuals' file is used.
+  Support for PROVIDE virtuals was removed in portage-2.3.25, so these
+  files are obsolete; use GLEP 37 virtual packages instead (bug #981272).
+
 Features:
 
 * Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
