@@ -1806,6 +1806,7 @@ class vartree:
         from portage.dbapi.dep_expand import dep_expand
         from portage.versions import best
 
+        # FIXME: DeprecationWarning?
         "compatibility method -- all matches, not just visible ones"
         # mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
         mymatch = best(
@@ -1819,6 +1820,7 @@ class vartree:
         return mymatch
 
     def dep_match(self, mydep, use_cache=1):
+        # FIXME: DeprecationWarning?
         "compatibility method -- we want to see all matches, not just visible ones"
         # mymatch = match(mydep,self.dbapi)
         mymatch = self.dbapi.match(mydep, use_cache=use_cache)
@@ -1832,6 +1834,7 @@ class vartree:
     def getallcpv(self):
         """temporary function, probably to be renamed --- Gets a list of all
         category/package-versions installed on the system."""
+        # FIXME: DeprecationWarning?
         return self.dbapi.cpv_all()
 
     def getallnodes(self):

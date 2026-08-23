@@ -2429,6 +2429,7 @@ class binarytree:
         from portage.util import writemsg
         from portage.versions import best
 
+        # FIXME: DeprecationWarning?
         "compatibility method -- all matches, not just visible ones"
         if not self.populated:
             self.populate()

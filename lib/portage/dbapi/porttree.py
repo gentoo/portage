@@ -1561,6 +1561,7 @@ class portagetree:
         self.dbapi = portdbapi(mysettings=settings)
 
     def dep_bestmatch(self, mydep):
+        # FIXME: DeprecationWarning?
         "compatibility method"
         mymatch = self.dbapi.xmatch("bestmatch-visible", mydep)
         if mymatch is None:
@@ -1568,6 +1569,7 @@ class portagetree:
         return mymatch
 
     def dep_match(self, mydep):
+        # FIXME: DeprecationWarning?
         "compatibility method"
         mymatch = self.dbapi.xmatch("match-visible", mydep)
         if mymatch is None:
