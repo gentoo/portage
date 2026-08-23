@@ -9306,15 +9306,7 @@ class depgraph:
 
         mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
-    def altlist(self, reversed=DeprecationWarning):  # pylint: disable=redefined-builtin
-        if reversed is not DeprecationWarning:
-            warnings.warn(
-                "The reversed parameter of "
-                "_emerge.depgraph.depgraph.altlist() is deprecated",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
+    def altlist(self):
         while self._dynamic_config._serialized_tasks_cache is None:
             self._resolve_conflicts()
             try:
@@ -9326,11 +9318,6 @@ class depgraph:
                 pass
 
         retlist = self._dynamic_config._serialized_tasks_cache
-        if reversed is not DeprecationWarning and reversed:
-            # TODO: remove the "reversed" parameter (builtin name collision)
-            retlist = list(retlist)
-            retlist.reverse()
-            retlist = tuple(retlist)
 
         return retlist
 
