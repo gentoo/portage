@@ -76,7 +76,7 @@ class _BuildTimes:
     build -> merge hand-off.
     """
 
-    __slots__ = ("start", "finished", "resources")
+    __slots__ = ("finished", "resources", "start")
 
     def __init__(self, start):
         self.start = start
