@@ -173,10 +173,8 @@ class portdbapi(dbapi):
     def _categories(self):
         return self.settings.categories
 
-    def __init__(self, _unused_param=DeprecationWarning, mysettings=None):
+    def __init__(self, mysettings=None):
         """
-        @param _unused_param: deprecated, use mysettings['PORTDIR'] instead
-        @type _unused_param: None
         @param mysettings: an immutable config instance
         @type mysettings: portage.config
         """
@@ -190,16 +188,6 @@ class portdbapi(dbapi):
             self.settings = mysettings
         else:
             self.settings = config(clone=portage.settings)
-
-        if _unused_param is not DeprecationWarning:
-            warnings.warn(
-                "The first parameter of the "
-                + "portage.dbapi.porttree.portdbapi"
-                + " constructor is unused since portage-2.1.8. "
-                + "mysettings['PORTDIR'] is used instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         self.repositories = self.settings.repositories
         self.treemap = self.repositories.treemap
@@ -1558,16 +1546,10 @@ class portdbapi(dbapi):
 
 
 class portagetree:
-    def __init__(
-        self, root=DeprecationWarning, virtual=DeprecationWarning, settings=None
-    ):
+    def __init__(self, settings=None):
         """
         Constructor for a PortageTree
 
-        @param root: deprecated, defaults to settings['ROOT']
-        @type root: String/Path
-        @param virtual: UNUSED
-        @type virtual: No Idea
         @param settings: Portage Configuration object (portage.settings)
         @type settings: Instance of portage.config
         """
@@ -1576,50 +1558,7 @@ class portagetree:
             settings = portage.settings
         self.settings = settings
 
-        if root is not DeprecationWarning:
-            warnings.warn(
-                "The root parameter of the "
-                + "portage.dbapi.porttree.portagetree"
-                + " constructor is now unused. Use "
-                + "settings['ROOT'] instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if virtual is not DeprecationWarning:
-            warnings.warn(
-                "The 'virtual' parameter of the "
-                "portage.dbapi.porttree.portagetree"
-                " constructor is unused",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        self.__virtual = virtual
         self.dbapi = portdbapi(mysettings=settings)
-
-    @property
-    def root(self):
-        warnings.warn(
-            "The root attribute of "
-            + "portage.dbapi.porttree.portagetree"
-            + " is deprecated. Use "
-            + "settings['ROOT'] instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self.settings["ROOT"]
-
-    @property
-    def virtual(self):
-        warnings.warn(
-            "The 'virtual' attribute of "
-            + "portage.dbapi.porttree.portagetree"
-            + " is deprecated.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self.__virtual
 
     def dep_bestmatch(self, mydep):
         "compatibility method"

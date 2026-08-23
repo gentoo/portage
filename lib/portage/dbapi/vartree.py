@@ -2442,7 +2442,6 @@ class dblink:
     def unmerge(
         self,
         pkgfiles=None,
-        trimworld=None,
         cleanup=True,
         ldpath_mtimes=None,
         others_in_slot=None,
@@ -2458,8 +2457,6 @@ class dblink:
 
         @param pkgfiles: files to unmerge (generally self.getcontents() )
         @type pkgfiles: Dictionary
-        @param trimworld: Unused
-        @type trimworld: Boolean
         @param cleanup: cleanup to pass to doebuild (see doebuild)
         @type cleanup: Boolean
         @param ldpath_mtimes: mtimes to pass to env_update (see env_update)
@@ -2486,15 +2483,6 @@ class dblink:
         from portage.util._async.SchedulerInterface import SchedulerInterface
         from portage.util.env_update import env_update
         from portage.versions import catsplit, cpv_getkey
-
-        if trimworld is not None:
-            warnings.warn(
-                "The trimworld parameter of the "
-                + "portage.dbapi.vartree.dblink.unmerge()"
-                + " method is now unused.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         background = False
         log_path = self.settings.get("PORTAGE_LOG_FILE")
@@ -3452,7 +3440,7 @@ class dblink:
                         for parent in sorted(set(recursive_parents)):
                             dirs.append((parent, revisit.pop(parent)))
 
-    def isowner(self, filename, destroot=None):
+    def isowner(self, filename):
         """
         Check if a file belongs to this package. This may
         result in a stat call for the parent directory of
@@ -3464,27 +3452,14 @@ class dblink:
 
         @param filename:
         @type filename:
-        @param destroot:
-        @type destroot:
         @rtype: Boolean
         @return:
         1. True if this package owns the file.
         2. False if this package does not own the file.
         """
-
-        if destroot is not None and destroot != self._eroot:
-            warnings.warn(
-                "The second parameter of the "
-                + "portage.dbapi.vartree.dblink.isowner()"
-                + " is now unused. Instead "
-                + "self.settings['EROOT'] will be used.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
         return bool(self._match_contents(filename))
 
-    def _match_contents(self, filename, destroot=None):
+    def _match_contents(self, filename):
         """
         The matching contents entry is returned, which is useful
         since the path may differ from the one given by the caller,
@@ -3498,16 +3473,6 @@ class dblink:
 
         if isinstance(filename, bytes):
             filename = filename.decode("utf-8", "strict")
-
-        if destroot is not None and destroot != self._eroot:
-            warnings.warn(
-                "The second parameter of the "
-                + "portage.dbapi.vartree.dblink._match_contents()"
-                + " is now unused. Instead "
-                + "self.settings['ROOT'] will be used.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         # don't use EROOT here, image already contains EPREFIX
         destroot = self.settings["ROOT"]
