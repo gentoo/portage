@@ -490,9 +490,7 @@ class binarytree:
 
     def __init__(
         self,
-        _unused=DeprecationWarning,
         pkgdir=None,
-        virtual=DeprecationWarning,
         settings=None,
     ):
         from portage.util import normalize_path
@@ -502,25 +500,6 @@ class binarytree:
 
         if settings is None:
             raise TypeError("settings parameter is required")
-
-        if _unused is not DeprecationWarning:
-            warnings.warn(
-                "The first parameter of the "
-                "portage.dbapi.bintree.binarytree"
-                " constructor is now unused. Instead "
-                "settings['ROOT'] is used.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if virtual is not DeprecationWarning:
-            warnings.warn(
-                "The 'virtual' parameter of the "
-                "portage.dbapi.bintree.binarytree"
-                " constructor is unused",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         self.pkgdir = normalize_path(pkgdir)
         # NOTE: Event if binpkg-multi-instance is disabled, it's

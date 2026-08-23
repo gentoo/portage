@@ -1,4 +1,4 @@
-# Copyright 2022-2025 Gentoo Authors
+# Copyright 2022-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -40,16 +40,6 @@ class BinarytreeTestCase(TestCase):
         with self.assertRaises(TypeError) as cm:
             binarytree(pkgdir=os.getenv("TMPDIR", "/tmp"))
         self.assertEqual(str(cm.exception), "settings parameter is required")
-
-    def test_init_with_legacy_params_warns(self):
-        with self.assertWarns(DeprecationWarning):
-            binarytree(
-                _unused=None, pkgdir=os.getenv("TMPDIR", "/tmp"), settings=MagicMock()
-            )
-        with self.assertWarns(DeprecationWarning):
-            binarytree(
-                virtual=None, pkgdir=os.getenv("TMPDIR", "/tmp"), settings=MagicMock()
-            )
 
     def test_instance_has_required_attrs(self):
         # Quite smoky test. What would it be a better testing strategy?
