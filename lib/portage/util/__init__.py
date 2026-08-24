@@ -40,6 +40,7 @@ __all__ = [
     "new_protect_filename",
     "no_color",
     "normalize_path",
+    "split_interned",
     "stack_dictlist",
     "stack_dicts",
     "stack_lists",
@@ -67,12 +68,26 @@ import tempfile
 import traceback
 from contextlib import AbstractContextManager
 from copy import deepcopy
+from functools import lru_cache
 from itertools import chain, filterfalse
 from typing import Optional, TextIO
 
 import portage
 
 noiselimit = 0
+
+
+@lru_cache(maxsize=4096)
+def split_interned(value: str) -> tuple:
+    """
+    Split a whitespace separated metadata value, interning the tokens.
+
+    Metadata like IUSE and USE repeats the same flag names in thousands of
+    packages, and str.split() creates a new string object for every one of
+    them. Interning the tokens makes all of those packages share a single
+    instance of each flag name.
+    """
+    return tuple(sys.intern(token) for token in value.split())
 
 
 def initialize_logger(level=logging.WARNING) -> None:

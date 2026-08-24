@@ -1,6 +1,7 @@
 # Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
 from itertools import chain
 
 import portage
@@ -17,6 +18,7 @@ from portage.dep import (
 from portage.dep.soname.parse import parse_soname_deps
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
+from portage.util import split_interned
 from portage.versions import _pkg_str, _unknown_repo
 
 from _emerge.Task import Task
@@ -141,7 +143,7 @@ class Package(Task):
 
         implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
         self.iuse = self._iuse(
-            self, self._metadata["IUSE"].split(), implicit_match, self.eapi
+            self, split_interned(self._metadata["IUSE"]), implicit_match, self.eapi
         )
 
         if (self.iuse.enabled or self.iuse.disabled) and not eapi_attrs.iuse_defaults:
@@ -716,7 +718,7 @@ class Package(Task):
             # inconsistencies in USE dep matching (see bug #453400).
             use_str = self._metadata["USE"]
             is_valid_flag = self.iuse.is_valid_flag
-            enabled_flags = [x for x in use_str.split() if is_valid_flag(x)]
+            enabled_flags = [x for x in split_interned(use_str) if is_valid_flag(x)]
             use_str = " ".join(enabled_flags)
             self._use = self._use_class(self, enabled_flags)
         else:
@@ -728,7 +730,7 @@ class Package(Task):
             if not use_str:
                 use_str = self._get_pkgsettings()["PORTAGE_USE"]
                 calculated_use = True
-            self._use = self._use_class(self, use_str.split())
+            self._use = self._use_class(self, split_interned(use_str))
             # Initialize these now, since USE access has just triggered
             # setcpv, and we want to cache the result of the force/mask
             # calculations that were done.
@@ -759,10 +761,13 @@ class Package(Task):
             other = []
             for x in tokens:
                 prefix = x[:1]
+                # Stripping the IUSE default creates a new string, so intern
+                # the result as well. These are the names that USE matching
+                # compares against, so they are worth sharing.
                 if prefix == "+":
-                    enabled.append(x[1:])
+                    enabled.append(sys.intern(x[1:]))
                 elif prefix == "-":
-                    disabled.append(x[1:])
+                    disabled.append(sys.intern(x[1:]))
                 else:
                     other.append(x)
             self.enabled = frozenset(enabled)
@@ -936,7 +941,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
     def _set_inherited(self, k, v):
         if isinstance(v, str):
-            v = frozenset(v.split())
+            v = frozenset(split_interned(v))
         self._pkg.inherited = v
 
     def _set_counter(self, k, v):
