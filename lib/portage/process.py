@@ -816,20 +816,22 @@ def has_ipv6():
     """
     global __has_ipv6
 
-    if __has_ipv6 is None:
-        if socket.has_ipv6:
-            sock = None
-            try:
-                # With ipv6.disable=0 and ipv6.disable_ipv6=1, socket creation
-                # succeeds, but then the bind call fails with this error:
-                # [Errno 99] Cannot assign requested address.
-                with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as sock:
-                    sock.bind(("::1", 0))
-            except OSError:
-                __has_ipv6 = False
+    if __has_ipv6 is not None:
+        return __has_ipv6
+
+    __has_ipv6 = False
+    if socket.has_ipv6:
+        sock = None
+        try:
+            # With ipv6.disable=0 and ipv6.disable_ipv6=1, socket creation
+            # succeeds, but then the bind call fails with this error:
+            # [Errno 99] Cannot assign requested address.
+            with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as sock:
+                sock.bind(("::1", 0))
+
             __has_ipv6 = True
-        else:
-            __has_ipv6 = False
+        except OSError:
+            pass
 
     return __has_ipv6
 
