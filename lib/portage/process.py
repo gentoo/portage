@@ -821,7 +821,6 @@ def has_ipv6():
 
     __has_ipv6 = False
     if socket.has_ipv6:
-        sock = None
         try:
             # With ipv6.disable=0 and ipv6.disable_ipv6=1, socket creation
             # succeeds, but then the bind call fails with this error:
