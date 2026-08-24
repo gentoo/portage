@@ -126,7 +126,7 @@ def _c_atom_from_c(catom, eapi, eapi_attrs, uselist, matchall):
             a = a.evaluate_conditionals(uselist)
     else:
         a._use = None
-    return a
+    return _intern_atom(a)
 
 
 def _c_convert_result(items, eapi, eapi_attrs, uselist, matchall):
@@ -981,6 +981,13 @@ def _use_reduce_cached(
                     if not matchall and hasattr(token, "evaluate_conditionals"):
                         token = token.evaluate_conditionals(uselist)
 
+                    if type(token) is Atom:
+                        # The is_valid_flag check above is the only part of
+                        # construction which is not a pure function of the
+                        # constructor arguments, so interning has to happen
+                        # here rather than in Atom.__new__.
+                        token = _intern_atom(token)
+
             stack[level].append(token)
 
     if level != 0:
@@ -1555,14 +1562,90 @@ def _intern_use_dep(use_dep):
     return use_dep
 
 
+# Atom instances are immutable, apart from the lazily computed without_use
+# cache. There are two caches because there are two ways to reach a canonical
+# instance: by the parsed state of an instance which already exists, and by
+# the arguments which would construct one. Their keys are not interchangeable,
+# so they must not share a dict.
+_atom_intern_cache = weakref.WeakValueDictionary()
+_atom_ctor_cache = weakref.WeakValueDictionary()
+
+
+def _atom_intern_key(atom):
+    unevaluated_atom = atom._unevaluated_atom
+    orig_atom = atom._orig_atom
+    blocker = atom._blocker_obj
+    return (
+        atom._string,
+        atom._eapi,
+        atom._extended_syntax,
+        atom._repo,
+        atom._build_id,
+        atom._use,
+        (
+            None
+            if unevaluated_atom is atom
+            else (unevaluated_atom._string, unevaluated_atom._eapi)
+        ),
+        None if orig_atom is None else (orig_atom._string, orig_atom._eapi),
+        None if blocker is None else blocker.overlap.forbid,
+    )
+
+
+def _intern_atom(atom):
+    """
+    Return a canonical instance which is equal by value to the given Atom
+    instance (possibly the given instance itself).
+    """
+    key = _atom_intern_key(atom)
+    cached = _atom_intern_cache.get(key)
+    if cached is not None:
+        return cached
+    _atom_intern_cache[key] = atom
+    return atom
+
+
+def _atom_ctor_key(
+    s, unevaluated_atom, allow_wildcard, allow_repo, _use, eapi, allow_build_id
+):
+    """
+    Cache key for Atom instances created via the Atom constructor. The
+    parsed state of an Atom is fully determined by these arguments, so
+    instances that share a key are interchangeable. Atom instances hash by
+    string alone, so they are reduced to (string, eapi) pairs here in order
+    to avoid conflating atoms which differ in EAPI.
+
+    Return None for an argument which the constructor accepts but which
+    cannot be part of a key. Everything else it accepts is a string, a flag
+    or a _use_dep, all of which are hashable.
+    """
+    if type(s) is not str:
+        return None
+    if unevaluated_atom is not None:
+        if not isinstance(unevaluated_atom, Atom):
+            return None
+        unevaluated_atom = (unevaluated_atom._string, unevaluated_atom._eapi)
+    return (
+        s,
+        unevaluated_atom,
+        allow_wildcard,
+        allow_repo,
+        _use,
+        eapi,
+        allow_build_id,
+    )
+
+
 class Atom:
     __slots__ = (
+        "__weakref__",
         "_blocker_obj",
         "_build_id",
         "_cp",
         "_cpv",
         "_eapi",
         "_extended_syntax",
+        "_intern_key",
         "_operator",
         "_orig_atom",
         "_repo",
@@ -1803,6 +1886,53 @@ class Atom:
                 category="EAPI.incompatible",
             )
 
+    def __new__(
+        cls,
+        s=None,
+        unevaluated_atom=None,
+        allow_wildcard=False,
+        allow_repo=None,
+        _use=None,
+        eapi=None,
+        is_valid_flag=None,
+        allow_build_id=None,
+        orig_atom=None,
+    ):
+        # An is_valid_flag callable makes the constructor raise for USE
+        # conditionals which are not in IUSE, so those instances are not
+        # interchangeable with the ones that skip the check.
+        if s is None or is_valid_flag is not None or orig_atom is not None:
+            return object.__new__(cls)
+
+        key = _atom_ctor_key(
+            s, unevaluated_atom, allow_wildcard, allow_repo, _use, eapi, allow_build_id
+        )
+        if key is None:
+            return object.__new__(cls)
+
+        cached = _atom_ctor_cache.get(key)
+        if cached is not None:
+            return cached
+
+        instance = object.__new__(cls)
+        # Remember the key, so that __init__ can add the fully initialized
+        # instance to the cache.
+        instance._intern_key = key
+        return instance
+
+    def _finish_intern(self):
+        """
+        Add a newly initialized instance to the intern cache, if __new__
+        found it eligible.
+        """
+        try:
+            key = self._intern_key
+        except AttributeError:
+            return
+        # The cache holds the only reference to the key from here on.
+        del self._intern_key
+        _atom_ctor_cache[key] = self
+
     def __init__(
         self,
         s,
@@ -1815,6 +1945,13 @@ class Atom:
         allow_build_id=None,
         orig_atom=None,
     ):
+        if getattr(self, "_string", None) is not None:
+            # __new__ returned an instance from the intern cache, which is
+            # already initialized with an identical set of arguments. Only
+            # an initialized instance has _string, and only a fully
+            # initialized one reaches the cache.
+            return
+
         if isinstance(s, Atom):
             # This is an efficiency assertion, to ensure that the Atom
             # constructor is not called redundantly.
@@ -1860,6 +1997,7 @@ class Atom:
                 self._c_fast_init(
                     catom, eapi, eapi_attrs, is_valid_flag, unevaluated_atom
                 )
+                self._finish_intern()
                 return
 
         if s[:1] == "!":
@@ -2057,6 +2195,8 @@ class Atom:
                     _("Strong blocks are not allowed in EAPI %s: '%s'") % (eapi, self),
                     category="EAPI.incompatible",
                 )
+
+        self._finish_intern()
 
     @property
     def slot_operator_built(self) -> bool:
