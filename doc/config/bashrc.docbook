@@ -30,6 +30,7 @@
 	<sect1 id='config-bashrc-ebuild-die-hooks'>
 		<title>Ebuild Die Hooks</title>
 		<para>
+		Often referred to as "death hooks".
 		The register_die_hook function registers one or more names of functions
 		to call when the ebuild fails for any reason, including file collisions
 		with other packages.
