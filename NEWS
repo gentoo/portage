@@ -22,6 +22,10 @@ Features:
   VDB (var database) to skip writing files that are already identical on
   disk, which saves I/O and reduces filesystem cache pressure.
 
+* emerge: Reduce the memory used by a dependency calculation. Interning the
+  atoms, USE dependencies, USE flag names and flag sets that packages have in
+  common cuts the peak of "emerge -puDN @world" by about 46% (bug #240320).
+
 portage-3.0.82 (2026-08-22)
 --------------
 

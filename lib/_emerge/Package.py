@@ -23,6 +23,24 @@ from portage.versions import _pkg_str, _unknown_repo
 
 from _emerge.Task import Task
 
+# Packages hold several frozensets which are derived from metadata that
+# thousands of them have in common, and CPython shares none of them, not even
+# the empty one. The number of distinct values is bounded by the number of
+# distinct IUSE and USE values in the repositories, which is a few thousand.
+#
+# Unlike the caches in portage.dep this one holds strong references, since
+# frozenset does not support weak references.
+_frozensets = {}
+
+
+def _intern_frozenset(value):
+    """
+    Return a canonical frozenset which is equal to the given value.
+    """
+    if type(value) is not frozenset:
+        value = frozenset(value)
+    return _frozensets.setdefault(value, value)
+
 
 class Package(Task):
     __hash__ = Task.__hash__
@@ -631,16 +649,13 @@ class Package(Task):
     class _use_class:
         __slots__ = ("_expand", "_expand_hidden", "_force", "_mask", "_pkg", "enabled")
 
-        # Share identical frozenset instances when available.
-        _frozensets = {}
-
         def __init__(self, pkg, enabled_flags):
             self._pkg = pkg
             self._expand = None
             self._expand_hidden = None
             self._force = None
             self._mask = None
-            self.enabled = frozenset(enabled_flags)
+            self.enabled = _intern_frozenset(enabled_flags)
             if pkg.built:
                 # Use IUSE to validate USE settings for built packages,
                 # in case the package manager that built this package
@@ -648,19 +663,20 @@ class Package(Task):
                 # data corruption).
                 missing_iuse = pkg.iuse.get_missing_iuse(self.enabled)
                 if missing_iuse:
-                    self.enabled = self.enabled.difference(missing_iuse)
+                    self.enabled = _intern_frozenset(
+                        self.enabled.difference(missing_iuse)
+                    )
 
         def _init_force_mask(self):
             pkgsettings = self._pkg._get_pkgsettings()
-            frozensets = self._frozensets
-            s = frozenset(pkgsettings.get("USE_EXPAND", "").lower().split())
-            self._expand = frozensets.setdefault(s, s)
-            s = frozenset(pkgsettings.get("USE_EXPAND_HIDDEN", "").lower().split())
-            self._expand_hidden = frozensets.setdefault(s, s)
-            s = pkgsettings.useforce
-            self._force = frozensets.setdefault(s, s)
-            s = pkgsettings.usemask
-            self._mask = frozensets.setdefault(s, s)
+            self._expand = _intern_frozenset(
+                pkgsettings.get("USE_EXPAND", "").lower().split()
+            )
+            self._expand_hidden = _intern_frozenset(
+                pkgsettings.get("USE_EXPAND_HIDDEN", "").lower().split()
+            )
+            self._force = _intern_frozenset(pkgsettings.useforce)
+            self._mask = _intern_frozenset(pkgsettings.usemask)
 
         @property
         def expand(self):
@@ -770,9 +786,9 @@ class Package(Task):
                     disabled.append(sys.intern(x[1:]))
                 else:
                     other.append(x)
-            self.enabled = frozenset(enabled)
-            self.disabled = frozenset(disabled)
-            self.all = frozenset(chain(enabled, disabled, other))
+            self.enabled = _intern_frozenset(enabled)
+            self.disabled = _intern_frozenset(disabled)
+            self.all = _intern_frozenset(chain(enabled, disabled, other))
 
         def is_valid_flag(self, flags):
             """
