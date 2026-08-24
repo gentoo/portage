@@ -29,6 +29,7 @@ __all__ = [
 import os
 import re
 import warnings
+import weakref
 from functools import lru_cache
 from typing import TYPE_CHECKING, Optional, Union
 
@@ -109,15 +110,17 @@ def _c_atom_from_c(catom, eapi, eapi_attrs, uselist, matchall):
         en, dis, miss_en, miss_dis, cond, req = _c_dep_parser.classify_use_deps(
             use_tokens
         )
-        a._use = _use_dep(
-            use_tokens,
-            eapi_attrs,
-            enabled_flags=en,
-            disabled_flags=dis,
-            missing_enabled=miss_en,
-            missing_disabled=miss_dis,
-            conditional=cond,
-            required=req,
+        a._use = _intern_use_dep(
+            _use_dep(
+                use_tokens,
+                eapi_attrs,
+                enabled_flags=en,
+                disabled_flags=dis,
+                missing_enabled=miss_en,
+                missing_disabled=miss_dis,
+                conditional=cond,
+                required=req,
+            )
         )
         if not matchall and a._use.conditional:
             a = a.evaluate_conditionals(uselist)
@@ -1104,6 +1107,7 @@ def use_reduce(
 
 class _use_dep:
     __slots__ = (
+        "__weakref__",
         "_eapi_attrs",
         "conditional",
         "disabled",
@@ -1313,14 +1317,16 @@ class _use_dep:
             else:
                 tokens.append(x)
 
-        return _use_dep(
-            tokens,
-            self._eapi_attrs,
-            enabled_flags=enabled_flags,
-            disabled_flags=disabled_flags,
-            missing_enabled=self.missing_enabled,
-            missing_disabled=self.missing_disabled,
-            required=self.required,
+        return _intern_use_dep(
+            _use_dep(
+                tokens,
+                self._eapi_attrs,
+                enabled_flags=enabled_flags,
+                disabled_flags=disabled_flags,
+                missing_enabled=self.missing_enabled,
+                missing_disabled=self.missing_disabled,
+                required=self.required,
+            )
         )
 
     def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
@@ -1436,15 +1442,17 @@ class _use_dep:
                         tokens.append(x)
                         conditional.setdefault("disabled", set()).add(flag)
 
-        return _use_dep(
-            tokens,
-            self._eapi_attrs,
-            enabled_flags=enabled_flags,
-            disabled_flags=disabled_flags,
-            missing_enabled=self.missing_enabled,
-            missing_disabled=self.missing_disabled,
-            conditional=conditional,
-            required=self.required,
+        return _intern_use_dep(
+            _use_dep(
+                tokens,
+                self._eapi_attrs,
+                enabled_flags=enabled_flags,
+                disabled_flags=disabled_flags,
+                missing_enabled=self.missing_enabled,
+                missing_disabled=self.missing_disabled,
+                conditional=conditional,
+                required=self.required,
+            )
         )
 
     def _eval_qa_conditionals(self, use_mask, use_force):
@@ -1499,15 +1507,52 @@ class _use_dep:
             else:
                 tokens.append(x)
 
-        return _use_dep(
-            tokens,
-            self._eapi_attrs,
-            enabled_flags=enabled_flags,
-            disabled_flags=disabled_flags,
-            missing_enabled=missing_enabled,
-            missing_disabled=missing_disabled,
-            required=self.required,
+        return _intern_use_dep(
+            _use_dep(
+                tokens,
+                self._eapi_attrs,
+                enabled_flags=enabled_flags,
+                disabled_flags=disabled_flags,
+                missing_enabled=missing_enabled,
+                missing_disabled=missing_disabled,
+                required=self.required,
+            )
         )
+
+
+# Weak references, so that an entry is released together with the last user
+# of the value that it holds.
+_use_dep_intern_cache = weakref.WeakValueDictionary()
+
+
+def _intern_use_dep(use_dep):
+    """
+    Return a canonical instance which is equal by value to the given
+    _use_dep instance (possibly the given instance itself).
+    """
+    conditional = use_dep.conditional
+    key = (
+        use_dep.tokens,
+        use_dep._eapi_attrs,
+        use_dep.required,
+        use_dep.enabled,
+        use_dep.disabled,
+        use_dep.missing_enabled,
+        use_dep.missing_disabled,
+        (
+            None
+            if conditional is None
+            else tuple(
+                getattr(conditional, k, None)
+                for k in _use_dep._conditionals_class.__slots__
+            )
+        ),
+    )
+    cached = _use_dep_intern_cache.get(key)
+    if cached is not None:
+        return cached
+    _use_dep_intern_cache[key] = use_dep
+    return use_dep
 
 
 class Atom:
@@ -1711,7 +1756,7 @@ class Atom:
         use_tokens = catom.use
         if use_tokens is not None:
             # _use_dep validates conflicting flags, same as the regex path.
-            self._use = _use_dep(list(use_tokens), eapi_attrs)
+            self._use = _intern_use_dep(_use_dep(list(use_tokens), eapi_attrs))
         else:
             self._use = None
 
@@ -1946,7 +1991,7 @@ class Atom:
             if _use is not None:
                 use = _use
             else:
-                use = _use_dep(use_str[1:-1].split(","), eapi_attrs)
+                use = _intern_use_dep(_use_dep(use_str[1:-1].split(","), eapi_attrs))
         else:
             use = None
 
