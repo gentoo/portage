@@ -6,7 +6,7 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.82.1 (UNRELEASED)
+portage-3.0.82.1 (2026-08-24)
 ----------------
 
 Breaking changes:
@@ -14,6 +14,20 @@ Breaking changes:
 * Output a deprecation warning when a profile 'virtuals' file is used.
   Support for PROVIDE virtuals was removed in portage-2.3.25, so these
   files are obsolete; use GLEP 37 virtual packages instead (bug #981272).
+
+Bug fixes:
+
+* emirrordist: Fix handling old entries written from before the fix
+  for bug #766459 (bug #981223).
+
+* dep: Fix several parsing issues with the new C parser (bug #981298).
+
+* util: Accept Atom instances in stack_dictlist() (bug #981272).
+
+  This fixes crashing with /etc/portage/virtuals and /etc/portage/profile/virtuals,
+  both of which were not working properly even before now anyway.
+
+  Please use GLEP 37-style virtual packages instead.
 
 portage-3.0.82 (2026-08-22)
 --------------
