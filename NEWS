@@ -24,6 +24,14 @@ Features:
   --load-average. Output from each package is still shown one package at a
   time, in merge order (bug #579526).
 
+* emerge: Improve the circular dependency report. It now names the USE flags
+  responsible for each edge (bug #310613), points at FEATURES=test for test
+  dependency cycles (bug #416871, bug #604566, bug #703348), lists masked
+  packages that could be used instead (bug #971256), says when the search for
+  a USE change was given up on (configurable with
+  PORTAGE_CIRCULAR_MAX_USE_FLAGS), and is never empty (bug #929010, bug
+  #877549). Add --circular-deps-report=json for automated consumers.
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 
