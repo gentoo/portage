@@ -68,3 +68,62 @@ class MergeOrderCyclesTestCase(TestCase):
                 self.assertEqual(test_case.test_success, True, test_case.fail_msg)
         finally:
             playground.cleanup()
+
+    def testEmptyTreeSlotOperatorMergeOrder(self):
+        """
+        A package must be merged after the slot operator dependency it
+        links against, even with --emptytree, where every package is in
+        the merge list and cycles are more likely (bug 468052).
+        """
+        ebuilds = {
+            "dev-libs/icu-51": {"EAPI": "8", "SLOT": "0/51"},
+            "dev-libs/libxml2-2.9": {
+                "EAPI": "8",
+                "DEPEND": "dev-libs/icu:=",
+                "RDEPEND": "dev-libs/icu:=",
+            },
+            "dev-libs/libxslt-1.1": {
+                "EAPI": "8",
+                "DEPEND": "dev-libs/libxml2",
+                "RDEPEND": "dev-libs/libxml2",
+            },
+        }
+
+        installed = {
+            "dev-libs/icu-49": {"EAPI": "8", "SLOT": "0/49"},
+            "dev-libs/libxml2-2.9": {
+                "EAPI": "8",
+                "DEPEND": "dev-libs/icu:0/49=",
+                "RDEPEND": "dev-libs/icu:0/49=",
+            },
+            "dev-libs/libxslt-1.1": {
+                "EAPI": "8",
+                "DEPEND": "dev-libs/libxml2",
+                "RDEPEND": "dev-libs/libxml2",
+            },
+        }
+
+        world = ["dev-libs/libxslt"]
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["@world"],
+                options={"--emptytree": True},
+                success=True,
+                mergelist=[
+                    "dev-libs/icu-51",
+                    "dev-libs/libxml2-2.9",
+                    "dev-libs/libxslt-1.1",
+                ],
+            ),
+        )
+
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, installed=installed, world=world
+        )
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
