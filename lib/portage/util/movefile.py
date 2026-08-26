@@ -144,11 +144,18 @@ def movefile(
     sstat=None,
     mysettings=None,
     hardlink_candidates=None,
+    encoding=None,
 ):
     """moves a file from src to dest, preserving all permissions and attributes; mtime will
     be preserved even when moving across filesystems.  Returns mtime as integer on success
     and None on failure.  mtime is expressed in seconds in Python <3.3 and nanoseconds in
-    Python >=3.3.  Move is atomic."""
+    Python >=3.3.  Move is atomic.
+
+    The encoding parameter is unused and accepted only for compatibility with
+    older callers. During a portage self update, a vartree module already
+    loaded from the previous version may call into this newly installed
+    module, so removing the parameter outright breaks the merge in progress.
+    """
 
     if mysettings is None:
         mysettings = portage.settings
