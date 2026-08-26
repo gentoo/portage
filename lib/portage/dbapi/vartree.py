@@ -61,6 +61,8 @@ from portage.exception import (
 from portage.localization import _
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
+from portage.util.movefile import _cmpxattr, movefile
+
 from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
 _METADATA_FILE = "metadata"
@@ -5526,7 +5528,6 @@ class dblink:
         from portage.checksum import _perform_md5_merge as perform_md5
         from portage.eapi import eapi_rewrites_symlinks
         from portage.util import normalize_path
-        from portage.util.movefile import movefile
         from portage.versions import pkgsplit
 
         showMessage = self._display_merge
@@ -6368,7 +6369,6 @@ class dblink:
         Should only be used for regular files.
         """
         from portage.util import writemsg
-        from portage.util.movefile import _cmpxattr
 
         if mydmode is None or not stat.S_ISREG(mydmode) or mymode != mydmode:
             return True
