@@ -2250,7 +2250,7 @@ class binarytree:
         Performs checksums, and gets size and mtime via lstat.
         Raises InvalidDependString if necessary.
         @rtype: dict
-        @return: a dict containing entry for the give cpv.
+        @return: a dict containing entry for the given cpv.
         """
 
         pkg_path = self.getname(cpv)
