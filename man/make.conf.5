@@ -620,7 +620,9 @@ Wait for all builds to complete before merging new packages, which only
 matters when using the \fBemerge\fR(1) \fB\-\-jobs\fR option. Unless the
 \fBemerge\fR(1) \fB\-\-implicit\-system\-deps=n\fR option is used,
 \fImerge\-wait\fR is always effectively enabled for packages that satisfy
-direct or indirect dependencies of the system set. The \fImerge\-wait\fR
+direct or indirect dependencies of the system set. The
+\fBemerge\fR(1) \fB\-\-merge\-wait\-scope\fR option controls which packages
+those are. The \fImerge\-wait\fR
 feature can be disabled in order to trade the possibility of random build
 failures for greater parallelism.
 The queue can be flushed by sending the SIGUSR2 signal to \fBemerge\fR(1).
@@ -757,7 +759,8 @@ parallel installation occurs in batches when there are no builds
 running. Unless the \fBemerge\fR(1) \fB\-\-implicit\-system\-deps=n\fR
 option is used, \fIparallel\-install\fR is always effectively disabled
 for packages that satisfy direct or indirect dependencies of the system
-set.
+set. The \fBemerge\fR(1) \fB\-\-merge\-wait\-scope\fR option controls which
+packages those are.
 .TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it

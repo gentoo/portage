@@ -512,6 +512,20 @@ def parse_opts(tmpcmdline, silent=False):
             + "is at least LOAD (a floating-point number).",
             "action": "store",
         },
+        "--merge-wait-scope": {
+            "help": "Specifies which packages are treated as system packages "
+            + "for the purpose of merge-wait, i.e. merged only while no build "
+            + "jobs are running, and never in parallel with another merge. "
+            + "'deep' (the default) selects the @system set and its transitive "
+            + "runtime dependencies, 'system' only the @system set itself, "
+            + "'toolchain' only the core toolchain, and 'none' nothing at all. "
+            + "Narrowing the scope trades away the protection against unstated "
+            + "dependencies on system packages. It only increases parallelism "
+            + 'for packages which are not held back by FEATURES="merge-wait" '
+            + 'anyway, so it is most useful with FEATURES="-merge-wait" or '
+            + 'FEATURES="parallel-install".',
+            "choices": ("deep", "system", "toolchain", "none"),
+        },
         "--misspell-suggestions": {
             "help": "enable package name misspell suggestions",
             "choices": ("y", "n"),
