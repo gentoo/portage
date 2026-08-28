@@ -9,12 +9,6 @@ Release notes take the form of the following optional categories:
 portage-3.0.83 (UNRELEASED)
 --------------
 
-Breaking changes:
-
-* Output a deprecation warning when a profile 'virtuals' file is used.
-  Support for PROVIDE virtuals was removed in portage-2.3.25, so these
-  files are obsolete; use GLEP 37 virtual packages instead (bug #981272).
-
 Features:
 
 * Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
@@ -30,6 +24,42 @@ Features:
   --load-average. Output from each package is still shown one package at a
   time, in merge order (bug #579526).
 
+portage-3.0.82.2 (2026-08-28)
+----------------
+
+[This release was done as a standalone tag.]
+
+Bug fixes:
+
+* process: Fix IPv6 check (bug #981369).
+
+* vartree, movefile: Compatibility changes for users upgrading from
+  <portage-3.0.81.3 that contained upgrade fixes (bug #976616).
+
+portage-3.0.82.1 (2026-08-24)
+----------------
+
+[This release was done as a standalone tag.]
+
+Breaking changes:
+
+* Output a deprecation warning when a profile 'virtuals' file is used.
+  Support for PROVIDE virtuals was removed in portage-2.3.25, so these
+  files are obsolete; use GLEP 37 virtual packages instead (bug #981272).
+
+Bug fixes:
+
+* emirrordist: Fix handling old entries written from before the fix
+  for bug #766459 (bug #981223).
+
+* dep: Fix several parsing issues with the new C parser (bug #981298).
+
+* util: Accept Atom instances in stack_dictlist() (bug #981272).
+
+  This fixes crashing with /etc/portage/virtuals and /etc/portage/profile/virtuals,
+  both of which were not working properly even before now anyway.
+
+  Please use GLEP 37-style virtual packages instead.
 
 portage-3.0.82 (2026-08-22)
 --------------
