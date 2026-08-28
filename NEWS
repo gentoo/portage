@@ -6,6 +6,16 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
+portage-3.0.82.2 (2026-08-28)
+----------------
+
+Bug fixes:
+
+* process: Fix IPv6 check (bug #981369).
+
+* vartree, movefile: Compatibility changes for users upgrading from
+  <portage-3.0.81.3 that contained upgrade fixes (bug #976616).
+
 portage-3.0.82.1 (2026-08-24)
 ----------------
 
