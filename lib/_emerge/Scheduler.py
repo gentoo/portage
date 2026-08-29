@@ -434,6 +434,8 @@ class Scheduler(PollScheduler):
             log_path = build.settings.get("PORTAGE_LOG_FILE")
             self._sched_iface.output(f"{msg}\n", log_path=log_path)
             self._logger.log(f" {msg}")
+            if self._background and "--verbose" in self.myopts:
+                self._status_display.displayMessage(msg, raw=True)
         self._cgroup.destroy(cpv)
 
     def _init_graph(self, graph_config):

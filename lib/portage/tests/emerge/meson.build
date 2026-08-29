@@ -13,6 +13,7 @@ py.install_sources(
         'test_libc_dep_inject.py',
         'test_noreplace.py',
         'test_observability.py',
+        'test_job_status_display.py',
         'test_pkg_pretend.py',
         '__init__.py',
         '__test__.py',

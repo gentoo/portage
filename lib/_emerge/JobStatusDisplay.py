@@ -89,8 +89,11 @@ class JobStatusDisplay:
 
     def _write(self, s):
         # avoid potential UnicodeEncodeError
-        s = s.encode("utf-8", "backslashreplace")
-        out = self.out.buffer
+        if hasattr(self.out, "buffer"):
+            s = s.encode("utf-8", "backslashreplace")
+            out = self.out.buffer
+        else:
+            out = self.out
         out.write(s)
         out.flush()
 
@@ -153,13 +156,14 @@ class JobStatusDisplay:
 
         self._display(self._format_msg(msg))
 
-    def displayMessage(self, msg):
+    def displayMessage(self, msg, raw=False):
         was_displayed = self._displayed
 
         if self._isatty and self._displayed:
             self._erase()
 
-        self._write(self._format_msg(msg) + self._term_codes["newline"])
+        formatted_msg = msg if raw else self._format_msg(msg)
+        self._write(formatted_msg + self._term_codes["newline"])
         self._displayed = False
 
         if was_displayed:
