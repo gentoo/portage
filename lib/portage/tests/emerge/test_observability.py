@@ -806,7 +806,39 @@ class ObservabilitySnapshotTestCase(TestCase):
 
 
 class SchedulerCgroupLogTestCase(TestCase):
-    def _cgroup_finish(self, features, stats):
+    def _make_cgroup_sched(
+        self,
+        monitor,
+        stats=None,
+        messages=None,
+        background=False,
+        verbose=False,
+        displayed=None,
+    ):
+        sched = Scheduler.__new__(Scheduler)
+        sched.myopts = {"--verbose": True} if verbose else {}
+        sched._background = background
+        sched._status_display = (
+            SimpleNamespace(
+                displayMessage=lambda msg, raw=False: displayed.append((msg, raw))
+            )
+            if displayed is not None
+            else None
+        )
+        sched._observability = monitor
+        sched._cgroup = SimpleNamespace(
+            read_stats=lambda cpv: stats or {},
+            destroy=lambda cpv: None,
+        )
+        sched._sched_iface = SimpleNamespace(
+            output=lambda msg, log_path=None: (
+                messages.append(msg) if messages is not None else None
+            )
+        )
+        sched._logger = SimpleNamespace(log=lambda msg: None)
+        return sched
+
+    def _cgroup_finish(self, features, stats, action="build"):
         """Run Scheduler._cgroup_finish() and return what it logged."""
         build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
         build.settings = _Settings()
@@ -817,16 +849,8 @@ class SchedulerCgroupLogTestCase(TestCase):
         monitor.note_task_finished(build)
 
         messages = []
-        sched = Scheduler.__new__(Scheduler)
-        sched._observability = monitor
-        sched._cgroup = SimpleNamespace(
-            read_stats=lambda cpv: stats, destroy=lambda cpv: None
-        )
-        sched._sched_iface = SimpleNamespace(
-            output=lambda msg, log_path=None: messages.append(msg)
-        )
-        sched._logger = SimpleNamespace(log=lambda msg: None)
-        sched._cgroup_finish(build)
+        sched = self._make_cgroup_sched(monitor, stats=stats, messages=messages)
+        sched._cgroup_finish(build, action=action)
         return "".join(messages)
 
     def test_final_counters_reach_the_monitor(self):
@@ -838,14 +862,7 @@ class SchedulerCgroupLogTestCase(TestCase):
         monitor.note_task_started(build)
         monitor.note_task_finished(build)
 
-        sched = Scheduler.__new__(Scheduler)
-        sched._observability = monitor
-        sched._cgroup = SimpleNamespace(
-            read_stats=lambda cpv: {"cpu_usec": 5_000_000},
-            destroy=lambda cpv: None,
-        )
-        sched._sched_iface = SimpleNamespace(output=lambda msg, log_path=None: None)
-        sched._logger = SimpleNamespace(log=lambda msg: None)
+        sched = self._make_cgroup_sched(monitor, stats={"cpu_usec": 5_000_000})
         sched._cgroup_finish(build)
 
         self.assertEqual(
@@ -876,10 +893,28 @@ class SchedulerCgroupLogTestCase(TestCase):
         }
         msg = self._cgroup_finish((), stats)
         self.assertIn(
-            "=== Resource usage for dev-libs/foo-1.2 "
-            "[CPU: 800.00s (20.00x), MaxMem: 4.00 KiB, "
-            "I/O R: 0.00 B, I/O W: 8.00 KiB]",
+            "=== Resource usage for build of dev-libs/foo-1.2: "
+            "CPU: 800.00s (20.00x), MaxMem: 4.00 KiB, "
+            "I/O R: 0.00 B, I/O W: 8.00 KiB",
             msg,
+        )
+
+    def test_install_action_message(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        build.settings = _Settings()
+        messages = []
+        monitor = ObservabilityMonitor(_make_scheduler())
+        sched = self._make_cgroup_sched(
+            monitor,
+            stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
+            messages=messages,
+        )
+        sched._cgroup_finish(build, action="install", record=False)
+
+        self.assertIn(
+            "=== Resource usage for install of dev-libs/foo-1.2: "
+            "CPU: 3.00s, MaxMem: 4.00 KiB",
+            "".join(messages),
         )
 
     def test_transient_counters_are_left_out_of_the_summary(self):
@@ -896,16 +931,10 @@ class SchedulerCgroupLogTestCase(TestCase):
         build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
         build.settings = _Settings()
         messages = []
-        sched = Scheduler.__new__(Scheduler)
-        sched._observability = ObservabilityMonitor(_make_scheduler(features=()))
-        sched._cgroup = SimpleNamespace(
-            read_stats=lambda cpv: {"cpu_usec": 800_000_000},
-            destroy=lambda cpv: None,
+        monitor = ObservabilityMonitor(_make_scheduler(features=()))
+        sched = self._make_cgroup_sched(
+            monitor, stats={"cpu_usec": 800_000_000}, messages=messages
         )
-        sched._sched_iface = SimpleNamespace(
-            output=lambda msg, log_path=None: messages.append(msg)
-        )
-        sched._logger = SimpleNamespace(log=lambda msg: None)
         sched._cgroup_finish(build)
 
         self.assertIn("CPU: 800.00s", "".join(messages))

@@ -41,7 +41,11 @@ from portage.util.SlotObject import SlotObject
 import _emerge
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
-from _emerge._observability import ObservabilityMonitor, format_resources
+from _emerge._observability import (
+    ObservabilityMonitor,
+    format_resources,
+    freeze_resources,
+)
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -409,20 +413,24 @@ class Scheduler(PollScheduler):
         """
         self._observability.note_phase(cpv, phase)
 
-    def _cgroup_finish(self, build):
-        """Log the final cgroup resource summary for a build and remove it."""
+    def _cgroup_finish(self, build, action="build", record=True):
+        """Log the final cgroup resource summary for a build or merge and remove it."""
         if self._cgroup is None:
             return
         cpv = build.pkg.cpv
         # The only read of these counters: the cgroup goes away below, and
         # what the monitor keeps is what the merge goes on reporting. Log
         # exactly that, rendered the way "emerge --status" renders it.
-        resources = self._observability.note_build_resources(
-            cpv, self._cgroup.read_stats(cpv)
+        stats = self._cgroup.read_stats(cpv)
+        resources = (
+            self._observability.note_build_resources(cpv, stats)
+            if record
+            else freeze_resources(stats)
         )
-        rendered = format_resources(resources, self._observability.build_elapsed(cpv))
+        elapsed = self._observability.build_elapsed(cpv) if record else None
+        rendered = format_resources(resources, elapsed)
         if rendered:
-            msg = f"=== Resource usage for {cpv} [{rendered}]"
+            msg = f"=== Resource usage for {action} of {cpv}: {rendered}"
             log_path = build.settings.get("PORTAGE_LOG_FILE")
             self._sched_iface.output(f"{msg}\n", log_path=log_path)
             self._logger.log(f" {msg}")
@@ -1671,6 +1679,7 @@ class Scheduler(PollScheduler):
         self._running_tasks.pop(id(merge), None)
         self._observability.note_task_finished(merge)
         self._do_merge_exit(merge)
+        self._cgroup_finish(merge.merge, action="install", record=False)
         self._deallocate_config(merge.merge.settings)
         if merge.returncode == os.EX_OK and not merge.merge.pkg.installed:
             self._status_display.curval += 1
