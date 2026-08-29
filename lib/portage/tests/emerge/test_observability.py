@@ -917,6 +917,42 @@ class SchedulerCgroupLogTestCase(TestCase):
             "".join(messages),
         )
 
+    def test_verbose_background_displays_message(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        build.settings = _Settings()
+        displayed = []
+        monitor = ObservabilityMonitor(_make_scheduler())
+        sched = self._make_cgroup_sched(
+            monitor,
+            stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
+            background=True,
+            verbose=True,
+            displayed=displayed,
+        )
+        sched._cgroup_finish(build)
+
+        self.assertEqual(len(displayed), 1)
+        self.assertIn(
+            "=== Resource usage for build of dev-libs/foo-1.2: ", displayed[0][0]
+        )
+        self.assertIs(displayed[0][1], True)
+
+    def test_non_verbose_background_does_not_display_message(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        build.settings = _Settings()
+        displayed = []
+        monitor = ObservabilityMonitor(_make_scheduler())
+        sched = self._make_cgroup_sched(
+            monitor,
+            stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
+            background=True,
+            verbose=False,
+            displayed=displayed,
+        )
+        sched._cgroup_finish(build)
+
+        self.assertEqual(len(displayed), 0)
+
     def test_transient_counters_are_left_out_of_the_summary(self):
         # The build is over and its cgroup is about to be destroyed, so
         # what it happens to be using right now is not worth logging.

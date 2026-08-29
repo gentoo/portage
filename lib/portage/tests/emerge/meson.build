@@ -10,6 +10,7 @@ py.install_sources(
         'test_is_valid_package_atom.py',
         'test_merge_use_vdb.py',
         'test_baseline.py',
+        'test_job_status_display.py',
         'test_libc_dep_inject.py',
         'test_noreplace.py',
         'test_observability.py',
