@@ -1606,7 +1606,7 @@ def _intern_atom(atom):
 
 
 def _atom_ctor_key(
-    s, unevaluated_atom, allow_wildcard, allow_repo, _use, eapi, allow_build_id
+    cls, s, unevaluated_atom, allow_wildcard, allow_repo, _use, eapi, allow_build_id
 ):
     """
     Cache key for Atom instances created via the Atom constructor. The
@@ -1615,9 +1615,13 @@ def _atom_ctor_key(
     string alone, so they are reduced to (string, eapi) pairs here in order
     to avoid conflating atoms which differ in EAPI.
 
+    cls is included so that a subclass's constructor can never be handed
+    back a plain Atom (or another subclass's instance) found under the same
+    key; the cache stays partitioned per class.
+
     Return None for an argument which the constructor accepts but which
-    cannot be part of a key. Everything else it accepts is a string, a flag
-    or a _use_dep, all of which are hashable.
+    cannot be part of a key. Everything else it accepts is a string, a flag,
+    a class or a _use_dep, all of which are hashable.
     """
     if type(s) is not str:
         return None
@@ -1626,6 +1630,7 @@ def _atom_ctor_key(
             return None
         unevaluated_atom = (unevaluated_atom._string, unevaluated_atom._eapi)
     return (
+        cls,
         s,
         unevaluated_atom,
         allow_wildcard,
@@ -1905,7 +1910,14 @@ class Atom:
             return object.__new__(cls)
 
         key = _atom_ctor_key(
-            s, unevaluated_atom, allow_wildcard, allow_repo, _use, eapi, allow_build_id
+            cls,
+            s,
+            unevaluated_atom,
+            allow_wildcard,
+            allow_repo,
+            _use,
+            eapi,
+            allow_build_id,
         )
         if key is None:
             return object.__new__(cls)
