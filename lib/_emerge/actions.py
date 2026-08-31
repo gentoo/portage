@@ -95,6 +95,46 @@ from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
 
+def _reload_config(emerge_config, quickpkg_direct):
+    """
+    Reload the configuration after the depgraph asked for it, and refresh
+    the binary package databases that the reload discarded.
+
+    @return: True on success, False if a binhost could not be parsed
+    """
+    load_emerge_config(emerge_config=emerge_config)
+    adjust_configs(emerge_config.opts, emerge_config.trees)
+
+    # After config reload, the freshly instantiated binarytree
+    # instances need to load remote metadata if --getbinpkg
+    # is enabled. Use getbinpkg_refresh=False to use cached
+    # metadata, since the cache is already fresh.
+    if emerge_config.opts.get("--getbinpkg") is True or quickpkg_direct:
+        for root_trees in emerge_config.trees.values():
+            kwargs = {}
+            if quickpkg_direct:
+                kwargs["add_repos"] = (
+                    emerge_config.running_config.trees["vartree"].dbapi,
+                )
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
+
+            try:
+                root_trees["bintree"].populate(
+                    getbinpkgs=True, getbinpkg_refresh=False, **kwargs
+                )
+            except ParseError as e:
+                writemsg(
+                    f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n",
+                    noiselevel=-1,
+                )
+                return False
+
+    return True
+
+
 def action_build(
     emerge_config,
     spinner=None,
@@ -400,40 +440,9 @@ def action_build(
             return 1
 
         if success and mydepgraph.need_config_reload():
-            load_emerge_config(emerge_config=emerge_config)
-            adjust_configs(emerge_config.opts, emerge_config.trees)
+            if not _reload_config(emerge_config, quickpkg_direct):
+                return 1
             settings, trees, mtimedb = emerge_config
-
-            # After config reload, the freshly instantiated binarytree
-            # instances need to load remote metadata if --getbinpkg
-            # is enabled. Use getbinpkg_refresh=False to use cached
-            # metadata, since the cache is already fresh.
-            if emerge_config.opts.get("--getbinpkg") is True or quickpkg_direct:
-                for root_trees in emerge_config.trees.values():
-                    kwargs = {}
-                    if quickpkg_direct:
-                        kwargs["add_repos"] = (
-                            emerge_config.running_config.trees["vartree"].dbapi,
-                        )
-                    if "--getbinpkg-exclude" in emerge_config.opts:
-                        kwargs["getbinpkg_exclude"] = emerge_config.opts[
-                            "--getbinpkg-exclude"
-                        ]
-                    if "--getbinpkg-include" in emerge_config.opts:
-                        kwargs["getbinpkg_include"] = emerge_config.opts[
-                            "--getbinpkg-include"
-                        ]
-
-                    try:
-                        root_trees["bintree"].populate(
-                            getbinpkgs=True, getbinpkg_refresh=False, **kwargs
-                        )
-                    except ParseError as e:
-                        writemsg(
-                            f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n",
-                            noiselevel=-1,
-                        )
-                        return 1
 
         if "--autounmask-only" in myopts:
             mydepgraph.display_problems()
