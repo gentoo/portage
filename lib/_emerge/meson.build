@@ -73,6 +73,7 @@ py.install_sources(
         'UnmergeDepPriority.py',
         'UseFlagDisplay.py',
         'UserQuery.py',
+        '_depgraph_fork.py',
         'actions.py',
         'chk_updated_cfg_files.py',
         'clear_caches.py',

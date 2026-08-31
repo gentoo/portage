@@ -75,6 +75,7 @@ from portage.util.digraph import digraph
 from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 
+from _emerge import _depgraph_fork
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.Dependency import Dependency
@@ -102,8 +103,8 @@ from _emerge.UserQuery import UserQuery
 
 class _resolution:
     """
-    The result of _resolve_in_process(): either an exit code, or
-    everything that the merge needs from the dependency calculation.
+    The result of _resolve(): either an exit code, or everything that the
+    merge needs from the dependency calculation.
     """
 
     __slots__ = (
@@ -113,6 +114,7 @@ class _resolution:
         "graph_config",
         "mergecount",
         "mergelist_shown",
+        "need_config_reload",
         "nomerge_favorites",
     )
 
@@ -123,6 +125,7 @@ class _resolution:
         self.graph_config = None
         self.mergecount = None
         self.mergelist_shown = False
+        self.need_config_reload = False
         self.nomerge_favorites = []
 
 
@@ -166,6 +169,125 @@ def _reload_config(emerge_config, quickpkg_direct):
     return True
 
 
+def _resolve(emerge_config, spinner, myparams, quickpkg_direct):
+    """
+    Calculate the dependency graph, in a child process if that is enabled.
+
+    See _depgraph_fork and bug 549906.
+    """
+    if _depgraph_fork.enabled(emerge_config.opts):
+        try:
+            payload = _depgraph_fork.run_in_child(
+                lambda: _resolve_payload(
+                    emerge_config, spinner, myparams, quickpkg_direct
+                )
+            )
+            return _resolve_from_payload(payload, emerge_config, quickpkg_direct)
+        except _depgraph_fork.ForkFailed as e:
+            # The child never reached the calculation, so it showed no
+            # resolution output and asked nothing, and this process can
+            # calculate without repeating any of that.
+            writemsg_level(
+                f"!!! Falling back to an in-process dependency calculation: {e}\n",
+                level=logging.WARNING,
+                noiselevel=-1,
+            )
+        except _depgraph_fork.ChildFailed as e:
+            return _child_failed(e)
+
+    return _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct)
+
+
+def _child_failed(e):
+    """
+    Report a child which failed after it took over stdio. It may already have
+    displayed the merge list and asked the user to confirm it, so calculating
+    again here would repeat the output and the prompt.
+    """
+    if e.exit_code != 128 + signal.SIGINT:
+        # An interrupt is the user's own doing, and the child has already
+        # been interrupted in front of them.
+        writemsg_level(
+            f"!!! Dependency calculation in a child process failed: {e}\n",
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+    resolution = _resolution()
+    resolution.exit_code = e.exit_code
+    return resolution
+
+
+def _resolve_payload(emerge_config, spinner, myparams, quickpkg_direct):
+    """
+    Run _resolve_in_process() and reduce the result to plain data, for a
+    calculation which runs in a child process.
+    """
+    resolution = _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct)
+    graph_config = resolution.graph_config
+    return {
+        "exit_code": resolution.exit_code,
+        "favorites": resolution.favorites,
+        "graph": (
+            None
+            if graph_config is None
+            else _depgraph_fork.encode_scheduler_graph(graph_config)
+        ),
+        "mergecount": resolution.mergecount,
+        "mergelist_shown": resolution.mergelist_shown,
+        "nomerge_favorites": resolution.nomerge_favorites,
+        "need_config_reload": resolution.need_config_reload,
+        # _resolve_in_process() pops --ask once it has asked, and that
+        # happened to the child's copy of the options.
+        "ask_answered": "--ask" not in emerge_config.opts,
+    }
+
+
+def _resolve_from_payload(payload, emerge_config, quickpkg_direct):
+    """
+    Rebuild a _resolution from the data that a child process produced.
+    """
+    resolution = _resolution()
+    resolution.exit_code = payload["exit_code"]
+    if resolution.exit_code is not None:
+        return resolution
+
+    if payload["need_config_reload"]:
+        # The child reloaded its own copy of the configuration, so this
+        # process has to do the same before the graph is rebuilt against
+        # its trees. The child already did this successfully against the
+        # same on-disk config before it displayed the merge list and (with
+        # --ask) got the user's confirmation, so this is only expected to
+        # fail if the config changed on disk in between.
+        if not _reload_config(emerge_config, quickpkg_direct):
+            if payload["mergelist_shown"]:
+                writemsg_level(
+                    "!!! The above merge list was already confirmed, but "
+                    "reloading the configuration in this process failed; "
+                    "see above for the reason.\n",
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+            resolution.exit_code = 1
+            return resolution
+
+    if payload["ask_answered"]:
+        # Otherwise save_nomerge_favorites() would ask a second time, in
+        # this process, about the world favorites.
+        emerge_config.opts.pop("--ask", None)
+
+    resolution.favorites = payload["favorites"]
+    resolution.mergecount = payload["mergecount"]
+    resolution.mergelist_shown = payload["mergelist_shown"]
+    resolution.nomerge_favorites = payload["nomerge_favorites"]
+    if payload["graph"] is not None and resolution.mergecount != 0:
+        # With nothing to merge the scheduler graph is never used, and
+        # rebuilding it is neither free nor small.
+        resolution.graph_config = _depgraph_fork.decode_scheduler_graph(
+            payload["graph"], emerge_config.trees, emerge_config.opts
+        )
+    return resolution
+
+
 def _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct):
     """
     Calculate the dependency graph, display it, and ask for confirmation.
@@ -205,6 +327,7 @@ def _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct):
     resolution.favorites = favorites
 
     if success and mydepgraph.need_config_reload():
+        resolution.need_config_reload = True
         if not _reload_config(emerge_config, quickpkg_direct):
             resolution.exit_code = 1
             return resolution
@@ -250,9 +373,7 @@ def _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct):
                 world_candidates = [
                     x
                     for x in favorites
-                    if not (
-                        x.startswith(SETPREFIX) and not sets[x[1:]].world_candidate
-                    )
+                    if not (x.startswith(SETPREFIX) and not sets[x[1:]].world_candidate)
                 ]
 
             if "selective" in myparams and not oneshot and world_candidates:
@@ -596,9 +717,7 @@ def action_build(
             print(darkgreen("emerge: It seems we have nothing to resume..."))
             return os.EX_OK
 
-        resolution = _resolve_in_process(
-            emerge_config, spinner, myparams, quickpkg_direct
-        )
+        resolution = _resolve(emerge_config, spinner, myparams, quickpkg_direct)
 
         if resolution.exit_code is not None:
             return resolution.exit_code
@@ -669,8 +788,8 @@ def action_build(
         if resume and not mergelist_shown:
             # If we haven't already shown the merge list above, at
             # least show warnings about missed updates and such.
-            # For anything but --resume this happens in
-            # _resolve_in_process(), which is where the depgraph lives.
+            # For anything but --resume this happens in _resolve(),
+            # which is where the depgraph lives.
             mydepgraph.display_problems()
 
         need_write_vardb = not Scheduler._opts_no_self_update.intersection(myopts)
@@ -692,12 +811,15 @@ def action_build(
         if need_write_bindb or need_write_vardb:
             eroots = set()
             ebuild_eroots = set()
-            if graph_config is None:
+            if graph_config is not None:
+                mergelist = graph_config.mergelist
+            elif mydepgraph is not None:
                 # --resume and --pretend --fetchonly, which reach here with
                 # the depgraph still in scope.
                 mergelist = mydepgraph.altlist()
             else:
-                mergelist = graph_config.mergelist
+                # A child calculated, and there is nothing to merge.
+                mergelist = []
             for x in mergelist:
                 if isinstance(x, Package) and x.operation == "merge":
                     eroots.add(x.root)
