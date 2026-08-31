@@ -60,7 +60,7 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
-from _emerge.FakeVartree import FakeVartree
+from _emerge.FakeVartree import FakeVartree, fake_vartree_options
 from _emerge.getloadavg import getloadavg
 from _emerge.JobStatusDisplay import JobStatusDisplay
 from _emerge.MergeListItem import MergeListItem
@@ -445,18 +445,13 @@ class Scheduler(PollScheduler):
         """
         self._set_graph_config(graph_config)
         self._blocker_db = {}
-        depgraph_params = create_depgraph_params(self.myopts, None)
-        dynamic_deps = "dynamic_deps" in depgraph_params
-        ignore_built_slot_operator_deps = (
-            self.myopts.get("--ignore-built-slot-operator-deps", "n") == "y"
-        )
+        fake_vartree_kwargs = fake_vartree_options(self.myopts)
         for root in self.trees:
             if graph_config is None:
                 fake_vartree = FakeVartree(
                     self.trees[root]["root_config"],
                     pkg_cache=self._pkg_cache,
-                    dynamic_deps=dynamic_deps,
-                    ignore_built_slot_operator_deps=ignore_built_slot_operator_deps,
+                    **fake_vartree_kwargs,
                 )
                 fake_vartree.sync()
             else:
