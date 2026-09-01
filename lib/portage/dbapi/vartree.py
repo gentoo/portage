@@ -2303,13 +2303,18 @@ class dblink:
 
                 unmerge_with_replacement = unmerge and preserve_paths is not None
                 # The linkmap is only used below on an unmerge without
-                # replacement, and to find preserved libraries without
-                # consumers, of which there are none while the registry is
-                # empty.
-                if instance_owns_files and (
-                    (unmerge and not unmerge_with_replacement)
+                # replacement that may preserve libraries, and to find
+                # preserved libraries without consumers, of which there are
+                # none while the registry is empty.
+                needs_linkmap = instance_owns_files and (
+                    (
+                        unmerge
+                        and not unmerge_with_replacement
+                        and self._may_preserve_libs(unmerge=True)
+                    )
                     or plib_registry.hasEntries()
-                ):
+                )
+                if needs_linkmap:
                     if unmerge_with_replacement:
                         # If self.mycpv is about to be unmerged and we
                         # have a replacement package, we want to exclude
@@ -2327,7 +2332,7 @@ class dblink:
 
                 if unmerge:
                     unmerge_preserve = None
-                    if instance_owns_files and not unmerge_with_replacement:
+                    if needs_linkmap and not unmerge_with_replacement:
                         unmerge_preserve = self._find_libs_to_preserve(unmerge=True)
                     counter = self.vartree.dbapi.cpv_counter(self.mycpv)
                     try:
@@ -2355,7 +2360,7 @@ class dblink:
                 unmerge_no_replacement = unmerge and not unmerge_with_replacement
                 cpv_lib_map = (
                     self._find_unused_preserved_libs(unmerge_no_replacement)
-                    if instance_owns_files
+                    if needs_linkmap
                     else None
                 )
                 if cpv_lib_map:
@@ -3510,16 +3515,16 @@ class dblink:
                 noiselevel=-1,
             )
 
-    def _may_preserve_libs(self):
+    def _may_preserve_libs(self, unmerge=False):
         """
-        Return False if _find_libs_to_preserve() is certain to find nothing,
-        so that the linkmap rebuild it needs can be skipped. It only
-        preserves libraries of the replaced instance that have consumers,
-        which are found by soname. The replaced instance's libraries are
-        listed in its NEEDED.ELF.2, or in the registry if it preserved them
-        itself.
+        Return False if _find_libs_to_preserve(unmerge) is certain to find
+        nothing, so that the linkmap rebuild it needs can be skipped. It only
+        preserves libraries that have consumers, which are found by soname.
+        The instance's libraries are listed in its NEEDED.ELF.2, or in the
+        registry if it preserved them itself. With unmerge, the instance is
+        self, otherwise the replaced instance.
         """
-        installed_instance = self._installed_instance
+        installed_instance = self if unmerge else self._installed_instance
         if (
             not self._preserve_libs
             or installed_instance is None

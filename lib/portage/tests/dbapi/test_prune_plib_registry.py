@@ -68,8 +68,18 @@ class PrunePlibRegistryTestCase(TestCase):
         self.assertEqual(self.prune(), 0)
         self.assertEqual(self.prune(unmerge=True, preserve_paths=set()), 0)
 
+    def provide_soname(self):
+        with open(
+            self.vardb.getpath("dev-libs/A-1", filename="NEEDED.ELF.2"), "w"
+        ) as f:
+            f.write("X86_64;/usr/lib/libA.so.1;libA.so.1;;libc.so.6;x86_64\n")
+
     def testUnmergeWithoutReplacement(self):
+        self.provide_soname()
         self.assertEqual(self.prune(unmerge=True), 1)
+
+    def testUnmergeWithoutSoname(self):
+        self.assertEqual(self.prune(unmerge=True), 0)
 
     def testRegistryEntries(self):
         self.register_plib()
