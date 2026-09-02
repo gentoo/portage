@@ -75,10 +75,16 @@ from portage.util.digraph import digraph
 from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 
+from _emerge import _depgraph_fork
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.Dependency import Dependency
-from _emerge.depgraph import backtrack_depgraph, depgraph, resume_depgraph
+from _emerge.depgraph import (
+    backtrack_depgraph,
+    depgraph,
+    resume_depgraph,
+    save_nomerge_favorites,
+)
 from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.main import profile_check
@@ -95,6 +101,327 @@ from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
 
+class _resolution:
+    """
+    The result of _resolve(): either an exit code, or everything that the
+    merge needs from the dependency calculation.
+    """
+
+    __slots__ = (
+        "depgraph",
+        "exit_code",
+        "favorites",
+        "graph_config",
+        "mergecount",
+        "mergelist_shown",
+        "need_config_reload",
+        "nomerge_favorites",
+    )
+
+    def __init__(self):
+        self.depgraph = None
+        self.exit_code = None
+        self.favorites = []
+        self.graph_config = None
+        self.mergecount = None
+        self.mergelist_shown = False
+        self.need_config_reload = False
+        self.nomerge_favorites = []
+
+
+def _reload_config(emerge_config, quickpkg_direct):
+    """
+    Reload the configuration after the depgraph asked for it, and refresh
+    the binary package databases that the reload discarded.
+
+    @return: True on success, False if a binhost could not be parsed
+    """
+    load_emerge_config(emerge_config=emerge_config)
+    adjust_configs(emerge_config.opts, emerge_config.trees)
+
+    # After config reload, the freshly instantiated binarytree
+    # instances need to load remote metadata if --getbinpkg
+    # is enabled. Use getbinpkg_refresh=False to use cached
+    # metadata, since the cache is already fresh.
+    if emerge_config.opts.get("--getbinpkg") is True or quickpkg_direct:
+        for root_trees in emerge_config.trees.values():
+            kwargs = {}
+            if quickpkg_direct:
+                kwargs["add_repos"] = (
+                    emerge_config.running_config.trees["vartree"].dbapi,
+                )
+            if "--getbinpkg-exclude" in emerge_config.opts:
+                kwargs["getbinpkg_exclude"] = emerge_config.opts["--getbinpkg-exclude"]
+            if "--getbinpkg-include" in emerge_config.opts:
+                kwargs["getbinpkg_include"] = emerge_config.opts["--getbinpkg-include"]
+
+            try:
+                root_trees["bintree"].populate(
+                    getbinpkgs=True, getbinpkg_refresh=False, **kwargs
+                )
+            except ParseError as e:
+                writemsg(
+                    f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n",
+                    noiselevel=-1,
+                )
+                return False
+
+    return True
+
+
+def _resolve(emerge_config, spinner, myparams, quickpkg_direct):
+    """
+    Calculate the dependency graph, in a child process if that is enabled.
+
+    See _depgraph_fork and bug 549906.
+    """
+    if _depgraph_fork.enabled(emerge_config.opts):
+        try:
+            payload = _depgraph_fork.run_in_child(
+                lambda: _resolve_payload(
+                    emerge_config, spinner, myparams, quickpkg_direct
+                )
+            )
+            return _resolve_from_payload(payload, emerge_config, quickpkg_direct)
+        except _depgraph_fork.ForkFailed as e:
+            # The child never reached the calculation, so it showed no
+            # resolution output and asked nothing, and this process can
+            # calculate without repeating any of that.
+            writemsg_level(
+                f"!!! Falling back to an in-process dependency calculation: {e}\n",
+                level=logging.WARNING,
+                noiselevel=-1,
+            )
+        except _depgraph_fork.ChildFailed as e:
+            return _child_failed(e)
+
+    return _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct)
+
+
+def _child_failed(e):
+    """
+    Report a child which failed after it took over stdio. It may already have
+    displayed the merge list and asked the user to confirm it, so calculating
+    again here would repeat the output and the prompt.
+    """
+    if e.exit_code != 128 + signal.SIGINT:
+        # An interrupt is the user's own doing, and the child has already
+        # been interrupted in front of them.
+        writemsg_level(
+            f"!!! Dependency calculation in a child process failed: {e}\n",
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+    resolution = _resolution()
+    resolution.exit_code = e.exit_code
+    return resolution
+
+
+def _resolve_payload(emerge_config, spinner, myparams, quickpkg_direct):
+    """
+    Run _resolve_in_process() and reduce the result to plain data, for a
+    calculation which runs in a child process.
+    """
+    resolution = _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct)
+    graph_config = resolution.graph_config
+    return {
+        "exit_code": resolution.exit_code,
+        "favorites": resolution.favorites,
+        "graph": (
+            None
+            if graph_config is None
+            else _depgraph_fork.encode_scheduler_graph(graph_config)
+        ),
+        "mergecount": resolution.mergecount,
+        "mergelist_shown": resolution.mergelist_shown,
+        "nomerge_favorites": resolution.nomerge_favorites,
+        "need_config_reload": resolution.need_config_reload,
+        # _resolve_in_process() pops --ask once it has asked, and that
+        # happened to the child's copy of the options.
+        "ask_answered": "--ask" not in emerge_config.opts,
+    }
+
+
+def _resolve_from_payload(payload, emerge_config, quickpkg_direct):
+    """
+    Rebuild a _resolution from the data that a child process produced.
+    """
+    resolution = _resolution()
+    resolution.exit_code = payload["exit_code"]
+    if resolution.exit_code is not None:
+        return resolution
+
+    if payload["need_config_reload"]:
+        # The child reloaded its own copy of the configuration, so this
+        # process has to do the same before the graph is rebuilt against
+        # its trees. The child already did this successfully against the
+        # same on-disk config before it displayed the merge list and (with
+        # --ask) got the user's confirmation, so this is only expected to
+        # fail if the config changed on disk in between.
+        if not _reload_config(emerge_config, quickpkg_direct):
+            if payload["mergelist_shown"]:
+                writemsg_level(
+                    "!!! The above merge list was already confirmed, but "
+                    "reloading the configuration in this process failed; "
+                    "see above for the reason.\n",
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+            resolution.exit_code = 1
+            return resolution
+
+    if payload["ask_answered"]:
+        # Otherwise save_nomerge_favorites() would ask a second time, in
+        # this process, about the world favorites.
+        emerge_config.opts.pop("--ask", None)
+
+    resolution.favorites = payload["favorites"]
+    resolution.mergecount = payload["mergecount"]
+    resolution.mergelist_shown = payload["mergelist_shown"]
+    resolution.nomerge_favorites = payload["nomerge_favorites"]
+    if payload["graph"] is not None and resolution.mergecount != 0:
+        # With nothing to merge the scheduler graph is never used, and
+        # rebuilding it is neither free nor small.
+        resolution.graph_config = _depgraph_fork.decode_scheduler_graph(
+            payload["graph"], emerge_config.trees, emerge_config.opts
+        )
+    return resolution
+
+
+def _resolve_in_process(emerge_config, spinner, myparams, quickpkg_direct):
+    """
+    Calculate the dependency graph, display it, and ask for confirmation.
+
+    Everything that needs the depgraph happens here, so that the caller only
+    needs the values which _resolution carries in order to merge.
+    """
+    settings, trees, mtimedb = emerge_config
+    myopts = emerge_config.opts
+    myaction = emerge_config.action
+    myfiles = emerge_config.args
+    enter_invalid = "--ask-enter-invalid" in myopts
+    fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
+    oneshot = "--oneshot" in myopts or "--onlydeps" in myopts
+    pretend = "--pretend" in myopts
+
+    resolution = _resolution()
+
+    try:
+        success, mydepgraph, favorites = backtrack_depgraph(
+            settings, trees, myopts, myparams, myaction, myfiles, spinner
+        )
+    except portage.exception.CorruptionKeyError:
+        resolution.exit_code = 1
+        return resolution
+    except portage.exception.PackageSetNotFound as e:
+        root_config = trees[settings["EROOT"]]["root_config"]
+        display_missing_pkg_set(root_config, e.value)
+        resolution.exit_code = 1
+        return resolution
+
+    resolution.depgraph = mydepgraph
+    # Reduce the favorites to strings, which is the form that the Scheduler
+    # records in mtimedb and that a --resume reads back, so that the merge
+    # does not depend on the Atom instances which the calculation produced.
+    favorites = [str(x) for x in favorites]
+    resolution.favorites = favorites
+
+    if success and mydepgraph.need_config_reload():
+        resolution.need_config_reload = True
+        if not _reload_config(emerge_config, quickpkg_direct):
+            resolution.exit_code = 1
+            return resolution
+        settings, trees, mtimedb = emerge_config
+
+    if "--autounmask-only" in myopts:
+        mydepgraph.display_problems()
+        resolution.exit_code = 0
+        return resolution
+
+    if not success:
+        mydepgraph.display_problems()
+        resolution.exit_code = 1
+        return resolution
+
+    if (
+        not pretend
+        and ("--ask" in myopts or "--tree" in myopts or "--verbose" in myopts)
+        and not ("--quiet" in myopts and "--ask" not in myopts)
+    ):
+        retval = mydepgraph.display(mydepgraph.altlist(), favorites=favorites)
+        mydepgraph.display_problems()
+        resolution.mergelist_shown = True
+        if retval != os.EX_OK:
+            resolution.exit_code = retval
+            return resolution
+
+        mergecount = 0
+        for x in mydepgraph.altlist():
+            if isinstance(x, Package) and x.operation == "merge":
+                mergecount += 1
+        resolution.mergecount = mergecount
+
+        prompt = None
+        if mergecount == 0:
+            sets = trees[settings["EROOT"]]["root_config"].sets
+            world_candidates = None
+            if "selective" in myparams and not oneshot and favorites:
+                # Sets that are not world candidates are filtered
+                # out here since the favorites list needs to be
+                # complete for depgraph.loadResumeCommand() to
+                # operate correctly.
+                world_candidates = [
+                    x
+                    for x in favorites
+                    if not (x.startswith(SETPREFIX) and not sets[x[1:]].world_candidate)
+                ]
+
+            if "selective" in myparams and not oneshot and world_candidates:
+                # Prompt later, inside save_nomerge_favorites.
+                prompt = None
+            else:
+                print()
+                print("Nothing to merge; quitting.")
+                print()
+                resolution.exit_code = os.EX_OK
+                return resolution
+        elif fetchonly:
+            prompt = "Would you like to fetch the source files for these packages?"
+        else:
+            prompt = "Would you like to merge these packages?"
+        print()
+        uq = UserQuery(myopts)
+        if (
+            prompt is not None
+            and "--ask" in myopts
+            and uq.query(prompt, enter_invalid) == "No"
+        ):
+            print()
+            print("Quitting.")
+            print()
+            resolution.exit_code = 128 + signal.SIGINT
+            return resolution
+        # Don't ask again (e.g. when auto-cleaning packages after merge)
+        if mergecount != 0:
+            myopts.pop("--ask", None)
+
+    if pretend and not fetchonly:
+        # The caller displays the merge list and returns; it still has
+        # the depgraph for that. A fetch is a merge phase of its own, so
+        # --pretend --fetchonly carries on past here as it did before.
+        return resolution
+
+    if not resolution.mergelist_shown:
+        # If we haven't already shown the merge list above, at
+        # least show warnings about missed updates and such.
+        mydepgraph.display_problems()
+
+    resolution.nomerge_favorites = mydepgraph.nomerge_favorites()
+    resolution.graph_config = mydepgraph.schedulerGraph()
+
+    return resolution
+
+
 def action_build(
     emerge_config,
     spinner=None,
@@ -104,7 +431,6 @@ def action_build(
     settings, trees, mtimedb = emerge_config
     myopts = emerge_config.opts
     myaction = emerge_config.action
-    myfiles = emerge_config.args
 
     if "--usepkgonly" not in myopts:
         old_tree_timestamp_warn(settings["PORTDIR"], settings)
@@ -236,7 +562,6 @@ def action_build(
     ask = "--ask" in myopts
     enter_invalid = "--ask-enter-invalid" in myopts
     nodeps = "--nodeps" in myopts
-    oneshot = "--oneshot" in myopts or "--onlydeps" in myopts
     tree = "--tree" in myopts
     if nodeps and tree:
         tree = False
@@ -249,6 +574,10 @@ def action_build(
     quiet = "--quiet" in myopts
     myparams = create_depgraph_params(myopts, myaction)
     mergelist_shown = False
+    mydepgraph = None
+    graph_config = None
+    mergecount = None
+    nomerge_favorites = []
 
     if pretend or fetchonly:
         mtimedb.make_readonly()
@@ -388,68 +717,25 @@ def action_build(
             print(darkgreen("emerge: It seems we have nothing to resume..."))
             return os.EX_OK
 
-        try:
-            success, mydepgraph, favorites = backtrack_depgraph(
-                settings, trees, myopts, myparams, myaction, myfiles, spinner
-            )
-        except portage.exception.CorruptionKeyError:
-            return 1
-        except portage.exception.PackageSetNotFound as e:
-            root_config = trees[settings["EROOT"]]["root_config"]
-            display_missing_pkg_set(root_config, e.value)
-            return 1
+        resolution = _resolve(emerge_config, spinner, myparams, quickpkg_direct)
 
-        if success and mydepgraph.need_config_reload():
-            load_emerge_config(emerge_config=emerge_config)
-            adjust_configs(emerge_config.opts, emerge_config.trees)
-            settings, trees, mtimedb = emerge_config
+        if resolution.exit_code is not None:
+            return resolution.exit_code
 
-            # After config reload, the freshly instantiated binarytree
-            # instances need to load remote metadata if --getbinpkg
-            # is enabled. Use getbinpkg_refresh=False to use cached
-            # metadata, since the cache is already fresh.
-            if emerge_config.opts.get("--getbinpkg") is True or quickpkg_direct:
-                for root_trees in emerge_config.trees.values():
-                    kwargs = {}
-                    if quickpkg_direct:
-                        kwargs["add_repos"] = (
-                            emerge_config.running_config.trees["vartree"].dbapi,
-                        )
-                    if "--getbinpkg-exclude" in emerge_config.opts:
-                        kwargs["getbinpkg_exclude"] = emerge_config.opts[
-                            "--getbinpkg-exclude"
-                        ]
-                    if "--getbinpkg-include" in emerge_config.opts:
-                        kwargs["getbinpkg_include"] = emerge_config.opts[
-                            "--getbinpkg-include"
-                        ]
+        favorites = resolution.favorites
+        mergecount = resolution.mergecount
+        mergelist_shown = resolution.mergelist_shown
+        graph_config = resolution.graph_config
+        nomerge_favorites = resolution.nomerge_favorites
+        settings, trees, mtimedb = emerge_config
+        mydepgraph = resolution.depgraph
 
-                    try:
-                        root_trees["bintree"].populate(
-                            getbinpkgs=True, getbinpkg_refresh=False, **kwargs
-                        )
-                    except ParseError as e:
-                        writemsg(
-                            f"\n\n!!!{e}.\nSee make.conf(5) for more info.\n",
-                            noiselevel=-1,
-                        )
-                        return 1
-
-        if "--autounmask-only" in myopts:
-            mydepgraph.display_problems()
-            return 0
-
-        if not success:
-            mydepgraph.display_problems()
-            return 1
-
-    mergecount = None
-    if (
-        "--pretend" not in myopts
-        and ("--ask" in myopts or "--tree" in myopts or "--verbose" in myopts)
-        and not ("--quiet" in myopts and "--ask" not in myopts)
-    ):
-        if "--resume" in myopts:
+    if resume:
+        if (
+            "--pretend" not in myopts
+            and ("--ask" in myopts or "--tree" in myopts or "--verbose" in myopts)
+            and not ("--quiet" in myopts and "--ask" not in myopts)
+        ):
             mymergelist = mydepgraph.altlist()
             if len(mymergelist) == 0:
                 print(
@@ -463,61 +749,14 @@ def action_build(
             if retval != os.EX_OK:
                 return retval
             prompt = "Would you like to resume merging these packages?"
-        else:
-            retval = mydepgraph.display(mydepgraph.altlist(), favorites=favorites)
-            mydepgraph.display_problems()
-            mergelist_shown = True
-            if retval != os.EX_OK:
-                return retval
-            mergecount = 0
-            for x in mydepgraph.altlist():
-                if isinstance(x, Package) and x.operation == "merge":
-                    mergecount += 1
-
-            prompt = None
-            if mergecount == 0:
-                sets = trees[settings["EROOT"]]["root_config"].sets
-                world_candidates = None
-                if "selective" in myparams and not oneshot and favorites:
-                    # Sets that are not world candidates are filtered
-                    # out here since the favorites list needs to be
-                    # complete for depgraph.loadResumeCommand() to
-                    # operate correctly.
-                    world_candidates = [
-                        x
-                        for x in favorites
-                        if not (
-                            isinstance(x, str)
-                            and x.startswith(SETPREFIX)
-                            and not sets[x[1:]].world_candidate
-                        )
-                    ]
-
-                if "selective" in myparams and not oneshot and world_candidates:
-                    # Prompt later, inside saveNomergeFavorites.
-                    prompt = None
-                else:
-                    print()
-                    print("Nothing to merge; quitting.")
-                    print()
-                    return os.EX_OK
-            elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
-                prompt = "Would you like to fetch the source files for these packages?"
-            else:
-                prompt = "Would you like to merge these packages?"
-        print()
-        uq = UserQuery(myopts)
-        if (
-            prompt is not None
-            and "--ask" in myopts
-            and uq.query(prompt, enter_invalid) == "No"
-        ):
             print()
-            print("Quitting.")
-            print()
-            return 128 + signal.SIGINT
-        # Don't ask again (e.g. when auto-cleaning packages after merge)
-        if mergecount != 0:
+            uq = UserQuery(myopts)
+            if "--ask" in myopts and uq.query(prompt, enter_invalid) == "No":
+                print()
+                print("Quitting.")
+                print()
+                return 128 + signal.SIGINT
+            # Don't ask again (e.g. when auto-cleaning packages after merge)
             myopts.pop("--ask", None)
 
     if ("--pretend" in myopts) and not (
@@ -546,9 +785,11 @@ def action_build(
 
     gpg = None
     try:
-        if not mergelist_shown:
+        if resume and not mergelist_shown:
             # If we haven't already shown the merge list above, at
             # least show warnings about missed updates and such.
+            # For anything but --resume this happens in _resolve(),
+            # which is where the depgraph lives.
             mydepgraph.display_problems()
 
         need_write_vardb = not Scheduler._opts_no_self_update.intersection(myopts)
@@ -570,7 +811,16 @@ def action_build(
         if need_write_bindb or need_write_vardb:
             eroots = set()
             ebuild_eroots = set()
-            for x in mydepgraph.altlist():
+            if graph_config is not None:
+                mergelist = graph_config.mergelist
+            elif mydepgraph is not None:
+                # --resume and --pretend --fetchonly, which reach here with
+                # the depgraph still in scope.
+                mergelist = mydepgraph.altlist()
+            else:
+                # A child calculated, and there is nothing to merge.
+                mergelist = []
+            for x in mergelist:
                 if isinstance(x, Package) and x.operation == "merge":
                     eroots.add(x.root)
                     if x.type_name == "ebuild":
@@ -653,11 +903,16 @@ def action_build(
                 del mtimedb["resume"]
                 mtimedb.commit()
 
-            mydepgraph.saveNomergeFavorites()
+            save_nomerge_favorites(
+                trees[settings["EROOT"]]["root_config"], myopts, nomerge_favorites
+            )
 
         if mergecount == 0:
             retval = os.EX_OK
         else:
+            if graph_config is None:
+                graph_config = mydepgraph.schedulerGraph()
+
             mergetask = Scheduler(
                 settings,
                 trees,
@@ -665,10 +920,10 @@ def action_build(
                 myopts,
                 spinner,
                 favorites=favorites,
-                graph_config=mydepgraph.schedulerGraph(),
+                graph_config=graph_config,
             )
 
-            del mydepgraph
+            del mydepgraph, graph_config
             clear_caches(trees)
 
             retval = mergetask.merge()

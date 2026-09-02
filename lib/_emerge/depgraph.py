@@ -11292,6 +11292,20 @@ class depgraph:
     def saveNomergeFavorites(self):
         """Find atoms in favorites that are not in the mergelist and add them
         to the world file if necessary."""
+        save_nomerge_favorites(
+            self._frozen_config.roots[self._frozen_config.target_root],
+            self._frozen_config.myopts,
+            self.nomerge_favorites(),
+        )
+
+    def nomerge_favorites(self):
+        """Find atoms in favorites that are not in the mergelist, and return
+        them as a sorted list of strings, for save_nomerge_favorites().
+
+        This is separate from the update of the world file so that the
+        depgraph is not needed at the time of the update, which allows the
+        calculation to run in a child process (see bug 549906).
+        """
         for x in (
             "--buildpkgonly",
             "--fetchonly",
@@ -11301,17 +11315,8 @@ class depgraph:
             "--pretend",
         ):
             if x in self._frozen_config.myopts:
-                return
+                return []
         root_config = self._frozen_config.roots[self._frozen_config.target_root]
-        world_set = root_config.sets["selected"]
-
-        world_locked = False
-        if hasattr(world_set, "lock"):
-            world_set.lock()
-            world_locked = True
-
-        if hasattr(world_set, "load"):
-            world_set.load()  # maybe it's changed on disk
 
         args_set = self._dynamic_config.sets[self._frozen_config.target_root].sets[
             "__non_set_args__"
@@ -11352,41 +11357,10 @@ class depgraph:
             k = arg.name
             if k in ("selected", "world") or not root_config.sets[k].world_candidate:
                 continue
-            s = SETPREFIX + k
-            if s in world_set:
-                continue
-            all_added.append(s)
-        all_added.extend(added_favorites)
-        if all_added:
-            all_added.sort(key=str)
-            skip = False
-            if "--ask" in self._frozen_config.myopts:
-                writemsg_stdout("\n", noiselevel=-1)
-                for a in all_added:
-                    writemsg_stdout(f" {colorize('GOOD', '*')} {a}\n", noiselevel=-1)
-                writemsg_stdout("\n", noiselevel=-1)
-                prompt = (
-                    "Would you like to add these packages to your world " "favorites?"
-                )
-                enter_invalid = "--ask-enter-invalid" in self._frozen_config.myopts
-                if self.query(prompt, enter_invalid) == "No":
-                    skip = True
-
-            if not skip:
-                for a in all_added:
-                    if isinstance(a, str) and a.startswith(SETPREFIX):
-                        filename = "world_sets"
-                    else:
-                        filename = "world"
-                    writemsg_stdout(
-                        f">>> Recording {colorize('INFORM', str(a))} "
-                        f'in "{filename}" favorites file...\n',
-                        noiselevel=-1,
-                    )
-                world_set.update(all_added)
-
-        if world_locked:
-            world_set.unlock()
+            all_added.append(SETPREFIX + k)
+        all_added.extend(str(x) for x in added_favorites)
+        all_added.sort()
+        return all_added
 
     def _loadResumeCommand(self, resume_data, skip_masked=True, skip_missing=True):
         """
@@ -12130,6 +12104,55 @@ def _show_resolution_report(start_time, backtracked: int = -1, max_retries: int 
         f"Dependency resolution took {darkgreen(time_fmt)} s{backtrack_info}.\n\n"
     )
     show_lru_cache_info()
+
+
+def save_nomerge_favorites(root_config, myopts, all_added):
+    """Add the atoms and sets found by depgraph.nomerge_favorites() to the
+    world file, asking first if --ask is enabled."""
+    if not all_added:
+        return
+
+    world_set = root_config.sets["selected"]
+
+    world_locked = False
+    if hasattr(world_set, "lock"):
+        world_set.lock()
+        world_locked = True
+
+    try:
+        if hasattr(world_set, "load"):
+            world_set.load()  # maybe it's changed on disk
+
+        all_added = [
+            x for x in all_added if not (x.startswith(SETPREFIX) and x in world_set)
+        ]
+        if not all_added:
+            return
+
+        if "--ask" in myopts:
+            writemsg_stdout("\n", noiselevel=-1)
+            for a in all_added:
+                writemsg_stdout(f" {colorize('GOOD', '*')} {a}\n", noiselevel=-1)
+            writemsg_stdout("\n", noiselevel=-1)
+            prompt = "Would you like to add these packages to your world favorites?"
+            enter_invalid = "--ask-enter-invalid" in myopts
+            if UserQuery(myopts).query(prompt, enter_invalid) == "No":
+                return
+
+        for a in all_added:
+            if a.startswith(SETPREFIX):
+                filename = "world_sets"
+            else:
+                filename = "world"
+            writemsg_stdout(
+                f">>> Recording {colorize('INFORM', str(a))} "
+                f'in "{filename}" favorites file...\n',
+                noiselevel=-1,
+            )
+        world_set.update(all_added)
+    finally:
+        if world_locked:
+            world_set.unlock()
 
 
 def backtrack_depgraph(

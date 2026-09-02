@@ -12,6 +12,7 @@ from portage.exception import InvalidData, InvalidDependString
 from portage.update import grab_updates, parse_updates, update_dbentries
 from portage.versions import _pkg_str
 
+from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
@@ -35,6 +36,23 @@ class FakeVardbGetPath:
 
 class _DynamicDepsNotApplicable(Exception):
     pass
+
+
+def fake_vartree_options(myopts):
+    """
+    Return the FakeVartree keyword arguments which are derived from the
+    emerge options.
+
+    The Scheduler builds a FakeVartree of its own when the depgraph did not
+    hand it one, and _depgraph_fork rebuilds the one the depgraph did hand
+    it, so the two have to agree on these.
+    """
+    return {
+        "dynamic_deps": "dynamic_deps" in create_depgraph_params(myopts, None),
+        "ignore_built_slot_operator_deps": (
+            myopts.get("--ignore-built-slot-operator-deps", "n") == "y"
+        ),
+    }
 
 
 class FakeVartree(vartree):

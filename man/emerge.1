@@ -1533,6 +1533,20 @@ before Portage starts.
 This variable is internal and experimental; it may be removed or changed
 in a future release.
 .TP
+.BR PORTAGE_FORK_DEP_CALC
+Portage calculates the dependency graph in a child process, and the process
+which merges the packages only receives the result. Set this environment
+variable to \fI0\fR to calculate in the current process instead. The
+calculation allocates much more memory than the merge that follows it, and
+Python cannot return that memory to the operating system, so this keeps a
+long build from holding onto it.
+Neither \fB\-\-pretend\fR nor \fB\-\-resume\fR uses a child process. If the
+child cannot be started, Portage prints a warning and calculates in the
+current process instead; a child which fails after it starts is an error,
+since it may already have displayed the merge list or asked for confirmation.
+This variable is internal and experimental; it may be removed or changed
+in a future release.
+.TP
 .BR PORTAGE_DO_NOT_EXPORT_PMS_VARS
 If this environment variable is set, then Portage will not export PMS
 variables regardless of the EAPI.  The variables are still available

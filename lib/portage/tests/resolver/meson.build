@@ -30,6 +30,7 @@ py.install_sources(
         'test_depclean.py',
         'test_depclean_order.py',
         'test_depclean_slot_unavailable.py',
+        'test_depgraph_fork.py',
         'test_depth.py',
         'test_disjunctive_depend_order.py',
         'test_eapi.py',
