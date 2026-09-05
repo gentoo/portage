@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -248,26 +248,22 @@ class _BinpkgFetcherProcess(SpawnProcess):
         # If possible, update the mtime to match the remote package if
         # the fetcher didn't already do it automatically.
         bintree = self.pkg.root_config.trees["bintree"]
-        if bintree._remote_has_index:
-            remote_mtime = bintree._remotepkgs[
-                bintree.dbapi._instance_key(self.pkg.cpv)
-            ].get("_mtime_")
-            if remote_mtime is not None:
-                try:
-                    remote_mtime = int(remote_mtime)
-                except ValueError:
-                    pass
-                else:
-                    try:
-                        local_mtime = os.stat(self.pkg_path)[stat.ST_MTIME]
-                    except OSError:
-                        pass
-                    else:
-                        if remote_mtime != local_mtime:
-                            try:
-                                os.utime(self.pkg_path, (remote_mtime, remote_mtime))
-                            except OSError:
-                                pass
+        if not bintree._remote_has_index:
+            return
+
+        remote_mtime = bintree._remotepkgs[
+            bintree.dbapi._instance_key(self.pkg.cpv)
+        ].get("_mtime_")
+        if remote_mtime is None:
+            return
+
+        try:
+            remote_mtime = int(remote_mtime)
+            local_mtime = os.stat(self.pkg_path)[stat.ST_MTIME]
+            if remote_mtime != local_mtime:
+                os.utime(self.pkg_path, (remote_mtime, remote_mtime))
+        except OSError:
+            pass
 
     def async_lock(self):
         """
