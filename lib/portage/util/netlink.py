@@ -8,6 +8,7 @@ from socket import (
     AF_NETLINK,
     AF_UNSPEC,
     MSG_PEEK,
+    MSG_TRUNC,
     NETLINK_ROUTE,
     SOCK_DGRAM,
     inet_pton,
@@ -78,10 +79,16 @@ class RtNetlink:
 
     def send_message(self, msg):
         self.sock.send(msg)
-        peek = self.sock.recv(nlmsghdr.size, MSG_PEEK)
-        hdr = nlmsghdr.unpack(peek)
-        size = hdr[0]
-        resp = self.sock.recv(size)
+
+        # The kernel docs say 8kB is a good buffer size.
+        # https://docs.kernel.org/7.2/userspace-api/netlink/intro.html#buffer-sizing
+        # Use MSG_PEEK|MSG_TRUNC to get the actual size in case the kernel changes.
+        resp = self.sock.recv(8192, MSG_PEEK | MSG_TRUNC)
+
+        # socket.recv() uses the passed size when allocating its buffer.
+        # It resizes the buffer based on the return value of the syscall.
+        resp = self.sock.recv(len(resp))
+
         return parse_message(resp)
 
     def get_link_ifindex(self, ifname):
