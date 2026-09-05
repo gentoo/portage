@@ -817,9 +817,18 @@ class binarytree:
         pkgdir_grp_mode = 0o2070 & pkgdir_st.st_mode
 
         components = []
-        for component in PurePath(path).relative_to(self.pkgdir).parts:
+        base = self.pkgdir
+        try:
+            parts = PurePath(path).relative_to(base).parts
+        except ValueError:
+            # If we're passed a binpkg cache directory instead of PKGDIR,
+            # the destination for the binpkg won't be relative to PKGDIR.
+            base = f"{self.settings['EPREFIX']}/var/cache/binhost"
+            parts = PurePath(path).relative_to(base).parts
+
+        for component in parts:
             components.append(component)
-            component_path = os.path.join(self.pkgdir, *components)
+            component_path = os.path.join(base, *components)
             try:
                 ensure_dirs(
                     component_path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0
