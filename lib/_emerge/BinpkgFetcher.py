@@ -9,7 +9,9 @@ from urllib.parse import urlparse as urllib_parse_urlparse
 
 import portage
 from portage.binpkg import get_binpkg_format
+from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.exception import FileNotFound
+from portage.package.ebuild.fetch import _want_userfetch
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.FileCopier import FileCopier
 from portage.util._pty import _create_pty_or_pipe
@@ -118,6 +120,11 @@ class BinpkgFetcher(CompositeTask):
                 if copier.returncode == os.EX_OK:
                     fetcher.sync_timestamp()
             else:
+                if _want_userfetch(self.pkg.root_config.settings):
+                    portage.util.ensure_dirs(
+                        os.path.dirname(self.pkg_path), uid=portage_gid, gid=portage_gid
+                    )
+
                 fetcher.start()
                 try:
                     await fetcher.async_wait()
@@ -229,6 +236,13 @@ class _BinpkgFetcherProcess(SpawnProcess):
         if settings.selinux_enabled():
             self._selinux_type = settings["PORTAGE_FETCH_T"]
         self.log_filter_file = settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
+
+        if _want_userfetch(self.pkg.root_config.settings):
+            self.uid = int(portage_uid)
+            self.gid = int(portage_gid)
+            self.groups = userpriv_groups
+            self.umask = 0o02
+
         SpawnProcess._start(self)
 
     def _pipe(self, fd_pipes):
