@@ -85,8 +85,8 @@ class BinpkgFetcher(CompositeTask):
                 ]
                 rel_uri = remote_metadata.get("PATH")
                 if not rel_uri:
-                    # Assume that the remote index is out of date. No path should
-                    # never happen in new portage versions.
+                    # Assume that the remote index is out of date. We should always
+                    # have a PATH in newer Portage versions.
                     rel_uri = pkg.cpv + ".tbz2"
                 remote_base_uri = remote_metadata["BASE_URI"]
                 uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
