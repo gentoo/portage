@@ -9,6 +9,18 @@ Release notes take the form of the following optional categories:
 portage-3.0.83 (UNRELEASED)
 --------------
 
+Breaking changes:
+
+* BinpkgFetcher: Fetch binary packages as the regular fetch user, like
+  FEATURES="userfetch" (bug #930179).
+
+  Users relying on SSH to fetch binpkgs may need to adjust ownership
+  of keys so they're accessible to the 'portage' user.
+
+Security:
+
+* See FEATURES="userfetch" item above under "Breaking changes".
+
 Features:
 
 * Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
