@@ -12,7 +12,7 @@ from portage.dep import (
     use_reduce,
 )
 from portage.exception import InvalidDependString
-from portage.output import colorize
+from portage.output import blue, colorize, red
 from portage.util import writemsg_level
 
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
@@ -196,7 +196,12 @@ class circular_dependency_handler:
         description = str(priorities[-1])
         affecting_use = self._affecting_use(parent, pkg, priorities[-1])
         if affecting_use:
-            description += f", USE={' '.join(sorted(affecting_use))}"
+            use = self.depgraph._pkg_use_enabled(parent)
+            flags = " ".join(
+                red(flag) if flag in use else blue("-" + flag)
+                for flag in sorted(affecting_use)
+            )
+            description += f", USE={flags}"
         return description
 
     def _find_test_dep_parents(self):

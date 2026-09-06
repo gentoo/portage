@@ -44,6 +44,11 @@ Features:
   PORTAGE_CIRCULAR_MAX_USE_FLAGS), and is never empty (bug #929010, bug
   #877549). Add --circular-deps-report=json for automated consumers.
 
+* emerge: Packages in a dependency cycle no longer wait for each other's
+  post-merge dependencies during --jobs builds (bug #452172), and --depclean
+  now names the whole cycle when a package cannot be cleaned because of one
+  (bug #346351).
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 

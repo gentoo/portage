@@ -5,6 +5,7 @@ import io
 import json
 from contextlib import redirect_stdout
 
+from portage.output import blue, red
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -96,7 +97,7 @@ class CircularDependencyUseDisplayTestCase(TestCase):
             ResolverPlaygroundTestCase(
                 ["media-libs/freetype"],
                 success=False,
-                circular_dependency_message=["USE=harfbuzz"],
+                circular_dependency_message=[f"USE={red('harfbuzz')}"],
                 circular_dependency_solutions={
                     "media-libs/harfbuzz-1": frozenset(
                         [frozenset([("harfbuzz", False)])]
@@ -135,7 +136,7 @@ class CircularDependencyUseDisplayTestCase(TestCase):
                 # change itself would never report the cycle.
                 options={"--autounmask-use": "n"},
                 success=False,
-                circular_dependency_message=["USE=system-b"],
+                circular_dependency_message=[f"USE={blue('-system-b')}"],
                 circular_dependency_solutions={
                     "dev-libs/B-1": frozenset([frozenset([("system-b", True)])])
                 },
@@ -196,7 +197,7 @@ class CircularDependencyUseDisplayTestCase(TestCase):
             result = playground.run(["dev-libs/A"], options={"--autounmask-use": "n"})
             self.assertEqual(result.success, False)
             self.assertTrue(
-                "USE=doc nls" in result.circular_dependency_message,
+                f"USE={red('doc')} {red('nls')}" in result.circular_dependency_message,
                 result.circular_dependency_message,
             )
         finally:

@@ -1274,6 +1274,52 @@ def _calc_depclean(
         msg.append("\n")
         portage.writemsg_stdout("".join(msg), noiselevel=-1)
 
+    cycle_components = {}
+
+    def cycle_members(pkg):
+        """
+        Return the packages that are in a dependency cycle with pkg,
+        including pkg itself.
+        """
+        if not cycle_components:
+            for component in graph.strongly_connected_components():
+                members = frozenset(component)
+                for node in component:
+                    cycle_components[node] = members
+        return cycle_components.get(pkg, frozenset([pkg]))
+
+    def show_cycle_suggestion(pkg):
+        """
+        A package that is only kept by a dependency cycle can be removed
+        by passing every member of the cycle at once, since --depclean
+        with arguments only considers the given packages (bug 346351).
+        """
+        members = cycle_members(pkg)
+        if len(members) < 2:
+            return
+
+        for member in members:
+            for parent, _atom in resolver._dynamic_config._parent_atoms.get(member, []):
+                if parent in members:
+                    continue
+                if isinstance(parent, SetArg) and parent.name == protected_set_name:
+                    # Only protected because --depclean was given
+                    # arguments, which protects everything else.
+                    continue
+                # Something outside of the cycle needs it.
+                return
+
+        resolver._dynamic_config._depclean_cycle_suggestions[pkg] = frozenset(members)
+
+        msg = [
+            f"  {pkg.cpv} is only required by packages that it requires\n",
+            "  itself. Pass all of them at once in order to remove them:\n",
+            "    emerge --depclean {}\n\n".format(
+                " ".join(sorted("=" + member.cpv for member in members))
+            ),
+        ]
+        portage.writemsg_stdout("".join(msg), noiselevel=-1)
+
     def cmp_pkg_cpv(pkg1, pkg2):
         """Sort Package instances by cpv."""
         if pkg1.cpv > pkg2.cpv:
@@ -1303,8 +1349,10 @@ def _calc_depclean(
                     if arg_atom:
                         if pkg not in graph:
                             pkgs_to_remove.append(pkg)
-                        elif "--verbose" in myopts:
-                            show_parents(pkg)
+                        else:
+                            if "--verbose" in myopts:
+                                show_parents(pkg)
+                            show_cycle_suggestion(pkg)
 
             else:
                 for pkg in sorted(vardb, key=cmp_sort_key(cmp_pkg_cpv)):
