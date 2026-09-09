@@ -93,6 +93,7 @@ py.install_sources(
         '_find_deep_system_runtime_deps.py',
         '_flush_elog_mod_echo.py',
         '_observability.py',
+        '_run_in_child.py',
         '_serialize_frontier.py',
         '__init__.py',
     ],
