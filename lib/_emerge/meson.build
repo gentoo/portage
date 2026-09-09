@@ -90,6 +90,7 @@ py.install_sources(
         'show_invalid_depstring_notice.py',
         'stdout_spinner.py',
         'unmerge.py',
+        '_depgraph_fork.py',
         '_find_deep_system_runtime_deps.py',
         '_flush_elog_mod_echo.py',
         '_observability.py',

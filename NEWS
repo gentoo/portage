@@ -49,6 +49,12 @@ Features:
   now names the whole cycle when a package cannot be cleaned because of one
   (bug #346351).
 
+* emerge: Calculate the dependency graph in a child process, so that the
+  memory it allocates is returned to the operating system before the merge
+  starts rather than being held for the duration of the build (bug #549906).
+  Set PORTAGE_FORK_DEP_CALC=0 in the environment to calculate in the current
+  process instead. See emerge(1) for details.
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 

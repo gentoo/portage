@@ -143,6 +143,11 @@ async def _async_test_baseline(playground, binhost, commands):
             "__PORTAGE_TEST_HARDLINK_LOCKS"
         ]
 
+    # Allow the suite to be run against a dependency calculation which
+    # happens in a child process (bug 549906).
+    if "PORTAGE_FORK_DEP_CALC" in os.environ:
+        env["PORTAGE_FORK_DEP_CALC"] = os.environ["PORTAGE_FORK_DEP_CALC"]
+
     updates_dir = os.path.join(test_repo_location, "profiles", "updates")
     dirs = [
         cachedir,
