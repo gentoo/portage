@@ -1846,8 +1846,9 @@ class gpkg:
                             raise DigestException(
                                 f"{f} checksum mismatched in {self.gpkg_file}"
                             )
-                    except KeyError:
-                        # Checksum method not supported
+                    except (ValueError, IndexError):
+                        # Method not recorded, or the record ends before
+                        # its value
                         pass
 
                 if verified_hash_count < 1:
