@@ -87,13 +87,17 @@ class EbuildExecuter(CompositeTask):
             scheduler=scheduler,
             settings=settings,
         )
+        # pkg_setup has no default definition, so elide it where
+        # unnecessary (inc. no hooks from user).
+        if setup_phase._phase_runs_code():
+            setup_phase.addExitListener(self._setup_exit)
+            self._task_queued(setup_phase)
+            self.scheduler.scheduleSetup(setup_phase)
+        else:
+            self._setup_exit(None, skipped_setup=True)
 
-        setup_phase.addExitListener(self._setup_exit)
-        self._task_queued(setup_phase)
-        self.scheduler.scheduleSetup(setup_phase)
-
-    def _setup_exit(self, setup_phase):
-        if self._default_exit(setup_phase) != os.EX_OK:
+    def _setup_exit(self, setup_phase, skipped_setup=False):
+        if not skipped_setup and self._default_exit(setup_phase) != os.EX_OK:
             self.wait()
             return
 
