@@ -1635,6 +1635,41 @@ class gpkg:
 
         return manifest
 
+    def _find_manifest_record(self, manifest, filename):
+        """Return filename's record in manifest, matched by basename."""
+        basename = os.path.basename(filename)
+        for record in manifest:
+            if record[1] == basename:
+                return record
+        raise DigestException(f"{filename} checksum not found in {self.gpkg_file}")
+
+    def _check_manifest_size(self, manifest_record, filename, size):
+        """Raise DigestException if size does not match manifest_record."""
+        if int(manifest_record[2]) != int(size):
+            raise DigestException(
+                f"{filename} file size mismatched in {self.gpkg_file}"
+            )
+
+    def _check_manifest_checksums(self, manifest_record, filename, checksum_info):
+        """Raise DigestException unless at least one recorded checksum matches."""
+        verified_hash_count = 0
+        for c in checksum_info.libs:
+            try:
+                digest = manifest_record[manifest_record.index(c) + 1]
+            except (ValueError, IndexError):
+                # Method not recorded, or the record ends before its value
+                continue
+            if checksum_info.libs[c].hexdigest().lower() != digest.lower():
+                raise DigestException(
+                    f"{filename} checksum mismatched in {self.gpkg_file}"
+                )
+            verified_hash_count += 1
+
+        if verified_hash_count < 1:
+            raise DigestException(
+                f"{filename} no supported checksum found in {self.gpkg_file}"
+            )
+
     def _add_signature(self, checksum_info, tarinfo, container, manifest=True):
         """
         Add GnuPG signature for the given tarinfo file.
@@ -1776,19 +1811,10 @@ class gpkg:
                 else:
                     f_signature = f + ".sig"
 
-                # Find current file manifest record
-                manifest_record = None
-                for m in manifest:
-                    if m[1] == os.path.basename(f):
-                        manifest_record = m
-
-                if manifest_record is None:
-                    raise DigestException(f"{f} checksum not found in {self.gpkg_file}")
-
-                if int(manifest_record[2]) != int(container.getmember(f).size):
-                    raise DigestException(
-                        f"{f} file size mismatched in {self.gpkg_file}"
-                    )
+                manifest_record = self._find_manifest_record(manifest, f)
+                self._check_manifest_size(
+                    manifest_record, f, container.getmember(f).size
+                )
 
                 # Ignore image file and signature if not needed
                 if os.path.basename(f).startswith("image") and metadata_only:
@@ -1833,28 +1859,7 @@ class gpkg:
                         break
                 f_io.close()
 
-                # At least one supported checksum must be checked
-                verified_hash_count = 0
-                for c in checksum_info.libs:
-                    try:
-                        if (
-                            checksum_info.libs[c].hexdigest().lower()
-                            == manifest_record[manifest_record.index(c) + 1].lower()
-                        ):
-                            verified_hash_count += 1
-                        else:
-                            raise DigestException(
-                                f"{f} checksum mismatched in {self.gpkg_file}"
-                            )
-                    except (ValueError, IndexError):
-                        # Method not recorded, or the record ends before
-                        # its value
-                        pass
-
-                if verified_hash_count < 1:
-                    raise DigestException(
-                        f"{f} no supported checksum found in {self.gpkg_file}"
-                    )
+                self._check_manifest_checksums(manifest_record, f, checksum_info)
 
                 # Current file verified
                 unverified_files.remove(f)
