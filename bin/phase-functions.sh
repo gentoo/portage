@@ -1000,6 +1000,16 @@ __ebuild_phase_funcs() {
 			fi
 			;;
 	esac
+
+	if ! [[ -v PORTAGE_HOOKED_PHASES ]] ; then
+		export PORTAGE_HOOKED_PHASES=
+		local phase
+		for phase in ${all_phases} ; do
+			if declare -F "pre_${phase}" >/dev/null || declare -F "post_${phase}" >/dev/null ; then
+				PORTAGE_HOOKED_PHASES+="${phase} "
+			fi
+		done
+	fi
 }
 
 __ebuild_main() {

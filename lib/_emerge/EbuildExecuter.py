@@ -72,8 +72,8 @@ class EbuildExecuter(CompositeTask):
         cleanup = 0
         portage.prepare_build_dirs(pkg.root, settings, cleanup)
 
+        vardb = pkg.root_config.trees["vartree"].dbapi
         if eapi_exports_replace_vars(settings["EAPI"]):
-            vardb = pkg.root_config.trees["vartree"].dbapi
             settings["REPLACING_VERSIONS"] = " ".join(
                 {
                     portage.versions.cpv_getversion(match)
@@ -81,19 +81,30 @@ class EbuildExecuter(CompositeTask):
                 }
             )
 
-        setup_phase = EbuildPhase(
-            background=self.background,
-            phase="setup",
-            scheduler=scheduler,
-            settings=settings,
-        )
+        self.settings["PORTAGE_HOOKED_PHASES"] = vardb._aux_env_search(
+            pkg.cpv, ["PORTAGE_HOOKED_PHASES"]
+        ).get("PORTAGE_HOOKED_PHASES", "")
+        # pkg_setup has no default definition, so elide it where
+        # unnecessary (inc. no hooks from user).
+        if (
+            "setup" in pkg.cpv._metadata["DEFINED_PHASES"].split()
+            or "pkg_setup" in self.settings["PORTAGE_HOOKED_PHASES"].split()
+        ):
+            setup_phase = EbuildPhase(
+                background=self.background,
+                phase="setup",
+                scheduler=scheduler,
+                settings=settings,
+            )
 
-        setup_phase.addExitListener(self._setup_exit)
-        self._task_queued(setup_phase)
-        self.scheduler.scheduleSetup(setup_phase)
+            setup_phase.addExitListener(self._setup_exit)
+            self._task_queued(setup_phase)
+            self.scheduler.scheduleSetup(setup_phase)
+        else:
+            self._setup_exit(None, skipped_setup=True)
 
-    def _setup_exit(self, setup_phase):
-        if self._default_exit(setup_phase) != os.EX_OK:
+    def _setup_exit(self, setup_phase, skipped_setup=False):
+        if not skipped_setup and self._default_exit(setup_phase) != os.EX_OK:
             self.wait()
             return
 
