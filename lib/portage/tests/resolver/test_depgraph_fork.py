@@ -166,3 +166,53 @@ class DepgraphForkTestCase(TestCase):
                     )
         finally:
             playground.cleanup()
+
+    def testCycleBreakRoundTrip(self):
+        """
+        A transient --cycle-break instance keeps its identity and USE
+        changes, or the merge would build it with the requested USE.
+        """
+        ebuilds = {
+            "media-libs/freetype-1": {
+                "EAPI": "8",
+                "IUSE": "+harfbuzz",
+                "DEPEND": "harfbuzz? ( media-libs/harfbuzz )",
+            },
+            "media-libs/harfbuzz-1": {"EAPI": "8", "DEPEND": "media-libs/freetype"},
+        }
+        user_config = {"make.conf": ('USE="harfbuzz"',)}
+
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, user_config=user_config, debug=False
+        )
+        try:
+            settings = playground.settings
+            trees = playground.trees
+            myopts = {"--quiet": True, "--cycle-break": "y"}
+            myparams = create_depgraph_params(myopts, None)
+
+            success, mydepgraph, _favorites = backtrack_depgraph(
+                settings, trees, myopts, myparams, None, ["media-libs/harfbuzz"], None
+            )
+            self.assertTrue(success)
+
+            graph_config = mydepgraph.schedulerGraph()
+            payload = pickle.loads(pickle.dumps(encode_scheduler_graph(graph_config)))
+            decoded = decode_scheduler_graph(payload, trees, myopts)
+
+            def cycle_use_changes(mergelist):
+                return [
+                    (x.cpv, x.cycle_use_changes)
+                    for x in mergelist
+                    if isinstance(x, Package)
+                ]
+
+            expected = [
+                ("media-libs/freetype-1", frozenset([("harfbuzz", False)])),
+                ("media-libs/harfbuzz-1", None),
+                ("media-libs/freetype-1", None),
+            ]
+            self.assertEqual(cycle_use_changes(graph_config.mergelist), expected)
+            self.assertEqual(cycle_use_changes(decoded.mergelist), expected)
+        finally:
+            playground.cleanup()

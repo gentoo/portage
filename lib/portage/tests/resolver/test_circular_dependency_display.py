@@ -96,7 +96,7 @@ class CircularDependencyUseDisplayTestCase(TestCase):
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["media-libs/freetype"],
-                options={"--autounmask-use": "n"},
+                options={"--autounmask-use": "n", "--cycle-break": "n"},
                 success=False,
                 circular_dependency_message=[f"USE={red('harfbuzz')}"],
                 circular_dependency_solutions={
@@ -135,7 +135,7 @@ class CircularDependencyUseDisplayTestCase(TestCase):
                 ["dev-libs/A"],
                 # Without this, a resolver that is able to apply the USE
                 # change itself would never report the cycle.
-                options={"--autounmask-use": "n"},
+                options={"--autounmask-use": "n", "--cycle-break": "n"},
                 success=False,
                 circular_dependency_message=[f"USE={blue('-system-b')}"],
                 circular_dependency_solutions={
@@ -195,7 +195,9 @@ class CircularDependencyUseDisplayTestCase(TestCase):
 
         playground = ResolverPlayground(ebuilds=ebuilds)
         try:
-            result = playground.run(["dev-libs/A"], options={"--autounmask-use": "n"})
+            result = playground.run(
+                ["dev-libs/A"], options={"--autounmask-use": "n", "--cycle-break": "n"}
+            )
             self.assertEqual(result.success, False)
             self.assertTrue(
                 f"USE={red('doc')} {red('nls')}" in result.circular_dependency_message,
@@ -233,7 +235,7 @@ class CircularTestDependencyTestCase(TestCase):
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
-                options={"--autounmask-use": "n"},
+                options={"--autounmask-use": "n", "--cycle-break": "n"},
                 success=False,
                 circular_dependency_test_parents=["dev-libs/A-1"],
                 circular_dependency_solutions={
@@ -274,7 +276,7 @@ class CircularTestDependencyTestCase(TestCase):
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
-                options={"--autounmask-use": "n"},
+                options={"--autounmask-use": "n", "--cycle-break": "n"},
                 success=False,
                 circular_dependency_test_parents=["dev-libs/A-1"],
                 circular_dependency_solutions={
@@ -390,7 +392,7 @@ class CircularSearchTruncatedTestCase(TestCase):
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
-                options={"--autounmask-use": "n"},
+                options={"--autounmask-use": "n", "--cycle-break": "n"},
                 success=False,
                 circular_dependency_solutions={},
                 circular_dependency_search_truncated=["dev-libs/A-1"],
@@ -429,7 +431,9 @@ class CircularSearchTruncatedTestCase(TestCase):
 
         playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
         try:
-            result = playground.run(["dev-libs/A"], options={"--autounmask-use": "n"})
+            result = playground.run(
+                ["dev-libs/A"], options={"--autounmask-use": "n", "--cycle-break": "n"}
+            )
             self.assertEqual(result.success, False)
             self.assertEqual(result.circular_dependency_search_truncated, set())
             self.assertNotEqual(result.circular_dependency_solutions, {})
@@ -463,6 +467,7 @@ class CircularDependencyJsonReportTestCase(TestCase):
                 options={
                     "--circular-deps-report": "json",
                     "--autounmask-use": "n",
+                    "--cycle-break": "n",
                 },
             )
             self.assertEqual(result.success, False)
@@ -525,7 +530,11 @@ class CircularDependencyJsonReportTestCase(TestCase):
         try:
             result = playground.run(
                 ["dev-libs/A"],
-                options={"--circular-deps-report": "json", "--autounmask-use": "n"},
+                options={
+                    "--circular-deps-report": "json",
+                    "--autounmask-use": "n",
+                    "--cycle-break": "n",
+                },
             )
             self.assertEqual(result.success, False)
 

@@ -32,6 +32,7 @@ class CircularUseSolutionTestCase(TestCase):
             # other autounmask change.
             ResolverPlaygroundTestCase(
                 ["media-libs/harfbuzz"],
+                options={"--cycle-break": "n"},
                 success=False,
                 use_changes={"media-libs/freetype-1": {"harfbuzz": False}},
             ),
@@ -39,7 +40,7 @@ class CircularUseSolutionTestCase(TestCase):
             # produces a merge list for the changed configuration.
             ResolverPlaygroundTestCase(
                 ["media-libs/harfbuzz"],
-                options={"--autounmask-backtrack": "y"},
+                options={"--autounmask-backtrack": "y", "--cycle-break": "n"},
                 success=False,
                 use_changes={"media-libs/freetype-1": {"harfbuzz": False}},
                 mergelist=["media-libs/freetype-1", "media-libs/harfbuzz-1"],
