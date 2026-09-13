@@ -687,6 +687,8 @@ class _dynamic_depgraph_config:
         # Packages that --depclean cannot remove because they are kept
         # alive by a dependency cycle, mapped to the cycle members.
         self._depclean_cycle_suggestions = {}
+        # Packages merged before one of their runtime dependencies.
+        self._ignored_runtime_deps = {}
         self._dep_stack = []
         self._dep_disjunctive_stack = []
         self._unsatisfied_deps = []
@@ -1327,6 +1329,57 @@ class depgraph:
             if line:
                 line = colorize("INFORM", line)
             writemsg(line + "\n", noiselevel=-1)
+
+    def _show_ignored_runtime_deps(self):
+        """
+        Warn about packages that are merged before their runtime
+        dependencies, since they may not work until the rest of the cycle
+        has been merged (bug 647824).
+        """
+        ignored = self._dynamic_config._ignored_runtime_deps
+        if not ignored or "--quiet" in self._frozen_config.myopts:
+            return
+
+        writemsg(
+            "\n!!! The following packages will be merged before their runtime\n"
+            "!!! dependencies, in order to break a circular dependency. They\n"
+            "!!! may not work until the packages listed below them are merged:\n",
+            noiselevel=-1,
+        )
+        for pkg in sorted(ignored, key=lambda x: x.cpv):
+            writemsg(f"  {pkg.cpv}\n", noiselevel=-1)
+            for child in sorted(ignored[pkg], key=lambda x: x.cpv):
+                writemsg(f"    requires {child.cpv}\n", noiselevel=-1)
+
+    def _find_ignored_runtime_deps(self, retlist):
+        """
+        Return the packages that retlist merges before one of their
+        runtime dependencies, mapped to those dependencies.
+        """
+        positions = {node: index for index, node in enumerate(retlist)}
+
+        graph = self._dynamic_config.digraph
+        ignored = {}
+        for index, node in enumerate(retlist):
+            if not isinstance(node, Package) or node.operation != "merge":
+                continue
+            if node not in graph:
+                continue
+            for child in graph.child_nodes(node):
+                if not isinstance(child, Package):
+                    continue
+                if child.installed or child.operation != "merge":
+                    continue
+                child_index = positions.get(child)
+                if child_index is None or child_index < index:
+                    continue
+                if any(
+                    priority.runtime and not priority.satisfied
+                    for priority in graph.nodes[node][0][child]
+                ):
+                    ignored.setdefault(node, set()).add(child)
+
+        return ignored
 
     def _show_ignored_binaries(self):
         """
@@ -10406,6 +10459,10 @@ class depgraph:
             if isinstance(node, Blocker):
                 node.satisfied = True
 
+        self._dynamic_config._ignored_runtime_deps = self._find_ignored_runtime_deps(
+            retlist
+        )
+
         retlist.extend(unsolvable_blockers)
         retlist = tuple(retlist)
 
@@ -11274,6 +11331,8 @@ class depgraph:
             self._show_abi_rebuild_info()
 
         self._show_ignored_binaries()
+
+        self._show_ignored_runtime_deps()
 
         self._changed_deps_report()
 
