@@ -317,6 +317,9 @@ class _frozen_depgraph_config:
         # All Package instances
         self._pkg_cache = {}
         self._highest_license_masked = {}
+        # Whether the --cycle-break limit has already been reported, so
+        # that backtracking does not repeat the message.
+        self._cycle_break_limit_shown = False
         # We can't know that an soname dep is unsatisfied if there are
         # any unbuilt ebuilds in the graph, since unbuilt ebuilds have
         # no soname data. Therefore, only enable soname dependency
@@ -706,6 +709,7 @@ class _dynamic_depgraph_config:
         self.ignored_binaries = {}
 
         self._circular_dependency = backtrack_parameters.circular_dependency
+        self._cycle_break = backtrack_parameters.cycle_break
         self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
         self._needed_p_mask_changes = backtrack_parameters.needed_p_mask_changes
         self._needed_license_changes = backtrack_parameters.needed_license_changes
@@ -838,6 +842,9 @@ class depgraph:
     # user arguments (or their deep dependencies). Such nodes are pulled
     # in by the _complete_graph method.
     _UNREACHABLE_DEPTH = object()
+
+    # Maximum number of packages that --cycle-break may build twice.
+    _max_cycle_breaks = 10
 
     pkg_tree_map = RootConfig.pkg_tree_map
 
@@ -9710,6 +9717,9 @@ class depgraph:
     def _serialize_tasks(self):
         debug = "--debug" in self._frozen_config.myopts
 
+        if self._dynamic_config._cycle_break:
+            self._apply_cycle_break()
+
         if debug:
             writemsg("\ndigraph:\n\n", noiselevel=-1)
             self._dynamic_config.digraph.debug_print()
@@ -10543,9 +10553,19 @@ class depgraph:
                     if self._dynamic_config._allow_backtracking:
                         # Adjusting || preferences did not help.
                         handler = circular_dependency_handler(self, mygraph)
-                        solved = self._solve_cycle_with_use_changes(handler)
-                        if not solved:
-                            solved = self._solve_cycle_with_older_version(handler)
+                        if self._frozen_config.myopts.get("--cycle-break") == "y":
+                            # Build twice rather than change USE for good.
+                            attempts = (
+                                self._solve_cycle_with_older_version,
+                                self._schedule_cycle_break,
+                                self._solve_cycle_with_use_changes,
+                            )
+                        else:
+                            attempts = (
+                                self._solve_cycle_with_use_changes,
+                                self._solve_cycle_with_older_version,
+                            )
+                        solved = any(attempt(handler) for attempt in attempts)
 
                     if solved:
                         self._dynamic_config._need_restart = True
@@ -10823,6 +10843,386 @@ class depgraph:
         except InvalidDependString:
             return True
         return any(not atom.blocker and atom.match(child) for atom in atoms)
+
+    def _schedule_cycle_break(self, handler):
+        """
+        Schedule a package to be built twice, first with the USE change
+        that breaks the cycle. _apply_cycle_break() rewrites the graph
+        after the restart.
+
+        @return: True if a two pass build was scheduled
+        """
+        candidates = self._cycle_break_find(handler)
+        if not candidates:
+            # The shortest cycle may consist of runtime dependencies only,
+            # which do not keep its members from being merged together.
+            # A cycle of build time dependencies always does.
+            hard_cycle = None
+            for cycle in handler.graph.get_cycles(
+                ignore_priority=DepPrioritySatisfiedRange.ignore_medium
+            ):
+                if hard_cycle is None or len(cycle) < len(hard_cycle):
+                    hard_cycle = cycle
+            if hard_cycle is not None and set(hard_cycle) != set(
+                handler.shortest_cycle or ()
+            ):
+                hard_handler = circular_dependency_handler(
+                    self, handler.graph, cycle=hard_cycle
+                )
+                candidates = self._cycle_break_find(hard_handler)
+        if not candidates:
+            return False
+
+        cycle_break = self._dynamic_config._cycle_break
+        if len(cycle_break) >= self._max_cycle_breaks:
+            # Changing the USE of a transient build that is already
+            # scheduled does not add another one.
+            candidates = [c for c in candidates if c[0] in cycle_break]
+            if not candidates:
+                if not self._frozen_config._cycle_break_limit_shown:
+                    self._frozen_config._cycle_break_limit_shown = True
+                    writemsg(
+                        "!!! Refusing to build more than "
+                        f"{self._max_cycle_breaks} packages twice in order to "
+                        "break circular dependencies.\n",
+                        noiselevel=-1,
+                    )
+                return False
+
+        pkg, solution = min(candidates, key=self._cycle_solution_sort_key)
+
+        backtrack_infos = self._dynamic_config._backtrack_infos
+        backtrack_infos.setdefault("config", {})
+        backtrack_infos["config"].setdefault("cycle_break", {})[pkg] = solution
+        return True
+
+    # How many longer cycles _cycle_break_find() follows, one inside the
+    # other, before it gives up.
+    _max_cycle_break_depth = 5
+
+    def _cycle_break_find(self, handler, bases=None, depth=0):
+        """
+        Return the candidates for breaking the cycle of handler, or else
+        those for breaking a longer cycle that keeps them from working.
+
+        @param bases: USE changes to add to, by package, in addition to
+            those of the transient builds that are already scheduled
+        """
+        candidates = self._cycle_break_candidates(handler, bases=bases)
+        if candidates or depth >= self._max_cycle_break_depth:
+            return candidates
+        for longer_handler, longer_bases in self._cycle_break_longer_handlers(
+            handler, bases
+        ):
+            candidates.extend(
+                self._cycle_break_find(longer_handler, longer_bases, depth + 1)
+            )
+        return candidates
+
+    def _cycle_break_final(self, pkg):
+        """
+        Return the package that pkg is a transient instance of, or pkg
+        itself.
+        """
+        if pkg.cycle_use_changes:
+            for final, solution in self._dynamic_config._cycle_break.items():
+                if self._cycle_break_pkg(final, solution) == pkg:
+                    return final
+        return pkg
+
+    def _cycle_break_candidates(self, handler, reaching=False, bases=None):
+        """
+        Return the (package, USE change) pairs that --cycle-break could
+        use to break the cycle. For a package that already has a
+        transient build, or one in bases, the USE change adds to that
+        one. With reaching=True, return only those whose transient build
+        would still need the rest of the cycle by some other path instead.
+        """
+        candidates = []
+        cycle = set(handler.shortest_cycle or ())
+        for pkg, solutions in handler.cycle_break_solutions.items():
+            pkg = self._cycle_break_final(pkg)
+            if pkg.installed or pkg.built or pkg.operation != "merge":
+                continue
+            if pkg.cycle_use_changes:
+                continue
+            base = (bases or {}).get(pkg)
+            if base is None:
+                base = self._dynamic_config._cycle_break.get(pkg, frozenset())
+            for solution in solutions:
+                solution = frozenset(base | solution)
+                if solution == base:
+                    continue
+                if len({flag for flag, _state in solution}) != len(solution):
+                    # It would undo part of the change that it adds to.
+                    continue
+                new_use = self._cycle_break_use(pkg, solution)
+                # _apply_cycle_break() only drops dependencies, so it
+                # cannot add the ones that an enabled flag pulls in.
+                if any(state for _flag, state in solution) and self._adds_deps(
+                    pkg, new_use
+                ):
+                    continue
+                path = self._cycle_break_path(pkg, new_use, cycle - {pkg})
+                if (path is not None) != reaching:
+                    continue
+                candidates.append((pkg, solution))
+        return candidates
+
+    def _cycle_break_longer_handlers(self, handler, bases=None):
+        """
+        When the transient build of a candidate, or of a package that
+        already has one, would still need the rest of the cycle by some
+        other path, yield handlers for the longer cycles that these paths
+        form, along with the USE changes that candidates for them add to.
+        Once such a cycle is broken, a later pass can break the original
+        one.
+        """
+        cycle = handler.shortest_cycle
+        reaching = self._cycle_break_candidates(handler, reaching=True, bases=bases)
+        for pkg in cycle:
+            solution = (bases or {}).get(pkg)
+            if solution is None:
+                solution = self._dynamic_config._cycle_break.get(pkg)
+            if solution is not None:
+                reaching.append((pkg, solution))
+        seen = set()
+        for pkg, solution in reaching:
+            if pkg not in cycle:
+                continue
+            members = set(cycle) - {pkg}
+            path = self._cycle_break_path(
+                pkg, self._cycle_break_use(pkg, solution), members, handler.graph
+            )
+            if path is None:
+                continue
+            # cycle[i - 1] depends on cycle[i], so continue from where
+            # the path joins the cycle until just before pkg.
+            pos = cycle.index(path[-1])
+            longer = [pkg] + path
+            while True:
+                pos = (pos + 1) % len(cycle)
+                if cycle[pos] is pkg:
+                    break
+                longer.append(cycle[pos])
+            if len(set(longer)) != len(longer) or (tuple(longer), solution) in seen:
+                continue
+            seen.add((tuple(longer), solution))
+            yield (
+                circular_dependency_handler(self, handler.graph, cycle=longer),
+                {**(bases or {}), pkg: solution},
+            )
+
+    def _cycle_break_path(self, pkg, new_use, targets, graph=None):
+        """
+        Return a path of dependencies by which building pkg with new_use
+        still needs any of the targets, or None if there is none. Paths
+        through pkg itself lead to the final build and do not count, and
+        neither does a PDEPEND, since it can be merged after the transient
+        build. Dependencies that have a transient build of their own are
+        followed to it.
+        """
+        if graph is None:
+            graph = self._dynamic_config.digraph
+        if not targets or pkg not in graph:
+            return None
+        ignore_priority = DepPriorityNormalRange.ignore_medium_post
+        dropped = self._dropped_children(pkg, new_use)
+        paths = {}
+        stack = []
+        for child in graph.child_nodes(pkg, ignore_priority=ignore_priority):
+            if child not in dropped:
+                child = self._cycle_break_child(pkg, child, graph)
+                if child not in paths:
+                    paths[child] = [child]
+                    stack.append(child)
+        while stack:
+            node = stack.pop()
+            if node in targets:
+                return paths[node]
+            for child in graph.child_nodes(node, ignore_priority=ignore_priority):
+                if child is not pkg and child not in paths:
+                    paths[child] = paths[node] + [child]
+                    stack.append(child)
+        return None
+
+    def _cycle_break_child(self, pkg, child, graph):
+        """
+        Return the transient instance of child that the transient build
+        of pkg can use, or child if there is none.
+        """
+        solution = self._dynamic_config._cycle_break.get(child)
+        if solution is None:
+            return child
+        transient = self._cycle_break_pkg(child, solution)
+        if transient not in graph:
+            return child
+        atoms = [
+            atom
+            for parent, atom in self._dynamic_config._parent_atoms.get(child, ())
+            if parent is pkg
+        ]
+        if atoms and all(atom.blocker or atom.match(transient) for atom in atoms):
+            return transient
+        return child
+
+    def _cycle_break_use(self, pkg, solution):
+        """
+        Return the USE flags that pkg is enabled with in its transient
+        build.
+        """
+        use = set(self._pkg_use_enabled(pkg))
+        for flag, state in solution:
+            if state:
+                use.add(flag)
+            else:
+                use.discard(flag)
+        return frozenset(use)
+
+    def _adds_deps(self, pkg, new_use):
+        """
+        Return True if building pkg with new_use needs a dependency, or
+        a USE dependency, that building it with its current USE does not.
+        """
+        try:
+            old_atoms = self._flatten_atoms(pkg, frozenset(self._pkg_use_enabled(pkg)))
+            new_atoms = self._flatten_atoms(pkg, new_use)
+        except InvalidDependString:
+            return True
+        # USE conditional USE dependencies are already evaluated here.
+        return not new_atoms.issubset(old_atoms)
+
+    def _apply_cycle_break(self):
+        """
+        For every package scheduled for a two pass build, add a transient
+        instance with the reduced USE configuration and redirect the
+        dependencies that close the cycle to it.
+        """
+        graph = self._dynamic_config.digraph
+        transients = {}
+        for pkg, solution in self._dynamic_config._cycle_break.items():
+            if pkg not in graph:
+                continue
+
+            transient = self._cycle_break_pkg(pkg, solution)
+            if transient in graph:
+                # Already transformed by an earlier _serialize_tasks()
+                # call. Doing it again would find nothing to redirect
+                # and remove the transient instance.
+                continue
+
+            new_use = self._cycle_break_use(pkg, solution)
+
+            # Everything that pkg still depends on with the reduced USE
+            # configuration has to be merged before the transient build.
+            dropped = self._dropped_children(pkg, new_use)
+            graph.add(transient, None)
+            for child in graph.child_nodes(pkg):
+                if child in dropped:
+                    continue
+                for priority in graph.nodes[pkg][0][child]:
+                    graph.add(child, transient, priority=priority)
+            transients[pkg] = transient
+
+        # Build the transient instances against each other where they
+        # can, like a bootstrap set, so that one of them does not lead
+        # back to a cycle that another one breaks.
+        for pkg, transient in transients.items():
+            for child in graph.child_nodes(transient):
+                child_transient = self._cycle_break_child(pkg, child, graph)
+                if child_transient is child:
+                    continue
+                priorities = list(graph.nodes[transient][0][child])
+                graph.remove_edge(child, transient)
+                for priority in priorities:
+                    graph.add(child_transient, transient, priority=priority)
+
+        # Redirect the dependencies that close the cycle, which are the
+        # parents of pkg that pkg itself depends on, unless the transient
+        # instance still depends on them. Runtime dependencies count,
+        # since those of a build dependency have to be installed as well.
+        # A PDEPEND does not count, since it can be merged after the
+        # package that pulls it in. Redirecting a dependency to one
+        # transient instance can remove the path by which another one
+        # still depended on a parent, so repeat until nothing changes.
+        ignore_priority = DepPriorityNormalRange.ignore_medium_post
+        changed = True
+        while changed:
+            changed = False
+            for pkg, transient in transients.items():
+                descendants = {
+                    node for _parent, node in graph.bfs(pkg, ignore_priority)
+                }
+                # Paths through pkg do not count, since they lead to the
+                # final build.
+                transient_descendants = set()
+                stack = [transient]
+                while stack:
+                    for child in graph.child_nodes(
+                        stack.pop(), ignore_priority=ignore_priority
+                    ):
+                        if child is not pkg and child not in transient_descendants:
+                            transient_descendants.add(child)
+                            stack.append(child)
+                for parent in graph.parent_nodes(pkg):
+                    if parent not in descendants or parent in transient_descendants:
+                        continue
+                    priorities = list(graph.nodes[parent][0][pkg])
+                    graph.remove_edge(pkg, parent)
+                    for priority in priorities:
+                        graph.add(transient, parent, priority=priority)
+                    changed = True
+
+        # A transient instance that nothing uses is not needed, since no
+        # cycle is left for it to break. One that only other transient
+        # instances use is kept, since those may lead back to the final
+        # build, unless they are removed as well.
+        unused = [t for t in transients.values() if not graph.parent_nodes(t)]
+        while unused:
+            transient = unused.pop()
+            children = graph.child_nodes(transient)
+            graph.remove(transient)
+            for child in children:
+                if child in transients.values() and not graph.parent_nodes(child):
+                    unused.append(child)
+
+    def _cycle_break_pkg(self, pkg, use_changes):
+        return Package(
+            built=False,
+            cpv=pkg.cpv,
+            cycle_use_changes=use_changes,
+            depth=pkg.depth,
+            installed=False,
+            metadata=pkg._raw_metadata,
+            operation="merge",
+            root_config=pkg.root_config,
+            type_name=pkg.type_name,
+        )
+
+    def _dropped_children(self, pkg, new_use):
+        """
+        Return the children of pkg in the dependency graph that are no
+        longer required when pkg is built with new_use.
+        """
+        try:
+            remaining = self._flatten_atoms(pkg, frozenset(new_use))
+        except InvalidDependString:
+            return set()
+
+        graph = self._dynamic_config.digraph
+        dropped = set()
+        for child in graph.child_nodes(pkg):
+            if not isinstance(child, Package):
+                continue
+            if not any(
+                parent is pkg
+                for parent, atom in self._dynamic_config._parent_atoms.get(child, ())
+            ):
+                # Not pulled in by pkg itself, so it is not ours to drop.
+                continue
+            if not any(not atom.blocker and atom.match(child) for atom in remaining):
+                dropped.add(child)
+        return dropped
 
     def _user_requested_use_flags(self, pkg):
         """
@@ -11949,6 +12349,16 @@ class depgraph:
                 if isinstance(x, dict) and "EROOT" in x and "CPV" in x:
                     binpkgs_map[(x["EROOT"], x["CPV"])] = x
 
+        # A --cycle-break build that has not been merged yet appears twice
+        # in the merge list, and its USE changes are stored separately.
+        cycle_break = {}
+        for x in resume_data.get("cycle_break") or ():
+            if isinstance(x, list) and len(x) == 3 and isinstance(x[2], dict):
+                myroot, pkg_key, use_changes = x
+                if mergelist.count(["ebuild", myroot, pkg_key, "merge"]) > 1:
+                    cycle_break[(myroot, pkg_key)] = frozenset(use_changes.items())
+
+        cycle_break_pkgs = {}
         serialized_tasks = []
         masked_tasks = []
         for x in mergelist:
@@ -12026,8 +12436,28 @@ class depgraph:
                         ((pkg.root, "=" + pkg.cpv), {"myparent": None})
                     )
 
+            use_changes = cycle_break.get((myroot, pkg_key))
+            if (
+                use_changes is not None
+                and pkg_type == "ebuild"
+                and pkg not in cycle_break_pkgs
+            ):
+                # The first entry is the transient instance.
+                cycle_break_pkgs[pkg] = use_changes
+                if "--nodeps" in self._frozen_config.myopts:
+                    # There is no graph for _serialize_tasks() to
+                    # rewrite, so keep the merge list order instead.
+                    serialized_tasks.append(self._cycle_break_pkg(pkg, use_changes))
+                continue
+
             self._dynamic_config._package_tracker.add_pkg(pkg)
             serialized_tasks.append(pkg)
+
+        if cycle_break_pkgs:
+            # _serialize_tasks() adds the transient instances to the
+            # graph. The dict may be shared with other depgraph
+            # instances, so do not modify it in place.
+            self._dynamic_config._cycle_break = cycle_break_pkgs
 
         if self._dynamic_config._unsatisfied_deps_for_display:
             return False

@@ -1495,7 +1495,11 @@ class Scheduler(PollScheduler):
                     break
 
                 for failed_pkg in failed_pkgs:
-                    mergelist.remove(list(failed_pkg.pkg))
+                    # A failed --cycle-break build has the same entry as
+                    # the final build, which has to be dropped as well.
+                    entry = list(failed_pkg.pkg)
+                    while entry in mergelist:
+                        mergelist.remove(entry)
 
                 self._failed_pkgs_all.extend(failed_pkgs)
                 del failed_pkgs[:]
@@ -1805,6 +1809,11 @@ class Scheduler(PollScheduler):
         # by reboot, sigkill or similar.
         mtimedb = self._mtimedb
         mtimedb["resume"]["mergelist"].remove(list(pkg))
+        if pkg.cycle_use_changes:
+            record = [pkg.root, str(pkg.cpv), dict(pkg.cycle_use_changes)]
+            cycle_break = mtimedb["resume"].get("cycle_break", [])
+            if record in cycle_break:
+                cycle_break.remove(record)
         if not mtimedb["resume"]["mergelist"]:
             del mtimedb["resume"]
         mtimedb.commit()
@@ -2659,6 +2668,15 @@ class Scheduler(PollScheduler):
             for x in self._mergelist
             if isinstance(x, Package) and x.type_name == "binary"
         ]
+        # The merge list entries cannot tell a --cycle-break build from
+        # the final one, so its USE changes are stored here.
+        cycle_break = [
+            [x.root, str(x.cpv), dict(x.cycle_use_changes)]
+            for x in self._mergelist
+            if isinstance(x, Package) and x.cycle_use_changes
+        ]
+        if cycle_break:
+            mtimedb["resume"]["cycle_break"] = cycle_break
 
         mtimedb.commit()
 

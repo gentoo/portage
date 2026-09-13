@@ -868,6 +868,10 @@ class Display:
 
                 if self.conf.columns and pkg.operation == "uninstall":
                     continue
+                if pkg.cycle_use_changes:
+                    myprint += colorize(
+                        "WARN", " (temporary build, to break a circular dependency)"
+                    )
                 if self.quiet_repo_display:
                     self.print_msg.append((myprint, self.verboseadd, self.repoadd))
                 else:

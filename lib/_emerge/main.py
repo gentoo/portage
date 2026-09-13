@@ -156,6 +156,7 @@ def insert_optional_args(args):
         "--changed-deps-report": y_or_n,
         "--circular-deps-report": ("text", "json"),
         "--complete-graph": y_or_n,
+        "--cycle-break": y_or_n,
         "--deep": valid_integers,
         "--depclean-lib-check": y_or_n,
         "--deselect": y_or_n,
@@ -448,6 +449,13 @@ def parse_opts(tmpcmdline, silent=False):
         "--complete-graph-if-new-ver": {
             "help": "trigger --complete-graph behavior if an installed package version will change (upgrade or downgrade)",
             "choices": y_or_n,
+        },
+        "--cycle-break": {
+            "help": (
+                "build a package twice, first with a reduced USE "
+                "configuration, in order to break a circular dependency"
+            ),
+            "choices": true_y_or_n,
         },
         "--deep": {
             "shortopt": "-D",
@@ -882,6 +890,12 @@ def parse_opts(tmpcmdline, silent=False):
             parser.error(
                 f"Invalid Atom(s) in --buildpkg-exclude parameter: '{invalid_atoms}'\n"
             )
+
+    if myoptions.cycle_break is not None:
+        if myoptions.cycle_break in true_y:
+            myoptions.cycle_break = "y"
+        else:
+            myoptions.cycle_break = "n"
 
     if myoptions.changed_deps is not None:
         if myoptions.changed_deps in true_y:

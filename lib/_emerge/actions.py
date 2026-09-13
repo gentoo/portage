@@ -608,9 +608,11 @@ def action_build(
         resume_data = mtimedb["resume"]
         mergelist = resume_data["mergelist"]
         if mergelist and "--skipfirst" in myopts:
-            for i, task in enumerate(mergelist):
+            for task in mergelist:
                 if isinstance(task, list) and task and task[-1] == "merge":
-                    del mergelist[i]
+                    # A --cycle-break build has the same entry as the
+                    # final build, which has to be skipped as well.
+                    mergelist[:] = [x for x in mergelist if x != task]
                     break
 
         success = False

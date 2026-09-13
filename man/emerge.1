@@ -574,6 +574,24 @@ version will change (upgrade or downgrade). This option is enabled by default.
 .BR \-\-config\-root=DIR
 Set the \fBPORTAGE_CONFIGROOT\fR environment variable.
 .TP
+.BR "\-\-cycle\-break [ y | n ]"
+When a circular dependency cannot be solved by || preferences or an
+older version, build one of the packages involved twice: first with its
+USE flags changed so that it does not need the dependency closing the
+cycle, and then with the requested USE flags. A flag is only enabled for
+the first build if that does not add any dependencies, as with
+USE="minimal" for \fIdev\-lang/mono\fR. This is preferred over a permanent
+autounmask USE change. For example, with USE="verify\-sig",
+\fIdev\-libs/libsodium\fR needs \fIapp\-crypt/minisign\fR to verify its
+sources, and minisign links against libsodium. libsodium is built with
+USE="\-verify\-sig", then minisign is built, and finally libsodium is
+built again as requested. The temporary build is marked as such in the
+merge list. At most ten packages are built twice in one run. Defaults
+to \fIn\fR. Note
+that if the second build does not happen, because it fails or because
+the operation is interrupted, the package is left installed with the
+reduced USE configuration until it is rebuilt.
+.TP
 .BR \-\-debug ", " \-d
 Tells emerge to run the emerge command in \fB\-\-debug\fR mode.  In this mode
 the bash build environment will run with the \-x option, causing it to output

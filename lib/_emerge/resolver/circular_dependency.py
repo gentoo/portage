@@ -25,7 +25,11 @@ class circular_dependency_handler:
     # slow (bug 555698, bug 374397).
     MAX_AFFECTING_USE = 10
 
-    def __init__(self, depgraph, graph):
+    def __init__(self, depgraph, graph, cycle=None):
+        """
+        @param cycle: the cycle to find solutions for, instead of the
+            shortest cycle in graph
+        """
         self.depgraph = depgraph
         self.graph = graph
         self.all_parent_atoms = depgraph._dynamic_config._parent_atoms
@@ -37,6 +41,12 @@ class circular_dependency_handler:
         # change. Unlike self.solutions, this identifies the package
         # that the change applies to.
         self.parent_solutions = {}
+        # Like self.parent_solutions, but only checked against the use
+        # requirements of the parents that a --cycle-break transient
+        # build could satisfy. Parents outside of the cycle get the
+        # final build, which keeps the current USE flags.
+        self.cycle_break_solutions = {}
+        self._descendants_cache = {}
 
         if "--debug" in depgraph._frozen_config.myopts:
             # Show this debug output before doing the calculations
@@ -47,7 +57,10 @@ class circular_dependency_handler:
             )
             self.debug_print()
 
-        self.cycles, self.shortest_cycle = self._find_cycles()
+        if cycle is None:
+            self.cycles, self.shortest_cycle = self._find_cycles()
+        else:
+            self.cycles, self.shortest_cycle = [cycle], cycle
         # Guess if it is a large cluster of cycles. This usually requires
         # a global USE change.
         self.large_cycle_count = len(self.cycles) > 3
@@ -528,6 +541,7 @@ class circular_dependency_handler:
                 # If a requirement is hard, ignore the suggestion.
                 # If the requirement is conditional, warn the user that other changes might be needed.
                 followup_change = False
+                ignore_cycle_break = False
                 parent_parent_atoms = self.depgraph._dynamic_config._parent_atoms.get(
                     changed_parent
                 )
@@ -539,6 +553,9 @@ class circular_dependency_handler:
                     for flag, state in solution:
                         if flag in atom.use.enabled or flag in atom.use.disabled:
                             ignore_solution = True
+                            descendants = self._descendants(changed_parent)
+                            if descendants is None or ppkg in descendants:
+                                ignore_cycle_break = True
                             break
                         elif atom.use.conditional:
                             for flags in atom.use.conditional.values():
@@ -546,9 +563,13 @@ class circular_dependency_handler:
                                     followup_change = True
                                     break
 
-                    if ignore_solution:
+                    if ignore_cycle_break:
                         break
 
+                if not ignore_cycle_break:
+                    self.cycle_break_solutions.setdefault(changed_parent, set()).add(
+                        solution
+                    )
                 if ignore_solution:
                     continue
 
@@ -568,6 +589,20 @@ class circular_dependency_handler:
                 self.parent_solutions.setdefault(changed_parent, set()).add(solution)
 
         return final_solutions, suggestions
+
+    def _descendants(self, pkg):
+        """
+        Return the packages that pkg depends on, directly or indirectly,
+        in the full dependency graph, or None if pkg is not in it.
+        """
+        if pkg not in self._descendants_cache:
+            digraph = self.depgraph._dynamic_config.digraph
+            if pkg in digraph:
+                descendants = {node for _parent, node in digraph.bfs(pkg)}
+            else:
+                descendants = None
+            self._descendants_cache[pkg] = descendants
+        return self._descendants_cache[pkg]
 
     def debug_print(self):
         """
