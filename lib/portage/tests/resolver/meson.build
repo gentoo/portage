@@ -27,6 +27,7 @@ py.install_sources(
         'test_circular_choices_rust.py',
         'test_circular_dependencies.py',
         'test_circular_dependency_display.py',
+        'test_circular_use_solution.py',
         'test_complete_graph.py',
         'test_complete_if_new_subslot_without_revbump.py',
         'test_cross_dep_priority.py',

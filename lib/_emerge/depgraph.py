@@ -10328,8 +10328,6 @@ class depgraph:
                     continue
 
             if not selected_nodes:
-                self._dynamic_config._circular_deps_for_display = mygraph
-
                 unsolved_cycle = False
                 if self._dynamic_config._allow_backtracking:
                     backtrack_infos = self._dynamic_config._backtrack_infos
@@ -10354,8 +10352,22 @@ class depgraph:
                             )
 
                 if unsolved_cycle or not self._dynamic_config._allow_backtracking:
-                    self._dynamic_config._skip_restart = True
+                    solved = False
+                    handler = None
+                    if self._dynamic_config._allow_backtracking:
+                        # Adjusting || preferences did not help.
+                        handler = circular_dependency_handler(self, mygraph)
+                        solved = self._solve_cycle_with_use_changes(handler)
+
+                    if solved:
+                        self._dynamic_config._need_restart = True
+                    else:
+                        # Reused by _show_circular_deps().
+                        self._dynamic_config._circular_dependency_handler = handler
+                        self._dynamic_config._circular_deps_for_display = mygraph
+                        self._dynamic_config._skip_restart = True
                 else:
+                    self._dynamic_config._circular_deps_for_display = mygraph
                     self._dynamic_config._need_restart = True
 
                 raise self._unknown_internal_error()
@@ -10493,11 +10505,76 @@ class depgraph:
 
         return retlist, scheduler_graph
 
-    def _show_circular_deps(self, mygraph):
-        self._dynamic_config._circular_dependency_handler = circular_dependency_handler(
-            self, mygraph
+    @staticmethod
+    def _cycle_solution_sort_key(candidate):
+        """
+        Prefer the smallest solution, then the one that enables the fewest
+        flags, then sort by name so the result does not depend on set
+        iteration order.
+        """
+        pkg, solution = candidate
+        return (
+            len(solution),
+            sum(1 for _flag, state in solution if state),
+            tuple(sorted(solution)),
+            pkg.cpv,
         )
+
+    def _solve_cycle_with_use_changes(self, handler):
+        """
+        Try to break a cycle by changing USE flags that the user has not
+        requested, using the same mechanism as autounmask. The change is
+        presented to the user like any other autounmask change, and the
+        resolver restarts with the new configuration (bug 175808).
+
+        @return: True if a USE change was applied
+        """
+        if not self._dynamic_config._autounmask:
+            return False
+        if self._frozen_config.myopts.get("--autounmask-use") == "n":
+            return False
+
+        candidates = []
+        for pkg, solutions in handler.parent_solutions.items():
+            user_flags = self._user_requested_use_flags(pkg)
+            for solution in solutions:
+                if any(flag in user_flags for flag, state in solution):
+                    continue
+                candidates.append((pkg, solution))
+        candidates.sort(key=self._cycle_solution_sort_key)
+
+        for pkg, solution in candidates:
+            old_use = self._pkg_use_enabled(pkg)
+            # With target_use, this also records the change as a needed
+            # USE config change for the next backtracking run.
+            new_use = self._pkg_use_enabled(pkg, dict(solution))
+            if new_use == old_use:
+                # Rejected because of use.mask or use.force, or already
+                # applied by an earlier pass.
+                continue
+            return True
+
+        return False
+
+    def _user_requested_use_flags(self, pkg):
+        """
+        Return the USE flags that the user has explicitly set for pkg, via
+        make.conf, package.use, the environment or FEATURES=test.
+        """
+        pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+        flags = set()
+        for flag in pkgsettings._use_manager.getPUSE(pkg.cpv).split():
+            flags.add(flag.lstrip("-"))
+        for key in ("conf", "env", "features"):
+            for flag in pkgsettings.configdict.get(key, {}).get("USE", "").split():
+                flags.add(flag.lstrip("-"))
+        return flags
+
+    def _show_circular_deps(self, mygraph):
         handler = self._dynamic_config._circular_dependency_handler
+        if handler is None:
+            handler = circular_dependency_handler(self, mygraph)
+            self._dynamic_config._circular_dependency_handler = handler
 
         if self._frozen_config.myopts.get("--circular-deps-report") == "json":
             self._show_circular_deps_json(handler)

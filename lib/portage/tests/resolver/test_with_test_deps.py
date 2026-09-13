@@ -75,11 +75,20 @@ class WithTestDepsTestCase(TestCase):
                 ambiguous_merge_order=True,
             ),
             # Test that --with-test-deps does not allow circular dependencies
-            # when USE=test is explicitly enabled.
+            # when USE=test is enabled. The flag comes from IUSE defaults
+            # rather than from the user, so the cycle is solved with an
+            # autounmask USE change.
             ResolverPlaygroundTestCase(
                 ["app-misc/F"],
                 success=False,
                 options={"--with-test-deps": True},
+                use_changes={"app-misc/F-0": {"test": False}},
+            ),
+            # With --autounmask-use=n, the cycle is reported instead.
+            ResolverPlaygroundTestCase(
+                ["app-misc/F"],
+                success=False,
+                options={"--with-test-deps": True, "--autounmask-use": "n"},
                 circular_dependency_solutions={
                     "app-misc/G-0": {frozenset({("test", False)})},
                     "app-misc/F-0": {frozenset({("test", False)})},

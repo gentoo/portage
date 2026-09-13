@@ -70,6 +70,9 @@ Features:
   regardless, narrowing the scope helps parallelism most in combination with
   FEATURES="-merge-wait" or FEATURES="parallel-install".
 
+* emerge: Solve a circular dependency with an autounmask USE change when the
+  flag was not set by the user (bug #175808).
+
 * emerge: Report packages that are merged before one of their runtime
   dependencies in order to break a cycle (bug #647824).
 
