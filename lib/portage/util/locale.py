@@ -132,6 +132,10 @@ async def async_check_locale(silent=False, env=None):
         except KeyError:
             pass
 
+    if multiprocessing.get_start_method() == "fork":
+        # Inherited by the child, so it need not spawn "ldconfig -p".
+        load_libc()
+
     proc = multiprocessing.Process(
         target=_set_and_check_locale,
         args=(silent, env, None if env is None else mylocale),
