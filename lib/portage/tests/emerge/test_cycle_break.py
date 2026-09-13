@@ -13,6 +13,8 @@ from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 
+_PENDING_REBUILD_MSG = "still have to be rebuilt"
+
 
 class CycleBreakEmergeTestCase(TestCase):
     def _ebuilds(self, freetype_install=""):
@@ -167,6 +169,29 @@ class CycleBreakEmergeTestCase(TestCase):
             )
             with open(use_file) as f:
                 self.assertEqual(f.read().split(), ["-harfbuzz"])
+            self.assertNotIn(_PENDING_REBUILD_MSG, output)
+        finally:
+            playground.cleanup()
+
+    def testFinalBuildFails(self):
+        """
+        If the final build fails, the package is left with the reduced
+        USE configuration and emerge says so.
+        """
+        ebuilds = self._ebuilds(
+            freetype_install="src_install() {\n\tuse harfbuzz && die\n}\n"
+        )
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        eroot = playground.settings["EROOT"]
+        vardb = playground.trees[eroot]["vartree"].dbapi
+
+        try:
+            returncode, output = self._emerge(playground, "media-libs/harfbuzz")
+            self.assertNotEqual(os.EX_OK, returncode, output)
+
+            (use,) = vardb.aux_get("media-libs/freetype-1", ["USE"])
+            self.assertNotIn("harfbuzz", use.split())
+            self.assertIn(_PENDING_REBUILD_MSG, output)
         finally:
             playground.cleanup()
 

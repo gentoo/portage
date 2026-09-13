@@ -1447,6 +1447,7 @@ class KeepGoingTeardownTestCase(TestCase):
         sched._failed_pkgs_all = []
         sched._failed_pkgs_die_msgs = []
         sched._post_mod_echo_msgs = []
+        sched._pending_rebuilds = {}
         sched._mergelist = ["dev-libs/bar-1"]
         sched._mtimedb = {
             "resume": {"mergelist": [["dev-libs", "foo-1"], ["dev-libs", "bar-1"]]}
