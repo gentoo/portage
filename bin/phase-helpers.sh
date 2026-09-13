@@ -528,16 +528,17 @@ econf() {
 
 	__hasgq() { __hasg "$@" >/dev/null ; }
 
-	local phase_func=$(__ebuild_arg_to_phase "${EBUILD_PHASE}")
-	if [[ -n ${phase_func} ]] ; then
+	local ___phase_func
+	__ebuild_arg_to_phase "${EBUILD_PHASE}" ___phase_func
+	if [[ -n ${___phase_func} ]] ; then
 		if ! ___eapi_has_src_configure; then
-			[[ ${phase_func} != src_compile ]] && \
+			[[ ${___phase_func} != src_compile ]] && \
 				eqawarn "QA Notice: econf called in" \
-					"${phase_func} instead of src_compile"
+					"${___phase_func} instead of src_compile"
 		else
-			[[ ${phase_func} != src_configure ]] && \
+			[[ ${___phase_func} != src_configure ]] && \
 				eqawarn "QA Notice: econf called in" \
-					"${phase_func} instead of src_configure"
+					"${___phase_func} instead of src_configure"
 		fi
 	fi
 

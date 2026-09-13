@@ -736,7 +736,10 @@ __dyn_install() {
 		QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE \
 		PKG_INSTALL_MASK; do
 
-		x=$(echo -n ${!f})
+		# Collapse whitespace into single spaces.
+		# shellcheck disable=SC2086
+		printf -v x '%s ' ${!f}
+		x=${x% }
 		[[ -n ${x} ]] && echo "${x}" > ${f}
 	done
 	# whitespace preserved
@@ -841,11 +844,14 @@ __dyn_help() {
 }
 
 # @FUNCTION: __ebuild_arg_to_phase
+# @USAGE: <arg> [variable]
 # @DESCRIPTION:
 # Translate a known ebuild(1) argument into the precise
-# name of it's corresponding ebuild phase.
+# name of it's corresponding ebuild phase. Print it, or assign it to the
+# named variable, which avoids a subshell. That variable must not be
+# named arg or phase_func, which are local here.
 __ebuild_arg_to_phase() {
-	[[ $# -ne 1 ]] && die "expected exactly 1 arg, got $#: $*"
+	[[ $# -ne 1 && $# -ne 2 ]] && die "expected 1 or 2 args, got $#: $*"
 	local arg=$1
 	local phase_func=""
 
@@ -894,8 +900,11 @@ __ebuild_arg_to_phase() {
 			;;
 	esac
 
+	if [[ $# -eq 2 ]]; then
+		printf -v "$2" '%s' "${phase_func}"
+	fi
 	[[ -z ${phase_func} ]] && return 1
-	echo "${phase_func}"
+	[[ $# -eq 1 ]] && echo "${phase_func}"
 	return 0
 }
 
@@ -1052,7 +1061,8 @@ __ebuild_main() {
 		export CCACHE_DISABLE=1
 	fi
 
-	local ___phase_func=$(__ebuild_arg_to_phase "${EBUILD_PHASE}")
+	local ___phase_func
+	__ebuild_arg_to_phase "${EBUILD_PHASE}" ___phase_func
 	[[ -n ${___phase_func} ]] && __ebuild_phase_funcs "${EAPI}" "${___phase_func}"
 
 	__source_all_bashrcs
