@@ -302,6 +302,9 @@ class Scheduler(PollScheduler):
         self._failed_pkgs_all = []
         self._failed_pkgs_die_msgs = []
         self._post_mod_echo_msgs = []
+        # Transient --cycle-break builds whose final build has not been
+        # merged yet.
+        self._pending_rebuilds = {}
         self._parallel_fetch = False
         self._fetch_log_announced = False
         self._init_graph(graph_config)
@@ -1653,6 +1656,20 @@ class Scheduler(PollScheduler):
                     printer.eerror(f"  '{colorize('INFORM', log_path)}'")
             printer.eerror("")
 
+        if self._pending_rebuilds:
+            msg = (
+                "The following packages were installed with a reduced USE "
+                + "configuration, in order to break a circular dependency, "
+                + "and still have to be rebuilt:"
+            )
+            printer.ewarn("")
+            for line in textwrap.wrap(msg, 72):
+                printer.ewarn(line)
+            printer.ewarn("")
+            for pkg in self._pending_rebuilds.values():
+                printer.ewarn(f" {pkg.cpv}")
+            printer.ewarn("")
+
         if self._failed_pkgs_all:
             return FAILURE
         return os.EX_OK
@@ -1879,6 +1896,15 @@ class Scheduler(PollScheduler):
         self._build_exit(build)
 
     def _task_complete(self, pkg):
+        if (
+            pkg.operation == "merge"
+            and not pkg.installed
+            and not self._build_opts.buildpkgonly
+        ):
+            if pkg.cycle_use_changes:
+                self._pending_rebuilds[(pkg.root, pkg.slot_atom)] = pkg
+            else:
+                self._pending_rebuilds.pop((pkg.root, pkg.slot_atom), None)
         self._completed_tasks.add(pkg)
         self._unsatisfied_system_deps.discard(pkg)
         self._choose_pkg_return_early = False

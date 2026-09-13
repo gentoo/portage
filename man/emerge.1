@@ -589,7 +589,9 @@ built again as requested. The temporary build is marked as such in the
 merge list. Defaults to \fIn\fR. Note
 that if the second build does not happen, because it fails or because
 the operation is interrupted, the package is left installed with the
-reduced USE configuration until it is rebuilt.
+reduced USE configuration until it is rebuilt, for example by
+\fB\-\-newuse\fR. Unless emerge is interrupted, it warns about such
+packages at the end of the run.
 .TP
 .BR \-\-debug ", " \-d
 Tells emerge to run the emerge command in \fB\-\-debug\fR mode.  In this mode
