@@ -58,10 +58,16 @@ class CircularDependencyTestCase(TestCase):
             "app-misc/B-2": {"DEPEND": "=app-misc/A-2"},
         }
 
+        # The solutions computed here are applied automatically as
+        # autounmask USE changes, so disable that in order to test the
+        # solutions themselves.
+        no_autounmask_use = {"--autounmask-use": "n"}
+
         test_cases = (
             # Simple tests
             ResolverPlaygroundTestCase(
                 ["=dev-libs/Z-1"],
+                options=no_autounmask_use,
                 circular_dependency_solutions={
                     "dev-libs/Y-1": frozenset(
                         [frozenset([("foo", False)]), frozenset([("bar", True)])]
@@ -71,6 +77,7 @@ class CircularDependencyTestCase(TestCase):
             ),
             ResolverPlaygroundTestCase(
                 ["=dev-libs/Z-2"],
+                options=no_autounmask_use,
                 circular_dependency_solutions={
                     "dev-libs/Y-1": frozenset(
                         [frozenset([("foo", False), ("bar", True)])]
@@ -80,6 +87,7 @@ class CircularDependencyTestCase(TestCase):
             ),
             ResolverPlaygroundTestCase(
                 ["=dev-libs/Z-3"],
+                options=no_autounmask_use,
                 circular_dependency_solutions={
                     "dev-libs/Y-1": frozenset(
                         [frozenset([("foo", False), ("bar", True)])]
@@ -89,10 +97,14 @@ class CircularDependencyTestCase(TestCase):
             ),
             # Conflict on parent
             ResolverPlaygroundTestCase(
-                ["=dev-libs/W-1"], circular_dependency_solutions={}, success=False
+                ["=dev-libs/W-1"],
+                options=no_autounmask_use,
+                circular_dependency_solutions={},
+                success=False,
             ),
             ResolverPlaygroundTestCase(
                 ["=dev-libs/W-2"],
+                options=no_autounmask_use,
                 circular_dependency_solutions={
                     "dev-libs/Y-1": frozenset(
                         [frozenset([("foo", False), ("bar", True)])]
@@ -112,6 +124,7 @@ class CircularDependencyTestCase(TestCase):
             # Conflict with REQUIRED_USE
             ResolverPlaygroundTestCase(
                 ["=app-misc/B-1"],
+                options=no_autounmask_use,
                 circular_dependency_solutions={
                     "app-misc/B-1": frozenset(
                         [frozenset([("foo", False), ("bar", True)])]
@@ -120,7 +133,17 @@ class CircularDependencyTestCase(TestCase):
                 success=False,
             ),
             ResolverPlaygroundTestCase(
-                ["=app-misc/B-2"], circular_dependency_solutions={}, success=False
+                ["=app-misc/B-2"],
+                options=no_autounmask_use,
+                circular_dependency_solutions={},
+                success=False,
+            ),
+            # With --autounmask-use enabled (the default), the smallest
+            # solution is applied as a USE change (bug 175808).
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/Z-1"],
+                use_changes={"dev-libs/Z-1": {"foo": False}},
+                success=False,
             ),
         )
 
