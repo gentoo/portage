@@ -187,6 +187,9 @@ Cleanups:
 
 * Improved test parallelism.
 
+* emerge: Report packages that are merged before one of their runtime
+  dependencies in order to break a cycle (bug #647824).
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 

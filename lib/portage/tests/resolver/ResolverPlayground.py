@@ -1285,7 +1285,8 @@ class ResolverPlaygroundTestCase:
                 expected = expected if isinstance(expected, dict) else set(expected)
 
             elif (
-                key in ("forced_rebuilds", "cycle_suggestions") and expected is not None
+                key in ("forced_rebuilds", "ignored_runtime_deps", "cycle_suggestions")
+                and expected is not None
             ):
                 expected = {k: set(v) for k, v in expected.items()}
 
@@ -1375,6 +1376,7 @@ class ResolverPlaygroundResult:
         "circular_dependency_test_parents",
         "circular_dependency_masked_alternatives",
         "circular_dependency_search_truncated",
+        "ignored_runtime_deps",
         "needed_p_mask_changes",
         "unsatisfied_deps",
         "forced_rebuilds",
@@ -1387,6 +1389,7 @@ class ResolverPlaygroundResult:
         "circular_dependency_test_parents",
         "circular_dependency_masked_alternatives",
         "circular_dependency_search_truncated",
+        "ignored_runtime_deps",
         "forced_rebuilds",
         "required_use_unsatisfied",
         "unsatisfied_deps",
@@ -1418,6 +1421,13 @@ class ResolverPlaygroundResult:
             _mergelist_str(node, self.depgraph)
             for node in self.depgraph._dynamic_config.digraph
         ]
+
+        self.ignored_runtime_deps = {
+            pkg.cpv: {child.cpv for child in children}
+            for pkg, children in (
+                self.depgraph._dynamic_config._ignored_runtime_deps.items()
+            )
+        }
 
         if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
             self.mergelist = []

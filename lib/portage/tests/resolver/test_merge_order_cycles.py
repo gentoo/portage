@@ -127,3 +127,31 @@ class MergeOrderCyclesTestCase(TestCase):
                 self.assertEqual(test_case.test_success, True, test_case.fail_msg)
         finally:
             playground.cleanup()
+
+    def testIgnoredRuntimeDeps(self):
+        """
+        A cycle that can only be broken by ignoring a runtime dependency
+        leaves one of the packages temporarily broken on the installed
+        system, so report it (bug 647824).
+        """
+        ebuilds = {
+            "app-misc/A-1": {"EAPI": "8", "RDEPEND": "app-misc/B"},
+            "app-misc/B-1": {"EAPI": "8", "RDEPEND": "app-misc/A"},
+        }
+
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["app-misc/A"],
+                success=True,
+                mergelist=["app-misc/A-1", "app-misc/B-1"],
+                ignored_runtime_deps={"app-misc/A-1": ["app-misc/B-1"]},
+            ),
+        )
+
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
