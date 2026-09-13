@@ -124,9 +124,6 @@ config_impl_decl_check() {
 	# This variant matches ASCII single quotes.
 	re_asc=$' function \x27([^\x27]+)\x27'
 
-	# Is UTF-8 the effective character type?
-	has_utf8_ctype; is_utf8=$(( $? == 0 ))
-
 	# Iterate over every log file found and check for '-Wimplicit-function-declaration'
 	while IFS= read -rd '' l; do
 		while IFS= read -ru3 entry; do
@@ -134,6 +131,11 @@ config_impl_decl_check() {
 			entry="$(printf '%s\n' "${entry}" | LC_ALL='C' sed -E -e $'s/\033\[[0-9;]*[A-Za-z]//g')"
 
 			line="${entry%%:*}"
+			# Is UTF-8 the effective character type? Only check once a
+			# warning has been found, since it runs python.
+			if [[ -z ${is_utf8} ]]; then
+				has_utf8_ctype; is_utf8=$(( $? == 0 ))
+			fi
 			if [[ ${is_utf8} -eq 1 && ${entry} =~ ${re_uni} ]] || [[ ${entry} =~ ${re_asc} ]]; then
 				func="${BASH_REMATCH[1]}"
 			else
