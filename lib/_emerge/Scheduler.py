@@ -590,6 +590,8 @@ class Scheduler(PollScheduler):
         for pkg in self._mergelist:
             if getattr(pkg, "operation", None) != "merge":
                 continue
+            if pkg.cycle_use_changes:
+                continue
             atom = create_world_atom(
                 pkg, self._args_set, pkg.root_config, before_install=True
             )

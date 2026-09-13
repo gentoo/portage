@@ -263,6 +263,7 @@ class config:
         self.mycpv = None
         self._setcpv_args_hash = None
         self.puse = ""
+        self._cycle_use = ""
         self._penv = []
         self.modifiedkeys = []
         self.uvlist = []
@@ -304,6 +305,7 @@ class config:
             self.usemask = clone.usemask
             self.useforce = clone.useforce
             self.puse = clone.puse
+            self._cycle_use = clone._cycle_use
             self.user_profile_dir = clone.user_profile_dir
             self.local_config = clone.local_config
             self.make_defaults_use = clone.make_defaults_use
@@ -1652,6 +1654,7 @@ class config:
             self.mycpv = None
             self._setcpv_args_hash = None
             self.puse = ""
+            self._cycle_use = ""
             del self._penv[:]
             self.configdict["pkg"].clear()
             self.configdict["pkginternal"].clear()
@@ -1773,6 +1776,19 @@ class config:
             var_split = filtered_var_split
 
             return " ".join(var_split)
+
+    @staticmethod
+    def _cycle_use_str(pkg):
+        """
+        Return the USE flags that the resolver forces for this instance
+        of pkg, in package.use syntax.
+        """
+        cycle_use_changes = getattr(pkg, "cycle_use_changes", None)
+        if not cycle_use_changes:
+            return ""
+        return " ".join(
+            sorted(flag if state else f"-{flag}" for flag, state in cycle_use_changes)
+        )
 
     def _setcpv_recursion_gate(f):
         """
@@ -2001,8 +2017,19 @@ class config:
         self.puse = self._use_manager.getPUSE(cpv_slot)
         if oldpuse != self.puse:
             has_changed = True
+
+        # These behave like package.use, but only for this instance.
+        old_cycle_use = self._cycle_use
+        self._cycle_use = self._cycle_use_str(pkg)
+        if old_cycle_use != self._cycle_use:
+            has_changed = True
+
+        pkg_use = self.puse
+        if self._cycle_use:
+            pkg_use = f"{pkg_use} {self._cycle_use}" if pkg_use else self._cycle_use
+
         self.configdict["pkg"]["PKGUSE"] = self.puse[:]  # For saving to PUSE file
-        self.configdict["pkg"]["USE"] = self.puse[:]  # this gets appended to USE
+        self.configdict["pkg"]["USE"] = pkg_use  # this gets appended to USE
 
         if previous_features:
             # The package from the previous setcpv call had package.env
@@ -2058,11 +2085,11 @@ class config:
 
             # Now add package.use settings, which override USE from
             # package.env
-            if self.puse:
+            if pkg_use:
                 if "USE" in pkg_configdict:
-                    pkg_configdict["USE"] = pkg_configdict["USE"] + " " + self.puse
+                    pkg_configdict["USE"] = pkg_configdict["USE"] + " " + pkg_use
                 else:
-                    pkg_configdict["USE"] = self.puse
+                    pkg_configdict["USE"] = pkg_use
 
         elif previous_penv:
             has_changed = True
