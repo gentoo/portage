@@ -73,6 +73,9 @@ Features:
 * emerge: Solve a circular dependency with an autounmask USE change when the
   flag was not set by the user (bug #175808).
 
+* emerge: Solve a circular dependency by selecting an older version that
+  lacks the dependency closing the cycle (bug #407351).
+
 * emerge: Report packages that are merged before one of their runtime
   dependencies in order to break a cycle (bug #647824).
 

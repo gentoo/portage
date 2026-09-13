@@ -220,6 +220,12 @@ class Backtracker:
                     para.circular_dependency.setdefault(pkg, set()).update(
                         circular_children
                     )
+            elif change == "circular_pkg_mask":
+                # The value is the set of cycle members, not parent atoms.
+                for pkg, cycle_members in data.items():
+                    para.runtime_pkg_mask.setdefault(pkg, {})[
+                        "circular dependency"
+                    ] = cycle_members
             elif change == "needed_unstable_keywords":
                 para.needed_unstable_keywords.update(data)
             elif change == "needed_p_mask_changes":
