@@ -240,18 +240,28 @@ class ForkProcess(SpawnProcess):
                 )
                 fd_pipes[0] = stdin_dup
 
-            proc = multiprocessing.Process(
-                target=self._bootstrap,
-                args=(
-                    self._child_connection,
-                    self._HAVE_SEND_HANDLE,
-                    fd_pipes,
-                    target,
-                    args,
-                    kwargs,
-                ),
+            # Block SIGINT and SIGTERM until _bootstrap has reset their
+            # handlers, or else the child runs the handler it inherited
+            # from us and the signal is lost.
+            signal_mask = signal.pthread_sigmask(
+                signal.SIG_BLOCK, (signal.SIGINT, signal.SIGTERM)
             )
-            proc.start()
+            try:
+                proc = multiprocessing.Process(
+                    target=self._bootstrap,
+                    args=(
+                        self._child_connection,
+                        self._HAVE_SEND_HANDLE,
+                        fd_pipes,
+                        target,
+                        args,
+                        kwargs,
+                        signal_mask,
+                    ),
+                )
+                proc.start()
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, signal_mask)
         finally:
             if stdin_dup is not None:
                 os.close(stdin_dup)
@@ -275,11 +285,14 @@ class ForkProcess(SpawnProcess):
         self._close_send_fd_pipes()
 
     @staticmethod
-    def _bootstrap(child_connection, have_send_handle, fd_pipes, target, args, kwargs):
+    def _bootstrap(
+        child_connection, have_send_handle, fd_pipes, target, args, kwargs, signal_mask
+    ):
         # Use default signal handlers in order to avoid problems
         # killing subprocesses as reported in bug #353239.
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        signal.pthread_sigmask(signal.SIG_SETMASK, signal_mask)
 
         # Unregister SIGCHLD handler and wakeup_fd for the parent
         # process's event loop (bug 655656).
