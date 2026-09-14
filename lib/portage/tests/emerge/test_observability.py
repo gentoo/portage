@@ -16,6 +16,7 @@ from _emerge import _observability
 from _emerge._observability import (
     ObservabilityMonitor,
     _BuildTimes,
+    _task_phase_sort_key,
     average_parallelism,
     build_snapshot,
     format_snapshots,
@@ -544,6 +545,114 @@ class ObservabilitySnapshotTestCase(TestCase):
             ],
         }
         self.assertIn("I/O R: 0.00 B, I/O W: 0.00 B", format_snapshots([snap]))
+
+    def test_task_phase_sort_key_lifecycle_order(self):
+        tasks = [
+            {"cpv": "cat/merge-1", "phase": "merge"},
+            {"cpv": "cat/setup-1", "phase": "setup"},
+            {"cpv": "cat/unknown-1", "phase": "unknown_phase"},
+            {"cpv": "cat/compile-1", "phase": "compile"},
+            {"cpv": "cat/install-1", "phase": "install"},
+            {"cpv": "cat/merge_wait-1", "phase": "merge-wait"},
+            {"cpv": "cat/unpack-1", "phase": "unpack"},
+        ]
+        sorted_tasks = sorted(tasks, key=_task_phase_sort_key)
+        self.assertEqual(
+            [t["cpv"] for t in sorted_tasks],
+            [
+                "cat/setup-1",
+                "cat/unpack-1",
+                "cat/compile-1",
+                "cat/install-1",
+                "cat/merge_wait-1",
+                "cat/merge-1",
+                "cat/unknown-1",
+            ],
+        )
+
+    def test_task_phase_sort_key_phase_start_tie_breaker(self):
+        # Within the same phase, tasks that entered the phase earlier come first.
+        tasks = [
+            {"cpv": "cat/c-later", "phase": "compile", "phase_start_time": 200.0},
+            {"cpv": "cat/c-earlier", "phase": "compile", "phase_start_time": 100.0},
+        ]
+        sorted_tasks = sorted(tasks, key=_task_phase_sort_key)
+        self.assertEqual(
+            [t["cpv"] for t in sorted_tasks],
+            ["cat/c-earlier", "cat/c-later"],
+        )
+
+    def test_task_phase_sort_key_fallback_to_start_time_and_cpv(self):
+        # Falls back to start_time when phase_start_time is missing, then cpv
+        tasks = [
+            {"cpv": "cat/b-1", "phase": "compile", "start_time": 10.0},
+            {"cpv": "cat/a-1", "phase": "compile", "start_time": 10.0},
+            {"cpv": "cat/c-1", "phase": "compile", "start_time": 5.0},
+        ]
+        sorted_tasks = sorted(tasks, key=_task_phase_sort_key)
+        self.assertEqual(
+            [t["cpv"] for t in sorted_tasks],
+            ["cat/c-1", "cat/a-1", "cat/b-1"],
+        )
+
+    def test_snapshot_records_phase_start_time(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=4321)
+        sched = _make_scheduler(tasks=[build])
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(build)
+        t0 = time.time()
+        monitor.note_phase("dev-libs/foo-1.2", "compile")
+
+        snap = build_snapshot(monitor)
+        task = snap["tasks"][0]
+        self.assertEqual(task["phase"], "compile")
+        self.assertGreaterEqual(task["phase_start_time"], t0)
+
+    def test_snapshot_merge_wait_phase_start_time_is_build_finished(self):
+        waiting = PackageMerge(EbuildBuild(_Pkg("dev-libs/foo-1.2")))
+        sched = _make_scheduler(tasks=[waiting])
+        sched._merge_wait_queue = [waiting]
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(waiting)
+        _set_build_times(monitor, "dev-libs/foo-1.2", 10000.0, 12345.0)
+
+        snap = build_snapshot(monitor)
+        task = snap["tasks"][0]
+        self.assertEqual(task["phase"], "merge-wait")
+        self.assertEqual(task["phase_start_time"], 12345.0)
+
+    def test_format_snapshots_sorts_by_lifecycle_and_phase_entry(self):
+        snap = {
+            "emerge_pid": 1,
+            "jobs": {"running": 4, "completed": 0, "total": 4, "failed": 0},
+            "tasks": [
+                {"cpv": "cat/merge-1", "phase": "merge", "elapsed": 10},
+                {
+                    "cpv": "cat/compile-late",
+                    "phase": "compile",
+                    "phase_start_time": 200,
+                    "elapsed": 10,
+                },
+                {"cpv": "cat/setup-1", "phase": "setup", "elapsed": 10},
+                {
+                    "cpv": "cat/compile-early",
+                    "phase": "compile",
+                    "phase_start_time": 100,
+                    "elapsed": 20,
+                },
+            ],
+        }
+        output = format_snapshots([snap])
+        lines = [line.strip().split()[0] for line in output.splitlines()[1:]]
+        self.assertEqual(
+            lines,
+            [
+                "cat/setup-1",
+                "cat/compile-early",
+                "cat/compile-late",
+                "cat/merge-1",
+            ],
+        )
 
     def test_average_parallelism_without_a_usable_duration(self):
         for elapsed in (None, 0, -1):
