@@ -23,6 +23,8 @@ class database(fs_template.FsBased):
     cleanse_keys = True
     serialize_eclasses = False
 
+    __db = None
+
     def __init__(self, *args, **config):
         super().__init__(*args, **config)
 
@@ -103,10 +105,17 @@ class database(fs_template.FsBased):
     def __contains__(self, cpv):
         return cpv in self.__db
 
-    def __del__(self):
-        if "__db" in self.__dict__ and self.__db is not None:
-            self.__db.sync()
-            self.__db.close()
+    def close(self):
+        db, self.__db = self.__db, None
+        if db is None:
+            return
+        try:
+            super().close()
+            # dbm.sqlite3 and dbm.ndbm have no sync().
+            if hasattr(db, "sync"):
+                db.sync()
+        finally:
+            db.close()
 
     # TODO: do we need iteritems()?
     items = iteritems
