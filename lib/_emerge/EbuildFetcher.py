@@ -8,6 +8,7 @@ import multiprocessing
 import os
 import signal
 import sys
+import time
 
 import portage
 from portage.checksum import _hash_filter
@@ -314,12 +315,13 @@ class _EbuildFetcherProcess(ForkProcess):
                 for proc in multiprocessing.active_children():
                     proc.terminate()
 
-                # Use a non-zero timeout only for the first join because
-                # later joins are delayed by the first join.
-                timeout = 0.25
+                # exec closes the child's end of the sentinel pipe, so
+                # join(timeout) falls through to a blocking waitpid().
+                # Poll instead.
+                deadline = time.monotonic() + 0.25
                 for proc in multiprocessing.active_children():
-                    proc.join(timeout)
-                    timeout = 0
+                    while proc.is_alive() and time.monotonic() < deadline:
+                        time.sleep(0.01)
 
                 for proc in multiprocessing.active_children():
                     proc.kill()
