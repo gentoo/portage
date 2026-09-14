@@ -395,9 +395,10 @@ class portdbapi(dbapi):
         if not hasattr(self, "auxdb"):
             # unhandled exception thrown from constructor
             return
-        for x in self.auxdb:
-            self.auxdb[x].sync()
-        self.auxdb.clear()
+        for caches in (self.auxdb, self._ro_auxdb):
+            for x in caches.values():
+                x.close()
+            caches.clear()
 
     def flush_cache(self):
         for x in self.auxdb.values():

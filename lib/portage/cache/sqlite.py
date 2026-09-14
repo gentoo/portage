@@ -321,7 +321,19 @@ class database(fs_template.FsBased):
             raise
 
     def commit(self):
-        self._db_connection.commit()
+        info = self._db_connection_info
+        # Unlike _db_connection, don't open a connection to commit.
+        if info is not None and info.pid == portage.getpid():
+            info.connection.commit()
+
+    def close(self):
+        try:
+            super().close()
+        finally:
+            info = self._db_connection_info
+            self._db_connection_info = None
+            if info is not None and info.pid == portage.getpid():
+                info.connection.close()
 
     def _delitem(self, cpv):
         cursor = self._db_cursor

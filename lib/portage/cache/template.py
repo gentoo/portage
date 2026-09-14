@@ -192,12 +192,15 @@ class database:
         if not self.autocommits:
             raise NotImplementedError(self)
 
+    def close(self):
+        self.sync()
+
     def __del__(self):
         # This used to be handled by an atexit hook that called
         # close_portdbapi_caches() for all portdbapi instances, but that was
         # prone to memory leaks for API consumers that needed to create/destroy
         # many portdbapi instances. So, instead we rely on __del__.
-        self.sync()
+        self.close()
 
     def __contains__(self, cpv):
         """This method should always be overridden.  It is provided only for
