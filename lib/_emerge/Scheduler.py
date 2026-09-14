@@ -410,29 +410,30 @@ class Scheduler(PollScheduler):
         for q in self._task_queues.values():
             q.clear()
 
-    def _observability_phase(self, cpv, phase):
+    def _observability_phase(self, cpv, phase, root=None):
         """Record that the given package has entered the named ebuild phase.
 
         Invoked by EbuildPhase via the scheduler interface's notifyPhase
         callback so the observability snapshot reflects the live phase.
         """
-        self._observability.note_phase(cpv, phase)
+        self._observability.note_phase(cpv, phase, root=root)
 
     def _cgroup_finish(self, build, action="build", record=True):
         """Log the final cgroup resource summary for a build or merge and remove it."""
         if self._cgroup is None:
             return
         cpv = build.pkg.cpv
+        root = getattr(build.pkg, "root", None)
         # The only read of these counters: the cgroup goes away below, and
         # what the monitor keeps is what the merge goes on reporting. Log
         # exactly that, rendered the way "emerge --status" renders it.
         stats = self._cgroup.read_stats(cpv)
         resources = (
-            self._observability.note_build_resources(cpv, stats)
+            self._observability.note_build_resources(cpv, stats, root=root)
             if record
             else freeze_resources(stats)
         )
-        elapsed = self._observability.build_elapsed(cpv) if record else None
+        elapsed = self._observability.build_elapsed(cpv, root=root) if record else None
         rendered = format_resources(resources, elapsed)
         if rendered:
             msg = f"=== Resource usage for {action} of {cpv}: {rendered}"

@@ -148,7 +148,7 @@ class EbuildPhase(CompositeTask):
         # runs phases (e.g. the standalone `ebuild` command) provides it.
         notify_phase = getattr(self.scheduler, "notifyPhase", None)
         if notify_phase is not None:
-            notify_phase(self.settings.mycpv, self.phase)
+            notify_phase(self.settings.mycpv, self.phase, self.settings["EROOT"])
 
         future = asyncio.ensure_future(self._async_start(), loop=self.scheduler)
         self._start_task(AsyncTaskFuture(future=future), self._async_start_exit)
