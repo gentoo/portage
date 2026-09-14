@@ -2,7 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
+import gc
 import multiprocessing
+import warnings
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -32,6 +34,24 @@ class AuxdbTestCase(TestCase):
         self._test_mod("portage.cache.sqlite.database", picklable=True)
 
     def _test_mod(self, auxdbmodule, multiproc=True, picklable=True):
+        # close_caches() must close the cache, not leave it to the garbage
+        # collector.
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.filterwarnings(
+                "always", "unclosed database", category=ResourceWarning
+            )
+            self._test_mod_playground(auxdbmodule, multiproc, picklable)
+            gc.collect()
+        self.assertEqual(
+            [
+                str(w.message)
+                for w in caught
+                if str(w.message).startswith("unclosed database")
+            ],
+            [],
+        )
+
+    def _test_mod_playground(self, auxdbmodule, multiproc, picklable):
         ebuilds = {
             "cat/A-1": {
                 "EAPI": "7",
