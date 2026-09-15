@@ -391,6 +391,18 @@ class PkgPretendTestCase(TestCase):
                     self._assert_serial_fetches(f.read(), pns)
                 self._assert_not_interleaved(self._parse_markers(output), pns)
 
+                # The fetch notices are shown before the pkg_pretend output
+                # that waits on them, and the fetch log is named once.
+                first_pretend = output.index("PRETEND-BEGIN")
+                for pn in pns:
+                    notice = re.search(
+                        rf"Fetching in the background: \S*/{pn}-1-1\.gpkg\.tar",
+                        output,
+                    )
+                    self.assertIsNotNone(notice, f"no fetch notice for {pn}")
+                    self.assertLess(notice.start(), first_pretend)
+                self.assertEqual(1, output.count("tail -f "))
+
         # Root can write to a read-only fetch log.
         if os.getuid() == 0:
             return
