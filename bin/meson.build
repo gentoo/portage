@@ -5,6 +5,7 @@ py_bins = [
     'emirrordist',
     'glsa-check',
     'gpkg-sign',
+    'portage-checksum',
     'portageq',
     'quickpkg'
 ]
