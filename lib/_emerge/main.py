@@ -587,6 +587,10 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "modify interpretation of dependencies",
             "choices": true_y_or_n,
         },
+        "--ponder": {
+            "help": argparse.SUPPRESS,
+            "action": "store_true",
+        },
         "--rebuild-exclude": {
             "help": "A space separated list of package names or slot atoms. "
             + "Emerge will not rebuild these packages due to the "
@@ -807,6 +811,8 @@ def parse_opts(tmpcmdline, silent=False):
         myoptions.alert = None
 
     if myoptions.ask in true_y:
+        myoptions.ask = True
+    elif myoptions.ponder and not myoptions.ask:
         myoptions.ask = True
     else:
         myoptions.ask = None
@@ -1134,6 +1140,8 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myoptions.verbose in true_y:
         myoptions.verbose = True
+    elif myoptions.ponder and not myoptions.verbose:
+        myoptions.verbose = True
     else:
         myoptions.verbose = None
 
@@ -1165,6 +1173,9 @@ def parse_opts(tmpcmdline, silent=False):
 
     if myaction is None and myoptions.deselect is True:
         myaction = "deselect"
+
+    if myoptions.ponder:
+        myoptions.ponder = None
 
     return myaction, myopts, myoptions.positional_args
 
