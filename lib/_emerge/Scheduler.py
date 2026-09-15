@@ -302,6 +302,7 @@ class Scheduler(PollScheduler):
         self._failed_pkgs_die_msgs = []
         self._post_mod_echo_msgs = []
         self._parallel_fetch = False
+        self._fetch_log_announced = False
         self._init_graph(graph_config)
         merge_count = len(
             [
@@ -1163,15 +1164,16 @@ class Scheduler(PollScheduler):
                     else:
                         background = True
                     if background:
-                        msg = (
-                            "Fetching in the background:",
-                            fetcher.pkg_path,
-                            "To view fetch progress, run in another terminal:",
-                            f"tail -f {self._fetch_log}",
-                        )
+                        # Not buffered, since buffered output is only shown
+                        # once pkg_pretend has finished.
                         out = portage.output.EOutput()
-                        for l in msg:
-                            add_msg(out.einfo, l)
+                        out.einfo(f"Fetching in the background: {fetcher.pkg_path}")
+                        if not self._fetch_log_announced:
+                            self._fetch_log_announced = True
+                            out.einfo(
+                                "To view fetch progress, run in another terminal:"
+                            )
+                            out.einfo(f"tail -f {self._fetch_log}")
                     if await fetcher.async_wait() != os.EX_OK:
                         if background:
                             add_msg(
