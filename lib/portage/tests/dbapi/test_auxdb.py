@@ -1,4 +1,4 @@
-# Copyright 2020-2024 Gentoo Authors
+# Copyright 2020-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -19,6 +19,14 @@ class AuxdbTestCase(TestCase):
         except ImportError:
             self.skipTest("dbm import failed")
         self._test_mod("portage.cache.anydbm.database", multiproc=False, picklable=True)
+
+    def test_anydbm_label(self):
+        from portage.cache.fs_template import gen_label
+
+        self.assertEqual(
+            gen_label("/var/cache/edb/dep", "/var/db/repos/gentoo"),
+            "gentoo-51410B74E34051F6",
+        )
 
     def test_flat_hash_md5(self):
         self._test_mod("portage.cache.flat_hash.md5_database")
