@@ -302,6 +302,7 @@ class Scheduler(PollScheduler):
         self._failed_pkgs_die_msgs = []
         self._post_mod_echo_msgs = []
         self._parallel_fetch = False
+        self._fetch_log_announced = False
         self._init_graph(graph_config)
         merge_count = len(
             [
@@ -1131,8 +1132,8 @@ class Scheduler(PollScheduler):
                 bintree = root_config.trees["bintree"].dbapi.bintree
                 fetched = False
 
-                # Display fetch on stdout, so that it's always clear what
-                # is consuming time here.
+                # Display fetch on stdout, or say where its output is, so
+                # that it's always clear what is consuming time here.
                 if bintree.download_required(x.cpv):
                     fetcher = self._get_prefetcher(x)
                     if fetcher is not None and not fetcher.isAlive():
@@ -1140,24 +1141,45 @@ class Scheduler(PollScheduler):
                         fetcher.cancel()
                         fetcher = None
                     if fetcher is None:
-                        fetcher = BinpkgFetcher(pkg=x, scheduler=loop)
-                        fetcher.start()
+                        background = buffered and os.access(
+                            first_existing(self._fetch_log), os.W_OK
+                        )
+                        fetcher = BinpkgFetcher(
+                            background=background,
+                            logfile=self._fetch_log if background else None,
+                            pkg=x,
+                            scheduler=loop,
+                        )
+                        if buffered:
+                            # Fetch one package at a time, so that output
+                            # in the fetch log is not interleaved.
+                            self._schedule_fetch(fetcher, force_queue=True)
+                        else:
+                            fetcher.start()
                         # We only set the fetched value when fetcher
                         # is a BinpkgFetcher, since BinpkgPrefetcher
                         # handles fetch, verification, and the
                         # bintree.inject call which moves the file.
                         fetched = fetcher.pkg_path
                     else:
-                        msg = (
-                            "Fetching in the background:",
-                            fetcher.pkg_path,
-                            "To view fetch progress, run in another terminal:",
-                            f"tail -f {self._fetch_log}",
-                        )
+                        background = True
+                    if background:
+                        # Not buffered, since buffered output is only shown
+                        # once pkg_pretend has finished.
                         out = portage.output.EOutput()
-                        for l in msg:
-                            add_msg(out.einfo, l)
+                        out.einfo(f"Fetching in the background: {fetcher.pkg_path}")
+                        if not self._fetch_log_announced:
+                            self._fetch_log_announced = True
+                            out.einfo(
+                                "To view fetch progress, run in another terminal:"
+                            )
+                            out.einfo(f"tail -f {self._fetch_log}")
                     if await fetcher.async_wait() != os.EX_OK:
+                        if background:
+                            add_msg(
+                                portage.output.EOutput().eerror,
+                                f"Fetch of {x.cpv} failed, see {self._fetch_log}",
+                            )
                         return finish(fetcher.returncode, settings)
 
                 if fetched is False:
