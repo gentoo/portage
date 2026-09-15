@@ -1,7 +1,8 @@
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
+import hashlib
 import os
 
 from portage.cache import template
@@ -82,4 +83,8 @@ def gen_label(base, label):
     label = label.strip('"').strip("'")
     label = os.path.join(*(label.rstrip(os.path.sep).split(os.path.sep)))
     tail = os.path.split(label)[1]
-    return f"{tail}-{abs(label.__hash__()):X}"
+    # Not str.__hash__(), which is randomized per process.
+    digest = hashlib.md5(
+        label.encode("utf-8", "surrogateescape"), usedforsecurity=False
+    ).hexdigest()
+    return f"{tail}-{digest[:16].upper()}"
