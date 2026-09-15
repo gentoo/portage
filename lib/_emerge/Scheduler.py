@@ -1131,8 +1131,8 @@ class Scheduler(PollScheduler):
                 bintree = root_config.trees["bintree"].dbapi.bintree
                 fetched = False
 
-                # Display fetch on stdout, so that it's always clear what
-                # is consuming time here.
+                # Display fetch on stdout, or say where its output is, so
+                # that it's always clear what is consuming time here.
                 if bintree.download_required(x.cpv):
                     fetcher = self._get_prefetcher(x)
                     if fetcher is not None and not fetcher.isAlive():
@@ -1140,14 +1140,29 @@ class Scheduler(PollScheduler):
                         fetcher.cancel()
                         fetcher = None
                     if fetcher is None:
-                        fetcher = BinpkgFetcher(pkg=x, scheduler=loop)
-                        fetcher.start()
+                        background = buffered and os.access(
+                            first_existing(self._fetch_log), os.W_OK
+                        )
+                        fetcher = BinpkgFetcher(
+                            background=background,
+                            logfile=self._fetch_log if background else None,
+                            pkg=x,
+                            scheduler=loop,
+                        )
+                        if buffered:
+                            # Fetch one package at a time, so that output
+                            # in the fetch log is not interleaved.
+                            self._schedule_fetch(fetcher, force_queue=True)
+                        else:
+                            fetcher.start()
                         # We only set the fetched value when fetcher
                         # is a BinpkgFetcher, since BinpkgPrefetcher
                         # handles fetch, verification, and the
                         # bintree.inject call which moves the file.
                         fetched = fetcher.pkg_path
                     else:
+                        background = True
+                    if background:
                         msg = (
                             "Fetching in the background:",
                             fetcher.pkg_path,
@@ -1158,6 +1173,11 @@ class Scheduler(PollScheduler):
                         for l in msg:
                             add_msg(out.einfo, l)
                     if await fetcher.async_wait() != os.EX_OK:
+                        if background:
+                            add_msg(
+                                portage.output.EOutput().eerror,
+                                f"Fetch of {x.cpv} failed, see {self._fetch_log}",
+                            )
                         return finish(fetcher.returncode, settings)
 
                 if fetched is False:

@@ -1,8 +1,10 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -42,6 +44,24 @@ FAILING_MISC_CONTENT = textwrap.dedent("""
     """)
 
 MARKER_RE = re.compile(r"PRETEND-(BEGIN|BODY|END) (\w+)(?: (\d+\.\d+))?")
+
+# FETCHCOMMAND for a fake:// binhost, which records when each binary
+# package download starts and finishes.
+FAKE_FETCH_SCRIPT = textwrap.dedent(f"""\
+    #!/bin/sh
+    src=${{3#fake://}}
+    case ${{src}} in
+    *.gpkg.tar)
+        name=${{src##*/}}
+        echo "FETCH-BEGIN ${{name%%-*}} $(date +%s.%N)"
+        sleep {PRETEND_SLEEP}
+        echo "FETCH-END ${{name%%-*}} $(date +%s.%N)"
+        ;;
+    esac
+    exec cp "${{src}}" "$1/$2"
+    """)
+
+FETCH_MARKER_RE = re.compile(r"FETCH-(BEGIN|END) (\w+) (\d+\.\d+)")
 
 
 class PkgPretendTestCase(TestCase):
@@ -142,6 +162,64 @@ class PkgPretendTestCase(TestCase):
 
         self.assertEqual(sorted(seen), sorted(pns))
         return seen
+
+    def _setup_binhost(self, pns):
+        """
+        Build the given packages and make them available only from a
+        fake:// binhost. Return the playground, emerge command and
+        environment.
+        """
+        ebuilds = {
+            f"dev-libs/{pn}-1": {"EAPI": "8", "MISC_CONTENT": MISC_CONTENT}
+            for pn in pns
+        }
+        playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
+        self.addCleanup(playground.cleanup)
+        emerge_cmd, env = self._playground_env(playground)
+        eprefix = playground.settings["EPREFIX"]
+
+        returncode, output = self._run_emerge(
+            emerge_cmd,
+            env,
+            ("--buildpkgonly", "--jobs=2") + tuple(f"dev-libs/{pn}" for pn in pns),
+        )
+        if returncode != os.EX_OK:
+            sys.stderr.write(output)
+        self.assertEqual(os.EX_OK, returncode)
+
+        binhost = os.path.join(eprefix, "binhost")
+        os.rename(playground.pkgdir, binhost)
+        fake_fetch = os.path.join(eprefix, "fake-fetch")
+        with open(fake_fetch, "w") as f:
+            f.write(FAKE_FETCH_SCRIPT)
+        os.chmod(fake_fetch, 0o755)
+        with open(os.path.join(eprefix, USER_CONFIG_PATH, "binrepos.conf"), "w") as f:
+            f.write(textwrap.dedent(f"""\
+                [test_binhost]
+                sync-uri = fake://{binhost}
+                verify-signature = false
+                fetchcommand = {fake_fetch} "${{DISTDIR}}" "${{FILE}}" "${{URI}}"
+                """))
+
+        # Without parallel-fetch, each pkg_pretend job fetches its package.
+        env["FEATURES"] = "-parallel-fetch"
+        return playground, emerge_cmd, env
+
+    def _assert_serial_fetches(self, text, pns):
+        """
+        Assert that each package was fetched once, and that no two
+        fetches overlapped.
+        """
+        markers = FETCH_MARKER_RE.findall(text)
+        self.assertEqual(len(markers), 2 * len(pns), f"unexpected markers: {markers}")
+        for i in range(0, len(markers), 2):
+            (begin, pn, _), (end, end_pn, _) = markers[i : i + 2]
+            self.assertEqual(
+                (begin, end, pn),
+                ("BEGIN", "END", end_pn),
+                f"fetches overlap: {markers}",
+            )
+        self.assertEqual(sorted(pns), sorted(pn for _, pn, _ in markers[::2]))
 
     def testParallelPkgPretend(self):
         """
@@ -283,3 +361,68 @@ class PkgPretendTestCase(TestCase):
             self.assertEqual([], vardb.cpv_all())
         finally:
             playground.cleanup()
+
+    def testParallelPkgPretendBinpkgFetch(self):
+        """
+        Binary packages fetched by concurrent pkg_pretend jobs are fetched
+        one at a time, with output in the fetch log.
+        """
+        pns = ("A", "B")
+        playground, emerge_cmd, env = self._setup_binhost(pns)
+        eprefix = playground.settings["EPREFIX"]
+        args = ("--getbinpkgonly", "--jobs=2") + tuple(f"dev-libs/{pn}" for pn in pns)
+        pkgdir = os.path.join(eprefix, "var", "cache", "binhost")
+        fetch_log = os.path.join(eprefix, "var", "log", "emerge-fetch.log")
+
+        # With parallel-fetch, a job whose prefetcher has not started yet
+        # fetches its package while another prefetcher is running.
+        for features in ("-parallel-fetch", "parallel-fetch"):
+            with self.subTest(features=features):
+                shutil.rmtree(pkgdir, ignore_errors=True)
+                if os.path.exists(fetch_log):
+                    os.unlink(fetch_log)
+                env["FEATURES"] = features
+                returncode, output = self._run_emerge(emerge_cmd, env, args)
+                if returncode != os.EX_OK:
+                    sys.stderr.write(output)
+                self.assertEqual(os.EX_OK, returncode)
+                self.assertNotRegex(output, FETCH_MARKER_RE)
+                with open(fetch_log, encoding="utf-8") as f:
+                    self._assert_serial_fetches(f.read(), pns)
+                self._assert_not_interleaved(self._parse_markers(output), pns)
+
+        # Root can write to a read-only fetch log.
+        if os.getuid() == 0:
+            return
+        # Without a writable fetch log, fetch output goes to the terminal.
+        # Prefetchers write to the fetch log regardless, so disable them.
+        shutil.rmtree(pkgdir)
+        os.chmod(fetch_log, 0o444)
+        env["FEATURES"] = "-parallel-fetch"
+        returncode, output = self._run_emerge(emerge_cmd, env, args)
+        if returncode != os.EX_OK:
+            sys.stderr.write(output)
+        self.assertEqual(os.EX_OK, returncode)
+        self._assert_serial_fetches(output, pns)
+
+    def testParallelPkgPretendBinpkgFetchFailure(self):
+        """
+        A failed fetch whose output is in the fetch log is reported on the
+        terminal.
+        """
+        playground, emerge_cmd, env = self._setup_binhost(("A", "B"))
+        eprefix = playground.settings["EPREFIX"]
+        (binpkg,) = glob.glob(
+            os.path.join(eprefix, "binhost", "**", "B-1-1.gpkg.tar"),
+            recursive=True,
+        )
+        os.unlink(binpkg)
+
+        returncode, output = self._run_emerge(
+            emerge_cmd,
+            env,
+            ("--getbinpkgonly", "--jobs=2", "dev-libs/A", "dev-libs/B"),
+        )
+        self.assertNotEqual(os.EX_OK, returncode, output)
+        self.assertIn("PRETEND-END A", output)
+        self.assertIn("Fetch of dev-libs/B-1 failed, see ", output)
