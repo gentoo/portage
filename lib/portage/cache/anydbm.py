@@ -1,4 +1,4 @@
-# Copyright 2005-2024 Gentoo Authors
+# Copyright 2005-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -36,14 +36,10 @@ class database(fs_template.FsBased):
             self.location, fs_template.gen_label(self.location, self.label) + default_db
         )
         self.__db = None
-        mode = "w"
-        if dbm.whichdb(self._db_path) in ("dbm.gnu", "gdbm"):
-            # Allow multiple concurrent writers (see bug #53607).
-            mode += "u"
         try:
             # dbm.open() will not work with bytes in python-3.1:
             #   TypeError: can't concat bytes to str
-            self.__db = dbm.open(self._db_path, mode, self._perms)
+            self.__db = dbm.open(self._db_path, self._open_mode(), self._perms)
         except dbm.error:
             # XXX handle this at some point
             try:
@@ -67,6 +63,12 @@ class database(fs_template.FsBased):
                 raise cache_errors.InitializationError(self.__class__, e)
         self._ensure_access(self._db_path)
 
+    def _open_mode(self):
+        if dbm.whichdb(self._db_path) in ("dbm.gnu", "gdbm"):
+            # Allow multiple concurrent writers (see bug #53607).
+            return "wu"
+        return "w"
+
     def __getstate__(self):
         state = self.__dict__.copy()
         # These attributes are not picklable, so they are automatically
@@ -76,11 +78,7 @@ class database(fs_template.FsBased):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        mode = "w"
-        if dbm.whichdb(self._db_path) in ("dbm.gnu", "gdbm"):
-            # Allow multiple concurrent writers (see bug #53607).
-            mode += "u"
-        self.__db = dbm.open(self._db_path, mode, self._perms)
+        self.__db = dbm.open(self._db_path, self._open_mode(), self._perms)
 
     def iteritems(self):
         # dbm doesn't implement items()
