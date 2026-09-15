@@ -1036,7 +1036,9 @@ class binarytree:
 
                 if reindex:
                     basename = os.path.basename(path)
-                    basename_index.setdefault(basename, []).append(d)
+                    basename_index.setdefault(
+                        (os.path.dirname(path), basename), []
+                    ).append(d)
                 else:
                     instance_key = _instance_key(cpv)
                     pkg_paths[instance_key] = path
@@ -1082,7 +1084,7 @@ class binarytree:
                     # Validate data from the package index and try to avoid
                     # reading the xpak if possible.
                     match = None
-                    possibilities = basename_index.get(myfile)
+                    possibilities = basename_index.get((mydir, myfile))
                     if possibilities:
                         for d in possibilities:
                             try:
