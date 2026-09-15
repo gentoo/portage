@@ -156,6 +156,7 @@ class ResolverPlayground:
         world=[],
         world_sets=[],
         distfiles={},
+        patches={},
         eclasses={},
         eprefix=None,
         targetroot=False,
@@ -270,7 +271,14 @@ class ResolverPlayground:
         self._create_ebuilds(ebuilds)
         self._create_installed(installed)
         self._create_profile(
-            ebuilds, eclasses, installed, profile, repo_configs, user_config, sets
+            ebuilds,
+            eclasses,
+            installed,
+            profile,
+            repo_configs,
+            user_config,
+            sets,
+            patches,
         )
         self._create_world(world, world_sets)
 
@@ -546,7 +554,15 @@ class ResolverPlayground:
                 _write_metadata_file(vdb_pkg_dir, metadata_kv)
 
     def _create_profile(
-        self, ebuilds, eclasses, installed, profile, repo_configs, user_config, sets
+        self,
+        ebuilds,
+        eclasses,
+        installed,
+        profile,
+        repo_configs,
+        user_config,
+        sets,
+        patches,
     ):
         user_config_dir = os.path.join(self.eroot, USER_CONFIG_PATH)
 
@@ -737,6 +753,18 @@ class ResolverPlayground:
         default_sets_conf_dir = os.path.join(
             self.eroot, "usr/share/portage/config/sets"
         )
+
+        # user patches
+        for cpv, files in patches.items():
+            patch_dir = os.path.join(user_config_dir, "patches", cpv)
+            os.makedirs(patch_dir)
+            for patch in files:
+                patch_file = os.path.join(patch_dir, patch)
+                with open(patch_file, "wb") as f:
+                    text = files[patch]
+                    if isinstance(text, str):
+                        text = text.encode()
+                    f.write(text)
 
         try:
             os.makedirs(default_sets_conf_dir)

@@ -343,6 +343,20 @@ def nocolor():
     havecolor = 0
 
 
+def renderPath(path):
+    """
+    @param path: Path string to be shown to a user
+    @type path: String
+    @rtype: String
+    @return: A string which is safe to print, e.g. using EOutput, with
+             non-printables and non-utf8 replaced with '?'
+    """
+    if isinstance(path, (bytes, bytearray)):
+        path = os.fsdecode(path)
+    utf8 = path.encode(errors="replace").decode()
+    return re.sub("[\x01-\x1f\x7f]", "?", utf8)
+
+
 def resetColor():
     return codes["reset"]
 
@@ -615,6 +629,20 @@ class EOutput:
                 "%*s%s\n"
                 % ((self.term_columns - self.__last_e_len - 7), "", status_brackets),
             )
+
+    def ebinfo(self, msg):
+        """
+        Shows an informative message about a binary package operation
+
+        @param msg: A very brief (shorter than one line) informative message.
+        @type msg: StringType
+        """
+        out = sys.stdout
+        if not self.quiet:
+            if self.__last_e_cmd == "ebegin":
+                self._write(out, "\n")
+            self._write(out, colorize("PKG_BINARY_MERGE", " * ") + msg + "\n")
+        self.__last_e_cmd = "einfo"
 
     def ebegin(self, msg):
         """
