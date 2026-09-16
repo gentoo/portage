@@ -61,31 +61,6 @@ jobs:
           # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
           sudo ln -s /bin/true /usr/bin/getuto
           sudo ln -s "$(type -P tar)" /usr/bin/gtar
-      - name: Patch python scripts to set spawn start method
-        if: ${{ matrix.start-method == 'spawn' }}
-        run: |
-          IFS=''
-          while read -r bin_file; do
-            if [[ $(head -n1 "${bin_file}") == '#!/usr/bin/env python' ]]; then
-              mode=top
-              while read -r line; do
-                if [[ ${mode} == top ]]; then
-                  if [[ ${line} == \#* ]]; then
-                    echo "${line}"
-                  else
-                    echo "import multiprocessing"
-                    echo 'multiprocessing.set_start_method("spawn", force=True)'
-                    echo "${line}"
-                    mode=bottom
-                  fi
-                else
-                  echo "${line}"
-                fi
-              done < "${bin_file}" > "${bin_file}.new"
-              chmod +x "${bin_file}.new"
-              mv "${bin_file}"{.new,}
-            fi
-          done < <(find bin -maxdepth 1 -type f)
       - name: Test meson install --destdir /tmp/install-root
         run: |
           echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
