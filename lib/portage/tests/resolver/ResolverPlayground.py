@@ -3,6 +3,7 @@
 
 import bz2
 import fnmatch
+import glob
 import os
 import shutil
 import subprocess
@@ -384,6 +385,12 @@ class ResolverPlayground:
     def _create_ebuild_manifests(self, ebuilds):
         for repo_name in self._repositories:
             if repo_name == "DEFAULT":
+                continue
+            repo_dir = self._repositories[repo_name]["location"]
+            ebuild_paths = glob.glob(os.path.join(repo_dir, "*", "*", "*.ebuild"))
+            if not ebuild_paths:
+                # egencache would only create an empty md5-cache directory.
+                ensure_dirs(os.path.join(repo_dir, "metadata", "md5-cache"))
                 continue
             egencache_cmd = [
                 "egencache",
