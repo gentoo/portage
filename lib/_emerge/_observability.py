@@ -140,6 +140,11 @@ def build_snapshot(monitor):
         else:
             elapsed = None
 
+        if waiting and build_finished is not None:
+            phase_start = build_finished
+        else:
+            phase_start = monitor._phase_start.get(cpv, start)
+
         entry = {
             "cpv": cpv,
             "category": pkg.category,
@@ -152,6 +157,7 @@ def build_snapshot(monitor):
             "merge_wait": waiting,
             "pid": _task_pid(task),
             "start_time": start,
+            "phase_start_time": phase_start,
             "elapsed": elapsed,
             "build_elapsed": build_elapsed,
         }
@@ -355,6 +361,63 @@ def format_resources(resources, build_elapsed=None):
     return ", ".join(parts)
 
 
+# Note: portage.const.EBUILD_PHASES also defines ebuild phases in rough
+# lifecycle order. However, _PHASE_LIFECYCLE_ORDER is maintained separately
+# because observability tracks scheduler states and fallback task kinds
+# ("merge-wait", "build", "merge") as well as internal/alternate phases
+# ("clean", "rpm", "cleanrm") that are not in EBUILD_PHASES, and places
+# "nofetch" before "unpack" rather than after "postrm".
+_PHASE_LIFECYCLE_ORDER = (
+    # Pre-build / early setup
+    "build",
+    "pretend",
+    "clean",
+    "setup",
+    "nofetch",
+    # Build & compilation
+    "unpack",
+    "prepare",
+    "configure",
+    "compile",
+    "test",
+    "install",
+    "instprep",
+    # Packaging
+    "package",
+    "rpm",
+    # Merge queue transition
+    "merge-wait",
+    # Merge & live filesystem installation
+    "merge",
+    "preinst",
+    "postinst",
+    # Unmerge / replacement cleanup
+    "prerm",
+    "postrm",
+    "cleanrm",
+    # Maintenance & misc
+    "config",
+    "info",
+    "other",
+)
+_PHASE_RANKS = {phase: idx for idx, phase in enumerate(_PHASE_LIFECYCLE_ORDER)}
+_DEFAULT_PHASE_RANK = len(_PHASE_LIFECYCLE_ORDER)
+
+
+def _task_phase_sort_key(task):
+    phase = task.get("phase") or task.get("kind") or "-"
+    rank = _PHASE_RANKS.get(phase, _DEFAULT_PHASE_RANK)
+    phase_start = task.get("phase_start_time")
+    if phase_start is None:
+        phase_start = task.get("start_time")
+    return (
+        rank,
+        phase_start is None,
+        phase_start or 0,
+        task.get("cpv") or "",
+    )
+
+
 def format_snapshots(snapshots):
     """Render snapshots as a human-readable table."""
     if not snapshots:
@@ -373,7 +436,8 @@ def format_snapshots(snapshots):
                 failed=jobs.get("failed", 0),
             )
         )
-        for task in snapshot.get("tasks", []):
+        tasks = sorted(snapshot.get("tasks", []), key=_task_phase_sort_key)
+        for task in tasks:
             elapsed = task.get("elapsed")
             elapsed_str = f"{max(0, int(elapsed))}s" if elapsed is not None else "-"
             phase = task.get("phase") or task.get("kind") or "-"
@@ -443,6 +507,7 @@ class ObservabilityMonitor:
         # id(task) -> epoch start time; str(cpv) -> current phase name.
         self._task_start = {}
         self._phases = {}
+        self._phase_start = {}
         # str(cpv) -> _BuildTimes
         self._build_times = {}
 
@@ -468,6 +533,9 @@ class ObservabilityMonitor:
         now = time.time()
         if self.enabled:
             self._task_start[id(task)] = now
+            pkg = _task_pkg(task)
+            if pkg is not None:
+                self._phase_start[str(pkg.cpv)] = now
         # Build timing is recorded either way: FEATURES="cgroup" reports a
         # build's average parallelism from it.
         if not isinstance(task, _PackageMerge):
@@ -483,6 +551,7 @@ class ObservabilityMonitor:
         cpv = str(pkg.cpv)
         if isinstance(task, _PackageMerge):
             self._phases.pop(cpv, None)
+            self._phase_start.pop(cpv, None)
             self._build_times.pop(cpv, None)
         else:
             times = self._build_times.get(cpv)
@@ -527,11 +596,14 @@ class ObservabilityMonitor:
             cpv = str(pkg.cpv)
             self._build_times.pop(cpv, None)
             self._phases.pop(cpv, None)
+            self._phase_start.pop(cpv, None)
 
     def note_phase(self, cpv, phase):
         if not self.enabled:
             return
-        self._phases[str(cpv)] = phase
+        cpv_str = str(cpv)
+        self._phases[cpv_str] = phase
+        self._phase_start[cpv_str] = time.time()
         self.update()
 
     def update(self, force=False):
