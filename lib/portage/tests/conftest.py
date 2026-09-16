@@ -4,6 +4,7 @@
 
 import grp
 import importlib
+import math
 import os
 import os.path as osp
 import pwd
@@ -27,6 +28,36 @@ def debug_signal(signum, frame):
 
 
 signal.signal(signal.SIGUSR1, debug_signal)
+
+
+_GOLDEN_RATIO_CONJUGATE = (math.sqrt(5) - 1) / 2
+
+
+def pytest_collection_modifyitems(config, items):
+    """
+    Under pytest-xdist, spread the tests of each module evenly across the
+    collection, so that the expensive tests, which are clustered in a few
+    modules, do not end up queued back to back on one worker.
+    """
+    if not hasattr(config, "workerinput"):
+        return
+
+    by_module = {}
+    for item in items:
+        by_module.setdefault(item.nodeid.partition("::")[0], []).append(item)
+
+    keyed = []
+    for m, module_items in enumerate(by_module.values()):
+        # Offset modules by multiples of the golden ratio, so that those
+        # with only a few tests do not all land at the same positions.
+        offset = (m * _GOLDEN_RATIO_CONJUGATE) % 1.0
+        n = len(module_items)
+        for i, item in enumerate(module_items):
+            keyed.append(((i + offset) / n, item))
+
+    # Every worker must compute the same order, as xdist requires.
+    keyed.sort(key=lambda k: k[0])
+    items[:] = [item for _, item in keyed]
 
 
 @pytest.fixture(autouse=True, scope="session")
