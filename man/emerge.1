@@ -645,11 +645,12 @@ it is automatically disabled for regular expression searches. Fuzzy
 search is slightly slower than non\-fuzzy search.
 .TP
 .BR "\-\-getbinpkg [ y | n ]" ", " \-g
-Using the server and location defined in \fIPORTAGE_BINHOST\fR (see
-\fBmake.conf\fR(5)), portage will download the information from each binary
-package found and it will use that information to help build the dependency
-list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only
-merging.)
+Using the server and location defined in \fBbinrepos.conf\fR
+(see \fBportage\fR(5)) or the legacy \fIPORTAGE_BINHOST\fR
+(see \fBmake.conf\fR(5)), Portage will download the information from each
+binary package found and it will use that information to help build the
+dependency list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for
+binary\-only merging.)
 .TP
 .BR "\-\-getbinpkgonly [ y | n ]" ", " \-G
 This option is identical to \fB\-g\fR, as above, except binaries from the
