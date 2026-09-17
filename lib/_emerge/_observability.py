@@ -22,6 +22,7 @@ Everything here degrades silently: if the runtime directory is not
 writable (e.g. unprivileged, no /run) emerge proceeds unaffected.
 """
 
+import errno
 import glob
 import json
 import os as _os
@@ -422,6 +423,8 @@ _MSG_NOSIGNAL = getattr(
     socket, "MSG_NOSIGNAL", 0x4000 if sys.platform.startswith("linux") else 0
 )
 
+_ACCEPT_RETRY_DELAY = 1  # seconds
+
 
 def _encode(snapshot):
     """One snapshot as a line of the socket stream."""
@@ -463,6 +466,7 @@ class ObservabilityMonitor:
         self._socket_path = None
         self._loop = None
         self._server = None
+        self._accept_handle = None
         self._clients = []
         self._server_started = False
         self._last_write = 0
@@ -651,9 +655,20 @@ class ObservabilityMonitor:
         while self._server is not None:
             try:
                 conn, _addr = self._server.accept()
-            except OSError:
-                # Nothing left to accept, or one connection aborted before
-                # it could be. Either way the reader fires again.
+            except (BlockingIOError, InterruptedError):
+                return
+            except OSError as e:
+                if e.errno in (errno.EMFILE, errno.ENFILE, errno.ENOBUFS, errno.ENOMEM):
+                    # The socket stays readable while the connection is
+                    # pending, so accepting again at once would spin until
+                    # a descriptor comes free.
+                    self._loop.remove_reader(self._server.fileno())
+                    self._accept_handle = self._loop.call_later(
+                        _ACCEPT_RETRY_DELAY, self._resume_accept
+                    )
+                # Anything else, ECONNABORTED and the like, concerns the one
+                # connection, which is gone: returning is safe because the
+                # reader fires again if another is pending.
                 return
             conn.setblocking(False)
             if not published:
@@ -677,6 +692,11 @@ class ObservabilityMonitor:
                 conn.close()
                 continue
             self._clients.append(conn)
+
+    def _resume_accept(self):
+        self._accept_handle = None
+        if self._server is not None:
+            self._loop.add_reader(self._server.fileno(), self._accept)
 
     def _client_readable(self, conn):
         try:
@@ -725,6 +745,9 @@ class ObservabilityMonitor:
         if self._refresh_handle is not None:
             self._refresh_handle.cancel()
             self._refresh_handle = None
+        if self._accept_handle is not None:
+            self._accept_handle.cancel()
+            self._accept_handle = None
         for conn in list(self._clients):
             self._drop_client(conn)
         if self._server is not None:

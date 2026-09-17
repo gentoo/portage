@@ -3,6 +3,7 @@
 
 import asyncio
 import contextlib
+import errno
 import io
 import json
 import os
@@ -420,6 +421,44 @@ class ObservabilitySnapshotTestCase(TestCase):
                 signal.signal(signal.SIGPIPE, previous)
                 monitor.close()
             self.assertEqual(received, [])
+
+    def test_accept_out_of_descriptors_backs_off(self):
+        # A connection that cannot be accepted keeps the listening socket
+        # readable, so accepting again at once would spin.
+        readers, later, cancelled = {7}, [], []
+
+        def _out_of_descriptors():
+            raise OSError(errno.EMFILE, "Too many open files")
+
+        def _call_later(delay, callback):
+            later.append(callback)
+            return SimpleNamespace(cancel=lambda: cancelled.append(callback))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            monitor = ObservabilityMonitor(_make_scheduler(eprefix=tmp))
+            monitor._loop = SimpleNamespace(
+                add_reader=lambda fd, callback, *args: readers.add(fd),
+                remove_reader=readers.discard,
+                call_later=_call_later,
+            )
+            monitor._server = SimpleNamespace(
+                fileno=lambda: 7, accept=_out_of_descriptors, close=lambda: None
+            )
+
+            try:
+                monitor._accept()
+                self.assertEqual(readers, set())
+                self.assertEqual(len(later), 1)
+
+                later[0]()
+                self.assertEqual(readers, {7})
+
+                # A retry still pending must not outlive the monitor.
+                monitor._accept()
+                monitor.close()
+                self.assertEqual(cancelled, later[1:])
+            finally:
+                monitor.close()
 
     def test_snapshot_is_republished_without_task_events(self):
         loop = _FakeLoop()
