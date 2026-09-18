@@ -15,6 +15,7 @@ py.install_sources(
         'test_bdeps.py',
         'test_binary_pkg_ebuild_visibility.py',
         'test_binpackage_downgrades_slot_dep.py',
+        'test_binpackage_patches.py',
         'test_binpackage_selection.py',
         'test_blocker.py',
         'test_broken_deps.py',

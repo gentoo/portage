@@ -5,6 +5,7 @@ py.install_sources(
         'LocationsManager.py',
         'MaskManager.py',
         'UseManager.py',
+        'UserPatches.py',
         'VirtualsManager.py',
         'env_var_validation.py',
         'features_set.py',

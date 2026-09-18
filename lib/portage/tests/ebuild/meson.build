@@ -1,5 +1,6 @@
 py.install_sources(
     [
+        'MockUserPatches.py',
         'test_array_fromfile_eof.py',
         'test_config.py',
         'test_doebuild_fd_pipes.py',
