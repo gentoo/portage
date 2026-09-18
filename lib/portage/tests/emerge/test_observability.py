@@ -3,9 +3,11 @@
 
 import asyncio
 import contextlib
+import errno
 import io
 import json
 import os
+import signal
 import socket
 import tempfile
 import threading
@@ -343,20 +345,118 @@ class ObservabilitySnapshotTestCase(TestCase):
                 )
                 snap = json.loads(await reader.readline())
                 self.assertEqual(snap["tasks"][0]["cpv"], "dev-libs/foo-1.2")
-                self.assertEqual(len(monitor._writers), 1)
+                self.assertEqual(len(monitor._clients), 1)
 
                 writer.close()
                 await writer.wait_closed()
                 # The server side must forget the client on EOF alone, without
                 # needing a broadcast to discover the write is going nowhere.
                 for _ in range(100):
-                    if not monitor._writers:
+                    if not monitor._clients:
                         break
                     await asyncio.sleep(0.01)
-                self.assertEqual(monitor._writers, [])
+                self.assertEqual(monitor._clients, [])
 
             try:
                 global_event_loop().run_until_complete(exercise())
+            finally:
+                monitor.close()
+
+    def test_write_to_departed_client_raises_no_sigpipe(self):
+        # emerge runs with SIGPIPE at SIG_DFL, so a send that raised it
+        # would kill emerge outright (bug 982689). A recording handler
+        # stands in for SIG_DFL here, which would take the test run down
+        # with it.
+        with tempfile.TemporaryDirectory() as tmp:
+            build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=99)
+            sched = _make_scheduler(eprefix=tmp, tasks=[build])
+            monitor = ObservabilityMonitor(sched)
+            monitor.note_task_started(build)
+            received = []
+
+            def connect():
+                client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                client.connect(monitor._socket_path)
+                return client
+
+            async def exercise():
+                monitor.update(force=True)
+                for _ in range(100):
+                    if monitor._server is not None:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertIsNotNone(monitor._server)
+
+                # A client that gives up before emerge gets around to
+                # accepting it, as read_snapshots() does when emerge's main
+                # loop is busy for longer than its timeout.
+                # Accepting it publishes, which is what advances _last_write.
+                monitor._last_write = 0
+                connect().close()
+                for _ in range(100):
+                    if monitor._last_write:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertTrue(monitor._last_write)
+                self.assertEqual(monitor._clients, [])
+
+                # A client that goes away between two broadcasts, before
+                # its EOF has been noticed.
+                client = connect()
+                for _ in range(100):
+                    if monitor._clients:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertEqual(len(monitor._clients), 1)
+                client.close()
+                monitor.update(force=True)
+                self.assertEqual(monitor._clients, [])
+
+            previous = signal.signal(
+                signal.SIGPIPE, lambda signum, frame: received.append(signum)
+            )
+            try:
+                global_event_loop().run_until_complete(exercise())
+            finally:
+                signal.signal(signal.SIGPIPE, previous)
+                monitor.close()
+            self.assertEqual(received, [])
+
+    def test_accept_out_of_descriptors_backs_off(self):
+        # A connection that cannot be accepted keeps the listening socket
+        # readable, so accepting again at once would spin.
+        readers, later, cancelled = {7}, [], []
+
+        def _out_of_descriptors():
+            raise OSError(errno.EMFILE, "Too many open files")
+
+        def _call_later(delay, callback):
+            later.append(callback)
+            return SimpleNamespace(cancel=lambda: cancelled.append(callback))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            monitor = ObservabilityMonitor(_make_scheduler(eprefix=tmp))
+            monitor._loop = SimpleNamespace(
+                add_reader=lambda fd, callback, *args: readers.add(fd),
+                remove_reader=readers.discard,
+                call_later=_call_later,
+            )
+            monitor._server = SimpleNamespace(
+                fileno=lambda: 7, accept=_out_of_descriptors, close=lambda: None
+            )
+
+            try:
+                monitor._accept()
+                self.assertEqual(readers, set())
+                self.assertEqual(len(later), 1)
+
+                later[0]()
+                self.assertEqual(readers, {7})
+
+                # A retry still pending must not outlive the monitor.
+                monitor._accept()
+                monitor.close()
+                self.assertEqual(cancelled, later[1:])
             finally:
                 monitor.close()
 

@@ -22,7 +22,7 @@ Everything here degrades silently: if the runtime directory is not
 writable (e.g. unprivileged, no /run) emerge proceeds unaffected.
 """
 
-import asyncio as _asyncio
+import errno
 import glob
 import json
 import os as _os
@@ -415,6 +415,18 @@ def missing_feature_hint(snapshots, features=None):
     return NOT_ENABLED_HINT
 
 
+# Absent outside Linux, where the socket is never created because there is
+# no PORTAGE_RUN_PATH to bind in.
+_MSG_NOSIGNAL = getattr(socket, "MSG_NOSIGNAL", 0)
+
+_ACCEPT_RETRY_DELAY = 1  # seconds
+
+
+def _encode(snapshot):
+    """One snapshot as a line of the socket stream."""
+    return (json.dumps(snapshot, sort_keys=True) + "\n").encode("utf_8")
+
+
 class ObservabilityMonitor:
     """Owns the status file and streaming socket for one Scheduler.
 
@@ -448,8 +460,10 @@ class ObservabilityMonitor:
 
         self._status_path = None
         self._socket_path = None
+        self._loop = None
         self._server = None
-        self._writers = []
+        self._accept_handle = None
+        self._clients = []
         self._server_started = False
         self._last_write = 0
         self._last_snapshot = None
@@ -605,81 +619,119 @@ class ObservabilityMonitor:
         if self._server_started:
             return
         self._server_started = True
+        sock = None
         try:
             ensure_dirs(self._run_dir, mode=0o755)
             try:
                 _os.unlink(self._socket_path)
             except FileNotFoundError:
                 pass
-            coro = _asyncio.start_unix_server(self._client_connected, self._socket_path)
-            future = asyncio.ensure_future(coro)
-            future.add_done_callback(self._server_ready)
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.setblocking(False)
+            sock.bind(self._socket_path)
+            # Before listen(), so that no connection is accepted while the
+            # socket still has the permissions the umask gave it.
+            _os.chmod(self._socket_path, 0o600)
+            sock.listen()
+            self._loop = asyncio._safe_loop()
+            self._server = sock
+            self._loop.add_reader(sock.fileno(), self._accept)
         except Exception as e:
+            self._server = None
+            if sock is not None:
+                sock.close()
             writemsg_level(
                 f"!!! observability: socket setup failed: {e}\n",
                 level=30,
                 noiselevel=-1,
             )
 
-    def _server_ready(self, future):
-        try:
-            self._server = future.result()
+    def _accept(self):
+        published = False
+        while self._server is not None:
             try:
-                _os.chmod(self._socket_path, 0o600)
-            except OSError:
-                pass
-        except Exception as e:
-            writemsg_level(
-                f"!!! observability: socket server failed: {e}\n",
-                level=30,
-                noiselevel=-1,
-            )
-
-    async def _client_connected(self, reader, writer):
-        # Unconditional: under the rate limit a task event that published
-        # moments ago would leave the client with the older state.
-        self.update(force=True)
-        if self._last_snapshot is not None:
-            data = (json.dumps(self._last_snapshot, sort_keys=True) + "\n").encode(
-                "utf_8"
-            )
-            if not self._send(writer, data):
+                conn, _addr = self._server.accept()
+            except (BlockingIOError, InterruptedError):
                 return
-        self._writers.append(writer)
+            except OSError as e:
+                if e.errno in (errno.EMFILE, errno.ENFILE, errno.ENOBUFS, errno.ENOMEM):
+                    # The socket stays readable while the connection is
+                    # pending, so accepting again at once would spin until
+                    # a descriptor comes free.
+                    self._loop.remove_reader(self._server.fileno())
+                    self._accept_handle = self._loop.call_later(
+                        _ACCEPT_RETRY_DELAY, self._resume_accept
+                    )
+                # Anything else, ECONNABORTED and the like, concerns the one
+                # connection, which is gone: returning is safe because the
+                # reader fires again if another is pending.
+                return
+            conn.setblocking(False)
+            if not published:
+                # Unconditional: under the rate limit a task event that
+                # published moments ago would leave the client with the
+                # older state.
+                self.update(force=True)
+                published = True
+            if self._last_snapshot is not None and not self._send(
+                conn, _encode(self._last_snapshot)
+            ):
+                conn.close()
+                continue
+            try:
+                # Clients are not expected to send anything; this notices
+                # the peer going away, which nothing else would until the
+                # next broadcast. A client that shuts down only its write
+                # side is therefore treated as gone.
+                self._loop.add_reader(conn.fileno(), self._client_readable, conn)
+            except Exception:
+                conn.close()
+                continue
+            self._clients.append(conn)
+
+    def _resume_accept(self):
+        self._accept_handle = None
+        if self._server is not None:
+            self._loop.add_reader(self._server.fileno(), self._accept)
+
+    def _client_readable(self, conn):
         try:
-            # Clients are not expected to send anything; this waits for the
-            # peer to go away.  Without it a disconnected client is never
-            # forgotten: asyncio's stream protocol keeps the transport open
-            # after EOF, to permit half-close, so nothing else notices.
-            # A client that shuts down only its write side is therefore
-            # treated as gone: read the stream without half-closing.
-            while await reader.read(4096):
-                pass
+            if conn.recv(4096):
+                return
+        except (BlockingIOError, InterruptedError):
+            return
         except OSError:
             pass
-        finally:
-            if writer in self._writers:
-                self._writers.remove(writer)
-            writer.close()
+        self._drop_client(conn)
+
+    def _drop_client(self, conn):
+        if conn in self._clients:
+            self._clients.remove(conn)
+        try:
+            self._loop.remove_reader(conn.fileno())
+        except (RuntimeError, ValueError):
+            pass
+        conn.close()
 
     def _broadcast(self, snapshot):
-        if not self._writers:
+        if not self._clients:
             return
-        data = (json.dumps(snapshot, sort_keys=True) + "\n").encode("utf_8")
-        for writer in list(self._writers):
-            if not self._send(writer, data):
-                self._writers.remove(writer)
+        data = _encode(snapshot)
+        for conn in list(self._clients):
+            if not self._send(conn, data):
+                self._drop_client(conn)
 
     @staticmethod
-    def _send(writer, data):
+    def _send(conn, data):
+        """Send one snapshot line without blocking; False drops the client.
+
+        MSG_NOSIGNAL because emerge restores SIGPIPE to SIG_DFL (bug 982689).
+        Nothing is buffered, so a partial send means the client is not
+        reading: a snapshot is far smaller than the socket buffer.
+        """
         try:
-            writer.write(data)
-            return True
-        except Exception:
-            try:
-                writer.close()
-            except Exception:
-                pass
+            return conn.send(data, _MSG_NOSIGNAL) == len(data)
+        except OSError:
             return False
 
     def close(self):
@@ -689,17 +741,17 @@ class ObservabilityMonitor:
         if self._refresh_handle is not None:
             self._refresh_handle.cancel()
             self._refresh_handle = None
-        for writer in self._writers:
-            try:
-                writer.close()
-            except Exception:
-                pass
-        self._writers = []
+        if self._accept_handle is not None:
+            self._accept_handle.cancel()
+            self._accept_handle = None
+        for conn in list(self._clients):
+            self._drop_client(conn)
         if self._server is not None:
             try:
-                self._server.close()
-            except Exception:
+                self._loop.remove_reader(self._server.fileno())
+            except (RuntimeError, ValueError):
                 pass
+            self._server.close()
             self._server = None
         for path in (self._status_path, self._socket_path):
             if path:
