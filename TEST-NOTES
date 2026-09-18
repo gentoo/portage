@@ -39,6 +39,38 @@ well as poking holes in the current code (isvalidatom is an example).  So someti
 a test to point out that "this needs fixing" but it doesn't affect portage's overall
 functionality.  You should raise portage.tests.SkipException in that case.
 
+Playground metadata cache
+-------------------------
+
+Every ResolverPlayground runs egencache, which runs a depend phase for each
+of its ebuilds.  To avoid repeating that work, the files that egencache
+generates are cached, keyed by what they are generated from, and restored
+into later playgrounds that write the same ebuilds.  A playground whose
+files are all cached skips egencache altogether.
+
+The key covers the ebuild and, for a Manifest, the package directory and the
+distfiles.  It does not cover the profile or the rest of the playground's
+configuration, so this assumes that the metadata of an ebuild does not
+depend on them.  A test ebuild that expands a variable into its metadata
+would break that assumption and has to be kept out of the cache.
+
+A playground that defines eclasses, or that configures the auxdb module,
+shares nothing: a depcachedir entry names the eclass directory that it was
+generated from, and the auxdb module decides which entries egencache writes
+at all.
+
+Setting PORTAGE_TEST_VERIFY_METADATA_CACHE checks the assumption: nothing is
+restored, egencache generates every file, and each one is compared against
+what the cache would have restored.  A mismatch raises an AssertionError
+naming the file.  The suite then runs as slowly as it does with no cache, so
+this is meant for CI and for bisecting, not for everyday runs.
+
+	PORTAGE_TEST_VERIFY_METADATA_CACHE=1 pytest -n 20
+
+The cache lives below pytest's basetemp, so it is shared by the xdist
+workers of a run and discarded with the rest of the run's temporary files.
+
+
 emerge
 ------
 

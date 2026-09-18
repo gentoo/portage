@@ -3,6 +3,8 @@
 
 import bz2
 import fnmatch
+import glob
+import hashlib
 import os
 import shutil
 import subprocess
@@ -77,6 +79,16 @@ class ResolverPlayground:
     the needed settings instances, etc. for the resolver to do
     its work.
     """
+
+    # Directory of metadata cache entries shared between playgrounds (see
+    # _iter_metadata_cache_entries). Set by the test suite's conftest; None
+    # disables sharing.
+    metadata_cache_dir = None
+
+    # Restore nothing from the cache, and check the files that egencache
+    # generates against the ones that would have been restored (see
+    # TEST-NOTES).
+    verify_metadata_cache = "PORTAGE_TEST_VERIFY_METADATA_CACHE" in os.environ
 
     config_files = frozenset(
         (
@@ -256,6 +268,12 @@ class ResolverPlayground:
         self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
         os.makedirs(self.vdbdir)
 
+        # A depcachedir entry names the eclass directory that it was
+        # generated from, which is specific to the playground, and the
+        # auxdb module decides which entries egencache writes at all, so
+        # neither kind of playground can share metadata with another.
+        self._share_metadata = not eclasses and "modules" not in user_config
+
         if not debug:
             portage.util.noiselimit = -2
 
@@ -389,10 +407,147 @@ class ResolverPlayground:
                 if misc_content is not None:
                     f.write(misc_content)
 
+    @staticmethod
+    def _digest_tree(digest, root, skip=()):
+        """
+        Update digest with the name and content of every file below root,
+        in a fixed order.
+        """
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames.sort()
+            for filename in sorted(filenames):
+                path = os.path.join(dirpath, filename)
+                if path in skip:
+                    continue
+                digest.update(os.path.relpath(path, root).encode() + b"\0")
+                with open(path, "rb") as f:
+                    digest.update(f.read())
+
+    def _iter_metadata_cache_entries(self, repo_name, ebuild_paths):
+        """
+        Yield (key, path, reused) for every file that egencache generates
+        for the repository: the depcachedir and md5-cache entry of each
+        ebuild, and the Manifest of each package directory. key identifies
+        what the file is generated from. reused is true only for the
+        depcachedir entries, which egencache validates and reuses rather
+        than rewriting.
+        """
+        repo_dir = self._repositories[repo_name]["location"]
+        dep_repo_dir = os.path.join(self.settings.depcachedir, repo_dir.lstrip(os.sep))
+        md5_cache_dir = os.path.join(repo_dir, "metadata", "md5-cache")
+        pkg_dirs = set()
+        for ebuild_path in ebuild_paths:
+            pkg_dir = os.path.dirname(ebuild_path)
+            pkg_dirs.add(pkg_dir)
+            cat = os.path.basename(os.path.dirname(pkg_dir))
+            pf = os.path.basename(ebuild_path)[: -len(".ebuild")]
+            with open(ebuild_path, "rb") as f:
+                content = f.read()
+            key = hashlib.sha256(
+                f"{repo_name}\0{cat}/{pf}\0".encode() + content
+            ).hexdigest()
+            yield f"{key}-dep", os.path.join(dep_repo_dir, cat, pf), True
+            yield f"{key}-md5", os.path.join(md5_cache_dir, cat, pf), False
+
+        # A Manifest covers every file of the package directory, and the
+        # distfiles that the ebuilds fetch.
+        distfiles = hashlib.sha256()
+        self._digest_tree(distfiles, self.distdir)
+        distfiles = distfiles.hexdigest()
+        for pkg_dir in sorted(pkg_dirs):
+            manifest_path = os.path.join(pkg_dir, "Manifest")
+            digest = hashlib.sha256()
+            digest.update(
+                f"{repo_name}\0{os.path.relpath(pkg_dir, repo_dir)}\0{distfiles}\0".encode()
+            )
+            self._digest_tree(digest, pkg_dir, skip=(manifest_path,))
+            yield f"{digest.hexdigest()}-manifest", manifest_path, False
+
+    @staticmethod
+    def _restore_cache_entries(entries):
+        for entry_path, entry in entries:
+            ensure_dirs(os.path.dirname(entry_path))
+            with open(entry_path, "wb") as f:
+                f.write(entry)
+
+    def _check_cache_entries(self, repo_name, repo_dir, ebuild_paths, cached):
+        """
+        Raise unless the files that egencache has just generated for the
+        repository are the ones that the cache would have restored.
+        """
+        generated = set()
+        for root in (
+            os.path.join(self.settings.depcachedir, repo_dir.lstrip(os.sep)),
+            os.path.join(repo_dir, "metadata", "md5-cache"),
+        ):
+            for dirpath, _dirnames, filenames in os.walk(root):
+                generated.update(os.path.join(dirpath, x) for x in filenames)
+        for ebuild_path in ebuild_paths:
+            manifest_path = os.path.join(os.path.dirname(ebuild_path), "Manifest")
+            if os.path.exists(manifest_path):
+                generated.add(manifest_path)
+
+        if generated != set(cached):
+            raise AssertionError(
+                f"the cache of repository {repo_name} restores the wrong files: "
+                f"missing {sorted(generated - set(cached))}, "
+                f"unexpected {sorted(set(cached) - generated)}"
+            )
+        for entry_path, entry in cached.items():
+            with open(entry_path, "rb") as f:
+                generated_entry = f.read()
+            if entry != generated_entry:
+                raise AssertionError(
+                    f"the cache of {entry_path} differs from the generated file:\n"
+                    f"cached:    {entry!r}\n"
+                    f"generated: {generated_entry!r}"
+                )
+
     def _create_ebuild_manifests(self, ebuilds):
+        cache_dir = self.metadata_cache_dir if self._share_metadata else None
         for repo_name in self._repositories:
             if repo_name == "DEFAULT":
                 continue
+            repo_dir = self._repositories[repo_name]["location"]
+            ebuild_paths = glob.glob(os.path.join(repo_dir, "*", "*", "*.ebuild"))
+            if not ebuild_paths:
+                # egencache would only create an empty md5-cache directory.
+                ensure_dirs(os.path.join(repo_dir, "metadata", "md5-cache"))
+                continue
+
+            # Restore the files generated by earlier playgrounds. Seeding
+            # the depcachedir saves a depend phase, since egencache
+            # validates and reuses a seeded entry and regenerates a stale
+            # one. The other files are only worth restoring if egencache
+            # can be skipped altogether, which it can once every file of
+            # the repository is cached.
+            seed = []
+            restore = []
+            uncached = []
+            if cache_dir is not None:
+                for key, entry_path, reused in self._iter_metadata_cache_entries(
+                    repo_name, ebuild_paths
+                ):
+                    try:
+                        with open(os.path.join(cache_dir, key), "rb") as f:
+                            entry = f.read()
+                    except FileNotFoundError:
+                        uncached.append((key, entry_path))
+                        continue
+                    restore.append((entry_path, entry))
+                    if reused:
+                        seed.append((entry_path, entry))
+
+            complete = cache_dir is not None and not uncached
+            if complete and not self.verify_metadata_cache:
+                self._restore_cache_entries(restore)
+                continue
+
+            # In verification mode, restore nothing, so that egencache
+            # generates every file from scratch to be compared against.
+            if not self.verify_metadata_cache:
+                self._restore_cache_entries(seed)
+
             egencache_cmd = [
                 "egencache",
                 f"--repo={repo_name}",
@@ -411,6 +566,25 @@ class ResolverPlayground:
                 raise AssertionError(
                     f"command failed with returncode {result.returncode}: {egencache_cmd}"
                 )
+
+            if complete:
+                self._check_cache_entries(
+                    repo_name, repo_dir, ebuild_paths, dict(restore)
+                )
+
+            for key, entry_path in uncached:
+                try:
+                    with open(entry_path, "rb") as f:
+                        entry = f.read()
+                except FileNotFoundError:
+                    # No metadata, e.g. for an ebuild that dies.
+                    continue
+                # Write atomically, since playgrounds in other xdist
+                # workers may read the same entry concurrently.
+                fd, tmp_path = tempfile.mkstemp(dir=cache_dir)
+                with os.fdopen(fd, "wb") as f:
+                    f.write(entry)
+                os.rename(tmp_path, os.path.join(cache_dir, key))
 
     def _create_binpkgs(self, repo_dir, binpkgs, mtime=None):
         # When using BUILD_ID, there can be multiple instances for the
