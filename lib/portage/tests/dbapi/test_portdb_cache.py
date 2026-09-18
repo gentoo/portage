@@ -38,7 +38,13 @@ class PortdbCacheTestCase(TestCase):
             "baz": ("IDEPEND=",),
         }
 
-        playground = ResolverPlayground(ebuilds=ebuilds, eclasses=eclasses, debug=debug)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds,
+            eclasses=eclasses,
+            # This test is about how the metadata is generated and stored.
+            share_metadata=False,
+            debug=debug,
+        )
         settings = playground.settings
         eprefix = settings["EPREFIX"]
         test_repo_location = settings.repositories["test_repo"].location

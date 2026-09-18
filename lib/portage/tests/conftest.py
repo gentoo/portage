@@ -61,6 +61,27 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(autouse=True, scope="session")
+def metadata_cache(request, tmp_path_factory):
+    """
+    Share generated ebuild metadata between the playgrounds of this test
+    run, including those of other xdist workers.
+    """
+    from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+
+    basetemp = tmp_path_factory.getbasetemp()
+    if hasattr(request.config, "workerinput"):
+        # Each worker has its own basetemp below the one of the run.
+        basetemp = basetemp.parent
+    cache_dir = basetemp / "metadata-cache"
+    cache_dir.mkdir(mode=0o700, exist_ok=True)
+    ResolverPlayground.metadata_cache_dir = str(cache_dir)
+    try:
+        yield
+    finally:
+        ResolverPlayground.metadata_cache_dir = None
+
+
+@pytest.fixture(autouse=True, scope="session")
 def prepare_environment():
     # Pretend that the current user's uid/gid are the 'portage' uid/gid,
     # so things go smoothly regardless of the current user and global

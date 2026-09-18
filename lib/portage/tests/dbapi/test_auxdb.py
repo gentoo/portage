@@ -88,6 +88,8 @@ class AuxdbTestCase(TestCase):
             ebuilds=ebuilds,
             eclasses=eclasses,
             user_config={"modules": (f"portdbapi.auxdbmodule = {auxdbmodule}",)},
+            # This test is about how the metadata is generated and stored.
+            share_metadata=False,
         )
 
         try:
