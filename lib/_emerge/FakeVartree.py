@@ -134,6 +134,13 @@ class FakeVartree(vartree):
         # This raises a KeyError to the caller if appropriate.
         pkg = self.dbapi._cpv_map[cpv]
 
+        if self._portdb._event_loop.is_running():
+            # The synchronous portdb.aux_get() below drives the loop (bug
+            # 982753). Fall back to the vdb dependencies; the instance stays
+            # marked applied, so it keeps them for the rest of the run.
+            self._apply_dynamic_deps(pkg, None)
+            return self._aux_get(cpv, wants)
+
         try:
             live_metadata = dict(
                 zip(

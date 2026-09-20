@@ -36,6 +36,7 @@ py.install_sources(
         'test_depgraph_fork.py',
         'test_depth.py',
         'test_disjunctive_depend_order.py',
+        'test_dynamic_deps.py',
         'test_eapi.py',
         'test_emptytree_reinstall_unsatisfiability.py',
         'test_features_test_use.py',
