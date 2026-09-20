@@ -38,6 +38,13 @@ jobs:
             start-method: 'spawn'
           - python-version: 'pypy-3.11'
             start-method: 'spawn'
+        include:
+          # Run one job with the playground metadata cache verified rather
+          # than used, so that every playground keeps running egencache and
+          # the assumptions behind the cache stay checked (see TEST-NOTES).
+          - python-version: '3.13'
+            start-method: 'fork-or-forkserver'
+            verify-metadata-cache: true
       fail-fast: false
     steps:
       - uses: actions/checkout@v7
@@ -69,6 +76,7 @@ jobs:
       - name: Run tests for ${{ matrix.python-version }}
         run: |
           [[ "${{ matrix.start-method }}" == "spawn" ]] && export PORTAGE_MULTIPROCESSING_START_METHOD=spawn
+          [[ "${{ matrix.verify-metadata-cache }}" == "true" ]] && export PORTAGE_TEST_VERIFY_METADATA_CACHE=1
           export PYTEST_ADDOPTS="-vv -ra -l -o console_output_style=count -n $(nproc) --dist=worksteal"
           # Use pytest-rerunfailures to workaround pytest-xdist worker crashes with spawn start-method (bug 924416).
           [[ "${{ matrix.start-method }}" == "spawn" ]] && PYTEST_ADDOPTS+=" --reruns 5 --only-rerun 'worker .* crashed while running'"

@@ -85,6 +85,11 @@ class ResolverPlayground:
     # disables sharing.
     metadata_cache_dir = None
 
+    # Restore nothing from the cache, and check the files that egencache
+    # generates against the ones that would have been restored (see
+    # TEST-NOTES).
+    verify_metadata_cache = "PORTAGE_TEST_VERIFY_METADATA_CACHE" in os.environ
+
     config_files = frozenset(
         (
             "eapi",
@@ -464,6 +469,49 @@ class ResolverPlayground:
             self._digest_tree(digest, pkg_dir, skip=(manifest_path,))
             yield f"{digest.hexdigest()}-manifest", manifest_path, False
 
+    @staticmethod
+    def _restore_cache_entries(entries):
+        for entry_path, entry in entries:
+            ensure_dirs(os.path.dirname(entry_path))
+            with open(entry_path, "wb") as f:
+                f.write(entry)
+
+    def _check_cache_entries(self, repo_name, repo_dir, ebuild_paths, cached, complete):
+        """
+        Raise unless the files that egencache has just generated for the
+        repository are the ones that the cache would have restored. Only a
+        complete cache is expected to account for every generated file, so
+        a partial one is checked for its own entries alone.
+        """
+        if complete:
+            generated = set()
+            for root in (
+                os.path.join(self.settings.depcachedir, repo_dir.lstrip(os.sep)),
+                os.path.join(repo_dir, "metadata", "md5-cache"),
+            ):
+                for dirpath, _dirnames, filenames in os.walk(root):
+                    generated.update(os.path.join(dirpath, x) for x in filenames)
+            for ebuild_path in ebuild_paths:
+                manifest_path = os.path.join(os.path.dirname(ebuild_path), "Manifest")
+                if os.path.exists(manifest_path):
+                    generated.add(manifest_path)
+
+            if generated != set(cached):
+                raise AssertionError(
+                    f"the cache of repository {repo_name} restores the wrong files: "
+                    f"missing {sorted(generated - set(cached))}, "
+                    f"unexpected {sorted(set(cached) - generated)}"
+                )
+        for entry_path, entry in cached.items():
+            with open(entry_path, "rb") as f:
+                generated_entry = f.read()
+            if entry != generated_entry:
+                raise AssertionError(
+                    f"the cache of {entry_path} differs from the generated file:\n"
+                    f"cached:    {entry!r}\n"
+                    f"generated: {generated_entry!r}"
+                )
+
     def _create_ebuild_manifests(self, ebuilds):
         cache_dir = self.metadata_cache_dir if self._share_metadata else None
         for repo_name in self._repositories:
@@ -500,12 +548,14 @@ class ResolverPlayground:
                         seed.append((entry_path, entry))
 
             complete = cache_dir is not None and not uncached
-            for entry_path, entry in restore if complete else seed:
-                ensure_dirs(os.path.dirname(entry_path))
-                with open(entry_path, "wb") as f:
-                    f.write(entry)
-            if complete:
+            if complete and not self.verify_metadata_cache:
+                self._restore_cache_entries(restore)
                 continue
+
+            # In verification mode, restore nothing, so that egencache
+            # generates every file from scratch to be compared against.
+            if not self.verify_metadata_cache:
+                self._restore_cache_entries(seed)
 
             egencache_cmd = [
                 "egencache",
@@ -524,6 +574,11 @@ class ResolverPlayground:
             if result.returncode != os.EX_OK:
                 raise AssertionError(
                     f"command failed with returncode {result.returncode}: {egencache_cmd}"
+                )
+
+            if self.verify_metadata_cache and restore:
+                self._check_cache_entries(
+                    repo_name, repo_dir, ebuild_paths, dict(restore), complete
                 )
 
             for key, entry_path in uncached:
