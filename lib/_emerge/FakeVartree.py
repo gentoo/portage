@@ -216,20 +216,24 @@ class FakeVartree(vartree):
         deriving live dependencies for metadata that is no longer the vdb's."""
         return pkg.cpv in self._aux_get_history
 
-    def apply_dynamic_deps(self, myopts):
+    def apply_dynamic_deps(self, myopts, notice=None):
         """Apply the live ebuild dependencies to every instance the apply has
         not run for yet, spawning a metadata phase for each instance the
         ebuild cache cannot answer for, with the concurrency --jobs and
         --load-average ask for.
 
-        Returns immediately unless this FakeVartree was built with dynamic
-        deps."""
+        ``notice``, if given, is called first, and only if there is anything
+        to do. Returns immediately unless this FakeVartree was built with
+        dynamic deps."""
         if not self._dynamic_deps:
             return
 
         pkgs = [pkg for pkg in self.dbapi if not self.dynamic_deps_applied(pkg)]
         if not pkgs:
             return
+
+        if notice is not None:
+            notice()
 
         scheduler = TaskScheduler(
             self._dynamic_deps_tasks(pkgs),

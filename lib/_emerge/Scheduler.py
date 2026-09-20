@@ -29,7 +29,7 @@ from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir, _prepare_self_update
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
-from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util import ensure_dirs, writemsg, writemsg_level, writemsg_stdout
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util.cgroup import DEFAULT_CGROUP_ROOT, CgroupManager
 from portage.util.futures import asyncio
@@ -461,7 +461,21 @@ class Scheduler(PollScheduler):
                 fake_vartree.sync()
             else:
                 fake_vartree = graph_config.trees[root]["vartree"]
+
+            if not self._opts_ignore_blockers.intersection(self.myopts):
+                # findInstalledBlockers() runs from inside the event loop,
+                # where the lazy apply cannot run (bug 982753). When blockers
+                # are ignored, the only BlockerDB caller left is
+                # discardBlocker(), which drops the instances it touches.
+                fake_vartree.apply_dynamic_deps(
+                    self.myopts, notice=self._dynamic_deps_notice
+                )
+
             self._blocker_db[root] = BlockerDB(fake_vartree)
+
+    def _dynamic_deps_notice(self):
+        if "--quiet" not in self.myopts:
+            writemsg_stdout(">>> Applying dynamic dependencies...\n")
 
     def _destroy_graph(self):
         """

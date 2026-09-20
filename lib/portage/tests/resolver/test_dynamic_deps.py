@@ -2,14 +2,18 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import asyncio
+import pickle
 
+from portage.dep import Atom
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
+from _emerge._depgraph_fork import decode_scheduler_graph, encode_scheduler_graph
 from _emerge.BlockerDB import BlockerDB
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.FakeVartree import FakeVartree, fake_vartree_options
+from _emerge.Scheduler import Scheduler
 
 
 class DynamicDepsMergeTestCase(TestCase):
@@ -78,5 +82,78 @@ class DynamicDepsMergeTestCase(TestCase):
                 trees[eroot]["porttree"].dbapi.aux_get("dev-libs/D-1", ["RDEPEND"]),
                 ["!dev-libs/A"],
             )
+        finally:
+            playground.cleanup()
+
+    def testVdbChangedSinceCalculation(self):
+        """
+        An installed package which the calculation did not see still has to
+        reach the merge with its live dependencies applied. See bug 982753.
+        """
+        ebuilds = {
+            "dev-libs/A-2": {"EAPI": "8", "RDEPEND": "dev-libs/C"},
+            "dev-libs/C-1": {"EAPI": "8"},
+            "dev-libs/E-1": {"EAPI": "8", "RDEPEND": "!dev-libs/A"},
+        }
+        installed = {
+            "dev-libs/A-1": {"EAPI": "8", "RDEPEND": "dev-libs/C"},
+            "dev-libs/C-1": {"EAPI": "8"},
+        }
+
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, installed=installed, debug=False
+        )
+        try:
+            settings = playground.settings
+            trees = playground.trees
+            myopts = {"--quiet": True, "--oneshot": True}
+            myparams = create_depgraph_params(myopts, None)
+
+            success, mydepgraph, favorites = backtrack_depgraph(
+                settings, trees, myopts, myparams, None, ["dev-libs/A"], None
+            )
+            self.assertTrue(success)
+
+            payload = pickle.loads(
+                pickle.dumps(encode_scheduler_graph(mydepgraph.schedulerGraph()))
+            )
+
+            # The vdb gains a package after the child finished calculating.
+            # Its recorded dependencies differ from those of the ebuild, so
+            # that the applied ones can be told apart.
+            playground._create_installed({"dev-libs/E-1": {"EAPI": "8"}})
+            trees[settings["EROOT"]]["vartree"].dbapi._clear_cache()
+
+            graph_config = decode_scheduler_graph(payload, trees, myopts)
+            fake_vartree = graph_config.trees[settings["EROOT"]]["vartree"]
+            self.assertTrue(
+                "dev-libs/E-1"
+                in [
+                    str(pkg.cpv)
+                    for pkg in fake_vartree.dbapi
+                    if not fake_vartree.dynamic_deps_applied(pkg)
+                ]
+            )
+
+            Scheduler(
+                settings,
+                trees,
+                {},
+                myopts,
+                None,
+                favorites=favorites,
+                graph_config=graph_config,
+            )
+
+            self.assertEqual(
+                [
+                    str(pkg.cpv)
+                    for pkg in fake_vartree.dbapi
+                    if not fake_vartree.dynamic_deps_applied(pkg)
+                ],
+                [],
+            )
+            new_pkg = fake_vartree.dbapi.match_pkgs(Atom("=dev-libs/E-1"))[0]
+            self.assertEqual(new_pkg._metadata["RDEPEND"], "!dev-libs/A")
         finally:
             playground.cleanup()
