@@ -1528,6 +1528,7 @@ class binarytree:
                 # slash, so join manually...
                 url = base_url.rstrip("/") + "/" + remote_pkgindex_file
                 f = None
+                f_raw = None
 
                 # Set proxy settings for _urlopen -> urllib_request
                 proxies = {}
@@ -1689,6 +1690,8 @@ class binarytree:
                         f = open(tmp_filename, "rb")
 
                 if remote_pkgindex_file == "Packages.gz":
+                    # GzipFile.close() does not close a fileobj passed in.
+                    f_raw = f
                     f = GzipFile(fileobj=f, mode="rb")
 
                 f_dec = codecs.iterdecode(f, "utf-8", errors="replace")
@@ -1732,6 +1735,8 @@ class binarytree:
                         try:
                             AlarmSignal.register(5)
                             f.close()
+                            if f_raw is not None:
+                                f_raw.close()
                         finally:
                             AlarmSignal.unregister()
                     except AlarmSignal:
