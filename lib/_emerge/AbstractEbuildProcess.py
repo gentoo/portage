@@ -1,6 +1,7 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import functools
 import io
 import os
@@ -25,6 +26,8 @@ class AbstractEbuildProcess(SpawnProcess):
         "_build_dir",
         "_build_dir_unlock",
         "_exit_command",
+        "_exit_pipe",
+        "_exit_status",
         "_exit_timeout_id",
         "_ipc_daemon",
         "_start_future",
@@ -145,12 +148,70 @@ class AbstractEbuildProcess(SpawnProcess):
             null_fd = os.open("/dev/null", os.O_RDONLY)
             self.fd_pipes[0] = null_fd
 
+        exit_fd = None
+        if start_ipc_daemon:
+            exit_fd = self._start_exit_pipe()
+
         self.log_filter_file = self.settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
         try:
             SpawnProcess._start(self)
+        except BaseException:
+            self._close_exit_pipe()
+            raise
         finally:
             if null_fd is not None:
                 os.close(null_fd)
+            if exit_fd is not None:
+                os.close(exit_fd)
+                self.settings.pop("PORTAGE_EBUILD_EXIT_FD", None)
+
+    def _start_exit_pipe(self):
+        """
+        Create the pipe that the ebuild reports its exit status on, and
+        return the write end, for the caller to close once the ebuild
+        process has inherited it.
+        """
+        self._exit_pipe, write_fd = os.pipe()
+        os.set_blocking(self._exit_pipe, False)
+        # Re-use of the allocated fd number for the key in fd_pipes
+        # guarantees that the key will not collide with the keys of
+        # similarly allocated pipes.
+        self.fd_pipes[write_fd] = write_fd
+        self.settings["PORTAGE_EBUILD_EXIT_FD"] = str(write_fd)
+        self.scheduler.add_reader(self._exit_pipe, self._exit_pipe_handler)
+        return write_fd
+
+    def _exit_pipe_handler(self):
+        try:
+            data = os.read(self._exit_pipe, 64)
+        except OSError as e:
+            if e.errno in (errno.EAGAIN, errno.EINTR):
+                return
+            data = b""
+
+        if not data:
+            # The ebuild process and everything it left behind are gone.
+            self._close_exit_pipe()
+            return
+
+        if self._exit_status is not None:
+            # Ignore all but the first status, since if die is called
+            # then we certainly want to honor that one.
+            return
+
+        try:
+            self._exit_status = int(data.split(b"\n")[0])
+        except ValueError:
+            return
+
+        self._exit_command_callback()
+
+    def _close_exit_pipe(self):
+        if self._exit_pipe is None:
+            return
+        self.scheduler.remove_reader(self._exit_pipe)
+        os.close(self._exit_pipe)
+        self._exit_pipe = None
 
     def _init_ipc_fifos(self):
         input_fifo = os.path.join(self.settings["PORTAGE_BUILDDIR"], ".ipc", "in")
@@ -314,8 +375,15 @@ class AbstractEbuildProcess(SpawnProcess):
 
         if self._ipc_daemon is not None:
             self._ipc_daemon.cancel()
-            if self._exit_command.exitcode is not None:
-                self.returncode = self._exit_command.exitcode
+            # The ebuild may have reported its status just before it
+            # exited, without the event loop having read it yet.
+            if self._exit_pipe is not None:
+                self._exit_pipe_handler()
+            self._close_exit_pipe()
+            if self._exit_status is None:
+                self._exit_status = self._exit_command.exitcode
+            if self._exit_status is not None:
+                self.returncode = self._exit_status
             else:
                 if self.returncode < 0:
                     if not self.cancelled:

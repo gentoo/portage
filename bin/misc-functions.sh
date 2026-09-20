@@ -748,7 +748,7 @@ if [[ -n "${MISC_FUNCTIONS_ARGS}" ]]; then
 
 	if [[ -n ${PORTAGE_IPC_DAEMON} ]] ; then
 		[[ ! -s ${SANDBOX_LOG} ]]
-		"${PORTAGE_BIN_PATH}"/ebuild-ipc exit $?
+		__ebuild_exit $?
 	fi
 fi
 
