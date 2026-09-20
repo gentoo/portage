@@ -1442,8 +1442,11 @@ class TestCAtomObjectProtocol(TestCase):
 
     def test_equality_with_foreign_type(self):
         a = self._atom("dev-libs/a")
+
+        # repr() keeps the Atom out of the subTest report, which pytest-xdist
+        # serializes with execnet -- it handles only builtin types (pytest < 9.1).
         for other in ("dev-libs/a", 1, None, Atom("dev-libs/a")):
-            with self.subTest(other=other):
+            with self.subTest(other=repr(other)):
                 self.assertFalse(a == other)
                 self.assertTrue(a != other)
 
