@@ -35,6 +35,7 @@ class EbuildMetadataPhase(SubProcess):
         "_eapi",
         "_eapi_lineno",
         "_raw_metadata",
+        "_sandbox_log",
     )
 
     _file_names = ("ebuild",)
@@ -125,12 +126,9 @@ class EbuildMetadataPhase(SubProcess):
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
 
-        tempfile_args = {}
-        if sys.version_info >= (3, 12):
-            tempfile_args["delete_on_close"] = False
-        settings["SANDBOX_LOG"] = tempfile.NamedTemporaryFile(
-            prefix="sandbox", **tempfile_args
-        ).name
+        sandbox_log_fd, self._sandbox_log = tempfile.mkstemp(prefix="sandbox")
+        os.close(sandbox_log_fd)
+        settings["SANDBOX_LOG"] = self._sandbox_log
 
         retval = doebuild(
             ebuild_path,
@@ -159,6 +157,7 @@ class EbuildMetadataPhase(SubProcess):
         if isinstance(retval, int):
             # doebuild failed before spawning
             self.returncode = retval
+            self._remove_sandbox_log()
             self._async_wait()
             return
 
@@ -269,11 +268,22 @@ class EbuildMetadataPhase(SubProcess):
             # (say, a missing eclass) in which case we probably want to plough
             # on, or if we have a sandbox violation, in which case we stop dead.
             try:
-                if os.stat(self.settings["SANDBOX_LOG"]).st_size > 0:
+                if os.stat(self._sandbox_log).st_size > 0:
                     self.returncode = 2
             except OSError:
                 # Some other, non-sandbox problem occurred.
                 pass
+
+        self._remove_sandbox_log()
+
+    def _remove_sandbox_log(self):
+        if self._sandbox_log is None:
+            return
+        try:
+            os.unlink(self._sandbox_log)
+        except FileNotFoundError:
+            pass
+        self._sandbox_log = None
 
     def _eapi_invalid(self, metadata):
         from portage.package.ebuild._metadata_invalid import eapi_invalid
