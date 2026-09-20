@@ -25,6 +25,7 @@ class AbstractEbuildProcess(SpawnProcess):
     __slots__ = (
         "_build_dir",
         "_build_dir_unlock",
+        "_alive_pipe",
         "_exit_command",
         "_exit_pipe",
         "_exit_status",
@@ -149,14 +150,17 @@ class AbstractEbuildProcess(SpawnProcess):
             self.fd_pipes[0] = null_fd
 
         exit_fd = None
+        alive_fd = None
         if start_ipc_daemon:
             exit_fd = self._start_exit_pipe()
+            alive_fd = self._start_alive_pipe()
 
         self.log_filter_file = self.settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
         try:
             SpawnProcess._start(self)
         except BaseException:
             self._close_exit_pipe()
+            self._close_alive_pipe()
             raise
         finally:
             if null_fd is not None:
@@ -164,6 +168,9 @@ class AbstractEbuildProcess(SpawnProcess):
             if exit_fd is not None:
                 os.close(exit_fd)
                 self.settings.pop("PORTAGE_EBUILD_EXIT_FD", None)
+            if alive_fd is not None:
+                os.close(alive_fd)
+                self.settings.pop("PORTAGE_IPC_ALIVE_FD", None)
 
     def _start_exit_pipe(self):
         """
@@ -180,6 +187,25 @@ class AbstractEbuildProcess(SpawnProcess):
         self.settings["PORTAGE_EBUILD_EXIT_FD"] = str(write_fd)
         self.scheduler.add_reader(self._exit_pipe, self._exit_pipe_handler)
         return write_fd
+
+    def _start_alive_pipe(self):
+        """
+        Create the pipe that tells the ebuild whether the daemon is still
+        running, and return the read end, for the caller to close once
+        the ebuild process has inherited it. Only this process holds the
+        write end, so the read end reports POLLHUP as soon as the daemon
+        can no longer answer.
+        """
+        read_fd, self._alive_pipe = os.pipe()
+        self.fd_pipes[read_fd] = read_fd
+        self.settings["PORTAGE_IPC_ALIVE_FD"] = str(read_fd)
+        return read_fd
+
+    def _close_alive_pipe(self):
+        if self._alive_pipe is None:
+            return
+        os.close(self._alive_pipe)
+        self._alive_pipe = None
 
     def _exit_pipe_handler(self):
         try:
@@ -375,6 +401,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
         if self._ipc_daemon is not None:
             self._ipc_daemon.cancel()
+            self._close_alive_pipe()
             # The ebuild may have reported its status just before it
             # exited, without the event loop having read it yet.
             if self._exit_pipe is not None:
