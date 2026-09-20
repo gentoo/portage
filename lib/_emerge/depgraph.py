@@ -73,7 +73,6 @@ from portage.util import (
     writemsg_level,
     writemsg_stdout,
 )
-from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util.portage_lru_cache import show_lru_cache_info
@@ -93,7 +92,6 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.DepPriority import DepPriority
 from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
-from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.FakeVartree import FakeVartree
 from _emerge.is_valid_package_atom import (
     insert_category_into_atom,
@@ -901,7 +899,6 @@ class depgraph:
             return
 
         for myroot in self._frozen_config.trees:
-            dynamic_deps = "dynamic_deps" in self._dynamic_config.myparams
             preload_installed_pkgs = "--nodeps" not in self._frozen_config.myopts
 
             fake_vartree = self._frozen_config.trees[myroot]["vartree"]
@@ -927,76 +924,9 @@ class depgraph:
                     self._dynamic_config._package_tracker.add_installed_pkg(pkg)
                     self._add_installed_sonames(pkg)
 
-                if dynamic_deps:
-                    # The FakeVartree, in contrast, belongs to frozen_config and
-                    # is shared by every backtracking depgraph, so the
-                    # dynamic-deps apply only has to run for the instances it
-                    # has not already run for.
-                    pending = [
-                        pkg
-                        for pkg in vardb
-                        if not fake_vartree.dynamic_deps_applied(pkg)
-                    ]
-                    if pending:
-                        max_jobs = self._frozen_config.myopts.get("--jobs")
-                        max_load = self._frozen_config.myopts.get("--load-average")
-                        scheduler = TaskScheduler(
-                            self._dynamic_deps_preload(fake_vartree, pending),
-                            max_jobs=max_jobs,
-                            max_load=max_load,
-                            event_loop=fake_vartree._portdb._event_loop,
-                        )
-                        scheduler.start()
-                        scheduler.wait()
+                fake_vartree.apply_dynamic_deps(self._frozen_config.myopts)
 
         self._dynamic_config._vdb_loaded = True
-
-    def _dynamic_deps_preload(self, fake_vartree, pkgs):
-        portdb = fake_vartree._portdb
-        config_pool = []
-        for pkg in pkgs:
-            ebuild_path, repo_path = portdb.findname2(pkg.cpv, myrepo=pkg.repo)
-            if ebuild_path is None:
-                fake_vartree.dynamic_deps_preload(pkg, None)
-                continue
-            metadata, ebuild_hash = portdb._pull_valid_cache(
-                pkg.cpv, ebuild_path, repo_path
-            )
-            if metadata is not None:
-                fake_vartree.dynamic_deps_preload(pkg, metadata)
-            else:
-                if config_pool:
-                    settings = config_pool.pop()
-                else:
-                    settings = portage.config(clone=portdb.settings)
-
-                deallocate_config = portdb._event_loop.create_future()
-                deallocate_config.add_done_callback(
-                    lambda future: config_pool.append(future.result())
-                )
-                proc = EbuildMetadataPhase(
-                    cpv=pkg.cpv,
-                    ebuild_hash=ebuild_hash,
-                    portdb=portdb,
-                    repo_path=repo_path,
-                    settings=settings,
-                    deallocate_config=deallocate_config,
-                )
-                proc.addExitListener(self._dynamic_deps_proc_exit(pkg, fake_vartree))
-                yield proc
-
-    class _dynamic_deps_proc_exit:
-        __slots__ = ("_fake_vartree", "_pkg")
-
-        def __init__(self, pkg, fake_vartree):
-            self._pkg = pkg
-            self._fake_vartree = fake_vartree
-
-        def __call__(self, proc):
-            metadata = None
-            if proc.returncode == os.EX_OK:
-                metadata = proc.metadata
-            self._fake_vartree.dynamic_deps_preload(self._pkg, metadata)
 
     def _compute_abi_rebuild_info(self):
         """

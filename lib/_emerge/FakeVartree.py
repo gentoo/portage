@@ -1,6 +1,7 @@
 # Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import os
 
 import portage
@@ -10,9 +11,11 @@ from portage.dep._slot_operator import find_built_slot_operator_atoms
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
 from portage.update import grab_updates, parse_updates, update_dbentries
+from portage.util._async.TaskScheduler import TaskScheduler
 from portage.versions import _pkg_str
 
 from _emerge.create_depgraph_params import create_depgraph_params
+from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
@@ -213,7 +216,70 @@ class FakeVartree(vartree):
         deriving live dependencies for metadata that is no longer the vdb's."""
         return pkg.cpv in self._aux_get_history
 
-    def dynamic_deps_preload(self, pkg, metadata):
+    def apply_dynamic_deps(self, myopts):
+        """Apply the live ebuild dependencies to every instance the apply has
+        not run for yet, spawning a metadata phase for each instance the
+        ebuild cache cannot answer for, with the concurrency --jobs and
+        --load-average ask for.
+
+        Returns immediately unless this FakeVartree was built with dynamic
+        deps."""
+        if not self._dynamic_deps:
+            return
+
+        pkgs = [pkg for pkg in self.dbapi if not self.dynamic_deps_applied(pkg)]
+        if not pkgs:
+            return
+
+        scheduler = TaskScheduler(
+            self._dynamic_deps_tasks(pkgs),
+            max_jobs=myopts.get("--jobs"),
+            max_load=myopts.get("--load-average"),
+            event_loop=self._portdb._event_loop,
+        )
+        scheduler.start()
+        scheduler.wait()
+
+    def _dynamic_deps_tasks(self, pkgs):
+        portdb = self._portdb
+        config_pool = []
+        for pkg in pkgs:
+            ebuild_path, repo_path = portdb.findname2(pkg.cpv, myrepo=pkg.repo)
+            if ebuild_path is None:
+                self._dynamic_deps_preload(pkg, None)
+                continue
+            metadata, ebuild_hash = portdb._pull_valid_cache(
+                pkg.cpv, ebuild_path, repo_path
+            )
+            if metadata is not None:
+                self._dynamic_deps_preload(pkg, metadata)
+                continue
+
+            if config_pool:
+                settings = config_pool.pop()
+            else:
+                settings = portage.config(clone=portdb.settings)
+
+            deallocate_config = portdb._event_loop.create_future()
+            deallocate_config.add_done_callback(
+                lambda future: config_pool.append(future.result())
+            )
+            proc = EbuildMetadataPhase(
+                cpv=pkg.cpv,
+                ebuild_hash=ebuild_hash,
+                portdb=portdb,
+                repo_path=repo_path,
+                settings=settings,
+                deallocate_config=deallocate_config,
+            )
+            proc.addExitListener(functools.partial(self._dynamic_deps_exit, pkg))
+            yield proc
+
+    def _dynamic_deps_exit(self, pkg, proc):
+        metadata = proc.metadata if proc.returncode == os.EX_OK else None
+        self._dynamic_deps_preload(pkg, metadata)
+
+    def _dynamic_deps_preload(self, pkg, metadata):
         if metadata is not None:
             metadata = {k: metadata.get(k, "") for k in self._portdb_keys}
         self._apply_dynamic_deps(pkg, metadata)
