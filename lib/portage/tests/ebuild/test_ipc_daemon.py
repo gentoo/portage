@@ -77,7 +77,8 @@ class IpcDaemonTestCase(TestCase):
                     args=[
                         BASH_BINARY,
                         "-c",
-                        '"$PORTAGE_BIN_PATH"/ebuild-ipc exit %d' % exitcode,
+                        '"$PORTAGE_PYTHON" -E -S -X utf8 "$PORTAGE_BIN_PATH"/ebuild-ipc.py '
+                        "exit %d" % exitcode,
                     ],
                     env=env,
                     fd_pipes={alive_read_fd: alive_read_fd},
