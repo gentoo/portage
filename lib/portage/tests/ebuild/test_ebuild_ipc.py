@@ -39,6 +39,9 @@ class EbuildIpcTestCase(TestCase):
     _replies = (
         ("ascii", ("stdout\n", "stderr\n", 0)),
         ("non-ascii", ("Šťč\n", "äöü\n", 3)),
+        # Larger than the pipe buffer, so the daemon needs more than one
+        # write and the client more than one read.
+        ("oversized", ("x" * 200000, "", 1)),
     )
 
     def setUp(self):

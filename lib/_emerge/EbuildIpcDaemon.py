@@ -34,7 +34,18 @@ class EbuildIpcDaemon(FifoIpcDaemon):
     4) Detect cases in which bash has exited unexpectedly (as in bug #190128).
     """
 
-    __slots__ = ("commands",)
+    __slots__ = (
+        "commands",
+        "_reply_buf",
+        "_reply_fd",
+        "_reply_hook",
+        "_reply_timeout_id",
+    )
+
+    # The client keeps reading as long as the daemon is alive, so this
+    # only bounds how long a reply to a client that stops reading waits
+    # before its reply hook runs anyway.
+    _SEND_REPLY_TIMEOUT = 15  # seconds
 
     def _input_handler(self):
         # Read the whole pickle in a single atomic read() call.
@@ -56,24 +67,14 @@ class EbuildIpcDaemon(FifoIpcDaemon):
                 cmd_key = obj[0]
                 cmd_handler = self.commands[cmd_key]
                 reply = cmd_handler(obj)
-                try:
-                    self._send_reply(reply)
-                except OSError as e:
-                    if e.errno == errno.ENXIO:
-                        # This happens if the client side has been killed.
-                        pass
-                    else:
-                        raise
-
-                # Allow the command to execute hooks after its reply
-                # has been sent. This hook is used by the 'exit'
-                # command to kill the ebuild process. For some
-                # reason, the ebuild-ipc helper hangs up the
-                # ebuild process if it is waiting for a reply
-                # when we try to kill the ebuild process.
-                reply_hook = getattr(cmd_handler, "reply_hook", None)
-                if reply_hook is not None:
-                    reply_hook()
+                # The command may have a hook to run once its reply has
+                # been sent. The 'exit' command, which the helpers of a
+                # portage without PORTAGE_EBUILD_EXIT_FD still send, uses
+                # it to start the timer that kills a phase which does not
+                # exit by itself. Starting that timer only now keeps the
+                # phase from being killed while ebuild-ipc still waits
+                # for the reply.
+                self._send_reply(reply, getattr(cmd_handler, "reply_hook", None))
 
         else:  # EIO/POLLHUP
             # This can be triggered due to a race condition which happens when
@@ -104,7 +105,11 @@ class EbuildIpcDaemon(FifoIpcDaemon):
             finally:
                 os.close(lock_fd)
 
-    def _send_reply(self, reply):
+    def _send_reply(self, reply, reply_hook):
+        """
+        Send the reply to the client, and call reply_hook once it has
+        been sent, or once it is clear that it cannot be.
+        """
         # File streams are in unbuffered mode since we do atomic
         # read and write of whole pickles. Use non-blocking mode so
         # we don't hang if the client is killed before we can send
@@ -112,17 +117,69 @@ class EbuildIpcDaemon(FifoIpcDaemon):
         # of this fifo before it sends its request, since otherwise
         # we'd have a race condition with this open call raising
         # ENXIO if the client hasn't opened the fifo yet.
+        self._reply_hook = reply_hook
         try:
-            output_fd = os.open(self.output_fifo, os.O_WRONLY | os.O_NONBLOCK)
-            try:
-                os.write(output_fd, pickle.dumps(reply))
-            finally:
-                os.close(output_fd)
+            self._reply_fd = os.open(self.output_fifo, os.O_WRONLY | os.O_NONBLOCK)
         except OSError as e:
             # This probably means that the client has been killed,
             # which causes open to fail with ENXIO.
+            self._reply_done(e)
+            return
+
+        self._reply_buf = pickle.dumps(reply)
+        self._reply_handler()
+
+    def _reply_handler(self):
+        while self._reply_buf:
+            try:
+                self._reply_buf = self._reply_buf[
+                    os.write(self._reply_fd, self._reply_buf) :
+                ]
+            except OSError as e:
+                if e.errno != errno.EAGAIN:
+                    self._reply_done(e)
+                    return
+                # A reply that does not fit in the pipe buffer takes
+                # more than one write, so let the event loop send the
+                # rest as the client reads.
+                if self._reply_timeout_id is None:
+                    self.scheduler.add_writer(self._reply_fd, self._reply_handler)
+                    self._reply_timeout_id = self.scheduler.call_later(
+                        self._SEND_REPLY_TIMEOUT,
+                        self._reply_done,
+                        TimeoutError(errno.ETIMEDOUT, "client did not read the reply"),
+                    )
+                return
+
+        self._reply_done()
+
+    def _reply_done(self, error=None):
+        self._close_reply()
+
+        if error is not None:
             writemsg_level(
-                f"!!! EbuildIpcDaemon {_('failed to send reply')}: {e}\n",
+                f"!!! EbuildIpcDaemon {_('failed to send reply')}: {error}\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
+
+        reply_hook, self._reply_hook = self._reply_hook, None
+        if reply_hook is not None:
+            reply_hook()
+
+    def _close_reply(self):
+        if self._reply_timeout_id is not None:
+            self._reply_timeout_id.cancel()
+            self._reply_timeout_id = None
+            self.scheduler.remove_writer(self._reply_fd)
+
+        if self._reply_fd is not None:
+            os.close(self._reply_fd)
+            self._reply_fd = None
+
+        self._reply_buf = None
+
+    def _unregister(self):
+        self._reply_hook = None
+        self._close_reply()
+        FifoIpcDaemon._unregister(self)
