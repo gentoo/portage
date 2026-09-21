@@ -23,6 +23,11 @@ Security:
 
 Features:
 
+* ebuild phases no longer start a python process to report their exit
+  status: they write it to a pipe that portage passes in. ebuild-ipc, which
+  has_version and best_version still run, no longer imports portage, which
+  accounted for roughly three quarters of the time of a call.
+
 * Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
   package merges. When enabled, Portage uses hashes and mtimes from the
   VDB (var database) to skip writing files that are already identical on
