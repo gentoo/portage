@@ -28,6 +28,7 @@ class IpcDaemonTestCase(TestCase):
         event_loop = global_event_loop()
         tmpdir = tempfile.mkdtemp()
         build_dir = None
+        alive_read_fd = alive_write_fd = None
         try:
             env = {}
 
@@ -60,6 +61,12 @@ class IpcDaemonTestCase(TestCase):
             os.mkfifo(input_fifo)
             os.mkfifo(output_fifo)
 
+            # The client takes the daemon to be running for as long as
+            # the write end of this pipe is held open, the way portage
+            # passes it to an ebuild.
+            alive_read_fd, alive_write_fd = os.pipe()
+            env["PORTAGE_IPC_ALIVE_FD"] = str(alive_read_fd)
+
             for exitcode in (0, 1, 2):
                 exit_command = ExitCommand()
                 commands = {"exit": exit_command}
@@ -73,6 +80,7 @@ class IpcDaemonTestCase(TestCase):
                         '"$PORTAGE_BIN_PATH"/ebuild-ipc exit %d' % exitcode,
                     ],
                     env=env,
+                    fd_pipes={alive_read_fd: alive_read_fd},
                 )
                 task_scheduler = TaskScheduler(
                     iter([daemon, proc]), max_jobs=2, event_loop=event_loop
@@ -142,6 +150,9 @@ class IpcDaemonTestCase(TestCase):
                 self.assertEqual(proc.returncode == os.EX_OK, False)
 
         finally:
+            for fd in (alive_read_fd, alive_write_fd):
+                if fd is not None:
+                    os.close(fd)
             if build_dir is not None:
                 event_loop.run_until_complete(build_dir.async_unlock())
             shutil.rmtree(tmpdir)

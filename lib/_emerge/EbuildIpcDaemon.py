@@ -1,15 +1,14 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import fcntl
 import io
 import logging
 import os
 import pickle
 
-from portage.exception import TryAgain
 from portage.localization import _
-from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
 from portage.util.pickle import NoGlobalsUnpickler
 
@@ -84,17 +83,26 @@ class EbuildIpcDaemon(FifoIpcDaemon):
             # write something to the pipe just before we close it, and in that
             # case the write will be lost. Therefore, try for a non-blocking
             # lock, and only re-open the pipe if the lock is acquired.
+            #
+            # Only the daemon and its clients lock this file, so both
+            # sides use flock() directly rather than portage.locks.
             lock_filename = os.path.join(os.path.dirname(self.input_fifo), "lock")
+            old_mask = os.umask(0o000)
             try:
-                lock_obj = lockfile(lock_filename, unlinkfile=True, flags=os.O_NONBLOCK)
-            except TryAgain:
-                # We'll try again when another IO_HUP event arrives.
-                pass
-            else:
+                lock_fd = os.open(lock_filename, os.O_CREAT | os.O_RDWR, 0o660)
+            finally:
+                os.umask(old_mask)
+            try:
                 try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except OSError as e:
+                    if e.errno not in (errno.EACCES, errno.EAGAIN):
+                        raise
+                    # We'll try again when another IO_HUP event arrives.
+                else:
                     self._reopen_input()
-                finally:
-                    unlockfile(lock_obj)
+            finally:
+                os.close(lock_fd)
 
     def _send_reply(self, reply):
         # File streams are in unbuffered mode since we do atomic

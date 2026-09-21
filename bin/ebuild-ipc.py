@@ -1,9 +1,13 @@
 #!/usr/bin/env python
-# Copyright 2010-2025 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
+#
+# It runs for every has_version and best_version call, so it uses the
+# standard library only: importing portage would take most of the time
+# of a run.
 
 import locale
 import os
@@ -42,279 +46,260 @@ try:
     signal.signal(signal.SIGUSR1, debug_signal)
 
     import errno
+    import fcntl
     import io
-    import logging
     import pickle
+    import select
     import time
 
-    if os.path.isfile(
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-            ".portage_not_installed",
-        )
-    ):
-        pym_paths = [
-            os.path.join(
-                os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "lib"
+    # Timeout for each individual communication attempt (we retry
+    # as long as the daemon process appears to be alive).
+    _COMMUNICATE_RETRY_TIMEOUT = 15  # seconds
+
+    RETURNCODE_FAILURE = 2
+
+    class _NoGlobalsUnpickler(pickle.Unpickler):
+        """
+        Like portage.util.pickle.NoGlobalsUnpickler, reject pickle global
+        references.
+        """
+
+        def find_class(self, module, name):
+            raise pickle.UnpicklingError(
+                f"pickle global reference '{module}.{name}' is forbidden"
             )
-        ]
-        sys.path.insert(0, pym_paths[0])
-    else:
-        import sysconfig
 
-        pym_paths = [
-            os.path.join(sysconfig.get_path("purelib"), x)
-            for x in ("_emerge", "portage")
-        ]
-    # Avoid sandbox violations after Python upgrade.
-    if os.environ.get("SANDBOX_ON") == "1":
-        sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
-        for pym_path in pym_paths:
-            if pym_path not in sandbox_write:
-                sandbox_write.append(pym_path)
-                os.environ["SANDBOX_WRITE"] = ":".join(filter(None, sandbox_write))
-        del pym_path, sandbox_write
-    del pym_paths
+    def _writemsg(msg):
+        sys.stderr.write(msg)
+        sys.stderr.flush()
 
-    import portage
-
-    portage._internal_caller = True
-    portage._disable_legacy_globals()
-
-    from _emerge.AbstractPollTask import AbstractPollTask
-    from _emerge.PipeReader import PipeReader
-    from portage.util._eventloop.global_event_loop import global_event_loop
-    from portage.util.pickle import NoGlobalsUnpickler
-
-    RETURNCODE_WRITE_FAILED = 2
-
-    class FifoWriter(AbstractPollTask):
-        __slots__ = ("_fd", "buf", "fifo")
-
-        def _start(self):
-            try:
-                self._fd = os.open(self.fifo, os.O_WRONLY | os.O_NONBLOCK)
-            except OSError as e:
-                if e.errno == errno.ENXIO:
-                    # This happens if the daemon has been killed.
-                    self.returncode = RETURNCODE_WRITE_FAILED
-                    self._unregister()
-                    self._async_wait()
-                    return
-                else:
-                    raise
-            self.scheduler.add_writer(self._fd, self._output_handler)
-            self._registered = True
-
-        def _output_handler(self):
-            # The whole buf should be able to fit in the fifo with
-            # a single write call, so there's no valid reason for
-            # os.write to raise EAGAIN here.
-            fd = self._fd
-            buf = self.buf
-            while buf:
-                try:
-                    buf = buf[os.write(fd, buf) :]
-                except OSError:
-                    self.returncode = RETURNCODE_WRITE_FAILED
-                    self._async_wait()
-                    return
-
-            self.returncode = os.EX_OK
-            self._async_wait()
-
-        def _cancel(self):
-            self.returncode = self._cancelled_returncode
-            self._unregister()
-
-        def _unregister(self):
-            self._registered = False
-            if self._fd is not None:
-                self.scheduler.remove_writer(self._fd)
-                os.close(self._fd)
-                self._fd = None
+    def _poll(fd, eventmask, timeout):
+        # POLLHUP, POLLERR and POLLNVAL are reported whatever eventmask
+        # asks for, so an eventmask of 0 waits for the fd to go away.
+        poller = select.poll()
+        poller.register(fd, eventmask)
+        return poller.poll(timeout * 1000)
 
     class EbuildIpc:
-        # Timeout for each individual communication attempt (we retry
-        # as long as the daemon process appears to be alive).
-        _COMMUNICATE_RETRY_TIMEOUT = 15  # seconds
-
         def __init__(self):
             self.fifo_dir = os.environ["PORTAGE_BUILDDIR"]
             self.ipc_in_fifo = os.path.join(self.fifo_dir, ".ipc", "in")
             self.ipc_out_fifo = os.path.join(self.fifo_dir, ".ipc", "out")
             self.ipc_lock_file = os.path.join(self.fifo_dir, ".ipc", "lock")
+            alive_fd = os.environ.get("PORTAGE_IPC_ALIVE_FD")
+            self._alive_fd = None if alive_fd is None else int(alive_fd)
+            # Only a portage that predates PORTAGE_IPC_ALIVE_FD runs us
+            # without it: one that was already running when a newer
+            # portage was installed, whose phases then run these files.
+            # Its daemon and build directory are locked by portage.locks,
+            # which uses lockf() wherever lockf() works.
+            self._legacy = self._alive_fd is None
+            head, tail = os.path.split(self.fifo_dir.rstrip(os.sep))
+            self.builddir_lock_file = os.path.join(
+                head, "." + tail + ".portage_lockfile"
+            )
 
         def _daemon_is_alive(self):
+            if self._legacy:
+                return self._builddir_is_locked()
+            # Portage holds the write end of this pipe for as long as the
+            # daemon can answer, and gave us the read end, so a hangup
+            # means that the daemon is gone. Nothing is ever written to
+            # it, so this neither blocks nor consumes anything.
+            events = _poll(self._alive_fd, 0, 0)
+            return not events
+
+        def _builddir_is_locked(self):
+            # An older portage holds the build directory lock for as long
+            # as the daemon runs. Do not create the lock file: if it does
+            # not exist, nobody holds it.
             try:
-                builddir_lock = portage.locks.lockfile(
-                    self.fifo_dir, wantnewlockfile=True, flags=os.O_NONBLOCK
-                )
-            except portage.exception.TryAgain:
-                return True
-            else:
-                portage.locks.unlockfile(builddir_lock)
+                fd = os.open(self.builddir_lock_file, os.O_RDWR)
+            except FileNotFoundError:
                 return False
+            try:
+                fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as e:
+                if e.errno in (errno.EACCES, errno.EAGAIN, errno.ENOLCK):
+                    return True
+                raise
+            finally:
+                # Closing the fd releases the lock if we took it.
+                os.close(fd)
+            return False
+
+        def _open_ipc_lock_file(self):
+            old_mask = os.umask(0o000)
+            try:
+                return os.open(self.ipc_lock_file, os.O_CREAT | os.O_RDWR, 0o660)
+            finally:
+                os.umask(old_mask)
+
+        def _lock_ipc_legacy(self):
+            # An older daemon and its clients unlink this file whenever
+            # they release it, so a lock may land on a file that is no
+            # longer there. Retry until the lock is on the current one.
+            while True:
+                lock_fd = self._open_ipc_lock_file()
+                try:
+                    fcntl.lockf(lock_fd, fcntl.LOCK_EX)
+                    st = os.stat(self.ipc_lock_file)
+                except FileNotFoundError:
+                    os.close(lock_fd)
+                    continue
+                except BaseException:
+                    os.close(lock_fd)
+                    raise
+                fst = os.fstat(lock_fd)
+                if (st.st_dev, st.st_ino) == (fst.st_dev, fst.st_ino):
+                    return lock_fd
+                os.close(lock_fd)
 
         def communicate(self, args):
-            # Make locks quiet since unintended locking messages displayed on
-            # stdout could corrupt the intended output of this program.
-            portage.locks._quiet = True
-            lock_obj = portage.locks.lockfile(self.ipc_lock_file, unlinkfile=True)
-
+            if self._legacy:
+                lock_fd = self._lock_ipc_legacy()
+            else:
+                # This file is only ever locked by the daemon and its
+                # clients, which lets both sides use flock() directly
+                # instead of agreeing on what portage.locks would have
+                # picked.
+                lock_fd = self._open_ipc_lock_file()
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                except BaseException:
+                    os.close(lock_fd)
+                    raise
             try:
                 return self._communicate(args)
             finally:
-                portage.locks.unlockfile(lock_obj)
+                os.close(lock_fd)
 
         def _timeout_retry_msg(self, start_time, when):
             time_elapsed = time.time() - start_time
-            portage.util.writemsg_level(
-                f"ebuild-ipc timed out {when} after {time_elapsed} seconds, retrying...\n",
-                level=logging.ERROR,
-                noiselevel=-1,
+            _writemsg(
+                f"ebuild-ipc timed out {when} after {time_elapsed} seconds, retrying...\n"
             )
 
         def _no_daemon_msg(self):
-            portage.util.writemsg_level(
-                portage.localization._("ebuild-ipc: daemon process not detected\n"),
-                level=logging.ERROR,
-                noiselevel=-1,
-            )
+            _writemsg("ebuild-ipc: daemon process not detected\n")
 
-        def _run_writer(self, fifo_writer, msg):
-            """
-            Wait on pid and return an appropriate exit code. This
-            may return unsuccessfully due to timeout if the daemon
-            process does not appear to be alive.
-            """
-
+        def _write_request(self, buf):
             start_time = time.time()
+            try:
+                fd = os.open(self.ipc_in_fifo, os.O_WRONLY | os.O_NONBLOCK)
+            except OSError as e:
+                if e.errno == errno.ENXIO:
+                    # This happens if the daemon has been killed.
+                    return RETURNCODE_FAILURE
+                raise
 
-            fifo_writer.start()
-            eof = fifo_writer.poll() is not None
+            try:
+                while not _poll(fd, select.POLLOUT, _COMMUNICATE_RETRY_TIMEOUT):
+                    if self._daemon_is_alive():
+                        self._timeout_retry_msg(start_time, "during write")
+                    else:
+                        self._no_daemon_msg()
+                        return RETURNCODE_FAILURE
 
-            while not eof:
-                fifo_writer._wait_loop(timeout=self._COMMUNICATE_RETRY_TIMEOUT)
-
-                eof = fifo_writer.poll() is not None
-                if eof:
-                    break
-                elif self._daemon_is_alive():
-                    self._timeout_retry_msg(start_time, msg)
-                else:
-                    fifo_writer.cancel()
-                    self._no_daemon_msg()
-                    fifo_writer.wait()
-                    return 2
-
-            return fifo_writer.wait()
+                # The whole buf should be able to fit in the fifo with
+                # a single write call, so there's no valid reason for
+                # os.write to raise EAGAIN here.
+                while buf:
+                    try:
+                        buf = buf[os.write(fd, buf) :]
+                    except OSError:
+                        return RETURNCODE_FAILURE
+                return os.EX_OK
+            finally:
+                os.close(fd)
 
         def _receive_reply(self, input_fd):
             start_time = time.time()
-
-            pipe_reader = PipeReader(
-                input_files={"input_fd": input_fd}, scheduler=global_event_loop()
-            )
-            pipe_reader.start()
-
-            eof = pipe_reader.poll() is not None
-
+            read_data = []
+            eof = False
             while not eof:
-                pipe_reader._wait_loop(timeout=self._COMMUNICATE_RETRY_TIMEOUT)
-                eof = pipe_reader.poll() is not None
-                if not eof:
+                if not _poll(
+                    input_fd, select.POLLIN | select.POLLPRI, _COMMUNICATE_RETRY_TIMEOUT
+                ):
                     if self._daemon_is_alive():
-                        self._timeout_retry_msg(
-                            start_time, portage.localization._("during read")
-                        )
-                    else:
-                        pipe_reader.cancel()
-                        self._no_daemon_msg()
-                        return 2
+                        self._timeout_retry_msg(start_time, "during read")
+                        continue
+                    self._no_daemon_msg()
+                    return RETURNCODE_FAILURE
 
-            buf = pipe_reader.getvalue()
+                while True:
+                    try:
+                        data = os.read(input_fd, 4096)
+                    except OSError as e:
+                        if e.errno == errno.EAGAIN:
+                            break
+                        if e.errno != errno.EIO:
+                            raise
+                        data = b""
+                    if not data:
+                        eof = True
+                        break
+                    read_data.append(data)
 
-            retval = 2
+            buf = b"".join(read_data)
+
+            retval = RETURNCODE_FAILURE
 
             if not buf:
-                portage.util.writemsg_level(
-                    f"ebuild-ipc: {portage.localization._('read failed')}\n",
-                    level=logging.ERROR,
-                    noiselevel=-1,
-                )
+                _writemsg("ebuild-ipc: read failed\n")
 
             else:
                 try:
-                    reply = NoGlobalsUnpickler(io.BytesIO(buf)).load()
+                    reply = _NoGlobalsUnpickler(io.BytesIO(buf)).load()
                 except SystemExit:
                     raise
                 except Exception as e:
                     # The pickle module can raise practically
                     # any exception when given corrupt data.
-                    portage.util.writemsg_level(
-                        f"ebuild-ipc: {e}\n", level=logging.ERROR, noiselevel=-1
-                    )
+                    _writemsg(f"ebuild-ipc: {e}\n")
 
                 else:
                     out, err, retval = reply
 
                     if out:
-                        portage.util.writemsg_stdout(out, noiselevel=-1)
+                        sys.stdout.write(out)
+                        sys.stdout.flush()
 
                     if err:
-                        portage.util.writemsg(err, noiselevel=-1)
+                        sys.stderr.write(err)
+                        sys.stderr.flush()
 
             return retval
 
         def _communicate(self, args):
             if not self._daemon_is_alive():
                 self._no_daemon_msg()
-                return 2
+                return RETURNCODE_FAILURE
 
             # Open the input fifo before the output fifo, in order to make it
             # possible for the daemon to send a reply without blocking. This
             # improves performance, and also makes it possible for the daemon
             # to do a non-blocking write without a race condition.
             input_fd = os.open(self.ipc_out_fifo, os.O_RDONLY | os.O_NONBLOCK)
+            try:
+                retval = self._write_request(pickle.dumps(args))
+                if retval != os.EX_OK:
+                    _writemsg(f"ebuild-ipc: write failed: {retval}\n")
+                    return retval
 
-            # Use forks so that the child process can handle blocking IO
-            # un-interrupted, while the parent handles all timeout
-            # considerations. This helps to avoid possible race conditions
-            # from interference between timeouts and blocking IO operations.
-            msg = portage.localization._("during write")
-            retval = self._run_writer(
-                FifoWriter(
-                    buf=pickle.dumps(args),
-                    fifo=self.ipc_in_fifo,
-                    scheduler=global_event_loop(),
-                ),
-                msg,
-            )
+                if not self._daemon_is_alive():
+                    self._no_daemon_msg()
+                    return RETURNCODE_FAILURE
 
-            if retval != os.EX_OK:
-                portage.util.writemsg_level(
-                    f"ebuild-ipc: {msg}: subprocess failure: {retval}\n",
-                    level=logging.ERROR,
-                    noiselevel=-1,
-                )
-                return retval
-
-            if not self._daemon_is_alive():
-                self._no_daemon_msg()
-                return 2
-
-            return self._receive_reply(input_fd)
+                return self._receive_reply(input_fd)
+            finally:
+                os.close(input_fd)
 
     def ebuild_ipc_main(args):
-        ebuild_ipc = EbuildIpc()
-        return ebuild_ipc.communicate(args)
+        return EbuildIpc().communicate(args)
 
     if __name__ == "__main__":
-        try:
-            sys.exit(ebuild_ipc_main(sys.argv[1:]))
-        finally:
-            global_event_loop().close()
+        sys.exit(ebuild_ipc_main(sys.argv[1:]))
 
 except KeyboardInterrupt as e:
     # Prevent traceback on ^C
