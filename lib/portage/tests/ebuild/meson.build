@@ -5,6 +5,7 @@ py.install_sources(
         'test_config.py',
         'test_doebuild_fd_pipes.py',
         'test_doebuild_spawn.py',
+        'test_ebuild_ipc.py',
         'test_fetch.py',
         'test_ipc_daemon.py',
         'test_prepare_self_update.py',
