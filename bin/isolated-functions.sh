@@ -33,13 +33,22 @@ __pipestatus() {
 
 shopt -s extdebug
 
+# The client imports nothing from portage, so it needs neither PYTHONPATH
+# nor a wrapper to set one up. It runs with -E so that a PYTHONPATH the
+# ebuild exports cannot shadow the standard library, and with -X utf8
+# because -E also ignores the PYTHONUTF8 that it would otherwise re-exec
+# with.
+__ebuild_ipc() {
+	"${PORTAGE_PYTHON:-/usr/bin/python}" -E -S -X utf8 "${PORTAGE_BIN_PATH:?}/ebuild-ipc.py" "$@"
+}
+
 # Report the exit status of the phase to portage, on the pipe that it
 # passes in, or with ebuild-ipc if it did not pass one.
 __ebuild_exit() {
 	if [[ -n ${PORTAGE_EBUILD_EXIT_FD} ]]; then
 		printf '%s\n' "$1" >&${PORTAGE_EBUILD_EXIT_FD}
 	else
-		"${PORTAGE_BIN_PATH}"/ebuild-ipc exit "$1"
+		__ebuild_ipc exit "$1"
 	fi
 }
 

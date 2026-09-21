@@ -201,6 +201,7 @@ __save_ebuild_env() (
 		__dyn_unpack
 		__ebuild_arg_to_phase
 		__ebuild_exit
+		__ebuild_ipc
 		__ebuild_main
 		__ebuild_phase
 		__ebuild_phase_funcs
