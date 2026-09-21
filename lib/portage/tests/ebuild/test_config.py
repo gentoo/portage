@@ -499,6 +499,8 @@ class ConfigTestCase(TestCase):
             "dev-libs/B-1": {"random.diff": b"bar"},
             "dev-libs/C": {"random.diff": b"bar"},
             "dev-libs/C:3": {"user.patch": b"foo"},
+            # stray files not in a pkg folder should be ignored (see bug #982999)
+            "sys-apps": {"foo.patch": b"foo"},
         }
 
         playground = ResolverPlayground(patches=patches)

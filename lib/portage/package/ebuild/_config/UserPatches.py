@@ -27,10 +27,15 @@ class UserPatches:
 
     def __init__(self, abs_user_config):
         patch_dir = os.path.join(abs_user_config, "patches")
-        if not os.path.exists(patch_dir):
+        if not os.path.isdir(patch_dir):
             return
 
-        categories = os.listdir(patch_dir)
+        categories = (
+            c
+            for c in os.listdir(patch_dir)
+            if os.path.isdir(os.path.join(patch_dir, c))
+        )
+
         cpvs = [
             os.path.join(c, p)
             for c in categories
@@ -77,6 +82,9 @@ class UserPatches:
     # load a set of user patches from config directory
     def _load(self, location):
         hashes = {}
+
+        if not os.path.isdir(location):
+            return hashes
 
         for filename in os.listdir(location):
             if not any(filename.endswith(e) for e in _extensions):
