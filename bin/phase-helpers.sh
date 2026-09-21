@@ -851,10 +851,7 @@ __eapi8_src_prepare() {
 
 ___best_version_and_has_version_common() {
 	local atom root root_arg
-
-	# If ROOT is set to / below then SYSROOT cannot point elsewhere. Even if
-	# ROOT is untouched, setting SYSROOT=/ for this command will always work.
-	local -a cmd=(env SYSROOT=/)
+	local -a eprefix_arg=()
 
 	case $1 in
 		--host-root|-r|-d|-b)
@@ -880,7 +877,7 @@ ___best_version_and_has_version_common() {
 				# Since portageq requires the root argument be consistent
 				# with EPREFIX, ensure consistency here (bug #655414).
 				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
-				cmd+=(EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
+				eprefix_arg=(EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 			else
 				root=/
 			fi ;;
@@ -896,7 +893,7 @@ ___best_version_and_has_version_common() {
 						# Use /${PORTAGE_OVERRIDE_EPREFIX#/} to support older
 						# EAPIs, as it is equivalent to BROOT.
 						root=/${PORTAGE_OVERRIDE_EPREFIX#/}
-						cmd+=(EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
+						eprefix_arg=(EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 						;;
 				esac
 			else
@@ -908,14 +905,20 @@ ___best_version_and_has_version_common() {
 			fi ;;
 	esac
 
+	local retval
 	if [[ -n ${PORTAGE_IPC_DAEMON} ]] ; then
-		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}")
+		# The daemon answers with the settings of the main portage
+		# process, so ebuild-ipc needs neither SYSROOT nor EPREFIX.
+		__ebuild_ipc "${FUNCNAME[1]}" "${root}" "${atom}"
+		retval=$?
 	else
-		cmd+=("${PORTAGE_BIN_PATH}"/portageq-wrapper "${FUNCNAME[1]}" "${root}" "${atom}")
+		# If ROOT is set to / above then SYSROOT cannot point elsewhere.
+		# Even if ROOT is untouched, setting SYSROOT=/ for this command
+		# will always work.
+		env SYSROOT=/ "${eprefix_arg[@]}" \
+			"${PORTAGE_BIN_PATH}"/portageq-wrapper "${FUNCNAME[1]}" "${root}" "${atom}"
+		retval=$?
 	fi
-
-	"${cmd[@]}"
-	local retval=$?
 
 	case "${retval}" in
 		0|1)
