@@ -222,9 +222,6 @@ class portdbapi(dbapi):
         self.xcache = {}
         self.frozen = 0
 
-        # Keep a list of repo names, sorted by priority (highest priority first).
-        self._ordered_repo_name_list = tuple(reversed(self.repositories.prepos_order))
-
         self.auxdbmodule = self.settings.load_best_module("portdbapi.auxdbmodule")
         self.auxdb = {}
         self._pregen_auxdb = {}
@@ -344,6 +341,9 @@ class portdbapi(dbapi):
                 for location in self._porttrees
             )
         )
+
+        # Keep a list of repo names, sorted by priority (highest priority first).
+        self._ordered_repo_name_list = tuple(reversed(self._porttrees_repos))
 
     def _get_porttrees(self):
         return self._porttrees
