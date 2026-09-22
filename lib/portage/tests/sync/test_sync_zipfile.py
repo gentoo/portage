@@ -93,5 +93,6 @@ class test_sync_zipfile_case(TestCase):
         finally:
             if server is not None:
                 server.shutdown()
+                server.server_close()
             shutil.rmtree(tmpdir)
             playground.cleanup()
