@@ -7,6 +7,15 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+/* Py_NewRef is new in Python 3.10. */
+#if PY_VERSION_HEX < 0x030A0000
+static inline PyObject *Py_NewRef(PyObject *obj)
+{
+    Py_INCREF(obj);
+    return obj;
+}
+#endif
+
 #include "dep_parser_core.h"
 
 typedef struct {
