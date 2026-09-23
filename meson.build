@@ -6,6 +6,18 @@ project(
     meson_version : '>=0.58.0'
 )
 
+# Errors by default since GCC 14.
+cc = meson.get_compiler('c')
+add_project_arguments(
+    cc.get_supported_arguments(
+        '-Werror=implicit-function-declaration',
+        '-Werror=implicit-int',
+        '-Werror=incompatible-pointer-types',
+        '-Werror=int-conversion',
+    ),
+    language : 'c'
+)
+
 py_mod = import('python')
 # TODO: Add "pure : not native_extensions" here instead of py.install_sources()
 # when requiring Meson >=0.64.0.
