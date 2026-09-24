@@ -1974,6 +1974,48 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 _emerge_tmpdir = None
 
 
+def get_emerge_tmpdir(settings):
+    """
+    Get or create the process-level temporary directory for emerge.
+    Under root privileges (secpass >= 2), the directory is placed beneath
+    ${PORTAGE_TMPDIR}/portage so that dropped-privilege phases can traverse it
+    (bug #977245), while unprivileged operations fall back to the platform
+    tempdir (bug #977840).
+    """
+    global _emerge_tmpdir
+    if _emerge_tmpdir is None:
+        mkdtemp_kwargs = {
+            "prefix": f"portage-tmpdir-{portage.getpid()}-",
+        }
+        # A value of 2 means root-equivalent permissions are in effect.
+        if secpass >= 2:
+            # Keep this directory beneath ${PORTAGE_TMPDIR}/portage so
+            # that dropped-privilege phases can traverse the path and
+            # source PORTAGE_EBUILD_EXTRA_SOURCE (bug #977245).
+            build_prefix = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+            portage.util.ensure_dirs(build_prefix)
+            try:
+                apply_secpass_permissions(
+                    build_prefix,
+                    gid=portage_gid,
+                    uid=portage_uid,
+                    mode=0o700,
+                    mask=0,
+                )
+            except PortageException:
+                if not os.path.isdir(build_prefix):
+                    raise
+            mkdtemp_kwargs["dir"] = build_prefix
+        _emerge_tmpdir = tempfile.mkdtemp(**mkdtemp_kwargs)
+        os.chmod(_emerge_tmpdir, 0o1775)
+        gid = int(portage_gid) if secpass >= 2 else os.getgid()
+        os.chown(_emerge_tmpdir, -1, gid)
+        portage.process.atexit_register(
+            shutil.rmtree, _emerge_tmpdir, ignore_errors=True
+        )
+    return _emerge_tmpdir
+
+
 def spawn(
     mystring,
     mysettings,
@@ -2237,39 +2279,10 @@ def spawn(
                 t, f".portage-ebuild-extra-source-{phase}"
             )
         else:  # case B and C
-            global _emerge_tmpdir
-            if _emerge_tmpdir is None:
-                mkdtemp_kwargs = {
-                    "prefix": f"portage-tmpdir-{portage.getpid()}-",
-                }
-                # A value of 2 means root-equivalent permissions are in effect.
-                if secpass >= 2:
-                    # Keep this directory beneath ${PORTAGE_TMPDIR}/portage so
-                    # that dropped-privilege phases can traverse the path and
-                    # source PORTAGE_EBUILD_EXTRA_SOURCE (bug #977245).
-                    build_prefix = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
-                    portage.util.ensure_dirs(build_prefix)
-                    try:
-                        apply_secpass_permissions(
-                            build_prefix,
-                            gid=portage_gid,
-                            uid=portage_uid,
-                            mode=0o700,
-                            mask=0,
-                        )
-                    except PortageException:
-                        if not os.path.isdir(build_prefix):
-                            raise
-                    mkdtemp_kwargs["dir"] = build_prefix
-                _emerge_tmpdir = tempfile.mkdtemp(**mkdtemp_kwargs)
-                os.chmod(_emerge_tmpdir, 0o1775)
-                os.chown(_emerge_tmpdir, -1, int(portage_build_gid))
-                portage.process.atexit_register(
-                    shutil.rmtree, _emerge_tmpdir, ignore_errors=True
-                )
+            emerge_tmpdir = get_emerge_tmpdir(mysettings)
             ebuild_extra_source_fd, ebuild_extra_source_path = tempfile.mkstemp(
                 prefix=f"portage-ebuild-extra-source-{phase}-",
-                dir=_emerge_tmpdir,
+                dir=emerge_tmpdir,
             )
             try:
                 # Make sure that the file can be writen by us (done below)
