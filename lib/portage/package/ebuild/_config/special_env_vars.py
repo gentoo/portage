@@ -202,6 +202,7 @@ environ_whitelist = frozenset(
         "TMPDIR",
         "USE_EXPAND",
         "USE_ORDER",
+        "USERLAND",
         "WORKDIR",
         "XARGS",
         "__PORTAGE_TEST_HARDLINK_LOCKS",
