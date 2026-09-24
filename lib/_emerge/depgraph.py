@@ -8012,7 +8012,7 @@ class depgraph:
                         # list only contains unbuilt ebuilds since USE can't
                         # be changed for built packages.
                         higher_version_rejected = False
-                        repo_priority = pkg.repo_priority
+                        repo_priority = pkg.repo_version_priority
                         for rejected in packages_with_invalid_use_config:
                             if rejected.cp != pkg.cp:
                                 continue
@@ -8021,8 +8021,8 @@ class depgraph:
                                 break
                             if portage.dep.cpvequal(rejected.cpv, pkg.cpv):
                                 # If version is identical then compare
-                                # repo priority (see bug #350254).
-                                rej_repo_priority = rejected.repo_priority
+                                # repo version-priority (see bug #350254).
+                                rej_repo_priority = rejected.repo_version_priority
                                 if rej_repo_priority is not None and (
                                     repo_priority is None
                                     or rej_repo_priority > repo_priority

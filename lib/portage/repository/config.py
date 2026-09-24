@@ -165,7 +165,6 @@ class RepoConfig:
         "package_priority",
         "portage1_profiles",
         "portage1_profiles_compat",
-        "priority",
         "profile_formats",
         "properties_allowed",
         "restrict_allowed",
@@ -197,6 +196,7 @@ class RepoConfig:
         "usepkg_exclude",
         "usepkg_include",
         "user_location",
+        "version_priority",
         "volatile",
     )
 
@@ -290,13 +290,17 @@ class RepoConfig:
                 package_priority = None
         self.package_priority = package_priority
 
-        priority = repo_opts.get("priority")
-        if priority is not None:
+        version_priority = (
+            repo_opts.get("version-priority")
+            if "version-priority" in repo_opts
+            else repo_opts.get("priority")
+        )
+        if version_priority is not None:
             try:
-                priority = int(priority)
+                version_priority = int(version_priority)
             except ValueError:
-                priority = None
-        self.priority = priority
+                version_priority = None
+        self.version_priority = version_priority
 
         sync_type = repo_opts.get("sync-type")
         if sync_type is not None:
@@ -726,8 +730,8 @@ class RepoConfig:
             repo_msg.append(
                 indent + "masters: " + " ".join(master.name for master in self.masters)
             )
-        if self.priority is not None:
-            repo_msg.append(indent + "priority: " + str(self.priority))
+        if self.version_priority is not None:
+            repo_msg.append(indent + "version-priority: " + str(self.version_priority))
         if self.package_priority is not None:
             repo_msg.append(indent + "package-priority: " + str(self.package_priority))
         if self.aliases:
@@ -768,7 +772,6 @@ _str_or_int_keys = (
     "location",
     "main_repo",
     "package_priority",
-    "priority",
     "sync_depth",
     "sync_openpgp_keyserver",
     "sync_openpgp_key_package",
@@ -786,6 +789,7 @@ _str_or_int_keys = (
     "sync_umask",
     "sync_uri",
     "sync_user",
+    "version_priority",
 )
 _str_tuple_keys = (
     "aliases",
@@ -876,7 +880,6 @@ class RepoConfigLoader:
                             "masters",
                             "module_specific_options",
                             "package_priority",
-                            "priority",
                             "strict_misc_digests",
                             "sync_allow_hardlinks",
                             "sync_depth",
@@ -901,6 +904,7 @@ class RepoConfigLoader:
                             "usepkg_exclude",
                             "usepkg_include",
                             "volatile",
+                            "version_priority",
                         ):
                             v = getattr(repos_conf_opts, k, None)
 
@@ -928,14 +932,14 @@ class RepoConfigLoader:
                             if old_location == portdir:
                                 portdir = repo.location
 
-                    if repo.priority is None:
+                    if repo.version_priority is None:
                         if base_priority == 0 and ov == portdir_orig:
                             # If it's the original PORTDIR setting and it's not
                             # in PORTDIR_OVERLAY, then it will be assigned a
                             # special priority setting later.
                             pass
                         else:
-                            repo.priority = base_priority
+                            repo.version_priority = base_priority
                             base_priority += 1
 
                     prepos[repo.name] = repo
@@ -1200,9 +1204,9 @@ class RepoConfigLoader:
                         noiselevel=-1,
                     )
 
-        if main_repo is not None and prepos[main_repo].priority is None:
+        if main_repo is not None and prepos[main_repo].version_priority is None:
             # This happens if main-repo has been set in repos.conf.
-            prepos[main_repo].priority = -1000
+            prepos[main_repo].version_priority = -1000
 
         # DEPRECATED Backward compatible SYNC support for old mirrorselect.
         # Feb. 2, 2015.  Version 2.2.16
@@ -1220,7 +1224,7 @@ class RepoConfigLoader:
         # Include repo.name in sort key, for predictable sorting
         # even when priorities are equal.
         prepos_order = sorted(
-            prepos.items(), key=lambda r: (r[1].priority or 0, r[1].name)
+            prepos.items(), key=lambda r: (r[1].version_priority or 0, r[1].name)
         )
 
         # filter duplicates from aliases, by only including
