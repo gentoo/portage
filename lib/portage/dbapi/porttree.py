@@ -330,7 +330,7 @@ class portdbapi(dbapi):
         operations.
 
         @param porttrees: list of repo locations, in ascending order by
-                repo priority
+                repo version priority
         @type porttrees: list
         """
         self._porttrees = tuple(porttrees)
@@ -1160,9 +1160,9 @@ class portdbapi(dbapi):
                 return cachelist[:]
         mysplit = mycp.split("/")
         invalid_category = mysplit[0] not in self._categories
-        # Process repos in ascending order by repo.priority, so that
+        # Process repos in ascending order by repo.version_priority, so that
         # stable sort by version produces results ordered by
-        # (pkg.version, repo.priority).
+        # (pkg.version, repo.version_priority).
         if mytree is not None:
             if isinstance(mytree, str):
                 repos = [self.repositories.get_repo_for_location(mytree)]
@@ -1242,9 +1242,9 @@ class portdbapi(dbapi):
             mylist = []
         # Always sort in ascending order here since it's handy and
         # the result can be easily cached and reused. Since mylist
-        # is initially in ascending order by repo.priority, stable
-        # sort by version produces results in ascending order by
-        # (pkg.version, repo.priority).
+        # is initially in ascending order by repo.version_priority,
+        # stable sort by version produces results in ascending order
+        # by (pkg.version, repo.version_priority).
         self._cpv_sort_ascending(mylist)
         if self.frozen and mytree is None:
             cachelist = mylist[:]

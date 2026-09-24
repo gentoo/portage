@@ -233,7 +233,7 @@ class MultirepoTestCase(TestCase):
                 check_repo_names=True,
                 mergelist=["dev-libs/I-2::repo2"],
             ),
-            # Check interaction between repo priority and unsatisfied
+            # Check interaction between repo version priority and unsatisfied
             # REQUIRED_USE, for bug #350254.
             ResolverPlaygroundTestCase(
                 ["=dev-libs/G-1"], check_repo_names=True, success=False
