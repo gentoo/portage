@@ -24,7 +24,7 @@ if (
 import signal
 
 
-# Inherit from KeyboardInterrupt to avoid a traceback from asyncio.
+# Inherit from KeyboardInterrupt, so that SIGTERM is handled like ^C.
 class SignalInterrupt(KeyboardInterrupt):
     def __init__(self, signum):
         self.signum = signum

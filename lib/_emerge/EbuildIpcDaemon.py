@@ -57,12 +57,11 @@ class EbuildIpcDaemon(FifoIpcDaemon):
                 cmd_handler = self.commands[cmd_key]
                 reply = cmd_handler(obj)
                 # The command may have a hook to run once its reply has
-                # been sent. The 'exit' command, which the helpers of a
-                # portage without PORTAGE_EBUILD_EXIT_FD still send, uses
-                # it to start the timer that kills a phase which does not
-                # exit by itself. Starting that timer only now keeps the
-                # phase from being killed while ebuild-ipc still waits
-                # for the reply.
+                # been sent. The 'exit' command, which is only sent when
+                # PORTAGE_EBUILD_EXIT_FD is not set, uses it to start the
+                # timer that kills a phase which does not exit by itself,
+                # so that ebuild-ipc is not killed while it waits for the
+                # reply.
                 self._send_reply(reply)
                 reply_hook = getattr(cmd_handler, "reply_hook", None)
                 if reply_hook is not None:

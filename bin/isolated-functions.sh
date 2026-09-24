@@ -35,9 +35,8 @@ shopt -s extdebug
 
 # The client imports nothing from portage, so it needs neither PYTHONPATH
 # nor a wrapper to set one up. It runs with -E so that a PYTHONPATH the
-# ebuild exports cannot shadow the standard library, and with -X utf8
-# because -E also ignores the PYTHONUTF8 that it would otherwise re-exec
-# with.
+# ebuild exports cannot shadow the standard library, and with -X utf8 so
+# that it does not re-exec itself for UTF-8 mode, which would drop -E.
 __ebuild_ipc() {
 	"${PORTAGE_PYTHON:-/usr/bin/python}" -E -S -X utf8 "${PORTAGE_BIN_PATH:?}/ebuild-ipc.py" "$@"
 }
