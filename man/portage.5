@@ -1063,6 +1063,17 @@ repositories with a higher priority are preferred. Those with equal priority
 are then compared alphanumerically by name. Negative values are permitted. The
 default value is 0 for overlays and -1000 for the main repository.
 .TP
+.B package-priority = integer
+When a package exists in multiple repositories, repositories with a higher
+priority are preferred, regardless of package version and any other
+configuration. Those with equal priority are considered together as a group.
+Negative values are permitted. The default value is 0. Explicit requests for a
+lower priority package with the \fB::repo\fR syntax are rejected. The rule
+extends to binary packages when the name of the repository a package was built
+from matches one currently configured in the target system. This feature is
+most useful for downstream distributions where an overlay should be used over
+the upstream repository no matter what.
+.TP
 .B strict\-misc\-digests = yes|no|true|false
 This setting determines whether digests are checked for files declared
 in the Manifest with MISC type (includes ChangeLog and metadata.xml

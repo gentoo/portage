@@ -6516,6 +6516,15 @@ class depgraph:
             self._frozen_config.myopts.get("--use-ebuild-visibility", "n") != "n"
         )
 
+        # Determine which repos prioritized this package in case that is the
+        # reason the dependency wasn't satisfied. This check is cheap.
+        cp_priority = portdb.cp_priority(atom.cp) if atom.package else None
+        prioritized_repos = (
+            {cp.repo for cp in portdb.cp_list(atom.cp)}
+            if cp_priority is not None
+            else None
+        )
+
         for db, pkg_type, built, installed, db_keys in dbs:
             if installed:
                 continue
@@ -6524,7 +6533,14 @@ class depgraph:
                     continue
                 cpv_list = db.match(atom)
             elif hasattr(db, "xmatch"):
-                cpv_list = db.xmatch("match-all-cpv-only", atom.without_use)
+                # xmatch (via cp_list) is influenced by package priority, so we
+                # must determine which versions are masked by this another way.
+                if atom.repo is None and cp_priority is not None:
+                    cpv_list = match_from_list(
+                        atom.without_use, db.cp_list(atom.cp, mytree=db.porttrees)
+                    )
+                else:
+                    cpv_list = db.xmatch("match-all-cpv-only", atom.without_use)
             else:
                 cpv_list = db.match(atom.without_use)
 
@@ -6602,6 +6618,17 @@ class depgraph:
                             )
                         ):
                             mreasons = ["exclude option"]
+                        if (
+                            not mreasons
+                            and cp_priority is not None
+                            and repo in portdb.repositories
+                        ):
+                            repo_config = portdb.repositories[repo]
+                            if cp_priority > (repo_config.package_priority or 0):
+                                mreasons = [
+                                    f"package-priority favors "
+                                    + ", ".join(prioritized_repos)
+                                ]
                         if mreasons:
                             masked_pkg_instances.add(pkg)
                         if atom.package and atom.unevaluated_atom.use:
@@ -7134,6 +7161,7 @@ class depgraph:
         checks (to avoid the expense when possible).
         """
 
+        portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
         db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
         atom_exp = dep_expand(atom, mydb=db, settings=root_config.settings)
         cp_list = db.cp_list(atom_exp.cp)
@@ -7142,6 +7170,12 @@ class depgraph:
 
         if cp_list:
             atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
+
+            # Package priority filtering is handled by portdbapi.cp_list, but
+            # this is not applied to binary packages, so do that here.
+            cp_priority = (
+                portdb.cp_priority(atom_exp.cp) if pkg_type == "binary" else None
+            )
 
             # descending order
             cp_list.reverse()
@@ -7162,6 +7196,11 @@ class depgraph:
                     except portage.exception.PackageNotFound:
                         pass
                     else:
+                        if cp_priority is not None and pkg.repo in portdb.repositories:
+                            repo = portdb.repositories[pkg.repo]
+                            if cp_priority > (repo.package_priority or 0):
+                                continue
+
                         # A cpv can be returned from dbapi.match() as an
                         # old-style virtual match even in cases when the
                         # package does not actually PROVIDE the virtual.
@@ -7195,7 +7234,6 @@ class depgraph:
             if "remove" in self._dynamic_config.myparams:
                 # We need to search the portdbapi, which is not in our
                 # normal dbs list, in order to find the real SLOT.
-                portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
                 db_keys = list(portdb._aux_cache_keys)
                 dbs = [(portdb, "ebuild", False, False, db_keys)]
             else:
