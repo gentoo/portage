@@ -681,9 +681,11 @@ fetch non-matching remote binary packages except where overridden by the
 
 This is an experimental option subject to change.
 .TP
-.B priority
-Specifies priority of given repository. When a package exists in multiple
-repositories, those with higher priority are preferred.
+.B priority = integer
+When the same version of a package exists in multiple repositories,
+repositories with a higher priority are preferred. Those with equal priority
+are then compared alphanumerically by name. Negative values are permitted. The
+default value is 0.
 .TP
 .B location
 Specify a cache location which serves as a partial local mirror of a
