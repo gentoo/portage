@@ -1,7 +1,6 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import errno
 import functools
 import io
 import os
@@ -212,9 +211,9 @@ class AbstractEbuildProcess(SpawnProcess):
     def _exit_pipe_handler(self):
         try:
             data = os.read(self._exit_pipe, 64)
-        except OSError as e:
-            if e.errno in (errno.EAGAIN, errno.EINTR):
-                return
+        except BlockingIOError:
+            return
+        except OSError:
             data = b""
 
         if not data:
