@@ -39,9 +39,6 @@ class EbuildIpcTestCase(TestCase):
     _replies = (
         ("ascii", ("stdout\n", "stderr\n", 0)),
         ("non-ascii", ("Šťč\n", "äöü\n", 3)),
-        # Larger than the pipe buffer, so the daemon needs more than one
-        # write and the client more than one read.
-        ("oversized", ("x" * 200000, "", 1)),
     )
 
     def setUp(self):
@@ -181,6 +178,24 @@ class EbuildIpcTestCase(TestCase):
                     self._stop_daemon(daemon)
                 out, err, returncode = reply
                 self.assertEqual(result, (returncode, out, err))
+
+    def testOversizedReply(self):
+        # A reply larger than the pipe buffer is truncated, and the
+        # client must fail rather than wait for the rest.
+        self._make_fifos()
+        daemon = self._start_daemon(("x" * 200000, "", 0))
+        try:
+            returncode, stdout, stderr = self._run_client(
+                self.env, ["test"], self._alive_pipe(alive=True)
+            )
+        finally:
+            self._stop_daemon(daemon)
+        self.assertEqual(returncode, 2)
+        self.assertEqual(stdout, "")
+        # PyPy's pure-Python pickle appends the byte counts.
+        self.assertTrue(
+            stderr.startswith("ebuild-ipc: pickle data was truncated"), stderr
+        )
 
     def testLegacyReplies(self):
         # A portage that was already running when this one was installed
