@@ -118,6 +118,10 @@ Features:
 * depgraph: Make FEATURES="buildpkg-proactive" trigger a rebuild when
   --binpkg-respect-user-patches would mask a binary package.
 
+* config: repos.conf: Add 'package-priority' to prefer packages in higher
+  priority repositories, regardless of package version and any other
+  configuration. (bug #983159)
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata
