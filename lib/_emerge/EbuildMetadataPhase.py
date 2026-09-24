@@ -3,6 +3,7 @@
 
 import fcntl
 import os
+import shutil
 import sys
 import tempfile
 
@@ -35,6 +36,7 @@ class EbuildMetadataPhase(SubProcess):
         "_eapi",
         "_eapi_lineno",
         "_raw_metadata",
+        "_sandbox_dir",
         "_sandbox_log",
     )
 
@@ -48,7 +50,7 @@ class EbuildMetadataPhase(SubProcess):
         self._registered = True
 
     async def _async_start(self):
-        from portage.package.ebuild.doebuild import doebuild
+        from portage.package.ebuild.doebuild import doebuild, get_emerge_tmpdir
 
         from _emerge.EbuildPhase import _setup_locale
 
@@ -87,6 +89,25 @@ class EbuildMetadataPhase(SubProcess):
         await _setup_locale(self.settings)
 
         debug = settings.get("PORTAGE_DEBUG") == "1"
+
+        # Create the sandbox log directory before any file descriptors are
+        # opened, so that a failure here does not leak them.
+        emerge_tmpdir = get_emerge_tmpdir(settings)
+        self._sandbox_dir = tempfile.mkdtemp(prefix="sandbox-", dir=emerge_tmpdir)
+        try:
+            portage.util.apply_secpass_permissions(
+                self._sandbox_dir,
+                uid=portage.portage_uid,
+                gid=portage.portage_gid,
+                mode=0o750,
+            )
+        except Exception:
+            shutil.rmtree(self._sandbox_dir, ignore_errors=True)
+            self._sandbox_dir = None
+            raise
+        self._sandbox_log = os.path.join(self._sandbox_dir, "sandbox.log")
+        settings["SANDBOX_LOG"] = self._sandbox_log
+
         master_fd = None
         slave_fd = None
         fd_pipes = None
@@ -126,10 +147,6 @@ class EbuildMetadataPhase(SubProcess):
         files.ebuild = master_fd
         self.scheduler.add_reader(files.ebuild, self._output_handler)
 
-        sandbox_log_fd, self._sandbox_log = tempfile.mkstemp(prefix="sandbox")
-        os.close(sandbox_log_fd)
-        settings["SANDBOX_LOG"] = self._sandbox_log
-
         retval = doebuild(
             ebuild_path,
             "depend",
@@ -157,7 +174,7 @@ class EbuildMetadataPhase(SubProcess):
         if isinstance(retval, int):
             # doebuild failed before spawning
             self.returncode = retval
-            self._remove_sandbox_log()
+            self._remove_sandbox_dir()
             self._async_wait()
             return
 
@@ -274,15 +291,14 @@ class EbuildMetadataPhase(SubProcess):
                 # Some other, non-sandbox problem occurred.
                 pass
 
-        self._remove_sandbox_log()
+        self._remove_sandbox_dir()
 
-    def _remove_sandbox_log(self):
-        if self._sandbox_log is None:
+    def _remove_sandbox_dir(self):
+        if self._sandbox_dir is None:
             return
-        try:
-            os.unlink(self._sandbox_log)
-        except FileNotFoundError:
-            pass
+
+        shutil.rmtree(self._sandbox_dir, ignore_errors=True)
+        self._sandbox_dir = None
         self._sandbox_log = None
 
     def _eapi_invalid(self, metadata):
