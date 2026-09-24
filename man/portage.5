@@ -1057,8 +1057,11 @@ When 'force = masters' attribute is not set, \fBegencache\fR(1) and
 \fBemirrordist\fR(1) ignore this attribute, since operations performed by
 these tools are inherently \fBnot\fR \fIsite\-specific\fR.
 .TP
-.B priority
-Specifies priority of given repository.
+.B priority = integer
+When the same version of a package exists in multiple repositories,
+repositories with a higher priority are preferred. Those with equal priority
+are then compared alphanumerically by name. Negative values are permitted. The
+default value is 0 for overlays and -1000 for the main repository.
 .TP
 .B strict\-misc\-digests = yes|no|true|false
 This setting determines whether digests are checked for files declared
