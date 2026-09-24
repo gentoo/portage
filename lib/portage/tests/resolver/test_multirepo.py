@@ -298,6 +298,12 @@ class MultirepoTestCase(TestCase):
             "dev-libs/G-1::repo1": {},
             # package.mask with wildcards
             "dev-libs/Z-1::repo3": {},
+            # version-priority
+            "dev-libs/VPA-1::vp-repo1": {},
+            "dev-libs/VPA-1::vp-repo2": {},
+            "dev-libs/VPA-2::vp-repo2": {},
+            "dev-libs/VPB-1::vp-repo1": {},
+            "dev-libs/VPB-1::vp-repo3": {},
             # package-priority
             "dev-libs/PPA-1": {},
             "dev-libs/PPA-2::pp-repo1": {},
@@ -338,6 +344,12 @@ class MultirepoTestCase(TestCase):
             "package.properties": ("dev-libs/F::repo1 -bar",),
             "package.unmask": ("dev-libs/G::test_repo",),
             "repos.conf": (
+                "[vp-repo1]",
+                "version-priority = 1",
+                "[vp-repo2]",
+                "version-priority = -1",
+                "[vp-repo3]",
+                "priority = -2",
                 "[pp-repo1]",
                 "package-priority = 1",
                 "[pp-repo2]",
@@ -416,6 +428,34 @@ class MultirepoTestCase(TestCase):
             # package.mask with wildcards
             ResolverPlaygroundTestCase(
                 ["dev-libs/Z"], options={"--autounmask": "n"}, success=False
+            ),
+            # VP: Newest version beats older version in higher priority repo.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/VPA"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPA-2::vp-repo2"],
+            ),
+            # VP: Duplicate older version is chosen from higher priority repo.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/VPA-1"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPA-1::vp-repo1"],
+            ),
+            # VP: Explicitly specifying the repository overrides the priority.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/VPA-1::vp-repo2"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPA-1::vp-repo2"],
+            ),
+            # VP: The legacy "priority" setting also works.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/VPB-1"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPB-1::vp-repo1"],
             ),
             # PP: v2 in ::repo1 beats v3 in ::repo2.
             ResolverPlaygroundTestCase(
