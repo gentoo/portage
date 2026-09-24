@@ -40,6 +40,15 @@ run_command(
     check : true
 )
 
+foreach mod : ['portage.util._whirlpool', 'portage.dep._parser']
+    test(
+        'import ' + mod,
+        py,
+        args : ['-c', 'import ' + mod],
+        env : {'PYTHONPATH' : meson.project_source_root() / 'lib'},
+    )
+endforeach
+
 test_parser = executable(
     'test_parser',
     'dep_parser_core.c',
