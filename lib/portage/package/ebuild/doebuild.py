@@ -5,6 +5,7 @@ __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
 
 import errno
 import fnmatch
+import functools
 import grp
 import gzip
 import logging
@@ -378,6 +379,33 @@ def _doebuild_path(settings, eapi=None):
     settings["PATH"] = ":".join(path)
 
 
+@functools.lru_cache
+def _xargs_command(path):
+    """
+    Return the XARGS value that isolated-functions.sh would choose with
+    the given PATH, which it otherwise spawns processes to work out
+    whenever it is sourced.
+    """
+    gxargs = shutil.which("gxargs", path=path)
+    if gxargs is not None:
+        return f"{gxargs} -r"
+    xargs = shutil.which("xargs", path=path)
+    if xargs is not None:
+        try:
+            returncode = subprocess.run(
+                [xargs, "-r"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+        except OSError:
+            pass
+        else:
+            if returncode == os.EX_OK:
+                return "xargs -r"
+    return "xargs"
+
+
 def doebuild_environment(
     myebuild, mydo, myroot=None, settings=None, debug=False, use_cache=None, db=None
 ):
@@ -563,6 +591,8 @@ def doebuild_environment(
     # EbuildMetadataPhase gets it from _parse_eapi_ebuild_head().
     eapi = mysettings.configdict["pkg"]["EAPI"]
     _doebuild_path(mysettings, eapi=eapi)
+    if "XARGS" not in mysettings:
+        mysettings["XARGS"] = _xargs_command(mysettings["PATH"])
 
     # All EAPI dependent code comes last, so that essential variables like
     # PATH and PORTAGE_BUILDDIR are still initialized even in cases when
