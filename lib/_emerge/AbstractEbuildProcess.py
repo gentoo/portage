@@ -140,6 +140,8 @@ class AbstractEbuildProcess(SpawnProcess):
 
         if self.fd_pipes is None:
             self.fd_pipes = {}
+        else:
+            self.fd_pipes = self.fd_pipes.copy()
         null_fd = None
         if (
             0 not in self.fd_pipes

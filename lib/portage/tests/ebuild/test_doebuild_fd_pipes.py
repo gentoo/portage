@@ -196,7 +196,14 @@ class DoebuildFdPipesTestCase(TestCase):
     @staticmethod
     def _doebuild(db, pw, *args, **kwargs):
         QueryCommand._db = db
-        kwargs["fd_pipes"] = {
+        fd_pipes = {
             DoebuildFdPipesTestCase.output_fd: pw.fileno(),
         }
-        return portage.doebuild(*args, **kwargs)
+        kwargs["fd_pipes"] = fd_pipes
+        rval = portage.doebuild(*args, **kwargs)
+        # doebuild runs every phase with the same fd_pipes, so a phase
+        # must not leave its own fds in it.
+        if list(fd_pipes) != [DoebuildFdPipesTestCase.output_fd]:
+            portage.writemsg(f"fd_pipes modified: {fd_pipes}\n", noiselevel=-1)
+            return 1
+        return rval
