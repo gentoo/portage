@@ -163,6 +163,7 @@ class RepoConfig:
         "missing_repo_name",
         "module_specific_options",
         "name",
+        "package_priority",
         "portage1_profiles",
         "portage1_profiles_compat",
         "priority",
@@ -281,6 +282,14 @@ class RepoConfig:
             for a in conflicted_atoms:
                 self.usepkg_exclude.remove(a)
                 self.usepkg_include.remove(a)
+
+        package_priority = repo_opts.get("package-priority")
+        if package_priority is not None:
+            try:
+                package_priority = int(package_priority)
+            except ValueError:
+                package_priority = None
+        self.package_priority = package_priority
 
         priority = repo_opts.get("priority")
         if priority is not None:
@@ -720,6 +729,8 @@ class RepoConfig:
             )
         if self.priority is not None:
             repo_msg.append(indent + "priority: " + str(self.priority))
+        if self.package_priority is not None:
+            repo_msg.append(indent + "package-priority: " + str(self.package_priority))
         if self.aliases:
             repo_msg.append(indent + "aliases: " + " ".join(self.aliases))
         if self.eclass_overrides:
@@ -757,6 +768,7 @@ _str_or_int_keys = (
     "format",
     "location",
     "main_repo",
+    "package_priority",
     "priority",
     "sync_depth",
     "sync_openpgp_keyserver",
@@ -864,6 +876,7 @@ class RepoConfigLoader:
                             "force",
                             "masters",
                             "module_specific_options",
+                            "package_priority",
                             "priority",
                             "strict_misc_digests",
                             "sync_allow_hardlinks",
