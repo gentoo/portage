@@ -2451,7 +2451,7 @@ def action_info(settings, trees, myopts, myfiles):
         versions = ", ".join(str(ver) for ver in versions)
         append(f"{(cp + ':').ljust(cp_max_len + 1)} {versions}")
 
-    append("Repositories:\n")
+    append("\nRepositories:\n")
     for repo in repos:
         append(repo.info_string())
 
