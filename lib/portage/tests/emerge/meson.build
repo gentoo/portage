@@ -16,6 +16,7 @@ py.install_sources(
         'test_noreplace.py',
         'test_observability.py',
         'test_pkg_pretend.py',
+        'test_sigint_merge_wait.py',
         '__init__.py',
         '__test__.py',
     ],
