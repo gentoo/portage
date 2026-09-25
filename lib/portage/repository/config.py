@@ -25,6 +25,7 @@ from portage.eapi import (
 )
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
+from portage.package.ebuild.fetch import _hide_url_passwd
 from portage.util import (
     _recursive_file_list,
     normalize_path,
@@ -710,7 +711,7 @@ class RepoConfig:
         if self.sync_umask:
             repo_msg.append(indent + "sync-umask: " + self.sync_umask)
         if self.sync_uri:
-            repo_msg.append(indent + "sync-uri: " + self.sync_uri)
+            repo_msg.append(indent + "sync-uri: " + _hide_url_passwd(self.sync_uri))
         if self.sync_user:
             repo_msg.append(indent + "sync-user: " + self.sync_user)
         if self.masters:

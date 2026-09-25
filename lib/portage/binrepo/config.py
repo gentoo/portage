@@ -7,6 +7,7 @@ from hashlib import md5
 
 from portage._sets.base import WildcardPackageSet
 from portage.localization import _
+from portage.package.ebuild.fetch import _hide_url_passwd
 from portage.repository.config import _find_bad_atoms
 from portage.util import _recursive_file_list, writemsg
 from portage.util.configparser import ConfigParserError, SafeConfigParser, read_configs
@@ -86,7 +87,7 @@ class BinRepoConfig:
             repo_msg.append(indent + "location: " + self.location)
         if self.priority is not None:
             repo_msg.append(indent + "priority: " + str(self.priority))
-        repo_msg.append(indent + "sync-uri: " + self.sync_uri)
+        repo_msg.append(indent + "sync-uri: " + _hide_url_passwd(self.sync_uri))
         repo_msg.append(indent + f"verify-signature: {self.verify_signature}")
         if self.frozen:
             repo_msg.append(f"{indent}frozen: {str(self.frozen).lower()}")
