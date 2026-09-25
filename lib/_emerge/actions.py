@@ -2275,7 +2275,7 @@ def action_info(settings, trees, myopts, myfiles):
             except NotImplementedError:
                 head_commit = (1, False)
         if head_commit and head_commit[0] == os.EX_OK:
-            append(f"Head commit of repository {repo.name}: {head_commit[1]}")
+            append(f"Head commit of repository {repo.name}: {head_commit[1].strip()}")
 
     # Searching contents for the /bin/sh provider is somewhat
     # slow. Therefore, use the basename of the symlink target
