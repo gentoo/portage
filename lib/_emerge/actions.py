@@ -2260,23 +2260,6 @@ def action_info(settings, trees, myopts, myfiles):
             line += f",{vm_info['swap.free'] // 1024:10d} free"
         append(line)
 
-    for repo in repos:
-        last_sync = portage.grabfile(
-            os.path.join(repo.location, "metadata", "timestamp.chk")
-        )
-        head_commit = None
-        if last_sync:
-            append(f"Timestamp of repository {repo.name}: {last_sync[0]}")
-        if repo.sync_type:
-            sync = portage.sync.module_controller.get_class(repo.sync_type)()
-            options = {"repo": repo}
-            try:
-                head_commit = sync.retrieve_head(options=options)
-            except NotImplementedError:
-                head_commit = (1, False)
-        if head_commit and head_commit[0] == os.EX_OK:
-            append(f"Head commit of repository {repo.name}: {head_commit[1].strip()}")
-
     # Searching contents for the /bin/sh provider is somewhat
     # slow. Therefore, use the basename of the symlink target
     # to locate the package. If this fails, then only the
@@ -2453,7 +2436,24 @@ def action_info(settings, trees, myopts, myfiles):
 
     append("\nRepositories:\n")
     for repo in repos:
-        append(repo.info_string())
+        append(repo.info_string().rstrip())
+
+        last_sync = portage.grabfile(
+            os.path.join(repo.location, "metadata", "timestamp.chk")
+        )
+        head_commit = None
+        if last_sync:
+            append(f"    timestamp: {last_sync[0].strip()}")
+        if repo.sync_type:
+            sync = portage.sync.module_controller.get_class(repo.sync_type)()
+            options = {"repo": repo}
+            try:
+                head_commit = sync.retrieve_head(options=options)
+            except NotImplementedError:
+                head_commit = (1, False)
+        if head_commit and head_commit[0] == os.EX_OK:
+            append(f"    head commit: {head_commit[1].strip()}")
+        append("")
 
     binrepos_config_paths = []
     if portage._not_installed:
