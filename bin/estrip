@@ -611,6 +611,12 @@ if (( ${#estrip_files[@]} )); then
 			die "failed to record file name for inode ${inodes[i]}"
 		fi
 	done
+
+	# With -0 and -r, file(1) prints each name verbatim, NUL-terminated.
+	declare -A file_description
+	while IFS= read -r -d '' x && IFS= read -r f; do
+		file_description[${x}]=${f}
+	done < <(printf '%s\n' "${estrip_files[@]}" | file -S -N -r -0 -f -)
 fi
 
 # Now we look for unstripped binaries.
@@ -626,7 +632,7 @@ for inode_link in *; do
 
 		(
 		__multijob_child_init
-		f=$(file -S "${x}") || exit 0
+		f=${file_description[${x}]}
 		[[ -z ${f} ]] && exit 0
 
 		if (( do_skip )); then
