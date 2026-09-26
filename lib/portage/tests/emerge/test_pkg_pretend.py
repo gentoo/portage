@@ -18,20 +18,47 @@ from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 
-# Each pkg_pretend records the time it started and finished, so that the
-# test can tell whether the phases overlapped. The sleep has to be long
-# enough that all of the jobs are guaranteed to overlap on a slow machine.
-PRETEND_SLEEP = 5
+# Shell function shared by pkg_pretend and the fake fetch command. It waits
+# until the number of jobs given in ${sync}/${kind} have started, or for the
+# timeout given there, so that concurrent jobs are sure to overlap. While it
+# waits it notes whether another job is running, which shows that serial jobs
+# did not overlap; a serial run waits out the timeout once, in its first job.
+# It prints 1 if it saw another job running and 0 otherwise.
+WAIT_MARKERS = textwrap.dedent("""
+    wait_markers() {
+        local sync=$1 kind=$2 name=$3 count timeout i overlap=0
+        local -a running started
+        read -r count timeout < "${sync}/${kind}"
+        : > "${sync}/${kind}-running-${name}"
+        : > "${sync}/${kind}-started-${name}"
+        for (( i = 0; i < timeout * 20; i++ )); do
+            running=( "${sync}/${kind}"-running-* )
+            started=( "${sync}/${kind}"-started-* )
+            (( ${#running[@]} > 1 )) && overlap=1
+            (( ${#started[@]} >= count )) && break
+            sleep 0.05
+        done
+        rm "${sync}/${kind}-running-${name}"
+        echo "${overlap}"
+    }
+    """)
 
-MISC_CONTENT = textwrap.dedent(f"""
-    S="${{WORKDIR}}"
+# Each pkg_pretend prints when it started and finished, and waits on marker
+# files in ${EPREFIX}/sync configured by _sync(). Without sync/pretend the
+# phase does not wait.
+MISC_CONTENT = WAIT_MARKERS + textwrap.dedent("""
+    S="${WORKDIR}"
 
-    pkg_pretend() {{
-        einfo "PRETEND-BEGIN ${{PN}} $(date +%s.%N)"
-        einfo "PRETEND-BODY ${{PN}}"
-        sleep {PRETEND_SLEEP}
-        einfo "PRETEND-END ${{PN}} $(date +%s.%N)"
-    }}
+    pkg_pretend() {
+        local sync=${EPREFIX}/sync overlap=0
+        einfo "PRETEND-BEGIN ${PN} $(date +%s.%N)"
+        einfo "PRETEND-BODY ${PN}"
+        if [[ -f ${sync}/pretend ]]; then
+            addwrite "${sync}"
+            overlap=$(wait_markers "${sync}" pretend "${PN}")
+        fi
+        einfo "PRETEND-END ${PN} $(date +%s.%N) overlap=${overlap}"
+    }
     """)
 
 FAILING_MISC_CONTENT = textwrap.dedent("""
@@ -44,24 +71,39 @@ FAILING_MISC_CONTENT = textwrap.dedent("""
     """)
 
 MARKER_RE = re.compile(r"PRETEND-(BEGIN|BODY|END) (\w+)(?: (\d+\.\d+))?")
+OVERLAP_RE = re.compile(r"PRETEND-END (\w+) \S+ overlap=([01])")
 
-# FETCHCOMMAND for a fake:// binhost, which records when each binary
-# package download starts and finishes.
-FAKE_FETCH_SCRIPT = textwrap.dedent(f"""\
-    #!/bin/sh
-    src=${{3#fake://}}
-    case ${{src}} in
+# How long a serial run waits for another phase to start. If the phases
+# were not serial, the second one would start well within this time.
+SERIAL_WINDOW = 2
+
+# How long a phase waits for concurrent phases to start before giving up,
+# so that a broken test fails instead of hanging.
+BARRIER_TIMEOUT = 60
+
+# FETCHCOMMAND for a fake:// binhost, which reports when each binary
+# package download starts and finishes, and like pkg_pretend waits on
+# marker files configured by _sync().
+FAKE_FETCH_SCRIPT = "#!/usr/bin/env bash\n" + WAIT_MARKERS + textwrap.dedent("""
+    src=${3#fake://}
+    sync=${0%/*}/sync
+    case ${src} in
     *.gpkg.tar)
-        name=${{src##*/}}
-        echo "FETCH-BEGIN ${{name%%-*}} $(date +%s.%N)"
-        sleep {PRETEND_SLEEP}
-        echo "FETCH-END ${{name%%-*}} $(date +%s.%N)"
+        name=${src##*/}
+        pn=${name%%-*}
+        overlap=0
+        echo "FETCH-BEGIN ${pn}"
+        if [[ -f ${sync}/fetch ]]; then
+            overlap=$(wait_markers "${sync}" fetch "${pn}")
+        fi
+        echo "FETCH-END ${pn} overlap=${overlap}"
         ;;
     esac
-    exec cp "${{src}}" "$1/$2"
+    exec cp "${src}" "$1/$2"
     """)
 
-FETCH_MARKER_RE = re.compile(r"FETCH-(BEGIN|END) (\w+) (\d+\.\d+)")
+FETCH_MARKER_RE = re.compile(r"FETCH-(BEGIN|END) (\w+)")
+FETCH_OVERLAP_RE = re.compile(r"FETCH-END \w+ overlap=1")
 
 
 class PkgPretendTestCase(TestCase):
@@ -124,6 +166,32 @@ class PkgPretendTestCase(TestCase):
         )
         output = proc.communicate()[0].decode("utf-8", "replace")
         return proc.returncode, output
+
+    def _sync(self, playground, pretend=None, fetch=None):
+        """
+        Reset the marker files in ${EPREFIX}/sync. Each of pretend and
+        fetch is a (count, timeout) tuple: each pkg_pretend phase or fetch
+        waits until count of them have started, or for timeout seconds.
+        With None, the phases or fetches do not wait.
+        """
+        sync = os.path.join(playground.settings["EPREFIX"], "sync")
+        shutil.rmtree(sync, ignore_errors=True)
+        os.mkdir(sync)
+        for name, config in (("pretend", pretend), ("fetch", fetch)):
+            if config is not None:
+                with open(os.path.join(sync, name), "w") as f:
+                    f.write("{} {}\n".format(*config))
+
+    def _assert_no_overlap(self, output, pns):
+        """
+        Assert that no pkg_pretend phase saw another one running.
+        """
+        overlaps = dict(OVERLAP_RE.findall(output))
+        self.assertEqual(
+            overlaps,
+            {pn: "0" for pn in pns},
+            "pkg_pretend phases were expected to be serial",
+        )
 
     def _parse_markers(self, output):
         """
@@ -210,16 +278,17 @@ class PkgPretendTestCase(TestCase):
         Assert that each package was fetched once, and that no two
         fetches overlapped.
         """
+        self.assertNotRegex(text, FETCH_OVERLAP_RE, "fetches overlap")
         markers = FETCH_MARKER_RE.findall(text)
         self.assertEqual(len(markers), 2 * len(pns), f"unexpected markers: {markers}")
         for i in range(0, len(markers), 2):
-            (begin, pn, _), (end, end_pn, _) = markers[i : i + 2]
+            (begin, pn), (end, end_pn) = markers[i : i + 2]
             self.assertEqual(
                 (begin, end, pn),
                 ("BEGIN", "END", end_pn),
                 f"fetches overlap: {markers}",
             )
-        self.assertEqual(sorted(pns), sorted(pn for _, pn, _ in markers[::2]))
+        self.assertEqual(sorted(pns), sorted(pn for _, pn in markers[::2]))
 
     def testParallelPkgPretend(self):
         """
@@ -235,6 +304,7 @@ class PkgPretendTestCase(TestCase):
         playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
         try:
             emerge_cmd, env = self._playground_env(playground)
+            self._sync(playground, pretend=(len(pns), BARRIER_TIMEOUT))
             returncode, output = self._run_emerge(
                 emerge_cmd,
                 env,
@@ -271,6 +341,7 @@ class PkgPretendTestCase(TestCase):
         playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
         try:
             emerge_cmd, env = self._playground_env(playground)
+            self._sync(playground, pretend=(len(pns), SERIAL_WINDOW))
             returncode, output = self._run_emerge(
                 emerge_cmd, env, tuple(f"dev-libs/{pn}" for pn in pns)
             )
@@ -281,16 +352,7 @@ class PkgPretendTestCase(TestCase):
             markers = self._parse_markers(output)
             self._assert_not_interleaved(markers, pns)
 
-            # Serial phases cannot share their sleeps, so the whole run
-            # takes at least one sleep per package.
-            begins = [ts for kind, _, ts in markers if kind == "BEGIN"]
-            ends = [ts for kind, _, ts in markers if kind == "END"]
-            elapsed = max(ends) - min(begins)
-            self.assertTrue(
-                elapsed >= len(pns) * PRETEND_SLEEP,
-                f"pkg_pretend phases were expected to be serial: "
-                f"elapsed={elapsed} begins={begins} ends={ends}",
-            )
+            self._assert_no_overlap(output, pns)
         finally:
             playground.cleanup()
 
@@ -310,6 +372,7 @@ class PkgPretendTestCase(TestCase):
         playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
         try:
             emerge_cmd, env = self._playground_env(playground)
+            self._sync(playground, pretend=(len(pns), SERIAL_WINDOW))
             returncode, output = self._run_emerge(
                 emerge_cmd,
                 env,
@@ -321,15 +384,7 @@ class PkgPretendTestCase(TestCase):
 
             markers = self._parse_markers(output)
             self._assert_not_interleaved(markers, pns)
-
-            begins = [ts for kind, _, ts in markers if kind == "BEGIN"]
-            ends = [ts for kind, _, ts in markers if kind == "END"]
-            elapsed = max(ends) - min(begins)
-            self.assertTrue(
-                elapsed >= len(pns) * PRETEND_SLEEP,
-                f"pkg_pretend phases were expected to be serial: "
-                f"elapsed={elapsed} begins={begins} ends={ends}",
-            )
+            self._assert_no_overlap(output, pns)
         finally:
             playground.cleanup()
 
@@ -347,6 +402,7 @@ class PkgPretendTestCase(TestCase):
         playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
         try:
             emerge_cmd, env = self._playground_env(playground)
+            self._sync(playground, pretend=(2, BARRIER_TIMEOUT))
             returncode, output = self._run_emerge(
                 emerge_cmd,
                 env,
@@ -379,6 +435,7 @@ class PkgPretendTestCase(TestCase):
         for features in ("-parallel-fetch", "parallel-fetch"):
             with self.subTest(features=features):
                 shutil.rmtree(pkgdir, ignore_errors=True)
+                self._sync(playground, fetch=(len(pns), SERIAL_WINDOW))
                 if os.path.exists(fetch_log):
                     os.unlink(fetch_log)
                 env["FEATURES"] = features
@@ -409,6 +466,7 @@ class PkgPretendTestCase(TestCase):
         # Without a writable fetch log, fetch output goes to the terminal.
         # Prefetchers write to the fetch log regardless, so disable them.
         shutil.rmtree(pkgdir)
+        self._sync(playground, fetch=(len(pns), SERIAL_WINDOW))
         os.chmod(fetch_log, 0o444)
         env["FEATURES"] = "-parallel-fetch"
         returncode, output = self._run_emerge(emerge_cmd, env, args)
@@ -422,13 +480,15 @@ class PkgPretendTestCase(TestCase):
         A failed fetch whose output is in the fetch log is reported on the
         terminal.
         """
-        playground, emerge_cmd, env = self._setup_binhost(("A", "B"))
+        pns = ("A", "B")
+        playground, emerge_cmd, env = self._setup_binhost(pns)
         eprefix = playground.settings["EPREFIX"]
         (binpkg,) = glob.glob(
             os.path.join(eprefix, "binhost", "**", "B-1-1.gpkg.tar"),
             recursive=True,
         )
         os.unlink(binpkg)
+        self._sync(playground, fetch=(len(pns), SERIAL_WINDOW))
 
         returncode, output = self._run_emerge(
             emerge_cmd,
