@@ -372,6 +372,17 @@ do_queue() {
 	)
 }
 
+# Print the path of every ELF object listed in NEEDED, one per line.
+list_needed_objects() {
+	local needed_entry
+
+	# NEEDED may not exist for some packages (bug #862606)
+	[[ -f ${PORTAGE_BUILDDIR}/build-info/NEEDED ]] || return 0
+	while IFS= read -r needed_entry ; do
+		printf '%s\n' "${D%/}${needed_entry% *}"
+	done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+}
+
 declare -A has_feature
 declare -A has_restriction
 
@@ -573,33 +584,25 @@ cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 # Since strip creates a new inode, we need to know the initial set of inodes in
 # advance, so that we can avoid interference due to trying to strip the same
 # (hardlinked) file multiple times in parallel. See bug #421099.
+estrip_files=()
 if (( do_prepstrip )); then
-	while IFS= read -r x; do
-		inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
-		echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
-	done < <(
-		# NEEDED may not exist for some packages (bug #862606)
-		if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
-			while IFS= read -r needed_entry ; do
-				needed_entry="${needed_entry% *}"
-				needed_contents+=( "${D%/}${needed_entry}" )
-			done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-		fi
-
-		# Use sort -u to eliminate duplicates (bug #445336).
-		(
-			if (( ${#needed_contents[@]} )); then
-				printf "%s\n" "${needed_contents[@]}"
-			fi
+	# Use sort -u to eliminate duplicates (bug #445336).
+	mapfile -t estrip_files < <(
+		{
+			list_needed_objects
 			printf '%s\0' "$@" | find0 -type f ! -type l -name '*.a'
-		) | LC_ALL=C sort -u
+		} | LC_ALL=C sort -u
 	)
 else
 	while IFS= read -d '' -r x ; do
-		inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
-		echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
+		estrip_files+=( "${x%.estrip}" )
 	done < <(printf '%s\0' "${ED}" | find0 -name '*.estrip' -delete -print0)
 fi
+
+for x in "${estrip_files[@]}"; do
+	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
+	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
+done
 
 # Now we look for unstripped binaries.
 read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
