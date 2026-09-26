@@ -2230,6 +2230,9 @@ class Scheduler(PollScheduler):
         return True
 
     def _schedule_tasks(self):
+        if self._terminated.is_set():
+            self._merge_wait_queue.clear()
+
         while True:
             state_change = 0
 
