@@ -297,37 +297,6 @@ else
 	}
 fi
 
-if hash getfattr 2>/dev/null; then
-	dump_xattrs() {
-		getfattr -d -m - --absolute-names "$1"
-	}
-else
-	dump_xattrs() {
-		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" \
-		"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
-	}
-fi
-
-if hash setfattr 2>/dev/null; then
-	# The --physical option is supported by >=sys-apps/attr-2.6.0.
-	if setfattr --help | grep -q -- --physical; then
-		restore_xattrs() {
-			setfattr -h -P --restore=-
-		}
-	else
-		restore_xattrs() {
-			setfattr -h --restore=-
-		}
-	fi
-else
-	restore_xattrs() {
-		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" \
-		"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
-	}
-fi
-
 do_ignore() {
 	local -a skip_dirs
 	local skip
@@ -462,6 +431,39 @@ set -- "${ED}"
 
 [[ ${KERNEL} == linux ]] && (( has_feature[xattr] ))
 do_preserve_xattr=$(( $? == 0 ))
+
+if (( do_preserve_xattr )); then
+	if hash getfattr 2>/dev/null; then
+		dump_xattrs() {
+			getfattr -d -m - --absolute-names "$1"
+		}
+	else
+		dump_xattrs() {
+			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
+		}
+	fi
+
+	if hash setfattr 2>/dev/null; then
+		# The --physical option is supported by >=sys-apps/attr-2.6.0.
+		if setfattr --help | grep -q -- --physical; then
+			restore_xattrs() {
+				setfattr -h -P --restore=-
+			}
+		else
+			restore_xattrs() {
+				setfattr -h --restore=-
+			}
+		fi
+	else
+		restore_xattrs() {
+			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
+		}
+	fi
+fi
 
 # Determine the names of the tools that might subsequently be used. For several
 # of these, their ${CHOST}-prefixed variants are preferred, if found to exist.
