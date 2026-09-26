@@ -192,6 +192,7 @@ _BASELINE_COMMAND_SEQUENCE = [
     "emerge --check-news",
     "emerge --regen/--metadata",
     "misc package operations",
+    "misc operations with eprefix",
     "binhost emerge",
 ]
 
@@ -751,6 +752,15 @@ def _generate_all_baseline_commands(playground, binhost):
     test_commands["misc package operations"] = PortageCommandSequence(*abcd_seq)
 
     cross_prefix_seq = [
+        # Unmask dev-libs/C and dev-libs/D, and build binpkgs of dev-libs/A
+        # and dev-libs/B for --usepkgonly below.
+        Emerge(
+            "--autounmask",
+            "--autounmask-continue",
+            "dev-libs/C",
+            env_mod={"EMERGE_DEFAULT_OPTS": "--autounmask=n"},
+        ),
+        Emerge("-B", "dev-libs/A", "dev-libs/B"),
         # Test cross-prefix usage, including chpathtool for binpkgs.
         # EAPI 7
         Emerge("dev-libs/C", env_mod={"EPREFIX": cross_prefix}),
