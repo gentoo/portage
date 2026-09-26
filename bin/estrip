@@ -389,7 +389,12 @@ if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
 fi
 
-if (( ! has_restriction[strip] && ! has_feature[nostrip] )); then
+# With dostrip, RESTRICT=strip only empties the initial list of paths (see
+# phase-helpers.sh); paths passed to dostrip are still stripped (bug #697960).
+___eapi_has_dostrip || (( ! has_restriction[strip] ))
+may_strip=$(( $? == 0 && ! has_feature[nostrip] ))
+
+if (( may_strip )); then
 	do_banner=1
 	do_skip=0
 elif (( ! has_feature[installsources] )); then
