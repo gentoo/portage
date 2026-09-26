@@ -315,12 +315,13 @@ do_ignore() {
 }
 
 do_queue() {
-	local needed_entry{,_file} {,find_}path
-	local -a find_paths scanelf_results
+	local needed_entry{,_file} path
+	local -a find_paths needed_paths scanelf_results
 
 	for path; do
 		if [[ -e ${ED%/}/${path#/} ]]; then
 			find_paths+=( "${ED%/}/${path#/}" )
+			needed_paths+=( "${find_paths[-1]#"${D%/}"}" )
 		fi
 	done
 
@@ -342,18 +343,19 @@ do_queue() {
 		# The arguments may not be exact files (probably aren't), but search paths/directories
 		# which should then be searched recursively.
 		while IFS= read -r needed_entry ; do
-			for find_path in "${find_paths[@]}" ; do
+			for path in "${needed_paths[@]}" ; do
 				# NEEDED has a bunch of entries like:
 				# /usr/lib64/libfoo.so libc.so
 				#
-				# find_path entries may be exact paths (like /usr/lib64/libfoo.so)
-				# or instead /usr/lib64, or ${ED}/usr, etc.
+				# path may be an exact file (like /usr/lib64/libfoo.so)
+				# or a directory (like /usr/lib64 or /usr).
 				#
-				# We check if the beginning (i.e. first entry) of the NEEDED line
-				# matches the path given
-				# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
+				# We check if the first entry of the NEEDED line is the path
+				# given or a file under it
+				# e.g. path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so",
+				# but not needed_entry="/usr/lib64-foo/libbar.so libc.so".
 				needed_entry_file="${needed_entry% *}"
-				if [[ ${needed_entry_file} == "${find_path#"${D}"}"* ]]; then
+				if [[ ${needed_entry_file}/ == "${path%/}/"* ]]; then
 					scanelf_results+=( "${D}${needed_entry_file}" )
 				fi
 			done
