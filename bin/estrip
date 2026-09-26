@@ -594,9 +594,20 @@ if (( do_prepstrip )); then
 		} | LC_ALL=C sort -u
 	)
 else
+	declare -A queued
 	while IFS= read -d '' -r x ; do
+		queued[${x%.estrip}]=1
 		estrip_files+=( "${x%.estrip}" )
 	done < <(printf '%s\0' "${ED}" | find0 -name '*.estrip' -delete -print0)
+
+	# Also process the objects that are not to be stripped, so that their
+	# sources are installed, as STRIP_MASK allows in EAPIs without dostrip
+	# (bug #799260).
+	if (( has_feature[installsources] && ! has_restriction[installsources] )); then
+		while IFS= read -r x; do
+			[[ ${queued[${x}]} ]] || estrip_files+=( "${x}" )
+		done < <(list_needed_objects)
+	fi
 fi
 
 for x in "${estrip_files[@]}"; do
@@ -623,7 +634,7 @@ for inode_link in *; do
 		if (( do_skip )); then
 			do_strip=0
 		elif (( ! do_prepstrip )); then
-			do_strip=1
+			do_strip=${queued[${x}]:-0}
 		else
 			do_strip=1
 			while IFS= read -rd '' glob; do
