@@ -389,7 +389,12 @@ if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
 fi
 
-if (( ! has_restriction[strip] && ! has_feature[nostrip] )); then
+# With dostrip, RESTRICT=strip only empties the initial list of paths (see
+# phase-helpers.sh); paths passed to dostrip are still stripped (bug #697960).
+___eapi_has_dostrip || (( ! has_restriction[strip] ))
+may_strip=$(( $? == 0 && ! has_feature[nostrip] ))
+
+if (( may_strip )); then
 	do_banner=1
 	do_skip=0
 elif (( ! has_feature[installsources] )); then
@@ -528,8 +533,9 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
-# They prevent us from getting the splitdebug data.
-if (( ! has_restriction[binchecks] )); then
+# They prevent us from getting the splitdebug data. Skip this with
+# RESTRICT=strip, which asks for no stripping in the first place.
+if (( ! has_restriction[binchecks] && ! has_restriction[strip] )); then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
