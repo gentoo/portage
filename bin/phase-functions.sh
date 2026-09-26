@@ -87,7 +87,8 @@ portage_mutable_filtered_vars=( AA HOSTNAME )
 # is to preserve various variables as they were at the time that the binary
 # package was built while protecting against the application of package renames.
 __filter_readonly_variables() {
-	local -a filtered_vars bash_vars qemu_env qemu_vars
+	local -a filtered_vars bash_vars qemu_env
+	local -A excluded_vars=( [PATH]=1 [SHELL]=1 )
 	local IFS x
 
 	# Preserve QEMU vars for qemu-static. Exclude them from the reported
@@ -95,16 +96,20 @@ __filter_readonly_variables() {
 	# and filtered out. See bug #978685.
 	for x in ${!QEMU_@}; do
 		qemu_env+=( "${x}=${!x}" )
-		qemu_vars+=( -e "${x}" )
+		excluded_vars[${x}]=1
 	done
 
 	# Collect an initial list of special bash variables by instructing a
 	# hygienic instance of bash(1) to report them.
 	mapfile -t bash_vars < <(
 		# Like compgen -A variable but doesn't require readline support.
-		env -i -- "${qemu_env[@]}" "${BASH}" -c "printf %s\\\n $(printf '${!%s*} ' {A..Z} {a..z} _)" \
-		| grep -vx -e PATH -e SHELL "${qemu_vars[@]}"
+		env -i -- "${qemu_env[@]}" "${BASH}" -c '
+			printf -v p "\${!%s*} " {A..Z} {a..z} _
+			eval "unset p; printf %s\\\\n ${p}"'
 	)
+	for x in "${!bash_vars[@]}"; do
+		[[ -n ${bash_vars[x]} && ${excluded_vars[${bash_vars[x]}]} ]] && unset "bash_vars[x]"
+	done
 	# Incorporate other variables that are known to either be set by or be
 	# able to influence bash. This list was last updated for bash-5.3.
 	# EMACS is omitted, so as not to break the "elisp-common" eclass.
@@ -736,7 +741,10 @@ __dyn_install() {
 		QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE \
 		PKG_INSTALL_MASK; do
 
-		x=$(echo -n ${!f})
+		# Collapse whitespace into single spaces.
+		# shellcheck disable=SC2086
+		printf -v x '%s ' ${!f}
+		x=${x% }
 		[[ -n ${x} ]] && echo "${x}" > ${f}
 	done
 	# whitespace preserved
@@ -841,11 +849,14 @@ __dyn_help() {
 }
 
 # @FUNCTION: __ebuild_arg_to_phase
+# @USAGE: <arg> [variable]
 # @DESCRIPTION:
 # Translate a known ebuild(1) argument into the precise
-# name of it's corresponding ebuild phase.
+# name of it's corresponding ebuild phase. Print it, or assign it to the
+# named variable, which avoids a subshell. That variable must not be
+# named arg or phase_func, which are local here.
 __ebuild_arg_to_phase() {
-	[[ $# -ne 1 ]] && die "expected exactly 1 arg, got $#: $*"
+	[[ $# -ne 1 && $# -ne 2 ]] && die "expected 1 or 2 args, got $#: $*"
 	local arg=$1
 	local phase_func=""
 
@@ -894,8 +905,11 @@ __ebuild_arg_to_phase() {
 			;;
 	esac
 
+	if [[ $# -eq 2 ]]; then
+		printf -v "$2" '%s' "${phase_func}"
+	fi
 	[[ -z ${phase_func} ]] && return 1
-	echo "${phase_func}"
+	[[ $# -eq 1 ]] && echo "${phase_func}"
 	return 0
 }
 
@@ -1052,7 +1066,8 @@ __ebuild_main() {
 		export CCACHE_DISABLE=1
 	fi
 
-	local ___phase_func=$(__ebuild_arg_to_phase "${EBUILD_PHASE}")
+	local ___phase_func
+	__ebuild_arg_to_phase "${EBUILD_PHASE}" ___phase_func
 	[[ -n ${___phase_func} ]] && __ebuild_phase_funcs "${EAPI}" "${___phase_func}"
 
 	__source_all_bashrcs

@@ -513,7 +513,19 @@ fi
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	# shellcheck disable=SC2086
 	for BIN in ${QA_INTERCEPTORS}; do
-		if ! BIN_PATH=$(type -P -- "${BIN}"); then
+		# Equivalent to BIN_PATH=$(type -P -- "${BIN}"), but without
+		# forking a subshell for each interceptor.
+		BIN_PATH=
+		PATH_REST=${PATH}:
+		while [[ -n ${PATH_REST} ]]; do
+			PATH_DIR=${PATH_REST%%:*}
+			PATH_REST=${PATH_REST#*:}
+			if [[ -f ${PATH_DIR:-.}/${BIN} && -x ${PATH_DIR:-.}/${BIN} ]]; then
+				BIN_PATH=${PATH_DIR:-.}/${BIN}
+				break
+			fi
+		done
+		if [[ -z ${BIN_PATH} ]]; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
@@ -555,7 +567,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 		fi
 		eval "${FUNC_SRC}" || echo "error creating QA interceptor ${BIN}" >&2
 	done
-	unset BIN_PATH BIN BODY FUNC_SRC
+	unset BIN_PATH BIN BODY FUNC_SRC PATH_DIR PATH_REST
 fi
 
 # Subshell/helper die support (must export for the die helper).
@@ -586,22 +598,24 @@ then
 	export SANDBOX_ON=0
 	declare -A seen
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE; do
-		{
-			export "${x}="
-			seen=()
-			i=0
-			while IFS= read -rd : path; do
-				if [[ ${path} && ! ${seen[$path]} ]]; then
-					(( i++ > 0 )) && eval "${x}+=:"
-					eval "${x}+=${path@Q}"
-					seen[$path]=1
-				fi
-			done
-		} < <(y="PORTAGE_${x}"; printf '%s:%s:' "${!y}" "${!x}")
+		___y="PORTAGE_${x}"
+		___rest="${!___y}:${!x}:"
+		export "${x}="
+		seen=()
+		i=0
+		while [[ -n ${___rest} ]]; do
+			path=${___rest%%:*}
+			___rest=${___rest#*:}
+			if [[ ${path} && ! ${seen[$path]} ]]; then
+				(( i++ > 0 )) && eval "${x}+=:"
+				eval "${x}+=${path@Q}"
+				seen[$path]=1
+			fi
+		done
 		unset "PORTAGE_${x}"
 	done
 
-	unset path seen i x
+	unset path seen i x ___rest ___y
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
 	[[ -n ${EAPI} ]] || EAPI=0

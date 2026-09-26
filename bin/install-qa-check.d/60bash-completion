@@ -4,13 +4,14 @@
 
 bashcomp_check() {
 	# Check for correct bash-completion install path.
-	local syscompdir=$(pkg-config --variable=completionsdir bash-completion 2>/dev/null)
-	: ${syscompdir:=${EPREFIX}/usr/share/bash-completion/completions}
-
-	local instcompdir
+	local instcompdir syscompdir
 	if [[ -d ${ED}/usr/share/bash-completion/completions ]]; then
 		instcompdir=${ED}/usr/share/bash-completion/completions
 	elif [[ -d ${ED}/usr/share/bash-completion ]]; then
+		# Only query pkg-config when it matters, since it is slow.
+		syscompdir=$(pkg-config --variable=completionsdir bash-completion 2>/dev/null)
+		: ${syscompdir:=${EPREFIX}/usr/share/bash-completion/completions}
+
 		if [[ ${syscompdir} != ${EPREFIX}/usr/share/bash-completion ]]; then
 			eqawarn "QA Notice: Bash completions were installed in legacy location. Please update"
 			eqawarn "the ebuild to get the install paths using bash-completion-r1.eclass."
