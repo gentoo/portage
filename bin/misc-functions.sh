@@ -203,6 +203,20 @@ install_qa_check() {
 		esac
 
 		if [[ -n ${scanelf_output} ]]; then
+			local -a no_soname
+			local -A shared_object
+			local desc
+
+			# Find which objects lacking a DT_SONAME are shared libraries.
+			while IFS=';' read -r _ obj soname _; do
+				[[ -z ${soname} ]] && no_soname+=( "${D%/}/${obj}" )
+			done <<< "${scanelf_output}"
+			if (( ${#no_soname[@]} )); then
+				while IFS= read -r -d '' f && IFS= read -r desc; do
+					[[ ${desc} == *"SB shared object"* ]] && shared_object[${f}]=1
+				done < <(printf '%s\n' "${no_soname[@]}" | file -S -r -0 -f -)
+			fi
+
 			while IFS= read -r l; do
 				arch=${l%%;*}; l=${l#*;}
 				obj="/${l%%;*}"; l=${l#*;}
@@ -211,7 +225,7 @@ install_qa_check() {
 				needed=${l%%;*}; l=${l#*;}
 
 				# Infer implicit soname from basename (bug 715162).
-				if [[ -z ${soname} && $(file -S "${D%/}${obj}") == *"SB shared object"* ]]; then
+				if [[ -z ${soname} && ${shared_object[${D%/}${obj}]} ]]; then
 					soname=${obj##*/}
 				fi
 
