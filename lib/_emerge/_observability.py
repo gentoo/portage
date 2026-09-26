@@ -40,7 +40,12 @@ from portage.util.human_readable import bytes_to_human
 
 from _emerge.PackageMerge import PackageMerge as _PackageMerge
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
+
+
+def _pkg_key(cpv, root=None):
+    """Return a cache key tuple (cpv, root) for a package."""
+    return (str(cpv), root if root is not None else "/")
 
 
 def _task_pkg(task):
@@ -97,6 +102,67 @@ class _BuildTimes:
         return now - self.start
 
 
+# Note: portage.const.EBUILD_PHASES also defines ebuild phases in rough
+# lifecycle order. However, _PHASE_LIFECYCLE_ORDER is maintained separately
+# because observability tracks scheduler states and fallback task kinds
+# ("merge-wait", "build", "merge") as well as clean phases ("clean",
+# "cleanrm") that are not in EBUILD_PHASES, and places "nofetch" before
+# "unpack" rather than after "postrm".
+_PHASE_LIFECYCLE_ORDER = (
+    # Pre-build / early setup
+    "build",
+    "pretend",
+    "clean",
+    "setup",
+    "nofetch",
+    # Build & compilation
+    "unpack",
+    "prepare",
+    "configure",
+    "compile",
+    "test",
+    "install",
+    "instprep",
+    # Packaging
+    "package",
+    # Merge queue transition
+    "merge-wait",
+    # Merge & live filesystem installation
+    "merge",
+    "preinst",
+    "postinst",
+    # Unmerge / replacement cleanup
+    "prerm",
+    "postrm",
+    "cleanrm",
+    # Maintenance & misc
+    "config",
+    "info",
+)
+_PHASE_RANKS = {phase: idx for idx, phase in enumerate(_PHASE_LIFECYCLE_ORDER)}
+_DEFAULT_PHASE_RANK = len(_PHASE_LIFECYCLE_ORDER)
+
+
+def _task_phase(task):
+    """Return the effective phase or kind string for a task."""
+    return task.get("phase") or task.get("kind") or "-"
+
+
+def _task_phase_sort_key(task):
+    phase = _task_phase(task)
+    rank = _PHASE_RANKS.get(phase, _DEFAULT_PHASE_RANK)
+    phase_start = task.get("phase_start_time")
+    if phase_start is None:
+        phase_start = task.get("start_time")
+    return (
+        rank,
+        phase_start is None,
+        phase_start or 0,
+        task.get("cpv") or "",
+        task.get("root") or "",
+    )
+
+
 def build_snapshot(monitor):
     """Serialize the scheduler's current state into a plain dict."""
     scheduler = monitor._scheduler
@@ -113,12 +179,14 @@ def build_snapshot(monitor):
         # PackageMerge installs an already-built package; everything else
         # represents an in-progress build/extract.
         cpv = str(pkg.cpv)
+        root = getattr(pkg, "root", None)
+        key = _pkg_key(cpv, root)
         kind = "merge" if isinstance(task, _PackageMerge) else "build"
         waiting = id(task) in merge_wait_ids
 
         # Prefer the build's own start/finish times (continuous across the
         # build -> merge hand-off) over the per-task start time.
-        times = monitor._build_times.get(cpv)
+        times = monitor._build_times.get(key)
         if times is not None:
             start, build_finished = times.start, times.finished
             frozen_res = times.resources
@@ -141,6 +209,13 @@ def build_snapshot(monitor):
         else:
             elapsed = None
 
+        # When waiting to merge, the task entered merge-wait exactly when its
+        # build finished.
+        if waiting and build_finished is not None:
+            phase_start = build_finished
+        else:
+            phase_start = monitor._phase_start.get(key, start)
+
         entry = {
             "cpv": cpv,
             "category": pkg.category,
@@ -149,10 +224,11 @@ def build_snapshot(monitor):
             "operation": getattr(pkg, "operation", None),
             "binary": bool(getattr(pkg, "built", False)),
             "kind": kind,
-            "phase": "merge-wait" if waiting else monitor._phases.get(cpv),
+            "phase": "merge-wait" if waiting else monitor._phases.get(key),
             "merge_wait": waiting,
             "pid": _task_pid(task),
             "start_time": start,
+            "phase_start_time": phase_start,
             "elapsed": elapsed,
             "build_elapsed": build_elapsed,
         }
@@ -164,7 +240,7 @@ def build_snapshot(monitor):
                 entry["resources"] = res
         tasks.append(entry)
 
-    tasks.sort(key=lambda t: (t["start_time"] is None, t["start_time"] or 0))
+    tasks.sort(key=_task_phase_sort_key)
 
     display = scheduler._status_display
     return {
@@ -377,7 +453,7 @@ def format_snapshots(snapshots):
         for task in snapshot.get("tasks", []):
             elapsed = task.get("elapsed")
             elapsed_str = f"{max(0, int(elapsed))}s" if elapsed is not None else "-"
-            phase = task.get("phase") or task.get("kind") or "-"
+            phase = _task_phase(task)
             line = f"  {task.get('cpv', '?'):<45} {phase:<10} {elapsed_str:>7}"
 
             rendered = format_resources(
@@ -456,10 +532,11 @@ class ObservabilityMonitor:
 
         self.enabled = "observability" in settings.features
 
-        # id(task) -> epoch start time; str(cpv) -> current phase name.
+        # id(task) -> epoch start time; (cpv, root) -> current phase name.
         self._task_start = {}
         self._phases = {}
-        # str(cpv) -> _BuildTimes
+        self._phase_start = {}
+        # (cpv, root) -> _BuildTimes
         self._build_times = {}
 
         self._status_path = None
@@ -484,30 +561,34 @@ class ObservabilityMonitor:
 
     def note_task_started(self, task):
         now = time.time()
+        pkg = _task_pkg(task)
+        key = _pkg_key(pkg.cpv, getattr(pkg, "root", None)) if pkg is not None else None
         if self.enabled:
             self._task_start[id(task)] = now
+            if key is not None:
+                self._phase_start[key] = now
         # Build timing is recorded either way: FEATURES="cgroup" reports a
         # build's average parallelism from it.
         if not isinstance(task, _PackageMerge):
-            pkg = _task_pkg(task)
-            if pkg is not None:
-                self._build_times[str(pkg.cpv)] = _BuildTimes(now)
+            if key is not None:
+                self._build_times[key] = _BuildTimes(now)
 
     def note_task_finished(self, task):
         self._task_start.pop(id(task), None)
         pkg = _task_pkg(task)
         if pkg is None:
             return
-        cpv = str(pkg.cpv)
+        key = _pkg_key(pkg.cpv, getattr(pkg, "root", None))
+        self._phases.pop(key, None)
         if isinstance(task, _PackageMerge):
-            self._phases.pop(cpv, None)
-            self._build_times.pop(cpv, None)
+            self._phase_start.pop(key, None)
+            self._build_times.pop(key, None)
         else:
-            times = self._build_times.get(cpv)
+            times = self._build_times.get(key)
             if times is not None:
                 times.finished = time.time()
 
-    def note_build_resources(self, cpv, stats):
+    def note_build_resources(self, cpv, stats, root=None):
         """Keep the final cgroup counters for the build of cpv, and return them.
 
         Called just before the cgroup is destroyed, so that a package that
@@ -516,18 +597,18 @@ class ObservabilityMonitor:
         gets back what it is worth reporting from here on.
         """
         resources = freeze_resources(stats)
-        times = self._build_times.get(str(cpv))
+        times = self._build_times.get(_pkg_key(cpv, root))
         if times is not None:
             times.resources = resources
         return resources
 
-    def build_elapsed(self, cpv):
+    def build_elapsed(self, cpv, root=None):
         """Wall-clock duration of the build of cpv, or None if unknown.
 
         Frozen once the build finishes, so callers reporting on a package
         that has moved on to merging still see the build's own duration.
         """
-        times = self._build_times.get(str(cpv))
+        times = self._build_times.get(_pkg_key(cpv, root))
         if times is None:
             return None
         return times.elapsed(time.time())
@@ -542,14 +623,17 @@ class ObservabilityMonitor:
         """
         pkg = _task_pkg(task)
         if pkg is not None:
-            cpv = str(pkg.cpv)
-            self._build_times.pop(cpv, None)
-            self._phases.pop(cpv, None)
+            key = _pkg_key(pkg.cpv, getattr(pkg, "root", None))
+            self._build_times.pop(key, None)
+            self._phases.pop(key, None)
+            self._phase_start.pop(key, None)
 
-    def note_phase(self, cpv, phase):
+    def note_phase(self, cpv, phase, root=None):
         if not self.enabled:
             return
-        self._phases[str(cpv)] = phase
+        key = _pkg_key(cpv, root)
+        self._phases[key] = phase
+        self._phase_start[key] = time.time()
         self.update()
 
     def update(self, force=False):
