@@ -36,9 +36,8 @@ install_qa_check_prefix() {
 	# check shebangs, bug #282539
 	rm -f "${T}"/non-prefix-shebangs-errs
 	local WHITELIST=" /usr/bin/env "
-	# this is hell expensive, but how else?
 	find "${ED}" -executable \! -type d -print0 \
-			| xargs -0 grep -H -n -m1 "^#!" \
+			| xargs -0 grep -I -H -n -m1 "^#!" \
 			| while read f ;
 	do
 		local fn=${f%%:*}
