@@ -9,6 +9,7 @@ py.install_sources(
         'test_gpkg_path.py',
         'test_gpkg_size.py',
         'test_gpkg_stream.py',
+        'test_gpkg_swapped.py',
         '__init__.py',
         '__test__.py',
     ],
