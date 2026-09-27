@@ -1,9 +1,9 @@
 [![CI](https://github.com/gentoo/portage/actions/workflows/ci.yml/badge.svg)](https://github.com/gentoo/portage/actions/workflows/ci.yml)
 
-About Portage
+About Comp
 =============
 
-Portage is a package management system based on ports collections. The
+Comp is a package management system based on ports collections. The
 Package Manager Specification Project (PMS) standardises and documents
 the behaviour of Portage so that ebuild repositories can be used by
 other package managers.

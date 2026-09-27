@@ -1,7 +1,7 @@
 [project]
 name = 'portage'
 dynamic = ['version']
-description = 'Portage is the package management and distribution system for Gentoo'
+description = 'Comp is a package management and distribution system for Gentoo'
 readme = 'README.md'
 requires-python = '>=3.9'
 license = {file = "LICENSE"}
