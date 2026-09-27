@@ -80,6 +80,13 @@ class LinkageMapELF:
         self._obj_key_cache = {}
         self._defpath = set()
         self._path_key_cache = {}
+        # cpv -> (COUNTER, mtime) the map was built from, or None when it
+        # cannot be updated in place. See rebuild().
+        self._indexed_pkgs = None
+        # cpv -> the object keys it contributed.
+        self._owner_objs = {}
+        # Set by _invalidate(): queries must rebuild() first.
+        self._stale = False
 
     def _clear_cache(self):
         self._libs.clear()
@@ -87,6 +94,58 @@ class LinkageMapELF:
         self._obj_key_cache.clear()
         self._defpath.clear()
         self._path_key_cache.clear()
+        self._indexed_pkgs = None
+        self._owner_objs.clear()
+        self._stale = False
+
+    def _invalidate(self):
+        """
+        Make the next query rebuild the map, which can then drop removed
+        packages in place instead of rescanning.
+        """
+        if self._indexed_pkgs is None:
+            self._clear_cache()
+        else:
+            self._stale = True
+
+    def _remove_pkgs(self, cpvs):
+        """
+        Drop the objects owned by the given packages from the map.
+        """
+        libs = self._libs
+        obj_properties = self._obj_properties
+
+        obj_key_cache = self._obj_key_cache
+        path_key_cache = self._path_key_cache
+
+        for cpv in cpvs:
+            for obj_key in self._owner_objs.pop(cpv, ()):
+                props = obj_properties.pop(obj_key, None)
+                if props is None:
+                    continue
+                # The removed files are gone; forget their identities.
+                for path in props.alt_paths:
+                    obj_key_cache.pop(path, None)
+                    path_key_cache.pop(path, None)
+                arch_map = libs.get(props.arch)
+                if arch_map is None:
+                    continue
+                if props.soname:
+                    self._drop_obj_key(arch_map, props.soname, obj_key, "providers")
+                for soname in props.needed:
+                    self._drop_obj_key(arch_map, soname, obj_key, "consumers")
+
+    @staticmethod
+    def _drop_obj_key(arch_map, soname, obj_key, attr):
+        soname_map = arch_map.get(soname)
+        if soname_map is None:
+            return
+        current = getattr(soname_map, attr)
+        if obj_key not in current:
+            return
+        setattr(soname_map, attr, tuple(x for x in current if x != obj_key))
+        if not soname_map.providers and not soname_map.consumers:
+            del arch_map[soname]
 
     def _path_key(self, path):
         key = self._path_key_cache.get(path)
@@ -200,10 +259,43 @@ class LinkageMapELF:
 
         root = self._root
         root_len = len(root) - 1
-        self._clear_cache()
-        self._defpath.update(
+        self._stale = False
+
+        # If packages were only removed since the last build, drop their
+        # objects instead of rescanning. That requires a map built from the
+        # installed set alone: none of these arguments, and no preserved
+        # libraries, which an unmerge can register after the map was built.
+        plain_rebuild = (
+            exclude_pkgs is None
+            and include_file is None
+            and preserve_paths is None
+            and not (
+                self._dbapi._plib_registry and self._dbapi._plib_registry.hasEntries()
+            )
+        )
+
+        defpath = set(
             getlibpaths(self._dbapi.settings["EROOT"], env=self._dbapi.settings)
         )
+        # Sample before the scan reads NEEDED.ELF.2, so a package rewritten
+        # during the scan forces the next rebuild to be a full one.
+        identities = None
+        if plain_rebuild:
+            identities = self._dbapi._pkg_identities()
+            indexed = self._indexed_pkgs
+            if (
+                indexed is not None
+                and defpath == self._defpath
+                and all(
+                    indexed.get(cpv) == identity for cpv, identity in identities.items()
+                )
+            ):
+                self._remove_pkgs([cpv for cpv in indexed if cpv not in identities])
+                self._indexed_pkgs = identities
+                return
+
+        self._clear_cache()
+        self._defpath.update(defpath)
         libs = self._libs
         obj_properties = self._obj_properties
 
@@ -337,6 +429,8 @@ class LinkageMapELF:
         # in order to conserve memory.
         frozensets = {}
         owner_entries = collections.defaultdict(list)
+        owner_objs = {}
+        shared_objs = False
 
         while True:
             try:
@@ -436,6 +530,11 @@ class LinkageMapELF:
                     arch, needed, path, soname, [], owner
                 )
                 obj_properties[obj_key] = myprops
+                if owner is not None:
+                    owner_objs.setdefault(owner, []).append(obj_key)
+            elif myprops.owner != owner:
+                # Claimed by several packages; removal is not just a drop.
+                shared_objs = True
             # All object paths are added into the obj_properties tuple.
             myprops.alt_paths.append(obj)
 
@@ -467,6 +566,10 @@ class LinkageMapELF:
             for soname_node in sonames.values():
                 soname_node.providers = tuple(set(soname_node.providers))
                 soname_node.consumers = tuple(set(soname_node.consumers))
+
+        if plain_rebuild and not shared_objs:
+            self._owner_objs = owner_objs
+            self._indexed_pkgs = identities
 
     def listBrokenBinaries(self, debug=False):
         """
@@ -650,7 +753,7 @@ class LinkageMapELF:
 
         """
         rValue = {}
-        if not self._libs:
+        if not self._libs or self._stale:
             self.rebuild()
         # Iterate over all object keys within LinkageMap.
         for obj_key in self._obj_properties:
@@ -700,7 +803,7 @@ class LinkageMapELF:
 
         """
         rValue = []
-        if not self._libs:
+        if not self._libs or self._stale:
             self.rebuild()
         for arch_map in self._libs.values():
             for soname_map in arch_map.values():
@@ -724,7 +827,7 @@ class LinkageMapELF:
         @rtype: tuple
         @return: a tuple of cpv
         """
-        if not self._libs:
+        if not self._libs or self._stale:
             self.rebuild()
         if isinstance(obj, self._ObjectKey):
             obj_key = obj
@@ -749,7 +852,7 @@ class LinkageMapELF:
         @return: soname as a string
 
         """
-        if not self._libs:
+        if not self._libs or self._stale:
             self.rebuild()
         if isinstance(obj, self._ObjectKey):
             obj_key = obj
@@ -783,7 +886,7 @@ class LinkageMapELF:
 
         rValue = {}
 
-        if not self._libs:
+        if not self._libs or self._stale:
             self.rebuild()
 
         # Determine the obj_key from the arguments.
@@ -860,7 +963,7 @@ class LinkageMapELF:
 
         """
 
-        if not self._libs:
+        if not self._libs or self._stale:
             self.rebuild()
 
         # Determine the obj_key and the set of objects matching the arguments.

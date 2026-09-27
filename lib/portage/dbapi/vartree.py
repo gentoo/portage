@@ -6430,11 +6430,8 @@ def unmerge(
             return retval
         return os.EX_OK
     finally:
-        if vartree.dbapi._linkmap is None:
-            # preserve-libs is entirely disabled
-            pass
-        else:
-            vartree.dbapi._linkmap._clear_cache()
+        if vartree.dbapi._linkmap is not None:
+            vartree.dbapi._linkmap._invalidate()
         if not parallel_install:
             mylink.unlockdb()
 
