@@ -697,7 +697,7 @@ class _dynamic_depgraph_config:
         self._flatten_atoms_cache = {}
         self._changed_deps_pkgs = {}
 
-        # Binary packages that have been rejected because their USE
+        # Binary packages that have been rejected because they
         # didn't match the user's config. It maps packages to a set
         # of flags causing the rejection.
         self.ignored_binaries = {}
@@ -1330,7 +1330,7 @@ class depgraph:
 
     def _show_ignored_binaries(self):
         """
-        Show binaries that have been ignored because their USE didn't
+        Show binaries that have been ignored because they didn't
         match the user's config.
         """
         if (
@@ -1342,10 +1342,16 @@ class depgraph:
         self._eliminate_ignored_binaries()
 
         ignored_binaries = {}
+        displayed_cp = (
+            [pkg.cp for pkg in self._dynamic_config._serialized_tasks_cache]
+            if self._dynamic_config._serialized_tasks_cache
+            else None
+        )
 
         for pkg in self._dynamic_config.ignored_binaries:
             for reason, info in self._dynamic_config.ignored_binaries[pkg].items():
-                ignored_binaries.setdefault(reason, {})[pkg] = info
+                if displayed_cp is None or pkg.cp in displayed_cp:
+                    ignored_binaries.setdefault(reason, {})[pkg] = info
 
         if self._dynamic_config.myparams.get("binpkg_respect_use") in ("y", "n"):
             ignored_binaries.pop("respect_use", None)
