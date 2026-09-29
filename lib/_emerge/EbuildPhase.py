@@ -255,13 +255,17 @@ class EbuildPhase(CompositeTask):
             self.wait()
             return
 
-        if self.phase in ("pretend", "prerm"):
+        if self.phase in ("pretend", "prerm", "postrm"):
             env_extractor = BinpkgEnvExtractor(
                 background=self.background,
                 scheduler=self.scheduler,
                 settings=self.settings,
             )
-            if env_extractor.saved_env_exists():
+            # PMS requires postrm to see what pkg_prerm set, so extract only
+            # when prerm left no ${T}/environment behind.
+            if env_extractor.saved_env_exists() and (
+                self.phase != "postrm" or not env_extractor.dest_env_exists()
+            ):
                 self._start_task(env_extractor, self._env_extractor_exit)
                 return
             # If the environment.bz2 doesn't exist, then ebuild.sh will
