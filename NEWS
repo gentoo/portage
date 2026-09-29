@@ -37,6 +37,9 @@ Breaking changes:
 * XARGS is no longer exported to the ebuild environment. Its value was
   invariably equivalent to "xargs -r".
 
+* config: repos.conf: Drop the 'priority' setting as controlling which
+  repository wins when package versions are equal is not useful. (bug #983159)
+
 Features:
 
 * emerge: Solve a circular dependency with an autounmask USE change when the
@@ -121,10 +124,6 @@ Features:
 * config: repos.conf: Add 'package-priority' to prefer packages in higher
   priority repositories, regardless of package version and any other
   configuration. (bug #983159)
-
-* config: repos.conf: Rename 'priority' to 'version-priority' to avoid confusion
-  with the new 'package-priority'. The old 'priority' name is kept as an alias
-  for compatibility. (bug #983159)
 
 Bug fixes:
 

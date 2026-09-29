@@ -329,8 +329,7 @@ class portdbapi(dbapi):
         order to modify the effective set of repositories for all portdbapi
         operations.
 
-        @param porttrees: list of repo locations, in ascending order by
-                repo version priority
+        @param porttrees: list of repo locations in the established order
         @type porttrees: list
         """
         self._porttrees = tuple(porttrees)
@@ -342,11 +341,11 @@ class portdbapi(dbapi):
             )
         )
 
-        # Keep a list of repo names, sorted by version priority (highest first).
+        # Keep a list of repo names in the established repo order.
         self._ordered_repo_name_list = tuple(reversed(self._porttrees_repos))
 
         # Also keep a grouped list of repos, sorted by package priority. The
-        # version priority above is preserved within each group.
+        # established order above is preserved within each group.
         self._package_prioritized_repos = _group_repos_by_package_priority(
             self._porttrees_repos.values()
         )
@@ -1160,9 +1159,8 @@ class portdbapi(dbapi):
                 return cachelist[:]
         mysplit = mycp.split("/")
         invalid_category = mysplit[0] not in self._categories
-        # Process repos in ascending order by repo.version_priority, so that
-        # stable sort by version produces results ordered by
-        # (pkg.version, repo.version_priority).
+        # Process repos in the established ascending order, so that stable sort
+        # by version is deterministic.
         if mytree is not None:
             if isinstance(mytree, str):
                 repos = [self.repositories.get_repo_for_location(mytree)]
@@ -1240,11 +1238,9 @@ class portdbapi(dbapi):
                 noiselevel=-1,
             )
             mylist = []
-        # Always sort in ascending order here since it's handy and
-        # the result can be easily cached and reused. Since mylist
-        # is initially in ascending order by repo.version_priority,
-        # stable sort by version produces results in ascending order
-        # by (pkg.version, repo.version_priority).
+        # Always sort in ascending order here since it's handy and the result
+        # can be easily cached and reused. Since mylist is initially in the
+        # established ascending order, stable sort by version is deterministic.
         self._cpv_sort_ascending(mylist)
         if self.frozen and mytree is None:
             cachelist = mylist[:]
