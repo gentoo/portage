@@ -961,7 +961,15 @@ only.
 .TP
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information.
-.br
+
+The configuration comprises of named sections, a \fBDEFAULT\fR section, plus
+one for each repository. A repository section name must match the name
+assigned by the repository's own metadata.
+
+When the same version of a package exists in multiple repositories,
+repositories whose names sort last lexicographically are preferred, apart
+from the main repository, which is always considered last.
+
 Configuration specified in \fBrepos.conf\fR can be overridden by
 \fBPORTAGE_REPOSITORIES\fR environmental variable, which has the same
 format as \fBrepos.conf\fR.
@@ -1056,14 +1064,6 @@ of metadata cache.
 When 'force = masters' attribute is not set, \fBegencache\fR(1) and
 \fBemirrordist\fR(1) ignore this attribute, since operations performed by
 these tools are inherently \fBnot\fR \fIsite\-specific\fR.
-.TP
-.B version\-priority = integer
-When the same version of a package exists in multiple repositories,
-repositories with a higher priority are preferred. When priorities are equal,
-repositories whose names sort last lexicographically are preferred. Negative
-values are permitted. The default value is 0 for overlays and -1000 for the
-main repository. This setting used to be called \fBpriority\fR, and that name
-is still accepted for compatibility.
 .TP
 .B package\-priority = integer
 When a package exists in multiple repositories, repositories with a higher
@@ -1406,10 +1406,6 @@ main\-repo = gentoo
 eclass\-overrides = java\-overlay java\-experimental
 
 [gentoo]
-# repos with higher priorities are preferred when ebuilds with equal versions
-# are found in multiple repos (see the `emerge \-\-info \-\-verbose` repo
-# display for a listing of repos and their corresponding priorities).
-version-priority = 9999
 # disable all eclass overrides for ebuilds from the gentoo repository
 eclass\-overrides =
 # when processing metadata/layout.conf from other repositories, substitute

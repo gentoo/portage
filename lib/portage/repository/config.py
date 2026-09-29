@@ -197,7 +197,6 @@ class RepoConfig:
         "usepkg_exclude",
         "usepkg_include",
         "user_location",
-        "version_priority",
         "volatile",
     )
 
@@ -291,17 +290,11 @@ class RepoConfig:
                 package_priority = None
         self.package_priority = package_priority
 
-        version_priority = (
-            repo_opts.get("version-priority")
-            if "version-priority" in repo_opts
-            else repo_opts.get("priority")
-        )
-        if version_priority is not None:
-            try:
-                version_priority = int(version_priority)
-            except ValueError:
-                version_priority = None
-        self.version_priority = version_priority
+        if "priority" in repo_opts:
+            writemsg(
+                "!!! The priority setting no longer does anything. If "
+                "necessary, use the package-priority setting instead.\n"
+            )
 
         sync_type = repo_opts.get("sync-type")
         if sync_type is not None:
@@ -731,8 +724,6 @@ class RepoConfig:
             repo_msg.append(
                 indent + "masters: " + " ".join(master.name for master in self.masters)
             )
-        if self.version_priority is not None:
-            repo_msg.append(indent + "version-priority: " + str(self.version_priority))
         if self.package_priority is not None:
             repo_msg.append(indent + "package-priority: " + str(self.package_priority))
         if self.aliases:
@@ -790,7 +781,6 @@ _str_or_int_keys = (
     "sync_umask",
     "sync_uri",
     "sync_user",
-    "version_priority",
 )
 _str_tuple_keys = (
     "aliases",
@@ -857,12 +847,10 @@ class RepoConfigLoader:
             # when temporarily overriding an rsync repo with another copy
             # of the same repo from CVS.
             repos_conf = prepos.copy()
-            # overlay priority is negative because we want them to be looked before any other repo
-            base_priority = 0
             for ov in overlays:
                 # Ignore missing directory for 'gentoo' so that
                 # first sync with emerge-webrsync is possible.
-                if isdir_raise_eaccess(ov) or (base_priority == 0 and ov is portdir):
+                if isdir_raise_eaccess(ov) or ov is portdir:
                     repo_opts = default_repo_opts.copy()
                     repo_opts["location"] = ov
                     name = prepos["DEFAULT"].main_repo if ov is portdir else None
@@ -905,7 +893,6 @@ class RepoConfigLoader:
                             "usepkg_exclude",
                             "usepkg_include",
                             "volatile",
-                            "version_priority",
                         ):
                             v = getattr(repos_conf_opts, k, None)
 
@@ -925,23 +912,11 @@ class RepoConfigLoader:
                         if (
                             old_location is not None
                             and old_location != repo.location
-                            and not (
-                                base_priority == 0 and old_location == default_portdir
-                            )
+                            and not (ov is portdir and old_location == default_portdir)
                         ):
                             ignored_map.setdefault(repo.name, []).append(old_location)
                             if old_location == portdir:
                                 portdir = repo.location
-
-                    if repo.version_priority is None:
-                        if base_priority == 0 and ov == portdir_orig:
-                            # If it's the original PORTDIR setting and it's not
-                            # in PORTDIR_OVERLAY, then it will be assigned a
-                            # special priority setting later.
-                            pass
-                        else:
-                            repo.version_priority = base_priority
-                            base_priority += 1
 
                     prepos[repo.name] = repo
                 else:
@@ -1205,10 +1180,6 @@ class RepoConfigLoader:
                         noiselevel=-1,
                     )
 
-        if main_repo is not None and prepos[main_repo].version_priority is None:
-            # This happens if main-repo has been set in repos.conf.
-            prepos[main_repo].version_priority = -1000
-
         # DEPRECATED Backward compatible SYNC support for old mirrorselect.
         # Feb. 2, 2015.  Version 2.2.16
         if portdir_sync and main_repo is not None:
@@ -1222,10 +1193,9 @@ class RepoConfigLoader:
                 noiselevel=-1,
             )
 
-        # Include repo.name in sort key, for predictable sorting
-        # even when priorities are equal.
+        # Sort by repo.name. main repo comes first so overlays take precedence.
         prepos_order = sorted(
-            prepos.items(), key=lambda r: (r[1].version_priority or 0, r[1].name)
+            prepos.items(), key=lambda r: (r[1].name != main_repo, r[1].name)
         )
 
         # filter duplicates from aliases, by only including

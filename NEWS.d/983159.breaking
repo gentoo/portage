@@ -1,0 +1,2 @@
+config: repos.conf: Drop the 'priority' setting as controlling which repository
+wins when package versions are equal is not useful.
