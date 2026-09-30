@@ -1983,7 +1983,8 @@ def get_emerge_tmpdir(settings):
     tempdir (bug #977840).
     """
     global _emerge_tmpdir
-    if _emerge_tmpdir is None:
+    # Recreate the directory if it has disappeared.
+    if _emerge_tmpdir is None or not os.path.isdir(_emerge_tmpdir):
         mkdtemp_kwargs = {
             "prefix": f"portage-tmpdir-{portage.getpid()}-",
         }
