@@ -697,7 +697,7 @@ class _dynamic_depgraph_config:
         self._flatten_atoms_cache = {}
         self._changed_deps_pkgs = {}
 
-        # Binary packages that have been rejected because their USE
+        # Binary packages that have been rejected because they
         # didn't match the user's config. It maps packages to a set
         # of flags causing the rejection.
         self.ignored_binaries = {}
@@ -1159,15 +1159,20 @@ class depgraph:
 
     def _eliminate_ignored_binaries(self):
         """
-        Eliminate any package from self._dynamic_config.ignored_binaries
-        for which a more optimal alternative exists.
+        Generate a copy of self._dynamic_config.ignored_binaries from
+        which any package for which a more optimal alternative exists
+        has been eliminated.
+
+        Does not modify self._dynamic_config.ignored_binaries.
         """
+        ignored_binaries = {}
         for pkg in list(self._dynamic_config.ignored_binaries):
+            eliminate = False
             for selected_pkg in self._dynamic_config._package_tracker.match(
                 pkg.root, pkg.slot_atom
             ):
                 if selected_pkg > pkg:
-                    self._dynamic_config.ignored_binaries.pop(pkg)
+                    eliminate = True
                     break
 
                 # NOTE: The Package.__ge__ implementation accounts for
@@ -1175,7 +1180,7 @@ class depgraph:
                 # packages will be triggered if both packages are the same
                 # version and selected_pkg is not the most recent build.
                 if selected_pkg.type_name == "binary" and selected_pkg >= pkg:
-                    self._dynamic_config.ignored_binaries.pop(pkg)
+                    eliminate = True
                     break
 
                 if (
@@ -1186,8 +1191,13 @@ class depgraph:
                     # We don't care about ignored binaries when an
                     # identical installed instance is selected to
                     # fill the slot.
-                    self._dynamic_config.ignored_binaries.pop(pkg)
+                    eliminate = True
                     break
+
+            if not eliminate:
+                ignored_binaries[pkg] = self._dynamic_config.ignored_binaries[pkg]
+
+        return ignored_binaries
 
     def _ignored_binaries_autounmask_backtrack(self):
         """
@@ -1207,11 +1217,11 @@ class depgraph:
         ):
             return False
 
-        self._eliminate_ignored_binaries()
+        reportable_ignored = self._eliminate_ignored_binaries()
 
         # _eliminate_ignored_binaries may have eliminated
         # all of the ignored binaries
-        if not self._dynamic_config.ignored_binaries:
+        if not reportable_ignored:
             return False
 
         use_changes = collections.defaultdict(
@@ -1224,7 +1234,7 @@ class depgraph:
             if pkg in self._dynamic_config.digraph:
                 use_changes[pkg.root][pkg.slot_atom] = (pkg, new_use)
 
-        for pkg in self._dynamic_config.ignored_binaries:
+        for pkg in reportable_ignored:
             selected_pkg, new_use = use_changes[pkg.root].get(
                 pkg.slot_atom, (None, None)
             )
@@ -1330,7 +1340,7 @@ class depgraph:
 
     def _show_ignored_binaries(self):
         """
-        Show binaries that have been ignored because their USE didn't
+        Show binaries that have been ignored because they didn't
         match the user's config.
         """
         if (
@@ -1339,13 +1349,19 @@ class depgraph:
         ):
             return
 
-        self._eliminate_ignored_binaries()
+        reportable_ignored = self._eliminate_ignored_binaries()
 
         ignored_binaries = {}
+        displayed_cp = (
+            [pkg.cp for pkg in self._dynamic_config._serialized_tasks_cache]
+            if self._dynamic_config._serialized_tasks_cache
+            else None
+        )
 
-        for pkg in self._dynamic_config.ignored_binaries:
-            for reason, info in self._dynamic_config.ignored_binaries[pkg].items():
-                ignored_binaries.setdefault(reason, {})[pkg] = info
+        for pkg in reportable_ignored:
+            for reason, info in reportable_ignored[pkg].items():
+                if displayed_cp is None or pkg.cp in displayed_cp:
+                    ignored_binaries.setdefault(reason, {})[pkg] = info
 
         if self._dynamic_config.myparams.get("binpkg_respect_use") in ("y", "n"):
             ignored_binaries.pop("respect_use", None)
