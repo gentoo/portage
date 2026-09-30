@@ -43,6 +43,11 @@ from _emerge.PackageMerge import PackageMerge as _PackageMerge
 _SCHEMA_VERSION = 1
 
 
+def _pkg_key(cpv, root):
+    """Return a cache key tuple (cpv, root) for a package."""
+    return (str(cpv), root)
+
+
 def _task_pkg(task):
     """Return the Package associated with a running task, or None."""
     pkg = getattr(task, "pkg", None)
@@ -113,12 +118,14 @@ def build_snapshot(monitor):
         # PackageMerge installs an already-built package; everything else
         # represents an in-progress build/extract.
         cpv = str(pkg.cpv)
+        root = pkg.root
+        key = _pkg_key(cpv, root)
         kind = "merge" if isinstance(task, _PackageMerge) else "build"
         waiting = id(task) in merge_wait_ids
 
         # Prefer the build's own start/finish times (continuous across the
         # build -> merge hand-off) over the per-task start time.
-        times = monitor._build_times.get(cpv)
+        times = monitor._build_times.get(key)
         if times is not None:
             start, build_finished = times.start, times.finished
             frozen_res = times.resources
@@ -149,7 +156,7 @@ def build_snapshot(monitor):
             "operation": getattr(pkg, "operation", None),
             "binary": bool(getattr(pkg, "built", False)),
             "kind": kind,
-            "phase": "merge-wait" if waiting else monitor._phases.get(cpv),
+            "phase": "merge-wait" if waiting else monitor._phases.get(key),
             "merge_wait": waiting,
             "pid": _task_pid(task),
             "start_time": start,
@@ -456,10 +463,10 @@ class ObservabilityMonitor:
 
         self.enabled = "observability" in settings.features
 
-        # id(task) -> epoch start time; str(cpv) -> current phase name.
+        # id(task) -> epoch start time; (cpv, root) -> current phase name.
         self._task_start = {}
         self._phases = {}
-        # str(cpv) -> _BuildTimes
+        # (cpv, root) -> _BuildTimes
         self._build_times = {}
 
         self._status_path = None
@@ -484,30 +491,31 @@ class ObservabilityMonitor:
 
     def note_task_started(self, task):
         now = time.time()
+        pkg = _task_pkg(task)
+        key = _pkg_key(pkg.cpv, pkg.root) if pkg is not None else None
         if self.enabled:
             self._task_start[id(task)] = now
         # Build timing is recorded either way: FEATURES="cgroup" reports a
         # build's average parallelism from it.
         if not isinstance(task, _PackageMerge):
-            pkg = _task_pkg(task)
-            if pkg is not None:
-                self._build_times[str(pkg.cpv)] = _BuildTimes(now)
+            if key is not None:
+                self._build_times[key] = _BuildTimes(now)
 
     def note_task_finished(self, task):
         self._task_start.pop(id(task), None)
         pkg = _task_pkg(task)
         if pkg is None:
             return
-        cpv = str(pkg.cpv)
+        key = _pkg_key(pkg.cpv, pkg.root)
         if isinstance(task, _PackageMerge):
-            self._phases.pop(cpv, None)
-            self._build_times.pop(cpv, None)
+            self._phases.pop(key, None)
+            self._build_times.pop(key, None)
         else:
-            times = self._build_times.get(cpv)
+            times = self._build_times.get(key)
             if times is not None:
                 times.finished = time.time()
 
-    def note_build_resources(self, cpv, stats):
+    def note_build_resources(self, cpv, stats, root):
         """Keep the final cgroup counters for the build of cpv, and return them.
 
         Called just before the cgroup is destroyed, so that a package that
@@ -516,18 +524,18 @@ class ObservabilityMonitor:
         gets back what it is worth reporting from here on.
         """
         resources = freeze_resources(stats)
-        times = self._build_times.get(str(cpv))
+        times = self._build_times.get(_pkg_key(cpv, root))
         if times is not None:
             times.resources = resources
         return resources
 
-    def build_elapsed(self, cpv):
+    def build_elapsed(self, cpv, root):
         """Wall-clock duration of the build of cpv, or None if unknown.
 
         Frozen once the build finishes, so callers reporting on a package
         that has moved on to merging still see the build's own duration.
         """
-        times = self._build_times.get(str(cpv))
+        times = self._build_times.get(_pkg_key(cpv, root))
         if times is None:
             return None
         return times.elapsed(time.time())
@@ -542,14 +550,15 @@ class ObservabilityMonitor:
         """
         pkg = _task_pkg(task)
         if pkg is not None:
-            cpv = str(pkg.cpv)
-            self._build_times.pop(cpv, None)
-            self._phases.pop(cpv, None)
+            key = _pkg_key(pkg.cpv, pkg.root)
+            self._build_times.pop(key, None)
+            self._phases.pop(key, None)
 
-    def note_phase(self, cpv, phase):
+    def note_phase(self, cpv, phase, root):
         if not self.enabled:
             return
-        self._phases[str(cpv)] = phase
+        key = _pkg_key(cpv, root)
+        self._phases[key] = phase
         self.update()
 
     def update(self, force=False):

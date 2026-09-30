@@ -4,6 +4,7 @@
 import asyncio
 import contextlib
 import errno
+import functools
 import io
 import json
 import os
@@ -13,11 +14,13 @@ import tempfile
 import threading
 import time
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from _emerge import _observability
 from _emerge._observability import (
     ObservabilityMonitor,
     _BuildTimes,
+    _pkg_key,
     average_parallelism,
     build_snapshot,
     format_snapshots,
@@ -25,6 +28,7 @@ from _emerge._observability import (
     read_snapshots,
     status_dir,
 )
+from _emerge.EbuildPhase import EbuildPhase
 from _emerge.PackageMerge import PackageMerge as _RealPackageMerge
 from _emerge.Scheduler import Scheduler
 
@@ -33,10 +37,10 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 
 
 class _Pkg:
-    def __init__(self, cpv, built=False, operation="merge"):
+    def __init__(self, cpv, built=False, operation="merge", root="/"):
         self.cpv = cpv
         self.category, self.pf = cpv.split("/", 1)
-        self.root = "/"
+        self.root = root
         self.built = built
         self.operation = operation
 
@@ -57,9 +61,10 @@ class PackageMerge(_RealPackageMerge):
 class _Settings(dict):
     """Minimal stand-in for portage config: dict plus a ``features`` set."""
 
-    def __init__(self, features=(), **items):
+    def __init__(self, features=(), mycpv=None, **items):
         super().__init__(items)
         self.features = set(features)
+        self.mycpv = mycpv
 
 
 class _FakeLoop:
@@ -134,12 +139,12 @@ def _snapshot(pid, cpv):
     return {"type": "snapshot", "schema": 1, "emerge_pid": pid, "tasks": [{"cpv": cpv}]}
 
 
-def _set_build_times(monitor, cpv, start, finished=None, resources=None):
+def _set_build_times(monitor, cpv, start, finished=None, resources=None, root="/"):
     """Install a synthetic build timing record for cpv on monitor."""
     times = _BuildTimes(start)
     times.finished = finished
     times.resources = resources
-    monitor._build_times[cpv] = times
+    monitor._build_times[_pkg_key(cpv, root)] = times
     return times
 
 
@@ -172,7 +177,7 @@ class ObservabilitySnapshotTestCase(TestCase):
         monitor = ObservabilityMonitor(sched)
         monitor.note_task_started(build)
         monitor.note_task_started(merge)
-        monitor.note_phase("dev-libs/foo-1.2", "compile")
+        monitor.note_phase("dev-libs/foo-1.2", "compile", "/")
 
         snap = build_snapshot(monitor)
 
@@ -248,7 +253,7 @@ class ObservabilitySnapshotTestCase(TestCase):
         monitor.note_task_started(build)
         monitor.note_task_finished(build)
         cpv = "dev-libs/foo-1.2"
-        monitor.note_build_resources(cpv, sched._cgroup.read_stats(cpv))
+        monitor.note_build_resources(cpv, sched._cgroup.read_stats(cpv), "/")
 
         # A later read of the cgroup must not leak into the snapshot.
         live["cpu_usec"] = 9_000_000
@@ -278,9 +283,10 @@ class ObservabilitySnapshotTestCase(TestCase):
                 "io_read_bytes": 0,
                 "io_write_bytes": 666,
             },
+            "/",
         )
 
-        frozen = monitor._build_times["dev-libs/foo-1.2"].resources
+        frozen = monitor._build_times[_pkg_key("dev-libs/foo-1.2", "/")].resources
         self.assertEqual(
             sorted(frozen),
             [
@@ -298,7 +304,7 @@ class ObservabilitySnapshotTestCase(TestCase):
         self.assertFalse(monitor.enabled)
         # All hooks must be safe no-ops.
         monitor.note_task_started(object())
-        monitor.note_phase("a/b-1", "compile")
+        monitor.note_phase("a/b-1", "compile", "/")
         monitor.update(force=True)
         monitor.close()
 
@@ -308,7 +314,7 @@ class ObservabilitySnapshotTestCase(TestCase):
             sched = _make_scheduler(eprefix=tmp, tasks=[build])
             monitor = ObservabilityMonitor(sched)
             monitor.note_task_started(build)
-            monitor.note_phase("dev-libs/foo-1.2", "install")
+            monitor.note_phase("dev-libs/foo-1.2", "install", "/")
             monitor.update(force=True)
 
             path = os.path.join(status_dir(tmp), f"emerge-{os.getpid()}.json")
@@ -645,6 +651,66 @@ class ObservabilitySnapshotTestCase(TestCase):
         }
         self.assertIn("I/O R: 0.00 B, I/O W: 0.00 B", format_snapshots([snap]))
 
+    def test_multi_root_same_cpv_no_collision(self):
+        # Two tasks building the exact same CPV for different ROOTs must not
+        # collide in phase tracking or build times.
+        # This exercises the notifyPhase path from EbuildPhase with an EPREFIX
+        # set so that EROOT ("/prefix/") differs from ROOT ("/").
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_root = _Settings(mycpv="dev-libs/foo-1.2", ROOT="/", EROOT="/")
+            settings_prefix = _Settings(
+                mycpv="dev-libs/foo-1.2",
+                ROOT="/",
+                EPREFIX="/prefix",
+                EROOT="/prefix/",
+            )
+            build_root = EbuildBuild(
+                _Pkg("dev-libs/foo-1.2", root=settings_root["EROOT"])
+            )
+            build_prefix = EbuildBuild(
+                _Pkg("dev-libs/foo-1.2", root=settings_prefix["EROOT"])
+            )
+            sched = _make_scheduler(eprefix=tmp, tasks=[build_root, build_prefix])
+            monitor = ObservabilityMonitor(sched)
+            sched.notifyPhase = functools.partial(Scheduler._observability_phase, sched)
+            sched._observability = monitor
+
+            def notify(settings, phase_name):
+                phase = EbuildPhase(
+                    scheduler=sched, settings=settings, phase=phase_name
+                )
+                with (
+                    patch.object(EbuildPhase, "_async_start", lambda self: None),
+                    patch("_emerge.EbuildPhase.asyncio.ensure_future"),
+                    patch.object(EbuildPhase, "_start_task"),
+                ):
+                    phase._start()
+
+            try:
+                monitor.note_task_started(build_root)
+                monitor.note_task_started(build_prefix)
+
+                notify(settings_root, "compile")
+                notify(settings_prefix, "install")
+
+                snap = build_snapshot(monitor)
+                self.assertEqual(len(snap["tasks"]), 2)
+
+                by_root = {t["root"]: t for t in snap["tasks"]}
+                self.assertEqual(by_root["/"]["phase"], "compile")
+                self.assertEqual(by_root["/prefix/"]["phase"], "install")
+
+                # When merge_root finishes, it shouldn't clear build_prefix's phase
+                merge_root = PackageMerge(build_root)
+                monitor.note_task_finished(merge_root)
+                self.assertNotIn(_pkg_key("dev-libs/foo-1.2", "/"), monitor._phases)
+                self.assertEqual(
+                    monitor._phases.get(_pkg_key("dev-libs/foo-1.2", "/prefix/")),
+                    "install",
+                )
+            finally:
+                monitor.close()
+
     def test_average_parallelism_without_a_usable_duration(self):
         for elapsed in (None, 0, -1):
             with self.subTest(elapsed=elapsed):
@@ -659,13 +725,15 @@ class ObservabilitySnapshotTestCase(TestCase):
         self.assertFalse(monitor.enabled)
 
         monitor.note_task_started(build)
-        monitor._build_times["dev-libs/foo-1.2"].start = time.time() - 40
-        self.assertAlmostEqual(monitor.build_elapsed("dev-libs/foo-1.2"), 40, delta=1)
+        monitor._build_times[_pkg_key("dev-libs/foo-1.2", "/")].start = time.time() - 40
+        self.assertAlmostEqual(
+            monitor.build_elapsed("dev-libs/foo-1.2", "/"), 40, delta=1
+        )
 
         monitor.note_task_finished(build)
-        frozen = monitor.build_elapsed("dev-libs/foo-1.2")
+        frozen = monitor.build_elapsed("dev-libs/foo-1.2", "/")
         self.assertAlmostEqual(frozen, 40, delta=1)
-        self.assertIsNone(monitor.build_elapsed("no-such/pkg-1"))
+        self.assertIsNone(monitor.build_elapsed("no-such/pkg-1", "/"))
         # Nothing that only the published snapshot needs is kept.
         self.assertEqual(monitor._task_start, {})
 
@@ -676,15 +744,15 @@ class ObservabilitySnapshotTestCase(TestCase):
         build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
         monitor = ObservabilityMonitor(_make_scheduler(tasks=[build]))
         monitor.note_task_started(build)
-        monitor.note_phase("dev-libs/foo-1.2", "compile")
+        monitor.note_phase("dev-libs/foo-1.2", "compile", "/")
         monitor.note_task_finished(build)
         # Still there: a merge would go on reporting the build's duration.
-        self.assertIn("dev-libs/foo-1.2", monitor._build_times)
+        self.assertIn(_pkg_key("dev-libs/foo-1.2", "/"), monitor._build_times)
 
         monitor.forget_build(build)
         self.assertEqual(monitor._build_times, {})
         self.assertEqual(monitor._phases, {})
-        self.assertIsNone(monitor.build_elapsed("dev-libs/foo-1.2"))
+        self.assertIsNone(monitor.build_elapsed("dev-libs/foo-1.2", "/"))
 
     def test_socket_wins_over_the_status_file(self):
         # The socket answer is built when we ask; the file is only as fresh
@@ -945,7 +1013,7 @@ class SchedulerCgroupLogTestCase(TestCase):
         monitor = ObservabilityMonitor(_make_scheduler(features=features))
         monitor.note_task_started(build)
         # 40s of wall clock for the build.
-        monitor._build_times["dev-libs/foo-1.2"].start = time.time() - 40
+        monitor._build_times[_pkg_key("dev-libs/foo-1.2", "/")].start = time.time() - 40
         monitor.note_task_finished(build)
 
         messages = []
@@ -966,7 +1034,7 @@ class SchedulerCgroupLogTestCase(TestCase):
         sched._cgroup_finish(build)
 
         self.assertEqual(
-            monitor._build_times["dev-libs/foo-1.2"].resources,
+            monitor._build_times[_pkg_key("dev-libs/foo-1.2", "/")].resources,
             {"cpu_usec": 5_000_000},
         )
 
