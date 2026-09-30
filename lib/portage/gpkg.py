@@ -659,6 +659,28 @@ class checksum_helper:
             raise InvalidSignature("GnuPG verification failed")
 
 
+class hashing_reader:
+    """
+    File-like object that feeds every byte read into a checksum_helper.
+
+    tar_stream_reader reads from the thread that feeds the decompressor,
+    so the checksum is only complete once that reader is closed and the
+    wrapped file object has been read to EOF.
+    """
+
+    def __init__(self, fileobj, checksum_info):
+        self.fileobj = fileobj
+        self.checksum_info = checksum_info
+        self.size = 0
+
+    def read(self, bufsize=-1):
+        buffer = self.fileobj.read(bufsize)
+        if buffer:
+            self.checksum_info.update(buffer)
+            self.size += len(buffer)
+        return buffer
+
+
 class tar_safe_extract:
     """
     A safer version of TarFile's extractall that performs a sanity check.
@@ -731,10 +753,14 @@ class tar_safe_extract:
         if member.islnk():
             self._check_hardlink(extract_dir, member)
 
-    def extractall(self, dest_dir: str):
+    def extractall(self, dest_dir: str, verify=None):
         """
         Extract all files to a temporary directory in the dest_dir, and move
         them to the dest_dir after sanity check.
+
+        verify is an optional callable invoked after the last member is
+        extracted, before anything is moved into dest_dir. It should raise
+        if the extracted data is not trustworthy.
         """
         if self.closed:
             raise OSError("Tar file is closed.")
@@ -759,6 +785,10 @@ class tar_safe_extract:
                 self.tar.extract(member, path=temp_dir.name)
 
             self._check_symlink_path(temp_dir.name, self.prefix)
+
+            if verify is not None:
+                verify()
+
             data_dir = os.path.join(temp_dir.name, self.prefix)
             for file in os.listdir(data_dir):
                 # Same filesystem: rename without following destination symlinks.
@@ -1119,17 +1149,36 @@ class gpkg:
         with tarfile.open(self.gpkg_file, "r") as container:
             image_tarinfo, image_comp = self._get_inner_tarinfo(container, "image")
 
+            # The file has been reopened since _verify_binpkg() hashed it,
+            # so hash the image again from the bytes that are extracted.
+            checksum_info = checksum_helper(self.settings)
+            image_reader = hashing_reader(
+                container.extractfile(image_tarinfo), checksum_info
+            )
+
             with (
                 tar_stream_reader(
-                    container.extractfile(image_tarinfo),
+                    image_reader,
                     self._get_decompression_cmd(image_comp),
                 ) as image_tar,
                 tarfile.open(mode="r|", fileobj=image_tar) as image,
             ):
+
+                def verify_extracted_image():
+                    # Closing the reader joins the decompressor's feed
+                    # thread, so nothing else reads image_reader after this.
+                    # tarfile can stop short of the trailing padding, and
+                    # the checksum has to cover the whole member.
+                    image_tar.close()
+                    while image_reader.read(HASHING_BLOCKSIZE):
+                        pass
+                    self._verify_manifest_checksum(
+                        image_tarinfo.name, image_reader.size, checksum_info
+                    )
+
                 try:
                     image_safe = tar_safe_extract(image, "image")
-                    image_safe.extractall(decompress_dir)
-                    image_tar.close()
+                    image_safe.extractall(decompress_dir, verify=verify_extracted_image)
                 except Exception:
                     writemsg(colorize("BAD", "!!!Extract failed.\n"))
                     raise
@@ -1635,6 +1684,51 @@ class gpkg:
 
         return manifest
 
+    def _find_manifest_record(self, manifest, filename):
+        """Return filename's record in manifest, matched by basename."""
+        basename = os.path.basename(filename)
+        for record in manifest:
+            if record[1] == basename:
+                return record
+        raise DigestException(f"{filename} checksum not found in {self.gpkg_file}")
+
+    def _check_manifest_size(self, manifest_record, filename, size):
+        """Raise DigestException if size does not match manifest_record."""
+        if int(manifest_record[2]) != int(size):
+            raise DigestException(
+                f"{filename} file size mismatched in {self.gpkg_file}"
+            )
+
+    def _check_manifest_checksums(self, manifest_record, filename, checksum_info):
+        """Raise DigestException unless at least one recorded checksum matches."""
+        verified_hash_count = 0
+        for c in checksum_info.libs:
+            try:
+                digest = manifest_record[manifest_record.index(c) + 1]
+            except (ValueError, IndexError):
+                # Method not recorded, or the record ends before its value
+                continue
+            if checksum_info.libs[c].hexdigest().lower() != digest.lower():
+                raise DigestException(
+                    f"{filename} checksum mismatched in {self.gpkg_file}"
+                )
+            verified_hash_count += 1
+
+        if verified_hash_count < 1:
+            raise DigestException(
+                f"{filename} no supported checksum found in {self.gpkg_file}"
+            )
+
+    def _verify_manifest_checksum(self, filename, size, checksum_info):
+        """
+        Check size and checksum_info against filename's record in the
+        Manifest that _verify_binpkg() has verified. Raise DigestException
+        on a mismatch.
+        """
+        manifest_record = self._find_manifest_record(self.manifest_old, filename)
+        self._check_manifest_size(manifest_record, filename, size)
+        self._check_manifest_checksums(manifest_record, filename, checksum_info)
+
     def _add_signature(self, checksum_info, tarinfo, container, manifest=True):
         """
         Add GnuPG signature for the given tarinfo file.
@@ -1776,19 +1870,10 @@ class gpkg:
                 else:
                     f_signature = f + ".sig"
 
-                # Find current file manifest record
-                manifest_record = None
-                for m in manifest:
-                    if m[1] == os.path.basename(f):
-                        manifest_record = m
-
-                if manifest_record is None:
-                    raise DigestException(f"{f} checksum not found in {self.gpkg_file}")
-
-                if int(manifest_record[2]) != int(container.getmember(f).size):
-                    raise DigestException(
-                        f"{f} file size mismatched in {self.gpkg_file}"
-                    )
+                manifest_record = self._find_manifest_record(manifest, f)
+                self._check_manifest_size(
+                    manifest_record, f, container.getmember(f).size
+                )
 
                 # Ignore image file and signature if not needed
                 if os.path.basename(f).startswith("image") and metadata_only:
@@ -1833,27 +1918,7 @@ class gpkg:
                         break
                 f_io.close()
 
-                # At least one supported checksum must be checked
-                verified_hash_count = 0
-                for c in checksum_info.libs:
-                    try:
-                        if (
-                            checksum_info.libs[c].hexdigest().lower()
-                            == manifest_record[manifest_record.index(c) + 1].lower()
-                        ):
-                            verified_hash_count += 1
-                        else:
-                            raise DigestException(
-                                f"{f} checksum mismatched in {self.gpkg_file}"
-                            )
-                    except KeyError:
-                        # Checksum method not supported
-                        pass
-
-                if verified_hash_count < 1:
-                    raise DigestException(
-                        f"{f} no supported checksum found in {self.gpkg_file}"
-                    )
+                self._check_manifest_checksums(manifest_record, f, checksum_info)
 
                 # Current file verified
                 unverified_files.remove(f)
