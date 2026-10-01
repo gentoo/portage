@@ -69,8 +69,7 @@ __check_bash_version() {
 	# https://bugs.gentoo.org/907061
 	# https://bugs.gentoo.org/946193
 	# https://bugs.gentoo.org/946179
-	shopt -u patsub_replacement globskipdots 2>/dev/null
-	true
+	shopt -u patsub_replacement globskipdots
 }
 __check_bash_version
 
