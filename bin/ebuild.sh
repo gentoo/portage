@@ -15,10 +15,10 @@ source "${PORTAGE_BIN_PATH:?}/isolated-functions.sh" || exit
 __check_bash_version() {
 	local IFS compat_maj compat_min dependent maj min
 
-	# Portage uses features that are only available in >=bash-4.4.
+	# Portage uses features that are only available in >=bash-5.3.
 	dependent="Portage"
-	maj=4
-	min=4
+	maj=5
+	min=3
 
 	# Based on the value of EAPI, determine which shell compatibility level
 	# to activate. Further, raise the minimum required version if needs be.
