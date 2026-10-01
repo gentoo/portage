@@ -1117,13 +1117,10 @@ if ___eapi_has_eapply_user; then
 		local path=$1
 		local reset_shopts count i
 
-		# The globskipdots option was introduced by bash-5.2. Unless
-		# disabled, it prevents the matching of the . and .. entries.
-		reset_shopts=$(
-			shopt -p globskipdots 2>/dev/null
-			shopt -p nullglob extglob
-		)
-		[[ ${reset_shopts} == *globskipdots* ]] && shopt -u globskipdots
+		# Unless disabled, the globskipdots option prevents the matching
+		# of the . and .. entries.
+		reset_shopts=${ shopt -p globskipdots nullglob extglob; }
+		shopt -u globskipdots
 		shopt -s nullglob extglob
 		[[ ${path} && ${path} != */ ]] && path+=/
 		eval 'dirents=( "${path}"@(.?(.)|*) );' "${reset_shopts}"
