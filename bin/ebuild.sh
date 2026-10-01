@@ -513,19 +513,7 @@ fi
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	# shellcheck disable=SC2086
 	for BIN in ${QA_INTERCEPTORS}; do
-		# Equivalent to BIN_PATH=$(type -P -- "${BIN}"), but without
-		# forking a subshell for each interceptor.
-		BIN_PATH=
-		PATH_REST=${PATH}:
-		while [[ -n ${PATH_REST} ]]; do
-			PATH_DIR=${PATH_REST%%:*}
-			PATH_REST=${PATH_REST#*:}
-			if [[ -f ${PATH_DIR:-.}/${BIN} && -x ${PATH_DIR:-.}/${BIN} ]]; then
-				BIN_PATH=${PATH_DIR:-.}/${BIN}
-				break
-			fi
-		done
-		if [[ -z ${BIN_PATH} ]]; then
+		if ! BIN_PATH=${ type -P -- "${BIN}"; }; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
@@ -567,7 +555,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 		fi
 		eval "${FUNC_SRC}" || echo "error creating QA interceptor ${BIN}" >&2
 	done
-	unset BIN_PATH BIN BODY FUNC_SRC PATH_DIR PATH_REST
+	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
 # Subshell/helper die support (must export for the die helper).
