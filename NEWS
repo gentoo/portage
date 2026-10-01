@@ -21,6 +21,10 @@ Releases
 portage-3.0.84 (UNRELEASED)
 --------------
 
+Breaking changes:
+
+* ebuild.sh: Require bash-5.3 for all EAPIs.
+
 Features:
 
 * emerge: Solve a circular dependency with an autounmask USE change when the
