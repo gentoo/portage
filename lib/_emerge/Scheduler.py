@@ -2264,6 +2264,7 @@ class Scheduler(PollScheduler):
                         break
                     task = self._merge_wait_queue.popleft()
                     task.scheduler = self._sched_iface
+                    self._observability.note_task_started(task)
                     self._merge_wait_scheduled.append(task)
                     self._task_queues.merge.add(task)
                     task.addExitListener(self._merge_wait_exit_handler)

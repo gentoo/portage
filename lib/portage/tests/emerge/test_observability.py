@@ -21,6 +21,8 @@ from _emerge._observability import (
     ObservabilityMonitor,
     _BuildTimes,
     _pkg_key,
+    _task_phase,
+    _task_phase_sort_key,
     average_parallelism,
     build_snapshot,
     format_snapshots,
@@ -136,7 +138,7 @@ def _write_status_file(directory, pid, payload):
 
 
 def _snapshot(pid, cpv):
-    return {"type": "snapshot", "schema": 1, "emerge_pid": pid, "tasks": [{"cpv": cpv}]}
+    return {"type": "snapshot", "schema": 2, "emerge_pid": pid, "tasks": [{"cpv": cpv}]}
 
 
 def _set_build_times(monitor, cpv, start, finished=None, resources=None, root="/"):
@@ -182,7 +184,7 @@ class ObservabilitySnapshotTestCase(TestCase):
         snap = build_snapshot(monitor)
 
         self.assertEqual(snap["type"], "snapshot")
-        self.assertEqual(snap["schema"], 1)
+        self.assertEqual(snap["schema"], 2)
         self.assertEqual(snap["jobs"]["completed"], 1)
         self.assertEqual(snap["jobs"]["total"], 5)
         self.assertEqual(len(snap["tasks"]), 2)
@@ -651,9 +653,230 @@ class ObservabilitySnapshotTestCase(TestCase):
         }
         self.assertIn("I/O R: 0.00 B, I/O W: 0.00 B", format_snapshots([snap]))
 
+    def test_task_phase_sort_key_lifecycle_order(self):
+        tasks = [
+            {"cpv": "cat/merge-1", "phase": "merge"},
+            {"cpv": "cat/setup-1", "phase": "setup"},
+            {"cpv": "cat/unknown-1", "phase": "unknown_phase"},
+            {"cpv": "cat/compile-1", "phase": "compile"},
+            {"cpv": "cat/install-1", "phase": "install"},
+            {"cpv": "cat/instprep-1", "phase": "instprep"},
+            {"cpv": "cat/preinst-1", "phase": "preinst"},
+            {"cpv": "cat/merge_wait-1", "phase": "merge-wait"},
+            {"cpv": "cat/unpack-1", "phase": "unpack"},
+        ]
+        sorted_tasks = sorted(tasks, key=_task_phase_sort_key)
+        self.assertEqual(
+            [t["cpv"] for t in sorted_tasks],
+            [
+                "cat/setup-1",
+                "cat/unpack-1",
+                "cat/compile-1",
+                "cat/install-1",
+                "cat/merge_wait-1",
+                "cat/merge-1",
+                "cat/instprep-1",
+                "cat/preinst-1",
+                "cat/unknown-1",
+            ],
+        )
+
+    def test_task_phase_sort_key_phase_start_tie_breaker(self):
+        # Within the same phase, tasks that entered the phase earlier come first.
+        tasks = [
+            {"cpv": "cat/c-later", "phase": "compile", "phase_start_time": 200.0},
+            {"cpv": "cat/c-earlier", "phase": "compile", "phase_start_time": 100.0},
+        ]
+        sorted_tasks = sorted(tasks, key=_task_phase_sort_key)
+        self.assertEqual(
+            [t["cpv"] for t in sorted_tasks],
+            ["cat/c-earlier", "cat/c-later"],
+        )
+
+    def test_task_phase_sort_key_fallback_to_start_time_and_cpv(self):
+        # Falls back to start_time when phase_start_time is missing, then cpv
+        tasks = [
+            {"cpv": "cat/b-1", "phase": "compile", "start_time": 10.0},
+            {"cpv": "cat/a-1", "phase": "compile", "start_time": 10.0},
+            {"cpv": "cat/c-1", "phase": "compile", "start_time": 5.0},
+        ]
+        sorted_tasks = sorted(tasks, key=_task_phase_sort_key)
+        self.assertEqual(
+            [t["cpv"] for t in sorted_tasks],
+            ["cat/c-1", "cat/a-1", "cat/b-1"],
+        )
+
+    def test_task_phase_sort_key_root_tie_breaker(self):
+        # Falls back to root when cpv and timing are identical
+        tasks = [
+            {
+                "cpv": "cat/a-1",
+                "phase": "compile",
+                "start_time": 10.0,
+                "root": "/target",
+            },
+            {"cpv": "cat/a-1", "phase": "compile", "start_time": 10.0, "root": "/"},
+        ]
+        sorted_tasks = sorted(tasks, key=_task_phase_sort_key)
+        self.assertEqual(
+            [t["root"] for t in sorted_tasks],
+            ["/", "/target"],
+        )
+
+    def test_snapshot_records_phase_start_time(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=4321)
+        sched = _make_scheduler(tasks=[build])
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(build)
+        t0 = time.time()
+        monitor.note_phase("dev-libs/foo-1.2", "compile", "/")
+
+        snap = build_snapshot(monitor)
+        task = snap["tasks"][0]
+        self.assertEqual(task["phase"], "compile")
+        self.assertGreaterEqual(task["phase_start_time"], t0)
+
+    def test_snapshot_merge_wait_phase_start_time_is_build_finished(self):
+        waiting = PackageMerge(EbuildBuild(_Pkg("dev-libs/foo-1.2")))
+        sched = _make_scheduler(tasks=[waiting])
+        sched._merge_wait_queue = [waiting]
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(waiting)
+        _set_build_times(monitor, "dev-libs/foo-1.2", 10000.0, 12345.0)
+
+        snap = build_snapshot(monitor)
+        task = snap["tasks"][0]
+        self.assertEqual(task["phase"], "merge-wait")
+        self.assertEqual(task["phase_start_time"], 12345.0)
+
+    def test_merge_wait_exit_updates_phase_start_time(self):
+        waiting = PackageMerge(EbuildBuild(_Pkg("dev-libs/foo-1.2")))
+        sched = _make_scheduler(tasks=[waiting])
+        sched._merge_wait_queue = [waiting]
+        sched._running_tasks = {id(waiting): waiting}
+        monitor = ObservabilityMonitor(sched)
+        sched._observability = monitor
+        monitor.note_task_started(waiting)
+        _set_build_times(monitor, "dev-libs/foo-1.2", 10000.0, 12345.0)
+
+        # While waiting, phase is merge-wait and phase_start_time is build_finished
+        snap = build_snapshot(monitor)
+        self.assertEqual(snap["tasks"][0]["phase"], "merge-wait")
+        self.assertEqual(snap["tasks"][0]["phase_start_time"], 12345.0)
+
+        # When leaving merge-wait, note_task_started updates phase_start_time to now
+        t_merge_start = time.time()
+        sched._merge_wait_queue = []
+        monitor.note_task_started(waiting)
+
+        snap = build_snapshot(monitor)
+        self.assertIsNone(snap["tasks"][0]["phase"])
+        self.assertEqual(snap["tasks"][0]["kind"], "merge")
+        self.assertGreaterEqual(snap["tasks"][0]["phase_start_time"], t_merge_start)
+
+    def test_task_phase_helper(self):
+        self.assertEqual(_task_phase({"phase": "compile"}), "compile")
+        self.assertEqual(_task_phase({"kind": "merge"}), "merge")
+        self.assertEqual(_task_phase({}), "-")
+
+    def test_note_phase_ignores_post_build_clean(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            monitor = ObservabilityMonitor(_make_scheduler(eprefix=tmp))
+            try:
+                # First clean (pre-clean) is recorded
+                monitor.note_phase("dev-libs/foo-1.2", "clean", "/")
+                self.assertEqual(
+                    monitor._phases.get(_pkg_key("dev-libs/foo-1.2", "/")), "clean"
+                )
+
+                # Later phase is recorded
+                monitor.note_phase("dev-libs/foo-1.2", "postinst", "/")
+                self.assertEqual(
+                    monitor._phases.get(_pkg_key("dev-libs/foo-1.2", "/")), "postinst"
+                )
+
+                # Subsequent clean (post-clean) is ignored
+                monitor.note_phase("dev-libs/foo-1.2", "clean", "/")
+                self.assertEqual(
+                    monitor._phases.get(_pkg_key("dev-libs/foo-1.2", "/")), "postinst"
+                )
+            finally:
+                monitor.close()
+
+    def test_note_task_finished_clears_build_phase(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+        sched = _make_scheduler(tasks=[build])
+        monitor = ObservabilityMonitor(sched)
+        monitor.note_task_started(build)
+        monitor.note_phase("dev-libs/foo-1.2", "install", "/")
+        self.assertEqual(
+            monitor._phases.get(_pkg_key("dev-libs/foo-1.2", "/")), "install"
+        )
+
+        monitor.note_task_finished(build)
+        self.assertNotIn(_pkg_key("dev-libs/foo-1.2", "/"), monitor._phases)
+
+        merge = PackageMerge(build)
+        sched._running_tasks = {id(merge): merge}
+        monitor.note_task_started(merge)
+
+        snap = build_snapshot(monitor)
+        task = snap["tasks"][0]
+        self.assertIsNone(task["phase"])
+        self.assertEqual(task["kind"], "merge")
+        self.assertEqual(_task_phase(task), "merge")
+
+    def test_build_snapshot_sorts_by_lifecycle_and_phase_entry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t_setup = EbuildBuild(_Pkg("cat/setup-1"))
+            t_compile_early = EbuildBuild(_Pkg("cat/compile-early"))
+            t_compile_late = EbuildBuild(_Pkg("cat/compile-late"))
+            t_merge = PackageMerge(EbuildBuild(_Pkg("cat/merge-1")))
+
+            sched = _make_scheduler(
+                eprefix=tmp,
+                tasks=[t_merge, t_compile_late, t_setup, t_compile_early],
+            )
+            monitor = ObservabilityMonitor(sched)
+            try:
+                monitor.note_task_started(t_merge)
+                monitor.note_task_started(t_compile_late)
+                monitor.note_task_started(t_setup)
+                monitor.note_task_started(t_compile_early)
+
+                monitor.note_phase("cat/setup-1", "setup", "/")
+                monitor.note_phase("cat/compile-early", "compile", "/")
+                monitor._phase_start[_pkg_key("cat/compile-early", "/")] = 100.0
+                monitor.note_phase("cat/compile-late", "compile", "/")
+                monitor._phase_start[_pkg_key("cat/compile-late", "/")] = 200.0
+
+                snap = build_snapshot(monitor)
+                self.assertEqual(
+                    [t["cpv"] for t in snap["tasks"]],
+                    [
+                        "cat/setup-1",
+                        "cat/compile-early",
+                        "cat/compile-late",
+                        "cat/merge-1",
+                    ],
+                )
+                output = format_snapshots([snap])
+                lines = [line.strip().split()[0] for line in output.splitlines()[1:]]
+                self.assertEqual(
+                    lines,
+                    [
+                        "cat/setup-1",
+                        "cat/compile-early",
+                        "cat/compile-late",
+                        "cat/merge-1",
+                    ],
+                )
+            finally:
+                monitor.close()
+
     def test_multi_root_same_cpv_no_collision(self):
         # Two tasks building the exact same CPV for different ROOTs must not
-        # collide in phase tracking or build times.
+        # collide in phase tracking, phase_start_time, or build times.
         # This exercises the notifyPhase path from EbuildPhase with an EPREFIX
         # set so that EROOT ("/prefix/") differs from ROOT ("/").
         with tempfile.TemporaryDirectory() as tmp:
@@ -687,26 +910,52 @@ class ObservabilitySnapshotTestCase(TestCase):
                     phase._start()
 
             try:
+                now = time.time()
                 monitor.note_task_started(build_root)
                 monitor.note_task_started(build_prefix)
 
+                # Update build_root to "compile" at now - 20
                 notify(settings_root, "compile")
+                monitor._phase_start[_pkg_key("dev-libs/foo-1.2", "/")] = now - 20
+
+                # Update build_prefix to "install" at now - 10
                 notify(settings_prefix, "install")
+                monitor._phase_start[_pkg_key("dev-libs/foo-1.2", "/prefix/")] = (
+                    now - 10
+                )
 
                 snap = build_snapshot(monitor)
                 self.assertEqual(len(snap["tasks"]), 2)
 
                 by_root = {t["root"]: t for t in snap["tasks"]}
                 self.assertEqual(by_root["/"]["phase"], "compile")
+                self.assertEqual(by_root["/"]["phase_start_time"], now - 20)
                 self.assertEqual(by_root["/prefix/"]["phase"], "install")
+                self.assertEqual(by_root["/prefix/"]["phase_start_time"], now - 10)
 
-                # When merge_root finishes, it shouldn't clear build_prefix's phase
-                merge_root = PackageMerge(build_root)
-                monitor.note_task_finished(merge_root)
+                # Verify sorting: compile comes before install
+                self.assertEqual(snap["tasks"][0]["root"], "/")
+                self.assertEqual(snap["tasks"][0]["phase"], "compile")
+                self.assertEqual(snap["tasks"][1]["root"], "/prefix/")
+                self.assertEqual(snap["tasks"][1]["phase"], "install")
+
+                # When build_root finishes, it shouldn't clear build_prefix's phase
+                monitor.note_task_finished(build_root)
                 self.assertNotIn(_pkg_key("dev-libs/foo-1.2", "/"), monitor._phases)
                 self.assertEqual(
                     monitor._phases.get(_pkg_key("dev-libs/foo-1.2", "/prefix/")),
                     "install",
+                )
+
+                # When merge_root finishes, it shouldn't clear build_prefix's phase_start
+                merge_root = PackageMerge(build_root)
+                monitor.note_task_finished(merge_root)
+                self.assertNotIn(
+                    _pkg_key("dev-libs/foo-1.2", "/"), monitor._phase_start
+                )
+                self.assertEqual(
+                    monitor._phase_start.get(_pkg_key("dev-libs/foo-1.2", "/prefix/")),
+                    now - 10,
                 )
             finally:
                 monitor.close()
@@ -1148,7 +1397,7 @@ class SchedulerCgroupLogTestCase(TestCase):
 class KeepGoingTeardownTestCase(TestCase):
     def _run_keep_going_merge(self, tmpdir):
         monitor = ObservabilityMonitor(_make_scheduler(eprefix=tmpdir))
-        monitor._last_snapshot = {"type": "snapshot", "schema": 1}
+        monitor._last_snapshot = {"type": "snapshot", "schema": 2}
         monitor._write_status_file(monitor._last_snapshot)
 
         cgroup = SimpleNamespace(enabled=True, closed=0)
