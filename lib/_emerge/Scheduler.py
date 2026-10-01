@@ -2264,6 +2264,9 @@ class Scheduler(PollScheduler):
                         break
                     task = self._merge_wait_queue.popleft()
                     task.scheduler = self._sched_iface
+                    # Not a new task: restart the phase clock so the row
+                    # sorts by when it left merge-wait.
+                    self._observability.note_task_started(task)
                     self._merge_wait_scheduled.append(task)
                     self._task_queues.merge.add(task)
                     task.addExitListener(self._merge_wait_exit_handler)
