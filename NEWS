@@ -57,6 +57,11 @@ Features:
   package is unmerged only after the packages that depend on it
   (bug #570472).
 
+* merge: Add FEATURES=parallel-merge, which merges package contents from the
+  image directory into ${ROOT} with a pool of threads. PORTAGE_MERGE_JOBS sets
+  the number of threads, falling back to the -j value in MAKEOPTS and then to
+  the number of CPUs.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata
