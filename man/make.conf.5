@@ -764,6 +764,12 @@ for packages that satisfy direct or indirect dependencies of the system
 set. The \fBemerge\fR(1) \fB\-\-merge\-wait\-scope\fR option controls which
 packages those are.
 .TP
+.B parallel\-merge
+Merge package contents from the temporary image directory (${D}) to the
+live filesystem (${ROOT}) in parallel using a thread pool. Concurrency is
+governed by \fBPORTAGE_MERGE_JOBS\fR, falling back to the job count
+in \fBMAKEOPTS\fR (\-j), or the number of available CPUs.
+.TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it
 possible to cleanly kill all processes spawned by the ebuild.
@@ -1331,6 +1337,12 @@ to clean PORTAGE_LOGDIR. The command string should contain a
 \\${PORTAGE_LOGDIR} place\-holder that will be substituted
 with the value of that variable. This variable will have no effect
 unless \fBclean\-logs\fR is enabled in \fBFEATURES\fR.
+.TP
+\fBPORTAGE_MERGE_JOBS\fR = \fI[integer]\fR
+Specifies the number of worker threads to use during the package merge
+phase when \fBFEATURES\fR contains \fIparallel\-merge\fR. If unset,
+Portage falls back to parsing \fBMAKEOPTS\fR (\-j), and finally to the
+number of available CPUs.
 .TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that
