@@ -82,6 +82,9 @@ Bug fixes:
 * vartree, movefile: Compatibility changes for users upgrading from
   <portage-3.0.81.3 that contained upgrade fixes (bug #976616).
 
+* phase-functions.sh: Do not restore LOCPATH from the saved environment of
+  a binary or installed package.
+
 portage-3.0.82.1 (2026-08-24)
 ----------------
 

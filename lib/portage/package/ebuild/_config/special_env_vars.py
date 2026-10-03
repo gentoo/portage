@@ -240,6 +240,7 @@ environ_whitelist = frozenset(
         "LC_TIME",
         "LC_PAPER",
         "LC_ALL",
+        "LOCPATH",
         # other variables inherited from the calling environment
         "CVS_RSH",
         "ECHANGELOG_USER",
