@@ -70,6 +70,14 @@ Features:
   regardless, narrowing the scope helps parallelism most in combination with
   FEATURES="-merge-wait" or FEATURES="parallel-install".
 
+* config: repos.conf: Add 'package-priority' to prefer packages in higher
+  priority repositories, regardless of package version and any other
+  configuration. (bug #983159)
+
+* config: repos.conf: Rename 'priority' to 'version-priority' to avoid confusion
+  with the new 'package-priority'. The old 'priority' name is kept as an alias
+  for compatibility. (bug #983159)
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 
