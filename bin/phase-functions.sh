@@ -68,8 +68,8 @@ portage_mutable_filtered_vars=( AA HOSTNAME )
 # phase. However, if FEATURES exist inside environment.bz2 then they
 # should be overridden by current settings.
 #
-# --filter-locale causes locale related variables such as LANG and LC_*
-# variables to be filtered. These variables should persist between phases,
+# --filter-locale causes locale related variables such as LANG, LC_* and
+# LOCPATH to be filtered. These variables should persist between phases,
 # in case they are modified by the ebuild. However, the current user
 # settings should be used when loading the environment from a binary or
 # installed package.
@@ -172,7 +172,7 @@ __filter_readonly_variables() {
 	if has --filter-locale "$@"; then
 		filtered_vars+=(
 			LC_MESSAGES LC_MONETARY LC_COLLATE LC_NUMERIC LC_CTYPE
-			LC_PAPER LC_TIME LC_ALL LANG
+			LC_PAPER LC_TIME LC_ALL LANG LOCPATH
 		)
 	fi
 	if has --allow-extra-vars "$@"; then
