@@ -95,6 +95,7 @@ class Package(Task):
         "IUSE",
         "KEYWORDS",
         "LICENSE",
+        "MASKED_USE",
         "MD5",
         "PDEPEND",
         "PROVIDES",

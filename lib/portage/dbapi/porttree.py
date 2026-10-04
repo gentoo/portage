@@ -301,6 +301,7 @@ class portdbapi(dbapi):
             "IUSE",
             "KEYWORDS",
             "LICENSE",
+            "MASKED_USE",
             "PDEPEND",
             "PROPERTIES",
             "RDEPEND",

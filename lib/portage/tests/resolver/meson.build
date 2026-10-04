@@ -50,6 +50,7 @@ py.install_sources(
         'test_imagemagick_graphicsmagick.py',
         'test_installkernel.py',
         'test_keywords.py',
+        'test_masked_use.py',
         'test_merge_order.py',
         'test_merge_order_cycles.py',
         'test_merge_wait_scope.py',

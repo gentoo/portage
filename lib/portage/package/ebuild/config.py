@@ -177,6 +177,7 @@ class config:
         "REQUIRED_USE",
         "KEYWORDS",
         "LICENSE",
+        "MASKED_USE",
         "PDEPEND",
         "PROPERTIES",
         "RDEPEND",
