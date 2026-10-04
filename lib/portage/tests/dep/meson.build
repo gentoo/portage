@@ -12,6 +12,7 @@ py.install_sources(
         'test_dep_getslot.py',
         'test_dep_getusedeps.py',
         'test_dnf_convert.py',
+        'test_get_masked_use.py',
         'test_get_operator.py',
         'test_get_required_use_flags.py',
         'test_isjustname.py',
