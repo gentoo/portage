@@ -96,6 +96,7 @@ class CircularDependencyUseDisplayTestCase(TestCase):
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["media-libs/freetype"],
+                options={"--autounmask-use": "n"},
                 success=False,
                 circular_dependency_message=[f"USE={red('harfbuzz')}"],
                 circular_dependency_solutions={
@@ -232,6 +233,7 @@ class CircularTestDependencyTestCase(TestCase):
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["dev-libs/A"],
+                options={"--autounmask-use": "n"},
                 success=False,
                 circular_dependency_test_parents=["dev-libs/A-1"],
                 circular_dependency_solutions={
@@ -457,7 +459,11 @@ class CircularDependencyJsonReportTestCase(TestCase):
         playground = ResolverPlayground(ebuilds=ebuilds)
         try:
             result = playground.run(
-                ["media-libs/freetype"], options={"--circular-deps-report": "json"}
+                ["media-libs/freetype"],
+                options={
+                    "--circular-deps-report": "json",
+                    "--autounmask-use": "n",
+                },
             )
             self.assertEqual(result.success, False)
 
