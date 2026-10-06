@@ -683,6 +683,7 @@ class _dynamic_depgraph_config:
         self._masked_license_updates = set()
         self._unsatisfied_deps_for_display = []
         self._unsatisfied_blockers_for_display = None
+        self._backtrack_restart_causes = None
         self._circular_deps_for_display = None
         # Packages that --depclean cannot remove because they are kept
         # alive by a dependency cycle, mapped to the cycle members.
@@ -11264,6 +11265,8 @@ class depgraph:
                 self._dynamic_config._unsatisfied_blockers_for_display
             )
 
+        self._show_backtrack_restart_causes()
+
         # Only show missed updates if there are no unresolved conflicts,
         # since they may be irrelevant after the conflicts are solved.
         if not unresolved_conflicts:
@@ -11903,6 +11906,46 @@ class depgraph:
     def get_backtrack_infos(self):
         return self._dynamic_config._backtrack_infos
 
+    def set_backtrack_restart_causes(self, backtracked, causes):
+        """
+        @param backtracked: number of backtracking attempts
+        @type backtracked: int
+        @param causes: counts of the (root, cp, description) tuples from
+                _backtrack_restart_causes
+        @type causes: collections.Counter
+        """
+        self._dynamic_config._backtrack_restart_causes = (backtracked, causes)
+
+    def _show_backtrack_restart_causes(self):
+        if self._dynamic_config._backtrack_restart_causes is None:
+            return
+        backtracked, causes = self._dynamic_config._backtrack_restart_causes
+
+        # Group by package, since one problem can be a slot conflict in
+        # one attempt and an unsatisfied dependency in the next.
+        packages = collections.Counter()
+        for (root, cp, description), count in causes.items():
+            packages[(root, cp)] += count
+
+        def attempts(count):
+            return f"{count} attempt" if count == 1 else f"{count} attempts"
+
+        msg = [
+            "",
+            f"!!! Backtracking did not find a solution in {attempts(backtracked)}. It was",
+            "!!! restarted most often because of the following packages, which may",
+            "!!! indicate the actual problem:",
+            "",
+        ]
+        for (root, cp), count in packages.most_common(5):
+            where = "" if root == self._frozen_config.target_root else f" for {root}"
+            msg.append(f"  {cp}{where} ({attempts(count)})")
+            for cause, cause_count in causes.most_common():
+                if cause[:2] == (root, cp):
+                    msg.append(f"    {cause[2]} ({attempts(cause_count)})")
+            msg.append("")
+        writemsg("".join(f"{line}\n" for line in msg), noiselevel=-1)
+
 
 class _dep_check_composite_db(dbapi):
     """
@@ -12353,6 +12396,7 @@ def _backtrack_depgraph(
     allow_backtracking = max_retries > 0
     backtracker = Backtracker(max_depth)
     backtracked = 0
+    restart_causes = collections.Counter()
 
     if frozen_config is None:
         frozen_config = _frozen_depgraph_config(
@@ -12397,7 +12441,9 @@ def _backtrack_depgraph(
             break
         elif mydepgraph.need_restart():
             backtracked += 1
-            backtracker.feedback(mydepgraph.get_backtrack_infos())
+            backtrack_infos = mydepgraph.get_backtrack_infos()
+            backtracker.feedback(backtrack_infos)
+            restart_causes.update(_backtrack_restart_causes(backtrack_infos))
         elif backtracker:
             backtracked += 1
 
@@ -12442,7 +12488,31 @@ def _backtrack_depgraph(
         )
         success, favorites = mydepgraph.select_files(myfiles)
 
+    if restart_causes and not success and not mydepgraph.need_config_change():
+        mydepgraph.set_backtrack_restart_causes(backtracked, restart_causes)
+
     return (success, mydepgraph, favorites, backtracked, max_retries)
+
+
+def _backtrack_restart_causes(backtrack_infos):
+    """
+    Describe the conflict in backtrack_infos which the Backtracker creates
+    new nodes for, as a list of (root, cp, description) tuples.
+    """
+    if "slot conflict" in backtrack_infos:
+        # The Backtracker only uses the first conflict.
+        pkg = backtrack_infos["slot conflict"][0][0][-1][0]
+        return [(pkg.root, pkg.cp, f"slot conflict for {pkg.slot_atom}")]
+    if "missing dependency" in backtrack_infos:
+        dep = backtrack_infos["missing dependency"]
+        return [
+            (
+                dep.root,
+                getattr(dep.atom, "cp", str(dep.atom)),
+                f"{dep.atom} required by {dep.parent.cpv} is unsatisfied",
+            )
+        ]
+    return []
 
 
 def resume_depgraph(
