@@ -2922,6 +2922,58 @@ class depgraph:
 
         self._dynamic_config._need_restart = True
 
+    def _missing_dep_similar_parents(self, dep):
+        """
+        Find other packages for the slot of dep.parent which also have
+        an unsatisfied dependency on the package that dep refers to.
+
+        @rtype: list
+        @return: (parent, root, atom) tuples
+        """
+        parent = dep.parent
+        if not isinstance(parent, Package) or not dep.atom.package:
+            return []
+
+        if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
+            dep_keys = Package._dep_keys
+        else:
+            dep_keys = Package._runtime_keys
+
+        similar_parents = []
+        for pkg in self._iter_match_pkgs_any(parent.root_config, parent.slot_atom):
+            if (
+                pkg is parent
+                or pkg.cp != parent.cp
+                or pkg in self._dynamic_config._runtime_pkg_mask
+            ):
+                continue
+
+            # Use _select_atoms, so that an any-of group only contributes
+            # the choice that would be selected.
+            use = self._pkg_use_enabled(pkg)
+            atoms = []
+            try:
+                for k in dep_keys:
+                    v = pkg._metadata.get(k)
+                    if v:
+                        atoms.extend(
+                            self._select_atoms(pkg.root, v, myuse=use, parent=pkg)[pkg]
+                        )
+            except InvalidDependString:
+                continue
+
+            for atom in atoms:
+                if (
+                    atom.package
+                    and not atom.blocker
+                    and atom.cp == dep.atom.cp
+                    and self._select_package(pkg.root, atom.without_use)[0] is None
+                ):
+                    similar_parents.append((pkg, pkg.root, atom))
+                    break
+
+        return similar_parents
+
     def _in_blocker_conflict(self, pkg):
         """
         Check if pkg is involved in a blocker conflict. This method
@@ -3511,7 +3563,11 @@ class depgraph:
                             self._dynamic_config._skip_restart = True
                             return 0
 
-                    self._dynamic_config._backtrack_infos["missing dependency"] = dep
+                    backtrack_infos = self._dynamic_config._backtrack_infos
+                    backtrack_infos["missing dependency"] = dep
+                    backtrack_infos["missing dependency similar"] = (
+                        self._missing_dep_similar_parents(dep)
+                    )
                     self._dynamic_config._need_restart = True
                     if debug:
                         msg = []

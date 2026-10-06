@@ -194,15 +194,16 @@ class Backtracker:
                 ] = parent_atoms
             self._add(new_node)
 
-    def _feedback_missing_dep(self, dep):
+    def _feedback_missing_dep(self, dep, similar_parents=()):
         new_node = copy.deepcopy(self._current_node)
         new_node.depth += 1
         new_node.mask_steps += 1
         new_node.terminal = False
 
-        new_node.parameter.runtime_pkg_mask.setdefault(dep.parent, {})[
-            "missing dependency"
-        ] = {(dep.parent, dep.root, dep.atom)}
+        for parent, root, atom in ((dep.parent, dep.root, dep.atom), *similar_parents):
+            new_node.parameter.runtime_pkg_mask.setdefault(parent, {})[
+                "missing dependency"
+            ] = {(parent, root, atom)}
 
         self._add(new_node)
 
@@ -276,7 +277,10 @@ class Backtracker:
         if "slot conflict" in infos:
             self._feedback_slot_conflicts(infos["slot conflict"])
         elif "missing dependency" in infos:
-            self._feedback_missing_dep(infos["missing dependency"])
+            self._feedback_missing_dep(
+                infos["missing dependency"],
+                infos.get("missing dependency similar", ()),
+            )
 
     def backtracked(self):
         """
