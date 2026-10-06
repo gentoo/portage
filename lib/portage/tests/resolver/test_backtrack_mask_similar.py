@@ -32,14 +32,17 @@ class BacktrackMaskSimilarTestCase(TestCase):
             # The C updates have to be skipped, since A needs L-1. L-1 is
             # rebuilt due to --newuse, so the slot conflict involves the
             # L-1 ebuild. When the backtracker masks it, the installed
-            # L-1 should be masked in the same step.
+            # L-1 should be masked in the same step. Likewise for the
+            # packages which have an unsatisfied dependency after one of
+            # the L versions has been masked: the installed A and its
+            # ebuild, and the C updates.
             ResolverPlaygroundTestCase(
                 ["@world"],
                 options={
                     "--update": True,
                     "--deep": True,
                     "--newuse": True,
-                    "--backtrack": 7,
+                    "--backtrack": 4,
                 },
                 success=True,
                 mergelist=["dev-libs/L-1"],
