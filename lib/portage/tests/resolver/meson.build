@@ -11,6 +11,7 @@ py.install_sources(
         'test_autounmask_use_backtrack.py',
         'test_autounmask_use_breakage.py',
         'test_autounmask_use_slot_conflict.py',
+        'test_backtrack_mask_similar.py',
         'test_backtrack_restart_causes.py',
         'test_backtracking.py',
         'test_bdeps.py',
