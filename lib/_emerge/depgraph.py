@@ -2235,8 +2235,15 @@ class depgraph:
                 # If the conflict has been triggered by a missed update, then
                 # we can avoid excessive backtracking if we detect similar missed
                 # updates and mask them as part of the same backtracking choice.
-                for similar_pkg in self._iter_similar_available(
-                    to_be_masked, slot_atom, selectable_built=True
+                # An installed instance is selected once the others have
+                # been masked, so include it.
+                for similar_pkg in chain(
+                    self._iter_similar_available(
+                        to_be_masked, slot_atom, selectable_built=True
+                    ),
+                    self._iter_match_pkgs(
+                        self._frozen_config.roots[root], "installed", slot_atom
+                    ),
                 ):
                     if similar_pkg in conflict_pkgs:
                         continue
