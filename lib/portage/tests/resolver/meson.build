@@ -79,6 +79,7 @@ py.install_sources(
         'test_slot_conflict_force_rebuild.py',
         'test_slot_conflict_mask_update.py',
         'test_slot_conflict_rebuild.py',
+        'test_slot_conflict_stale_binpkgs.py',
         'test_slot_conflict_unsatisfied_deep_deps.py',
         'test_slot_conflict_update.py',
         'test_slot_conflict_update_virt.py',
