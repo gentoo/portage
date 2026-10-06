@@ -2236,7 +2236,7 @@ class depgraph:
                 # we can avoid excessive backtracking if we detect similar missed
                 # updates and mask them as part of the same backtracking choice.
                 for similar_pkg in self._iter_similar_available(
-                    to_be_masked, slot_atom
+                    to_be_masked, slot_atom, selectable_built=True
                 ):
                     if similar_pkg in conflict_pkgs:
                         continue
@@ -3012,11 +3012,16 @@ class depgraph:
         self._dynamic_config._flatten_atoms_cache[cache_key] = atoms
         return atoms
 
-    def _iter_similar_available(self, graph_pkg, atom, autounmask_level=None):
+    def _iter_similar_available(
+        self, graph_pkg, atom, autounmask_level=None, selectable_built=False
+    ):
         """
         Given a package that's in the graph, do a rough check to
         see if a similar package is available to install. The given
         graph_pkg itself may be yielded only if it's not installed.
+        If selectable_built is True, then also yield built packages
+        which are identical to an installed instance or have no visible
+        ebuild.
         """
 
         usepkgonly = self._frozen_config.myopts.get("--usepkgonly") is True
@@ -3037,7 +3042,7 @@ class depgraph:
                 pkg, modified_use=self._pkg_use_enabled(pkg)
             ):
                 continue
-            if pkg.built:
+            if pkg.built and not selectable_built:
                 if self._equiv_binary_installed(pkg):
                     continue
                 if not (
