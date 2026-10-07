@@ -70,6 +70,11 @@ Features:
   regardless, narrowing the scope helps parallelism most in combination with
   FEATURES="-merge-wait" or FEATURES="parallel-install".
 
+* Drop "https://www." from the User-Agent in the default wget FETCHCOMMAND
+  and RESUMECOMMAND settings, as well as emirrordist, in order to avoid
+  blocking by some mirrors, particularly mirror.nyist.edu.cn,
+  mirrors.ha.edu.cn and mirror.lzu.edu.cn. (bug #983844)
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 
