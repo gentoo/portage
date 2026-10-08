@@ -596,7 +596,9 @@ Acquire a job token for every build from the jobserver if one is found running.
 This feature is experimental and its semantics may change.
 .TP
 .B keeptemp
-Do not delete the ${T} directory after the merge process.
+Do not delete the ${T} directory after the merge process.  Due to lack of proper
+cleanup, this feature can interfere with normal emerge operation and therefore
+it should not be left enabled for more than a short period of time.
 .TP
 .B keepwork
 Do not delete the ${WORKDIR} directory after the merge process. ${WORKDIR} can
