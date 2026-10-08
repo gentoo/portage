@@ -683,6 +683,7 @@ class _dynamic_depgraph_config:
         self._masked_license_updates = set()
         self._unsatisfied_deps_for_display = []
         self._unsatisfied_blockers_for_display = None
+        self._backtrack_restart_causes = None
         self._circular_deps_for_display = None
         # Packages that --depclean cannot remove because they are kept
         # alive by a dependency cycle, mapped to the cycle members.
@@ -2250,8 +2251,15 @@ class depgraph:
                 # If the conflict has been triggered by a missed update, then
                 # we can avoid excessive backtracking if we detect similar missed
                 # updates and mask them as part of the same backtracking choice.
-                for similar_pkg in self._iter_similar_available(
-                    to_be_masked, slot_atom
+                # An installed instance is selected once the others have
+                # been masked, so include it.
+                for similar_pkg in chain(
+                    self._iter_similar_available(
+                        to_be_masked, slot_atom, selectable_built=True
+                    ),
+                    self._iter_match_pkgs(
+                        self._frozen_config.roots[root], "installed", slot_atom
+                    ),
                 ):
                     if similar_pkg in conflict_pkgs:
                         continue
@@ -2930,6 +2938,58 @@ class depgraph:
 
         self._dynamic_config._need_restart = True
 
+    def _missing_dep_similar_parents(self, dep):
+        """
+        Find other packages for the slot of dep.parent which also have
+        an unsatisfied dependency on the package that dep refers to.
+
+        @rtype: list
+        @return: (parent, root, atom) tuples
+        """
+        parent = dep.parent
+        if not isinstance(parent, Package) or not dep.atom.package:
+            return []
+
+        if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
+            dep_keys = Package._dep_keys
+        else:
+            dep_keys = Package._runtime_keys
+
+        similar_parents = []
+        for pkg in self._iter_match_pkgs_any(parent.root_config, parent.slot_atom):
+            if (
+                pkg is parent
+                or pkg.cp != parent.cp
+                or pkg in self._dynamic_config._runtime_pkg_mask
+            ):
+                continue
+
+            # Use _select_atoms, so that an any-of group only contributes
+            # the choice that would be selected.
+            use = self._pkg_use_enabled(pkg)
+            atoms = []
+            try:
+                for k in dep_keys:
+                    v = pkg._metadata.get(k)
+                    if v:
+                        atoms.extend(
+                            self._select_atoms(pkg.root, v, myuse=use, parent=pkg)[pkg]
+                        )
+            except InvalidDependString:
+                continue
+
+            for atom in atoms:
+                if (
+                    atom.package
+                    and not atom.blocker
+                    and atom.cp == dep.atom.cp
+                    and self._select_package(pkg.root, atom.without_use)[0] is None
+                ):
+                    similar_parents.append((pkg, pkg.root, atom))
+                    break
+
+        return similar_parents
+
     def _in_blocker_conflict(self, pkg):
         """
         Check if pkg is involved in a blocker conflict. This method
@@ -3027,11 +3087,16 @@ class depgraph:
         self._dynamic_config._flatten_atoms_cache[cache_key] = atoms
         return atoms
 
-    def _iter_similar_available(self, graph_pkg, atom, autounmask_level=None):
+    def _iter_similar_available(
+        self, graph_pkg, atom, autounmask_level=None, selectable_built=False
+    ):
         """
         Given a package that's in the graph, do a rough check to
         see if a similar package is available to install. The given
         graph_pkg itself may be yielded only if it's not installed.
+        If selectable_built is True, then also yield built packages
+        which are identical to an installed instance or have no visible
+        ebuild.
         """
 
         usepkgonly = self._frozen_config.myopts.get("--usepkgonly") is True
@@ -3052,7 +3117,7 @@ class depgraph:
                 pkg, modified_use=self._pkg_use_enabled(pkg)
             ):
                 continue
-            if pkg.built:
+            if pkg.built and not selectable_built:
                 if self._equiv_binary_installed(pkg):
                     continue
                 if not (
@@ -3514,7 +3579,11 @@ class depgraph:
                             self._dynamic_config._skip_restart = True
                             return 0
 
-                    self._dynamic_config._backtrack_infos["missing dependency"] = dep
+                    backtrack_infos = self._dynamic_config._backtrack_infos
+                    backtrack_infos["missing dependency"] = dep
+                    backtrack_infos["missing dependency similar"] = (
+                        self._missing_dep_similar_parents(dep)
+                    )
                     self._dynamic_config._need_restart = True
                     if debug:
                         msg = []
@@ -11280,6 +11349,8 @@ class depgraph:
                 self._dynamic_config._unsatisfied_blockers_for_display
             )
 
+        self._show_backtrack_restart_causes()
+
         # Only show missed updates if there are no unresolved conflicts,
         # since they may be irrelevant after the conflicts are solved.
         if not unresolved_conflicts:
@@ -11919,6 +11990,46 @@ class depgraph:
     def get_backtrack_infos(self):
         return self._dynamic_config._backtrack_infos
 
+    def set_backtrack_restart_causes(self, backtracked, causes):
+        """
+        @param backtracked: number of backtracking attempts
+        @type backtracked: int
+        @param causes: counts of the (root, cp, description) tuples from
+                _backtrack_restart_causes
+        @type causes: collections.Counter
+        """
+        self._dynamic_config._backtrack_restart_causes = (backtracked, causes)
+
+    def _show_backtrack_restart_causes(self):
+        if self._dynamic_config._backtrack_restart_causes is None:
+            return
+        backtracked, causes = self._dynamic_config._backtrack_restart_causes
+
+        # Group by package, since one problem can be a slot conflict in
+        # one attempt and an unsatisfied dependency in the next.
+        packages = collections.Counter()
+        for (root, cp, description), count in causes.items():
+            packages[(root, cp)] += count
+
+        def attempts(count):
+            return f"{count} attempt" if count == 1 else f"{count} attempts"
+
+        msg = [
+            "",
+            f"!!! Backtracking did not find a solution in {attempts(backtracked)}. It was",
+            "!!! restarted most often because of the following packages, which may",
+            "!!! indicate the actual problem:",
+            "",
+        ]
+        for (root, cp), count in packages.most_common(5):
+            where = "" if root == self._frozen_config.target_root else f" for {root}"
+            msg.append(f"  {cp}{where} ({attempts(count)})")
+            for cause, cause_count in causes.most_common():
+                if cause[:2] == (root, cp):
+                    msg.append(f"    {cause[2]} ({attempts(cause_count)})")
+            msg.append("")
+        writemsg("".join(f"{line}\n" for line in msg), noiselevel=-1)
+
 
 class _dep_check_composite_db(dbapi):
     """
@@ -12369,6 +12480,7 @@ def _backtrack_depgraph(
     allow_backtracking = max_retries > 0
     backtracker = Backtracker(max_depth)
     backtracked = 0
+    restart_causes = collections.Counter()
 
     if frozen_config is None:
         frozen_config = _frozen_depgraph_config(
@@ -12413,7 +12525,9 @@ def _backtrack_depgraph(
             break
         elif mydepgraph.need_restart():
             backtracked += 1
-            backtracker.feedback(mydepgraph.get_backtrack_infos())
+            backtrack_infos = mydepgraph.get_backtrack_infos()
+            backtracker.feedback(backtrack_infos)
+            restart_causes.update(_backtrack_restart_causes(backtrack_infos))
         elif backtracker:
             backtracked += 1
 
@@ -12458,7 +12572,31 @@ def _backtrack_depgraph(
         )
         success, favorites = mydepgraph.select_files(myfiles)
 
+    if restart_causes and not success and not mydepgraph.need_config_change():
+        mydepgraph.set_backtrack_restart_causes(backtracked, restart_causes)
+
     return (success, mydepgraph, favorites, backtracked, max_retries)
+
+
+def _backtrack_restart_causes(backtrack_infos):
+    """
+    Describe the conflict in backtrack_infos which the Backtracker creates
+    new nodes for, as a list of (root, cp, description) tuples.
+    """
+    if "slot conflict" in backtrack_infos:
+        # The Backtracker only uses the first conflict.
+        pkg = backtrack_infos["slot conflict"][0][0][-1][0]
+        return [(pkg.root, pkg.cp, f"slot conflict for {pkg.slot_atom}")]
+    if "missing dependency" in backtrack_infos:
+        dep = backtrack_infos["missing dependency"]
+        return [
+            (
+                dep.root,
+                getattr(dep.atom, "cp", str(dep.atom)),
+                f"{dep.atom} required by {dep.parent.cpv} is unsatisfied",
+            )
+        ]
+    return []
 
 
 def resume_depgraph(
