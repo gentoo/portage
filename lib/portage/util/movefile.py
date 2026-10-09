@@ -216,7 +216,6 @@ def movefile(
             if (
                 mysettings
                 and "EAPI" in mysettings
-                and eapi_rewrites_symlinks(mysettings["EAPI"])
                 and "D" in mysettings
                 and target.startswith(mysettings["D"])
             ):
@@ -225,7 +224,8 @@ def movefile(
                     noiselevel=-1,
                 )
                 writemsg(f"!!! {dest} -> {target}\n", noiselevel=-1)
-                target = target[len(mysettings["D"]) - 1 :]
+                if eapi_rewrites_symlinks(mysettings["EAPI"]):
+                    target = target[len(mysettings["D"]) - 1 :]
             # Atomically update the path if it exists.
             try:
                 os.rename(src, dest)
