@@ -5613,21 +5613,32 @@ class dblink:
                 if (
                     self.settings
                     and "EAPI" in self.settings
-                    and eapi_rewrites_symlinks(self.settings["EAPI"])
                     and self.settings["D"]
                     and myto.startswith(self.settings["D"])
                 ):
-                    self._eqawarn(
-                        "preinst",
-                        [
-                            _(
-                                "QA Notice: Absolute symlink %s points to %s inside the image directory.\n"
-                                "Removing the leading %s from its path."
-                            )
-                            % (mydest, myto, self.settings["D"])
-                        ],
-                    )
-                    myto = myto[len(self.settings["D"]) - 1 :]
+                    if eapi_rewrites_symlinks(self.settings["EAPI"]):
+                        self._eqawarn(
+                            "preinst",
+                            [
+                                _(
+                                    "QA Notice: Absolute symlink %s points to %s inside the image directory.\n"
+                                    "Removing the leading %s from its path."
+                                )
+                                % (mydest, myto, self.settings["D"])
+                            ],
+                        )
+                        myto = myto[len(self.settings["D"]) - 1 :]
+                    else:
+                        self._eqawarn(
+                            "preinst",
+                            [
+                                _(
+                                    "QA Notice: Absolute symlink %s points to %s inside the image directory."
+                                )
+                                % (mydest, myto)
+                            ],
+                        )
+
                 # myrealto contains the path of the real file to which this symlink points.
                 # we can simply test for existence of this file to see if the target has been merged yet
                 myrealto = normalize_path(os.path.join(destroot, myabsto))
