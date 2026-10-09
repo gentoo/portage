@@ -44,6 +44,10 @@ Features:
   as they have the same sub-slot dep recorded, but say have a different
   BUILD_ID.
 
+* unmerge: Skip the pkg_prerm and pkg_postrm spawns when neither the package
+  nor any bashrc or ebuild hook file defines them (bug #570472). Top-level
+  bashrc code therefore no longer runs for those phases of such packages.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata

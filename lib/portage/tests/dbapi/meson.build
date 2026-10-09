@@ -9,6 +9,7 @@ py.install_sources(
         'test_portdb_cache.py',
         'test_preserved_libs.py',
         'test_prune_plib_registry.py',
+        'test_unmerge_phase_skip.py',
         '__init__.py',
         '__test__.py',
     ],

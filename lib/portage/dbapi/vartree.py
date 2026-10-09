@@ -4,6 +4,7 @@
 __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
 import argparse
+import bz2
 import errno
 import filecmp
 import fnmatch
@@ -2379,6 +2380,66 @@ class dblink:
                 plib_registry.unlock()
                 self.vartree.dbapi._fs_unlock()
 
+    def _phase_hook_files(self):
+        """
+        Yield the paths ebuild.sh would source via __source_all_bashrcs for
+        this package: the profile and package.bashrc files config has already
+        narrowed to this package, /etc/portage/bashrc, and the per-package
+        files under PM_EBUILD_HOOK_DIR.
+        """
+        settings = self.settings
+        yield from settings._pbashrc
+
+        bashrc = settings.get("PORTAGE_BASHRC")
+        if bashrc:
+            yield bashrc
+
+        hook_dir = settings.get("PM_EBUILD_HOOK_DIR")
+        if hook_dir:
+            pn = self.mycpv.cpv_split[1]
+            slot = settings.get("SLOT", "").split("/")[0]
+            hook_dir = os.path.join(hook_dir, self.cat)
+            for name in (pn, f"{pn}:{slot}", f"{pn}-{self.mysplit[1]}", self.pkg):
+                yield os.path.join(hook_dir, name)
+
+    _sources_file_re = re.compile(r"(?:^|[\s;&|(){}])(?:source|\.)\s")
+
+    def _unmerge_phases_to_run(self):
+        """
+        Return which of prerm and postrm would run anything if spawned.
+        Neither has a default body or _post_phase_cmds, so that depends on
+        what environment.bz2 defines and what the hook files contain. A hook
+        file that sources another file is not followed.
+        """
+        phases = {"prerm", "postrm"}
+        try:
+            with open(os.path.join(self.dbdir, "environment.bz2"), "rb") as f:
+                env = bz2.decompress(f.read())
+        except (OSError, EOFError, ValueError):
+            return phases
+        run = {
+            m.decode()
+            for m in re.findall(
+                rb"^(?:pre_|post_)?pkg_(prerm|postrm)\s*\(\)", env, re.M
+            )
+        }
+        for path in self._phase_hook_files():
+            if run == phases:
+                break
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+            except OSError:
+                continue
+            if any(
+                self._sources_file_re.search(line)
+                for line in content.splitlines()
+                if not line.lstrip().startswith("#")
+            ):
+                return phases
+            run.update(phase for phase in phases if phase in content)
+        return run
+
     @_slot_locked
     def unmerge(
         self,
@@ -2514,6 +2575,10 @@ class dblink:
         ):
             self._preserve_libs = False
 
+        run_phases = ()
+        if not eapi_unsupported and os.path.isfile(myebuildpath):
+            run_phases = self._unmerge_phases_to_run()
+
         builddir_lock = None
         scheduler = self._scheduler
         retval = os.EX_OK
@@ -2556,7 +2621,7 @@ class dblink:
                     noiselevel=-1,
                 )
                 showMessage(f"{eapi_unsupported}\n", level=logging.ERROR, noiselevel=-1)
-            elif os.path.isfile(myebuildpath):
+            elif "prerm" in run_phases:
                 phase = EbuildPhase(
                     background=background,
                     phase=ebuild_phase,
@@ -2574,6 +2639,14 @@ class dblink:
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
+            elif "postrm" in run_phases:
+                # Under FEATURES=keeptemp, ${T} may hold an environment from
+                # an earlier run, which postrm would use instead of extracting
+                # environment.bz2.
+                try:
+                    os.unlink(os.path.join(self.settings["T"], "environment"))
+                except FileNotFoundError:
+                    pass
 
             self.vartree.dbapi._fs_lock()
             try:
@@ -2582,7 +2655,7 @@ class dblink:
                 self.vartree.dbapi._fs_unlock()
             self._clear_contents_cache()
 
-            if not eapi_unsupported and os.path.isfile(myebuildpath):
+            if "postrm" in run_phases:
                 ebuild_phase = "postrm"
                 phase = EbuildPhase(
                     background=background,
