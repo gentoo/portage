@@ -6,7 +6,7 @@ Release notes take the form of the following optional categories:
 * Bug fixes
 * Cleanups
 
-portage-3.0.83 (UNRELEASED)
+portage-3.0.83 (2026-10-11)
 --------------
 
 Improved circular dependency diagnostics and performance when launching
