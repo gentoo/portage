@@ -8,6 +8,7 @@ This class contains common initialization code and functions.
 
 import functools
 import logging
+import multiprocessing
 import os
 
 import portage
@@ -258,7 +259,47 @@ class SyncBase:
             ),
         )
 
+    def _import_key(self, openpgp_env, key):
+        loop = global_event_loop()
+        with ForkExecutor(loop=loop) as executor:
+            openpgp_env_coro = functools.partial(
+                loop.run_in_executor,
+                executor,
+                self.__import_key,
+                self.spawn_kwargs,
+                openpgp_env,
+                key,
+            )
+            loop.run_until_complete(openpgp_env_coro())
+
+    @staticmethod
+    def __import_key(spawn_kwargs, openpgp_env, key):
+        if "gid" in spawn_kwargs:
+            os.setgid(int(spawn_kwargs["gid"]))
+        if "groups" in spawn_kwargs:
+            os.setgroups(spawn_kwargs["groups"])
+            portage.data.secpass = 1
+        if "uid" in spawn_kwargs:
+            os.setuid(int(spawn_kwargs["uid"]))
+            portage.data.secpass = 1
+        if "umask" in spawn_kwargs:
+            os.umask(spawn_kwargs["umask"])
+
+        openpgp_env.import_key(key)
+
     def _refresh_keys(self, openpgp_env):
+        loop = global_event_loop()
+        with ForkExecutor(loop=loop) as executor:
+            openpgp_env_coro = functools.partial(
+                loop.run_in_executor,
+                executor,
+                self.__refresh_keys,
+                self.spawn_kwargs,
+                openpgp_env,
+            )
+            loop.run_until_complete(openpgp_env_coro())
+
+    def __refresh_keys(self, spawn_kwargs, openpgp_env):
         """
         Refresh keys stored in openpgp_env. Raises gemato.exceptions.GematoException
         or asyncio.TimeoutError on failure.
@@ -266,6 +307,18 @@ class SyncBase:
         @param openpgp_env: openpgp environment
         @type openpgp_env: gemato.openpgp.OpenPGPEnvironment
         """
+
+        if "gid" in spawn_kwargs:
+            os.setgid(int(spawn_kwargs["gid"]))
+        if "groups" in spawn_kwargs:
+            os.setgroups(spawn_kwargs["groups"])
+            portage.data.secpass = 1
+        if "uid" in spawn_kwargs:
+            os.setuid(int(spawn_kwargs["uid"]))
+            portage.data.secpass = 1
+        if "umask" in spawn_kwargs:
+            os.umask(spawn_kwargs["umask"])
+
         out = portage.output.EOutput(
             quiet=("--quiet" in self.options["emerge_config"].opts)
         )
@@ -332,25 +385,49 @@ class SyncBase:
             raise  # retry
 
     def _get_openpgp_env(self, openpgp_key_path=None, debug=False):
-        if gemato is not None:
-            # Override global proxy setting with one provided in emerge configuration
-            if "http_proxy" in self.spawn_kwargs["env"]:
-                proxy = self.spawn_kwargs["env"]["http_proxy"]
-            elif "https_proxy" in self.spawn_kwargs["env"]:
-                proxy = self.spawn_kwargs["env"]["https_proxy"]
-            else:
-                proxy = None
+        queue = multiprocessing.Queue()
+        loop = global_event_loop()
+        with ForkExecutor(loop=loop) as executor:
+            openpgp_env_coro = functools.partial(
+                loop.run_in_executor,
+                executor,
+                self.__get_openpgp_env,
+                queue,
+                self.spawn_kwargs,
+                openpgp_key_path,
+                debug,
+            )
+            loop.run_until_complete(openpgp_env_coro())
+        return queue.get()
 
-            if openpgp_key_path:
-                openpgp_env = gemato.openpgp.OpenPGPEnvironment(
-                    proxy=proxy, debug=debug
-                )
-            else:
-                openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment(
-                    proxy=proxy, debug=debug
-                )
+    @staticmethod
+    def __get_openpgp_env(queue, spawn_kwargs, openpgp_key_path=None, debug=False):
+        if gemato is None:
+            return
 
-            return openpgp_env
+        if "gid" in spawn_kwargs:
+            os.setgid(int(spawn_kwargs["gid"]))
+        if "groups" in spawn_kwargs:
+            os.setgroups(spawn_kwargs["groups"])
+            portage.data.secpass = 1
+        if "uid" in spawn_kwargs:
+            os.setuid(int(spawn_kwargs["uid"]))
+            portage.data.secpass = 1
+        if "umask" in spawn_kwargs:
+            os.umask(spawn_kwargs["umask"])
+
+        # Override global proxy setting with one provided in emerge configuration
+        if "http_proxy" in spawn_kwargs["env"]:
+            proxy = spawn_kwargs["env"]["http_proxy"]
+        elif "https_proxy" in spawn_kwargs["env"]:
+            proxy = spawn_kwargs["env"]["https_proxy"]
+        else:
+            proxy = None
+
+        if openpgp_key_path:
+            queue.put(gemato.openpgp.OpenPGPEnvironment(proxy=proxy, debug=debug))
+        else:
+            queue.put(gemato.openpgp.OpenPGPSystemEnvironment(proxy=proxy, debug=debug))
 
 
 class NewBase(SyncBase):
