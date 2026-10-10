@@ -17,6 +17,8 @@ Breaking changes:
   Users relying on SSH to fetch binpkgs may need to adjust ownership
   of keys so they're accessible to the 'portage' user.
 
+* ebuild.sh: Require bash-5.3 for all EAPIs.
+
 Security:
 
 * See FEATURES="userfetch" item above under "Breaking changes".
