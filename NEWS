@@ -86,7 +86,8 @@ Bug fixes:
 * bintree: Fix creating Packages index for two packages of the same name
   but residing in different categories (bug #978985).
 
-* bintree: Handle fetching from mixed xpak/gpkg binhosts (bug #970606).
+* bintree: Handle fetching from mixed xpak/gpkg binhosts (bug #970606,
+  bug #980835).
 
 * emerge --info: Filter more sensitive information (bug #280478).
 
