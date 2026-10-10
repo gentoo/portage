@@ -222,6 +222,7 @@ SUPPORTED_FEATURES = frozenset(
         "packdebug",
         "parallel-fetch",
         "parallel-install",
+        "parallel-merge",
         "pid-sandbox",
         "pkgdir-index-trusted",
         "preserve-libs",
