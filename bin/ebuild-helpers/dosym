@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 option_r=
-if ___eapi_has_dosym_r && [[ ${1} == -r ]]; then
+if ___eapi_dosym_has_relative && [[ ${1} == -r ]]; then
 	option_r=t
 	shift
 fi
@@ -15,7 +15,7 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-if ! ___eapi_has_prefix_variables; then
+if ! ___eapi_has_prefix_vars; then
 	ED=${D}
 fi
 

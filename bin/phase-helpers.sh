@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # shellcheck disable=2128,2188
 
-if ___eapi_has_DESTTREE_INSDESTTREE; then
+if ___eapi_has_legacy_desttree_vars; then
 	export DESTTREE=/usr
 	export INSDESTTREE=""
 else
@@ -41,7 +41,7 @@ into() {
 		export __E_DESTTREE=""
 	else
 		export __E_DESTTREE=$1
-		if ! ___eapi_has_prefix_variables; then
+		if ! ___eapi_has_prefix_vars; then
 			local ED=${D}
 		fi
 		if [[ ! -d "${ED%/}/${__E_DESTTREE#/}" ]]; then
@@ -55,7 +55,7 @@ into() {
 		fi
 	fi
 
-	if ___eapi_has_DESTTREE_INSDESTTREE; then
+	if ___eapi_has_legacy_desttree_vars; then
 		export DESTTREE=${__E_DESTTREE}
 	fi
 }
@@ -65,7 +65,7 @@ insinto() {
 		export __E_INSDESTTREE=""
 	else
 		export __E_INSDESTTREE=${1}
-		if ! ___eapi_has_prefix_variables; then
+		if ! ___eapi_has_prefix_vars; then
 			local ED=${D}
 		fi
 		if [[ ! -d "${ED%/}/${__E_INSDESTTREE#/}" ]]; then
@@ -79,7 +79,7 @@ insinto() {
 		fi
 	fi
 
-	if ___eapi_has_DESTTREE_INSDESTTREE; then
+	if ___eapi_has_legacy_desttree_vars; then
 		export INSDESTTREE=${__E_INSDESTTREE}
 	fi
 }
@@ -89,7 +89,7 @@ exeinto() {
 		export __E_EXEDESTTREE=""
 	else
 		export __E_EXEDESTTREE="${1}"
-		if ! ___eapi_has_prefix_variables; then
+		if ! ___eapi_has_prefix_vars; then
 			local ED=${D}
 		fi
 		if [[ ! -d "${ED%/}/${__E_EXEDESTTREE#/}" ]]; then
@@ -109,7 +109,7 @@ docinto() {
 		export __E_DOCDESTTREE=""
 	else
 		export __E_DOCDESTTREE="${1}"
-		if ! ___eapi_has_prefix_variables; then
+		if ! ___eapi_has_prefix_vars; then
 			local ED=${D}
 		fi
 		if [[ ! -d "${ED%/}/usr/share/doc/${PF}/${__E_DOCDESTTREE#/}" ]]; then
@@ -152,7 +152,7 @@ exeopts() {
 libopts() {
 	local IFS
 
-	if ! ___eapi_has_dolib_libopts; then
+	if ! ___eapi_dolib_uses_libopts; then
 		die "'${FUNCNAME}' has been banned for EAPI '${EAPI}'"
 	elif has -s "$@"; then
 		die "Never call libopts() with -s"
@@ -223,7 +223,7 @@ useq() {
 
 usev() {
 	local nargs=1
-	___eapi_usev_has_second_arg && nargs=2
+	___eapi_usev_has_false_arg && nargs=2
 	[[ ${#} -gt ${nargs} ]] && die "usev takes at most ${nargs} arguments"
 
 	if use ${1}; then
@@ -292,7 +292,7 @@ use_with() {
 		return 1
 	fi
 
-	if ___eapi_use_enable_and_use_with_support_empty_third_argument; then
+	if ___eapi_use_enable_empty_third_arg; then
 		local UW_SUFFIX=${3+=$3}
 	else
 		local UW_SUFFIX=${3:+=$3}
@@ -314,7 +314,7 @@ use_enable() {
 		return 1
 	fi
 
-	if ___eapi_use_enable_and_use_with_support_empty_third_argument; then
+	if ___eapi_use_enable_empty_third_arg; then
 		local UE_SUFFIX=${3+=$3}
 	else
 		local UE_SUFFIX=${3:+=$3}
@@ -369,7 +369,7 @@ unpack() {
 	___eapi_unpack_supports_xz  && suffixes+=( xz )
 
 	# Compose a finalised dictionary of supported suffixes.
-	if ! ___eapi_unpack_is_case_sensitive; then
+	if ! ___eapi_unpack_matches_case; then
 		# Induce lowercase conversion upon all subsequent assignments.
 		typeset -l suffix
 	fi
@@ -396,7 +396,7 @@ unpack() {
 		elif [[ ${f} == ./* ]]; then
 			# relative path starting with './'
 			srcdir=
-		elif ___eapi_unpack_supports_absolute_paths; then
+		elif ___eapi_unpack_allows_abs_paths; then
 			# EAPI 6 allows absolute and deep relative paths
 			srcdir=
 			if [[ ${f} == "${DISTDIR%/}"/* ]]; then
@@ -515,7 +515,7 @@ econf() {
 	local x
 	local pid=${BASHPID}
 
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local EPREFIX=
 	fi
 
@@ -571,37 +571,37 @@ econf() {
 		fi
 
 		local conf_args=()
-		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir || ___eapi_econf_passes_--with-sysroot; then
+		if ___eapi_econf_disables_dep_tracking || ___eapi_econf_disables_silent_rules || ___eapi_econf_sets_docdirs || ___eapi_econf_sets_sysroot; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
-			if ___eapi_econf_passes_--datarootdir; then
+			if ___eapi_econf_sets_datarootdir; then
 				if [[ ${conf_help} == *--datarootdir* ]]; then
 					conf_args+=( --datarootdir="${EPREFIX}"/usr/share )
 				fi
 			fi
 
-			if ___eapi_econf_passes_--disable-dependency-tracking; then
+			if ___eapi_econf_disables_dep_tracking; then
 				if [[ ${conf_help} == \
 						*--disable-dependency-tracking[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-dependency-tracking )
 				fi
 			fi
 
-			if ___eapi_econf_passes_--disable-silent-rules; then
+			if ___eapi_econf_disables_silent_rules; then
 				if [[ ${conf_help} == \
 						*--disable-silent-rules[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-silent-rules )
 				fi
 			fi
 
-			if ___eapi_econf_passes_--disable-static; then
+			if ___eapi_econf_disables_static; then
 				if [[ ${conf_help} == *--enable-shared[^A-Za-z0-9+_.-]* &&
 						${conf_help} == *--enable-static[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-static )
 				fi
 			fi
 
-			if ___eapi_econf_passes_--docdir_and_--htmldir; then
+			if ___eapi_econf_sets_docdirs; then
 				if [[ ${conf_help} == *--docdir* ]]; then
 					conf_args+=( --docdir="${EPREFIX}/usr/share/doc/${PF}" )
 				fi
@@ -611,7 +611,7 @@ econf() {
 				fi
 			fi
 
-			if ___eapi_econf_passes_--with-sysroot; then
+			if ___eapi_econf_sets_sysroot; then
 				if [[ ${conf_help} == *--with-sysroot[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --with-sysroot="${ESYSROOT:-/}" )
 				fi
@@ -666,7 +666,7 @@ econf() {
 			fi
 
 			# econf dies unconditionally in EAPIs 0 to 3
-			___eapi_helpers_can_die || die "econf failed"
+			___eapi_helpers_die_on_failure || die "econf failed"
 			__helpers_die "econf failed"
 			return 1
 		fi
@@ -685,7 +685,7 @@ einstall() {
 
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local ED=${D}
 	fi
 
@@ -763,7 +763,7 @@ __eapi0_src_test() {
 	# to emulate the desired parts of emake behavior.
 	local emake_cmd="${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE}"
 	local internal_opts=
-	if ___eapi_default_src_test_disables_parallel_jobs; then
+	if ___eapi_default_src_test_runs_serial; then
 		internal_opts+=" -j1"
 	fi
 
@@ -864,17 +864,17 @@ ___best_version_and_has_version_common() {
 	[[ $# -gt 0 ]] && die "${FUNCNAME[1]}: unused argument(s): $*"
 
 	case ${root_arg} in
-		"") if ___eapi_has_prefix_variables; then
+		"") if ___eapi_has_prefix_vars; then
 				root=${ROOT%/}/${EPREFIX#/}
 			else
 				root=${ROOT}
 			fi ;;
 		--host-root)
-			if ! ___eapi_best_version_and_has_version_support_--host-root; then
+			if ! ___eapi_version_query_has_host_root; then
 				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
 			fi
 
-			if ___eapi_has_prefix_variables; then
+			if ___eapi_has_prefix_vars; then
 				# Since portageq requires the root argument be consistent
 				# with EPREFIX, ensure consistency here (bug #655414).
 				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
@@ -883,10 +883,10 @@ ___best_version_and_has_version_common() {
 				root=/
 			fi ;;
 		-r|-d|-b)
-			if ! ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+			if ! ___eapi_version_query_has_root_opts; then
 				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
 			fi
-			if ___eapi_has_prefix_variables; then
+			if ___eapi_has_prefix_vars; then
 				case ${root_arg} in
 					-r) root=${ROOT%/}/${EPREFIX#/} ;;
 					-d) root=${ESYSROOT:-/} ;;

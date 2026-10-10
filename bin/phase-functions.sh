@@ -145,13 +145,13 @@ __filter_readonly_variables() {
 	fi
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
-	if ___eapi_has_prefix_variables; then
+	if ___eapi_has_prefix_vars; then
 		filtered_vars+=( ED EPREFIX EROOT )
 		if ___eapi_has_SYSROOT; then
 			filtered_vars+=( ESYSROOT )
 		fi
 	fi
-	if ___eapi_has_PORTDIR_ECLASSDIR; then
+	if ___eapi_has_legacy_repo_vars; then
 		filtered_vars+=( PORTDIR ECLASSDIR )
 	fi
 
@@ -445,7 +445,7 @@ __dyn_prepare() {
 
 	if [[ -d ${S} ]] ; then
 		cd "${S}"
-	elif ___eapi_has_S_WORKDIR_fallback; then
+	elif ___eapi_uses_S_WORKDIR_fallback; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! __has_phase_defined_up_to prepare; then
 		cd "${WORKDIR}"
@@ -481,7 +481,7 @@ __dyn_configure() {
 
 	if [[ -d ${S} ]] ; then
 		cd "${S}"
-	elif ___eapi_has_S_WORKDIR_fallback; then
+	elif ___eapi_uses_S_WORKDIR_fallback; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! __has_phase_defined_up_to configure; then
 		cd "${WORKDIR}"
@@ -513,7 +513,7 @@ __dyn_compile() {
 
 	if [[ -d ${S} ]] ; then
 		cd "${S}"
-	elif ___eapi_has_S_WORKDIR_fallback; then
+	elif ___eapi_uses_S_WORKDIR_fallback; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! __has_phase_defined_up_to compile; then
 		cd "${WORKDIR}"
@@ -547,7 +547,7 @@ __dyn_test() {
 
 	if [[ -d ${S} ]]; then
 		cd "${S}"
-	elif ___eapi_has_S_WORKDIR_fallback; then
+	elif ___eapi_uses_S_WORKDIR_fallback; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! __has_phase_defined_up_to test; then
 		cd "${WORKDIR}"
@@ -628,7 +628,7 @@ __dyn_install() {
 
 	__ebuild_phase pre_src_install
 
-	if ___eapi_has_prefix_variables; then
+	if ___eapi_has_prefix_vars; then
 		_x=${ED}
 	else
 		_x=${D}
@@ -639,7 +639,7 @@ __dyn_install() {
 
 	if [[ -d ${S} ]] ; then
 		cd "${S}"
-	elif ___eapi_has_S_WORKDIR_fallback; then
+	elif ___eapi_uses_S_WORKDIR_fallback; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! __has_phase_defined_up_to install; then
 		cd "${WORKDIR}"
@@ -653,7 +653,7 @@ __dyn_install() {
 	# Reset exeinto(), docinto(), insinto(), and into() state variables
 	# in case the user is running the install phase multiple times
 	# consecutively via the ebuild command.
-	if ___eapi_has_DESTTREE_INSDESTTREE; then
+	if ___eapi_has_legacy_desttree_vars; then
 		export DESTTREE=/usr
 		export INSDESTTREE=""
 	else
@@ -757,7 +757,7 @@ __dyn_install() {
 	# Save EPREFIX, since it makes it easy to use chpathtool to
 	# adjust the content of a binary package so that it will
 	# work in a different EPREFIX from the one is was built for.
-	if ___eapi_has_prefix_variables && [[ -n ${EPREFIX} ]]; then
+	if ___eapi_has_prefix_vars && [[ -n ${EPREFIX} ]]; then
 		echo "${EPREFIX}" > EPREFIX
 	fi
 

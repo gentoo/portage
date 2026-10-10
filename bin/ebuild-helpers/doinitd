@@ -9,7 +9,7 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-if ! ___eapi_doinitd_respects_exeopts; then
+if ! ___eapi_doinitd_uses_exeopts; then
 	export EXEOPTIONS=-m0755
 	export DIROPTIONS=""
 fi

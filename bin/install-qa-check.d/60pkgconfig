@@ -3,7 +3,7 @@
 # Check for pkg-config file issues
 
 # Ensure that ver_test is available.
-if ! ___eapi_has_version_functions; then
+if ! ___eapi_has_ver_helpers; then
 	source "${PORTAGE_BIN_PATH:?}/version-functions.sh" || exit
 fi
 

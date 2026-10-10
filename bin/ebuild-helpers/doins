@@ -18,7 +18,7 @@ if [[ ${helper} == dodoc ]] ; then
 	export DIROPTIONS=""
 	export __E_INSDESTTREE=usr/share/doc/${PF}/${__E_DOCDESTTREE}
 else
-	if ! ___eapi_has_DESTTREE_INSDESTTREE; then
+	if ! ___eapi_has_legacy_desttree_vars; then
 		[[ -n ${INSDESTTREE} ]] &&
 			die "${0##*/}: \${INSDESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 	else
@@ -38,7 +38,7 @@ if [[ "${1}" == "-r" ]] ; then
 	shift
 fi
 
-if ! ___eapi_has_prefix_variables; then
+if ! ___eapi_has_prefix_vars; then
 	export ED="${D}"
 fi
 
@@ -61,11 +61,11 @@ then
 	exit 1
 fi
 
-if ___eapi_doins_and_newins_preserve_symlinks; then
+if ___eapi_doins_preserves_symlinks; then
 	DOINS_ARGS+=( --preserve_symlinks )
 fi
 
-if ___eapi_helpers_can_die; then
+if ___eapi_helpers_die_on_failure; then
 	DOINS_ARGS+=( --helpers_can_die )
 fi
 

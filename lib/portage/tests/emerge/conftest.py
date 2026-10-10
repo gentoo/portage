@@ -65,7 +65,7 @@ pkg_info() {
 }
 
 pkg_preinst() {
-	if ! ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+	if ! ___eapi_version_query_has_root_opts; then
 		# The BROOT variable is unset during pkg_* phases for EAPI 7,
 		# therefore best/has_version -b is expected to fail if we attempt
 		# to call it for EAPI 7 here.
@@ -75,7 +75,7 @@ pkg_preinst() {
 
 call_has_and_best_version() {
 	local root_arg
-	if ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+	if ___eapi_version_query_has_root_opts; then
 		root_arg="-b"
 	else
 		root_arg="--host-root"

@@ -5,7 +5,7 @@
 
 source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
-if ___eapi_has_version_functions; then
+if ___eapi_has_ver_helpers; then
 	source "${PORTAGE_BIN_PATH}/version-functions.sh" || exit 1
 fi
 
@@ -107,7 +107,7 @@ nonfatal() {
 __helpers_die() {
 	local retval=$?
 
-	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
+	if ___eapi_helpers_die_on_failure && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
 		die "$@"
 	else
 		echo -e "$@" >&2
@@ -121,7 +121,7 @@ die() {
 	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
 
-	if ___eapi_die_can_respect_nonfatal && [[ $1 == -n ]]; then
+	if ___eapi_die_supports_nonfatal && [[ $1 == -n ]]; then
 		shift
 		if [[ ${PORTAGE_NONFATAL} == 1 ]]; then
 			[[ $# -gt 0 ]] && echo -e "$@" >&2

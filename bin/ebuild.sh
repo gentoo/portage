@@ -31,13 +31,13 @@ __check_bash_version() {
 	#
 	# https://projects.gentoo.org/pms/8/pms.html#x1-580006
 	# https://www.gnu.org/software/bash/manual/html_node/Shell-Compatibility-Mode.html
-	if ___eapi_bash_3_2; then
+	if ___eapi_uses_bash_3_2; then
 		BASH_COMPAT=3.2
-	elif ___eapi_bash_4_2; then
+	elif ___eapi_uses_bash_4_2; then
 		BASH_COMPAT=4.2
-	elif ___eapi_bash_5_0; then
+	elif ___eapi_uses_bash_5_0; then
 		BASH_COMPAT=5.0
-	elif ___eapi_bash_5_3; then
+	elif ___eapi_uses_bash_5_3; then
 		BASH_COMPAT=5.3
 	fi
 
@@ -283,11 +283,11 @@ inherit() {
 			[[ -v IDEPEND      ]] && B_IDEPEND="${IDEPEND}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
 
-			if ___eapi_has_accumulated_PROPERTIES; then
+			if ___eapi_accumulates_PROPERTIES; then
 				[[ -v PROPERTIES ]] && B_PROPERTIES=${PROPERTIES}
 				unset PROPERTIES
 			fi
-			if ___eapi_has_accumulated_RESTRICT; then
+			if ___eapi_accumulates_RESTRICT; then
 				[[ -v RESTRICT ]] && B_RESTRICT=${RESTRICT}
 				unset RESTRICT
 			fi
@@ -333,7 +333,7 @@ inherit() {
 			[[ -v B_IDEPEND ]] && IDEPEND="${B_IDEPEND}"
 			[[ -v B_IDEPEND ]] || unset IDEPEND
 
-			if ___eapi_has_accumulated_PROPERTIES; then
+			if ___eapi_accumulates_PROPERTIES; then
 				[[ -v PROPERTIES ]] &&
 					E_PROPERTIES+=${E_PROPERTIES:+ }${PROPERTIES}
 				[[ -v B_PROPERTIES ]] &&
@@ -341,7 +341,7 @@ inherit() {
 				[[ -v B_PROPERTIES ]] ||
 					unset PROPERTIES
 			fi
-			if ___eapi_has_accumulated_RESTRICT; then
+			if ___eapi_accumulates_RESTRICT; then
 				[[ -v RESTRICT ]] &&
 					E_RESTRICT+=${E_RESTRICT:+ }${RESTRICT}
 				[[ -v B_RESTRICT ]] &&
@@ -610,7 +610,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		# Catch failed globbing attempts in case ebuild writer forgot to
 		# escape '*' or likes.
 		# Note: this needs to be done before unsetting EAPI.
-		if ___eapi_enables_failglob_in_global_scope; then
+		if ___eapi_enables_global_failglob; then
 			shopt -s failglob
 		fi
 
@@ -672,7 +672,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 
 		[[ -s ${SANDBOX_LOG} ]] && die "Sandbox violations found, exiting"
 
-		if ___eapi_enables_failglob_in_global_scope; then
+		if ___eapi_enables_global_failglob; then
 			shopt -u failglob
 		fi
 
@@ -681,7 +681,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		# export EAPI for helpers (especially since we unset it above)
 		export EAPI
 
-		if ___eapi_has_RDEPEND_DEPEND_fallback; then
+		if ___eapi_uses_RDEPEND_as_DEPEND; then
 			export RDEPEND=${RDEPEND-${DEPEND}}
 			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 		fi
@@ -695,10 +695,10 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		IDEPEND+="${IDEPEND:+ }${E_IDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
 
-		if ___eapi_has_accumulated_PROPERTIES; then
+		if ___eapi_accumulates_PROPERTIES; then
 			PROPERTIES+=${PROPERTIES:+ }${E_PROPERTIES}
 		fi
-		if ___eapi_has_accumulated_RESTRICT; then
+		if ___eapi_accumulates_RESTRICT; then
 			RESTRICT+=${RESTRICT:+ }${E_RESTRICT}
 		fi
 
@@ -793,7 +793,7 @@ else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
 	# declare them only after it has already run.
 	declare -r "${portage_readonly_metadata[@]}" "${portage_readonly_vars[@]}"
-	if ___eapi_has_prefix_variables; then
+	if ___eapi_has_prefix_vars; then
 		declare -r ED EPREFIX EROOT
 	fi
 

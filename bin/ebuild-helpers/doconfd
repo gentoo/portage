@@ -10,11 +10,11 @@ if [[ $# -lt 1 ]] ; then
 fi
 
 export __E_INSDESTTREE='/etc/conf.d/'
-if ___eapi_has_DESTTREE_INSDESTTREE; then
+if ___eapi_has_legacy_desttree_vars; then
 	export INSDESTTREE=${__E_INSDESTTREE}
 fi
 
-if ! ___eapi_doconfd_respects_insopts; then
+if ! ___eapi_doconfd_uses_insopts; then
 	export INSOPTIONS=-m0644
 	export DIROPTIONS=""
 fi

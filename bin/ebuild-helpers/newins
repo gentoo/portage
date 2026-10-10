@@ -15,7 +15,7 @@ fi
 	eqawarn "QA Notice: ${helper} called with more than 2 arguments: ${*:3}"
 
 stdin=
-if ___eapi_newins_supports_reading_from_standard_input && [[ ${1} == "-" ]]; then
+if ___eapi_newins_reads_stdin && [[ ${1} == "-" ]]; then
 	stdin=yes
 fi
 
@@ -39,7 +39,7 @@ else
 
 	cp_args="-f"
 	if [[ ${helper} == newins ]] ; then
-		if ___eapi_doins_and_newins_preserve_symlinks; then
+		if ___eapi_doins_preserves_symlinks; then
 			cp_args+=" -P"
 		fi
 	fi

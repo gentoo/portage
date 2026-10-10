@@ -19,7 +19,7 @@ shift $#
 source "${PORTAGE_BIN_PATH:?}/ebuild.sh" || exit
 
 install_symlink_html_docs() {
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local ED=${D}
 	else
 		[[ ! -d ${ED} && -d ${D} ]] && dodir /
@@ -76,7 +76,7 @@ fi
 
 install_qa_check() {
 	local d f i qa_var x paths qa_checks=() checks_run=()
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local EPREFIX= ED=${D}
 	fi
 
@@ -327,7 +327,7 @@ preinst_qa_check() {
 
 postinst_qa_check() {
 	local d f paths qa_checks=() PORTAGE_QA_PHASE=${1:-postinst}
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local EPREFIX= EROOT=${ROOT}
 	fi
 
@@ -411,7 +411,7 @@ preinst_sfperms() {
 		 return 1
 	fi
 
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local ED=${D}
 	fi
 
@@ -451,7 +451,7 @@ preinst_suid_scan() {
 		 return 1
 	fi
 
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local ED=${D}
 	fi
 
@@ -552,7 +552,7 @@ __generate_packdebug() {
 }
 
 __dyn_package() {
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local EPREFIX=
 	fi
 
@@ -686,7 +686,7 @@ __END1__
 }
 
 __dyn_rpm() {
-	if ! ___eapi_has_prefix_variables; then
+	if ! ___eapi_has_prefix_vars; then
 		local EPREFIX=
 	fi
 

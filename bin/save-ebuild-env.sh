@@ -297,15 +297,15 @@ __save_ebuild_env() (
 		MAPFILE+=( default_"${REPLY}" __eapi{0,1,2,4,6,8}_"${REPLY}" )
 	done
 
-	___eapi_has_version_functions && MAPFILE+=( ver_test ver_cut ver_rs )
+	___eapi_has_ver_replacing && MAPFILE+=( ver_replacing )
 	___eapi_has_einstalldocs && MAPFILE+=( einstalldocs )
 	___eapi_has_eapply_user && MAPFILE+=( __readdir eapply_user )
+	___eapi_has_ver_helpers && MAPFILE+=( ver_test ver_cut ver_rs )
 	___eapi_has_get_libdir && MAPFILE+=( get_libdir )
+	___eapi_has_pipestatus && MAPFILE+=( pipestatus )
 	___eapi_has_in_iuse && MAPFILE+=( in_iuse )
 	___eapi_has_eapply && MAPFILE+=( __eapply_patch eapply patch )
 	___eapi_has_usex && MAPFILE+=( usex )
-	___eapi_has_pipestatus && MAPFILE+=( pipestatus )
-	___eapi_has_ver_replacing && MAPFILE+=( ver_replacing )
 	___eapi_has_edo && MAPFILE+=( edo )
 
 	# Destroy the collected functions.
