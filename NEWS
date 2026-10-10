@@ -9,6 +9,9 @@ Release notes take the form of the following optional categories:
 portage-3.0.83 (UNRELEASED)
 --------------
 
+Improved circular dependency diagnostics and performance when launching
+ebuild phases.
+
 Breaking changes:
 
 * BinpkgFetcher: Fetch binary packages as the regular fetch user, like
@@ -27,6 +30,8 @@ Features:
   status: they write it to a pipe that portage passes in. ebuild-ipc, which
   has_version and best_version still run, no longer imports portage, which
   accounted for roughly three quarters of the time of a call.
+
+* Various other performance improvements by avoiding unnecessary forks.
 
 * Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
   package merges. When enabled, Portage uses hashes and mtimes from the
@@ -70,10 +75,53 @@ Features:
   regardless, narrowing the scope helps parallelism most in combination with
   FEATURES="-merge-wait" or FEATURES="parallel-install".
 
+* Respect user patches for binary packages.
+
+  Binary patches are now ignored by default if user patches in /etc/portage/patches
+  don't match those within the binary package. This can be controlled by using
+  the new --binpkg-respect-user-patches option (bug #917047).
+
+* emerge --info: Consolidate output.
+
+* Scheduler: Improve FEATURES=cgroup output.
+
+Bug fixes:
+
 * Drop "https://www." from the User-Agent in the default wget FETCHCOMMAND
   and RESUMECOMMAND settings, as well as emirrordist, in order to avoid
   blocking by some mirrors, particularly mirror.nyist.edu.cn,
   mirrors.ha.edu.cn and mirror.lzu.edu.cn. (bug #983844)
+
+* Handle ^C interruption correctly by not merging new packages in the
+  merge-wait queue (bug #961044).
+
+* bintree: Fix creating Packages index for two packages of the same name
+  but residing in different categories (bug #978985).
+
+* bintree: Handle fetching from mixed xpak/gpkg binhosts (bug #970606).
+
+* emerge --info: Filter more sensitive information (bug #280478).
+
+* man pages: Improved binpkg option documentation (bug #463964, bug #968870,
+  bug #969628).
+
+* man pages: Document binpkg signature verification better (bug #945384,
+  bug #982208).
+
+* gpkg: Improved symlink validation (bug #982208).
+
+* netlink: Workaround qemu-user bug for big-endian network-sandbox use
+  (bug #981694).
+
+* phase-functions.sh: Don't filter QEMU_* (bug #978685).
+
+* doebuild, EbuildFetcher: Fix stale multiprocessing method checks (bug #973043).
+
+* lib: Fix Python 3.9 support.
+
+Cleanups:
+
+* Drop many long-deprecated functions.
 
 portage-3.0.82.2 (2026-08-28)
 ----------------
