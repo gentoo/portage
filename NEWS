@@ -1,10 +1,27 @@
-Release notes take the form of the following optional categories:
+NEWS format
+-----------
+
+Release notes take the form of a summary (if appropriate), followed by
+optional categories.
+
+Feel free to include a new category if it seems appropriate. It is intended
+as a guide and to provide some form of structure, but not to be rigid.
+
 [Optional short blurb/summary]
 * Breaking changes
 * Security
 * Features
 * Bug fixes
 * Cleanups
+
+--------
+Releases
+--------
+
+portage-3.0.84 (UNRELEASED)
+--------------
+
+TODO
 
 portage-3.0.83 (2026-10-11)
 --------------
@@ -20,7 +37,7 @@ bug because of when & how it is processed, but it was still worth fixing.
 
 Features:
 
-* ipc: Write to a pipe for trivial exit status notifications.
+* ipc: Write to a pipe for exit status notifications.
 
   ebuild phases no longer start a python process to report their exit
   status: they write it to a pipe that Portage passes in.
@@ -169,7 +186,7 @@ Cleanups:
 portage-3.0.82.2 (2026-08-28)
 ----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 Bug fixes:
 
@@ -181,7 +198,7 @@ Bug fixes:
 portage-3.0.82.1 (2026-08-24)
 ----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 Breaking changes:
 
@@ -412,7 +429,7 @@ Cleanups:
 portage-3.0.81.3 (2026-08-18)
 ----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 This release fixes Portage upgrading itself and is needed for larger
 Portage changes in the upcoming non-point release.
@@ -444,7 +461,7 @@ Bug fixes:
 portage-3.0.81.2 (2026-07-10)
 ----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 Security:
 
@@ -481,7 +498,7 @@ Bug fixes:
 portage-3.0.81.1 (2026-07-05)
 ----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 Security:
 
@@ -1028,9 +1045,9 @@ Cleanups:
   PORTAGE_DO_NOT_EXPORT_PMS_VARS (bug #953842)
 
 portage-3.0.69.3 (2025-10-01)
---------------
+----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 Bug fixes:
 
@@ -1042,9 +1059,9 @@ Bug fixes:
 * Fix DOCS when undeclared but not unset (bug #962934).
 
 portage-3.0.69.2 (2025-10-01)
---------------
+----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 Bug fixes:
 
@@ -1053,9 +1070,9 @@ Bug fixes:
 * emerge-webrsync: Handle TZ properly (bug #963423).
 
 portage-3.0.69.1 (2025-09-15)
---------------
+----------------
 
-[This release was done as a standalone tag.]
+[This release was made as a standalone tag.]
 
 Features:
 
