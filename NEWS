@@ -9,8 +9,10 @@ Release notes take the form of the following optional categories:
 portage-3.0.83 (2026-10-11)
 --------------
 
-Improved circular dependency diagnostics and performance when launching
-ebuild phases.
+Improved circular dependency diagnostics, performance when launching
+ebuild phases, and parallelism of package merges.
+
+Binary packages are now usable safely in combination with local userpatches.
 
 Thanks to Shakir Mahmood (@drengir1), Matt Turner, and Rin Cat (鈴猫) for
 reporting the gpkg issue in bug #982208. It turned out to not be a security
@@ -18,12 +20,19 @@ bug because of when & how it is processed, but it was still worth fixing.
 
 Features:
 
-* ebuild phases no longer start a python process to report their exit
-  status: they write it to a pipe that portage passes in. ebuild-ipc, which
-  has_version and best_version still run, no longer imports portage, which
-  accounted for roughly three quarters of the time of a call.
+* ipc: Write to a pipe for trivial exit status notifications.
 
-* Various other performance improvements by avoiding unnecessary forks.
+  ebuild phases no longer start a python process to report their exit
+  status: they write it to a pipe that Portage passes in.
+
+  ebuild-ipc, which has_version and best_version still run, no longer imports
+  portage, which accounted for roughly three quarters of the time of a call.
+
+* Various other performance improvements by avoiding unnecessary forks
+  on the bash side.
+
+  Some of these involve saving variables in the environment so we're
+  not looking them up again each time.
 
 * Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
   package merges. When enabled, Portage uses hashes and mtimes from the
@@ -35,45 +44,76 @@ Features:
   common cuts the peak of "emerge -puDN @world" by about 46% (bug #240320).
 
 * emerge: Run pkg_pretend phases concurrently, subject to --jobs and
-  --load-average. Output from each package is still shown one package at a
-  time, in merge order (bug #579526).
+  --load-average (bug #579526).
 
-* emerge: Improve the circular dependency report. It now names the USE flags
-  responsible for each edge (bug #310613), points at FEATURES=test for test
-  dependency cycles (bug #416871, bug #604566, bug #703348), lists masked
-  packages that could be used instead (bug #971256), says when the search for
-  a USE change was given up on (configurable with
-  PORTAGE_CIRCULAR_MAX_USE_FLAGS), and is never empty (bug #929010, bug
-  #877549). Add --circular-deps-report=json for automated consumers.
+  Output from each package is still shown one package at a  time, in merge order.
 
-* emerge: Packages in a dependency cycle no longer wait for each other's
-  post-merge dependencies during --jobs builds (bug #452172), and --depclean
-  now names the whole cycle when a package cannot be cleaned because of one
-  (bug #346351).
+* emerge: Improve the circular dependency report.
 
-* emerge: Calculate the dependency graph in a child process, so that the
+  It now does the following:
+  * names the USE flags responsible for each edge (bug #310613)
+  * points at FEATURES=test for test  dependency cycles (bug #416871, bug #604566,
+    bug #703348)
+  * lists masked packages that could be used instead (bug #971256)
+  * says when the search for a USE change was given up on (configurable with
+    PORTAGE_CIRCULAR_MAX_USE_FLAGS)
+  * never presents an empty list (bug #929010, bug #877549).
+
+* emerge: Add --circular-deps-report=json for automated consumers.
+
+  The intended use here is to allow programmatic/scripted workarounds
+  for common problems rather than relying on grepping the non-machine
+  friendly emerge(1) output.
+
+  We hope to further improve Portage's handling of circular dependencies
+  to handle more cases automatically, but nonetheless, cycles are a hard
+  problem and allowing custom solutions to be crafted for unforeseen
+  or complex scenarios should be useful for automation.
+
+* emerge: Improved parallelism with PDEPEND (bug #452172).
+
+  Packages in a dependency cycle no longer wait for each other's
+  post-merge dependencies during --jobs builds.
+
+* emerge: --depclean now names the whole cycle when a package cannot be
+  cleaned because of one (bug #346351).
+
+* emerge: Perform dependency calculations in a child process to save memory
+  (bug #549906).
+
+  Calculate the dependency graph in a child process, so that the
   memory it allocates is returned to the operating system before the merge
-  starts rather than being held for the duration of the build (bug #549906).
+  starts rather than being held for the duration of the build.
+
   Set PORTAGE_FORK_DEP_CALC=0 in the environment to calculate in the current
   process instead. See emerge(1) for details.
 
-* emerge: Add --merge-wait-scope to control which packages are treated as
-  system packages for the purpose of merge-wait, i.e. merged only while no
-  build jobs are running, and never in parallel with another merge. Previously
-  this was always the @system set plus its transitive runtime dependencies,
-  around a quarter of all packages on a typical installation. The scope can now
-  be narrowed to "system", "toolchain", or "none"; the default "deep" preserves
-  the previous behavior. Since FEATURES="merge-wait" holds back every package
-  regardless, narrowing the scope helps parallelism most in combination with
-  FEATURES="-merge-wait" or FEATURES="parallel-install".
+* emerge: Add --merge-wait-scope to control the treatment of @system packages
+  for FEATURES="merge-wait".
 
-* Respect user patches for binary packages.
+  Such packages in @system are merged only while no  build jobs are running,
+  and never in parallel with another merge.
+
+  Previously this was always the @system set plus its transitive runtime
+  dependencies,around a quarter of all packages on a typical installation.
+
+  The scope can now be narrowed to "system", "toolchain", or "none"; the
+  default "deep" preserves the previous behavior. Since FEATURES="merge-wait"
+  holds back every package regardless, narrowing the scope helps parallelism
+  most in combination with FEATURES="-merge-wait" or FEATURES="parallel-install".
+
+* Respect user patches for binary packages (bug #917047).
 
   Binary patches are now ignored by default if user patches in /etc/portage/patches
   don't match those within the binary package. This can be controlled by using
-  the new --binpkg-respect-user-patches option (bug #917047).
+  the new --binpkg-respect-user-patches option.
+
+  Note that binaries will need to be rebuilt for the necessary metadata
+  to be added.
 
 * emerge --info: Consolidate output.
+
+  All repository information is now shown in the same place.
 
 * Scheduler: Improve FEATURES=cgroup output.
 
@@ -84,7 +124,7 @@ Bug fixes:
   blocking by some mirrors, particularly mirror.nyist.edu.cn,
   mirrors.ha.edu.cn and mirror.lzu.edu.cn. (bug #983844)
 
-* Handle ^C interruption correctly by not merging new packages in the
+* Scheduler: Handle ^C interruption correctly by not merging new packages in the
   merge-wait queue (bug #961044).
 
 * bintree: Fix creating Packages index for two packages of the same name
@@ -112,6 +152,9 @@ Bug fixes:
 
 * lib: Fix Python 3.9 support.
 
+* phase-functions.sh: Do not restore LOCPATH from the saved environment of
+  a binary or installed package.
+
 Cleanups:
 
 * Drop many long-deprecated functions.
@@ -127,9 +170,6 @@ Bug fixes:
 
 * vartree, movefile: Compatibility changes for users upgrading from
   <portage-3.0.81.3 that contained upgrade fixes (bug #976616).
-
-* phase-functions.sh: Do not restore LOCPATH from the saved environment of
-  a binary or installed package.
 
 portage-3.0.82.1 (2026-08-24)
 ----------------
@@ -161,11 +201,15 @@ portage-3.0.82 (2026-08-22)
 
 This release drops the Python 2 unicode conversion layer and has Portage
 activate UTF-8 mode instead. The Atom class also gains several proper
-types and string conversions all over the place have been dropped.
+types and string conversions all over the place have been dropped. This
+also allowed introducing a C parser.
 
 There are significant performance improvements in dependency resolution,
 executing phases (by skipping them in some special but common cases for
 virtuals), and metadata handling.
+
+New tooling is available to observe package builds in the form of
+FEATURES="observability" (and `emerge --status`) and FEATURES="cgroup".
 
 Breaking changes:
 
@@ -175,30 +219,48 @@ Breaking changes:
 * Importing `portage` as a library will require a UTF-8 locale be in effect:
   Portage will warn when this isn't the case.
 
-* Remove prelink support. sys-devel/prelink was treecleaned in 2022, so none
-  of this code could run any more. FEATURES="prelink-checksums" and the
-  PRELINK_BINARY, PRELINK_PATH and PRELINK_PATH_MASK variables are gone, as
-  is the generation of /etc/prelink.conf by env-update (bug #833909).
+* Remove prelink support (bug #833909).
+
+  sys-devel/prelink was treecleaned in 2022, so none of this code could run any
+  more.
+
+  FEATURES="prelink-checksums" and the PRELINK_BINARY, PRELINK_PATH and
+  PRELINK_PATH_MASK variables are gone, as is the generation of /etc/prelink.conf
+  by env-update.
 
 * vartree: Remove the /var/cache/edb/vdb_metadata.pickle cross-session cache
-  (and vdb_metadata_delta.json). The per-package metadata file described
-  below replaces it. Tools reading the pickle directly will need updating.
+  (and vdb_metadata_delta.json).
+
+  The per-package metadata file described below replaces it.
 
 Features:
 
 * Add FEATURES="cgroup" to account each source build's CPU time, peak memory,
-  and I/O in a per-build cgroup v2. No limits are imposed. Totals are written
-  to the build log, along with the average number of CPUs the build kept
-  busy, and, with FEATURES="observability", included in the live status
-  snapshot. Configurable via PORTAGE_CGROUP_ROOT (default
-  /sys/fs/cgroup/portage); requires root and cgroup v2.
+  and I/O in a per-build cgroup v2.
+
+  No limits are imposed. Totals are written to the build log, along with the
+  average number of CPUs the build kept busy.
+
+  Additionally, with FEATURES="observability", this information is included
+  in the live status snapshot.
+
+  Configurable via PORTAGE_CGROUP_ROOT (default /sys/fs/cgroup/portage).
+
+  Requires root and cgroup v2.
 
 * Add FEATURES="observability" to publish a machine-readable snapshot of the
-  running emerge process (which packages are building/merging, their current
-  ebuild phase, elapsed time, and cgroup resource usage where available) to
-  /run/portage/emerge-<pid>.json. Query it with the new "portageq jobs"
-  command or "emerge --status". A Unix socket streams the same snapshots
-  live to connected clients.
+  running emerge process.
+
+  It includes:
+  * which packages are building/merging
+  * their current ebuild phase
+  * elapsed time
+  * cgroup resource usage where available (w/ FEATURES="cgroup")
+
+  The information is published at /run/portage/emerge-<pid>.json
+
+  Query it with the new "portageq jobs" command or "emerge --status". A Unix
+  socket streams the same snapshots live to connected clients.
 
 * vartree: Avoid pruning preserved-libs database or syncing to disk if we
   installed no files.
@@ -207,45 +269,66 @@ Features:
   see make.conf(5) for details.
 
 * dep: Add a native C dependency-string parser, used by use_reduce() and
-  Atom construction. If debugging is required, set PORTAGE_NATIVE_DEP_PARSER=0
-  in the environment to fall back to the pure-Python implementation;
-  see emerge(1) for details.
+  Atom construction.
+
+  If debugging is required, set PORTAGE_NATIVE_DEP_PARSER=0 in the environment
+  to fall back to the pure-Python implementation; see emerge(1) for details.
 
 * vartree: Write a consolidated per-package "metadata" file in the VDB and
-  prefer it when reading installed-package metadata. This cuts most of the
-  per-field open()s: a full pass over 1742 installed packages went from
-  301.7 ms and 41012 openat() calls to 32.9 ms and 2689. The individual
-  per-field files are still written, so external readers of the VDB are
-  unaffected.
+  prefer it when reading installed-package metadata.
 
-* emaint: Add a "vdb" module which reports how many installed packages have
-  the consolidated metadata file, and populates it with --fix. The
-  --delete-individual-files option additionally removes the per-field files
+  This cuts most of the per-field open()s: a full pass over 1742 installed
+  packages went from 301.7 ms and 41012 openat() calls to 32.9 ms and 2689.
+
+  The individual per-field files are still written, so external readers of
+  the VDB are unaffected.
+
+* emaint: Add a "vdb" module for managing the new "metadata" file in the VDB.
+
+  `emaint vdb` reports how many installed packages have the consolidated metadata
+  file, and populates it with --fix.
+
+  The --delete-individual-files option additionally removes the per-field files
   to save disk space; this breaks tools which read them directly, so it is
   opt-in. --remove restores the per-field files and removes the metadata
   file again.
 
-* checksum: Read a file once when computing multiple hashes, instead of once
-  per hash. Files of at least 1 MiB additionally hash on a thread per digest,
-  which hashlib permits since it releases the GIL. Measured ~1.86x on a
-  300 MiB file with the default BLAKE2B+SHA512 digest. This affects every
-  fetch and verification, Manifest regeneration, and binpkg index hashing.
+* checksum: Only read a file once, not per-hash, and hash in parallel.
 
-* Skip the src_unpack, src_prepare, src_configure, src_compile and src_test
+  Read a file once when computing multiple hashes, instead of once per hash.
+
+  Files of at least 1 MiB additionally hash on a thread per digest, which hashlib
+  permits since it releases the GIL.
+
+  Measured ~1.86x on a 300 MiB file with the default BLAKE2B+SHA512 digest.
+
+  This affects every fetch and verification, Manifest regeneration, and binpkg
+  index hashing.
+
+* EbuildExecuter: skip no-op src phases for sourceless packages
+
+  Skip the src_unpack, src_prepare, src_configure, src_compile and src_test
   phases for packages with no source and no src_* phase functions of their
-  own, avoiding an ebuild.sh fork per phase for empty and virtual packages.
-  Disabled for FEATURES="noauto" and PROPERTIES="live".
+  own.
 
-* resolver: Speed up dependency calculation on large graphs. Cycle detection
-  now computes dependency closures in a single batched pass per filter level,
-  and merge-order serialization tracks leaves incrementally instead of
-  rescanning the whole graph. Merge order is unchanged. Set
-  PORTAGE_SERIALIZE_FRONTIER_DISABLE in the environment to fall back to the
-  old leaf scan.
+  This avoids an ebuild.sh fork per phase for empty and virtual packages.
+
+  Disabled for FEATURES="noauto" (implied by ebuild(1)) and PROPERTIES="live".
+
+* resolver: Speed up dependency calculation on large graphs.
+
+  Cycle detection now computes dependency closures in a single batched pass
+  per filter level, and merge-order serialization tracks leaves incrementally
+  instead of escanning the whole graph.
+
+  Merge order is unchanged. Set PORTAGE_SERIALIZE_FRONTIER_DISABLE in the
+  environment to fall back to the old leaf scan.
 
 * depgraph: Do not re-apply dynamic dependencies to installed packages on
-  every backtracking pass. Besides being wasted work, repeat passes derived
-  dependencies from metadata an earlier pass had already rewritten.
+  every backtracking pass.
+
+  Besides being wasted work, repeat passes derived dependencies from metadata
+  an earlier pass had already rewritten.
 
 * Log when creating packdebug tarballs.
 
@@ -277,14 +360,21 @@ Bug fixes:
 * Set a non-zero window size for newly allocated ptys, so build processes
   can more reliably query their terminal dimensions (bug #978222).
 
-* vartree: Remove preserved libraries which are only consumed by each other.
+* vartree: Remove preserved libraries which are only consumed by each other
+  (bug #652382).
+
   A group of preserved libraries forming a consumer cycle was never removed
   from the preserved libs registry, and neither were the libraries consumed
-  only by that cycle (bug #652382).
+  only by that cycle.
 
-* vartree: Fix the vardbapi.match() cache being looked up with a key it never
-  stores, so that every match() call recomputed its result and re-stat()ed
+* vartree: Fix broken vardbapi.match() cache (bug #980860).
+
+  Fix the vardbapi.match() cache being looked up with a key it never stores,
+  so that every match() call recomputed its result and re-stat()ed
   the category directory.
+
+  Together with the new vdb metadata field, there should be substantially
+  fewer syscalls and reads of the VDB.
 
 * emerge: Don't report that there are unsatisfied fetch restricted downloads
   when all the remaining unsatisfied downloads are not restricted (bug #830763).
