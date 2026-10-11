@@ -12,6 +12,10 @@ portage-3.0.83 (2026-10-11)
 Improved circular dependency diagnostics and performance when launching
 ebuild phases.
 
+Thanks to Shakir Mahmood (@drengir1), Matt Turner, and Rin Cat (鈴猫) for
+reporting the gpkg issue in bug #982208. It turned out to not be a security
+bug because of when & how it is processed, but it was still worth fixing.
+
 Features:
 
 * ebuild phases no longer start a python process to report their exit
