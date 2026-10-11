@@ -35,18 +35,23 @@ Features:
   not looking them up again each time.
 
 * Add FEATURES="merge-use-vdb" to bypass identical file rewrites during
-  package merges. When enabled, Portage uses hashes and mtimes from the
-  VDB (var database) to skip writing files that are already identical on
-  disk, which saves I/O and reduces filesystem cache pressure.
+  package merges.
 
-* emerge: Reduce the memory used by a dependency calculation. Interning the
-  atoms, USE dependencies, USE flag names and flag sets that packages have in
-  common cuts the peak of "emerge -puDN @world" by about 46% (bug #240320).
+  When enabled, Portage uses hashes and mtimes from the VDB (var database) to
+  skip writing files that are already identical on disk, which saves I/O and
+  reduces filesystem cache pressure.
+
+  If used, be aware that corrupted files won't be replaced.
+
+* emerge: Reduce the memory used by a dependency calculation (bug #240320).
+
+  Interning the atoms, USE dependencies, USE flag names and flag sets that
+  packages have in common cuts the peak of "emerge -puDN @world" by about 46%.
 
 * emerge: Run pkg_pretend phases concurrently, subject to --jobs and
   --load-average (bug #579526).
 
-  Output from each package is still shown one package at a  time, in merge order.
+  Output from each package is still shown one package at a time, in merge order.
 
 * emerge: Improve the circular dependency report.
 
@@ -73,7 +78,7 @@ Features:
 * emerge: Improved parallelism with PDEPEND (bug #452172).
 
   Packages in a dependency cycle no longer wait for each other's
-  post-merge dependencies during --jobs builds.
+  post-merge dependencies (PDEPEND) during --jobs builds.
 
 * emerge: --depclean now names the whole cycle when a package cannot be
   cleaned because of one (bug #346351).
@@ -91,7 +96,7 @@ Features:
 * emerge: Add --merge-wait-scope to control the treatment of @system packages
   for FEATURES="merge-wait".
 
-  Such packages in @system are merged only while no  build jobs are running,
+  Such packages in @system are merged only while no build jobs are running,
   and never in parallel with another merge.
 
   Previously this was always the @system set plus its transitive runtime
@@ -101,6 +106,8 @@ Features:
   default "deep" preserves the previous behavior. Since FEATURES="merge-wait"
   holds back every package regardless, narrowing the scope helps parallelism
   most in combination with FEATURES="-merge-wait" or FEATURES="parallel-install".
+
+  This option is EXPERIMENTAL and subject to change.
 
 * Respect user patches for binary packages (bug #917047).
 
@@ -178,9 +185,11 @@ portage-3.0.82.1 (2026-08-24)
 
 Breaking changes:
 
-* Output a deprecation warning when a profile 'virtuals' file is used.
+* Output a deprecation warning when a profile 'virtuals' file is used
+  (bug #981272).
+
   Support for PROVIDE virtuals was removed in portage-2.3.25, so these
-  files are obsolete; use GLEP 37 virtual packages instead (bug #981272).
+  files are obsolete; use GLEP 37 virtual packages instead.
 
 Bug fixes:
 
