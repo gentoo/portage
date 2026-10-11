@@ -183,6 +183,10 @@ Cleanups:
 
 * Drop many long-deprecated functions.
 
+* Improved test coverage.
+
+* Improved test parallelism.
+
 portage-3.0.82.2 (2026-08-28)
 ----------------
 
