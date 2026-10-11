@@ -761,8 +761,8 @@ if [[ -n "${MISC_FUNCTIONS_ARGS}" ]]; then
 	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && > "${PORTAGE_EBUILD_EXIT_FILE}"
 
 	if [[ -n ${PORTAGE_IPC_DAEMON} ]] ; then
-		[[ ! -s ${SANDBOX_LOG} ]]
-		__ebuild_exit $?
+		[[ ! -s ${SANDBOX_LOG} ]] || die "Sandbox violations found, exiting"
+		__ebuild_exit 0
 	fi
 fi
 
