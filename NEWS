@@ -60,10 +60,20 @@ Features:
 
   If used, be aware that corrupted files won't be replaced.
 
-* emerge: Reduce the memory used by a dependency calculation (bug #240320).
+* emerge: Reduce the memory used by dependency calculations (bug #240320).
 
   Interning the atoms, USE dependencies, USE flag names and flag sets that
   packages have in common cuts the peak of "emerge -puDN @world" by about 46%.
+
+* emerge: Perform dependency calculations in a child process to save memory
+  (bug #549906).
+
+  Calculate the dependency graph in a child process, so that the
+  memory it allocates is returned to the operating system before the merge
+  starts rather than being held for the duration of the build.
+
+  Set PORTAGE_FORK_DEP_CALC=0 in the environment to calculate in the current
+  process instead. See emerge(1) for details.
 
 * emerge: Run pkg_pretend phases concurrently, subject to --jobs and
   --load-average (bug #579526).
@@ -74,7 +84,7 @@ Features:
 
   It now does the following:
   * names the USE flags responsible for each edge (bug #310613)
-  * points at FEATURES=test for test  dependency cycles (bug #416871, bug #604566,
+  * points at FEATURES=test for test dependency cycles (bug #416871, bug #604566,
     bug #703348)
   * lists masked packages that could be used instead (bug #971256)
   * says when the search for a USE change was given up on (configurable with
@@ -99,16 +109,6 @@ Features:
 
 * emerge: --depclean now names the whole cycle when a package cannot be
   cleaned because of one (bug #346351).
-
-* emerge: Perform dependency calculations in a child process to save memory
-  (bug #549906).
-
-  Calculate the dependency graph in a child process, so that the
-  memory it allocates is returned to the operating system before the merge
-  starts rather than being held for the duration of the build.
-
-  Set PORTAGE_FORK_DEP_CALC=0 in the environment to calculate in the current
-  process instead. See emerge(1) for details.
 
 * emerge: Add --merge-wait-scope to control the treatment of @system packages
   for FEATURES="merge-wait".
@@ -575,26 +575,30 @@ portage-3.0.80 (2026-06-17)
 Breaking changes:
 
 * Drop the @unavailable-binaries set in favour of FEATURES="buildpkg-proactive"
-  (see below) because the former cannot check whether an existing binary package
+  (bug #976083).
+
+  This is because the former cannot check whether an existing binary package
   is usable or whether a given ebuild will actually produce a binary package or
   not. This set is broken anyway and probably has been for 11 years since
-  Portage 2.2.19. (bug #976083)
+  Portage 2.2.19.
+
+  See below for details on FEATURES="buildpkg-proactive".
 
 Features:
 
 * Add User-Agent to default wget FETCHCOMMAND and RESUMECOMMAND settings, as
   well as emirrordist, in order to avoid blocking by some web servers,
-  particularly crates.io. (bug #682610)
+  particularly crates.io (bug #682610).
 
 * Add FEATURES="buildpkg-proactive" to proactively rebuild matching packages
   that have no (usable) binary package, even if those packages are already
-  installed. (bug #976083)
+  installed (bug #976083).
 
 Bug fixes:
 
 * Allow BROOT, ESYSROOT, and SYSROOT to be exported again under EAPI 9 because
   they are required by crossdev's cross-pkg-config and a Gentoo GCC patch when
-  cross-compiling with a SYSROOT other than /usr/${CHOST}. (bug #977170)
+  cross-compiling with a SYSROOT other than /usr/${CHOST} (bug #977170).
 
 * Create EAPI 9 PORTAGE_EBUILD_EXTRA_SOURCE files under PORTAGE_TMPDIR, so
   reduced-privilege phases can source them where the process TMPDIR is not
