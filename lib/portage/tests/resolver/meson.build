@@ -93,6 +93,7 @@ py.install_sources(
         'test_slot_operator_required_use.py',
         'test_slot_operator_reverse_deps.py',
         'test_slot_operator_runtime_pkg_mask.py',
+        'test_slot_operator_stale_binpkgs.py',
         'test_slot_operator_unsatisfied.py',
         'test_slot_operator_unsolved.py',
         'test_slot_operator_update_probe_parent_downgrade.py',

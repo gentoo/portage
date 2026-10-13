@@ -2454,6 +2454,12 @@ class depgraph:
                 abi_masks.setdefault(child, {})["slot_operator_mask_built"] = None
         if not dep.parent.installed:
             abi_masks.setdefault(dep.parent, {})["slot_operator_mask_built"] = None
+            # Other binary packages for the slot of dep.parent which
+            # have the same built slot-operator dependency would be
+            # selected next and backtrack in the same way, so mask them
+            # in the same step.
+            for pkg in self._slot_operator_similar_built(dep):
+                abi_masks.setdefault(pkg, {})["slot_operator_mask_built"] = None
         if abi_masks:
             config.setdefault("slot_operator_mask_built", {}).update(abi_masks)
 
@@ -2476,6 +2482,47 @@ class depgraph:
             )
 
         self._dynamic_config._need_restart = True
+
+    def _slot_operator_similar_built(self, dep):
+        """
+        Find other binary packages for the slot of dep.parent which have
+        a built slot-operator dependency that is identical to dep.atom.
+
+        @rtype: list
+        @return: Package instances
+        """
+        parent = dep.parent
+        if not (parent.built and dep.atom.package and dep.atom.slot_operator_built):
+            return []
+
+        similar_built = []
+        for pkg in self._iter_match_pkgs(
+            parent.root_config, "binary", parent.slot_atom
+        ):
+            if (
+                pkg is parent
+                or pkg.cp != parent.cp
+                or pkg in self._dynamic_config._runtime_pkg_mask
+            ):
+                continue
+            use = self._pkg_use_enabled(pkg)
+            try:
+                for k in Package._dep_keys:
+                    v = pkg._metadata.get(k)
+                    if v and dep.atom in portage.dep.use_reduce(
+                        v,
+                        uselist=use,
+                        is_valid_flag=pkg.iuse.is_valid_flag,
+                        eapi=pkg.eapi,
+                        token_class=Atom,
+                        flat=True,
+                    ):
+                        similar_built.append(pkg)
+                        break
+            except InvalidDependString:
+                continue
+
+        return similar_built
 
     def _slot_operator_update_probe_slot_conflict(self, dep):
         new_dep = self._slot_operator_update_probe(dep, slot_conflict=True)
