@@ -610,6 +610,7 @@ class binarytree:
             "RESTRICT": "",
             "SLOT": "0",
             "USE": "",
+            "USER_PATCHES": "",
         }
         self._pkgindex_inherited_keys = ["CHOST", "repository"]
 
