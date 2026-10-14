@@ -1,0 +1,29 @@
+name: CI image
+
+# Publish the image that ci.yml runs the tests in, tagged with the branch name.
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/ci/Dockerfile'
+      - '.github/workflows/ci-image.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/portage-ci:${GITHUB_REF_NAME//\//-}
+          docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin <<< "${GITHUB_TOKEN}"
+          docker build --push --tag "${image}" .github/ci
