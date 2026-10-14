@@ -21,7 +21,28 @@ Releases
 portage-3.0.84 (UNRELEASED)
 --------------
 
-TODO
+Features:
+
+* emerge: Solve a circular dependency with an autounmask USE change when the
+  flag was not set by the user (bug #175808).
+
+* emerge: Solve a circular dependency by selecting an older version that
+  lacks the dependency closing the cycle (bug #407351).
+
+* emerge: Report packages that are merged before one of their runtime
+  dependencies in order to break a cycle (bug #647824).
+
+* depgraph: Show what backtracking kept running into when it fails (bug #598503).
+
+* backtracking: Reject similar candidates early to avoid wasting a cycle
+  on them.
+
+* backtracking: Reject a binary package early if we have several unusable
+  binpkgs rather than trying them all (bug #960617).
+
+  This is for the case where we know they're all fail for the same reason
+  as they have the same sub-slot dep recorded, but say have a different
+  BUILD_ID.
 
 portage-3.0.83 (2026-10-11)
 --------------
@@ -186,15 +207,6 @@ Cleanups:
 * Improved test coverage.
 
 * Improved test parallelism.
-
-* emerge: Solve a circular dependency with an autounmask USE change when the
-  flag was not set by the user (bug #175808).
-
-* emerge: Solve a circular dependency by selecting an older version that
-  lacks the dependency closing the cycle (bug #407351).
-
-* emerge: Report packages that are merged before one of their runtime
-  dependencies in order to break a cycle (bug #647824).
 
 portage-3.0.82.2 (2026-08-28)
 ----------------
