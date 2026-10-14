@@ -20,6 +20,12 @@ class EbuildMetadataPhaseTestCase(TestCase):
             ebuild_file.flush()
 
             settings = portage.config()
+            # Keep the host's PORTAGE_TMPDIR out of the test, since an
+            # earlier test may have left secpass at 2.
+            tmpdir = tempfile.TemporaryDirectory()
+            self.addCleanup(tmpdir.cleanup)
+            settings["PORTAGE_TMPDIR"] = tmpdir.name
+            settings.backup_changes("PORTAGE_TMPDIR")
             ebuild_hash = SimpleNamespace(location=ebuild_file.name)
             loop = asyncio._safe_loop()
 
