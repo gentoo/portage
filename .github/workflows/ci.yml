@@ -8,6 +8,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # See .github/ci/Dockerfile. The CI_IMAGE repository variable selects
+    # another image, such as one built from a branch.
+    container: ${{ vars.CI_IMAGE || 'ghcr.io/gentoo/portage-ci:master' }}
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 15
     strategy:
       matrix:
@@ -21,7 +27,7 @@ jobs:
           - '3.12'
           - '3.13'
           - '3.14'
-          - '3.15-dev'
+          - '3.15'
           - 'pypy-3.11'
         exclude:
           - python-version: '3.9'
@@ -48,26 +54,14 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Select Python ${{ matrix.python-version }}
         run: |
-          set -xe
-          echo "force-unsafe-io" | sudo tee /etc/dpkg/dpkg.cfg.d/force-unsafe-io
-          sudo apt-get update -q
-          sudo apt-get install -qy --no-install-recommends libxslt-dev libxml2-dev libxml2-utils meson pax-utils zstd
-
+          echo "/opt/python/${{ matrix.python-version }}/bin" >> "${GITHUB_PATH}"
+      - name: Show versions
+        run: |
+          bash --version
           python -VV
           python -m site
-          python -m pip install --upgrade pip
-          # setuptools needed for 3.12+ because of https://github.com/mesonbuild/meson/issues/7702.
-          python -m pip install pytest pytest-rerunfailures pytest-xdist setuptools
-
-          # symlink /bin/true to /usr/bin/getuto (or do we want to grab the script from github?)
-          sudo ln -s /bin/true /usr/bin/getuto
-          sudo ln -s "$(type -P tar)" /usr/bin/gtar
       - name: Test meson install --destdir /tmp/install-root
         run: |
           echo -e "[binaries]\npython = '$(command -v python)'" > /tmp/native.ini
