@@ -1,7 +1,9 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import contextlib
 import copy
+import io
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
@@ -27,6 +29,20 @@ HARFBUZZ = {
 CYCLE = {
     "media-libs/freetype-1": FREETYPE,
     "media-libs/harfbuzz-1": HARFBUZZ,
+}
+
+# dev-lang/mono needs dev-dotnet/libgdiplus with USE=-minimal, while
+# libgdiplus needs mono to build.
+MONO = {
+    "dev-lang/mono-1": {
+        "DEPEND": "!minimal? ( dev-dotnet/libgdiplus )",
+        "IUSE": "minimal",
+        "EAPI": "8",
+    },
+    "dev-dotnet/libgdiplus-1": {
+        "BDEPEND": "dev-lang/mono",
+        "EAPI": "8",
+    },
 }
 
 USE_HARFBUZZ = {"make.conf": ('USE="harfbuzz"',)}
@@ -225,6 +241,74 @@ class CycleBreakTestCase(TestCase):
         )
         self._run(test_cases, ebuilds, user_config=USE_HARFBUZZ)
 
+    def testHint(self):
+        """
+        Without --cycle-break=y, the circular dependency error suggests
+        it when it might help.
+        """
+        hint = "Alternatively, emerge --cycle-break=y might build"
+
+        def problems(ebuilds, options):
+            playground = ResolverPlayground(
+                ebuilds=copy.deepcopy(ebuilds), user_config=USE_HARFBUZZ
+            )
+            try:
+                result = playground.run(["media-libs/harfbuzz"], options=options)
+                self.assertFalse(result.success)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    result.depgraph.display_problems()
+                return stderr.getvalue()
+            finally:
+                playground.cleanup()
+
+        output = problems(CYCLE, {"--cycle-break": "n"})
+        self.assertIn(hint, output)
+        self.assertIn(
+            'media-libs/freetype-1 twice,\nfirst with USE="-harfbuzz"', output
+        )
+
+        # Not when --cycle-break=y has already failed.
+        ebuilds = {
+            **CYCLE,
+            "media-libs/freetype-1": {
+                **FREETYPE,
+                "DEPEND": "harfbuzz? ( media-libs/harfbuzz ) dev-libs/X",
+            },
+            "dev-libs/X-1": {
+                "DEPEND": "media-libs/harfbuzz",
+                "EAPI": "8",
+            },
+        }
+        output = problems(ebuilds, {"--cycle-break": "y"})
+        self.assertIn("circular dependencies", output)
+        self.assertNotIn(hint, output)
+
+    def testHintEnabledFlag(self):
+        """
+        The hint shows a flag that the first build enables as enabled.
+        """
+        hint = (
+            "Alternatively, emerge --cycle-break=y might build dev-lang/mono-1 "
+            'twice,\nfirst with USE="minimal" and then as requested.'
+        )
+
+        def problems(options):
+            playground = ResolverPlayground(ebuilds=copy.deepcopy(MONO))
+            try:
+                result = playground.run(["dev-lang/mono"], options=options)
+                self.assertFalse(result.success)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    result.depgraph.display_problems()
+                return stderr.getvalue()
+            finally:
+                playground.cleanup()
+
+        output = problems({"--autounmask": "n"})
+        self.assertIn("circular dependencies", output)
+        self.assertIn(hint, output)
+
     def testEnabledFlag(self):
         """
         A cycle that is only broken by enabling a flag that pulls in
@@ -259,17 +343,6 @@ class CycleBreakTestCase(TestCase):
         dev-lang/mono, which needs dev-dotnet/libgdiplus with USE=-minimal
         while libgdiplus needs mono to build.
         """
-        ebuilds = {
-            "dev-lang/mono-1": {
-                "DEPEND": "!minimal? ( dev-dotnet/libgdiplus )",
-                "IUSE": "minimal",
-                "EAPI": "8",
-            },
-            "dev-dotnet/libgdiplus-1": {
-                "BDEPEND": "dev-lang/mono",
-                "EAPI": "8",
-            },
-        }
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["dev-lang/mono"],
@@ -292,7 +365,7 @@ class CycleBreakTestCase(TestCase):
                 ],
             ),
         )
-        self._run(test_cases, ebuilds)
+        self._run(test_cases, MONO)
 
     def testEnabledFlagChangesUseDep(self):
         """

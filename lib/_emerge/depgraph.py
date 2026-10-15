@@ -10852,21 +10852,7 @@ class depgraph:
 
         @return: True if a two pass build was scheduled
         """
-        candidates = []
-        for pkg, solutions in handler.cycle_break_solutions.items():
-            if pkg.installed or pkg.built or pkg.operation != "merge":
-                continue
-            if pkg in self._dynamic_config._cycle_break:
-                continue
-            for solution in solutions:
-                # _apply_cycle_break() only drops dependencies, so it
-                # cannot add the ones that an enabled flag pulls in.
-                if any(state for _flag, state in solution) and self._adds_deps(
-                    pkg, self._cycle_break_use(pkg, solution)
-                ):
-                    continue
-                candidates.append((pkg, solution))
-
+        candidates = self._cycle_break_candidates(handler)
         if not candidates:
             return False
 
@@ -10887,6 +10873,41 @@ class depgraph:
         backtrack_infos.setdefault("config", {})
         backtrack_infos["config"].setdefault("cycle_break", {})[pkg] = solution
         return True
+
+    def _cycle_break_candidates(self, handler):
+        """
+        Return the (package, USE change) pairs that --cycle-break could
+        use to break the cycle.
+        """
+        candidates = []
+        for pkg, solutions in handler.cycle_break_solutions.items():
+            if pkg.installed or pkg.built or pkg.operation != "merge":
+                continue
+            if pkg in self._dynamic_config._cycle_break:
+                continue
+            for solution in solutions:
+                # _apply_cycle_break() only drops dependencies, so it
+                # cannot add the ones that an enabled flag pulls in.
+                if any(state for _flag, state in solution) and self._adds_deps(
+                    pkg, self._cycle_break_use(pkg, solution)
+                ):
+                    continue
+                candidates.append((pkg, solution))
+        return candidates
+
+    @staticmethod
+    def _cycle_break_hint(pkg, solution):
+        """
+        Return a message that suggests --cycle-break=y for building pkg
+        twice, first with the given USE change.
+        """
+        flags = " ".join(
+            sorted(flag if state else f"-{flag}" for flag, state in solution)
+        )
+        return (
+            f"Alternatively, emerge --cycle-break=y might build {pkg.cpv} twice,\n"
+            f'first with USE="{flags}" and then as requested.\n'
+        )
 
     def _cycle_break_use(self, pkg, solution):
         """
@@ -11121,6 +11142,13 @@ class depgraph:
                 + " been installed.\n",
                 noiselevel=-1,
             )
+            if self._frozen_config.myopts.get("--cycle-break") != "y":
+                candidates = self._cycle_break_candidates(handler)
+                if candidates:
+                    pkg, solution = min(candidates, key=self._cycle_solution_sort_key)
+                    writemsg(
+                        "\n" + self._cycle_break_hint(pkg, solution), noiselevel=-1
+                    )
             if handler.large_cycle_count:
                 writemsg(
                     "\nNote that the dependency graph contains a lot of cycles.\n"
@@ -11164,6 +11192,10 @@ class depgraph:
             # from a search that was never run.
             "search_truncated": sorted(pkg.cpv for pkg in handler.search_truncated),
             "max_affecting_use": handler.max_affecting_use,
+            # USE changes that --cycle-break=y could build a package with
+            # first, best first. Empty when --cycle-break=y was given,
+            # since it has already tried them.
+            "cycle_break": [],
         }
 
         for pos, pkg in enumerate(handler.shortest_cycle or []):
@@ -11206,6 +11238,18 @@ class depgraph:
                     ),
                 }
             )
+
+        if self._frozen_config.myopts.get("--cycle-break") != "y":
+            cycle_break = {}
+            for pkg, solution in sorted(
+                self._cycle_break_candidates(handler),
+                key=self._cycle_solution_sort_key,
+            ):
+                cycle_break.setdefault(pkg, []).append(dict(solution))
+            for pkg, solutions in cycle_break.items():
+                report["cycle_break"].append(
+                    {"package": pkg.cpv, "use_changes": solutions}
+                )
 
         portage.writemsg_stdout(json.dumps(report, indent=2) + "\n", noiselevel=-1)
 
