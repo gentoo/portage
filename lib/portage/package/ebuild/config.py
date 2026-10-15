@@ -173,6 +173,7 @@ class config:
         "IDEPEND",
         "INHERITED",
         "IUSE",
+        "IUSE_RUNTIME",
         "REQUIRED_USE",
         "KEYWORDS",
         "LICENSE",

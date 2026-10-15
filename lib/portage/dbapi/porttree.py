@@ -299,6 +299,7 @@ class portdbapi(dbapi):
             "IDEPEND",
             "INHERITED",
             "IUSE",
+            "IUSE_RUNTIME",
             "KEYWORDS",
             "LICENSE",
             "PDEPEND",

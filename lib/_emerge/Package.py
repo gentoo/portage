@@ -59,6 +59,7 @@ class Package(Task):
         "cpv_split",
         "inherited",
         "iuse",
+        "iuse_runtime",
         "mtime",
         "pf",
         "remote",
@@ -92,6 +93,7 @@ class Package(Task):
         "IDEPEND",
         "INHERITED",
         "IUSE",
+        "IUSE_RUNTIME",
         "KEYWORDS",
         "LICENSE",
         "MD5",
@@ -163,6 +165,14 @@ class Package(Task):
         implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
         self.iuse = self._iuse(
             self, split_interned(self._metadata["IUSE"]), implicit_match, self.eapi
+        )
+
+        # Runtime-switchable USE flags (GLEP 62). Flags missing from IUSE
+        # are reported by _validate_deps() and otherwise ignored.
+        self.iuse_runtime = _intern_frozenset(
+            x
+            for x in split_interned(self._metadata.get("IUSE_RUNTIME") or "")
+            if x in self.iuse.all
         )
 
         if (self.iuse.enabled or self.iuse.disabled) and not eapi_attrs.iuse_defaults:
@@ -384,6 +394,16 @@ class Package(Task):
                 )
             except InvalidDependString as e:
                 self._metadata_exception(k, e)
+
+        k = "IUSE_RUNTIME"
+        v = self._metadata.get(k)
+        if v and not self.built:
+            missing_iuse = [x for x in v.split() if x not in self.iuse.all]
+            if missing_iuse:
+                self._invalid_metadata(
+                    k + ".invalid",
+                    f"{k}: flags missing from IUSE: {' '.join(missing_iuse)}",
+                )
 
         k = "REQUIRED_USE"
         v = self._metadata.get(k)

@@ -441,6 +441,7 @@ auxdbkeys = (
     "DEFINED_PHASES",
     "IDEPEND",
     "INHERIT",
+    "IUSE_RUNTIME",
 )
 
 
