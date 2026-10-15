@@ -25,6 +25,7 @@ __all__ = [
     "paren_reduce",
     "remove_slot",
     "use_reduce",
+    "use_reduce_preserving",
 ]
 
 import os
@@ -1113,6 +1114,112 @@ def use_reduce(
 
     # The list returned by this function may be modified, so return a copy.
     return result[:]
+
+
+def use_reduce_preserving(
+    depstr: str,
+    uselist=(),
+    preserve=(),
+    eapi: Optional[str] = None,
+    token_class=None,
+):
+    """
+    Like use_reduce(), but leave USE conditionals on the flags in
+    preserve unevaluated, so that the result can be reduced again later
+    once their final values are known.
+
+    Atoms whose USE dependencies are conditional on preserved flags are
+    expanded into equivalent USE conditional groups, since there is no
+    way to evaluate only part of an atom's conditionals.
+
+    The result is a list in the format accepted by paren_enclose(),
+    where each preserved conditional is a "flag?" or "!flag?" string
+    followed by a list.
+
+    @param depstr: depstring
+    @type depstr: String
+    @param uselist: Sequence of use enabled flags
+    @type uselist: Sequence
+    @param preserve: Flags whose conditionals are left unevaluated
+    @type preserve: Sequence
+    @param eapi: Indicates the EAPI the dep string has to comply to
+    @type eapi: String
+    @param token_class: Convert all non operator tokens into this class
+    @type token_class: Class
+    @rtype: List
+    @return: The partially use reduced depend array
+    """
+    uselist = frozenset(uselist)
+    preserve = frozenset(preserve)
+    if not preserve:
+        return use_reduce(depstr, uselist=uselist, eapi=eapi, token_class=token_class)
+
+    # Validate the syntax up front, so that the walk below can assume
+    # balanced parentheses and well-formed operators.
+    use_reduce(depstr, matchall=True, eapi=eapi, token_class=token_class)
+
+    tokens = depstr.split()
+
+    def expand_atom(atom, flags, use):
+        if not flags:
+            return [atom.evaluate_conditionals(use)]
+        flag = flags[0]
+        enabled = expand_atom(atom, flags[1:], use | {flag})
+        disabled = expand_atom(atom, flags[1:], use - {flag})
+        if enabled == disabled:
+            return enabled
+        return [f"{flag}?", enabled, f"!{flag}?", disabled]
+
+    def convert(token):
+        if token_class is None:
+            return [token]
+        token = token_class(token, eapi=eapi)
+        flags = set()
+        if token.use is not None and token.use.conditional is not None:
+            for v in token.use.conditional.values():
+                flags.update(v)
+        return expand_atom(token, sorted(preserve.intersection(flags)), uselist)
+
+    def append_group(out, group, in_any):
+        if not group:
+            return
+        if not in_any:
+            out.extend(group)
+        elif len(group) == 1:
+            out.append(group[0])
+        else:
+            out.append(group)
+
+    def walk(i, in_any):
+        out = []
+        while i < len(tokens):
+            token = tokens[i]
+            if token == ")":
+                return out, i + 1
+            if token in ("||", "^^", "??"):
+                group, i = walk(i + 2, True)
+                if group:
+                    out.append(token)
+                    out.append(group)
+            elif token == "(":
+                group, i = walk(i + 1, False)
+                append_group(out, group, in_any)
+            elif token[-1] == "?":
+                negated = token[0] == "!"
+                flag = token[1:-1] if negated else token[:-1]
+                group, i = walk(i + 2, False)
+                if flag in preserve:
+                    if group:
+                        out.append(token)
+                        out.append(group)
+                elif (flag in uselist) != negated:
+                    append_group(out, group, in_any)
+            else:
+                append_group(out, convert(token), in_any)
+                i += 1
+        return out, i
+
+    return walk(0, False)[0]
 
 
 class _use_dep:
