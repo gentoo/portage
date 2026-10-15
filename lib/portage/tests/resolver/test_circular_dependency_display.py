@@ -501,6 +501,15 @@ class CircularDependencyJsonReportTestCase(TestCase):
             )
             self.assertEqual(report["search_truncated"], [])
             self.assertEqual(report["max_affecting_use"], 10)
+            self.assertEqual(
+                report["cycle_break"],
+                [
+                    {
+                        "package": "media-libs/freetype-1",
+                        "use_changes": [{"harfbuzz": False}],
+                    }
+                ],
+            )
         finally:
             playground.cleanup()
 
