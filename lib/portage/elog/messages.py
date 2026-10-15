@@ -51,10 +51,10 @@ def collect_ebuild_messages(path):
             filename,
             encoding="utf-8",
             errors="replace",
+            newline="\n",
         )
-        # Use split('\n') since normal line iteration or readlines() will
-        # split on \r characters as shown in bug #390833.
-        for l in f.read().split("\n"):
+        for l in f:
+            l = l.rstrip("\n")
             if not l:
                 continue
             try:

@@ -49,6 +49,9 @@ Bug fixes:
 * bintree: Fix a performance regression caused by needlessly extracting metadata
   from binary packages built without user patches (bug #984255).
 
+* elog: Prevent valid messages containing carriage returns from being rejected
+  as malformed (bug #984257).
+
 portage-3.0.83 (2026-10-11)
 --------------
 
