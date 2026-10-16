@@ -324,8 +324,13 @@ class VdbConsolidateTestCase(TestCase):
         self._write_field("EAPI", "8")
         _consolidate_to_metadata_file(self._tmpdir)
         # A changed directory invalidates the file, so it is rebuilt rather
-        # than skipped, and picks up the field added along the way.
+        # than skipped, and picks up the field added along the way. The
+        # directory mtime has coarse granularity, so the write below may
+        # land in the same tick that the file recorded; move it explicitly
+        # to a distinct value so the file is reliably stale.
         self._write_field("SLOT", "0/0")
+        st = os.stat(self._tmpdir)
+        os.utime(self._tmpdir, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
         _consolidate_to_metadata_file(self._tmpdir)
         result = _read_metadata_file(os.path.join(self._tmpdir, _METADATA_FILE))
         self.assertEqual(result["SLOT"], "0/0")
