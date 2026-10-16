@@ -57,10 +57,11 @@ from portage.data import portage_gid, portage_uid, secpass, uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dep import (
     Atom,
+    _iuse_runtime_dep_keys,
     check_required_use,
     human_readable_required_use,
     paren_enclose,
-    use_reduce,
+    use_reduce_preserving,
 )
 from portage.dep.libc import find_libc_deps
 from portage.eapi import (
@@ -2747,6 +2748,28 @@ def _post_src_install_write_metadata(settings):
     if eapi_attrs.iuse_effective:
         metadata_keys.append("IUSE_EFFECTIVE")
 
+    # Keep the conditionals of IUSE_RUNTIME flags, and REQUIRED_USE, so
+    # that the flags can be changed after the build.
+    iuse = frozenset(
+        x.lstrip("+-") for x in settings.configdict["pkg"].get("IUSE", "").split()
+    )
+    iuse_runtime = frozenset(
+        x
+        for x in settings.configdict["pkg"].get("IUSE_RUNTIME", "").split()
+        if x in iuse
+    )
+    if iuse_runtime:
+        metadata_buffer["IUSE_RUNTIME"] = " ".join(sorted(iuse_runtime))
+        required_use = settings.configdict["pkg"].get("REQUIRED_USE", "").split()
+        if required_use:
+            metadata_buffer["REQUIRED_USE"] = " ".join(required_use)
+    else:
+        for k in ("IUSE_RUNTIME", "REQUIRED_USE"):
+            try:
+                os.unlink(os.path.join(build_info_dir, k))
+            except OSError:
+                pass
+
     for k in metadata_keys:
         v = settings.configdict["pkg"].get(k)
         if v is not None:
@@ -2783,7 +2806,12 @@ def _post_src_install_write_metadata(settings):
         else:
             token_class = None
 
-        v = use_reduce(v, uselist=use, token_class=token_class)
+        v = use_reduce_preserving(
+            v,
+            uselist=use,
+            preserve=iuse_runtime if k in _iuse_runtime_dep_keys else (),
+            token_class=token_class,
+        )
         v = paren_enclose(v)
         if not v:
             try:
@@ -2794,7 +2822,9 @@ def _post_src_install_write_metadata(settings):
         metadata_buffer[k] = v
 
     if eapi_attrs.slot_operator:
-        deps = evaluate_slot_operator_equal_deps(settings, use, QueryCommand.get_db())
+        deps = evaluate_slot_operator_equal_deps(
+            settings, use, QueryCommand.get_db(), iuse_runtime=iuse_runtime
+        )
         for k, v in deps.items():
             filename = os.path.join(build_info_dir, k)
             if not v:

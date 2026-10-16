@@ -4,6 +4,7 @@
 from itertools import chain, combinations
 
 from portage.dep import Atom, paren_enclose, use_reduce, use_reduce_preserving
+from portage.dep._slot_operator import _eval_deps
 from portage.exception import InvalidDependString
 from portage.tests import TestCase
 
@@ -143,3 +144,30 @@ class UseReducePreservingTestCase(TestCase):
                     eapi="8",
                     token_class=Atom,
                 )
+
+    def testSlotOperatorBinding(self):
+        """
+        Slot operators are bound only in the active branches of preserved
+        conditionals, since the package was not built against the others.
+        """
+
+        class FakePkg(str):
+            slot = "1"
+            sub_slot = "2"
+
+        class FakeVardb:
+            def match(self, atom):
+                return [FakePkg(f"{atom.cp}-1")]
+
+        deps = use_reduce_preserving(
+            "a? ( x/a:= ) !a? ( x/b:= ) b? ( x/c:= ) x/d:=",
+            uselist=["b"],
+            preserve=["a", "b"],
+            eapi="8",
+            token_class=Atom,
+        )
+        _eval_deps(deps, [FakeVardb()], frozenset(["b"]))
+        self.assertEqual(
+            paren_enclose(deps),
+            "a? ( x/a:= ) !a? ( x/b:1/2= ) b? ( x/c:1/2= ) x/d:1/2=",
+        )

@@ -3,7 +3,13 @@
 
 from _emerge.Package import Package
 
-from portage.dep import Atom, paren_enclose, use_reduce
+from portage.dep import (
+    Atom,
+    _iuse_runtime_dep_keys,
+    paren_enclose,
+    use_reduce,
+    use_reduce_preserving,
+)
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 
@@ -58,7 +64,7 @@ def ignore_built_slot_operator_deps(dep_struct):
             dep_struct[i] = x.without_slot
 
 
-def evaluate_slot_operator_equal_deps(settings, use, trees):
+def evaluate_slot_operator_equal_deps(settings, use, trees, iuse_runtime=()):
     metadata = settings.configdict["pkg"]
     eapi = metadata["EAPI"]
     eapi_attrs = _get_eapi_attrs(eapi)
@@ -67,10 +73,16 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
     vardbs = [target_vardb]
     deps = {}
     for k in Package._dep_keys:
-        deps[k] = use_reduce(metadata[k], uselist=use, eapi=eapi, token_class=Atom)
+        deps[k] = use_reduce_preserving(
+            metadata[k],
+            uselist=use,
+            preserve=iuse_runtime if k in _iuse_runtime_dep_keys else (),
+            eapi=eapi,
+            token_class=Atom,
+        )
 
     for k in Package._runtime_keys:
-        _eval_deps(deps[k], vardbs)
+        _eval_deps(deps[k], vardbs, use)
 
     if eapi_attrs.bdepend:
         _eval_deps(deps["BDEPEND"], [running_vardb])
@@ -87,16 +99,26 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
     return result
 
 
-def _eval_deps(dep_struct, vardbs):
+def _eval_deps(dep_struct, vardbs, use=None):
     # TODO: we'd use a better || () handling, i.e. || ( A:= B:= ) with both A
     # and B installed should record subslot on A only since the package is
     # supposed to link against that anyway, and we have no guarantee that B
     # has matching ABI.
     # See bug #455904, bug #489458, bug #586238.
 
+    # Preserved conditionals of runtime-switchable flags (see
+    # use_reduce_preserving) are only evaluated for the active branches,
+    # since the package was not built against the others.
+    inactive = False
     for i, x in enumerate(dep_struct):
         if isinstance(x, list):
-            _eval_deps(x, vardbs)
+            if not inactive:
+                _eval_deps(x, vardbs, use)
+            inactive = False
+        elif isinstance(x, str) and x.endswith("?"):
+            negated = x.startswith("!")
+            flag = x[1:-1] if negated else x[:-1]
+            inactive = use is not None and (flag in use) == negated
         elif isinstance(x, Atom) and x.slot_operator == "=":
             for vardb in vardbs:
                 best_version = vardb.match(x)

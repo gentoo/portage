@@ -1116,6 +1116,11 @@ def use_reduce(
     return result[:]
 
 
+# The dependency keys that may contain conditionals on runtime-switchable
+# USE flags (IUSE_RUNTIME, GLEP 62).
+_iuse_runtime_dep_keys = ("PDEPEND", "RDEPEND")
+
+
 def use_reduce_preserving(
     depstr: str,
     uselist=(),
