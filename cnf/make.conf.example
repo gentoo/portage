@@ -165,6 +165,11 @@
 #FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 #RESUMECOMMAND="/usr/bin/lukemftp -s -a -R -o \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 #
+# When DISTDIR is on a remote filesystem (e.g., NFS), CHECKSUMCOMMAND can be
+# used to compute digests on the remote system, avoiding reading large files
+# across the network. The portage-checksum helper uses Portage's checksum API.
+#CHECKSUMCOMMAND="ssh portage@fileserver portage-checksum \"\${HASHTYPE}\" \"\${DISTDIR}/\${DISTFILE}\""
+#
 # Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
 # The list is a space separated list which is read left to right. If you use
 # another mirror we highly recommend leaving the default mirror at the end of
