@@ -5,7 +5,7 @@ ebuild \- a low level interface to the Portage system
 .B ebuild
 .I file command [command]\fR...
 .SH "DESCRIPTION"
-The ebuild program is a direct interface to the Portage system. It
+The ebuild program is a direct interface to the Portage system.  It
 allows for direct action upon an ebuild with specific subcommands or
 groups of commands to perform in a specific ebuild's context and
 functions.  Accepting an ebuild script and one or more commands
@@ -13,12 +13,15 @@ as arguments, the ebuild program parses the ebuild script and
 executes the specified commands.  Commands exist to fetch sources,
 unpack sources, compile sources, install object files into a temporary
 directory "image", merge the image to the local filesystem, create a
-bzipped tarball package out of the image, and more.
+bzipped tarball package (binpkg) out of the image, and more.
+.PP
+This program is intended for development and debugging of ebuilds rather than
+regular use.
 .SH "FILE"
-This must be a valid ebuild script.  For further information read
+This must be a valid ebuild script.  For further information, read
 \fBebuild\fR(5).
 .SH "COMMANDS"
-By default, portage will execute all the functions in order up to the
+By default, Portage will execute all the functions in order up to the
 one actually specified, except for the functions that have already been
 executed in a previous invocation of ebuild.  For example, simply issuing the
 command \fBcompile\fR will trigger the functions before it to also be run (such
@@ -76,11 +79,11 @@ This is now equivalent to the \fImanifest\fR command.
 .BR manifest
 Updates the manifest file for the package.  This creates checksums for all
 of the files found in the same directory as the current ebuild as well as
-the recursive contents of the files subdirectory. It also creates checksums
+the recursive contents of the files subdirectory.  It also creates checksums
 for all of the files listed in SRC_URI for each ebuild. For further
 information regarding the behavior of this command, see the documentation for
 the \fIassume\-digests\fR value of the \fBFEATURES\fR variable in
-\fBmake.conf\fR(5). See the \fB\-\-force\fR option if you would like to
+\fBmake.conf\fR(5).  See the \fB\-\-force\fR option if you would like to
 prevent digests from being assumed.
 .TP
 .BR unpack
