@@ -4,42 +4,45 @@ make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
 \fB/etc/make.conf\fR and \fB/etc/portage/make.conf\fR
 .SH "DESCRIPTION"
-
+.PP
 This file contains various variables that are used by Portage. The file has a
 newline\-delimited list of \fI<key>=<value>\fR pairs (see the default file for
-examples) which are accessible from the environment of ebuilds. It supports
-simple shell\-like expansion of the form \fIvar="${var}"\fR, the source
+examples) which are accessible from the environment of ebuilds.
+.PP
+It supports simple shell\-like expansion of the form \fIvar="${var}"\fR, the source
 keyword and variable substitution, but not some of the more advanced BASH
 features like arrays and special parameter expansions. For more details, see
 the Simple lexical analysis documentation:
-\fIhttps://docs.python.org/3/library/shlex.html\fR. Note that if you source
-files, they need to be in the same shlex syntax for portage to read them.
-If make.conf is a directory, then all the files in that directory will
-be sorted in lexical order by file name and summed together as if it were
-a single file.
-.br
+\fIhttps://docs.python.org/3/library/shlex.html\fR.
+Note that if you source files, they need to be in the same shlex syntax for
+Portage to read them. If make.conf is a directory, then all the files in
+that directory will be sorted in lexical order by file name and summed
+together as if it were a single file.
+.PP
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
 Portage then checks the make.conf files. Both /etc/make.conf and
 /etc/portage/make.conf are checked (if present), and settings from
 /etc/portage/make.conf will override settings from /etc/make.conf.
+.PP
 If no setting is found in the make.conf files, Portage checks
 make.globals. If no
 setting is found there, the profile's default setting is grabbed
 from /etc/portage/make.profile/make.defaults. Please note that all user
 settings should be made in the environment or in the make.conf
 files, which are intended to be customized by the user.
-.br
+.PP
 Exceptions are incremental variables such as USE, CONFIG_PROTECT*,
 and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
 make.defaults to make.globals to make.conf to the environment
 settings.  Clearing these variables requires a clear\-all as in:
 export USE="\-*"
-.br
+.PP
 __* variables set in make.conf are local and are not be propagated.
-.br
+.PP
 In order to create per\-package environment settings, refer to
 \fBpackage.env\fR in \fBportage\fR(5).
+.PP
 .SH "VARIABLES"
 .TP
 \fBACCEPT_CHOSTS\fR = \fI[space delimited list of CHOST values]\fR
