@@ -1631,10 +1631,10 @@ class UsePkgExcludeTestCase(BinPkgSelectionTestCase):
             )
         }
 
-        # note that repository priority order is not well defined *within* pkgdir
-        # and so test cases which assume a plan c/p atom will resolve to a binary
-        # for any given repo implicitly can spuriously fail, regardless of priority
-        # set in repos.conf.
+        # note that repository version priority order is not well defined
+        # *within* pkgdir and so test cases which assume a plan c/p atom will
+        # resolve to a binary for any given repo implicitly can spuriously fail,
+        # regardless of version-priority set in repos.conf.
         #
         # TL;DR = all atoms in these tests cases *must* be ::repo qualified!
         test_cases = (
