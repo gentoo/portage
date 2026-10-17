@@ -1,7 +1,9 @@
-# Copyright 2025 Gentoo Authors
+# Copyright 2025-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import filecmp
 import os
+import shutil
 import time
 
 from portage.tests import CommandStep, FunctionStep
@@ -33,11 +35,61 @@ class EmainBinhostTestCase(EmaintTestCase):
 
         emaint = self.cmds["emaint"]
         bintree = playground.trees[playground.settings["EROOT"]]["bintree"]
+
+        def cmp_files(f1, f2):
+            # filecmp.cmp caches results by (path, stat signature), where the
+            # signature only includes second-precision mtimes, so a cached
+            # outcome of an earlier comparison could be wrongly reused here.
+            # Compare the contents directly, bypassing the cache.
+            return filecmp._do_cmp(f1, f2)
+
         steps = (
             FunctionStep(
                 function=lambda i: self.assertTrue(
                     os.path.exists(bintree._pkgindex_file), f"step {i}"
                 ),
+            ),
+            # Creating a fresh index then regenerating it should yield
+            # the same result.
+            FunctionStep(
+                function=lambda i: os.unlink(bintree._pkgindex_file),
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emaint + ("binhost", "--fix"),
+            ),
+            FunctionStep(
+                function=lambda i: shutil.copyfile(
+                    bintree._pkgindex_file, f"{bintree._pkgindex_file}.bak"
+                ),
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emaint + ("binhost", "--fix"),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertTrue(
+                    cmp_files(bintree._pkgindex_file, f"{bintree._pkgindex_file}.bak")
+                )
+            ),
+            # Make sure it differs if we bump the mtime on a binpkg.
+            FunctionStep(
+                function=lambda i: os.utime(
+                    os.path.join(bintree.pkgdir, "app-misc", "A-1.gpkg.tar"),
+                    current_time(offset=1),
+                ),
+            ),
+            CommandStep(
+                returncode=os.EX_OK,
+                command=emaint + ("binhost", "--fix"),
+            ),
+            FunctionStep(
+                function=lambda i: self.assertFalse(
+                    cmp_files(bintree._pkgindex_file, f"{bintree._pkgindex_file}.bak")
+                )
+            ),
+            FunctionStep(
+                function=lambda i: os.unlink(f"{bintree._pkgindex_file}.bak"),
             ),
             # The compressed index should not exist yet because compress-index is disabled in make.conf.
             FunctionStep(
