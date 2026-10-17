@@ -170,6 +170,7 @@ def _encode_node(node):
             key: getattr(cpv, key, None)
             for key in ("build_id", "build_time", "file_size", "mtime")
         },
+        node.cycle_use_changes,
     )
 
 
@@ -196,6 +197,7 @@ def _decode_node(entry, trees):
         onlydeps,
         metadata,
         cpv_attrs,
+        cycle_use_changes,
     ) = entry
 
     try:
@@ -212,6 +214,7 @@ def _decode_node(entry, trees):
             db=db,
             **{k: v for k, v in cpv_attrs.items() if v is not None},
         ),
+        cycle_use_changes=cycle_use_changes,
         installed=installed,
         metadata=metadata,
         onlydeps=onlydeps,

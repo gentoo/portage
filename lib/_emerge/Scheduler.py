@@ -302,6 +302,9 @@ class Scheduler(PollScheduler):
         self._failed_pkgs_all = []
         self._failed_pkgs_die_msgs = []
         self._post_mod_echo_msgs = []
+        # Transient --cycle-break builds whose final build has not been
+        # merged yet.
+        self._pending_rebuilds = {}
         self._parallel_fetch = False
         self._fetch_log_announced = False
         self._init_graph(graph_config)
@@ -589,6 +592,8 @@ class Scheduler(PollScheduler):
         self._world_atoms = {}
         for pkg in self._mergelist:
             if getattr(pkg, "operation", None) != "merge":
+                continue
+            if pkg.cycle_use_changes:
                 continue
             atom = create_world_atom(
                 pkg, self._args_set, pkg.root_config, before_install=True
@@ -1492,7 +1497,11 @@ class Scheduler(PollScheduler):
                     break
 
                 for failed_pkg in failed_pkgs:
-                    mergelist.remove(list(failed_pkg.pkg))
+                    # A failed --cycle-break build has the same entry as
+                    # the final build, which has to be dropped as well.
+                    entry = list(failed_pkg.pkg)
+                    while entry in mergelist:
+                        mergelist.remove(entry)
 
                 self._failed_pkgs_all.extend(failed_pkgs)
                 del failed_pkgs[:]
@@ -1646,6 +1655,20 @@ class Scheduler(PollScheduler):
                 if log_path is not None:
                     printer.eerror(f"  '{colorize('INFORM', log_path)}'")
             printer.eerror("")
+
+        if self._pending_rebuilds:
+            msg = (
+                "The following packages were installed with a reduced USE "
+                + "configuration, in order to break a circular dependency, "
+                + "and still have to be rebuilt:"
+            )
+            printer.ewarn("")
+            for line in textwrap.wrap(msg, 72):
+                printer.ewarn(line)
+            printer.ewarn("")
+            for pkg in self._pending_rebuilds.values():
+                printer.ewarn(f" {pkg.cpv}")
+            printer.ewarn("")
 
         if self._failed_pkgs_all:
             return FAILURE
@@ -1802,6 +1825,11 @@ class Scheduler(PollScheduler):
         # by reboot, sigkill or similar.
         mtimedb = self._mtimedb
         mtimedb["resume"]["mergelist"].remove(list(pkg))
+        if pkg.cycle_use_changes:
+            record = [pkg.root, str(pkg.cpv), dict(pkg.cycle_use_changes)]
+            cycle_break = mtimedb["resume"].get("cycle_break", [])
+            if record in cycle_break:
+                cycle_break.remove(record)
         if not mtimedb["resume"]["mergelist"]:
             del mtimedb["resume"]
         mtimedb.commit()
@@ -1868,6 +1896,15 @@ class Scheduler(PollScheduler):
         self._build_exit(build)
 
     def _task_complete(self, pkg):
+        if (
+            pkg.operation == "merge"
+            and not pkg.installed
+            and not self._build_opts.buildpkgonly
+        ):
+            if pkg.cycle_use_changes:
+                self._pending_rebuilds[(pkg.root, pkg.slot_atom)] = pkg
+            else:
+                self._pending_rebuilds.pop((pkg.root, pkg.slot_atom), None)
         self._completed_tasks.add(pkg)
         self._unsatisfied_system_deps.discard(pkg)
         self._choose_pkg_return_early = False
@@ -2650,6 +2687,15 @@ class Scheduler(PollScheduler):
             for x in self._mergelist
             if isinstance(x, Package) and x.type_name == "binary"
         ]
+        # The merge list entries cannot tell a --cycle-break build from
+        # the final one, so its USE changes are stored here.
+        cycle_break = [
+            [x.root, str(x.cpv), dict(x.cycle_use_changes)]
+            for x in self._mergelist
+            if isinstance(x, Package) and x.cycle_use_changes
+        ]
+        if cycle_break:
+            mtimedb["resume"]["cycle_break"] = cycle_break
 
         mtimedb.commit()
 

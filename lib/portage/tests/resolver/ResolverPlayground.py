@@ -1349,6 +1349,8 @@ def _mergelist_str(x, depgraph):
         if x.type_name == "binary" and x.cpv.build_id is not None:
             build_id_str = f"-{x.cpv.build_id}"
         mergelist_str = x.cpv + build_id_str + repo_str
+        if x.cycle_use_changes:
+            mergelist_str = f"[cycle-break]{mergelist_str}"
         if x.built:
             if x.operation == "merge":
                 desc = [x.type_name]

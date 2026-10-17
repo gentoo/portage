@@ -81,14 +81,18 @@ class WithTestDepsTestCase(TestCase):
             ResolverPlaygroundTestCase(
                 ["app-misc/F"],
                 success=False,
-                options={"--with-test-deps": True},
+                options={"--with-test-deps": True, "--cycle-break": "n"},
                 use_changes={"app-misc/F-0": {"test": False}},
             ),
             # With --autounmask-use=n, the cycle is reported instead.
             ResolverPlaygroundTestCase(
                 ["app-misc/F"],
                 success=False,
-                options={"--with-test-deps": True, "--autounmask-use": "n"},
+                options={
+                    "--with-test-deps": True,
+                    "--autounmask-use": "n",
+                    "--cycle-break": "n",
+                },
                 circular_dependency_solutions={
                     "app-misc/G-0": {frozenset({("test", False)})},
                     "app-misc/F-0": {frozenset({("test", False)})},

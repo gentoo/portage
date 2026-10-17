@@ -66,7 +66,12 @@ class SlotOperatorUnsolvedTestCase(TestCase):
         test_cases = (
             ResolverPlaygroundTestCase(
                 ["@world"],
-                options={"--update": True, "--deep": True, "--usepkg": True},
+                options={
+                    "--update": True,
+                    "--deep": True,
+                    "--usepkg": True,
+                    "--cycle-break": "n",
+                },
                 circular_dependency_solutions={
                     "dev-ruby/hoe-2.13.0": frozenset([frozenset([("test", False)])]),
                     "dev-ruby/rdoc-3.12.1": frozenset([frozenset([("test", False)])]),

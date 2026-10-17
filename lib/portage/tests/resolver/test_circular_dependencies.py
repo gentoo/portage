@@ -61,7 +61,7 @@ class CircularDependencyTestCase(TestCase):
         # The solutions computed here are applied automatically as
         # autounmask USE changes, so disable that in order to test the
         # solutions themselves.
-        no_autounmask_use = {"--autounmask-use": "n"}
+        no_autounmask_use = {"--autounmask-use": "n", "--cycle-break": "n"}
 
         test_cases = (
             # Simple tests
@@ -142,6 +142,7 @@ class CircularDependencyTestCase(TestCase):
             # solution is applied as a USE change (bug 175808).
             ResolverPlaygroundTestCase(
                 ["=dev-libs/Z-1"],
+                options={"--cycle-break": "n"},
                 use_changes={"dev-libs/Z-1": {"foo": False}},
                 success=False,
             ),

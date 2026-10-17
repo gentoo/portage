@@ -67,6 +67,7 @@ class Package(Task):
         "sub_slot",
         "slot_atom",
         "version",
+        "cycle_use_changes",
     ) + (
         "_invalid",
         "_masks",
@@ -188,6 +189,7 @@ class Package(Task):
             repo_name=self.cpv.repo,
             root_config=self.root_config,
             type_name=self.type_name,
+            cycle_use_changes=self.cycle_use_changes,
         )
         self._hash_value = hash(self._hash_key)
 
@@ -282,6 +284,7 @@ class Package(Task):
         repo_name=None,
         root_config=None,
         type_name=None,
+        cycle_use_changes=None,
         **kwargs,
     ):
         if operation is None:
@@ -321,6 +324,10 @@ class Package(Task):
             # when it comes to hashing, because there can only be one cpv.
             # So overwrite the repo_key with type_name.
             elements.append(type_name)
+
+        if cycle_use_changes:
+            # A transient instance that is merged before the final one.
+            elements.append(cycle_use_changes)
 
         return tuple(elements)
 
@@ -636,6 +643,9 @@ class Package(Task):
     def binpkg_wanted(self, exclude):
         """Tests whether this is a package to build a binary package for, taking
         account of FEATURES, PROPERTIES, and the given excluded set."""
+        if self.cycle_use_changes:
+            # Its USE configuration was not requested by anyone.
+            return False
         # Do not build binary cache for packages from volatile sources.
         # For volatile sources (eg., git), the PROPERTIES parameter in
         # the ebuild is set to 'live'.

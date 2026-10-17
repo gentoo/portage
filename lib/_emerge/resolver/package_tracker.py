@@ -124,6 +124,11 @@ class PackageTracker:
         """
         Add a new package to the tracker. Records conflicts as necessary.
         """
+        if pkg.cycle_use_changes:
+            # The final instance replaces it later in the same merge
+            # list, so it neither satisfies dependencies nor conflicts.
+            return
+
         cp_key = pkg.root, pkg.cp
 
         if any(other is pkg for other in self._cp_pkg_map[cp_key]):
@@ -178,6 +183,9 @@ class PackageTracker:
         Removes the package from the tracker.
         Raises KeyError if it isn't present.
         """
+        if pkg.cycle_use_changes:
+            return
+
         cp_key = pkg.root, pkg.cp
         try:
             self._cp_pkg_map.get(cp_key, []).remove(pkg)
