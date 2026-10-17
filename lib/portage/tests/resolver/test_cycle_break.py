@@ -654,17 +654,24 @@ class CycleBreakTestCase(TestCase):
     def testHintEnabledFlag(self):
         """
         The hint shows a flag that the first build enables as enabled.
+        Since autounmask breaks such a cycle with a USE change before the
+        circular dependency error is shown, the autounmask output says
+        that the USE change only breaks a cycle and suggests
+        --cycle-break=y as well.
         """
         hint = (
             "Alternatively, emerge --cycle-break=y might build dev-lang/mono-1 "
             'twice,\nfirst with USE="minimal" and then as requested.'
         )
+        note = "The USE change for dev-lang/mono-1 only breaks a circular dependency."
 
         def problems(options):
             playground = ResolverPlayground(ebuilds=copy.deepcopy(MONO))
             try:
                 result = playground.run(["dev-lang/mono"], options=options)
                 self.assertFalse(result.success)
+                # The playground has displayed the problems already.
+                result.depgraph._dynamic_config._displayed_autounmask = False
                 stderr = io.StringIO()
                 with contextlib.redirect_stderr(stderr):
                     result.depgraph.display_problems()
@@ -675,6 +682,46 @@ class CycleBreakTestCase(TestCase):
         output = problems({"--autounmask": "n"})
         self.assertIn("circular dependencies", output)
         self.assertIn(hint, output)
+
+        output = problems({})
+        self.assertIn(">=dev-lang/mono-1 minimal", output)
+        self.assertIn(note, output)
+        self.assertIn(hint, output)
+
+    def testHintNotForAutounmask(self):
+        """
+        The autounmask output does not suggest --cycle-break=y when it
+        could not use the USE change, here because the enabled flag pulls
+        in another dependency.
+        """
+        ebuilds = {
+            **CYCLE,
+            "media-libs/freetype-1": {
+                "DEPEND": (
+                    "!bootstrap? ( media-libs/harfbuzz ) bootstrap? ( dev-libs/Y )"
+                ),
+                "IUSE": "bootstrap",
+                "EAPI": "8",
+            },
+            "dev-libs/Y-1": {"EAPI": "8"},
+        }
+        playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            result = playground.run(["media-libs/harfbuzz"])
+            self.assertFalse(result.success)
+            self.assertEqual(
+                result.use_changes, {"media-libs/freetype-1": {"bootstrap": True}}
+            )
+            # The playground has displayed the problems already.
+            result.depgraph._dynamic_config._displayed_autounmask = False
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                result.depgraph.display_problems()
+            output = stderr.getvalue()
+        finally:
+            playground.cleanup()
+        self.assertIn(">=media-libs/freetype-1 bootstrap", output)
+        self.assertNotIn("--cycle-break", output)
 
     def testEnabledFlag(self):
         """

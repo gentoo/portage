@@ -320,6 +320,10 @@ class _frozen_depgraph_config:
         # Whether the --cycle-break limit has already been reported, so
         # that backtracking does not repeat the message.
         self._cycle_break_limit_shown = False
+        # USE changes that autounmask applied to break a cycle, which
+        # --cycle-break=y could have used for a two pass build instead.
+        # Kept across backtracking runs so that the final run can say so.
+        self._cycle_break_hints = {}
         # We can't know that an soname dep is unsatisfied if there are
         # any unbuilt ebuilds in the graph, since unbuilt ebuilds have
         # no soname data. Therefore, only enable soname dependency
@@ -10751,6 +10755,13 @@ class depgraph:
                 candidates.append((pkg, solution))
         candidates.sort(key=self._cycle_solution_sort_key)
 
+        # Checked before any USE change is applied, since that changes
+        # the USE that the transient build is compared against.
+        if self._frozen_config.myopts.get("--cycle-break") != "y":
+            cycle_break_candidates = self._cycle_break_candidates(handler)
+        else:
+            cycle_break_candidates = ()
+
         for pkg, solution in candidates:
             old_use = self._pkg_use_enabled(pkg)
             # With target_use, this also records the change as a needed
@@ -10760,6 +10771,8 @@ class depgraph:
                 # Rejected because of use.mask or use.force, or already
                 # applied by an earlier pass.
                 continue
+            if (pkg, solution) in cycle_break_candidates:
+                self._frozen_config._cycle_break_hints[pkg] = solution
             return True
 
         return False
@@ -11746,6 +11759,7 @@ class depgraph:
                             p_mask_change_msg[root].append(f"={pkg.cpv}\n")
 
         use_changes_msg = {}
+        cycle_break_hints = {}
         for (
             pkg,
             needed_use_config_change,
@@ -11784,6 +11798,14 @@ class depgraph:
                 else:
                     use_changes_msg[root].append(
                         f"={pkg.cpv} {' '.join(adjustments)}\n"
+                    )
+                solution = self._frozen_config._cycle_break_hints.get(pkg)
+                if solution and all(
+                    changes.get(flag) == state for flag, state in solution
+                ):
+                    cycle_break_hints.setdefault(root, []).append(
+                        f"\nThe USE change for {pkg.cpv} only breaks a circular "
+                        "dependency.\n" + self._cycle_break_hint(pkg, solution)
                     )
 
         license_msg = {}
@@ -11949,6 +11971,8 @@ class depgraph:
             if root in use_changes_msg:
                 _writemsg("USE changes", "package.use")
                 writemsg(format_msg(use_changes_msg[root]), noiselevel=-1)
+                for hint in cycle_break_hints.get(root, ()):
+                    writemsg(hint, noiselevel=-1)
 
             if root in license_msg:
                 _writemsg("license changes", "package.license")
