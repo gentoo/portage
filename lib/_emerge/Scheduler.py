@@ -2148,10 +2148,7 @@ class Scheduler(PollScheduler):
 
     _warned_tmpdir_free_space = False
 
-    def _can_add_job(self):
-        if not super()._can_add_job():
-            return False
-
+    def _tmpdir_has_room(self):
         running_job_count = self._running_job_count()
         if running_job_count == 0 and not self._merge_wait_queue:
             # Ensure there is forward progress if there are no running
@@ -2477,6 +2474,12 @@ class Scheduler(PollScheduler):
 
             pkg = self._choose_pkg()
             if pkg is None:
+                return state_change
+
+            # --jobs-tmpdir-require-free-gb is sized for source builds. A
+            # binary package only needs room for its image.
+            if not pkg.built and not self._tmpdir_has_room():
+                self._pkg_queue.insert(0, pkg)
                 return state_change
 
             if not pkg.installed:
