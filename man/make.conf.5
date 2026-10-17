@@ -628,7 +628,8 @@ direct or indirect dependencies of the system set. The
 \fBemerge\fR(1) \fB\-\-merge\-wait\-scope\fR option controls which packages
 those are. The \fImerge\-wait\fR
 feature can be disabled in order to trade the possibility of random build
-failures for greater parallelism.
+failures for greater parallelism. Unpacking a binary package counts as a
+build for this purpose.
 The queue can be flushed by sending the SIGUSR2 signal to \fBemerge\fR(1).
 This feature is enabled by default.
 .TP
@@ -760,7 +761,9 @@ Also disable \fImerge\-wait\fR for additional parallelism if desired,
 but that increases the possibility of random build failures. When
 \fIparallel\-install\fR is used together with \fImerge\-wait\fR,
 parallel installation occurs in batches when there are no builds
-running. Unless the \fBemerge\fR(1) \fB\-\-implicit\-system\-deps=n\fR
+running. Packages are still installed after their dependencies, so this
+only helps when the merge list contains packages that do not depend on
+each other. Unless the \fBemerge\fR(1) \fB\-\-implicit\-system\-deps=n\fR
 option is used, \fIparallel\-install\fR is always effectively disabled
 for packages that satisfy direct or indirect dependencies of the system
 set. The \fBemerge\fR(1) \fB\-\-merge\-wait\-scope\fR option controls which
