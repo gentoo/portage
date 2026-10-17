@@ -598,22 +598,24 @@ then
 	export SANDBOX_ON=0
 	declare -A seen
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE; do
-		{
-			export "${x}="
-			seen=()
-			i=0
-			while IFS= read -rd : path; do
-				if [[ ${path} && ! ${seen[$path]} ]]; then
-					(( i++ > 0 )) && eval "${x}+=:"
-					eval "${x}+=${path@Q}"
-					seen[$path]=1
-				fi
-			done
-		} < <(y="PORTAGE_${x}"; printf '%s:%s:' "${!y}" "${!x}")
+		___y="PORTAGE_${x}"
+		___rest="${!___y}:${!x}:"
+		export "${x}="
+		seen=()
+		i=0
+		while [[ -n ${___rest} ]]; do
+			path=${___rest%%:*}
+			___rest=${___rest#*:}
+			if [[ ${path} && ! ${seen[$path]} ]]; then
+				(( i++ > 0 )) && eval "${x}+=:"
+				eval "${x}+=${path@Q}"
+				seen[$path]=1
+			fi
+		done
 		unset "PORTAGE_${x}"
 	done
 
-	unset path seen i x
+	unset path seen i x ___rest ___y
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
 	[[ -n ${EAPI} ]] || EAPI=0
