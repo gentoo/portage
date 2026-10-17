@@ -1219,8 +1219,23 @@ ssh://ssh\-user@192.168.0.1:22/var/db/repos/gentoo
 .br
 ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
 .RE
-.TP
-Note: For the ssh:// scheme, key\-based authentication might be of interest.
+.I Note:
+For the ssh:// scheme, key\-based authentication might be of interest.
+.br
+.I Note:
+Note: Rather than embed credentials in the URI, consider using \fB~/.netrc\fR
+to avoid leaking the information in diagnostic commands.  Its syntax is simple
+and the file is read by various applications, including \fBcurl(1)\fR and
+\fBwget(1)\fR:
+
+.nf
+machine <servername>
+login <username>
+password <password>
+.fi
+
+If \fB~/.netrc\fR is not supported by the relevant client, investigate if
+there is a similar configuration file it reads from.
 .RE
 .TP
 .B sync\-user
