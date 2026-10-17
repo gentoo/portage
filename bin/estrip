@@ -315,12 +315,13 @@ do_ignore() {
 }
 
 do_queue() {
-	local needed_entry{,_file} {,find_}path
-	local -a find_paths scanelf_results
+	local needed_entry{,_file} path
+	local -a find_paths needed_paths scanelf_results
 
 	for path; do
 		if [[ -e ${ED%/}/${path#/} ]]; then
 			find_paths+=( "${ED%/}/${path#/}" )
+			needed_paths+=( "${find_paths[-1]#"${D%/}"}" )
 		fi
 	done
 
@@ -342,18 +343,19 @@ do_queue() {
 		# The arguments may not be exact files (probably aren't), but search paths/directories
 		# which should then be searched recursively.
 		while IFS= read -r needed_entry ; do
-			for find_path in "${find_paths[@]}" ; do
+			for path in "${needed_paths[@]}" ; do
 				# NEEDED has a bunch of entries like:
 				# /usr/lib64/libfoo.so libc.so
 				#
-				# find_path entries may be exact paths (like /usr/lib64/libfoo.so)
-				# or instead /usr/lib64, or ${ED}/usr, etc.
+				# path may be an exact file (like /usr/lib64/libfoo.so)
+				# or a directory (like /usr/lib64 or /usr).
 				#
-				# We check if the beginning (i.e. first entry) of the NEEDED line
-				# matches the path given
-				# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
+				# We check if the first entry of the NEEDED line is the path
+				# given or a file under it
+				# e.g. path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so",
+				# but not needed_entry="/usr/lib64-foo/libbar.so libc.so".
 				needed_entry_file="${needed_entry% *}"
-				if [[ ${needed_entry_file} == "${find_path#"${D}"}"* ]]; then
+				if [[ ${needed_entry_file}/ == "${path%/}/"* ]]; then
 					scanelf_results+=( "${D}${needed_entry_file}" )
 				fi
 			done
@@ -368,6 +370,17 @@ do_queue() {
 		(( ${#scanelf_results[@]} )) && printf "%s\n" "${scanelf_results[@]}"
 		printf '%s\0' "${find_paths[@]}" | find0 -type f ! -type l -name '*.a'
 	)
+}
+
+# Print the path of every ELF object listed in NEEDED, one per line.
+list_needed_objects() {
+	local needed_entry
+
+	# NEEDED may not exist for some packages (bug #862606)
+	[[ -f ${PORTAGE_BUILDDIR}/build-info/NEEDED ]] || return 0
+	while IFS= read -r needed_entry ; do
+		printf '%s\n' "${D%/}${needed_entry% *}"
+	done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 }
 
 declare -A has_feature
@@ -387,7 +400,12 @@ if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
 fi
 
-if (( ! has_restriction[strip] && ! has_feature[nostrip] )); then
+# With dostrip, RESTRICT=strip only empties the initial list of paths (see
+# phase-helpers.sh); paths passed to dostrip are still stripped (bug #697960).
+___eapi_has_dostrip || (( ! has_restriction[strip] ))
+may_strip=$(( $? == 0 && ! has_feature[nostrip] ))
+
+if (( may_strip )); then
 	do_banner=1
 	do_skip=0
 elif (( ! has_feature[installsources] )); then
@@ -526,8 +544,9 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
-# They prevent us from getting the splitdebug data.
-if (( ! has_restriction[binchecks] )); then
+# They prevent us from getting the splitdebug data. Skip this with
+# RESTRICT=strip, which asks for no stripping in the first place.
+if (( ! has_restriction[binchecks] && ! has_restriction[strip] )); then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
@@ -565,33 +584,36 @@ cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 # Since strip creates a new inode, we need to know the initial set of inodes in
 # advance, so that we can avoid interference due to trying to strip the same
 # (hardlinked) file multiple times in parallel. See bug #421099.
+estrip_files=()
 if (( do_prepstrip )); then
-	while IFS= read -r x; do
-		inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
-		echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
-	done < <(
-		# NEEDED may not exist for some packages (bug #862606)
-		if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
-			while IFS= read -r needed_entry ; do
-				needed_entry="${needed_entry% *}"
-				needed_contents+=( "${D%/}${needed_entry}" )
-			done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-		fi
-
-		# Use sort -u to eliminate duplicates (bug #445336).
-		(
-			if (( ${#needed_contents[@]} )); then
-				printf "%s\n" "${needed_contents[@]}"
-			fi
+	# Use sort -u to eliminate duplicates (bug #445336).
+	mapfile -t estrip_files < <(
+		{
+			list_needed_objects
 			printf '%s\0' "$@" | find0 -type f ! -type l -name '*.a'
-		) | LC_ALL=C sort -u
+		} | LC_ALL=C sort -u
 	)
 else
+	declare -A queued
 	while IFS= read -d '' -r x ; do
-		inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
-		echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
+		queued[${x%.estrip}]=1
+		estrip_files+=( "${x%.estrip}" )
 	done < <(printf '%s\0' "${ED}" | find0 -name '*.estrip' -delete -print0)
+
+	# Also process the objects that are not to be stripped, so that their
+	# sources are installed, as STRIP_MASK allows in EAPIs without dostrip
+	# (bug #799260).
+	if (( has_feature[installsources] && ! has_restriction[installsources] )); then
+		while IFS= read -r x; do
+			[[ ${queued[${x}]} ]] || estrip_files+=( "${x}" )
+		done < <(list_needed_objects)
+	fi
 fi
+
+for x in "${estrip_files[@]}"; do
+	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
+	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
+done
 
 # Now we look for unstripped binaries.
 read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
@@ -612,7 +634,7 @@ for inode_link in *; do
 		if (( do_skip )); then
 			do_strip=0
 		elif (( ! do_prepstrip )); then
-			do_strip=1
+			do_strip=${queued[${x}]:-0}
 		else
 			do_strip=1
 			while IFS= read -rd '' glob; do
