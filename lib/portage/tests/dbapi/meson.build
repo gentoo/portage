@@ -6,6 +6,7 @@ py.install_sources(
         'test_fakedbapi.py',
         'test_portdb_cache.py',
         'test_preserved_libs.py',
+        'test_prune_plib_registry.py',
         '__init__.py',
         '__test__.py',
     ],

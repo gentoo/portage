@@ -2378,7 +2378,14 @@ class dblink:
                 instance_owns_files = bool(self.getcontents())
 
                 unmerge_with_replacement = unmerge and preserve_paths is not None
-                if instance_owns_files:
+                # The linkmap is only used below on an unmerge without
+                # replacement, and to find preserved libraries without
+                # consumers, of which there are none while the registry is
+                # empty.
+                if instance_owns_files and (
+                    (unmerge and not unmerge_with_replacement)
+                    or plib_registry.hasEntries()
+                ):
                     if unmerge_with_replacement:
                         # If self.mycpv is about to be unmerged and we
                         # have a replacement package, we want to exclude
