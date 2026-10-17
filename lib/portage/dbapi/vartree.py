@@ -3586,6 +3586,35 @@ class dblink:
                 noiselevel=-1,
             )
 
+    def _may_preserve_libs(self):
+        """
+        Return False if _find_libs_to_preserve() is certain to find nothing,
+        so that the linkmap rebuild it needs can be skipped. It only
+        preserves libraries of the replaced instance that have consumers,
+        which are found by soname. The replaced instance's libraries are
+        listed in its NEEDED.ELF.2, or in the registry if it preserved them
+        itself.
+        """
+        installed_instance = self._installed_instance
+        if (
+            not self._preserve_libs
+            or installed_instance is None
+            or not installed_instance.getcontents()
+        ):
+            return False
+        vardb = self.vartree.dbapi
+        if installed_instance.mycpv in vardb._plib_registry.getPreservedLibs():
+            return True
+        (needed,) = vardb.aux_get(
+            installed_instance.mycpv, [vardb._linkmap._needed_aux_key]
+        )
+        for line in needed.splitlines():
+            # arch;obj;soname;rpath;needed
+            fields = line.split(";")
+            if len(fields) > 2 and fields[2]:
+                return True
+        return False
+
     def _find_libs_to_preserve(self, unmerge=False):
         """
         Get set of relative paths for libraries to be preserved. When
@@ -5080,19 +5109,7 @@ class dblink:
                 plib_registry.load()
                 needed = os.path.join(inforoot, linkmap._needed_aux_key)
 
-                # preserve-libs can only preserve libraries owned by the
-                # instance being replaced (see _find_libs_to_preserve, which
-                # selects paths from self._installed_instance). If there is no
-                # replaced instance, or it owns no files (e.g. empty/virtual
-                # packages), then _find_libs_to_preserve() is guaranteed to
-                # return an empty set, so the expensive system-wide linkmap
-                # rebuild here would be a waste. Skip it.
-                installed_instance = self._installed_instance
-                if (
-                    self._preserve_libs
-                    and installed_instance is not None
-                    and installed_instance.getcontents()
-                ):
+                if self._may_preserve_libs():
                     self._linkmap_rebuild(include_file=needed)
 
                     # Preserve old libs if they are still in use

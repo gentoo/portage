@@ -4,6 +4,7 @@ py.install_sources(
         'test_bintree.py',
         'test_bintree_build_id.py',
         'test_fakedbapi.py',
+        'test_may_preserve_libs.py',
         'test_portdb_cache.py',
         'test_preserved_libs.py',
         'test_prune_plib_registry.py',
