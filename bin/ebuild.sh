@@ -13,49 +13,32 @@ declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 source "${PORTAGE_BIN_PATH:?}/isolated-functions.sh" || exit
 
 __check_bash_version() {
-	local IFS compat_maj compat_min dependent maj min
+	local IFS
 
-	# Portage uses features that are only available in >=bash-4.4.
-	dependent="Portage"
-	maj=4
-	min=4
-
-	# Based on the value of EAPI, determine which shell compatibility level
-	# to activate. Further, raise the minimum required version if needs be.
-	#
-	# https://projects.gentoo.org/pms/8/pms.html#x1-580006
-	if ___eapi_bash_3_2; then
-		compat_maj=3
-		compat_min=2
-	elif ___eapi_bash_4_2; then
-		compat_maj=4
-		compat_min=2
-	elif ___eapi_bash_5_0; then
-		dependent="EAPI ${EAPI}"
-		(( compat_maj = maj = 5 ))
-		(( compat_min = min = 0 ))
-	elif ___eapi_bash_5_3; then
-		dependent="EAPI ${EAPI}"
-		(( compat_maj = maj = 5 ))
-		(( compat_min = min = 3 ))
-	fi
-
-	# Ensure that the minimum required version is satisfied.
-	if (( BASH_VERSINFO[0] < maj
-		|| (BASH_VERSINFO[0] == maj && BASH_VERSINFO[1] < min) ))
+	# Portage uses features that are only available in >=bash-5.3.
+	if (( BASH_VERSINFO[0] < 5
+		|| (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 3) ))
 	then
 		IFS=.
-		die "${dependent} requires >=bash-${maj}.${min} but only ${BASH_VERSINFO[*]:0:2} was found"
+		die "Portage requires >=bash-5.3 but only ${BASH_VERSINFO[*]:0:2} was found"
 	fi
 
-	# Activate the selected shell compatibility level, if any. The
+	# Based on the value of EAPI, activate a shell compatibility level. The
 	# BASH_COMPAT variable must never be exported, otherwise it will affect
-	# all bash scripts executed as subprocesses. The following document
-	# explains the behaviour of each available compatibility level.
+	# all bash scripts executed as subprocesses. The following documents
+	# explain which level each EAPI requires and the behaviour of each
+	# available compatibility level.
 	#
+	# https://projects.gentoo.org/pms/8/pms.html#x1-580006
 	# https://www.gnu.org/software/bash/manual/html_node/Shell-Compatibility-Mode.html
-	if [[ ${compat_maj} && ${compat_min} ]]; then
-		BASH_COMPAT="${compat_maj}.${compat_min}"
+	if ___eapi_bash_3_2; then
+		BASH_COMPAT=3.2
+	elif ___eapi_bash_4_2; then
+		BASH_COMPAT=4.2
+	elif ___eapi_bash_5_0; then
+		BASH_COMPAT=5.0
+	elif ___eapi_bash_5_3; then
+		BASH_COMPAT=5.3
 	fi
 
 	# The "patsub_replacement" and "globskipdots" options were introduced
@@ -69,8 +52,7 @@ __check_bash_version() {
 	# https://bugs.gentoo.org/907061
 	# https://bugs.gentoo.org/946193
 	# https://bugs.gentoo.org/946179
-	shopt -u patsub_replacement globskipdots 2>/dev/null
-	true
+	shopt -u patsub_replacement globskipdots
 }
 __check_bash_version
 
@@ -513,19 +495,7 @@ fi
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	# shellcheck disable=SC2086
 	for BIN in ${QA_INTERCEPTORS}; do
-		# Equivalent to BIN_PATH=$(type -P -- "${BIN}"), but without
-		# forking a subshell for each interceptor.
-		BIN_PATH=
-		PATH_REST=${PATH}:
-		while [[ -n ${PATH_REST} ]]; do
-			PATH_DIR=${PATH_REST%%:*}
-			PATH_REST=${PATH_REST#*:}
-			if [[ -f ${PATH_DIR:-.}/${BIN} && -x ${PATH_DIR:-.}/${BIN} ]]; then
-				BIN_PATH=${PATH_DIR:-.}/${BIN}
-				break
-			fi
-		done
-		if [[ -z ${BIN_PATH} ]]; then
+		if ! BIN_PATH=${ type -P -- "${BIN}"; }; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
@@ -567,7 +537,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 		fi
 		eval "${FUNC_SRC}" || echo "error creating QA interceptor ${BIN}" >&2
 	done
-	unset BIN_PATH BIN BODY FUNC_SRC PATH_DIR PATH_REST
+	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
 # Subshell/helper die support (must export for the die helper).
