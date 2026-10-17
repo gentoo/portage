@@ -295,8 +295,8 @@ from portage.const import PORTAGE_BIN_PATH
 from portage.util import socks5
 from portage.util._eventloop.global_event_loop import global_event_loop
 
-tempdir = sys.argv[0]
-threaded = bool(sys.argv[1])
+tempdir = sys.argv[1]
+threaded = sys.argv[2] == "True"
 
 settings = {
     "PORTAGE_TMPDIR": tempdir,
