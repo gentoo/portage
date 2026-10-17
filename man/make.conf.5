@@ -36,7 +36,9 @@ Exceptions are incremental variables such as USE, CONFIG_PROTECT*,
 and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
 make.defaults to make.globals to make.conf to the environment
 settings.  Clearing these variables requires a clear\-all as in:
-export USE="\-*"
+export USE="\-*".  Please note that incremental refers to different scopes,
+not uses within the same file.  Make sure to append rather than clobber the
+existing variable.
 .PP
 __* variables set in make.conf are local and are not be propagated.
 .PP
