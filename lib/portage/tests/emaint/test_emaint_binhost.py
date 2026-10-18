@@ -18,6 +18,15 @@ class EmainBinhostTestCase(EmaintTestCase):
         binpkgs = {
             "app-misc/A-1": {
                 "EAPI": "8",
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
+                "DEPEND": "app-misc/B",
+                "RDEPEND": "app-misc/C",
+            },
+            "app-text/A-1": {
+                "EAPI": "8",
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
                 "DEPEND": "app-misc/B",
                 "RDEPEND": "app-misc/C",
             },
@@ -75,7 +84,7 @@ class EmainBinhostTestCase(EmaintTestCase):
             # Make sure it differs if we bump the mtime on a binpkg.
             FunctionStep(
                 function=lambda i: os.utime(
-                    os.path.join(bintree.pkgdir, "app-misc", "A-1.gpkg.tar"),
+                    bintree.getname("app-misc/A-1"),
                     current_time(offset=1),
                 ),
             ),
@@ -211,14 +220,14 @@ class EmainBinhostTestCase(EmaintTestCase):
             # apart by their directory.
             mtime = int(time.time()) - 1000
             for category in ("cat1", "cat2"):
-                path = os.path.join(pkgdir, category, "foo", "foo-1-1.xpak")
+                path = bintree.getname(f"{category}/foo-1")
                 os.utime(path, (mtime, mtime))
 
         def assert_paths_not_confused(step):
             bintree.populate(force_reindex=False)
             self.assertEqual(
                 sorted(bintree.dbapi.cpv_all()),
-                ["cat1/foo-1", "cat2/foo-1"],
+                sorted(["cat1/foo-1", "cat2/foo-1"]),
                 f"step {step}",
             )
             for category in ("cat1", "cat2"):
