@@ -47,6 +47,7 @@ py.install_sources(
         'test_gather_deps_closures.py',
         'test_imagemagick_graphicsmagick.py',
         'test_installkernel.py',
+        'test_iuse_runtime.py',
         'test_keywords.py',
         'test_merge_order.py',
         'test_merge_order_cycles.py',

@@ -919,6 +919,59 @@ class Package(Task):
             pkg = self
         return pkg
 
+    def with_runtime_use(self):
+        """
+        Return a Package instance whose IUSE_RUNTIME flags take their
+        values from the current configuration, instead of the values that
+        the package was built with. The current instance is returned if it
+        is not built, if those flags are unchanged, or if the configured
+        values violate REQUIRED_USE, in which case the package keeps the
+        flags it was built with.
+        @rtype: Package
+        """
+        if not (self.built and self.iuse_runtime):
+            return self
+        config_use = frozenset(self._get_pkgsettings()["PORTAGE_USE"].split())
+        use = self.use.enabled.difference(self.iuse_runtime).union(
+            config_use.intersection(self.iuse_runtime)
+        )
+        if use == self.use.enabled:
+            return self
+        required_use = self._metadata.get("REQUIRED_USE")
+        if required_use:
+            try:
+                if not check_required_use(
+                    required_use, use, self.iuse.is_valid_flag, eapi=self.eapi
+                ):
+                    return self
+            except InvalidDependString:
+                return self
+        # Unlike with_use(), store the flags in the raw metadata, which is
+        # what copies of the instance and _depgraph_fork carry over.
+        metadata = dict(self._raw_metadata.items())
+        metadata["USE"] = " ".join(sorted(use))
+        return Package(
+            built=self.built,
+            cpv=self.cpv,
+            depth=self.depth,
+            installed=self.installed,
+            metadata=metadata,
+            onlydeps=self.onlydeps,
+            operation=self.operation,
+            root_config=self.root_config,
+            type_name=self.type_name,
+        )
+
+    def apply_runtime_use(self, use):
+        """
+        Return the flags in use as a USE string, with the values of the
+        IUSE_RUNTIME flags taken from this instance.
+        @rtype: str
+        """
+        use = {x for x in use if x not in self.iuse_runtime}
+        use.update(self.use.enabled.intersection(self.iuse_runtime))
+        return " ".join(sorted(use))
+
 
 _all_metadata_keys = frozenset(set(portage.auxdbkeys).union(Package.metadata_keys))
 

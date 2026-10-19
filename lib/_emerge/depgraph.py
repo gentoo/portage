@@ -3366,10 +3366,18 @@ class depgraph:
                         self._slot_operator_update_backtrack(dep)
 
     def _reinstall_for_flags(
-        self, pkg, forced_flags, orig_use, orig_iuse, cur_use, cur_iuse
+        self,
+        pkg,
+        forced_flags,
+        orig_use,
+        orig_iuse,
+        cur_use,
+        cur_iuse,
+        runtime_flags=frozenset(),
     ):
         """Return a set of flags that trigger reinstallation, or None if there
-        are no such flags."""
+        are no such flags. Changes to runtime_flags, the IUSE_RUNTIME flags
+        of both instances, never trigger reinstallation."""
 
         # binpkg_respect_use: Behave like newuse by default. If newuse is
         # False and changed_use is True, then behave like changed_use.
@@ -3384,12 +3392,14 @@ class depgraph:
             flags ^= cur_iuse
             flags -= forced_flags
             flags |= orig_iuse.intersection(orig_use) ^ cur_iuse.intersection(cur_use)
+            flags -= runtime_flags
             if flags:
                 return flags
         elif changed_use or binpkg_respect_use:
             flags = set(orig_iuse)
             flags.intersection_update(orig_use)
             flags ^= cur_iuse.intersection(cur_use)
+            flags -= runtime_flags
             if flags:
                 return flags
         return None
@@ -8328,6 +8338,9 @@ class depgraph:
                                             bin_iuse,
                                             pkg_use,
                                             pkg_iuse,
+                                            binpkg.iuse_runtime.intersection(
+                                                myeb.iuse_runtime
+                                            ),
                                         )
                                         and not (
                                             binpkg_changed_deps
@@ -8535,10 +8548,24 @@ class depgraph:
                                     chain(pkgsettings.useforce, pkgsettings.usemask)
                                 )
                             cur_iuse = iuses
+                            # Changes to the flags of installed packages
+                            # still trigger a rebuild.
+                            runtime_flags = (
+                                frozenset() if installed else pkg.iuse_runtime
+                            )
                             if myeb and not usepkgonly and not useoldpkg:
                                 cur_iuse = myeb.iuse.all
+                                runtime_flags = runtime_flags.intersection(
+                                    myeb.iuse_runtime
+                                )
                             reinstall_for_flags = self._reinstall_for_flags(
-                                pkg, forced_flags, old_use, iuses, now_use, cur_iuse
+                                pkg,
+                                forced_flags,
+                                old_use,
+                                iuses,
+                                now_use,
+                                cur_iuse,
+                                runtime_flags,
                             )
                             if reinstall_for_flags:
                                 if not pkg.installed:
@@ -9139,6 +9166,10 @@ class depgraph:
                 root_config=root_config,
                 type_name=type_name,
             )
+            if type_name == "binary":
+                # A binary package is merged with the runtime-switchable
+                # USE flags of the current configuration.
+                pkg = pkg.with_runtime_use()
 
             self._frozen_config._pkg_cache[pkg] = pkg
 
