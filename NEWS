@@ -52,6 +52,9 @@ Bug fixes:
 * elog: Prevent valid messages containing carriage returns from being rejected
   as malformed (bug #984257).
 
+* emake: Preserve the COLUMNS value supplied by the ebuild when printing the
+  command line, preventing failures in the Python test suite (bug #984547).
+
 portage-3.0.83 (2026-10-11)
 --------------
 

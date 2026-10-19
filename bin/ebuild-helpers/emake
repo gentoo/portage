@@ -19,14 +19,14 @@ cmd=(
 )
 
 if [[ ${PORTAGE_QUIET} != 1 ]] ; then
-	(
+	{
 	for arg in "${cmd[@]}" ; do
 		[[ ${arg} == *" "* ]] \
 			&& printf "'%s' " "${arg}" \
 			|| printf "%s " "${arg}"
 	done
 	printf "\n"
-	) >&2
+	} >&2
 fi
 
 "${cmd[@]}"
