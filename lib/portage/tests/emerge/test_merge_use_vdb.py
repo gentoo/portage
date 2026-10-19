@@ -171,8 +171,9 @@ src_install() {
             run_cmd(emerge_cmd + ("-1", "=dev-libs/A-1"))
             verify_file_content(foo_path, "original_content")
 
-            # Modify the installed file again, but don't spoof mtime
-            modify_file(foo_path)
+            # Modify the installed file again. CONTENTS mtimes have whole
+            # second resolution, so push the edit past the recorded one.
+            modify_file(foo_path, spoof_mtime=os.stat(foo_path).st_mtime + 1)
 
             # Re-install with feature enabled. Even though feature is
             # enabled, mtime differs, so it falls back to reading file
