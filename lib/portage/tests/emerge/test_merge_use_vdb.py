@@ -157,14 +157,8 @@ src_install() {
             run_cmd(emerge_cmd + ("-1", "=dev-libs/A-1"))
             verify_file_content(foo_path, "original_content")
 
-            # Record original mtime
-            original_mtime = os.stat(foo_path).st_mtime
-
             # Modify the installed file (changes mtime naturally)
             modify_file(foo_path)
-
-            with open(foo_path, encoding="utf-8") as f:
-                modified_content = f.read().strip()
 
             # Re-install with feature disabled (default behavior)
             # The manual modification should be replaced by original content
@@ -181,7 +175,7 @@ src_install() {
             run_cmd(emerge_cmd + ("-1", "=dev-libs/A-1"), {"FEATURES": "merge-use-vdb"})
             verify_file_content(foo_path, "original_content")
 
-            # Record original mtime again
+            # Record original mtime
             original_mtime = os.stat(foo_path).st_mtime
 
             # Modify the installed file and spoof mtime to match original
