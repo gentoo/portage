@@ -8,7 +8,6 @@ import itertools
 import os
 import re
 import socket
-import subprocess
 import sys
 
 import portage
@@ -511,55 +510,16 @@ class StyleWriter(formatter.DumbWriter):
 
 def get_term_size(fd=None):
     """
-    Get the number of lines and columns of the tty that is connected to
-    fd.  Returns a tuple of (lines, columns) or (0, 0) if an error
-    occurs. The curses module is used if available, otherwise the output of
-    `stty size` is parsed. The lines and columns values are guaranteed to be
-    greater than or equal to zero, since a negative COLUMNS variable is
-    known to prevent some commands from working (see bug #394091).
+    Get the number of lines and columns of the tty connected to fd.
+    Return (0, 0) if its dimensions cannot be determined.
     """
     if fd is None:
         fd = sys.stdout
-    if not hasattr(fd, "isatty") or not fd.isatty():
-        return (0, 0)
-
-    # Do not use curses.tigetnum("lines") or curses.tigetnum("cols") because it
-    # returns stale values after terminal resize. Do not use curses.initscr().getmaxyx()
-    # since that has unwanted side-effects, requiring a call to `stty sane` to restore a
-    # sane state.
-    if not sys.stdin.isatty():
-        # Use curses if stdin is not a tty since stty fails in that case.
-        try:
-            import curses
-
-            try:
-                curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
-                return curses.tigetnum("lines"), curses.tigetnum("cols")
-            except curses.error:
-                pass
-        except ImportError:
-            pass
-
     try:
-        proc = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, stderr=fd)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
-        # stty command not found
+        size = os.get_terminal_size(fd.fileno())
+    except (AttributeError, OSError, ValueError):
         return (0, 0)
-
-    out = proc.communicate()[0].decode("utf-8", "replace")
-    if proc.wait() == os.EX_OK:
-        out = out.split()
-        if len(out) == 2:
-            try:
-                val = (int(out[0]), int(out[1]))
-            except ValueError:
-                pass
-            else:
-                if val[0] >= 0 and val[1] >= 0:
-                    return val
-    return (0, 0)
+    return (size.lines, size.columns)
 
 
 class EOutput:

@@ -571,11 +571,8 @@ def doebuild_environment(
     mysettings["PORTAGE_COLORMAP"] = colormap()
 
     if "COLUMNS" not in mysettings:
-        # Set COLUMNS, in order to prevent unnecessary stty calls
-        # inside the set_colors function of isolated-functions.sh.
-        # We cache the result in os.environ, in order to avoid
-        # multiple stty calls in cases when get_term_size() falls
-        # back to stty due to a missing or broken curses module.
+        # Set COLUMNS to avoid unnecessary stty calls inside the set_colors
+        # function of isolated-functions.sh.
         columns = os.environ.get("COLUMNS")
         if columns is None:
             rows, columns = portage.output.get_term_size()
@@ -584,6 +581,7 @@ def doebuild_environment(
                 # like ls don't complain (see bug #394091).
                 columns = 80
             columns = str(columns)
+            # Retain the terminal width in the environment for subsequent calls.
             os.environ["COLUMNS"] = columns
         mysettings["COLUMNS"] = columns
 
