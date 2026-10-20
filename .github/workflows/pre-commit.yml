@@ -13,5 +13,6 @@ jobs:
     - uses: actions/checkout@v7
     - uses: actions/setup-python@v7
       with:
-        python-version: '3.x'
+        # no pylint for py315 available (dill lacks a release with 3.15 support)
+        python-version: '3.14'
     - uses: pre-commit/action@v3.0.1
