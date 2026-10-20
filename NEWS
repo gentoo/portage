@@ -55,6 +55,9 @@ Bug fixes:
 * emake: Preserve the COLUMNS value supplied by the ebuild when printing the
   command line, preventing failures in the Python test suite (bug #984547).
 
+* spawn: Reset inherited signal handlers in the pid-sandbox supervisor to prevent
+  spurious stty(1) diagnostics upon resizing the terminal (bug #982085).
+
 portage-3.0.83 (2026-10-11)
 --------------
 

@@ -1058,6 +1058,13 @@ def _exec(
     # the parent process (see bug #289486).
     signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
+    # The pid-sandbox supervisor never calls execve(2), so restore the default
+    # disposition of signals with callable Python handlers, lest the parent's
+    # handlers (e.g. for SIGWINCH) run in the child.
+    for signum in signal.valid_signals():
+        if callable(signal.getsignal(signum)):
+            signal.signal(signum, signal.SIG_DFL)
+
     # Unshare (while still uid==0)
     have_unshare = False
     libc = None
