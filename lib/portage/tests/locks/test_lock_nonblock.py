@@ -1,4 +1,4 @@
-# Copyright 2011-2024 Gentoo Authors
+# Copyright 2011-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import multiprocessing
@@ -80,6 +80,13 @@ class LockNonblockTestCase(TestCase):
             self.assertRaises(
                 TryAgain, portage.locks.lockfile, path, flags=os.O_NONBLOCK
             )
+            # The failed attempt must not have released the lock.
+            proc = multiprocessing.Process(
+                target=self._lock_subprocess, args=(path, None)
+            )
+            proc.start()
+            proc.join()
+            self.assertEqual(proc.exitcode, os.EX_OK)
             portage.locks.unlockfile(lock)
         finally:
             shutil.rmtree(tempdir)

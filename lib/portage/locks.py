@@ -55,24 +55,29 @@ _open_inodes = {}
 
 
 class _lock_manager:
-    __slots__ = ("fd", "inode_key")
+    __slots__ = ("fd", "inode_key", "_parked_fds")
 
     def __init__(self, fd, fstat_result, path):
         self.fd = fd
         self.inode_key = (fstat_result.st_dev, fstat_result.st_ino)
-        if self.inode_key in _open_inodes:
+        holder = _open_inodes.get(self.inode_key)
+        if holder is not None:
             # This means that the lock is already held by the current
             # process, so the caller will have to try again. This case
             # is encountered with the default fcntl.lockf function, and
             # with the alternative fcntl.flock function TryAgain is
-            # raised earlier.
-            os.close(fd)
+            # raised earlier. Closing fd would release the holder's
+            # fcntl.lockf lock, so keep it open until the holder unlocks.
+            holder._parked_fds.append(fd)
             raise TryAgain(path)
+        self._parked_fds = []
         _open_fds[fd] = self
         _open_inodes[self.inode_key] = self
 
     def close(self):
         os.close(self.fd)
+        for fd in self._parked_fds:
+            os.close(fd)
         del _open_fds[self.fd]
         del _open_inodes[self.inode_key]
 
