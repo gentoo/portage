@@ -441,6 +441,10 @@ class Scheduler(PollScheduler):
         if rendered:
             msg = f"=== Resource usage for {action} of {cpv}: {rendered}"
             log_path = build.settings.get("PORTAGE_LOG_FILE")
+            if log_path is not None and not os.path.exists(log_path):
+                # Removed with $T by the post-merge clean. output() would
+                # write to stdout instead, even in background mode.
+                log_path = None
             self._sched_iface.output(f"{msg}\n", log_path=log_path)
             self._logger.log(f" {msg}")
             if self._background and "--verbose" in self.myopts:
