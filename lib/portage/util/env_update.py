@@ -323,6 +323,12 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
                 ],
                 cwd="/",
             ).returncode
+        else:
+            writemsg(
+                f"!!! not running ldconfig: unrecognized operating system {ostype!r}\n",
+                noiselevel=-1,
+            )
+            ret = 0
 
         if ret > 0:
             writemsg(f"!!! ldconfig failed with exit status {ret}\n", noiselevel=-1)

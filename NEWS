@@ -82,6 +82,9 @@ Bug fixes:
 * output: Use os.get_terminal_size() to obtain terminal dimensions, avoiding
   incorrect results and spurious diagnostics from stty(1) (bug #973147).
 
+* env-update: Warn and skip ldconfig(8) for unrecognised operating systems
+  instead of raising UnboundLocalError (bug #984722).
+
 portage-3.0.83 (2026-10-11)
 --------------
 
