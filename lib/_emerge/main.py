@@ -274,7 +274,8 @@ def insert_optional_args(args):
                 saved_opts = arg[2:]
                 opt_arg = "True"
         else:
-            saved_opts = arg[1:].replace(match, "")
+            # Remove only this occurrence, so that -pvv keeps its second -v.
+            saved_opts = arg[1:].replace(match, "", 1)
             opt_arg = "True"
 
         if opt_arg is None and arg_stack and arg_stack[-1] in arg_choices:
@@ -766,8 +767,9 @@ def parse_opts(tmpcmdline, silent=False):
         },
         "--verbose": {
             "shortopt": "-v",
-            "help": "verbose output",
+            "help": "verbose output (repeat for more)",
             "choices": true_y_or_n,
+            "action": "append",
         },
         "--verbose-missing-ebuilds": {
             "help": "verbose missing ebuild output",
@@ -1172,10 +1174,11 @@ def parse_opts(tmpcmdline, silent=False):
     else:
         myoptions.usepkg_exclude_live = None
 
-    if myoptions.verbose in true_y:
-        myoptions.verbose = True
-    else:
-        myoptions.verbose = None
+    # Each -v raises the level by one, and --verbose=n resets it.
+    verbose = 0
+    for v in myoptions.verbose or ():
+        verbose = verbose + 1 if v in true_y else 0
+    myoptions.verbose = verbose or None
 
     if myoptions.with_test_deps in true_y:
         myoptions.with_test_deps = True
@@ -1207,6 +1210,19 @@ def parse_opts(tmpcmdline, silent=False):
         myaction = "deselect"
 
     return myaction, myopts, myoptions.positional_args
+
+
+def verbose_level(combined, cmdline):
+    """
+    Many users keep -v in EMERGE_DEFAULT_OPTS and type -v anyway, so take
+    the higher of the two verbosity levels rather than their sum. Unless
+    --verbose=n on the command line reset it, the combined level is the
+    sum of the level from EMERGE_DEFAULT_OPTS and the one from the
+    command line.
+    """
+    if combined > cmdline:
+        combined = max(combined - cmdline, cmdline)
+    return combined
 
 
 def profile_check(trees, myaction):
@@ -1410,6 +1426,10 @@ def emerge_main(args: Optional[list[str]] = None):
     emerge_config.action, emerge_config.opts, emerge_config.args = parse_opts(
         tmpcmdline
     )
+    if "--verbose" in emerge_config.opts:
+        emerge_config.opts["--verbose"] = verbose_level(
+            emerge_config.opts["--verbose"], myopts.get("--verbose", 0)
+        )
 
     try:
         return run_action(emerge_config)

@@ -20,6 +20,7 @@ py.install_sources(
         'test_pkg_pretend.py',
         'test_preserve_libs.py',
         'test_unmerge_phases.py',
+        'test_verbose_option.py',
         'test_sigint_merge_wait.py',
         '__init__.py',
         '__test__.py',
