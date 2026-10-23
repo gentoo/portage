@@ -128,6 +128,8 @@ insopts() {
 
 	if has -s "$@"; then
 		die "Never call insopts() with -s"
+	elif [[ -n "${SYSROOT%/}" || -n "${ROOT%/}" ]]; then
+		export INSOPTIONS=$(__normalize_owner $*)
 	else
 		export INSOPTIONS=$*
 	fi
@@ -136,7 +138,11 @@ insopts() {
 diropts() {
 	local IFS
 
-	export DIROPTIONS=$*
+	if [[ -n "${SYSROOT%/}" || -n "${ROOT%/}" ]]; then
+		export DIROPTIONS=$(__normalize_owner $*)
+	else
+		export DIROPTIONS=$*
+	fi
 }
 
 exeopts() {
@@ -144,6 +150,8 @@ exeopts() {
 
 	if has -s "$@"; then
 		die "Never call exeopts() with -s"
+	elif [[ -n "${SYSROOT%/}" || -n "${ROOT%/}" ]]; then
+		export EXEOPTIONS=$(__normalize_owner $*)
 	else
 		export EXEOPTIONS=$*
 	fi
@@ -156,6 +164,8 @@ libopts() {
 		die "'${FUNCNAME}' has been banned for EAPI '${EAPI}'"
 	elif has -s "$@"; then
 		die "Never call libopts() with -s"
+	elif [[ -n "${SYSROOT%/}" || -n "${ROOT%/}" ]]; then
+		export LIBOPTIONS=$(__normalize_owner $*)
 	else
 		export LIBOPTIONS=$*
 	fi
