@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+from unittest import mock
 
 from portage import config
 from portage.dbapi.vartree import dblink
@@ -55,7 +56,9 @@ class PrunePlibRegistryTestCase(TestCase):
         try:
             registry.load()
             registry.register("dev-libs/B-1", "0", "1", [lib])
-            registry.store()
+            # store() is a no-op under sandbox, as in the ebuild's src_test.
+            with mock.patch.dict(os.environ, SANDBOX_ON="0"):
+                registry.store()
         finally:
             registry.unlock()
 
