@@ -187,6 +187,9 @@ Features:
 
 * Scheduler: Improve FEATURES=cgroup output.
 
+* emerge: Count repeated -v options. The FEATURES=cgroup resource usage
+  summary is now echoed in background mode only with -vv.
+
 Bug fixes:
 
 * Drop "https://www." from the User-Agent in the default wget FETCHCOMMAND

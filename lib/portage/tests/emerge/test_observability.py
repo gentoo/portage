@@ -1234,11 +1234,11 @@ class SchedulerCgroupLogTestCase(TestCase):
         stats=None,
         messages=None,
         background=False,
-        verbose=False,
+        verbose=0,
         displayed=None,
     ):
         sched = Scheduler.__new__(Scheduler)
-        sched.myopts = {"--verbose": True} if verbose else {}
+        sched.myopts = {"--verbose": verbose} if verbose else {}
         sched._background = background
         sched._status_display = (
             SimpleNamespace(
@@ -1339,7 +1339,7 @@ class SchedulerCgroupLogTestCase(TestCase):
             "".join(messages),
         )
 
-    def test_verbose_background_displays_message(self):
+    def test_very_verbose_background_displays_message(self):
         build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
         build.settings = _Settings()
         displayed = []
@@ -1348,7 +1348,7 @@ class SchedulerCgroupLogTestCase(TestCase):
             monitor,
             stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
             background=True,
-            verbose=True,
+            verbose=2,
             displayed=displayed,
         )
         sched._cgroup_finish(build)
@@ -1359,21 +1359,24 @@ class SchedulerCgroupLogTestCase(TestCase):
         )
         self.assertIs(displayed[0][1], True)
 
-    def test_non_verbose_background_does_not_display_message(self):
-        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
-        build.settings = _Settings()
-        displayed = []
-        monitor = ObservabilityMonitor(_make_scheduler())
-        sched = self._make_cgroup_sched(
-            monitor,
-            stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
-            background=True,
-            verbose=False,
-            displayed=displayed,
-        )
-        sched._cgroup_finish(build)
+    def test_less_verbose_background_does_not_display_message(self):
+        # -v alone is common in EMERGE_DEFAULT_OPTS, so it takes -vv.
+        for verbose in (0, 1, True):
+            with self.subTest(verbose=verbose):
+                build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+                build.settings = _Settings()
+                displayed = []
+                monitor = ObservabilityMonitor(_make_scheduler())
+                sched = self._make_cgroup_sched(
+                    monitor,
+                    stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
+                    background=True,
+                    verbose=verbose,
+                    displayed=displayed,
+                )
+                sched._cgroup_finish(build)
 
-        self.assertEqual(len(displayed), 0)
+                self.assertEqual(len(displayed), 0)
 
     def test_background_install_after_log_removed(self):
         # The post-merge clean has removed $T along with the build log.
@@ -1388,7 +1391,7 @@ class SchedulerCgroupLogTestCase(TestCase):
                 monitor,
                 stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
                 background=True,
-                verbose=True,
+                verbose=2,
                 displayed=displayed,
             )
             sched._sched_iface = SchedulerInterface(

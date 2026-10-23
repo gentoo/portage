@@ -447,7 +447,9 @@ class Scheduler(PollScheduler):
                 log_path = None
             self._sched_iface.output(f"{msg}\n", log_path=log_path)
             self._logger.log(f" {msg}")
-            if self._background and "--verbose" in self.myopts:
+            # Echo it past the status display only for -vv, since plain -v
+            # is common in EMERGE_DEFAULT_OPTS.
+            if self._background and self.myopts.get("--verbose", 0) >= 2:
                 self._status_display.displayMessage(msg, raw=True)
         self._cgroup.destroy(cpv)
 
