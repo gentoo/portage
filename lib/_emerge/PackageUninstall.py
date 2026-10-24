@@ -25,6 +25,9 @@ class PackageUninstall(CompositeTask):
     as desired if we try to lock the same file multiple times
     concurrently from the same process for ebuild-locks phases
     such as pkg_setup, pkg_prerm, and pkg_postrm.
+
+    Set skip_display to True when the caller has already displayed the
+    packages selected for removal.
     """
 
     __slots__ = (
@@ -33,6 +36,7 @@ class PackageUninstall(CompositeTask):
         "opts",
         "pkg",
         "settings",
+        "skip_display",
         "world_atom",
     )
 
@@ -79,20 +83,21 @@ class PackageUninstall(CompositeTask):
         lock_task.future.result()
         portage.prepare_build_dirs(settings=self.settings, cleanup=True)
 
-        # Output only gets logged if it comes after prepare_build_dirs()
-        # which initializes PORTAGE_LOG_FILE.
-        retval, _ = _unmerge_display(
-            self.pkg.root_config,
-            self.opts,
-            "unmerge",
-            [self.pkg.cpv],
-            clean_delay=0,
-            writemsg_level=self._writemsg_level,
-        )
+        if not self.skip_display:
+            # Output only gets logged if it comes after prepare_build_dirs()
+            # which initializes PORTAGE_LOG_FILE.
+            retval, _ = _unmerge_display(
+                self.pkg.root_config,
+                self.opts,
+                "unmerge",
+                [self.pkg.cpv],
+                clean_delay=0,
+                writemsg_level=self._writemsg_level,
+            )
 
-        if retval != os.EX_OK:
-            self._async_unlock_builddir(returncode=retval)
-            return
+            if retval != os.EX_OK:
+                self._async_unlock_builddir(returncode=retval)
+                return
 
         self._writemsg_level(f">>> Unmerging {self.pkg.cpv}...\n", noiselevel=-1)
         self._emergelog(f"=== Unmerging... ({self.pkg.cpv})")

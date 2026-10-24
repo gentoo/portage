@@ -71,6 +71,7 @@ py.install_sources(
         'Task.py',
         'UninstallFailure.py',
         'UnmergeDepPriority.py',
+        'UnmergeScheduler.py',
         'UseFlagDisplay.py',
         'UserQuery.py',
         'actions.py',
