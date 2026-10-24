@@ -645,6 +645,18 @@ def unmerge(
     curval = 1
     maxval = len(all_selected)
 
+    def clean_selected(cpv):
+        if (
+            clean_world
+            and hasattr(sets["selected"], "cleanPackage")
+            and hasattr(sets["selected"], "lock")
+        ):
+            sets["selected"].lock()
+            if hasattr(sets["selected"], "load"):
+                sets["selected"].load()
+            sets["selected"].cleanPackage(vartree.dbapi, cpv)
+            sets["selected"].unlock()
+
     for x in range(len(pkgmap)):
         for y in pkgmap[x]["selected"]:
             emergelog(xterm_titles, "=== Unmerging... (" + y + ")")
@@ -673,16 +685,7 @@ def unmerge(
                     raise UninstallFailure(retval)
                 sys.exit(retval)
             else:
-                if (
-                    clean_world
-                    and hasattr(sets["selected"], "cleanPackage")
-                    and hasattr(sets["selected"], "lock")
-                ):
-                    sets["selected"].lock()
-                    if hasattr(sets["selected"], "load"):
-                        sets["selected"].load()
-                    sets["selected"].cleanPackage(vartree.dbapi, y)
-                    sets["selected"].unlock()
+                clean_selected(y)
                 emergelog(xterm_titles, " >>> unmerge success: " + y)
 
     if (
