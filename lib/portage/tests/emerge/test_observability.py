@@ -35,6 +35,7 @@ from _emerge.PackageMerge import PackageMerge as _RealPackageMerge
 from _emerge.Scheduler import Scheduler
 
 from portage.tests import TestCase
+from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 
 
@@ -1373,6 +1374,32 @@ class SchedulerCgroupLogTestCase(TestCase):
         sched._cgroup_finish(build)
 
         self.assertEqual(len(displayed), 0)
+
+    def test_background_install_after_log_removed(self):
+        # The post-merge clean has removed $T along with the build log.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            build = EbuildBuild(_Pkg("dev-libs/foo-1.2"))
+            build.settings = _Settings(
+                PORTAGE_LOG_FILE=os.path.join(tmpdir, "temp", "build.log")
+            )
+            displayed = []
+            monitor = ObservabilityMonitor(_make_scheduler())
+            sched = self._make_cgroup_sched(
+                monitor,
+                stats={"cpu_usec": 3_000_000, "mem_peak": 4096},
+                background=True,
+                verbose=True,
+                displayed=displayed,
+            )
+            sched._sched_iface = SchedulerInterface(
+                global_event_loop(), is_background=lambda: True
+            )
+            stdout = io.StringIO()
+            with patch("sys.stdout", stdout):
+                sched._cgroup_finish(build, action="install", record=False)
+
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertEqual(len(displayed), 1)
 
     def test_transient_counters_are_left_out_of_the_summary(self):
         # The build is over and its cgroup is about to be destroyed, so
