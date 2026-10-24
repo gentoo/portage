@@ -5,6 +5,7 @@ __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
 import argparse
 import bz2
+import contextlib
 import errno
 import filecmp
 import fnmatch
@@ -415,6 +416,9 @@ class vardbapi(dbapi):
         self._conf_mem_file = self._eroot + CONFIG_MEMORY_FILE
         self._fs_lock_obj = None
         self._fs_lock_count = 0
+        self._fs_group_leader = None
+        self._fs_group_lock_obj = None
+        self._fs_group_lock_count = 0
         self._slot_locks = {}
 
         if vartree is None:
@@ -496,10 +500,14 @@ class vardbapi(dbapi):
             unlockdir(self._lock)
             self._lock = None
 
-    def _fs_lock(self):
+    def _fs_lock(self, exclude_group=True):
         """
         Acquire a reentrant lock, blocking, for cooperation with concurrent
         processes.
+
+        Like lock(), the state is inherited by subprocesses. In a member of
+        an _fs_lock_group, exclude_group also excludes the other members'
+        exclude_group calls. Calls without it are not excluded at all.
         """
         from portage.locks import lockfile
 
@@ -513,11 +521,33 @@ class vardbapi(dbapi):
                 self._fs_lock_obj = lockfile(self._conf_mem_file)
         self._fs_lock_count += 1
 
-    def _fs_unlock(self):
+        if (
+            exclude_group
+            and self._fs_group_leader is not None
+            and self._fs_group_leader != os.getpid()
+        ):
+            if self._fs_group_lock_count < 1:
+                self._fs_group_lock_obj = lockfile(
+                    self._conf_mem_file, wantnewlockfile=True
+                )
+            self._fs_group_lock_count += 1
+
+    def _fs_unlock(self, exclude_group=True):
         """
-        Release a lock, decrementing the recursion level.
+        Release a lock, decrementing the recursion level. The exclude_group
+        argument must match that of the corresponding _fs_lock call.
         """
         from portage.locks import unlockfile
+
+        if (
+            exclude_group
+            and self._fs_group_leader is not None
+            and self._fs_group_leader != os.getpid()
+        ):
+            if self._fs_group_lock_count <= 1:
+                unlockfile(self._fs_group_lock_obj)
+                self._fs_group_lock_obj = None
+            self._fs_group_lock_count -= 1
 
         if self._fs_lock_count <= 1:
             if self._fs_lock_obj is None:
@@ -525,6 +555,24 @@ class vardbapi(dbapi):
             unlockfile(self._fs_lock_obj)
             self._fs_lock_obj = None
         self._fs_lock_count -= 1
+
+    @contextlib.contextmanager
+    def _fs_lock_group(self):
+        """
+        Hold the _fs_lock for the subprocesses spawned in this context, so
+        that they share it and other processes wait for all of them. The
+        caller's own _fs_lock calls do not exclude them, since a member can
+        block on output to the caller while it holds the lock.
+        """
+        if self._fs_group_leader is not None:
+            raise AssertionError("already leading a group")
+        self._fs_lock()
+        self._fs_group_leader = os.getpid()
+        try:
+            yield
+        finally:
+            self._fs_group_leader = None
+            self._fs_unlock()
 
     def _slot_lock(self, slot_atom):
         """
@@ -2648,11 +2696,12 @@ class dblink:
                 except FileNotFoundError:
                     pass
 
-            self.vartree.dbapi._fs_lock()
+            # Members of an _fs_lock_group remove files concurrently.
+            self.vartree.dbapi._fs_lock(exclude_group=False)
             try:
                 self._unmerge_pkgfiles(pkgfiles, others_in_slot)
             finally:
-                self.vartree.dbapi._fs_unlock()
+                self.vartree.dbapi._fs_unlock(exclude_group=False)
             self._clear_contents_cache()
 
             if "postrm" in run_phases:
@@ -3226,11 +3275,17 @@ class dblink:
             lines.append("")
             self._elog("elog", "postrm", lines)
 
-        # Remove stale entries from config memory.
+        # Remove stale entries from config memory. Read it again, since
+        # another member of an _fs_lock_group may have written it.
         if stale_confmem:
-            for filename in stale_confmem:
-                del cfgfiledict[filename]
-            writedict(cfgfiledict, self.vartree.dbapi._conf_mem_file)
+            self.vartree.dbapi._fs_lock()
+            try:
+                cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
+                for filename in stale_confmem:
+                    cfgfiledict.pop(filename, None)
+                writedict(cfgfiledict, self.vartree.dbapi._conf_mem_file)
+            finally:
+                self.vartree.dbapi._fs_unlock()
 
         # remove self from vartree database so that our own virtual gets zapped if we're the last node
         self.vartree.zap(self.mycpv)
