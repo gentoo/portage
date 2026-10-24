@@ -1163,7 +1163,8 @@ def calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spin
 
 _depclean_result = collections.namedtuple(
     "_depclean_result",
-    ("returncode", "cleanlist", "ordered", "req_pkg_count", "depgraph"),
+    ("returncode", "cleanlist", "ordered", "req_pkg_count", "depgraph", "unmerge_deps"),
+    defaults=(None,),
 )
 
 
@@ -1977,12 +1978,16 @@ def _calc_depclean(
             writemsg_level("\n", noiselevel=-1, level=logging.DEBUG)
 
         ordered = True
+        unmerge_deps = None
         if len(graph.order) == len(graph.root_nodes()):
             # If there are no dependencies between packages
             # let unmerge() group them by cat/pn.
             ordered = False
             cleanlist = [pkg.cpv for pkg in graph.order]
         else:
+            # Remember which packages depend on each package, before the
+            # graph is consumed below.
+            dependents = {node: graph.parent_nodes(node) for node in graph.order}
             # Order nodes from lowest to highest overall reference count for
             # optimal root node selection (this can help minimize issues
             # with unaccounted implicit dependencies).
@@ -2017,7 +2022,21 @@ def _calc_depclean(
                     graph.remove(node)
                     cleanlist.append(node.cpv)
 
-        return _depclean_result(0, cleanlist, ordered, required_pkgs_total, resolver)
+            # Each package waits for its dependents, except for those later
+            # in cleanlist, whose edges were dropped above to break cycles.
+            position = {cpv: i for i, cpv in enumerate(cleanlist)}
+            unmerge_deps = {
+                node.cpv: {
+                    parent.cpv
+                    for parent in parents
+                    if position[parent.cpv] < position[node.cpv]
+                }
+                for node, parents in dependents.items()
+            }
+
+        return _depclean_result(
+            0, cleanlist, ordered, required_pkgs_total, resolver, unmerge_deps
+        )
     if args_set and "--pretend" not in myopts:
         # If the cleanlist is empty but we were given packages to clean,
         # we aren't successfully depcleaning. Return failure unless
