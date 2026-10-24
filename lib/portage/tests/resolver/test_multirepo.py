@@ -233,7 +233,7 @@ class MultirepoTestCase(TestCase):
                 check_repo_names=True,
                 mergelist=["dev-libs/I-2::repo2"],
             ),
-            # Check interaction between repo priority and unsatisfied
+            # Check interaction between repo version priority and unsatisfied
             # REQUIRED_USE, for bug #350254.
             ResolverPlaygroundTestCase(
                 ["=dev-libs/G-1"], check_repo_names=True, success=False
@@ -298,6 +298,18 @@ class MultirepoTestCase(TestCase):
             "dev-libs/G-1::repo1": {},
             # package.mask with wildcards
             "dev-libs/Z-1::repo3": {},
+            # version-priority
+            "dev-libs/VPA-1::vp-repo1": {},
+            "dev-libs/VPA-1::vp-repo2": {},
+            "dev-libs/VPA-2::vp-repo2": {},
+            "dev-libs/VPB-1::vp-repo1": {},
+            "dev-libs/VPB-1::vp-repo3": {},
+            # package-priority
+            "dev-libs/PPA-1": {},
+            "dev-libs/PPA-2::pp-repo1": {},
+            "dev-libs/PPA-3::pp-repo2": {},
+            "dev-libs/PPB-1": {"DEPEND": "=dev-libs/PPA-1"},
+            "dev-libs/PPC-1": {"DEPEND": "=dev-libs/PPA-3"},
         }
 
         installed = {
@@ -306,6 +318,14 @@ class MultirepoTestCase(TestCase):
                 "EAPI": "3",
             },
             "dev-libs/I-2::repo1": {"SLOT": "2"},
+            "dev-libs/PPA-1": {},
+        }
+
+        binpkgs = {
+            "dev-libs/PPA-1::pp-repo4": {},
+            "dev-libs/PPA-2::pp-repo1": {},
+            "dev-libs/PPA-4::pp-repo2": {},
+            "dev-libs/PPD-1::pp-repo2": {},
         }
 
         user_config = {
@@ -323,6 +343,18 @@ class MultirepoTestCase(TestCase):
             ),
             "package.properties": ("dev-libs/F::repo1 -bar",),
             "package.unmask": ("dev-libs/G::test_repo",),
+            "repos.conf": (
+                "[vp-repo1]",
+                "version-priority = 1",
+                "[vp-repo2]",
+                "version-priority = -1",
+                "[vp-repo3]",
+                "priority = -2",
+                "[pp-repo1]",
+                "package-priority = 1",
+                "[pp-repo2]",
+                "package-priority = -1",
+            ),
         }
 
         test_cases = (
@@ -397,6 +429,105 @@ class MultirepoTestCase(TestCase):
             ResolverPlaygroundTestCase(
                 ["dev-libs/Z"], options={"--autounmask": "n"}, success=False
             ),
+            # VP: Newest version beats older version in higher priority repo.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/VPA"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPA-2::vp-repo2"],
+            ),
+            # VP: Duplicate older version is chosen from higher priority repo.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/VPA-1"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPA-1::vp-repo1"],
+            ),
+            # VP: Explicitly specifying the repository overrides the priority.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/VPA-1::vp-repo2"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPA-1::vp-repo2"],
+            ),
+            # VP: The legacy "priority" setting also works.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/VPB-1"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/VPB-1::vp-repo1"],
+            ),
+            # PP: v2 in ::repo1 beats v3 in ::repo2.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPA"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/PPA-2::pp-repo1"],
+            ),
+            # PP: Explicitly requesting deprioritized ::pp-repo2 fails.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPA::pp-repo2"],
+                success=False,
+            ),
+            # PP: Explicitly requesting a non ::pp-repo1 version fails.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/PPA-3"],
+                success=False,
+            ),
+            # PP: Explicitly requesting unprioritized ::test_repo fails.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPA::test_repo"],
+                success=False,
+            ),
+            # PP: Installed deprioritized packages are okay when selective.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPA::test_repo"],
+                options={"--selective": True},
+                success=True,
+                mergelist=[],
+            ),
+            # PP: Installed deprioritized packages are okay as dependencies.
+            # Also prioritized repos do not mask packages solely in other repos.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPB"],
+                success=True,
+                mergelist=["dev-libs/PPB-1"],
+            ),
+            # PP: Uninstalled deprioritized packages are not okay as deps.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPC"],
+                success=False,
+            ),
+            # PP: Requesting a binpkg from an unconfigured repo succeeds.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/PPA-1"],
+                options={"--usepkgonly": True},
+                success=True,
+                check_repo_names=True,
+                mergelist=["[binary]dev-libs/PPA-1::pp-repo4"],
+            ),
+            # PP: Requesting binpkg from a configured prioritized repo succeeds.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPA"],
+                options={"--usepkgonly": True},
+                success=True,
+                check_repo_names=True,
+                mergelist=["[binary]dev-libs/PPA-2::pp-repo1"],
+            ),
+            # PP: Requesting binpkg from a configured deprioritized repo fails.
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/PPA-4"],
+                options={"--usepkgonly": True},
+                success=False,
+            ),
+            # PP: Requesting a binpkg with no source succeeds.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPD"],
+                options={"--usepkgonly": True},
+                success=True,
+                check_repo_names=True,
+                mergelist=["[binary]dev-libs/PPD-1::pp-repo2"],
+            ),
         )
 
         for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
@@ -405,7 +536,10 @@ class MultirepoTestCase(TestCase):
                 sys.stdout.flush()
                 user_config["make.conf"] = (f'BINPKG_FORMAT="{binpkg_format}"',)
                 playground = ResolverPlayground(
-                    ebuilds=ebuilds, installed=installed, user_config=user_config
+                    ebuilds=ebuilds,
+                    installed=installed,
+                    binpkgs=binpkgs,
+                    user_config=user_config,
                 )
 
                 try:
