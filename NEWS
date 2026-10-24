@@ -52,6 +52,11 @@ Features:
   nor any bashrc or ebuild hook file defines them (bug #570472). Top-level
   bashrc code therefore no longer runs for those phases of such packages.
 
+* emerge: Unmerge packages in parallel with --jobs for --depclean, --prune,
+  --clean and AUTOCLEAN. With --depclean, and --prune without --nodeps, a
+  package is unmerged only after the packages that depend on it
+  (bug #570472).
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata

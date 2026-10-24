@@ -1106,7 +1106,7 @@ def action_depclean(
     # The calculation is done in a separate function so that depgraph
     # references go out of scope and the corresponding memory
     # is freed before we call unmerge().
-    rval, cleanlist, ordered, req_pkg_count = calc_depclean(
+    rval, cleanlist, ordered, req_pkg_count, unmerge_deps = calc_depclean(
         settings, trees, ldpath_mtimes, myopts, action, args_set, spinner
     )
 
@@ -1123,6 +1123,7 @@ def action_depclean(
             cleanlist,
             ldpath_mtimes,
             ordered=ordered,
+            unmerge_deps=unmerge_deps,
             scheduler=scheduler,
         )
 
@@ -1158,7 +1159,13 @@ def calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spin
     result = _calc_depclean(
         settings, trees, ldpath_mtimes, myopts, action, args_set, spinner
     )
-    return result.returncode, result.cleanlist, result.ordered, result.req_pkg_count
+    return (
+        result.returncode,
+        result.cleanlist,
+        result.ordered,
+        result.req_pkg_count,
+        result.unmerge_deps,
+    )
 
 
 _depclean_result = collections.namedtuple(

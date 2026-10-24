@@ -11,7 +11,9 @@ import portage
 from portage._sets import SETPREFIX
 from portage._sets.base import EditablePackageSet
 from portage.dbapi._expand_new_virt import expand_new_virt
+from portage.exception import CommandNotFound
 from portage.output import bold, colorize, darkgreen, green
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.versions import _pkg_str, cpv_sort_key
 
 from _emerge.countdown import countdown
@@ -584,10 +586,15 @@ def unmerge(
     raise_on_error=0,
     scheduler=None,
     writemsg_level=portage.util.writemsg_level,
+    unmerge_deps=None,
 ):
     """
     Returns os.EX_OK if no errors occur, 1 if an error occurs, and
     130 if interrupted due to a 'no' answer for --ask.
+
+    With --jobs, packages are unmerged in parallel. An ordered unmerge
+    is parallel only when unmerge_deps maps each cpv to the cpvs that
+    must be unmerged before it.
     """
 
     if clean_world:
@@ -657,36 +664,55 @@ def unmerge(
             sets["selected"].cleanPackage(vartree.dbapi, cpv)
             sets["selected"].unlock()
 
-    for x in range(len(pkgmap)):
-        for y in pkgmap[x]["selected"]:
-            emergelog(xterm_titles, "=== Unmerging... (" + y + ")")
-            message = ">>> Unmerging ({} of {}) {}...\n".format(
-                colorize("MERGE_LIST_PROGRESS", str(curval)),
-                colorize("MERGE_LIST_PROGRESS", str(maxval)),
-                y,
-            )
-            writemsg_level(message, noiselevel=-1)
-            curval += 1
+    max_jobs = myopts.get("--jobs", 1)
+    if (
+        maxval > 1
+        and (max_jobs is True or max_jobs > 1)
+        and (not ordered or unmerge_deps is not None)
+    ):
+        _unmerge_parallel(
+            root_config,
+            myopts,
+            mysettings,
+            [y for x in pkgmap for y in x["selected"]],
+            unmerge_deps if ordered else {},
+            max_jobs,
+            ldpath_mtimes,
+            clean_selected,
+            raise_on_error,
+            writemsg_level,
+        )
+    else:
+        for x in range(len(pkgmap)):
+            for y in pkgmap[x]["selected"]:
+                emergelog(xterm_titles, "=== Unmerging... (" + y + ")")
+                message = ">>> Unmerging ({} of {}) {}...\n".format(
+                    colorize("MERGE_LIST_PROGRESS", str(curval)),
+                    colorize("MERGE_LIST_PROGRESS", str(maxval)),
+                    y,
+                )
+                writemsg_level(message, noiselevel=-1)
+                curval += 1
 
-            mysplit = y.split("/")
-            # unmerge...
-            retval = portage.unmerge(
-                mysplit[0],
-                mysplit[1],
-                settings=mysettings,
-                vartree=vartree,
-                ldpath_mtimes=ldpath_mtimes,
-                scheduler=scheduler,
-            )
+                mysplit = y.split("/")
+                # unmerge...
+                retval = portage.unmerge(
+                    mysplit[0],
+                    mysplit[1],
+                    settings=mysettings,
+                    vartree=vartree,
+                    ldpath_mtimes=ldpath_mtimes,
+                    scheduler=scheduler,
+                )
 
-            if retval != os.EX_OK:
-                emergelog(xterm_titles, " !!! unmerge FAILURE: " + y)
-                if raise_on_error:
-                    raise UninstallFailure(retval)
-                sys.exit(retval)
-            else:
-                clean_selected(y)
-                emergelog(xterm_titles, " >>> unmerge success: " + y)
+                if retval != os.EX_OK:
+                    emergelog(xterm_titles, " !!! unmerge FAILURE: " + y)
+                    if raise_on_error:
+                        raise UninstallFailure(retval)
+                    sys.exit(retval)
+                else:
+                    clean_selected(y)
+                    emergelog(xterm_titles, " >>> unmerge success: " + y)
 
     if (
         clean_world
@@ -700,3 +726,76 @@ def unmerge(
         sets["selected"].unlock()
 
     return os.EX_OK
+
+
+def _unmerge_parallel(
+    root_config,
+    myopts,
+    settings,
+    cpvs,
+    unmerge_deps,
+    max_jobs,
+    ldpath_mtimes,
+    clean_selected,
+    raise_on_error,
+    writemsg_level,
+):
+    from _emerge.UnmergeScheduler import UnmergeScheduler, _symlink_deps
+
+    vardb = root_config.trees["vartree"].dbapi
+    unmerge_scheduler = UnmergeScheduler(
+        root_config,
+        myopts,
+        settings,
+        cpvs,
+        _symlink_deps(vardb, cpvs, unmerge_deps),
+        ldpath_mtimes,
+        lambda pkg: clean_selected(pkg.cpv),
+        writemsg_level=writemsg_level,
+        max_jobs=max_jobs,
+        max_load=myopts.get("--load-average"),
+        event_loop=global_event_loop(),
+    )
+    with vardb._fs_lock_group():
+        if _may_need_linkmap(vardb, cpvs):
+            # The subprocesses inherit the map and update it in place,
+            # instead of each one building it again.
+            try:
+                vardb._linkmap.rebuild()
+            except CommandNotFound:
+                pass
+        unmerge_scheduler.start()
+        retval = unmerge_scheduler.wait()
+    if retval == os.EX_OK:
+        return
+
+    for cpv, returncode, log_path in unmerge_scheduler.failures:
+        msg = f"!!! unmerge FAILURE: {cpv}\n"
+        if log_path is not None and os.path.exists(log_path):
+            msg += f"!!! Log file: '{log_path}'\n"
+        writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
+    remaining = unmerge_scheduler.remaining
+    if remaining:
+        writemsg_level(
+            f"!!! Not unmerged: {' '.join(remaining)}\n",
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+    failures = unmerge_scheduler.failures
+    retval = failures[0][1] if failures else 1
+    if raise_on_error:
+        raise UninstallFailure(retval)
+    sys.exit(retval)
+
+
+def _may_need_linkmap(vardb, cpvs):
+    """
+    Return False if no unmerge of cpvs can rebuild the preserved-libs
+    linkmap. See dblink._prune_plib_registry().
+    """
+    if vardb._linkmap is None or vardb._plib_registry is None:
+        return False
+    vardb._plib_registry.load()
+    return vardb._plib_registry.hasEntries() or any(
+        vardb._dblink(cpv)._may_preserve_libs(unmerge=True) for cpv in cpvs
+    )
