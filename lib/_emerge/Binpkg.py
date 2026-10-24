@@ -372,6 +372,18 @@ class Binpkg(CompositeTask):
             finally:
                 f.close()
 
+        if pkg.iuse_runtime:
+            # Record the IUSE_RUNTIME flags that the dependencies were
+            # resolved for, rather than those the package was built with.
+            use_file = os.path.join(infloc, "USE")
+            try:
+                with open(use_file, encoding="utf-8", errors="replace") as f:
+                    built_use = f.read().split()
+            except FileNotFoundError:
+                built_use = []
+            with open(use_file, mode="w", encoding="utf-8", errors="strict") as f:
+                f.write(pkg.apply_runtime_use(built_use) + "\n")
+
         # report any user patches applied when binary was built
         user_patch_digests = os.path.join(infloc, "user_patch.digests")
         if os.path.exists(user_patch_digests):

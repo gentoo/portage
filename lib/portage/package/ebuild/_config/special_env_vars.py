@@ -41,6 +41,7 @@ env_blacklist = frozenset(
         "INHERITED",
         "IUSE",
         "IUSE_EFFECTIVE",
+        "IUSE_RUNTIME",
         "KEYWORDS",
         "LICENSE",
         "MERGE_TYPE",

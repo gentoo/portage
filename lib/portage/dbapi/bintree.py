@@ -36,7 +36,12 @@ from portage.const import (
     SUPPORTED_XPAK_EXTENSIONS,
 )
 from portage.dbapi.virtual import fakedbapi
-from portage.dep import Atom, paren_enclose, use_reduce
+from portage.dep import (
+    Atom,
+    _iuse_runtime_dep_keys,
+    paren_enclose,
+    use_reduce_preserving,
+)
 from portage.exception import (
     AlarmSignal,
     CorruptionKeyError,
@@ -102,6 +107,7 @@ class bindbapi(fakedbapi):
             "EAPI",
             "IDEPEND",
             "IUSE",
+            "IUSE_RUNTIME",
             "KEYWORDS",
             "LICENSE",
             "MD5",
@@ -110,6 +116,7 @@ class bindbapi(fakedbapi):
             "PROVIDES",
             "RDEPEND",
             "repository",
+            "REQUIRED_USE",
             "REQUIRES",
             "RESTRICT",
             "SIZE",
@@ -546,6 +553,7 @@ class binarytree:
             "FETCHCOMMAND",
             "IDEPEND",
             "IUSE",
+            "IUSE_RUNTIME",
             "KEYWORDS",
             "LICENSE",
             "PDEPEND",
@@ -554,6 +562,7 @@ class binarytree:
             "PROVIDES",
             "RDEPEND",
             "repository",
+            "REQUIRED_USE",
             "REQUIRES",
             "RESTRICT",
             "RESUMECOMMAND",
@@ -599,6 +608,7 @@ class binarytree:
             "EAPI": "0",
             "IDEPEND": "",
             "IUSE": "",
+            "IUSE_RUNTIME": "",
             "KEYWORDS": "",
             "LICENSE": "",
             "PATH": "",
@@ -606,6 +616,7 @@ class binarytree:
             "PROPERTIES": "",
             "PROVIDES": "",
             "RDEPEND": "",
+            "REQUIRED_USE": "",
             "REQUIRES": "",
             "RESTRICT": "",
             "SLOT": "0",
@@ -2426,6 +2437,7 @@ class binarytree:
         from portage.util import writemsg
 
         use = frozenset(metadata.get("USE", "").split())
+        iuse_runtime = frozenset(metadata.get("IUSE_RUNTIME", "").split())
         for k in self._pkgindex_use_evaluated_keys:
             if k.endswith("DEPEND"):
                 token_class = Atom
@@ -2436,7 +2448,14 @@ class binarytree:
             if deps is None:
                 continue
             try:
-                deps = use_reduce(deps, uselist=use, token_class=token_class)
+                # Keep the conditionals of runtime-switchable flags,
+                # since they are evaluated when the package is merged.
+                deps = use_reduce_preserving(
+                    deps,
+                    uselist=use,
+                    preserve=iuse_runtime if k in _iuse_runtime_dep_keys else (),
+                    token_class=token_class,
+                )
                 deps = paren_enclose(deps)
             except portage.exception.InvalidDependString as e:
                 writemsg(f"{k}: {e}\n", noiselevel=-1)
