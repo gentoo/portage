@@ -138,3 +138,56 @@ class UnmergeScheduler(AsyncScheduler):
                 (cpv, task.returncode, task.settings.get("PORTAGE_LOG_FILE"))
             )
         super()._task_exit(task)
+
+
+def _symlink_deps(vardb, cpvs, deps):
+    """
+    Return deps with each package that owns a symlink to a directory also
+    waiting for the other packages with files beneath it, unless they
+    already wait for it. Unmerged together, the owner can keep the symlink
+    for the other's files while the other leaves it to the owner.
+    """
+    contents = {cpv: vardb._dblink(cpv).getcontents() for cpv in cpvs}
+    link_owners = collections.defaultdict(set)
+    for cpv, files in contents.items():
+        for path, data in files.items():
+            if data[0] == "sym" and os.path.isdir(path):
+                link_owners[path].add(cpv)
+    if not link_owners:
+        return deps
+
+    # The owners of the symlinks at or above each directory.
+    dir_owners = {}
+
+    def owners_above(path):
+        if path not in dir_owners:
+            parent = os.path.dirname(path)
+            owners = set() if parent == path else owners_above(parent)
+            if path in link_owners:
+                owners = owners | link_owners[path]
+            dir_owners[path] = owners
+        return dir_owners[path]
+
+    deps = {cpv: set(prereqs) for cpv, prereqs in deps.items()}
+
+    def waits_for(cpv, target):
+        stack = [cpv]
+        seen = set()
+        while stack:
+            cpv = stack.pop()
+            if cpv == target:
+                return True
+            if cpv not in seen:
+                seen.add(cpv)
+                stack.extend(deps.get(cpv, ()))
+        return False
+
+    for cpv in cpvs:
+        owners = set()
+        for parent in {os.path.dirname(path) for path in contents[cpv]}:
+            owners.update(owners_above(parent))
+        owners.discard(cpv)
+        for owner in sorted(owners):
+            if not waits_for(cpv, owner):
+                deps.setdefault(owner, set()).add(cpv)
+    return deps
