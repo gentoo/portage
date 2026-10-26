@@ -2722,6 +2722,11 @@ class depgraph:
             if not atom_set.findAtomForPackage(
                 candidate_pkg, modified_use=self._pkg_use_enabled(candidate_pkg)
             ):
+                if isinstance(parent, Package) and self._atom_has_any_of_alternative(
+                    parent, atom
+                ):
+                    # The parent can choose another || alternative (bug 984929).
+                    continue
                 if debug:
                     parent_atoms = []
                     for (
@@ -2742,6 +2747,46 @@ class depgraph:
                     writemsg_level("\n".join(msg), noiselevel=-1, level=logging.DEBUG)
                 return False
         return True
+
+    def _atom_has_any_of_alternative(self, parent, atom):
+        """
+        Return True if parent could satisfy an || group that contains
+        atom by choosing an alternative without it.
+        """
+        atom = atom.unevaluated_atom
+
+        def flatten(node):
+            if isinstance(node, list):
+                for child in node:
+                    yield from flatten(child)
+            else:
+                yield node
+
+        def search(nodes):
+            if nodes and nodes[0] == "||":
+                hits = [atom in flatten(alt) for alt in nodes[1:]]
+                if any(hits) and not all(hits):
+                    return True
+            return any(search(node) for node in nodes if isinstance(node, list))
+
+        for k in Package._dep_keys:
+            dep_string = parent._metadata.get(k)
+            if not dep_string or "||" not in dep_string:
+                continue
+            try:
+                reduced = portage.dep.use_reduce(
+                    dep_string,
+                    uselist=self._pkg_use_enabled(parent),
+                    is_valid_flag=parent.iuse.is_valid_flag,
+                    opconvert=True,
+                    token_class=Atom,
+                    eapi=parent.eapi,
+                )
+            except InvalidDependString:
+                continue
+            if search(reduced):
+                return True
+        return False
 
     def _slot_operator_update_probe(
         self, dep, new_child_slot=False, slot_conflict=False, autounmask_level=None
