@@ -111,6 +111,14 @@ Features:
 
   If used, be aware that corrupted files won't be replaced.
 
+* Add the MASKED_USE ebuild variable, in the experimental EAPI
+  "9-masked-use" (bug #790422).
+
+  It masks USE flags depending on the state of other USE flags, so that for
+  example the python targets of a package whose python support is optional
+  do not cause rebuilds, or prevent the use of binary packages, while that
+  support is disabled. See ebuild(5).
+
 * emerge: Reduce the memory used by dependency calculations (bug #240320).
 
   Interning the atoms, USE dependencies, USE flag names and flag sets that
