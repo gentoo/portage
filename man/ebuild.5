@@ -738,6 +738,45 @@ Must enable exactly one but not more (exclusive or)	\(ha\(ha ( flag1 flag2 flag3
 May enable at most one (EAPI 5 or later)	?? ( flag1 flag2 flag3 )
 .TE
 .TP
+.B MASKED_USE
+The \fBMASKED_USE\fR variable can be used to specify \fBUSE\fR flags
+that are only meaningful for some settings of other \fBUSE\fR flags.
+It consists of flag names inside of \fBUSE\fR conditional groups, which
+can be nested when necessary. A flag is masked when the conditionals
+around it are satisfied:
+.TS
+l l
+__
+l l.
+Behavior	Expression
+If flag1 disabled then flag2 masked	!flag1? ( flag2 )
+If flag1 enabled then flag2 masked	flag1? ( flag2 )
+.TE
+
+For example, a package that only uses Python for its optional Perforce
+support can declare that no Python implementation is selected without it:
+
+.nf
+	IUSE="perforce python_single_target_python3_13"
+	MASKED_USE="!perforce? ( python_single_target_python3_13 )"
+.fi
+
+A masked flag behaves like one that is masked by \fBuse.mask\fR in the
+profile (see \fBportage\fR(5)): it is disabled regardless of the
+user's configuration. Since it is then disabled for every setting of
+the flag, changing that setting does not cause \fBemerge \-\-newuse\fR to
+rebuild the package, and does not prevent the use of a binary package.
+
+Masking a flag disables it, which may satisfy further conditionals in
+\fBMASKED_USE\fR. A flag that has been masked remains masked. The
+flags must be listed in \fBIUSE\fR, and the operators of
+\fBREQUIRED_USE\fR are not allowed. \fBREQUIRED_USE\fR is checked
+after \fBMASKED_USE\fR has been applied. Values set by eclasses
+accumulate.
+
+This variable is experimental. It is not part of any approved EAPI
+and is only supported in \fBEAPI 9\-masked\-use\fR.
+.TP
 .B RESTRICT
 This should be a space delimited list of portage features to restrict.
 You may use conditional syntax to vary restrictions as seen above in DEPEND.
