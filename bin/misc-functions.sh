@@ -597,7 +597,7 @@ __dyn_package() {
 	if [[ "${BINPKG_FORMAT}" == "xpak" ]]; then
 		local tar_options=""
 
-		[[ ${PORTAGE_VERBOSE} = 1 ]] && tar_options+=" -v"
+		[[ ${PORTAGE_VERBOSE} -ge 1 ]] && tar_options+=" -v"
 		if contains_word xattr "${FEATURES}" \
 			&& gtar --help 2>/dev/null | grep -q -- --xattrs
 		then

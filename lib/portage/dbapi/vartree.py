@@ -2008,7 +2008,9 @@ class dblink:
         self.dbtmpdir = self.dbcatdir + "/" + MERGING_IDENTIFIER + pkg
         self.dbdir = self.dbpkgdir
         self.settings = mysettings
-        self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
+        verbose = self.settings.get("PORTAGE_VERBOSE", "")
+        self._verbose_level = int(verbose) if verbose.isdigit() else 0
+        self._verbose = self._verbose_level >= 1
 
         self.myroot = self.settings["ROOT"]
         self._installed_instance = None
