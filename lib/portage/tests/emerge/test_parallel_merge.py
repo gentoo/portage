@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import re
 import subprocess
 from unittest import mock
 
@@ -205,7 +206,7 @@ src_install() {
             merge_out = run_cmd(emerge_cmd + ("-1", "=app-misc/testpkg-1"))
             self.assertTrue(
                 any(
-                    "Merged package contents in" in line and "4 jobs" in line
+                    "Merged package contents in" in line and "(4 jobs)" in line
                     for line in merge_out
                 ),
                 f"Expected merge timing summary in output, got: {''.join(merge_out)}",
@@ -343,13 +344,16 @@ src_install() {
 
             # Re-merge package to verify config-protect handling (confmem),
             # vdb hash reuse, and that contents are preserved on re-merge.
-            merge_out_2 = run_cmd(emerge_cmd + ("-1", "=app-misc/testpkg-1"))
+            # With -vv, the summary also shows the number of tasks.
+            merge_out_2 = run_cmd(emerge_cmd + ("-1", "-vv", "=app-misc/testpkg-1"))
             self.assertTrue(
                 any(
-                    "Merged package contents in" in line and "4 jobs" in line
+                    re.search(
+                        r"Merged package contents in .*\(4 jobs, \d+ tasks?\)", line
+                    )
                     for line in merge_out_2
                 ),
-                f"Expected merge timing summary in re-merge output, got: {''.join(merge_out_2)}",
+                f"Expected merge timing summary with task count in re-merge output, got: {''.join(merge_out_2)}",
             )
             contents_map_2 = read_contents()
             self.assertEqual(

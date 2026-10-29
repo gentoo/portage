@@ -5441,6 +5441,7 @@ class dblink:
         merged = False
         try:
             if merge_jobs > 1:
+                merge_stats = {}
                 if self._parallel_mergeme(
                     srcroot,
                     destroot,
@@ -5449,6 +5450,7 @@ class dblink:
                     cfgfiledict,
                     mymtime,
                     merge_jobs,
+                    merge_stats=merge_stats,
                 ):
                     return 1
             else:
@@ -5533,6 +5535,9 @@ class dblink:
         if self.settings.get("PORTAGE_MERGE_JOBS"):
             elapsed = time.monotonic() - start_time
             jobs_str = f"{merge_jobs} jobs" if merge_jobs > 1 else "1 job"
+            if merge_jobs > 1 and self._verbose_level >= 2:
+                tasks = merge_stats.get("tasks", 0)
+                jobs_str += f", {tasks} tasks" if tasks != 1 else ", 1 task"
             self._display_merge(
                 _(">>> Merged package contents in %.2fs (%s)\n") % (elapsed, jobs_str),
                 noiselevel=-1,
@@ -6134,12 +6139,16 @@ class dblink:
         cfgfiledict,
         thismtime,
         merge_jobs,
+        merge_stats=None,
     ):
         """
         Like mergeme(), but merge the regular files with a pool of
         merge_jobs threads. Only the regular files are merged in parallel.
         Everything that depends on other nodes being merged first, i.e.
         directories, hardlinks and symlinks, is merged sequentially.
+
+        If merge_stats is a dict, then its "tasks" key is set to the
+        number of tasks submitted to the thread pool.
         """
         import concurrent.futures
         import threading
@@ -6279,6 +6288,9 @@ class dblink:
 
             if cur_batch:
                 batches.append(cur_batch)
+
+            if merge_stats is not None:
+                merge_stats["tasks"] = len(batches)
 
             # Set once the merge fails or is interrupted, so that the worker
             # threads stop before their next file.
