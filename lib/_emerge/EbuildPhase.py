@@ -280,10 +280,33 @@ class EbuildPhase(CompositeTask):
 
         self._start_lock()
 
+    def _phase_runs_code(self):
+        """
+        Return whether spawning this phase may run ebuild or hook code.
+        Without DEFINED_PHASES, assume it does.
+        """
+        from portage.package.ebuild.doebuild import _phases_to_run
+
+        settings = self.settings
+        defined = settings.get("DEFINED_PHASES", "").split()
+        if not defined or self.phase in defined:
+            return True
+        # We have to check the environment for hooks as they're not factored
+        # into DEFINED_PHASES. For source builds, there aren't any hooks
+        # before setup is run, so this could be skipped. For binpkgs, there
+        # may be hooks in the saved environment, so we always have to check.
+        try:
+            with open(os.path.join(settings["T"], "environment"), "rb") as f:
+                env = f.read()
+        except OSError:
+            env = b""
+        return bool(_phases_to_run(settings, settings.mycpv, env, {self.phase}))
+
     def _start_lock(self):
         if (
             self.phase in self._locked_phases
             and "ebuild-locks" in self.settings.features
+            and self._phase_runs_code()
         ):
             eroot = self.settings["EROOT"]
             lock_path = os.path.join(eroot, portage.VDB_PATH + "-ebuild")
