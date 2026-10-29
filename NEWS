@@ -61,6 +61,10 @@ Features:
   package is unmerged only after the packages that depend on it
   (bug #570472).
 
+* config: Cache parsed /etc/portage/env files instead of parsing them again for
+  each package that uses them (bug #980779). Edits to these files are therefore
+  no longer seen by an emerge that is already running.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata

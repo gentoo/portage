@@ -448,6 +448,81 @@ class ConfigTestCase(TestCase):
             else:
                 playground.cleanup()
 
+    def testPackageEnvCache(self):
+        """
+        Test that an env file shared by several packages is parsed once
+        (bug 980779), with the same result as parsing it each time.
+        """
+
+        ebuilds = {"dev-libs/A-1": {}, "dev-libs/B-1": {}, "dev-libs/C-1": {}}
+
+        env_files = {
+            "foo": ('MYFLAGS="${MYFLAGS} -g"',),
+            "bar": ('MYFLAGS="${MYFLAGS} -O2"',),
+        }
+
+        package_env = (
+            "*/* foo",
+            "dev-libs/A foo",
+            "dev-libs/B foo",
+            "dev-libs/C foo bar",
+        )
+
+        eprefix = normalize_path(tempfile.mkdtemp())
+        playground = None
+        try:
+            user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
+            os.makedirs(user_config_dir)
+
+            with open(
+                os.path.join(user_config_dir, "package.env"),
+                mode="w",
+                encoding="utf-8",
+            ) as f:
+                f.writelines(line + "\n" for line in package_env)
+
+            env_dir = os.path.join(user_config_dir, "env")
+            os.makedirs(env_dir)
+            for k, v in env_files.items():
+                with open(os.path.join(env_dir, k), mode="w", encoding="utf-8") as f:
+                    f.writelines(line + "\n" for line in v)
+
+            playground = ResolverPlayground(eprefix=eprefix, ebuilds=ebuilds)
+            settings = config(clone=playground.settings)
+            portdb = playground.trees[playground.eroot]["porttree"].dbapi
+
+            parsed = []
+            orig_getconfig = portage.package.ebuild.config.getconfig
+
+            def counting_getconfig(mycfg, *args, **kwargs):
+                parsed.append(os.path.basename(mycfg))
+                return orig_getconfig(mycfg, *args, **kwargs)
+
+            portage.package.ebuild.config.getconfig = counting_getconfig
+            try:
+                # foo expands MYFLAGS as set by */* foo.
+                for cpv in ("dev-libs/A-1", "dev-libs/B-1"):
+                    settings.setcpv(cpv, mydb=portdb)
+                    self.assertEqual(settings["MYFLAGS"], " -g -g")
+
+                settings.setcpv("dev-libs/C-1", mydb=portdb)
+                self.assertEqual(settings["MYFLAGS"], " -g -g -O2")
+
+                # A clone shares the cache.
+                settings = config(clone=settings)
+                settings.setcpv("dev-libs/C-1", mydb=portdb)
+                self.assertEqual(settings["MYFLAGS"], " -g -g -O2")
+            finally:
+                portage.package.ebuild.config.getconfig = orig_getconfig
+
+            self.assertEqual(sorted(parsed), ["bar", "foo", "foo"])
+
+        finally:
+            if playground is None:
+                shutil.rmtree(eprefix)
+            else:
+                playground.cleanup()
+
     # exercise UserPatches.__contains__() directly to detect user patches
     def testUserPatchesExist(self):
         # do not care about the content of patche files *or* their hashes

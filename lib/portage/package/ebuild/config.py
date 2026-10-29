@@ -325,6 +325,7 @@ class config:
 
             # shared mutable attributes
             self._unknown_features = clone._unknown_features
+            self._penv_cache = clone._penv_cache
 
             self.modules = copy.deepcopy(clone.modules)
             self._penv = copy.deepcopy(clone._penv)
@@ -377,6 +378,8 @@ class config:
             self._mask_manager_obj = None
             self._user_patches_obj = None
             self._virtuals_manager_obj = None
+
+            self._penv_cache = {}
 
             locations_manager = LocationsManager(
                 config_root=config_root,
@@ -916,6 +919,8 @@ class config:
                         else:
                             conf_configdict[k] = v
                         expand_map[k] = v
+                    # Parsed before expand_map changed.
+                    self._penv_cache.clear()
 
                 for k, v in penvdict.items():
                     self._penvdict.setdefault(k.cp, {})[k] = v
@@ -2310,16 +2315,20 @@ class config:
         # setcpv triggers lazy instantiation of things like _use_manager.
         _eapi_cache.clear()
 
-    def _grab_pkg_env(self, penv, container, protected_keys=None):
-        if protected_keys is None:
-            protected_keys = ()
-        abs_user_config = os.path.join(self["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
-        non_user_variables = self._non_user_variables
+    def _read_pkg_env(self, penv, abs_user_config):
+        """
+        Return (path, settings) pairs for the env files named by penv.
+        The files share an expand_map, so cache by the whole sequence.
+        """
+        key = tuple(penv)
+        result = self._penv_cache.get(key)
+        if result is not None:
+            return result
         # Make a copy since we don't want per-package settings
         # to pollute the global expand_map.
         expand_map = self._expand_map.copy()
-        incrementals = self.incrementals
-        for envname in penv:
+        result = []
+        for envname in key:
             penvfile = os.path.join(abs_user_config, "env", envname)
             penvconfig = getconfig(
                 penvfile,
@@ -2327,6 +2336,18 @@ class config:
                 allow_sourcing=True,
                 expand=expand_map,
             )
+            result.append((penvfile, penvconfig))
+        result = tuple(result)
+        self._penv_cache[key] = result
+        return result
+
+    def _grab_pkg_env(self, penv, container, protected_keys=None):
+        if protected_keys is None:
+            protected_keys = ()
+        abs_user_config = os.path.join(self["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+        non_user_variables = self._non_user_variables
+        incrementals = self.incrementals
+        for penvfile, penvconfig in self._read_pkg_env(penv, abs_user_config):
             if penvconfig is None:
                 writemsg(
                     "!!! %s references non-existent file: %s\n"
