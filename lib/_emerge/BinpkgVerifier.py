@@ -20,7 +20,14 @@ from _emerge.CompositeTask import CompositeTask
 
 
 class BinpkgVerifier(CompositeTask):
-    __slots__ = ("_digests", "_pkg_path", "logfile", "pkg")
+    __slots__ = (
+        "_digests",
+        "_file_id",
+        "_pkg_path",
+        "_verified_key",
+        "logfile",
+        "pkg",
+    )
 
     def _start(self):
         bintree = self.pkg.root_config.trees["bintree"]
@@ -46,7 +53,7 @@ class BinpkgVerifier(CompositeTask):
         self._digests = digests
 
         try:
-            size = os.stat(self._pkg_path).st_size
+            st = os.stat(self._pkg_path)
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
                 raise
@@ -71,11 +78,20 @@ class BinpkgVerifier(CompositeTask):
             self._async_wait()
             return
         else:
-            if size != digests["size"]:
-                self._digest_exception("size", size, digests["size"])
+            if st.st_size != digests["size"]:
+                self._digest_exception("size", st.st_size, digests["size"])
                 self.returncode = 1
                 self._async_wait()
                 return
+
+        # Skip hashing a file that has not changed since it was verified,
+        # even if it was renamed.
+        self._file_id = (st.st_dev, st.st_ino)
+        self._verified_key = (st.st_size, st.st_mtime_ns, sorted(digests.items()))
+        if bintree._verified_pkgs.get(self._file_id) == self._verified_key:
+            self._success()
+            self._async_wait()
+            return
 
         self._start_task(
             FileDigester(
@@ -102,11 +118,15 @@ class BinpkgVerifier(CompositeTask):
                 self.wait()
                 return
 
+        bintree = self.pkg.root_config.trees["bintree"]
+        bintree._verified_pkgs[self._file_id] = self._verified_key
+        self._success()
+        self.wait()
+
+    def _success(self):
         if self.pkg.root_config.settings.get("PORTAGE_QUIET") != "1":
             self._display_success()
-
         self.returncode = os.EX_OK
-        self.wait()
 
     def _display_success(self):
         stdout_orig = sys.stdout

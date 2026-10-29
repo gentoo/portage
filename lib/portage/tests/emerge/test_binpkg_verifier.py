@@ -2,8 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import tempfile
+from unittest.mock import patch
 
+from _emerge import BinpkgVerifier as _BinpkgVerifier
 from _emerge.BinpkgVerifier import BinpkgVerifier
+from portage.checksum import perform_multiple_checksums
 
 from portage.tests import TestCase
 from portage.util._async.SchedulerInterface import SchedulerInterface
@@ -14,6 +18,7 @@ class _FakeBintree:
     def __init__(self, digests):
         self.settings = {}
         self._digests = digests
+        self._verified_pkgs = {}
 
     def _get_digests(self, pkg):
         return self._digests
@@ -21,6 +26,7 @@ class _FakeBintree:
 
 class _FakeRootConfig:
     def __init__(self, bintree):
+        self.settings = {"PORTAGE_QUIET": "1"}
         self.trees = {"bintree": bintree}
 
 
@@ -61,3 +67,58 @@ class BinpkgVerifierMissingDigestTestCase(TestCase):
         # PKGDIR is under the administrator's control, so a missing
         # index entry there is a configuration problem, not a refusal.
         self.assertEqual(self._verify({}, remote=False), os.EX_OK)
+
+
+class BinpkgVerifierCacheTestCase(TestCase):
+    """
+    A file that has been verified is not hashed again until it changes.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.tmpdir.name, "A-1.gpkg.tar")
+        with open(self.path, "wb") as f:
+            f.write(b"binpkg" * 1000)
+        digests = perform_multiple_checksums(self.path, ["SHA512"])
+        digests["size"] = os.stat(self.path).st_size
+        self.pkg = _FakePkg(digests, remote=False)
+        self.hashed = 0
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def _verify(self):
+        orig = _BinpkgVerifier.FileDigester
+
+        def digester(**kwargs):
+            self.hashed += 1
+            return orig(**kwargs)
+
+        with patch.object(_BinpkgVerifier, "FileDigester", digester):
+            verifier = BinpkgVerifier(
+                pkg=self.pkg,
+                scheduler=SchedulerInterface(global_event_loop()),
+                _pkg_path=self.path,
+            )
+            verifier.start()
+            return verifier.wait()
+
+    def testVerifiedOnce(self):
+        self.assertEqual(self._verify(), os.EX_OK)
+        self.assertEqual(self._verify(), os.EX_OK)
+        self.assertEqual(self.hashed, 1)
+
+    def testRenamed(self):
+        self.assertEqual(self._verify(), os.EX_OK)
+        renamed = self.path + ".moved"
+        os.rename(self.path, renamed)
+        self.path = renamed
+        self.assertEqual(self._verify(), os.EX_OK)
+        self.assertEqual(self.hashed, 1)
+
+    def testChanged(self):
+        self.assertEqual(self._verify(), os.EX_OK)
+        st = os.stat(self.path)
+        os.utime(self.path, ns=(st.st_atime_ns, st.st_mtime_ns + 1))
+        self.assertEqual(self._verify(), os.EX_OK)
+        self.assertEqual(self.hashed, 2)
