@@ -521,6 +521,8 @@ class binarytree:
         self._binrepos_conf = None
         self._remote_has_index = False
         self._remotepkgs = None  # remote metadata indexed by cpv
+        # Files BinpkgVerifier has verified, by (st_dev, st_ino).
+        self._verified_pkgs = {}
         self._additional_pkgs = {}
         self.invalids = []
         self.invalid_paths: dict[str, list[str]] = {}
