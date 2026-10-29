@@ -521,6 +521,7 @@ class binarytree:
         self._binrepos_conf = None
         self._remote_has_index = False
         self._remotepkgs = None  # remote metadata indexed by cpv
+        self._local_pkgindex = None  # (stat key, metadata by instance key)
         # Files BinpkgVerifier has verified, by (st_dev, st_ino).
         self._verified_pkgs = {}
         self._additional_pkgs = {}
@@ -2831,10 +2832,35 @@ class binarytree:
                 f.close()
         return pkgindex
 
+    def _local_pkgindex_metadata(self):
+        """
+        Return the metadata in the local Packages index by instance key,
+        parsing the index again only when the file has changed.
+        """
+        from portage.versions import _pkg_str
+
+        try:
+            st = os.stat(self._pkgindex_file)
+        except OSError:
+            key = None
+        else:
+            key = (st.st_ino, st.st_size, st.st_mtime_ns)
+        if self._local_pkgindex is None or self._local_pkgindex[0] != key:
+            _instance_key = self.dbapi._instance_key
+            metadata = {}
+            for d in self._load_pkgindex().packages:
+                metadata.setdefault(
+                    _instance_key(
+                        _pkg_str(d["CPV"], metadata=d, settings=self.settings)
+                    ),
+                    d,
+                )
+            self._local_pkgindex = (key, metadata)
+        return self._local_pkgindex[1]
+
     def _get_digests(self, pkg):
         from portage.checksum import get_valid_checksum_keys
         from portage.util import writemsg
-        from portage.versions import _pkg_str
 
         try:
             cpv = pkg.cpv
@@ -2848,12 +2874,7 @@ class binarytree:
             None if self._remotepkgs is None else self._remotepkgs.get(instance_key)
         )
         if metadata is None:
-            for d in self._load_pkgindex().packages:
-                if d["CPV"] == cpv and instance_key == _instance_key(
-                    _pkg_str(d["CPV"], metadata=d, settings=self.settings)
-                ):
-                    metadata = d
-                    break
+            metadata = self._local_pkgindex_metadata().get(instance_key)
 
         if metadata is None:
             return digests
