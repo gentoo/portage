@@ -746,10 +746,13 @@ class Scheduler(PollScheduler):
 
     def _schedule_setup(self, setup_phase):
         """
-        Schedule a setup phase on the merge queue, in order to
-        serialize unsandboxed access to the live filesystem.
+        Schedule a setup phase on the merge or ebuild_locks queue, in
+        order to serialize unsandboxed access to the live filesystem.
+        A setup phase that runs no ebuild code is started right away.
         """
-        if (
+        if not setup_phase._phase_runs_code():
+            setup_phase.start()
+        elif (
             self._task_queues.merge.max_jobs > 1
             and "ebuild-locks" in self.settings.features
         ):

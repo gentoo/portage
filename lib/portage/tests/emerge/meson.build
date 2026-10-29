@@ -20,6 +20,7 @@ py.install_sources(
         'test_observability.py',
         'test_pkg_pretend.py',
         'test_preserve_libs.py',
+        'test_schedule_setup.py',
         'test_sigint_merge_wait.py',
         'test_unmerge_phases.py',
         'test_unmerge_scheduler.py',
