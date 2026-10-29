@@ -4,6 +4,7 @@
 import bz2
 import os
 
+from portage.package.ebuild.doebuild import _phase_hook_files
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
@@ -87,7 +88,11 @@ class UnmergePhaseSkipTestCase(TestCase):
         dblnk.settings["SLOT"] = "2/3"
         cat_dir = self._abs("hooks/dev-libs")
         self.assertEqual(
-            [p for p in dblnk._phase_hook_files() if p.startswith(cat_dir)],
+            [
+                p
+                for p in _phase_hook_files(dblnk.settings, dblnk.mycpv)
+                if p.startswith(cat_dir)
+            ],
             [
                 os.path.join(cat_dir, name)
                 for name in ("E", "E:2", "E-1.2.3", "E-1.2.3-r4")

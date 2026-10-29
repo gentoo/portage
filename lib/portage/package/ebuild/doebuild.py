@@ -106,7 +106,7 @@ from portage.util.futures.executor.fork import ForkExecutor
 from portage.util.lafilefixer import rewrite_lafile
 from portage.util.path import first_existing
 from portage.util.socks5 import get_socks5_proxy
-from portage.versions import _pkgsplit, pkgcmp
+from portage.versions import _pkgsplit, catpkgsplit, catsplit, pkgcmp
 
 _unsandboxed_phases = frozenset(
     [
@@ -2451,6 +2451,64 @@ def spawnebuild(
         fd_pipes=fd_pipes,
         returnpid=returnpid,
     )
+
+
+def _phase_hook_files(settings, cpv):
+    """
+    Yield the paths ebuild.sh would source via __source_all_bashrcs for
+    cpv: the profile and package.bashrc files that apply to cpv (config
+    has already filtered these), /etc/portage/bashrc, and the per-package
+    files under PM_EBUILD_HOOK_DIR.
+    """
+    yield from settings._pbashrc
+
+    bashrc = settings.get("PORTAGE_BASHRC")
+    if bashrc:
+        yield bashrc
+
+    hook_dir = settings.get("PM_EBUILD_HOOK_DIR")
+    if hook_dir:
+        category, pn, ver, _ = catpkgsplit(cpv)
+        pf = catsplit(cpv)[1]
+        slot = settings.get("SLOT", "").split("/")[0]
+        hook_dir = os.path.join(hook_dir, category)
+        for name in (pn, f"{pn}:{slot}", f"{pn}-{ver}", pf):
+            yield os.path.join(hook_dir, name)
+
+
+_phase_func_re = re.compile(rb"^(?:pre_|post_)?pkg_(\w+)\s*\(\)", re.M)
+_sources_file_re = re.compile(r"(?:^|[\s;&|(){}])(?:source|\.)\s")
+
+
+def _phases_to_run(settings, cpv, env, phases):
+    """
+    Return the subset of phases that would run anything if spawned. A
+    phase is included if:
+
+    - env, the contents of a saved environment file, defines a phase
+      function or a pre_/post_ hook for it, or
+    - one of the hook files ebuild.sh sources contains the phase's name.
+
+    If a hook file sources another file, we can't tell which phases that
+    file runs code in, so every phase in phases is returned.
+    """
+    run = phases.intersection(m.decode() for m in _phase_func_re.findall(env))
+    for path in _phase_hook_files(settings, cpv):
+        if run == phases:
+            break
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                content = f.read()
+        except OSError:
+            continue
+        if any(
+            _sources_file_re.search(line)
+            for line in content.splitlines()
+            if not line.lstrip().startswith("#")
+        ):
+            return phases
+        run.update(phase for phase in phases if phase in content)
+    return run
 
 
 _post_phase_cmds = {
