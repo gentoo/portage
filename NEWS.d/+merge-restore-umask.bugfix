@@ -1,0 +1,3 @@
+merge: Restore the umask and discard the incomplete CONTENTS file if merging
+the package contents fails. Previously, the merge process kept running with
+a umask of 0 after such a failure.
