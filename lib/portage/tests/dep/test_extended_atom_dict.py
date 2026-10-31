@@ -16,3 +16,18 @@ class TestExtendedAtomDict(TestCase):
         self.assertEqual(d.get("sys-apps/portage"), {"test1": "x", "test3": "z"})
         self.assertEqual(d["dev-libs/*"], {"test2": "y"})
         self.assertEqual(d["sys-apps/portage"], {"test1": "x", "test3": "z"})
+
+    def testExtendedAtomDictGetMiss(self):
+        d = ExtendedAtomDict(set)
+        d.setdefault("sys-apps/portage", set()).add("a")
+        self.assertEqual(d.get("sys-apps/portage"), {"a"})
+        self.assertIsNone(d.get("dev-libs/A"))
+        self.assertEqual(d.get("dev-libs/A", "default"), "default")
+        self.assertIsNone(d.get("dev-libs/*"))
+        self.assertIsNone(d.get(None))
+
+        d["dev-libs/*"] = {"b"}
+        self.assertEqual(d.get("dev-libs/A"), {"b"})
+        self.assertEqual(d.get("sys-apps/portage"), {"a"})
+        self.assertIsNone(d.get("app-misc/A"))
+        self.assertEqual(d.get("app-misc/A", "default"), "default")
