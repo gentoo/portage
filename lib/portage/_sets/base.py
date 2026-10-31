@@ -123,10 +123,16 @@ class PackageSet:
             pkg = pkg.copy()
             pkg._metadata["USE"] = " ".join(modified_use)
 
+        matches = list(self.iterAtomsForPackage(pkg))
+        if len(matches) == 1 and matches[0].cp == pkg.cp:
+            # iterAtomsForPackage has already matched this atom, and
+            # best_match_to_list would only match it again.
+            return matches[0]
+
         # Atoms matched via PROVIDE must be temporarily transformed since
         # match_from_list() only works correctly when atom.cp == pkg.cp.
         rev_transform = {}
-        for atom in self.iterAtomsForPackage(pkg):
+        for atom in matches:
             if atom.cp == pkg.cp:
                 rev_transform[atom] = atom
             else:
