@@ -2129,6 +2129,13 @@ class Scheduler(PollScheduler):
 
         graph = self._digraph
         completed_tasks = self._completed_tasks
+        direct_deps = graph.child_nodes(pkg, ignore_priority=self._ignore_priority(pkg))
+        dependent = True
+
+        if pkg.operation != "uninstall":
+            for dp in direct_deps:
+                if not dp.installed:
+                    return dependent
 
         dependent = False
         traversed_nodes = {pkg}
