@@ -5436,51 +5436,64 @@ class dblink:
 
         # set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
         prevmask = os.umask(0)
-        secondhand = []
+        merged = False
+        try:
+            secondhand = []
 
-        # we do a first merge; this will recurse through all files in our srcroot but also build up a
-        # "second hand" of symlinks to merge later
-        if self.mergeme(
-            srcroot,
-            destroot,
-            outfile,
-            secondhand,
-            self.settings["EPREFIX"].lstrip(os.sep),
-            cfgfiledict,
-            mymtime,
-        ):
-            return 1
-
-        # now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
-        # broken symlinks.  We'll merge them too.
-        lastlen = 0
-        while len(secondhand) and len(secondhand) != lastlen:
-            # clear the thirdhand.	Anything from our second hand that
-            # couldn't get merged will be added to thirdhand.
-
-            thirdhand = []
+            # we do a first merge; this will recurse through all files in our srcroot but also build up a
+            # "second hand" of symlinks to merge later
             if self.mergeme(
-                srcroot, destroot, outfile, thirdhand, secondhand, cfgfiledict, mymtime
+                srcroot,
+                destroot,
+                outfile,
+                secondhand,
+                self.settings["EPREFIX"].lstrip(os.sep),
+                cfgfiledict,
+                mymtime,
             ):
                 return 1
 
-            # swap hands
-            lastlen = len(secondhand)
+            # now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
+            # broken symlinks.  We'll merge them too.
+            lastlen = 0
+            while len(secondhand) and len(secondhand) != lastlen:
+                # clear the thirdhand.	Anything from our second hand that
+                # couldn't get merged will be added to thirdhand.
 
-            # our thirdhand now becomes our secondhand.  It's ok to throw
-            # away secondhand since thirdhand contains all the stuff that
-            # couldn't be merged.
-            secondhand = thirdhand
+                thirdhand = []
+                if self.mergeme(
+                    srcroot,
+                    destroot,
+                    outfile,
+                    thirdhand,
+                    secondhand,
+                    cfgfiledict,
+                    mymtime,
+                ):
+                    return 1
 
-        if len(secondhand):
-            # force merge of remaining symlinks (broken or circular; oh well)
-            if self.mergeme(
-                srcroot, destroot, outfile, None, secondhand, cfgfiledict, mymtime
-            ):
-                return 1
+                # swap hands
+                lastlen = len(secondhand)
 
-        # restore umask
-        os.umask(prevmask)
+                # our thirdhand now becomes our secondhand.  It's ok to throw
+                # away secondhand since thirdhand contains all the stuff that
+                # couldn't be merged.
+                secondhand = thirdhand
+
+            if len(secondhand):
+                # force merge of remaining symlinks (broken or circular; oh well)
+                if self.mergeme(
+                    srcroot, destroot, outfile, None, secondhand, cfgfiledict, mymtime
+                ):
+                    return 1
+
+            merged = True
+        finally:
+            # restore umask
+            os.umask(prevmask)
+            if not merged:
+                # leave no partial CONTENTS file behind
+                outfile.abort()
 
         # if we opened it, close it
         outfile.flush()
