@@ -2527,6 +2527,7 @@ def action_info(settings, trees, myopts, myfiles):
         "PORTAGE_BINHOST",
         "PORTAGE_BUNZIP2_COMMAND",
         "PORTAGE_BZIP2_COMMAND",
+        "PORTAGE_MERGE_JOBS",
         "USE",
         "CHOST",
         "CFLAGS",
