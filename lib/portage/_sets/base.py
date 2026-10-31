@@ -115,32 +115,17 @@ class PackageSet:
     # Not sure if this one should really be in PackageSet
     def findAtomForPackage(self, pkg, modified_use=None):
         """Return the best match for a given package from the arguments, or
-        None if there are no matches.  This matches virtual arguments against
-        the PROVIDE metadata.  This can raise an InvalidDependString exception
-        if an error occurs while parsing PROVIDE."""
+        None if there are no matches."""
 
         if modified_use is not None and modified_use is not pkg.use.enabled:
             pkg = pkg.copy()
             pkg._metadata["USE"] = " ".join(modified_use)
 
-        # Atoms matched via PROVIDE must be temporarily transformed since
-        # match_from_list() only works correctly when atom.cp == pkg.cp.
-        rev_transform = {}
-        for atom in self.iterAtomsForPackage(pkg):
-            if atom.cp == pkg.cp:
-                rev_transform[atom] = atom
-            else:
-                rev_transform[atom.with_cp(pkg.cp)] = atom
-        best_match = best_match_to_list(pkg, iter(rev_transform))
-        if best_match:
-            return rev_transform[best_match]
-        return None
+        return best_match_to_list(pkg, self.iterAtomsForPackage(pkg))
 
     def iterAtomsForPackage(self, pkg):
         """
-        Find all matching atoms for a given package. This matches virtual
-        arguments against the PROVIDE metadata.  This will raise an
-        InvalidDependString exception if PROVIDE is invalid.
+        Find all matching atoms for a given package.
         """
         cpv_slot_list = [pkg]
         cp = cpv_getkey(pkg.cpv)
