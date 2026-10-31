@@ -221,6 +221,7 @@ inherit() {
 	local potential_location
 	local x
 	local B_IUSE
+	local B_IUSE_RUNTIME
 	local B_REQUIRED_USE
 	local B_DEPEND
 	local B_RDEPEND
@@ -272,16 +273,18 @@ inherit() {
 			set -f
 
 			# Retain the old data and restore it later.
-			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
-			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
+			unset B_IUSE B_IUSE_RUNTIME B_REQUIRED_USE B_DEPEND B_RDEPEND
+			unset B_PDEPEND B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
 			[[ -v IUSE         ]] && B_IUSE="${IUSE}"
+			[[ -v IUSE_RUNTIME ]] && B_IUSE_RUNTIME="${IUSE_RUNTIME}"
 			[[ -v REQUIRED_USE ]] && B_REQUIRED_USE="${REQUIRED_USE}"
 			[[ -v DEPEND       ]] && B_DEPEND="${DEPEND}"
 			[[ -v RDEPEND      ]] && B_RDEPEND="${RDEPEND}"
 			[[ -v PDEPEND      ]] && B_PDEPEND="${PDEPEND}"
 			[[ -v BDEPEND      ]] && B_BDEPEND="${BDEPEND}"
 			[[ -v IDEPEND      ]] && B_IDEPEND="${IDEPEND}"
-			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
+			unset IUSE IUSE_RUNTIME REQUIRED_USE DEPEND RDEPEND PDEPEND
+			unset BDEPEND IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
 				[[ -v PROPERTIES ]] && B_PROPERTIES=${PROPERTIES}
@@ -305,6 +308,7 @@ inherit() {
 			# If each var has a value, append it to the global variable E_* to
 			# be applied after everything is finished. New incremental behavior.
 			[[ -v IUSE         ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+			[[ -v IUSE_RUNTIME ]] && E_IUSE_RUNTIME+="${E_IUSE_RUNTIME:+ }${IUSE_RUNTIME}"
 			[[ -v REQUIRED_USE ]] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
 			[[ -v DEPEND       ]] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
 			[[ -v RDEPEND      ]] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
@@ -314,6 +318,9 @@ inherit() {
 
 			[[ -v B_IUSE ]] && IUSE="${B_IUSE}"
 			[[ -v B_IUSE ]] || unset IUSE
+
+			[[ -v B_IUSE_RUNTIME ]] && IUSE_RUNTIME="${B_IUSE_RUNTIME}"
+			[[ -v B_IUSE_RUNTIME ]] || unset IUSE_RUNTIME
 
 			[[ -v B_REQUIRED_USE ]] && REQUIRED_USE="${B_REQUIRED_USE}"
 			[[ -v B_REQUIRED_USE ]] || unset REQUIRED_USE
@@ -619,7 +626,8 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
 		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND PROPERTIES RESTRICT
-		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
+		unset INHERITED IUSE IUSE_RUNTIME REQUIRED_USE ECLASS E_IUSE
+		unset E_IUSE_RUNTIME E_REQUIRED_USE
 		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 		unset PORTAGE_EXPLICIT_INHERIT
@@ -685,6 +693,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 
 		# Add in dependency info from eclasses
 		IUSE+="${IUSE:+ }${E_IUSE}"
+		IUSE_RUNTIME+="${IUSE_RUNTIME:+ }${E_IUSE_RUNTIME}"
 		DEPEND+="${DEPEND:+ }${E_DEPEND}"
 		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
 		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
@@ -699,8 +708,8 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 			RESTRICT+=${RESTRICT:+ }${E_RESTRICT}
 		fi
 
-		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
-		unset E_BDEPEND E_PROPERTIES E_RESTRICT __INHERITED_QA_CACHE
+		unset ECLASS E_IUSE E_IUSE_RUNTIME E_REQUIRED_USE E_DEPEND E_RDEPEND
+		unset E_PDEPEND E_BDEPEND E_PROPERTIES E_RESTRICT __INHERITED_QA_CACHE
 
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
 			PROPERTIES=${PORTAGE_PROPERTIES}
@@ -766,7 +775,7 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 	metadata_keys=(
 		DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES IDEPEND INHERIT
+		EAPI PROPERTIES DEFINED_PHASES IDEPEND INHERIT IUSE_RUNTIME
 	)
 
 	if ! ___eapi_has_BDEPEND; then

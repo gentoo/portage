@@ -59,6 +59,7 @@ class Package(Task):
         "cpv_split",
         "inherited",
         "iuse",
+        "iuse_runtime",
         "mtime",
         "pf",
         "remote",
@@ -93,6 +94,7 @@ class Package(Task):
         "IDEPEND",
         "INHERITED",
         "IUSE",
+        "IUSE_RUNTIME",
         "KEYWORDS",
         "LICENSE",
         "MD5",
@@ -164,6 +166,14 @@ class Package(Task):
         implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
         self.iuse = self._iuse(
             self, split_interned(self._metadata["IUSE"]), implicit_match, self.eapi
+        )
+
+        # Runtime-switchable USE flags (GLEP 62). Flags missing from IUSE
+        # are reported by _validate_deps() and otherwise ignored.
+        self.iuse_runtime = _intern_frozenset(
+            x
+            for x in split_interned(self._metadata.get("IUSE_RUNTIME") or "")
+            if x in self.iuse.all
         )
 
         if (self.iuse.enabled or self.iuse.disabled) and not eapi_attrs.iuse_defaults:
@@ -391,6 +401,16 @@ class Package(Task):
                 )
             except InvalidDependString as e:
                 self._metadata_exception(k, e)
+
+        k = "IUSE_RUNTIME"
+        v = self._metadata.get(k)
+        if v and not self.built:
+            missing_iuse = [x for x in v.split() if x not in self.iuse.all]
+            if missing_iuse:
+                self._invalid_metadata(
+                    k + ".invalid",
+                    f"{k}: flags missing from IUSE: {' '.join(missing_iuse)}",
+                )
 
         k = "REQUIRED_USE"
         v = self._metadata.get(k)
@@ -908,6 +928,59 @@ class Package(Task):
         else:
             pkg = self
         return pkg
+
+    def with_runtime_use(self):
+        """
+        Return a Package instance whose IUSE_RUNTIME flags take their
+        values from the current configuration, instead of the values that
+        the package was built with. The current instance is returned if it
+        is not built, if those flags are unchanged, or if the configured
+        values violate REQUIRED_USE, in which case the package keeps the
+        flags it was built with.
+        @rtype: Package
+        """
+        if not (self.built and self.iuse_runtime):
+            return self
+        config_use = frozenset(self._get_pkgsettings()["PORTAGE_USE"].split())
+        use = self.use.enabled.difference(self.iuse_runtime).union(
+            config_use.intersection(self.iuse_runtime)
+        )
+        if use == self.use.enabled:
+            return self
+        required_use = self._metadata.get("REQUIRED_USE")
+        if required_use:
+            try:
+                if not check_required_use(
+                    required_use, use, self.iuse.is_valid_flag, eapi=self.eapi
+                ):
+                    return self
+            except InvalidDependString:
+                return self
+        # Unlike with_use(), store the flags in the raw metadata, which is
+        # what copies of the instance and _depgraph_fork carry over.
+        metadata = dict(self._raw_metadata.items())
+        metadata["USE"] = " ".join(sorted(use))
+        return Package(
+            built=self.built,
+            cpv=self.cpv,
+            depth=self.depth,
+            installed=self.installed,
+            metadata=metadata,
+            onlydeps=self.onlydeps,
+            operation=self.operation,
+            root_config=self.root_config,
+            type_name=self.type_name,
+        )
+
+    def apply_runtime_use(self, use):
+        """
+        Return the flags in use as a USE string, with the values of the
+        IUSE_RUNTIME flags taken from this instance.
+        @rtype: str
+        """
+        use = {x for x in use if x not in self.iuse_runtime}
+        use.update(self.use.enabled.intersection(self.iuse_runtime))
+        return " ".join(sorted(use))
 
 
 _all_metadata_keys = frozenset(set(portage.auxdbkeys).union(Package.metadata_keys))

@@ -279,6 +279,22 @@ use() {
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
 		fi
+
+		# Runtime-switchable flags can change without a
+		# rebuild, so phase functions must not depend on them.
+		# The *rm phases run from the installed package, where
+		# dying would block its removal or replacement.
+		if contains_word "${u}" "${IUSE_RUNTIME}"; then
+			if [[ ${EMERGE_FROM} != binary &&
+				${EBUILD_PHASE} != *rm ]] ; then
+				die "USE Flag '${u}' is listed in IUSE_RUNTIME but" \
+					"referenced in ${EBUILD_PHASE} phase for ${CATEGORY}/${PF}"
+			fi
+
+			eqawarn "QA Notice: USE Flag '${u}' is listed in" \
+				"IUSE_RUNTIME but referenced in ${EBUILD_PHASE} phase" \
+				"for ${CATEGORY}/${PF}"
+		fi
 	fi
 
 	contains_word "${u}" "${USE}"

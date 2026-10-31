@@ -22,6 +22,7 @@ py.install_sources(
         'test_paren_reduce.py',
         'test_soname_atom_pickle.py',
         'test_use_reduce.py',
+        'test_use_reduce_preserving.py',
         '__init__.py',
         '__test__.py',
     ],

@@ -92,12 +92,14 @@ _METADATA_FILE_FIELDS = frozenset(
         "HOMEPAGE",
         "IDEPEND",
         "IUSE",
+        "IUSE_RUNTIME",
         "KEYWORDS",
         "LICENSE",
         "PDEPEND",
         "PROPERTIES",
         "PROVIDES",
         "RDEPEND",
+        "REQUIRED_USE",
         "REQUIRES",
         "RESTRICT",
         "SLOT",
@@ -105,7 +107,7 @@ _METADATA_FILE_FIELDS = frozenset(
         "repository",
     )
 )
-_METADATA_FILE_FORMAT_VERSION = 1
+_METADATA_FILE_FORMAT_VERSION = 2
 _METADATA_FORMAT_PREFIX = "#format="
 _METADATA_DIR_MTIME_PREFIX = "#dir_mtime="
 
