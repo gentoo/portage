@@ -222,6 +222,7 @@ inherit() {
 	local x
 	local B_IUSE
 	local B_REQUIRED_USE
+	local B_MASKED_USE
 	local B_DEPEND
 	local B_RDEPEND
 	local B_PDEPEND
@@ -273,7 +274,7 @@ inherit() {
 
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
-			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
+			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT B_MASKED_USE
 			[[ -v IUSE         ]] && B_IUSE="${IUSE}"
 			[[ -v REQUIRED_USE ]] && B_REQUIRED_USE="${REQUIRED_USE}"
 			[[ -v DEPEND       ]] && B_DEPEND="${DEPEND}"
@@ -281,7 +282,9 @@ inherit() {
 			[[ -v PDEPEND      ]] && B_PDEPEND="${PDEPEND}"
 			[[ -v BDEPEND      ]] && B_BDEPEND="${BDEPEND}"
 			[[ -v IDEPEND      ]] && B_IDEPEND="${IDEPEND}"
+			[[ -v MASKED_USE   ]] && B_MASKED_USE="${MASKED_USE}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
+			unset MASKED_USE
 
 			if ___eapi_has_accumulated_PROPERTIES; then
 				[[ -v PROPERTIES ]] && B_PROPERTIES=${PROPERTIES}
@@ -311,6 +314,7 @@ inherit() {
 			[[ -v PDEPEND      ]] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
 			[[ -v BDEPEND      ]] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
 			[[ -v IDEPEND      ]] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
+			[[ -v MASKED_USE   ]] && E_MASKED_USE+="${E_MASKED_USE:+ }${MASKED_USE}"
 
 			[[ -v B_IUSE ]] && IUSE="${B_IUSE}"
 			[[ -v B_IUSE ]] || unset IUSE
@@ -332,6 +336,9 @@ inherit() {
 
 			[[ -v B_IDEPEND ]] && IDEPEND="${B_IDEPEND}"
 			[[ -v B_IDEPEND ]] || unset IDEPEND
+
+			[[ -v B_MASKED_USE ]] && MASKED_USE="${B_MASKED_USE}"
+			[[ -v B_MASKED_USE ]] || unset MASKED_USE
 
 			if ___eapi_has_accumulated_PROPERTIES; then
 				[[ -v PROPERTIES ]] &&
@@ -622,6 +629,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
 		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
+		unset MASKED_USE E_MASKED_USE
 		unset PORTAGE_EXPLICIT_INHERIT
 
 		pre_source_sandbox() {
@@ -691,6 +699,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		BDEPEND+="${BDEPEND:+ }${E_BDEPEND}"
 		IDEPEND+="${IDEPEND:+ }${E_IDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
+		MASKED_USE+="${MASKED_USE:+ }${E_MASKED_USE}"
 
 		if ___eapi_has_accumulated_PROPERTIES; then
 			PROPERTIES+=${PROPERTIES:+ }${E_PROPERTIES}
@@ -700,7 +709,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		fi
 
 		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
-		unset E_BDEPEND E_PROPERTIES E_RESTRICT __INHERITED_QA_CACHE
+		unset E_BDEPEND E_PROPERTIES E_RESTRICT E_MASKED_USE __INHERITED_QA_CACHE
 
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
 			PROPERTIES=${PORTAGE_PROPERTIES}
@@ -766,7 +775,7 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 	metadata_keys=(
 		DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES IDEPEND INHERIT
+		EAPI PROPERTIES DEFINED_PHASES IDEPEND INHERIT MASKED_USE
 	)
 
 	if ! ___eapi_has_BDEPEND; then
@@ -774,6 +783,9 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 	fi
 	if ! ___eapi_has_IDEPEND; then
 		unset IDEPEND
+	fi
+	if ! ___eapi_has_MASKED_USE; then
+		unset MASKED_USE
 	fi
 
 	INHERIT=${PORTAGE_EXPLICIT_INHERIT}

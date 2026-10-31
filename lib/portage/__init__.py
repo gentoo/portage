@@ -360,7 +360,7 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["9-pre1"])
+_testing_eapis = frozenset(["9-pre1", "9-masked-use"])
 _deprecated_eapis = frozenset(
     [
         "3_pre1",
@@ -441,6 +441,7 @@ auxdbkeys = (
     "DEFINED_PHASES",
     "IDEPEND",
     "INHERIT",
+    "MASKED_USE",
 )
 
 
