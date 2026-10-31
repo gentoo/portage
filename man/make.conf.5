@@ -1337,6 +1337,16 @@ to clean PORTAGE_LOGDIR. The command string should contain a
 with the value of that variable. This variable will have no effect
 unless \fBclean\-logs\fR is enabled in \fBFEATURES\fR.
 .TP
+\fBPORTAGE_MERGE_JOBS\fR = \fI[integer|auto]\fR
+Specifies the number of threads that merge the files of a single package
+from the image directory (${D}) to the live filesystem (${ROOT}). This
+does not affect how many packages are merged in parallel. If set to
+\fIauto\fR, then the job count in \fBMAKEOPTS\fR (\-j) is used, falling
+back to the number of available CPUs. If set, then the time it took to
+merge the files is shown after the merge.
+.br
+Defaults to 1, which merges the files sequentially.
+.TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that
 emerge is running at.  In other words, this will not set the nice level,

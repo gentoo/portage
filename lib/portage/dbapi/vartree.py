@@ -372,6 +372,37 @@ _reg_merge_result = collections.namedtuple(
 )
 
 
+def _parse_merge_jobs(value, makeopts):
+    """
+    Parse PORTAGE_MERGE_JOBS, the number of threads that merge the contents
+    of a single package. If it is unset or empty, then merge sequentially.
+    If it is "auto", then use the -j value of MAKEOPTS, falling back to the
+    number of CPUs.
+
+    @return: The number of threads, or None if value is invalid.
+    """
+    from portage.util.cpuinfo import get_cpu_count, makeopts_to_job_count
+
+    value = (value or "").strip()
+    if not value:
+        return 1
+
+    if value == "auto":
+        # makeopts_to_job_count() falls back to the CPU count itself if
+        # MAKEOPTS is unset or does not specify -j.
+        try:
+            jobs = int(makeopts_to_job_count(makeopts))
+        except (TypeError, ValueError):
+            jobs = 0
+        return jobs if jobs > 0 else get_cpu_count() or 1
+
+    try:
+        jobs = int(value)
+    except ValueError:
+        return None
+    return jobs if jobs > 0 else None
+
+
 class vardbapi(dbapi):
     _excluded_dirs = ["CVS", "lost+found"]
     _excluded_dirs = [re.escape(x) for x in _excluded_dirs]
@@ -3587,7 +3618,9 @@ class dblink:
                 del e
                 return False
             if self._contents_inodes is None:
-                self._contents_inodes = {}
+                # Only publish the map once it is complete, since
+                # the parallel merge calls this from several threads.
+                contents_inodes = {}
                 parent_paths = set()
                 for x in self._contents.keys():
                     p_path = os.path.dirname(x)
@@ -3602,12 +3635,13 @@ class dblink:
                         inode_key = (s.st_dev, s.st_ino)
                         # Use lists of paths in case multiple
                         # paths reference the same inode.
-                        p_path_list = self._contents_inodes.get(inode_key)
+                        p_path_list = contents_inodes.get(inode_key)
                         if p_path_list is None:
                             p_path_list = []
-                            self._contents_inodes[inode_key] = p_path_list
+                            contents_inodes[inode_key] = p_path_list
                         if p_path not in p_path_list:
                             p_path_list.append(p_path)
+                self._contents_inodes = contents_inodes
 
             p_path_list = self._contents_inodes.get(
                 (parent_stat.st_dev, parent_stat.st_ino)
@@ -5443,56 +5477,76 @@ class dblink:
 
         # set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
         prevmask = os.umask(0)
+        start_time = time.monotonic()
+        merge_jobs = self._get_merge_jobs()
         merged = False
         try:
-            secondhand = []
+            if merge_jobs > 1:
+                if self._parallel_mergeme(
+                    srcroot,
+                    destroot,
+                    outfile,
+                    self.settings["EPREFIX"].lstrip(os.sep),
+                    cfgfiledict,
+                    mymtime,
+                    merge_jobs,
+                ):
+                    return 1
+            else:
+                secondhand = []
 
-            # we do a first merge; this will recurse through all files in our srcroot but also build up a
-            # "second hand" of symlinks to merge later
-            if self.mergeme(
-                srcroot,
-                destroot,
-                outfile,
-                secondhand,
-                self.settings["EPREFIX"].lstrip(os.sep),
-                cfgfiledict,
-                mymtime,
-            ):
-                return 1
-
-            # now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
-            # broken symlinks.  We'll merge them too.
-            lastlen = 0
-            while len(secondhand) and len(secondhand) != lastlen:
-                # clear the thirdhand.	Anything from our second hand that
-                # couldn't get merged will be added to thirdhand.
-
-                thirdhand = []
+                # we do a first merge; this will recurse through all files in our srcroot but also build up a
+                # "second hand" of symlinks to merge later
                 if self.mergeme(
                     srcroot,
                     destroot,
                     outfile,
-                    thirdhand,
                     secondhand,
+                    self.settings["EPREFIX"].lstrip(os.sep),
                     cfgfiledict,
                     mymtime,
                 ):
                     return 1
 
-                # swap hands
-                lastlen = len(secondhand)
+                # now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
+                # broken symlinks.  We'll merge them too.
+                lastlen = 0
+                while len(secondhand) and len(secondhand) != lastlen:
+                    # clear the thirdhand.	Anything from our second hand that
+                    # couldn't get merged will be added to thirdhand.
 
-                # our thirdhand now becomes our secondhand.  It's ok to throw
-                # away secondhand since thirdhand contains all the stuff that
-                # couldn't be merged.
-                secondhand = thirdhand
+                    thirdhand = []
+                    if self.mergeme(
+                        srcroot,
+                        destroot,
+                        outfile,
+                        thirdhand,
+                        secondhand,
+                        cfgfiledict,
+                        mymtime,
+                    ):
+                        return 1
 
-            if len(secondhand):
-                # force merge of remaining symlinks (broken or circular; oh well)
-                if self.mergeme(
-                    srcroot, destroot, outfile, None, secondhand, cfgfiledict, mymtime
-                ):
-                    return 1
+                    # swap hands
+                    lastlen = len(secondhand)
+
+                    # our thirdhand now becomes our secondhand.  It's ok to throw
+                    # away secondhand since thirdhand contains all the stuff that
+                    # couldn't be merged.
+                    secondhand = thirdhand
+
+                if len(secondhand):
+                    # force merge of remaining symlinks (broken or circular; oh well)
+                    if self.mergeme(
+                        srcroot,
+                        destroot,
+                        outfile,
+                        None,
+                        secondhand,
+                        cfgfiledict,
+                        mymtime,
+                    ):
+                        return 1
 
             merged = True
         finally:
@@ -5515,7 +5569,33 @@ class dblink:
                 self.settings._init_dirs()
                 writedict(cfgfiledict, self.vartree.dbapi._conf_mem_file)
 
+        # Only report the duration if PORTAGE_MERGE_JOBS is set, so that
+        # the sequential merge can be compared with the parallel one.
+        if self.settings.get("PORTAGE_MERGE_JOBS"):
+            elapsed = time.monotonic() - start_time
+            jobs_str = f"{merge_jobs} jobs" if merge_jobs > 1 else "1 job"
+            self._display_merge(
+                _(">>> Merged package contents in %.2fs (%s)\n") % (elapsed, jobs_str),
+                noiselevel=-1,
+            )
+
         return os.EX_OK
+
+    def _get_merge_jobs(self):
+        value = self.settings.get("PORTAGE_MERGE_JOBS")
+        jobs = _parse_merge_jobs(value, self.settings.get("MAKEOPTS"))
+        if jobs is None:
+            self._display_merge(
+                _(
+                    "!!! Invalid PORTAGE_MERGE_JOBS value '%s', expected a "
+                    "positive integer or 'auto'. Merging sequentially.\n"
+                )
+                % value,
+                level=logging.WARNING,
+                noiselevel=-1,
+            )
+            jobs = 1
+        return jobs
 
     def _merge_dir(self, srcroot, destroot, relative_path, mystat, outfile):
         from portage.versions import pkgsplit
@@ -6084,6 +6164,267 @@ class dblink:
                 self._format_contents_line(node_type="dev", abs_path=myrealdest)
             )
         showMessage(f"{zing} {mydest}\n")
+        return os.EX_OK
+
+    def _parallel_mergeme(
+        self,
+        srcroot,
+        destroot,
+        outfile,
+        stufftomerge,
+        cfgfiledict,
+        thismtime,
+        merge_jobs,
+    ):
+        """
+        Like mergeme(), but merge the regular files with a pool of
+        merge_jobs threads. Only the regular files are merged in parallel.
+        Everything that depends on other nodes being merged first, i.e.
+        directories, hardlinks and symlinks, is merged sequentially.
+        """
+        import concurrent.futures
+        import threading
+
+        from portage.util import normalize_path
+
+        showMessage = self._display_merge
+
+        sep = os.sep
+        join = os.path.join
+        srcroot = normalize_path(srcroot).rstrip(sep) + sep
+        destroot = normalize_path(destroot).rstrip(sep) + sep
+
+        protect_if_modified = (
+            "config-protect-if-modified" in self.settings.features
+            and self._installed_instance is not None
+        )
+
+        # Initialize the protect object and the contents of the installed
+        # instance here, so that the worker threads only read them. The
+        # caches that _match_contents() builds lazily are only published
+        # once complete, so the worker threads may build them.
+        self._get_protect_obj()
+        if self._installed_instance is not None:
+            try:
+                self._installed_instance.getcontents()
+            except Exception:
+                pass
+
+        scan_root = join(srcroot, stufftomerge) if stufftomerge else srcroot
+        if not os.path.exists(scan_root):
+            return os.EX_OK
+
+        # Phase 1: Walk the image and sort its nodes by type. os.scandir()
+        # provides the lstat() results, which the later phases reuse.
+        directories = []
+        regular_files = []
+        hardlink_groups = collections.defaultdict(list)
+        symlinks = []
+        specials = []
+
+        # Like mergeme(), only merge the contents of stufftomerge (EPREFIX),
+        # not the directories leading to it.
+        if os.path.isdir(scan_root) and not os.path.islink(scan_root):
+            stack = [(scan_root, stufftomerge or "")]
+            while stack:
+                dir_path, rel_dir = stack.pop()
+                try:
+                    with os.scandir(dir_path) as it:
+                        for entry in it:
+                            rel_path = (
+                                join(rel_dir, entry.name) if rel_dir else entry.name
+                            )
+                            try:
+                                st = entry.stat(follow_symlinks=False)
+                            except OSError as e:
+                                showMessage(
+                                    _("!!! Failed to stat %s: %s\n") % (entry.path, e),
+                                    level=logging.ERROR,
+                                    noiselevel=-1,
+                                )
+                                return 1
+                            mode = st.st_mode
+                            if stat.S_ISLNK(mode):
+                                symlinks.append((rel_path, st))
+                            elif stat.S_ISDIR(mode):
+                                directories.append((rel_path, st))
+                                stack.append((entry.path, rel_path))
+                            elif stat.S_ISREG(mode):
+                                if st.st_nlink > 1:
+                                    hardlink_groups[(st.st_dev, st.st_ino)].append(
+                                        (rel_path, st)
+                                    )
+                                else:
+                                    regular_files.append((rel_path, st))
+                            else:
+                                specials.append((rel_path, st))
+                except OSError as e:
+                    showMessage(
+                        _("!!! Failed to scan directory %s: %s\n") % (dir_path, e),
+                        level=logging.ERROR,
+                        noiselevel=-1,
+                    )
+                    return 1
+
+        # A file with several links whose other links are outside of the
+        # image is merged like any other regular file.
+        multi_hardlinks = {}
+        for k, v in hardlink_groups.items():
+            if len(v) > 1:
+                multi_hardlinks[k] = v
+            else:
+                regular_files.extend(v)
+        hardlink_groups = multi_hardlinks
+
+        # Phase 2: Merge the directories sequentially. Sorting them by depth
+        # merges every directory after its parent. Once all directories
+        # exist, the regular files can be merged in any order.
+        directories.sort(key=lambda item: (len(item[0].split(sep)), item[0]))
+        for relative_path, mystat in directories:
+            if self._merge_dir(srcroot, destroot, relative_path, mystat, outfile):
+                return 1
+
+        cfgfiledict_lock = threading.Lock()
+
+        # Phase 3: Merge the regular files with a pool of threads. Most of
+        # the time is spent hashing and copying the files, which releases
+        # the GIL. The results are recorded in CONTENTS by this thread.
+        if regular_files:
+            # Submit the largest files first (Longest Processing Time first
+            # rule), so that no thread is still busy with a large file when
+            # all others are done.
+            regular_files.sort(key=lambda item: item[1].st_size, reverse=True)
+
+            # Group the small files into batches of at most max_batch_count
+            # files and max_batch_bytes, so that a small file does not cost
+            # a Future of its own. A file larger than max_batch_bytes is a
+            # batch of its own.
+            batches = []
+            cur_batch = []
+            cur_batch_size = 0
+            max_batch_count = 32
+            max_batch_bytes = 128 * 1024  # 128 KiB
+
+            for rel_path, st in regular_files:
+                file_size = st.st_size
+                if cur_batch and (
+                    len(cur_batch) >= max_batch_count
+                    or cur_batch_size + file_size > max_batch_bytes
+                ):
+                    batches.append(cur_batch)
+                    cur_batch = []
+                    cur_batch_size = 0
+
+                cur_batch.append((rel_path, st))
+                cur_batch_size += file_size
+
+            if cur_batch:
+                batches.append(cur_batch)
+
+            # Set once the merge fails or is interrupted, so that the worker
+            # threads stop before their next file.
+            abort = threading.Event()
+
+            def _merge_reg_batch_worker(batch):
+                batch_results = []
+                for rel_path, st in batch:
+                    if abort.is_set():
+                        break
+                    result = self._merge_reg_file(
+                        srcroot,
+                        destroot,
+                        rel_path,
+                        st,
+                        thismtime,
+                        cfgfiledict_lock=cfgfiledict_lock,
+                        cfgfiledict=cfgfiledict,
+                        protect_if_modified=protect_if_modified,
+                    )
+                    batch_results.append(result)
+                    if result.err_msg is not None:
+                        break
+                return batch_results
+
+            # Not a with statement, since its implicit shutdown() would still
+            # run all pending batches after a failure or an interrupt.
+            executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(merge_jobs, len(batches))
+            )
+            try:
+                futures = [
+                    executor.submit(_merge_reg_batch_worker, batch) for batch in batches
+                ]
+                for future in concurrent.futures.as_completed(futures):
+                    for result in future.result():
+                        if self._record_reg_merge(result, outfile):
+                            return 1
+            finally:
+                abort.set()
+                executor.shutdown(wait=True, cancel_futures=True)
+
+        # Phase 4: Merge the files with several links in the image
+        # sequentially. The first link of a group is merged like a regular
+        # file, and _merge_reg_file() adds it to hardlink_candidates, so
+        # that the other links of the group become hardlinks to it.
+        for key, group in hardlink_groups.items():
+            hardlink_candidates = []
+            self._hardlink_merge_map[key] = hardlink_candidates
+
+            for rel_path, st in group:
+                result = self._merge_reg_file(
+                    srcroot,
+                    destroot,
+                    rel_path,
+                    st,
+                    thismtime,
+                    hardlink_candidates=hardlink_candidates,
+                    cfgfiledict_lock=cfgfiledict_lock,
+                    cfgfiledict=cfgfiledict,
+                    protect_if_modified=protect_if_modified,
+                )
+                if self._record_reg_merge(result, outfile):
+                    return 1
+
+        # Phase 5: Merge the symlinks. All directories and regular files
+        # exist by now. _merge_symlink() appends a symlink to deferred
+        # instead of merging it if its target does not exist (yet), which
+        # is the case if the target is another symlink that is merged later,
+        # or if the symlink is broken.
+        symlink_stats = dict(symlinks)
+        pending = [rel_path for rel_path, mystat in symlinks]
+        force = False
+        while pending:
+            # Defer nothing in the final pass.
+            deferred = None if force else []
+            for rel_path in pending:
+                if self._merge_symlink(
+                    srcroot,
+                    destroot,
+                    outfile,
+                    rel_path,
+                    symlink_stats[rel_path],
+                    thismtime,
+                    cfgfiledict=cfgfiledict,
+                    protect_if_modified=protect_if_modified,
+                    secondhand=deferred,
+                ):
+                    return 1
+            if deferred is None:
+                break
+            # Retry the deferred symlinks, since their targets may have been
+            # merged in this pass. If this pass merged none of the symlinks,
+            # then the remaining ones are broken or circular. Merge them
+            # anyway in a final pass, like mergeme() does.
+            force = len(deferred) == len(pending)
+            pending = deferred
+
+        # Phase 6: Merge the special files (FIFOs and device nodes).
+        for rel_path, mystat in specials:
+            if self._merge_special(
+                srcroot, destroot, outfile, rel_path, mystat, thismtime
+            ):
+                return 1
+
         return os.EX_OK
 
     def mergeme(
