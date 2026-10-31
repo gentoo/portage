@@ -2509,6 +2509,16 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 
         return ret
 
+    def get(self, cp, default=None):
+        # Most lookups are misses on a normal cp. Answer those without
+        # the cost of raising and catching KeyError.
+        if not self._extended and isinstance(cp, str) and cp not in self._normal:
+            return default
+        try:
+            return self[cp]
+        except KeyError:
+            return default
+
     def __setitem__(self, cp, val):
         if "*" in cp:
             self._extended[cp] = val
