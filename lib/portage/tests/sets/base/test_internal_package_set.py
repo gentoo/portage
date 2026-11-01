@@ -2,10 +2,14 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from unittest import mock
+
+import portage._sets.base
 from portage._sets.base import InternalPackageSet
 from portage.dep import Atom
 from portage.exception import InvalidAtom
 from portage.tests import TestCase
+from portage.versions import _pkg_str
 
 
 class InternalPackageSetTestCase(TestCase):
@@ -72,3 +76,43 @@ class InternalPackageSetTestCase(TestCase):
         self.assertEqual(i2.getAtoms(), set())
         self.assertEqual(i2.getNonAtoms(), set())
         self.assertTrue(i2.isEmpty())
+
+    def testFindAtomForPackage(self):
+        pkg = _pkg_str("dev-libs/A-1", slot="0")
+
+        def find(atoms, allow_wildcard=False):
+            atom_set = InternalPackageSet(
+                initial_atoms=atoms, allow_wildcard=allow_wildcard
+            )
+            with mock.patch.object(
+                portage._sets.base,
+                "best_match_to_list",
+                wraps=portage._sets.base.best_match_to_list,
+            ) as best_match:
+                result = atom_set.findAtomForPackage(pkg)
+            return result, best_match.called
+
+        # A single match is returned without a second matching pass.
+        self.assertEqual(find({"dev-libs/A"}), (Atom("dev-libs/A"), False))
+        self.assertEqual(find({">=dev-libs/A-1"}), (Atom(">=dev-libs/A-1"), False))
+
+        # With several matches, the most specific atom wins.
+        self.assertEqual(
+            find({"dev-libs/A", ">=dev-libs/A-1", "=dev-libs/A-1"}),
+            (Atom("=dev-libs/A-1"), True),
+        )
+        self.assertEqual(
+            find({">=dev-libs/A-1", "dev-libs/A:0"}), (Atom("dev-libs/A:0"), True)
+        )
+
+        # A wildcard atom has a different cp, so it takes the slow path.
+        wildcard = Atom("dev-libs/*", allow_wildcard=True)
+        self.assertEqual(find({"dev-libs/*"}, allow_wildcard=True), (wildcard, True))
+        self.assertEqual(
+            find({"dev-libs/*", ">=dev-libs/A-1"}, allow_wildcard=True),
+            (Atom(">=dev-libs/A-1"), True),
+        )
+
+        # No match.
+        self.assertEqual(find({">=dev-libs/A-2"}), (None, True))
+        self.assertEqual(find({"dev-libs/B"}), (None, True))
