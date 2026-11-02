@@ -121,7 +121,12 @@ class PackageSet:
             pkg = pkg.copy()
             pkg._metadata["USE"] = " ".join(modified_use)
 
-        return best_match_to_list(pkg, self.iterAtomsForPackage(pkg))
+        matches = list(self.iterAtomsForPackage(pkg))
+        if len(matches) == 1:
+            # iterAtomsForPackage has already matched this atom, and
+            # best_match_to_list would only match it again.
+            return matches[0]
+        return best_match_to_list(pkg, matches)
 
     def iterAtomsForPackage(self, pkg):
         """
