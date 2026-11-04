@@ -19,7 +19,9 @@ jobs:
             src: . ${{ steps.stragglers.outputs.missed }}
 
   pylint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # See .github/ci/Dockerfile.
+    container: ${{ vars.CI_IMAGE || 'ghcr.io/gentoo/portage-ci:master' }}
     timeout-minutes: 5
     strategy:
       matrix:
@@ -34,17 +36,13 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install python dependencies
+      - name: Install pylint for Python ${{ matrix.python-version }}
         run: |
           set -xe
-          python -VV
-          python -m site
-          python -m pip install --upgrade pip
-          python -m pip install pylint pytest
+          /opt/uv/bin/uv venv --no-cache --python /opt/python/${{ matrix.python-version }}/bin/python /tmp/lint
+          /opt/uv/bin/uv pip install --no-cache --python /tmp/lint pylint pytest
+          echo /tmp/lint/bin >> "${GITHUB_PATH}"
+          /tmp/lint/bin/python -VV
       - name: Run pylint for ${{ matrix.python-version }}
         run: |
           ./run-pylint
