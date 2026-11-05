@@ -69,6 +69,17 @@ class PortdbCacheTestCase(TestCase):
         )
         python_cmd = (portage_python, "-b", "-Wd", "-c")
 
+        def check_pms_cache_lines(i):
+            with open(
+                os.path.join(pms_cache_dir, "sys-apps", "C-1"), encoding="utf-8"
+            ) as f:
+                lines = f.read().split("\n")
+            self.assertEqual(lines[9], "bar baz foo", f"step {i}: INHERITED")
+            self.assertEqual(lines[14], "8", f"step {i}: EAPI")
+            self.assertIn("dev-libs/A", lines[17].split(), f"step {i}: IDEPEND")
+            self.assertEqual(lines[18:], [""] * 5, f"step {i}")
+            return True
+
         test_commands = (
             FunctionStep(function=lambda _: shutil.rmtree(md5_cache_dir) or True),
             FunctionStep(
@@ -231,6 +242,7 @@ class PortdbCacheTestCase(TestCase):
 					"""),
                 ),
             ),
+            FunctionStep(function=check_pms_cache_lines),
             # Test auto-detection and preference for md5-cache when both
             # cache formats are available but layout.conf is absent.
             CommandStep(
