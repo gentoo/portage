@@ -18,11 +18,11 @@ from portage.cache.template import reconstruct_eclasses
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22
 
-# store the current key order *here*.
-
 
 class database(flat_hash.database):
     complete_eclass_entries = False
+    # The line order is defined by PMS, which guarantees that EAPI stays
+    # on line 15. New keys must be appended, not inserted.
     auxdbkey_order = (
         "DEPEND",
         "RDEPEND",
@@ -33,7 +33,6 @@ class database(flat_hash.database):
         "LICENSE",
         "DESCRIPTION",
         "KEYWORDS",
-        "IDEPEND",
         "INHERITED",
         "IUSE",
         "REQUIRED_USE",
@@ -42,6 +41,7 @@ class database(flat_hash.database):
         "EAPI",
         "PROPERTIES",
         "DEFINED_PHASES",
+        "IDEPEND",
     )
 
     autocommits = True
