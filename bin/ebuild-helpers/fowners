@@ -6,52 +6,7 @@ source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 if ! ___eapi_has_prefix_variables; then
 	ED=${D}
-	EROOT=${ROOT}
 fi
-
-if ___eapi_has_SYSROOT && [[ ${EBUILD_PHASE} == install ]]; then
-	PWDB_ROOT=${SYSROOT}
-	PWDB_EROOT=${ESYSROOT}
-else
-	PWDB_ROOT=${ROOT%/}
-	PWDB_EROOT=${EROOT%/}
-fi
-
-__resolve_owner() {
-	local owner="${1}"
-	local pwdb_path="${PWDB_EROOT}/etc"
-	local user group uid gid pgid
-
-	IFS=':' read -r user group <<< "${owner}"
-
-	if [[ -n "${user}" ]]; then
-		if [[ "${user}" =~ ^[0-9]+$ ]]; then
-			uid="${user}"
-		else
-			read -r uid pgid <<< "$(awk -F: -v u="${user}" '$1==u { print $3, $4 }' "${pwdb_path}"/passwd)"
-			[[ "${uid}" =~ ^[0-9]+$ ]] || __helpers_die "fowners: invalid user in ${pwdb_path}/passwd: ${owner}"
-		fi
-	fi
-
-	if [[ -n "${group}" ]]; then
-		if [[ "${group}" =~ ^[0-9]+$ ]]; then
-			gid="${group}"
-		else
-			gid=$(awk -F: -v g="${group}" '$1==g{print $3}' "${pwdb_path}"/group)
-			[[ "${gid}" =~ ^[0-9]+$ ]] || __helpers_die "fowners: invalid group in ${pwdb_path}/group: ${owner}"
-		fi
-		gid=":${gid}"
-	elif [[ "${owner}" == *: ]]; then
-		# `chown uid:` is invalid with numeric-uid-gid, use the primary group defined above
-		if [[ "${pgid}" =~ ^[0-9]+$ ]]; then
-			gid=":${pgid}"
-		else
-			__helpers_die "fowners: invalid primary group for ${user} in ${pwdb_path}/passwd: ${owner}"
-		fi
-	fi
-
-	printf '%s%s' "${uid}" "${gid}"
-}
 
 args=()
 got_owner=
@@ -62,7 +17,7 @@ for arg; do
 		# the first non-option is the owner and must not be prefixed
 		got_owner=1
 		# use numeric-uid-gid from the custom target root
-		if [[ -n ${PWDB_ROOT} ]]; then
+		if [[ -n "${SYSROOT%/}" || -n "${ROOT%/}" ]]; then
 			args+=( "$(__resolve_owner "${arg}")" )
 		else
 			args+=( "${arg}" )
