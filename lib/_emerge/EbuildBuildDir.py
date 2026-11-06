@@ -11,6 +11,18 @@ from portage.util.SlotObject import SlotObject
 from _emerge.AsynchronousLock import AsynchronousLock
 
 
+def _start_lock(lock, locked):
+    """
+    Start lock and call locked(lock) once it is acquired, directly if it
+    is acquired at once.
+    """
+    lock.start()
+    if lock.returncode is None:
+        lock.addExitListener(locked)
+    else:
+        locked(lock)
+
+
 class EbuildBuildDir(SlotObject):
     __slots__ = ("_catdir", "_lock_obj", "locked", "scheduler", "settings")
 
@@ -79,8 +91,7 @@ class EbuildBuildDir(SlotObject):
                     result.set_exception(e)
                     return
 
-            builddir_lock.addExitListener(builddir_locked)
-            builddir_lock.start()
+            _start_lock(builddir_lock, builddir_locked)
 
         def builddir_locked(builddir_lock):
             try:
@@ -110,8 +121,7 @@ class EbuildBuildDir(SlotObject):
             if not os.path.isdir(os.path.dirname(catdir)):
                 raise
 
-        catdir_lock.addExitListener(catdir_locked)
-        catdir_lock.start()
+        _start_lock(catdir_lock, catdir_locked)
         return result
 
     def async_unlock(self):
@@ -133,8 +143,7 @@ class EbuildBuildDir(SlotObject):
                 catdir_lock = AsynchronousLock(
                     path=self._catdir, scheduler=self.scheduler
                 )
-                catdir_lock.addExitListener(catdir_locked)
-                catdir_lock.start()
+                _start_lock(catdir_lock, catdir_locked)
 
         def catdir_locked(catdir_lock):
             if catdir_lock.wait() != os.EX_OK:
