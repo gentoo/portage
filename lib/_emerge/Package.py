@@ -12,6 +12,7 @@ from portage.dep import (
     _repo_separator,
     _slot_separator,
     check_required_use,
+    get_masked_use,
     paren_enclose,
     use_reduce,
 )
@@ -95,6 +96,7 @@ class Package(Task):
         "IUSE",
         "KEYWORDS",
         "LICENSE",
+        "MASKED_USE",
         "MD5",
         "PDEPEND",
         "PROVIDES",
@@ -403,6 +405,26 @@ class Package(Task):
             else:
                 try:
                     check_required_use(v, (), self.iuse.is_valid_flag, eapi=eapi)
+                except InvalidDependString as e:
+                    self._invalid_metadata(k + ".syntax", f"{k}: {e}")
+
+        k = "MASKED_USE"
+        v = self._metadata.get(k)
+        if v and not self.built:
+            if not _get_eapi_attrs(eapi).masked_use:
+                self._invalid_metadata(
+                    "EAPI.incompatible",
+                    f"MASKED_USE set, but EAPI='{eapi}' doesn't allow it",
+                )
+            else:
+                try:
+                    get_masked_use(
+                        v,
+                        (),
+                        is_valid_flag=self.iuse.is_valid_flag,
+                        eapi=eapi,
+                        matchall=True,
+                    )
                 except InvalidDependString as e:
                     self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 

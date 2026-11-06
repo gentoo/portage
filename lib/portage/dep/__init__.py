@@ -15,6 +15,7 @@ __all__ = [
     "dep_getkey",
     "dep_getslot",
     "dep_getusedeps",
+    "get_masked_use",
     "get_operator",
     "isjustname",
     "isspecific",
@@ -3412,6 +3413,58 @@ class _RequiredUseBranch:
             tokens.append(")")
 
         return " ".join(tokens)
+
+
+def get_masked_use(masked_use, use, is_valid_flag=None, eapi=None, matchall=False):
+    """
+    Returns the set of USE flags that a MASKED_USE string masks for the
+    given USE settings.
+
+    MASKED_USE consists of USE flag names inside of (possibly nested) USE
+    conditional groups. A flag is masked when all of the conditionals
+    enclosing it are satisfied, for example "!python? ( python_targets_foo )"
+    masks python_targets_foo when python is disabled. A flag outside of any
+    conditional is always masked. The any-of, exactly-one-of and
+    at-most-one-of operators are not allowed.
+
+    All conditionals are evaluated against use, before any flag is masked.
+    Masking a flag does not satisfy further conditionals, so for example
+    "a? ( b ) !b? ( c )" with a, b and c enabled masks only b.
+
+    @param masked_use: MASKED_USE string
+    @type masked_use: String
+    @param use: Enabled USE flags
+    @type use: Iterable
+    @param is_valid_flag: Function that decides if a given USE flag may be
+        used, both in conditionals and as a masked flag
+    @type is_valid_flag: Function
+    @param eapi: The EAPI that the string has to comply with
+    @type eapi: String
+    @param matchall: Treat all conditionals as satisfied, returning every
+        flag that could be masked. Useful for validation.
+    @type matchall: Bool
+    @rtype: frozenset
+    @return: The masked USE flags, which may include flags that are not
+        members of use
+    """
+    useflag_re = _get_useflag_re(eapi)
+
+    tokens = use_reduce(
+        masked_use,
+        uselist=use,
+        matchall=matchall,
+        is_valid_flag=is_valid_flag,
+        eapi=eapi,
+        flat=True,
+    )
+    for token in tokens:
+        if useflag_re.match(token) is None:
+            raise InvalidDependString(_("invalid MASKED_USE token: '%s'") % (token,))
+        if is_valid_flag is not None and not is_valid_flag(token):
+            raise InvalidDependString(
+                _("MASKED_USE flag '%s' is not in IUSE") % (token,)
+            )
+    return frozenset(tokens)
 
 
 def check_required_use(required_use, use, iuse_match, eapi=None):
