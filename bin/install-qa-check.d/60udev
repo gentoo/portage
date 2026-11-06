@@ -1,7 +1,6 @@
 # shellcheck shell=bash
 
 # Check udev rule installs
-
 udev_check() {
 	set +f
 	local x f=
@@ -18,7 +17,25 @@ udev_check() {
 	fi
 }
 
+# Check udev hwdb install
+hwdb_check() {
+        set +f
+        local x f=
+        for x in "${ED%/}/etc/udev/hwdb.d/"* "${ED%/}/lib"*"/udev/hwdb.d/"* ; do
+                [[ -e ${x} ]] || continue
+                [[ ${x} == ${ED%/}/lib/udev/hwdb.d/* ]] && continue
+                f+="  ${x#${ED%/}}\n"
+        done
+
+        if [[ -n ${f} ]] ; then
+                eqawarn "QA Notice: udev hwdb files should be installed in /lib/udev/hwdb.d:"
+                eqawarn
+                eqawarn "${f}"
+        fi
+}
+
 udev_check
+hwdb_check
 : # guarantee successful exit
 
 # vim:ft=bash
