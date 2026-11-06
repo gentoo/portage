@@ -55,7 +55,6 @@ py.install_sources(
         'test_merge_wait_scope.py',
         'test_missing_iuse_and_evaluated_atoms.py',
         'test_multirepo.py',
-        'test_multislot.py',
         'test_old_dep_chain_display.py',
         'test_onlydeps.py',
         'test_onlydeps_circular.py',
