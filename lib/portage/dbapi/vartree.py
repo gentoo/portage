@@ -5,6 +5,7 @@ __all__ = ["vardbapi", "vartree", "dblink"] + ["write_contents", "tar_contents"]
 
 import argparse
 import bz2
+import collections
 import contextlib
 import errno
 import filecmp
@@ -363,6 +364,43 @@ class MoveReason(Enum):
 
     def __bool__(self):
         return self.value >= self.__class__.FILE_MISSING_OR_NOT_REGULAR.value
+
+
+# Result of dblink._merge_reg_file(). The merge failed if err_msg is not None.
+_reg_merge_result = collections.namedtuple(
+    "_reg_merge_result", ("dest", "zing", "contents_line", "dest_lstat", "err_msg")
+)
+
+
+def _parse_merge_jobs(value, makeopts):
+    """
+    Parse PORTAGE_MERGE_JOBS, the number of threads that merge the contents
+    of a single package. If it is unset or empty, then merge sequentially.
+    If it is "auto", then use the -j value of MAKEOPTS, falling back to the
+    number of CPUs.
+
+    @return: The number of threads, or None if value is invalid.
+    """
+    from portage.util.cpuinfo import get_cpu_count, makeopts_to_job_count
+
+    value = (value or "").strip()
+    if not value:
+        return 1
+
+    if value == "auto":
+        # makeopts_to_job_count() falls back to the CPU count itself if
+        # MAKEOPTS is unset or does not specify -j.
+        try:
+            jobs = int(makeopts_to_job_count(makeopts))
+        except (TypeError, ValueError):
+            jobs = 0
+        return jobs if jobs > 0 else get_cpu_count() or 1
+
+    try:
+        jobs = int(value)
+    except ValueError:
+        return None
+    return jobs if jobs > 0 else None
 
 
 class vardbapi(dbapi):
@@ -1970,7 +2008,9 @@ class dblink:
         self.dbtmpdir = self.dbcatdir + "/" + MERGING_IDENTIFIER + pkg
         self.dbdir = self.dbpkgdir
         self.settings = mysettings
-        self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
+        verbose = self.settings.get("PORTAGE_VERBOSE", "")
+        self._verbose_level = int(verbose) if verbose.isdigit() else 0
+        self._verbose = self._verbose_level >= 1
 
         self.myroot = self.settings["ROOT"]
         self._installed_instance = None
@@ -3537,7 +3577,9 @@ class dblink:
                 del e
                 return False
             if self._contents_inodes is None:
-                self._contents_inodes = {}
+                # Only publish the map once it is complete, since
+                # the parallel merge calls this from several threads.
+                contents_inodes = {}
                 parent_paths = set()
                 for x in self._contents.keys():
                     p_path = os.path.dirname(x)
@@ -3552,12 +3594,13 @@ class dblink:
                         inode_key = (s.st_dev, s.st_ino)
                         # Use lists of paths in case multiple
                         # paths reference the same inode.
-                        p_path_list = self._contents_inodes.get(inode_key)
+                        p_path_list = contents_inodes.get(inode_key)
                         if p_path_list is None:
                             p_path_list = []
-                            self._contents_inodes[inode_key] = p_path_list
+                            contents_inodes[inode_key] = p_path_list
                         if p_path not in p_path_list:
                             p_path_list.append(p_path)
+                self._contents_inodes = contents_inodes
 
             p_path_list = self._contents_inodes.get(
                 (parent_stat.st_dev, parent_stat.st_ino)
@@ -5393,51 +5436,86 @@ class dblink:
 
         # set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
         prevmask = os.umask(0)
-        secondhand = []
+        start_time = time.monotonic()
+        merge_jobs = self._get_merge_jobs()
+        merged = False
+        try:
+            if merge_jobs > 1:
+                merge_stats = {}
+                if self._parallel_mergeme(
+                    srcroot,
+                    destroot,
+                    outfile,
+                    self.settings["EPREFIX"].lstrip(os.sep),
+                    cfgfiledict,
+                    mymtime,
+                    merge_jobs,
+                    merge_stats=merge_stats,
+                ):
+                    return 1
+            else:
+                secondhand = []
 
-        # we do a first merge; this will recurse through all files in our srcroot but also build up a
-        # "second hand" of symlinks to merge later
-        if self.mergeme(
-            srcroot,
-            destroot,
-            outfile,
-            secondhand,
-            self.settings["EPREFIX"].lstrip(os.sep),
-            cfgfiledict,
-            mymtime,
-        ):
-            return 1
+                # we do a first merge; this will recurse through all files in our srcroot but also build up a
+                # "second hand" of symlinks to merge later
+                if self.mergeme(
+                    srcroot,
+                    destroot,
+                    outfile,
+                    secondhand,
+                    self.settings["EPREFIX"].lstrip(os.sep),
+                    cfgfiledict,
+                    mymtime,
+                ):
+                    return 1
 
-        # now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
-        # broken symlinks.  We'll merge them too.
-        lastlen = 0
-        while len(secondhand) and len(secondhand) != lastlen:
-            # clear the thirdhand.	Anything from our second hand that
-            # couldn't get merged will be added to thirdhand.
+                # now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
+                # broken symlinks.  We'll merge them too.
+                lastlen = 0
+                while len(secondhand) and len(secondhand) != lastlen:
+                    # clear the thirdhand.	Anything from our second hand that
+                    # couldn't get merged will be added to thirdhand.
 
-            thirdhand = []
-            if self.mergeme(
-                srcroot, destroot, outfile, thirdhand, secondhand, cfgfiledict, mymtime
-            ):
-                return 1
+                    thirdhand = []
+                    if self.mergeme(
+                        srcroot,
+                        destroot,
+                        outfile,
+                        thirdhand,
+                        secondhand,
+                        cfgfiledict,
+                        mymtime,
+                    ):
+                        return 1
 
-            # swap hands
-            lastlen = len(secondhand)
+                    # swap hands
+                    lastlen = len(secondhand)
 
-            # our thirdhand now becomes our secondhand.  It's ok to throw
-            # away secondhand since thirdhand contains all the stuff that
-            # couldn't be merged.
-            secondhand = thirdhand
+                    # our thirdhand now becomes our secondhand.  It's ok to throw
+                    # away secondhand since thirdhand contains all the stuff that
+                    # couldn't be merged.
+                    secondhand = thirdhand
 
-        if len(secondhand):
-            # force merge of remaining symlinks (broken or circular; oh well)
-            if self.mergeme(
-                srcroot, destroot, outfile, None, secondhand, cfgfiledict, mymtime
-            ):
-                return 1
+                if len(secondhand):
+                    # force merge of remaining symlinks (broken or circular; oh well)
+                    if self.mergeme(
+                        srcroot,
+                        destroot,
+                        outfile,
+                        None,
+                        secondhand,
+                        cfgfiledict,
+                        mymtime,
+                    ):
+                        return 1
 
-        # restore umask
-        os.umask(prevmask)
+            merged = True
+        finally:
+            # restore umask
+            os.umask(prevmask)
+            if not merged:
+                # leave no partial CONTENTS file behind
+                outfile.abort()
 
         # if we opened it, close it
         outfile.flush()
@@ -5451,6 +5529,872 @@ class dblink:
             except InvalidLocation:
                 self.settings._init_dirs()
                 writedict(cfgfiledict, self.vartree.dbapi._conf_mem_file)
+
+        # Only report the duration if PORTAGE_MERGE_JOBS is set, so that
+        # the sequential merge can be compared with the parallel one.
+        if self.settings.get("PORTAGE_MERGE_JOBS"):
+            elapsed = time.monotonic() - start_time
+            jobs_str = f"{merge_jobs} jobs" if merge_jobs > 1 else "1 job"
+            if merge_jobs > 1 and self._verbose_level >= 2:
+                tasks = merge_stats.get("tasks", 0)
+                jobs_str += f", {tasks} tasks" if tasks != 1 else ", 1 task"
+            self._display_merge(
+                _(">>> Merged package contents in %.2fs (%s)\n") % (elapsed, jobs_str),
+                noiselevel=-1,
+            )
+
+        return os.EX_OK
+
+    def _get_merge_jobs(self):
+        value = self.settings.get("PORTAGE_MERGE_JOBS")
+        jobs = _parse_merge_jobs(value, self.settings.get("MAKEOPTS"))
+        if jobs is None:
+            self._display_merge(
+                _(
+                    "!!! Invalid PORTAGE_MERGE_JOBS value '%s', expected a "
+                    "positive integer or 'auto'. Merging sequentially.\n"
+                )
+                % value,
+                level=logging.WARNING,
+                noiselevel=-1,
+            )
+            jobs = 1
+        return jobs
+
+    def _merge_dir(self, srcroot, destroot, relative_path, mystat, outfile):
+        from portage.versions import pkgsplit
+
+        showMessage = self._display_merge
+        writemsg = self._display_merge
+
+        sep = os.sep
+        join = os.path.join
+        mysrc = join(srcroot, relative_path)
+        mydest = join(destroot, relative_path)
+        myrealdest = join(sep, relative_path)
+        mymode = mystat.st_mode
+
+        try:
+            mydstat = os.lstat(mydest)
+            mydmode = mydstat.st_mode
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+            # dest file doesn't exist
+            mydstat = None
+            mydmode = None
+
+        if mydmode is not None:
+            if bsd_chflags:
+                dflags = mydstat.st_flags
+                if dflags != 0:
+                    bsd_chflags.lchflags(mydest, 0)
+
+            if not stat.S_ISLNK(mydmode) and not os.access(mydest, os.W_OK):
+                pkgstuff = pkgsplit(self.pkg)
+                writemsg(_("\n!!! Cannot write to '%s'.\n") % mydest, noiselevel=-1)
+                writemsg(
+                    _(
+                        "!!! Please check permissions and directories for broken symlinks.\n"
+                    )
+                )
+                writemsg(
+                    _("!!! You may start the merge process again by using ebuild:\n")
+                )
+                writemsg(
+                    "!!! ebuild "
+                    + self.settings["PORTDIR"]
+                    + "/"
+                    + self.cat
+                    + "/"
+                    + pkgstuff[0]
+                    + "/"
+                    + self.pkg
+                    + ".ebuild merge\n"
+                )
+                writemsg(_("!!! And finish by running this: env-update\n\n"))
+                return 1
+
+            if stat.S_ISDIR(mydmode) or (
+                stat.S_ISLNK(mydmode) and os.path.isdir(mydest)
+            ):
+                showMessage(f"--- {mydest}/\n")
+                if bsd_chflags:
+                    bsd_chflags.lchflags(mydest, dflags)
+            else:
+                backup_dest = self._new_backup_path(mydest)
+                msg = []
+                msg.append("")
+                msg.append(_("Installation of a directory is blocked by a file:"))
+                msg.append(f"  '{mydest}'")
+                msg.append(_("This file will be renamed to a different name:"))
+                msg.append(f"  '{backup_dest}'")
+                msg.append("")
+                self._eerror("preinst", msg)
+                if (
+                    movefile(
+                        mydest,
+                        backup_dest,
+                        mysettings=self.settings,
+                    )
+                    is None
+                ):
+                    return 1
+                showMessage(
+                    _("bak %s %s.backup\n") % (mydest, mydest),
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+                try:
+                    if self.settings.selinux_enabled():
+                        _selinux_merge.mkdir(mydest, mysrc)
+                    else:
+                        os.mkdir(mydest)
+                except OSError as e:
+                    if e.errno in (errno.EEXIST,) or os.path.isdir(mydest):
+                        pass
+                    else:
+                        raise
+                    del e
+
+                if bsd_chflags:
+                    bsd_chflags.lchflags(mydest, dflags)
+                os.chmod(mydest, mymode)
+                os.chown(mydest, mystat[stat.ST_UID], mystat[stat.ST_GID])
+                showMessage(f">>> {mydest}/\n")
+        else:
+            try:
+                if self.settings.selinux_enabled():
+                    _selinux_merge.mkdir(mydest, mysrc)
+                else:
+                    os.mkdir(mydest)
+            except OSError as e:
+                if e.errno in (errno.EEXIST,) or os.path.isdir(mydest):
+                    pass
+                else:
+                    raise
+                del e
+            os.chmod(mydest, mymode)
+            os.chown(mydest, mystat[stat.ST_UID], mystat[stat.ST_GID])
+            showMessage(f">>> {mydest}/\n")
+
+        try:
+            self._merged_path(mydest, os.lstat(mydest))
+        except OSError:
+            pass
+
+        outfile.write(self._format_contents_line(node_type="dir", abs_path=myrealdest))
+        return os.EX_OK
+
+    def _merge_dest_state(self, mydest, myrealdest, protected):
+        """
+        Inspect the existing merge destination of a regular file or symlink.
+
+        @param mydest: The destination path, including ROOT
+        @type mydest: String (Path)
+        @param myrealdest: The destination path, without ROOT
+        @type myrealdest: String (Path)
+        @param protected: Whether the destination is config protected, in
+        which case the md5 to compare the merged object against is computed
+        @type protected: Boolean
+        @rtype: tuple
+        @return: (mode, md5, symlink target) of the destination, each of
+        which is None if it does not apply or the destination does not exist
+        """
+        from hashlib import md5
+
+        from portage.checksum import _perform_md5_merge as perform_md5
+
+        destmd5 = None
+        mydest_link = None
+        try:
+            mydstat = os.lstat(mydest)
+            mydmode = mydstat.st_mode
+            if protected:
+                if stat.S_ISLNK(mydmode):
+                    # Read symlink target as bytes, in case the
+                    # target path has a bad encoding.
+                    mydest_link = os.readlink(mydest.encode("utf-8", "strict"))
+                    if isinstance(mydest_link, bytes):
+                        mydest_link = mydest_link.decode("utf-8", "replace")
+
+                    # For protection of symlinks, the md5
+                    # of the link target path string is used
+                    # for cfgfiledict (symlinks are
+                    # protected since bug #485598).
+                    destmd5 = md5(
+                        mydest_link.encode("utf-8", "backslashreplace")
+                    ).hexdigest()
+
+                elif stat.S_ISREG(mydmode):
+                    # If the file hasn't been modified since it was installed, we can safely
+                    # reuse the MD5 hash recorded in the var database (VDB) instead of
+                    # reading the file from disk to compute it.
+                    if (
+                        "merge-use-vdb" in self.settings.features
+                        and self._installed_instance is not None
+                    ):
+                        k = self._installed_instance._match_contents(myrealdest)
+                        if k is not False:
+                            data = self._installed_instance.getcontents()[k]
+                            if data[0] == "obj":
+                                vdb_mtime = data[1]
+                                if str(mydstat.st_mtime_ns // 1000000000) == vdb_mtime:
+                                    destmd5 = data[2]
+                    if destmd5 is None:
+                        destmd5 = perform_md5(mydest)
+        except (FileNotFound, OSError) as e:
+            if isinstance(e, OSError) and e.errno != errno.ENOENT:
+                raise
+            # dest file doesn't exist
+            return None, None, None
+
+        return mydmode, destmd5, mydest_link
+
+    def _merge_reg_file(
+        self,
+        srcroot,
+        destroot,
+        relative_path,
+        mystat,
+        thismtime,
+        hardlink_candidates=None,
+        cfgfiledict_lock=None,
+        cfgfiledict=None,
+        protect_if_modified=False,
+    ):
+        from portage.checksum import _perform_md5_merge as perform_md5
+
+        sep = os.sep
+        join = os.path.join
+        mysrc = join(srcroot, relative_path)
+        mydest = join(destroot, relative_path)
+        myrealdest = join(sep, relative_path)
+        mymode = mystat.st_mode
+
+        mymd5 = perform_md5(mysrc)
+
+        protected = self.isprotected(mydest)
+        if mystat.st_size == 0 and os.path.basename(mydest).startswith(".keep"):
+            protected = False
+
+        mydmode, destmd5, mydest_link = self._merge_dest_state(
+            mydest, myrealdest, protected
+        )
+
+        moveme = True
+        if protected:
+            if cfgfiledict_lock is not None:
+                with cfgfiledict_lock:
+                    mydest, protected, moveme = self._protect(
+                        cfgfiledict,
+                        protect_if_modified,
+                        mymd5,
+                        None,
+                        mydest,
+                        myrealdest,
+                        mydmode,
+                        destmd5,
+                        mydest_link,
+                    )
+            else:
+                mydest, protected, moveme = self._protect(
+                    cfgfiledict,
+                    protect_if_modified,
+                    mymd5,
+                    None,
+                    mydest,
+                    myrealdest,
+                    mydmode,
+                    destmd5,
+                    mydest_link,
+                )
+            if protected and moveme:
+                mydmode = None
+
+        if not protected and mydmode is not None and stat.S_ISDIR(mydmode):
+            if cfgfiledict_lock is not None:
+                with cfgfiledict_lock:
+                    newdest = self._new_backup_path(mydest)
+            else:
+                newdest = self._new_backup_path(mydest)
+            msg = []
+            msg.append("")
+            msg.append(_("Installation of a regular file is blocked by a directory:"))
+            msg.append(f"  '{mydest}'")
+            msg.append(_("This file will be merged with a different name:"))
+            msg.append(f"  '{newdest}'")
+            msg.append("")
+            self._eerror("preinst", msg)
+            mydest = newdest
+            mydmode = None
+
+        mymtime = None
+        zing = "!!!"
+        if not moveme:
+            zing = "---"
+            mymtime = thismtime if thismtime is not None else mystat.st_mtime_ns
+
+        if moveme:
+            needs_move_reason = self._needs_move(
+                mysrc, mydest, mymode, mydmode, mymd5, myrealdest
+            )
+            if needs_move_reason:
+                mymtime = movefile(
+                    mysrc,
+                    mydest,
+                    newmtime=thismtime,
+                    sstat=mystat,
+                    mysettings=self.settings,
+                    hardlink_candidates=hardlink_candidates,
+                )
+                if mymtime is None:
+                    return _reg_merge_result(
+                        dest=mydest,
+                        zing=None,
+                        contents_line=None,
+                        dest_lstat=None,
+                        err_msg=_("!!! Failed to move file.\n"),
+                    )
+                if hardlink_candidates is not None:
+                    hardlink_candidates.append(mydest)
+                zing = ">>>"
+            else:
+                mymtime = thismtime if thismtime is not None else mystat.st_mtime_ns
+                try:
+                    os.utime(mydest, ns=(mymtime, mymtime))
+                except OSError:
+                    pass
+                zing = (
+                    "=V=" if needs_move_reason == MoveReason.VDB_HASH_MATCHES else "==="
+                )
+
+        dest_lstat = None
+        if moveme:
+            try:
+                dest_lstat = os.lstat(mydest)
+            except OSError:
+                pass
+
+        contents_line = None
+        if mymtime is not None:
+            contents_line = self._format_contents_line(
+                node_type="obj",
+                abs_path=myrealdest,
+                md5_digest=mymd5,
+                mtime_ns=mymtime,
+            )
+
+        return _reg_merge_result(
+            dest=mydest,
+            zing=zing,
+            contents_line=contents_line,
+            dest_lstat=dest_lstat,
+            err_msg=None,
+        )
+
+    def _record_reg_merge(self, result, outfile):
+        """
+        Report the result of _merge_reg_file and record the merged file
+        in CONTENTS.
+
+        @param result: The result of _merge_reg_file
+        @type result: _reg_merge_result
+        @param outfile: File to log operations to
+        @type outfile: File Object
+        @rtype: Integer
+        @return: 1 if the merge failed, os.EX_OK otherwise
+        """
+        showMessage = self._display_merge
+
+        if result.err_msg is not None:
+            showMessage(result.err_msg, level=logging.ERROR, noiselevel=-1)
+            showMessage(
+                f"!!! Failed to merge {result.dest}\n",
+                level=logging.ERROR,
+                noiselevel=-1,
+            )
+            return 1
+
+        if result.dest_lstat is not None:
+            self._merged_path(result.dest, result.dest_lstat)
+        if result.contents_line:
+            outfile.write(result.contents_line)
+        showMessage(f"{result.zing} {result.dest}\n")
+        return os.EX_OK
+
+    def _merge_symlink(
+        self,
+        srcroot,
+        destroot,
+        outfile,
+        relative_path,
+        mystat,
+        thismtime,
+        cfgfiledict=None,
+        protect_if_modified=False,
+        secondhand=None,
+    ):
+        from hashlib import md5
+
+        from portage.eapi import eapi_rewrites_symlinks
+        from portage.util import normalize_path
+
+        showMessage = self._display_merge
+        sep = os.sep
+        join = os.path.join
+        mysrc = join(srcroot, relative_path)
+        mydest = join(destroot, relative_path)
+        myrealdest = join(sep, relative_path)
+
+        myto = os.readlink(mysrc.encode("utf-8", "strict"))
+        try:
+            myto = myto.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            myto = myto.decode("utf-8", "replace")
+            myto = myto.encode("ascii", "backslashreplace").decode("utf-8")
+            os.unlink(mysrc)
+            os.symlink(myto, mysrc)
+
+        mymd5 = md5(myto.encode("utf-8", "backslashreplace")).hexdigest()
+
+        protected = self.isprotected(mydest)
+        mydmode, destmd5, mydest_link = self._merge_dest_state(
+            mydest, myrealdest, protected
+        )
+
+        moveme = True
+        if protected:
+            mydest, protected, moveme = self._protect(
+                cfgfiledict,
+                protect_if_modified,
+                mymd5,
+                myto,
+                mydest,
+                myrealdest,
+                mydmode,
+                destmd5,
+                mydest_link,
+            )
+            if protected and moveme:
+                mydmode = None
+
+        zing = "!!!"
+        if not moveme:
+            zing = "---"
+
+        myabsto = abssymlink(mysrc, target=myto)
+        myabsto = myabsto.removeprefix(srcroot)
+        myabsto = myabsto.lstrip(sep)
+        if (
+            self.settings
+            and "EAPI" in self.settings
+            and eapi_rewrites_symlinks(self.settings["EAPI"])
+            and self.settings["D"]
+            and myto.startswith(self.settings["D"])
+        ):
+            self._eqawarn(
+                "preinst",
+                [
+                    _(
+                        "QA Notice: Absolute symlink %s points to %s inside the image directory.\n"
+                        "Removing the leading %s from its path."
+                    )
+                    % (mydest, myto, self.settings["D"])
+                ],
+            )
+            myto = myto[len(self.settings["D"]) - 1 :]
+
+        myrealto = normalize_path(os.path.join(destroot, myabsto))
+        if mydmode is not None and stat.S_ISDIR(mydmode):
+            if not protected:
+                newdest = self._new_backup_path(mydest)
+                msg = []
+                msg.append("")
+                msg.append(_("Installation of a symlink is blocked by a directory:"))
+                msg.append(f"  '{mydest}'")
+                msg.append(_("This symlink will be merged with a different name:"))
+                msg.append(f"  '{newdest}'")
+                msg.append("")
+                self._eerror("preinst", msg)
+                mydest = newdest
+                mydmode = None
+
+        if (secondhand is not None) and (not os.path.exists(myrealto)):
+            secondhand.append(relative_path)
+            return 0
+
+        mymtime = None
+        if moveme:
+            zing = ">>>"
+            mymtime = movefile(
+                mysrc,
+                mydest,
+                newmtime=thismtime,
+                sstat=mystat,
+                mysettings=self.settings,
+            )
+        else:
+            mymtime = thismtime if thismtime is not None else mystat.st_mtime_ns
+
+        try:
+            self._merged_path(mydest, os.lstat(mydest))
+        except OSError:
+            pass
+
+        if mymtime is not None:
+            if not (
+                os.path.lexists(myrealto) or os.path.lexists(join(srcroot, myabsto))
+            ):
+                self._eqawarn(
+                    "preinst",
+                    [
+                        _(
+                            "QA Notice: Symbolic link /%s points to /%s which does not exist."
+                        )
+                        % (relative_path, myabsto)
+                    ],
+                )
+
+            showMessage(f"{zing} {mydest} -> {myto}\n")
+            outfile.write(
+                self._format_contents_line(
+                    node_type="sym",
+                    abs_path=myrealdest,
+                    symlink_target=myto,
+                    mtime_ns=mymtime,
+                )
+            )
+        else:
+            showMessage(
+                _("!!! Failed to move file.\n"),
+                level=logging.ERROR,
+                noiselevel=-1,
+            )
+            showMessage(
+                f"!!! {mydest} -> {myto}\n",
+                level=logging.ERROR,
+                noiselevel=-1,
+            )
+            return 1
+
+        return 0
+
+    def _merge_special(
+        self, srcroot, destroot, outfile, relative_path, mystat, thismtime
+    ):
+        showMessage = self._display_merge
+        sep = os.sep
+        join = os.path.join
+        mysrc = join(srcroot, relative_path)
+        mydest = join(destroot, relative_path)
+        myrealdest = join(sep, relative_path)
+        mymode = mystat.st_mode
+        zing = "!!!"
+
+        try:
+            mydmode = os.lstat(mydest).st_mode
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+            # dest file doesn't exist
+            mydmode = None
+
+        if mydmode is None:
+            if (
+                movefile(
+                    mysrc,
+                    mydest,
+                    newmtime=thismtime,
+                    sstat=mystat,
+                    mysettings=self.settings,
+                )
+                is not None
+            ):
+                zing = ">>>"
+                try:
+                    self._merged_path(mydest, os.lstat(mydest))
+                except OSError:
+                    pass
+            else:
+                return 1
+
+        if stat.S_ISFIFO(mymode):
+            outfile.write(
+                self._format_contents_line(node_type="fif", abs_path=myrealdest)
+            )
+        else:
+            outfile.write(
+                self._format_contents_line(node_type="dev", abs_path=myrealdest)
+            )
+        showMessage(f"{zing} {mydest}\n")
+        return os.EX_OK
+
+    def _parallel_mergeme(
+        self,
+        srcroot,
+        destroot,
+        outfile,
+        stufftomerge,
+        cfgfiledict,
+        thismtime,
+        merge_jobs,
+        merge_stats=None,
+    ):
+        """
+        Like mergeme(), but merge the regular files with a pool of
+        merge_jobs threads. Only the regular files are merged in parallel.
+        Everything that depends on other nodes being merged first, i.e.
+        directories, hardlinks and symlinks, is merged sequentially.
+
+        If merge_stats is a dict, then its "tasks" key is set to the
+        number of tasks submitted to the thread pool.
+        """
+        import concurrent.futures
+        import threading
+
+        from portage.util import normalize_path
+
+        showMessage = self._display_merge
+
+        sep = os.sep
+        join = os.path.join
+        srcroot = normalize_path(srcroot).rstrip(sep) + sep
+        destroot = normalize_path(destroot).rstrip(sep) + sep
+
+        protect_if_modified = (
+            "config-protect-if-modified" in self.settings.features
+            and self._installed_instance is not None
+        )
+
+        # Initialize the protect object and the contents of the installed
+        # instance here, so that the worker threads only read them. The
+        # caches that _match_contents() builds lazily are only published
+        # once complete, so the worker threads may build them.
+        self._get_protect_obj()
+        if self._installed_instance is not None:
+            try:
+                self._installed_instance.getcontents()
+            except Exception:
+                pass
+
+        scan_root = join(srcroot, stufftomerge) if stufftomerge else srcroot
+        if not os.path.exists(scan_root):
+            return os.EX_OK
+
+        # Phase 1: Walk the image and sort its nodes by type. os.scandir()
+        # provides the lstat() results, which the later phases reuse.
+        directories = []
+        regular_files = []
+        hardlink_groups = collections.defaultdict(list)
+        symlinks = []
+        specials = []
+
+        # Like mergeme(), only merge the contents of stufftomerge (EPREFIX),
+        # not the directories leading to it.
+        if os.path.isdir(scan_root) and not os.path.islink(scan_root):
+            stack = [(scan_root, stufftomerge or "")]
+            while stack:
+                dir_path, rel_dir = stack.pop()
+                try:
+                    with os.scandir(dir_path) as it:
+                        for entry in it:
+                            rel_path = (
+                                join(rel_dir, entry.name) if rel_dir else entry.name
+                            )
+                            try:
+                                st = entry.stat(follow_symlinks=False)
+                            except OSError as e:
+                                showMessage(
+                                    _("!!! Failed to stat %s: %s\n") % (entry.path, e),
+                                    level=logging.ERROR,
+                                    noiselevel=-1,
+                                )
+                                return 1
+                            mode = st.st_mode
+                            if stat.S_ISLNK(mode):
+                                symlinks.append((rel_path, st))
+                            elif stat.S_ISDIR(mode):
+                                directories.append((rel_path, st))
+                                stack.append((entry.path, rel_path))
+                            elif stat.S_ISREG(mode):
+                                if st.st_nlink > 1:
+                                    hardlink_groups[(st.st_dev, st.st_ino)].append(
+                                        (rel_path, st)
+                                    )
+                                else:
+                                    regular_files.append((rel_path, st))
+                            else:
+                                specials.append((rel_path, st))
+                except OSError as e:
+                    showMessage(
+                        _("!!! Failed to scan directory %s: %s\n") % (dir_path, e),
+                        level=logging.ERROR,
+                        noiselevel=-1,
+                    )
+                    return 1
+
+        # A file with several links whose other links are outside of the
+        # image is merged like any other regular file.
+        multi_hardlinks = {}
+        for k, v in hardlink_groups.items():
+            if len(v) > 1:
+                multi_hardlinks[k] = v
+            else:
+                regular_files.extend(v)
+        hardlink_groups = multi_hardlinks
+
+        # Phase 2: Merge the directories sequentially. Sorting them by depth
+        # merges every directory after its parent. Once all directories
+        # exist, the regular files can be merged in any order.
+        directories.sort(key=lambda item: (len(item[0].split(sep)), item[0]))
+        for relative_path, mystat in directories:
+            if self._merge_dir(srcroot, destroot, relative_path, mystat, outfile):
+                return 1
+
+        cfgfiledict_lock = threading.Lock()
+
+        # Phase 3: Merge the regular files with a pool of threads. Most of
+        # the time is spent hashing and copying the files, which releases
+        # the GIL. The results are recorded in CONTENTS by this thread.
+        if regular_files:
+            # Submit the largest files first (Longest Processing Time first
+            # rule), so that no thread is still busy with a large file when
+            # all others are done.
+            regular_files.sort(key=lambda item: item[1].st_size, reverse=True)
+
+            # Group the small files into batches of at most max_batch_count
+            # files and max_batch_bytes, so that a small file does not cost
+            # a Future of its own. A file larger than max_batch_bytes is a
+            # batch of its own.
+            batches = []
+            cur_batch = []
+            cur_batch_size = 0
+            max_batch_count = 32
+            max_batch_bytes = 128 * 1024  # 128 KiB
+
+            for rel_path, st in regular_files:
+                file_size = st.st_size
+                if cur_batch and (
+                    len(cur_batch) >= max_batch_count
+                    or cur_batch_size + file_size > max_batch_bytes
+                ):
+                    batches.append(cur_batch)
+                    cur_batch = []
+                    cur_batch_size = 0
+
+                cur_batch.append((rel_path, st))
+                cur_batch_size += file_size
+
+            if cur_batch:
+                batches.append(cur_batch)
+
+            if merge_stats is not None:
+                merge_stats["tasks"] = len(batches)
+
+            # Set once the merge fails or is interrupted, so that the worker
+            # threads stop before their next file.
+            abort = threading.Event()
+
+            def _merge_reg_batch_worker(batch):
+                batch_results = []
+                for rel_path, st in batch:
+                    if abort.is_set():
+                        break
+                    result = self._merge_reg_file(
+                        srcroot,
+                        destroot,
+                        rel_path,
+                        st,
+                        thismtime,
+                        cfgfiledict_lock=cfgfiledict_lock,
+                        cfgfiledict=cfgfiledict,
+                        protect_if_modified=protect_if_modified,
+                    )
+                    batch_results.append(result)
+                    if result.err_msg is not None:
+                        break
+                return batch_results
+
+            # Not a with statement, since its implicit shutdown() would still
+            # run all pending batches after a failure or an interrupt.
+            executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(merge_jobs, len(batches))
+            )
+            try:
+                futures = [
+                    executor.submit(_merge_reg_batch_worker, batch) for batch in batches
+                ]
+                for future in concurrent.futures.as_completed(futures):
+                    for result in future.result():
+                        if self._record_reg_merge(result, outfile):
+                            return 1
+            finally:
+                abort.set()
+                executor.shutdown(wait=True, cancel_futures=True)
+
+        # Phase 4: Merge the files with several links in the image
+        # sequentially. The first link of a group is merged like a regular
+        # file, and _merge_reg_file() adds it to hardlink_candidates, so
+        # that the other links of the group become hardlinks to it.
+        for key, group in hardlink_groups.items():
+            hardlink_candidates = []
+            self._hardlink_merge_map[key] = hardlink_candidates
+
+            for rel_path, st in group:
+                result = self._merge_reg_file(
+                    srcroot,
+                    destroot,
+                    rel_path,
+                    st,
+                    thismtime,
+                    hardlink_candidates=hardlink_candidates,
+                    cfgfiledict_lock=cfgfiledict_lock,
+                    cfgfiledict=cfgfiledict,
+                    protect_if_modified=protect_if_modified,
+                )
+                if self._record_reg_merge(result, outfile):
+                    return 1
+
+        # Phase 5: Merge the symlinks. All directories and regular files
+        # exist by now. _merge_symlink() appends a symlink to deferred
+        # instead of merging it if its target does not exist (yet), which
+        # is the case if the target is another symlink that is merged later,
+        # or if the symlink is broken.
+        symlink_stats = dict(symlinks)
+        pending = [rel_path for rel_path, mystat in symlinks]
+        force = False
+        while pending:
+            # Defer nothing in the final pass.
+            deferred = None if force else []
+            for rel_path in pending:
+                if self._merge_symlink(
+                    srcroot,
+                    destroot,
+                    outfile,
+                    rel_path,
+                    symlink_stats[rel_path],
+                    thismtime,
+                    cfgfiledict=cfgfiledict,
+                    protect_if_modified=protect_if_modified,
+                    secondhand=deferred,
+                ):
+                    return 1
+            if deferred is None:
+                break
+            # Retry the deferred symlinks, since their targets may have been
+            # merged in this pass. If this pass merged none of the symlinks,
+            # then the remaining ones are broken or circular. Merge them
+            # anyway in a final pass, like mergeme() does.
+            force = len(deferred) == len(pending)
+            pending = deferred
+
+        # Phase 6: Merge the special files (FIFOs and device nodes).
+        for rel_path, mystat in specials:
+            if self._merge_special(
+                srcroot, destroot, outfile, rel_path, mystat, thismtime
+            ):
+                return 1
 
         return os.EX_OK
 
@@ -5491,15 +6435,7 @@ class dblink:
         2. None otherwise
 
         """
-        from hashlib import md5
-
-        from portage.checksum import _perform_md5_merge as perform_md5
-        from portage.eapi import eapi_rewrites_symlinks
         from portage.util import normalize_path
-        from portage.versions import pkgsplit
-
-        showMessage = self._display_merge
-        writemsg = self._display_merge
 
         sep = os.sep
         join = os.path.join
@@ -5524,354 +6460,12 @@ class dblink:
         while mergelist:
             relative_path = mergelist.pop()
             mysrc = join(srcroot, relative_path)
-            mydest = join(destroot, relative_path)
-            # myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-            myrealdest = join(sep, relative_path)
-            # stat file once, test using S_* macros many times (faster that way)
             mystat = os.lstat(mysrc)
             mymode = mystat[stat.ST_MODE]
-            mymd5 = None
-            myto = None
 
-            mymtime = mystat.st_mtime_ns
-
-            if stat.S_ISREG(mymode):
-                mymd5 = perform_md5(mysrc)
-            elif stat.S_ISLNK(mymode):
-                # The file name of mysrc and the actual file that it points to
-                # will have earlier been forcefully converted to the 'merge'
-                # encoding if necessary, but the content of the symbolic link
-                # may need to be forcefully converted here.
-                myto = os.readlink(mysrc.encode("utf-8", "strict"))
-                try:
-                    myto = myto.decode("utf-8", "strict")
-                except UnicodeDecodeError:
-                    myto = myto.decode("utf-8", "replace")
-                    myto = myto.encode("ascii", "backslashreplace").decode("utf-8")
-                    os.unlink(mysrc)
-                    os.symlink(myto, mysrc)
-
-                mymd5 = md5(myto.encode("utf-8", "backslashreplace")).hexdigest()
-
-            protected = False
-            if stat.S_ISLNK(mymode) or stat.S_ISREG(mymode):
-                protected = self.isprotected(mydest)
-
-                if (
-                    stat.S_ISREG(mymode)
-                    and mystat.st_size == 0
-                    and os.path.basename(mydest).startswith(".keep")
-                ):
-                    protected = False
-
-            destmd5 = None
-            mydest_link = None
-            # handy variables; mydest is the target object on the live filesystems;
-            # mysrc is the source object in the temporary install dir
-            try:
-                mydstat = os.lstat(mydest)
-                mydmode = mydstat.st_mode
-                if protected:
-                    if stat.S_ISLNK(mydmode):
-                        # Read symlink target as bytes, in case the
-                        # target path has a bad encoding.
-                        mydest_link = os.readlink(mydest.encode("utf-8", "strict"))
-                        if isinstance(mydest_link, bytes):
-                            mydest_link = mydest_link.decode("utf-8", "replace")
-
-                        # For protection of symlinks, the md5
-                        # of the link target path string is used
-                        # for cfgfiledict (symlinks are
-                        # protected since bug #485598).
-                        destmd5 = md5(
-                            mydest_link.encode("utf-8", "backslashreplace")
-                        ).hexdigest()
-
-                    elif stat.S_ISREG(mydmode):
-                        destmd5 = None
-                        # If the file hasn't been modified since it was installed, we can safely
-                        # reuse the MD5 hash recorded in the var database (VDB) instead of
-                        # reading the file from disk to compute it.
-                        if (
-                            "merge-use-vdb" in self.settings.features
-                            and self._installed_instance is not None
-                        ):
-                            k = self._installed_instance._match_contents(myrealdest)
-                            if k is not False:
-                                data = self._installed_instance.getcontents()[k]
-                                if data[0] == "obj":
-                                    vdb_mtime = data[1]
-                                    if (
-                                        str(mydstat.st_mtime_ns // 1000000000)
-                                        == vdb_mtime
-                                    ):
-                                        destmd5 = data[2]
-                        if destmd5 is None:
-                            destmd5 = perform_md5(mydest)
-            except (FileNotFound, OSError) as e:
-                if isinstance(e, OSError) and e.errno != errno.ENOENT:
-                    raise
-                # dest file doesn't exist
-                mydstat = None
-                mydmode = None
-                mydest_link = None
-                destmd5 = None
-
-            moveme = True
-            if protected:
-                mydest, protected, moveme = self._protect(
-                    cfgfiledict,
-                    protect_if_modified,
-                    mymd5,
-                    myto,
-                    mydest,
-                    myrealdest,
-                    mydmode,
-                    destmd5,
-                    mydest_link,
-                )
-                if protected and moveme:
-                    mydmode = None
-
-            zing = "!!!"
-            if not moveme:
-                # confmem rejected this update
-                zing = "---"
-
-            if stat.S_ISLNK(mymode):
-                # we are merging a symbolic link
-                # Pass in the symlink target in order to bypass the
-                # os.readlink() call inside abssymlink(), since that
-                # call is unsafe if the merge encoding is not ascii
-                # or utf_8 (see bug #382021).
-                myabsto = abssymlink(mysrc, target=myto)
-
-                myabsto = myabsto.removeprefix(srcroot)
-                myabsto = myabsto.lstrip(sep)
-                if (
-                    self.settings
-                    and "EAPI" in self.settings
-                    and eapi_rewrites_symlinks(self.settings["EAPI"])
-                    and self.settings["D"]
-                    and myto.startswith(self.settings["D"])
-                ):
-                    self._eqawarn(
-                        "preinst",
-                        [
-                            _(
-                                "QA Notice: Absolute symlink %s points to %s inside the image directory.\n"
-                                "Removing the leading %s from its path."
-                            )
-                            % (mydest, myto, self.settings["D"])
-                        ],
-                    )
-                    myto = myto[len(self.settings["D"]) - 1 :]
-                # myrealto contains the path of the real file to which this symlink points.
-                # we can simply test for existence of this file to see if the target has been merged yet
-                myrealto = normalize_path(os.path.join(destroot, myabsto))
-                if mydmode is not None and stat.S_ISDIR(mydmode):
-                    if not protected:
-                        # we can't merge a symlink over a directory
-                        newdest = self._new_backup_path(mydest)
-                        msg = []
-                        msg.append("")
-                        msg.append(
-                            _("Installation of a symlink is blocked by a directory:")
-                        )
-                        msg.append(f"  '{mydest}'")
-                        msg.append(
-                            _("This symlink will be merged with a different name:")
-                        )
-                        msg.append(f"  '{newdest}'")
-                        msg.append("")
-                        self._eerror("preinst", msg)
-                        mydest = newdest
-                        mydmode = None
-
-                # if secondhand is None it means we're operating in "force" mode and should not create a second hand.
-                if (secondhand is not None) and (not os.path.exists(myrealto)):
-                    # either the target directory doesn't exist yet or the target file doesn't exist -- or
-                    # the target is a broken symlink.  We will add this file to our "second hand" and merge
-                    # it later.
-                    secondhand.append(mysrc[len(srcroot) :])
-                    continue
-                # unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
-                if moveme:
-                    zing = ">>>"
-                    mymtime = movefile(
-                        mysrc,
-                        mydest,
-                        newmtime=thismtime,
-                        sstat=mystat,
-                        mysettings=self.settings,
-                    )
-
-                try:
-                    self._merged_path(mydest, os.lstat(mydest))
-                except OSError:
-                    pass
-
-                if mymtime is not None:
-                    # Use lexists, since if the target happens to be a broken
-                    # symlink then that should trigger an independent warning.
-                    if not (
-                        os.path.lexists(myrealto)
-                        or os.path.lexists(join(srcroot, myabsto))
-                    ):
-                        self._eqawarn(
-                            "preinst",
-                            [
-                                _(
-                                    "QA Notice: Symbolic link /%s points to /%s which does not exist."
-                                )
-                                % (relative_path, myabsto)
-                            ],
-                        )
-
-                    showMessage(f"{zing} {mydest} -> {myto}\n")
-                    outfile.write(
-                        self._format_contents_line(
-                            node_type="sym",
-                            abs_path=myrealdest,
-                            symlink_target=myto,
-                            mtime_ns=mymtime,
-                        )
-                    )
-                else:
-                    showMessage(
-                        _("!!! Failed to move file.\n"),
-                        level=logging.ERROR,
-                        noiselevel=-1,
-                    )
-                    showMessage(
-                        f"!!! {mydest} -> {myto}\n",
-                        level=logging.ERROR,
-                        noiselevel=-1,
-                    )
+            if stat.S_ISDIR(mymode):
+                if self._merge_dir(srcroot, destroot, relative_path, mystat, outfile):
                     return 1
-            elif stat.S_ISDIR(mymode):
-                # we are merging a directory
-                if mydmode is not None:
-                    # destination exists
-
-                    if bsd_chflags:
-                        # Save then clear flags on dest.
-                        dflags = mydstat.st_flags
-                        if dflags != 0:
-                            bsd_chflags.lchflags(mydest, 0)
-
-                    if not stat.S_ISLNK(mydmode) and not os.access(mydest, os.W_OK):
-                        pkgstuff = pkgsplit(self.pkg)
-                        writemsg(
-                            _("\n!!! Cannot write to '%s'.\n") % mydest, noiselevel=-1
-                        )
-                        writemsg(
-                            _(
-                                "!!! Please check permissions and directories for broken symlinks.\n"
-                            )
-                        )
-                        writemsg(
-                            _(
-                                "!!! You may start the merge process again by using ebuild:\n"
-                            )
-                        )
-                        writemsg(
-                            "!!! ebuild "
-                            + self.settings["PORTDIR"]
-                            + "/"
-                            + self.cat
-                            + "/"
-                            + pkgstuff[0]
-                            + "/"
-                            + self.pkg
-                            + ".ebuild merge\n"
-                        )
-                        writemsg(_("!!! And finish by running this: env-update\n\n"))
-                        return 1
-
-                    if stat.S_ISDIR(mydmode) or (
-                        stat.S_ISLNK(mydmode) and os.path.isdir(mydest)
-                    ):
-                        # a symlink to an existing directory will work for us; keep it:
-                        showMessage(f"--- {mydest}/\n")
-                        if bsd_chflags:
-                            bsd_chflags.lchflags(mydest, dflags)
-                    else:
-                        # a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-                        backup_dest = self._new_backup_path(mydest)
-                        msg = []
-                        msg.append("")
-                        msg.append(
-                            _("Installation of a directory is blocked by a file:")
-                        )
-                        msg.append(f"  '{mydest}'")
-                        msg.append(_("This file will be renamed to a different name:"))
-                        msg.append(f"  '{backup_dest}'")
-                        msg.append("")
-                        self._eerror("preinst", msg)
-                        if (
-                            movefile(
-                                mydest,
-                                backup_dest,
-                                mysettings=self.settings,
-                            )
-                            is None
-                        ):
-                            return 1
-                        showMessage(
-                            _("bak %s %s.backup\n") % (mydest, mydest),
-                            level=logging.ERROR,
-                            noiselevel=-1,
-                        )
-                        # now create our directory
-                        try:
-                            if self.settings.selinux_enabled():
-                                _selinux_merge.mkdir(mydest, mysrc)
-                            else:
-                                os.mkdir(mydest)
-                        except OSError as e:
-                            # Error handling should be equivalent to
-                            # portage.util.ensure_dirs() for cases
-                            # like bug #187518.
-                            if e.errno in (errno.EEXIST,) or os.path.isdir(mydest):
-                                pass
-                            else:
-                                raise
-                            del e
-
-                        if bsd_chflags:
-                            bsd_chflags.lchflags(mydest, dflags)
-                        os.chmod(mydest, mymode)
-                        os.chown(mydest, mystat[stat.ST_UID], mystat[stat.ST_GID])
-                        showMessage(f">>> {mydest}/\n")
-                else:
-                    try:
-                        # destination doesn't exist
-                        if self.settings.selinux_enabled():
-                            _selinux_merge.mkdir(mydest, mysrc)
-                        else:
-                            os.mkdir(mydest)
-                    except OSError as e:
-                        # Error handling should be equivalent to
-                        # portage.util.ensure_dirs() for cases
-                        # like bug #187518.
-                        if e.errno in (errno.EEXIST,) or os.path.isdir(mydest):
-                            pass
-                        else:
-                            raise
-                        del e
-                    os.chmod(mydest, mymode)
-                    os.chown(mydest, mystat[stat.ST_UID], mystat[stat.ST_GID])
-                    showMessage(f">>> {mydest}/\n")
-
-                try:
-                    self._merged_path(mydest, os.lstat(mydest))
-                except OSError:
-                    pass
-
-                outfile.write(
-                    self._format_contents_line(node_type="dir", abs_path=myrealdest)
-                )
                 # recurse and merge this directory
                 mergelist.extend(
                     join(relative_path, child)
@@ -5879,113 +6473,44 @@ class dblink:
                 )
 
             elif stat.S_ISREG(mymode):
-                # we are merging a regular file
-                if not protected and mydmode is not None and stat.S_ISDIR(mydmode):
-                    # install of destination is blocked by an existing directory with the same name
-                    newdest = self._new_backup_path(mydest)
-                    msg = []
-                    msg.append("")
-                    msg.append(
-                        _("Installation of a regular file is blocked by a directory:")
-                    )
-                    msg.append(f"  '{mydest}'")
-                    msg.append(_("This file will be merged with a different name:"))
-                    msg.append(f"  '{newdest}'")
-                    msg.append("")
-                    self._eerror("preinst", msg)
-                    mydest = newdest
-                    mydmode = None
+                hardlink_key = (mystat.st_dev, mystat.st_ino)
+                hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
+                if hardlink_candidates is None:
+                    hardlink_candidates = []
+                    self._hardlink_merge_map[hardlink_key] = hardlink_candidates
 
-                # whether config protection or not, we merge the new file the
-                # same way.  Unless moveme=0 (blocking directory)
-                if moveme:
-                    # only replace the existing file if it differs, see #722270
-                    needs_move_reason = self._needs_move(
-                        mysrc, mydest, mymode, mydmode, mymd5, myrealdest
-                    )
-                    if needs_move_reason:
-                        # Create hardlinks only for source files that already exist
-                        # as hardlinks (having identical st_dev and st_ino).
-                        hardlink_key = (mystat.st_dev, mystat.st_ino)
+                result = self._merge_reg_file(
+                    srcroot,
+                    destroot,
+                    relative_path,
+                    mystat,
+                    thismtime,
+                    hardlink_candidates=hardlink_candidates,
+                    cfgfiledict=cfgfiledict,
+                    protect_if_modified=protect_if_modified,
+                )
+                if self._record_reg_merge(result, outfile):
+                    return 1
 
-                        hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
-                        if hardlink_candidates is None:
-                            hardlink_candidates = []
-                            self._hardlink_merge_map[hardlink_key] = hardlink_candidates
+            elif stat.S_ISLNK(mymode):
+                if self._merge_symlink(
+                    srcroot,
+                    destroot,
+                    outfile,
+                    relative_path,
+                    mystat,
+                    thismtime,
+                    cfgfiledict=cfgfiledict,
+                    protect_if_modified=protect_if_modified,
+                    secondhand=secondhand,
+                ):
+                    return 1
 
-                        mymtime = movefile(
-                            mysrc,
-                            mydest,
-                            newmtime=thismtime,
-                            sstat=mystat,
-                            mysettings=self.settings,
-                            hardlink_candidates=hardlink_candidates,
-                        )
-                        if mymtime is None:
-                            return 1
-                        hardlink_candidates.append(mydest)
-                        zing = ">>>"
-                    else:
-                        mymtime = thismtime if thismtime is not None else mymtime
-                        try:
-                            os.utime(mydest, ns=(mymtime, mymtime))
-                        except OSError:
-                            # utime can fail here with EPERM
-                            pass
-                        zing = (
-                            "=V="
-                            if needs_move_reason == MoveReason.VDB_HASH_MATCHES
-                            else "==="
-                        )
-
-                    try:
-                        self._merged_path(mydest, os.lstat(mydest))
-                    except OSError:
-                        pass
-
-                if mymtime is not None:
-                    outfile.write(
-                        self._format_contents_line(
-                            node_type="obj",
-                            abs_path=myrealdest,
-                            md5_digest=mymd5,
-                            mtime_ns=mymtime,
-                        )
-                    )
-                showMessage(f"{zing} {mydest}\n")
             else:
-                # we are merging a fifo or device node
-                zing = "!!!"
-                if mydmode is None:
-                    # destination doesn't exist
-                    if (
-                        movefile(
-                            mysrc,
-                            mydest,
-                            newmtime=thismtime,
-                            sstat=mystat,
-                            mysettings=self.settings,
-                        )
-                        is not None
-                    ):
-                        zing = ">>>"
-
-                        try:
-                            self._merged_path(mydest, os.lstat(mydest))
-                        except OSError:
-                            pass
-
-                    else:
-                        return 1
-                if stat.S_ISFIFO(mymode):
-                    outfile.write(
-                        self._format_contents_line(node_type="fif", abs_path=myrealdest)
-                    )
-                else:
-                    outfile.write(
-                        self._format_contents_line(node_type="dev", abs_path=myrealdest)
-                    )
-                showMessage(zing + " " + mydest + "\n")
+                if self._merge_special(
+                    srcroot, destroot, outfile, relative_path, mystat, thismtime
+                ):
+                    return 1
 
     def _protect(
         self,

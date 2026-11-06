@@ -65,6 +65,11 @@ Features:
   each package that uses them (bug #980779). Edits to these files are therefore
   no longer seen by an emerge that is already running.
 
+* merge: Add PORTAGE_MERGE_JOBS, which sets the number of threads that merge
+  the files of a single package from the image directory into ${ROOT}. The
+  default of 1 merges the files sequentially, like before. If set to "auto",
+  then the -j value in MAKEOPTS is used, falling back to the number of CPUs.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata
@@ -84,6 +89,10 @@ Bug fixes:
 
 * env-update: Warn and skip ldconfig(8) for unrecognised operating systems
   instead of raising UnboundLocalError (bug #984722).
+
+* merge: Restore the umask and discard the incomplete CONTENTS file if merging
+  the package contents fails. Previously, the merge process kept running with
+  a umask of 0 after such a failure.
 
 portage-3.0.83 (2026-10-11)
 --------------
