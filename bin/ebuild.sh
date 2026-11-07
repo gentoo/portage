@@ -764,8 +764,6 @@ if contains_word nostrip "${FEATURES} ${PORTAGE_RESTRICT}" || contains_word stri
 fi
 
 if [[ ${EBUILD_PHASE} = depend ]] ; then
-	set -f
-
 	metadata_keys=(
 		DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
@@ -781,10 +779,12 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 
 	INHERIT=${PORTAGE_EXPLICIT_INHERIT}
 
-	# The extra $(echo) commands remove newlines.
-	for f in "${metadata_keys[@]}" ; do
-		echo "${f}=$(echo ${!f})" >&${PORTAGE_PIPE_FD} || exit $?
-	done
+	set -f
+	for key in "${metadata_keys[@]}"; do
+		# The value is collapsed to a series of space-separated words.
+		set -- ${!key}
+		printf '%s=%s\n' "${key}" "$*" || ! break
+	done >&"${PORTAGE_PIPE_FD}" || exit
 	exec {PORTAGE_PIPE_FD}>&-
 	set +f
 
