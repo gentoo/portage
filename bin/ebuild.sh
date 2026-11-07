@@ -667,6 +667,9 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 			set +x
 		fi
 
+		# Reset IFS, in case it was poisoned by sourcing the ebuild.
+		IFS=$' \t\n'
+
 		[[ -s ${SANDBOX_LOG} ]] && die "Sandbox violations found, exiting"
 
 		if ___eapi_enables_failglob_in_global_scope; then
