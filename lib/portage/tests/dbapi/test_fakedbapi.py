@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Gentoo Foundation
+# Copyright 2011-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -73,6 +73,7 @@ class TestFakedbapi(TestCase):
         )
 
         tempdir = tempfile.mkdtemp()
+        orig_eprefix = portage.const.EPREFIX
         try:
             test_repo = os.path.join(tempdir, "var", "repositories", "test_repo")
             os.makedirs(os.path.join(test_repo, "profiles"))
@@ -104,4 +105,5 @@ class TestFakedbapi(TestCase):
                     f"fakedb.match('{atom}') = {result} != {expected_result}",
                 )
         finally:
+            portage.const.EPREFIX = orig_eprefix
             shutil.rmtree(tempdir)
