@@ -690,7 +690,7 @@ configparser() {
 	local -a next_val lines val
 	local -A seen
 
-	reset_extglob=$(shopt -p extglob)
+	reset_extglob=${ shopt -p extglob; }
 	shopt -s extglob
 	IFS=$'\n'
 
