@@ -212,8 +212,6 @@ __save_ebuild_env() (
 		__eqatag
 		__filter_readonly_variables
 		__has_phase_defined_up_to
-		__hasg
-		__hasgq
 		__helpers_die
 		__preprocess_ebuild_env
 		__qa_call

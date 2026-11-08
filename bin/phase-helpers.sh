@@ -519,15 +519,6 @@ econf() {
 		local EPREFIX=
 	fi
 
-	__hasg() {
-		local x s=$1
-		shift
-		for x ; do [[ ${x} == ${s} ]] && echo "${x}" && return 0 ; done
-		return 1
-	}
-
-	__hasgq() { __hasg "$@" >/dev/null ; }
-
 	local ___phase_func
 	__ebuild_arg_to_phase "${EBUILD_PHASE}" ___phase_func
 	if [[ -n ${___phase_func} ]] ; then
@@ -625,9 +616,23 @@ econf() {
 			libdir=${!libdir_var}
 		fi
 
-		if [[ -n ${libdir} ]] && ! __hasgq --libdir=\* "$@" ; then
-			export CONF_PREFIX=$(__hasg --exec-prefix=\* "$@")
-			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(__hasg --prefix=\* "$@")
+		# Record the first occurrence of each option affecting libdir.
+		local libdir_opt exec_prefix_opt prefix_opt
+		for x; do
+			case ${x} in
+				--libdir=*)
+					: "${libdir_opt:=${x}}"
+					;;
+				--exec-prefix=*)
+					: "${exec_prefix_opt:=${x}}"
+					;;
+				--prefix=*)
+					: "${prefix_opt:=${x}}"
+			esac
+		done
+
+		if [[ -n ${libdir} && ! ${libdir_opt} ]] ; then
+			export CONF_PREFIX=${exec_prefix_opt:-${prefix_opt}}
 
 			: ${CONF_PREFIX:=${EPREFIX}/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
