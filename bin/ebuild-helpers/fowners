@@ -32,6 +32,7 @@ __resolve_owner() {
 			read -r uid pw_gid <<< "$(awk -F: -v u="${user}" '$1==u { print $3, $4 }' "${pwdb_path}"/passwd)"
 			if [[ ${uid} != +([0-9]) ]]; then
 				__helpers_die "fowners: invalid user in ${pwdb_path}/passwd: ${owner}"
+				return
 			fi
 		fi
 	fi
@@ -43,6 +44,7 @@ __resolve_owner() {
 			gid=$(awk -F: -v g="${group}" '$1==g{print $3}' "${pwdb_path}"/group)
 			if [[ ${gid} != +([0-9]) ]]; then
 				__helpers_die "fowners: invalid group in ${pwdb_path}/group: ${owner}"
+				return
 			fi
 		fi
 		gid=:${gid}
@@ -52,6 +54,7 @@ __resolve_owner() {
 			gid=:${pw_gid}
 		else
 			__helpers_die "fowners: invalid primary group for ${user} in ${pwdb_path}/passwd: ${owner}"
+			return
 		fi
 	fi
 
@@ -68,7 +71,8 @@ for arg; do
 		got_owner=1
 		# use numeric-uid-gid from the custom target root
 		if [[ -n ${PWDB_ROOT} ]]; then
-			args+=( "$(__resolve_owner "${arg}")" )
+			owner=$(__resolve_owner "${arg}") || exit
+			args+=( "${owner}" )
 		else
 			args+=( "${arg}" )
 		fi

@@ -144,6 +144,9 @@ Bug fixes:
 * dosym: Correct relative targets for pathnames containing pattern
   metacharacters.
 
+* fowners: Stop after failed user or group lookups in a custom root, rather than
+  proceed with an incomplete owner.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
