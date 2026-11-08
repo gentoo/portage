@@ -105,6 +105,9 @@ Features:
 
 * ebuild.sh: Avoid subshells when printing metadata keys.
 
+* dosym: Accelerate pathname canonicalisation by processing components in a
+  single pass.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata
@@ -148,6 +151,8 @@ Bug fixes:
   proceed with an incomplete owner.
 
 * docompress, dostrip: Preserve trailing newline characters in pathnames.
+
+* dosym: Preserve trailing newline characters in target and link pathnames.
 
 Cleanups:
 
