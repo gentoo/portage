@@ -522,35 +522,39 @@ preinst_selinux_labels() {
 # Generate a separate tarball with debug information (and sources) for
 # use with debuginfod.
 __generate_packdebug() {
-	local debugpath="${T}"/.tarball
-	if ! [[ -d "${ED}"/usr/src/debug || -d "${ED}"/usr/lib/debug ]]; then
-		return
-	fi
+	local stage_dir tar_file dir
+	local -a debug_dirs
+
+	for dir in ./usr/{src,lib}/debug; do
+		if [[ -d ${ED}/${dir} ]]; then
+			debug_dirs+=( "${dir}" )
+		fi
+	done
+	(( ${#debug_dirs[@]} )) || return
 
 	__vecho ">>> Creating packdebug tarball"
-	install -d "${debugpath}"/"${CATEGORY}"{,/"${PN}"} \
+
+	stage_dir=${T}/.tarball
+	install -d "${stage_dir}"/"${CATEGORY}"{,/"${PN}"} \
 		|| die "Failed to generate target debug directory"
 
 	# xz is hardcoded here as it's the only format that supports random
 	# access.
-	(
-		unset IFS
-		local tarfile="${debugpath}/${CATEGORY}/${PN}/${PF}-${BUILD_ID}-debug.tar.xz"
-		cd "${ED}" || die
-		tar -cJf - > "${tarfile}" \
-			$([[ -d ./usr/src/debug ]] && echo ./usr/src/debug) \
-			$([[ -d ./usr/lib/debug ]] && echo ./usr/lib/debug) \
-		|| die "Failed to pack up debug info for FEATURES=packdebug"
-	)
+	tar_file=${stage_dir}/${CATEGORY}/${PN}/${PF}-${BUILD_ID}-debug.tar.xz
+	if ! tar -C "${ED}" -cJf "${tar_file}" "${debug_dirs[@]}"; then
+		die "Failed to pack up debug info for FEATURES=packdebug"
+	fi
 
 	# The package may not have any splitdebug info available, but still
 	# have sources.
 	mkdir -p "${PORTAGE_TMPDIR}"/portage/${CATEGORY}/${PF}/image/${EPREFIX}/usr/lib/debug || die
+
 	# We don't use ${D} here because __generate_packdebug is called from
 	# __dyn_package where ${D} points to a pretend ${D}. We want these files
 	# in the real image but not in the binpkg. Unfortunately, we can't
 	# easily leverage PKG_INSTALL_MASK because of when it runs.
-	mv "${debugpath}" "${PORTAGE_BUILDDIR}/image/${EPREFIX}/usr/lib/debug/". || die
+	mv "${stage_dir}" "${PORTAGE_BUILDDIR}/image/${EPREFIX}/usr/lib/debug/". || die
+
 	__vecho ">>> Done."
 }
 
