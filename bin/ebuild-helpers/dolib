@@ -45,7 +45,7 @@ for x in "$@" ; do
 		if [[ ! -L ${x} ]] ; then
 			install ${LIBOPTIONS} "${x}" "${libdir}"
 		else
-			ln -s "$(readlink "${x}")" "${libdir}/${x##*/}"
+			cp -P -- "${x}" "${libdir}"
 		fi
 	else
 		echo "!!! ${0##*/}: ${x} does not exist" 1>&2

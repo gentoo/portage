@@ -160,6 +160,9 @@ Bug fixes:
 * QA logging: Preserve values such as -n and -e instead of interpreting them as
   echo options.
 
+* dolib: Overwrite existing destination files when installing symbolic links, as
+  required by PMS. Preserve trailing newline characters in link targets.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
