@@ -711,20 +711,20 @@ __dyn_install() {
 		size() {
 			local s1=$1
 			local s2=$2
-			local out="$(padl "${s1}" "${s2}") KiB"
+			local out="${ padl "${s1}" "${s2}"; } KiB"
 
 			if [[ ${s1} -gt 1024 ]] ; then
-				s1=$(human ${s1})
+				s1=${ human "${s1}"; }
 				if [[ ${s2} -gt 1024 ]] ; then
-					s2=$(human ${s2})
-					s1=$(padl "${s1}" "${s2}")
+					s2=${ human "${s2}"; }
+					s1=${ padl "${s1}" "${s2}"; }
 				fi
 				out+=" (${s1})"
 			fi
 			echo "${out}"
 		}
-		einfo "Final size of build directory: $(size "${nsz}" "${isz}")"
-		einfo "Final size of installed tree:  $(size "${isz}" "${nsz}")"
+		einfo "Final size of build directory: ${ size "${nsz}" "${isz}"; }"
+		einfo "Final size of installed tree:  ${ size "${isz}" "${nsz}"; }"
 	)
 	__vecho
 
