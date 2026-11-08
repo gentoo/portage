@@ -447,29 +447,29 @@ if [[ -z ${XARGS} ]] ; then
 	fi
 fi
 
+# Assigns REPLY the number of jobs specified by the -j or --jobs option in
+# MAKEOPTS or, failing that, the number of online processors. Should neither
+# be determinable, assigns 1 and returns 1.
 ___makeopts_jobs() {
-	local LC_ALL LC_COLLATE=C ere jobs
+	local LC_ALL LC_COLLATE=C ere
 
 	ere='.*[[:space:]](-[A-Ia-iK-Zk-z]*j[[:space:]]*|--jobs(=|[[:space:]]+))([0-9]+)[[:space:]]'
 
 	if [[ " ${MAKEOPTS} " =~ $ere ]]; then
-		jobs=$(( 10#${BASH_REMATCH[3]} ))
-	elif jobs=$({ getconf _NPROCESSORS_ONLN || sysctl -n hw.ncpu; } 2>/dev/null); then
-		:
-	else
-		jobs=1
+		REPLY=$(( 10#${BASH_REMATCH[3]} ))
+	elif ! REPLY=${ { getconf _NPROCESSORS_ONLN || sysctl -n hw.ncpu; } 2>/dev/null; }; then
+		REPLY=1
+		false
 	fi
-
-	printf '%s\n' "${jobs}"
 }
 
 # Considers the positional parameters as comprising a simple command, which
 # shall be executed for each null-terminated record read from the standard
 # input. For each record processed, its value shall be taken as an additional
 # parameter to append to the command. Commands shall be executed in parallel,
-# with the maximal degree of concurrency being determined by the output of the
-# ___makeopts_jobs function. Thus, the behaviour is quite similar to that of
-# xargs -0 -L1 -P"$(___makeopts_jobs)".
+# with the maximal degree of concurrency being determined by the
+# ___makeopts_jobs() function. Thus, the behaviour is similar to that of
+# xargs -0 -L1 -P"${| ___makeopts_jobs; }".
 #
 # If no records are read, or if all commands complete successfully, the return
 # value shall be 0. Otherwise, the return value shall be that of the last
@@ -478,7 +478,7 @@ ___makeopts_jobs() {
 ___parallel() (
 	local max_procs retval arg i
 
-	max_procs=$(___makeopts_jobs)
+	max_procs=${| ___makeopts_jobs; }
 	retval=0
 
 	while IFS= read -rd '' arg; do

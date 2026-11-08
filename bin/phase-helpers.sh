@@ -386,7 +386,7 @@ unpack() {
 	done
 
 	# Ensure that xz(1) operates in its multi-threaded mode.
-	XZ_OPT="-T$(___makeopts_jobs)"
+	XZ_OPT="-T${| ___makeopts_jobs; }"
 
 	for f; do
 		# wrt PMS 12.3.15 Misc Commands

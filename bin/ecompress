@@ -241,10 +241,10 @@ if [[ ! -v PORTAGE_COMPRESS_FLAGS ]] ; then
 			PORTAGE_COMPRESS_FLAGS="-m --rm"
 			;;
 		xz)
-			PORTAGE_COMPRESS_FLAGS="-q -T$(___makeopts_jobs) --memlimit-compress=50%"
+			PORTAGE_COMPRESS_FLAGS="-q -T${| ___makeopts_jobs; } --memlimit-compress=50%"
 			;;
 		zstd)
-			PORTAGE_COMPRESS_FLAGS="-q --rm -T$(___makeopts_jobs)";;
+			PORTAGE_COMPRESS_FLAGS="-q --rm -T${| ___makeopts_jobs; }";;
 	esac
 fi
 

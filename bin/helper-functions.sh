@@ -29,7 +29,7 @@ __multijob_init() {
 	|| die "__multijob_init: failed to set up the pipes"
 
 	# See how many children we can fork based on the user's settings.
-	mj_max_jobs=$(___makeopts_jobs "$@") || die
+	mj_max_jobs=${| ___makeopts_jobs; }
 	mj_num_jobs=0
 }
 
