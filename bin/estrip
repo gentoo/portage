@@ -231,7 +231,7 @@ process_elf() {
 	else
 		already_stripped=0
 		if (( do_preserve_xattr )); then
-			xt_data=$(dump_xattrs "${x}")
+			xt_data=${ dump_xattrs "${x}"; }
 		fi
 		save_elf_sources "${x}"
 		dedup_elf_debug "${x}" "${inode_link}_dedupdebug"
