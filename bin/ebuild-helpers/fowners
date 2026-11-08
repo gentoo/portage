@@ -19,7 +19,7 @@ fi
 
 __resolve_owner() {
 	local owner=$1
-	local pwdb_path pw_gid group user gid uid
+	local pwdb_path pw_gid group name user gid uid
 
 	pwdb_path=${PWDB_EROOT}/etc
 
@@ -29,7 +29,9 @@ __resolve_owner() {
 		if [[ ${user} == +([0-9]) ]]; then
 			uid=${user}
 		else
-			read -r uid pw_gid <<< "$(awk -F: -v u="${user}" '$1==u { print $3, $4 }' "${pwdb_path}"/passwd)"
+			while IFS=: read -r name _ uid pw_gid _ || [[ ${name} ]]; do
+				[[ ${name} == "${user}" ]] && break
+			done < "${pwdb_path}"/passwd
 			if [[ ${uid} != +([0-9]) ]]; then
 				__helpers_die "fowners: invalid user in ${pwdb_path}/passwd: ${owner}"
 				return
@@ -41,7 +43,9 @@ __resolve_owner() {
 		if [[ ${group} == +([0-9]) ]]; then
 			gid=${group}
 		else
-			gid=$(awk -F: -v g="${group}" '$1==g{print $3}' "${pwdb_path}"/group)
+			while IFS=: read -r name _ gid _ || [[ ${name} ]]; do
+				[[ ${name} == "${group}" ]] && break
+			done < "${pwdb_path}"/group
 			if [[ ${gid} != +([0-9]) ]]; then
 				__helpers_die "fowners: invalid group in ${pwdb_path}/group: ${owner}"
 				return
