@@ -141,6 +141,9 @@ Bug fixes:
 
 * Drop some more old repoman references (bug #914301).
 
+* dosym: Correct relative targets for pathnames containing pattern
+  metacharacters.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.

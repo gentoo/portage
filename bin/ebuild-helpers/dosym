@@ -70,6 +70,7 @@ if [[ ${option_r} ]]; then
 	linkdir=${linkdir%/*}	# poor man's dirname(1)
 	linkdir=${linkdir:-/}	# always keep the initial "/"
 
+	set -f
 	IFS=/
 	for comp in ${linkdir}; do
 		if [[ ${target%%/*} == "${comp}" ]]; then
@@ -80,6 +81,7 @@ if [[ ${option_r} ]]; then
 		fi
 	done
 	unset IFS
+	set +f
 	target=${target:-.}
 fi
 
