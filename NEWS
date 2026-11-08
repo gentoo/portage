@@ -21,9 +21,18 @@ Releases
 portage-3.0.84 (UNRELEASED)
 --------------
 
+More significant improvements to circular dependency handling, as well
+as performance improvements for merges (in particular binary packages).
+
+Fixed backtracking to not waste cycles on 'dead end' solutions, which are
+especially problematic with binpkgs where such solutions arise easily.
+
 Breaking changes:
 
 * ebuild.sh: Require bash-5.3 for all EAPIs.
+
+  The primary motivation for this was to use Bash's new nofork command
+  substitution.
 
 Features:
 
@@ -53,17 +62,48 @@ Features:
   BUILD_ID.
 
 * unmerge: Skip the pkg_prerm and pkg_postrm spawns when neither the package
-  nor any bashrc or ebuild hook file defines them (bug #570472). Top-level
-  bashrc code therefore no longer runs for those phases of such packages.
+  nor any bashrc or ebuild hook file defines them (bug #982327).
+
+  Top-level bashrc code therefore no longer runs for those phases of such
+  packages.
 
 * emerge: Unmerge packages in parallel with --jobs for --depclean, --prune,
-  --clean and AUTOCLEAN. With --depclean, and --prune without --nodeps, a
-  package is unmerged only after the packages that depend on it
-  (bug #570472).
+  --clean and AUTOCLEAN (bug #570472).
+
+  With --depclean, and --prune without --nodeps, a package is unmerged only
+  after the packages that depend on it.
 
 * config: Cache parsed /etc/portage/env files instead of parsing them again for
-  each package that uses them (bug #980779). Edits to these files are therefore
-  no longer seen by an emerge that is already running.
+  each package that uses them (bug #980779).
+
+  Edits to these files are therefore no longer seen by an emerge that is
+  already running.
+
+* vartree: Skip preserve-libs linkmap rebuild when it is unnecessary (bug #772353).
+
+  This improves merge time performance.
+
+* vartree: Use an index for package ownership lookups for paths.
+
+* EbuildPhase: Skip locks when no phases or hooks exist (bug #866085).
+
+  This should help binary package merge time performance in particular.
+
+* Scheduler: Don't serialise setup phases if not defined (bug #866085).
+
+  As we've done recently, conditionalise more on whether a phase is defined
+  as well as if any hooks exist for that phase.
+
+* BinpkgVerifier: Don't hash a binary package twice (bug #866085).
+
+* EbuildBuildDir: Don't hold category directory lock for as long (bug #866085).
+
+* emerge, Scheduler: Only report resource summary (from cgroups) with
+  emerge -vv (newly supported).
+
+* sets: Speed up matching package sets.
+
+* ebuild.sh: Avoid subshells when printing metadata keys.
 
 Bug fixes:
 
@@ -84,6 +124,26 @@ Bug fixes:
 
 * env-update: Warn and skip ldconfig(8) for unrecognised operating systems
   instead of raising UnboundLocalError (bug #984722).
+
+* bin: Explicitly die on sandbox violations for cleaner diagnostics (bug #984136).
+
+* man: make.conf(5), portage(5): Encourage use of ~/.netrc (bug #280478, bug #983349).
+
+* estrip: Fix matching paths to strip under Prefix.
+
+* estrip: Make dostrip arguments effective under RESTRICT=strip (bug #697960).
+
+* estrip: Install sources for objects excluded from stripping (bug #799260).
+
+* Scheduler: Exclude binpkgs from --jobs-tmpdir-require-free-gb.
+
+* ChangedDepsSet: Recognise IDEPEND.
+
+* Drop some more old repoman references (bug #914301).
+
+Cleanups:
+
+* man: Misc copyediting and formatting fixes.
 
 portage-3.0.83 (2026-10-11)
 --------------
