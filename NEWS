@@ -108,6 +108,9 @@ Features:
 * dosym: Accelerate pathname canonicalisation by processing components in a
   single pass.
 
+* estrip: Accelerate inode lookups by obtaining inode numbers for all candidate
+  files with a single invocation of find(1).
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata

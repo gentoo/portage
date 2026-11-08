@@ -287,16 +287,6 @@ process_ar() {
 	fi
 }
 
-if  [[ ${USERLAND} == BSD ]]; then
-	get_inode_number() {
-		stat -f '%i' "$1"
-	}
-else
-	get_inode_number() {
-		stat -c '%i' "$1"
-	}
-fi
-
 do_ignore() {
 	local -a skip_dirs
 	local skip
@@ -609,10 +599,19 @@ else
 	fi
 fi
 
-for x in "${estrip_files[@]}"; do
-	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
-	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
-done
+if (( ${#estrip_files[@]} )); then
+	mapfile -t inodes < <(
+		printf '%s\0' "${estrip_files[@]}" | find0 -maxdepth 0 -printf '%i\n'
+	)
+	if ! wait "$!" || (( ${#inodes[@]} != ${#estrip_files[@]} )); then
+		die "failed to determine the inode numbers"
+	fi
+	for i in "${!estrip_files[@]}"; do
+		if ! printf '%s\n' "${estrip_files[i]}" >> "${inodes[i]}"; then
+			die "failed to record file name for inode ${inodes[i]}"
+		fi
+	done
+fi
 
 # Now we look for unstripped binaries.
 read -rd '' -a safe_strip_flags <<<"${SAFE_STRIP_FLAGS}"
