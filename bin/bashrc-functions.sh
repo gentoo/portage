@@ -26,17 +26,15 @@ register_success_hook() {
 	done
 }
 
+# Assigns REPLY the value of the first parameter, with each run of slashes
+# collapsed into one.
 __strip_duplicate_slashes() {
-	local str=$1 reset_extglob
+	local reset_extglob
 
-	if [[ ${str} ]]; then
-		# The extglob option affects the behaviour of the parser and
-		# must thus be treated with caution. Given that extglob is not
-		# normally enabled by portage, use eval to conceal the pattern.
-		reset_extglob=$(shopt -p extglob)
-		eval "shopt -s extglob; str=\${str//+(\/)/\/}; ${reset_extglob}"
-		printf '%s\n' "${str}"
-	fi
+	reset_extglob=${ shopt -p extglob; }
+	shopt -s extglob
+	REPLY=${1//+(\/)/\/}
+	eval "${reset_extglob}"
 }
 
 KV_major() {

@@ -147,6 +147,8 @@ Bug fixes:
 * fowners: Stop after failed user or group lookups in a custom root, rather than
   proceed with an incomplete owner.
 
+* docompress, dostrip: Preserve trailing newline characters in pathnames.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.

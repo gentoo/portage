@@ -169,7 +169,7 @@ docompress() {
 		shift
 
 		for f; do
-			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			f=${| __strip_duplicate_slashes "${f}"; }; f=${f%/}
 			[[ ${f:0:1} = / ]] || f="/${f}"
 			for g in "${PORTAGE_DOCOMPRESS_SKIP[@]}"; do
 				[[ ${f} = "${g}" ]] && continue 2
@@ -178,7 +178,7 @@ docompress() {
 		done
 	else
 		for f; do
-			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			f=${| __strip_duplicate_slashes "${f}"; }; f=${f%/}
 			[[ ${f:0:1} = / ]] || f="/${f}"
 			for g in "${PORTAGE_DOCOMPRESS[@]}"; do
 				[[ ${f} = "${g}" ]] && continue 2
@@ -195,7 +195,7 @@ dostrip() {
 	if [[ $1 = "-x" ]]; then
 		shift
 		for f; do
-			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			f=${| __strip_duplicate_slashes "${f}"; }; f=${f%/}
 			[[ ${f:0:1} = / ]] || f="/${f}"
 			for g in "${PORTAGE_DOSTRIP_SKIP[@]}"; do
 				[[ ${f} = "${g}" ]] && continue 2
@@ -204,7 +204,7 @@ dostrip() {
 		done
 	else
 		for f; do
-			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			f=${| __strip_duplicate_slashes "${f}"; }; f=${f%/}
 			[[ ${f:0:1} = / ]] || f="/${f}"
 			for g in "${PORTAGE_DOSTRIP[@]}"; do
 				[[ ${f} = "${g}" ]] && continue 2
@@ -636,7 +636,7 @@ econf() {
 			[[ ${libdir} != /* ]] && libdir="/${libdir}"
 
 			conf_args+=(
-				--libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${libdir}")"
+				--libdir="${| __strip_duplicate_slashes "${CONF_PREFIX}${libdir}"; }"
 			)
 		fi
 
@@ -696,7 +696,7 @@ einstall() {
 
 	if [[ "${libdir}" && -v CONF_PREFIX ]]; then
 		local destlibdir="${D%/}/${CONF_PREFIX}/${libdir}"
-		destlibdir="$(__strip_duplicate_slashes "${destlibdir}")"
+		destlibdir=${| __strip_duplicate_slashes "${destlibdir}"; }
 		LOCAL_EXTRA_EINSTALL="libdir=${destlibdir} ${LOCAL_EXTRA_EINSTALL}"
 	fi
 
