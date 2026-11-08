@@ -154,6 +154,9 @@ Bug fixes:
 
 * dosym: Preserve trailing newline characters in target and link pathnames.
 
+* QA logging: Preserve values such as -n and -e instead of interpreting them as
+  echo options.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.

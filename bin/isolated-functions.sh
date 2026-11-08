@@ -553,21 +553,15 @@ __repo_attr() {
 	wait "$!" && [[ -v val ]] && printf '%s\n' "${val}"
 }
 
-# eqaquote <string>
+# __eqaquote <string>
 #
-# outputs parameter escaped for quoting
+# Assigns REPLY the value of the first parameter, with <backslash>,
+# <quotation-mark> and <newline> escaped for inclusion in a
+# double-quoted qa.log value.
 __eqaquote() {
-	local v=${1} esc=''
-
-	# quote backslashes
-	v=${v//\\/\\\\}
-	# quote the quotes
-	v=${v//\"/\\\"}
-	# quote newlines
-	while read -r; do
-		echo -n "${esc}${REPLY}"
-		esc='\n'
-	done <<<"${v}"
+	REPLY=${1//\\/\\\\}
+	REPLY=${REPLY//\"/\\\"}
+	REPLY=${REPLY//$'\n'/\\n}
 }
 
 # eqatag <tag> [-v] [<key>=<value>...] [/<relative-path>...]
@@ -609,13 +603,13 @@ __eqatag() {
 		if [[ ${#data[@]} -gt 0 ]]; then
 			echo "  data:"
 			for i in "${data[@]}"; do
-				echo "    ${i%%=*}: \"$(__eqaquote "${i#*=}")\""
+				echo "    ${i%%=*}: \"${| __eqaquote "${i#*=}"; }\""
 			done
 		fi
 		if [[ ${#filenames[@]} -gt 0 ]]; then
 			echo "  files:"
 			for i in "${filenames[@]}"; do
-				echo "    - \"$(__eqaquote "${i}")\""
+				echo "    - \"${| __eqaquote "${i}"; }\""
 			done
 		fi
 	) >> "${T}"/qa.log
