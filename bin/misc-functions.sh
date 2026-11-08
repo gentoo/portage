@@ -245,7 +245,11 @@ install_qa_check() {
 
 			if contains_word binchecks "${PORTAGE_RESTRICT}"; then
 				eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
-				eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
+				eqawarn "${
+					while IFS=';' read -r _ x _; do
+						printf '%s\n' "${x#"${EPREFIX}"}"
+					done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
+				}"
 			fi
 		fi
 	fi
