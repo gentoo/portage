@@ -383,26 +383,25 @@ postinst_qa_check() {
 }
 
 preinst_mask() {
+	local IFS - subdir
+
 	# Remove man pages, info pages, docs if requested. This is
 	# implemented in bash in order to respect INSTALL_MASK settings
 	# from bashrc.
-	local f x
-	for f in man info doc; do
-		if contains_word "no${f}" "${FEATURES}"; then
-			INSTALL_MASK+=" ${EPREFIX}/usr/share/${f}"
+	for subdir in man info doc; do
+		if contains_word "no${subdir}" "${FEATURES}"; then
+			INSTALL_MASK+=" ${EPREFIX}/usr/share/${subdir}"
 		fi
 	done
 
-	# Store modified variables in build-info.
+	# Store INSTALL_MASK in build-info with whitespace collapsed.
 	cd "${PORTAGE_BUILDDIR}"/build-info || die
-	set -f
 
-	IFS=$' \t\n\r'
-	for f in INSTALL_MASK; do
-		x=$(echo -n ${!f})
-		[[ -n ${x} ]] && echo "${x}" > "${f}"
-	done
-	set +f
+	set -f
+	set -- ${INSTALL_MASK}
+	if (( $# )); then
+		printf '%s\n' "$*" > INSTALL_MASK
+	fi
 }
 
 preinst_sfperms() {
