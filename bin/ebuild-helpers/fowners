@@ -17,6 +17,8 @@ else
 	PWDB_EROOT=${EROOT%/}
 fi
 
+# Assigns REPLY the numeric form of the owner given by the first parameter,
+# resolving any names against the passwd and group files of the custom root.
 __resolve_owner() {
 	local owner=$1
 	local pwdb_path pw_gid group name user gid uid
@@ -62,7 +64,7 @@ __resolve_owner() {
 		fi
 	fi
 
-	printf %s "${uid}" "${gid}"
+	REPLY=${uid}${gid}
 }
 
 args=()
@@ -75,7 +77,7 @@ for arg; do
 		got_owner=1
 		# use numeric-uid-gid from the custom target root
 		if [[ -n ${PWDB_ROOT} ]]; then
-			owner=$(__resolve_owner "${arg}") || exit
+			owner=${| __resolve_owner "${arg}"; } || exit
 			args+=( "${owner}" )
 		else
 			args+=( "${arg}" )
