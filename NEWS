@@ -105,6 +105,9 @@ Features:
 
 * ebuild.sh: Avoid subshells when printing metadata keys.
 
+* depgraph: Make FEATURES="buildpkg-proactive" trigger a rebuild when
+  --binpkg-respect-user-patches would mask a binary package.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata
