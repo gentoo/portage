@@ -1770,6 +1770,7 @@ class Scheduler(PollScheduler):
         self._running_tasks.pop(id(merge), None)
         self._observability.note_task_finished(merge)
         self._do_merge_exit(merge)
+        self._show_merge_summary(merge)
         self._cgroup_finish(merge.merge, action="install", record=False)
         self._deallocate_config(merge.merge.settings)
         if merge.returncode == os.EX_OK and not merge.merge.pkg.installed:
@@ -1777,6 +1778,23 @@ class Scheduler(PollScheduler):
         self._status_display.merges = len(self._task_queues.merge)
         self._observability.update()
         self._schedule()
+
+    def _show_merge_summary(self, merge):
+        """
+        Echo the duration of the contents merge past the status display in
+        background mode, since it is otherwise only written to the build
+        log. Like the resource usage summary, only for -vv.
+        """
+        summary = merge.merge_summary
+        if (
+            summary is not None
+            and self._background
+            and self.myopts.get("--verbose", 0) >= 2
+        ):
+            self._status_display.displayMessage(
+                f"=== Merged package contents of {merge.merge.pkg.cpv} in {summary}",
+                raw=True,
+            )
 
     def _do_merge_exit(self, merge):
         pkg = merge.merge.pkg

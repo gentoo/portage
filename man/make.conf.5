@@ -1344,7 +1344,9 @@ from the image directory (${D}) to the live filesystem (${ROOT}). This
 does not affect how many packages are merged in parallel. If set to
 \fIauto\fR, then the job count in \fBMAKEOPTS\fR (\-j) is used, falling
 back to the number of available CPUs. If set, then the time it took to
-merge the files is shown after the merge.
+merge the files is shown after the merge. In background mode, e.g. with
+\fBemerge \-\-jobs\fR, it is only written to the build log, unless
+\fBemerge \-vv\fR is used.
 .br
 Defaults to 1, which merges the files sequentially.
 .TP

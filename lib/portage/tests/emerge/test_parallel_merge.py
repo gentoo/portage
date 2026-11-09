@@ -4,7 +4,10 @@
 import os
 import re
 import subprocess
+from types import SimpleNamespace
 from unittest import mock
+
+from _emerge.Scheduler import Scheduler
 
 import portage
 from portage.const import PORTAGE_PYM_PATH
@@ -41,6 +44,50 @@ class ParseMergeJobsTestCase(TestCase):
 
         with mock.patch("portage.util.cpuinfo.get_cpu_count", return_value=None):
             self.assertEqual(_parse_merge_jobs("auto", None), 1)
+
+
+class MergeSummaryDisplayTestCase(TestCase):
+    def _show_merge_summary(self, summary, background, verbose):
+        """Run Scheduler._show_merge_summary() and return what it displayed."""
+        displayed = []
+        sched = Scheduler.__new__(Scheduler)
+        sched.myopts = {"--verbose": verbose} if verbose else {}
+        sched._background = background
+        sched._status_display = SimpleNamespace(
+            displayMessage=lambda msg, raw=False: displayed.append((msg, raw))
+        )
+        merge = SimpleNamespace(
+            merge=SimpleNamespace(pkg=SimpleNamespace(cpv="app-misc/foo-1")),
+            merge_summary=summary,
+        )
+        sched._show_merge_summary(merge)
+        return displayed
+
+    def testVeryVerboseBackground(self):
+        self.assertEqual(
+            self._show_merge_summary("0.12s (4 jobs, 3 tasks)", True, 2),
+            [
+                (
+                    "=== Merged package contents of app-misc/foo-1 in 0.12s (4 jobs, 3 tasks)",
+                    True,
+                )
+            ],
+        )
+
+    def testNotDisplayed(self):
+        for summary, background, verbose in (
+            # Without PORTAGE_MERGE_JOBS, there is no summary.
+            (None, True, 2),
+            # In the foreground, the summary is already in the output.
+            ("0.12s (4 jobs, 3 tasks)", False, 2),
+            # Like the resource usage summary, it takes -vv.
+            ("0.12s (4 jobs)", True, 1),
+            ("0.12s (4 jobs)", True, 0),
+        ):
+            with self.subTest(summary=summary, background=background, verbose=verbose):
+                self.assertEqual(
+                    self._show_merge_summary(summary, background, verbose), []
+                )
 
 
 class ParallelMergeTestCase(TestCase):
@@ -360,6 +407,24 @@ src_install() {
                 contents_map_2.get(os.path.join(eprefix, "etc/test.conf")),
                 "obj",
             )
+
+            # In background mode, the summary only goes to the build log, so
+            # with -vv emerge echoes it past the status display.
+            merge_out_bg = run_cmd(
+                emerge_cmd + ("-1", "-vv", "--quiet-build=y", "=app-misc/testpkg-1")
+            )
+            self.assertTrue(
+                any(
+                    re.search(
+                        r"=== Merged package contents of app-misc/testpkg-1 in "
+                        r".*\(4 jobs, \d+ tasks?\)",
+                        line,
+                    )
+                    for line in merge_out_bg
+                ),
+                f"Expected merge timing summary in background output, got: {''.join(merge_out_bg)}",
+            )
+            self.assertEqual(read_contents(), contents_map_2)
 
             # PORTAGE_MERGE_JOBS=auto uses the -j value of MAKEOPTS.
             merge_out_auto = run_cmd(

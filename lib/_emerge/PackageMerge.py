@@ -8,7 +8,7 @@ from _emerge.CompositeTask import CompositeTask
 
 
 class PackageMerge(CompositeTask):
-    __slots__ = ("is_system_pkg", "merge", "postinst_failure")
+    __slots__ = ("is_system_pkg", "merge", "merge_summary", "postinst_failure")
 
     def _should_show_status(self):
         return (
@@ -54,6 +54,7 @@ class PackageMerge(CompositeTask):
         self._start_task(task, self._install_exit)
 
     def _install_exit(self, task):
+        self.merge_summary = getattr(task, "merge_summary", None)
         self.postinst_failure = getattr(task, "postinst_failure", None)
 
         pkg = self.merge.pkg

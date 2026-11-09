@@ -1961,6 +1961,7 @@ class dblink:
         scheduler=None,
         pipe=None,
         mtime_pipe=None,
+        merge_summary_pipe=None,
     ):
         """
         Creates a DBlink object for a given CPV.
@@ -1978,6 +1979,9 @@ class dblink:
         @type treetype: String
         @param vartree: an instance of vartree corresponding to myroot.
         @type vartree: vartree
+        @param merge_summary_pipe: if given, the summary of the contents
+                merge is sent through it, see _send_merge_summary()
+        @type merge_summary_pipe: multiprocessing.connection.Connection
         """
         from portage.util import normalize_path
         from portage.versions import _pkg_str
@@ -2021,6 +2025,7 @@ class dblink:
         self._device_path_map = {}
         self._hardlink_merge_map = {}
         self._hash_key = (self._eroot, self.mycpv)
+        self._merge_summary_pipe = merge_summary_pipe
         self._mtime_pipe = mtime_pipe
         self._protect_obj = None
         self._pipe = pipe
@@ -4372,6 +4377,17 @@ class dblink:
 
         self._mtime_pipe.send(mtimes)
 
+    def _send_merge_summary(self, summary):
+        """
+        Send the summary of the contents merge, e.g. "0.12s (4 jobs)", to
+        the parent process, so that emerge can show it past its status
+        display in background mode.
+        """
+        if self._merge_summary_pipe is None:
+            return
+
+        self._merge_summary_pipe.send(summary)
+
     def treewalk(
         self,
         srcroot,
@@ -5538,10 +5554,12 @@ class dblink:
             if merge_jobs > 1 and self._verbose_level >= 2:
                 tasks = merge_stats.get("tasks", 0)
                 jobs_str += f", {tasks} tasks" if tasks != 1 else ", 1 task"
+            summary = f"{elapsed:.2f}s ({jobs_str})"
             self._display_merge(
-                _(">>> Merged package contents in %.2fs (%s)\n") % (elapsed, jobs_str),
+                _(">>> Merged package contents in %s\n") % summary,
                 noiselevel=-1,
             )
+            self._send_merge_summary(summary)
 
         return os.EX_OK
 
