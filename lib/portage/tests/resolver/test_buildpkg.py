@@ -24,6 +24,7 @@ class BuildPkgTestCase(TestCase):
                 "RDEPEND": "app-misc/B",
             },
             "app-misc/B-0": {},
+            "net-misc/A-0": {},
         }
 
         installed = {
@@ -35,6 +36,7 @@ class BuildPkgTestCase(TestCase):
             "dev-libs/G-1": {"IUSE": "static", "USE": "static"},
             "dev-libs/H-1": {"IUSE": "static", "USE": "static"},
             "app-misc/A-0": {},
+            "net-misc/A-0": {},
         }
 
         binpkgs = {
@@ -76,6 +78,11 @@ class BuildPkgTestCase(TestCase):
             "app-misc/A-0": {
                 "BUILD_ID": "1",
                 "BUILD_TIME": "1",
+            },
+            "net-misc/A-0": {
+                "BUILD_ID": "1",
+                "BUILD_TIME": "1",
+                "USER_PATCHES": "b653983cf3124989d2e47059deaf912af7dc4774ab675244ae0f8965e75812f1",
             },
         }
 
@@ -168,6 +175,18 @@ class BuildPkgTestCase(TestCase):
                 success=True,
                 options={"--update": True, "--binpkg-changed-deps": "y"},
                 mergelist=["app-misc/B-0", "app-misc/A-0"],
+            ),
+            ResolverPlaygroundTestCase(
+                ["net-misc/A"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-user-patches": "n"},
+                mergelist=[],
+            ),
+            ResolverPlaygroundTestCase(
+                ["net-misc/A"],
+                success=True,
+                options={"--update": True, "--binpkg-respect-user-patches": "y"},
+                mergelist=["net-misc/A-0"],
             ),
         )
 

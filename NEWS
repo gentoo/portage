@@ -112,6 +112,9 @@ Features:
 * estrip: Accelerate inode lookups by obtaining inode numbers for all candidate
   files with a single invocation of find(1).
 
+* depgraph: Make FEATURES="buildpkg-proactive" trigger a rebuild when
+  --binpkg-respect-user-patches would mask a binary package.
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata
