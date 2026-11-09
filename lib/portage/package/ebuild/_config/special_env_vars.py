@@ -43,6 +43,7 @@ env_blacklist = frozenset(
         "IUSE_EFFECTIVE",
         "KEYWORDS",
         "LICENSE",
+        "MASKED_USE",
         "MERGE_TYPE",
         "PDEPEND",
         "PF",

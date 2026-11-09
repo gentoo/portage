@@ -39,6 +39,7 @@ from portage.const import (
 from portage.dbapi import dbapi
 from portage.dep import (
     Atom,
+    get_masked_use,
     isvalidatom,
     use_reduce,
 )
@@ -176,6 +177,7 @@ class config:
         "REQUIRED_USE",
         "KEYWORDS",
         "LICENSE",
+        "MASKED_USE",
         "PDEPEND",
         "PROPERTIES",
         "RDEPEND",
@@ -1864,6 +1866,7 @@ class config:
         pkg_configdict = self.configdict["pkg"]
         previous_iuse = pkg_configdict.get("IUSE")
         previous_iuse_effective = pkg_configdict.get("IUSE_EFFECTIVE")
+        previous_masked_use = pkg_configdict.get("MASKED_USE", "")
         previous_features = pkg_configdict.get("FEATURES")
         previous_penv = self._penv
 
@@ -2105,6 +2108,16 @@ class config:
         ):
             has_changed = True
 
+        if eapi_attrs.masked_use:
+            masked_use = pkg_configdict.get("MASKED_USE", "")
+        else:
+            # Discard it, so that it is not seen as the previous value
+            # by the next call.
+            pkg_configdict.pop("MASKED_USE", None)
+            masked_use = ""
+        if masked_use != previous_masked_use:
+            has_changed = True
+
         if has_changed:
             # This can modify self.features due to package.env settings.
             self.reset(keeping_pkg=1)
@@ -2268,15 +2281,6 @@ class config:
         # that they are consistent. For optimal performance, use slice
         # comparison instead of startswith().
         use_expand_split = {x.lower() for x in self.get("USE_EXPAND", "").split()}
-        lazy_use_expand = self._lazy_use_expand(
-            self,
-            unfiltered_use,
-            use,
-            self.usemask,
-            portage_iuse,
-            use_expand_split,
-            self._use_expand_dict,
-        )
 
         use_expand_iuses = {k: set() for k in use_expand_split}
         for x in portage_iuse:
@@ -2292,6 +2296,35 @@ class config:
         for k, use_expand_iuse in use_expand_iuses.items():
             if k + "_*" in use:
                 use.update(x for x in use_expand_iuse if x not in usemask)
+
+        if masked_use:
+            # Mask the flags that MASKED_USE says are meaningless for these
+            # USE settings. This comes last, since it depends on the state
+            # of all other flags. Record the result in self.usemask, so that
+            # these flags are handled just like the ones that are masked by
+            # the profile.
+            try:
+                conditional_usemask = get_masked_use(masked_use, use)
+            except InvalidDependString:
+                # Package._validate_deps() reports this, and it masks the
+                # package.
+                pass
+            else:
+                if conditional_usemask:
+                    use.difference_update(conditional_usemask)
+                    self.usemask = frozenset(self.usemask).union(conditional_usemask)
+
+        lazy_use_expand = self._lazy_use_expand(
+            self,
+            unfiltered_use,
+            use,
+            self.usemask,
+            portage_iuse,
+            use_expand_split,
+            self._use_expand_dict,
+        )
+
+        for k in use_expand_iuses:
             k = k.upper()
             self.configdict["env"].addLazySingleton(k, lazy_use_expand.__getitem__, k)
 
