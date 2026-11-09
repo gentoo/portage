@@ -1,0 +1,2 @@
+save-ebuild-env.sh: Prevent the internal __pipestatus() function from leaking
+into the saved ebuild environment, as it has done since portage-3.0.73.

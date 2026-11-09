@@ -1,0 +1,2 @@
+XARGS is no longer exported to the ebuild environment. Its value was
+invariably equivalent to "xargs -r".

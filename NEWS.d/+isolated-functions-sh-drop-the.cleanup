@@ -1,0 +1,2 @@
+isolated-functions.sh: Drop the RC_ENDCOL, LAST_E_CMD and LAST_E_LEN
+variables, which served a defunct method of positioning the eend indicator.

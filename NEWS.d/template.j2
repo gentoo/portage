@@ -1,0 +1,48 @@
+{#
+  towncrier template reproducing the layout of NEWS.
+
+  Summary fragments become plain paragraphs below the release heading.
+  All other fragments become "* " bullets, sorted by their text, with
+  continuation lines indented by two spaces.  Bugs referenced by the
+  fragment file name are appended to the first paragraph, before its
+  final full stop, e.g. "(bug #123456, bug #123457).".
+#}
+{% if render_title %}
+{{ versiondata.name }}-{{ versiondata.version }} ({{ versiondata.date }})
+{{ top_underline * (versiondata.name ~ "-" ~ versiondata.version)|length }}
+
+{% endif %}
+{% for section in sections %}
+{% for category, definition in definitions.items() if category in sections[section] %}
+{% set entries = sections[section][category] %}
+{% if category == "summary" %}
+{% for text in entries %}
+{{ text }}
+
+{% endfor %}
+{% else %}
+{{ definition.name }}:
+
+{% for text, values in entries.items()|sort(attribute="0") %}
+{% set paras = text.split("\n\n", 1) %}
+{% set first = paras[0] %}
+{% if values %}
+{% set refs = "(" ~ values|join(", ") ~ ")" %}
+{% set stop = "." if first.endswith(".") else "" %}
+{% if stop %}{% set first = first[:-1] %}{% endif %}
+{% if (first.split("\n")|last|length) + refs|length + stop|length + 3 > 80 %}
+{% set first = first ~ "\n" ~ refs ~ stop %}
+{% else %}
+{% set first = first ~ " " ~ refs ~ stop %}
+{% endif %}
+{% endif %}
+* {{ first|indent(2) }}
+{% if paras|length > 1 %}
+
+{{ paras[1]|indent(2, first=True) }}
+{% endif %}
+
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endfor %}

@@ -1,0 +1,2 @@
+isolated-functions.sh: Prevent the state of the output commands from being
+inherited from the environment, so as to protect against code injection.

@@ -1,0 +1,2 @@
+emake: Preserve the COLUMNS value supplied by the ebuild when printing the
+command line, preventing failures in the Python test suite.

@@ -1,0 +1,4 @@
+ebuild.sh: Require bash-5.3 for all EAPIs.
+
+The primary motivation for this was to use Bash's new nofork command
+substitution.

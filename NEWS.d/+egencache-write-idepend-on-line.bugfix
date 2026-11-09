@@ -1,0 +1,6 @@
+egencache: Write IDEPEND on line 18 of the legacy metadata/cache format, as
+PMS requires. It was written on line 10, which moved every following key,
+including EAPI, down by one line. Caches written by portage-3.0.39 and later
+are misread by this version, and vice versa. Repositories that publish
+metadata/cache must run egencache --update once after upgrading; switching
+to cache-formats = md5-dict avoids the problem entirely.

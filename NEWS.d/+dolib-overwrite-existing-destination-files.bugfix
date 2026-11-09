@@ -1,0 +1,2 @@
+dolib: Overwrite existing destination files when installing symbolic links, as
+required by PMS. Preserve trailing newline characters in link targets.

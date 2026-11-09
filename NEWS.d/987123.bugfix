@@ -1,0 +1,2 @@
+PackagePhase: Fix a performance regression caused by needlessly copying the
+image directory prior to creating a binary package.

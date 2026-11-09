@@ -1,0 +1,2 @@
+isolated-functions.sh: Validate the terminal width before using it in an
+arithmetic context, so as to protect against code injection.

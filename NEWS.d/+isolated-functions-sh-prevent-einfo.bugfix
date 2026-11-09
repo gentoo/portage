@@ -1,0 +1,2 @@
+isolated-functions.sh: Prevent einfo, einfon, elog, ewarn, eqawarn and eerror
+from treating any of their arguments as options of the echo builtin.

@@ -1,0 +1,2 @@
+config: Restore the warnings import, the absence of which caused deprecation
+warnings to raise NameError instead.

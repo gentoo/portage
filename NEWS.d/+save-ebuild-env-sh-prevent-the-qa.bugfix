@@ -1,0 +1,2 @@
+save-ebuild-env.sh: Prevent the QA interceptor functions from leaking into the
+saved ebuild environment, a regression introduced by portage-3.0.69.

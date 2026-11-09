@@ -161,9 +161,9 @@ change a lot of unrelated things.  This makes it easier to see what
 parts of the system have actually changed.  It also makes it easier to
 cherry-pick and revert commits. Use your common sense!
 
-When you make a significant change, make sure to update NEWS
-for the to-be-released version. See the current entries to these files for
-examples of what constitutes significant.
+When you make a significant change, add a news fragment to NEWS.d as
+described in NEWS.d/README.  See the entries in NEWS for examples of
+what constitutes significant.
 
 Commit messages
 ---------------
@@ -212,9 +212,12 @@ Releases
 0. Before starting: CI MUST BE GREEN!
 
 1. Repository mangling:
-	- Update NEWS (for both new version and release date)
+	- Collect the news fragments into NEWS (requires dev-python/towncrier):
+	  towncrier build --yes --version ${VERSION}
+	  This also removes the fragments with git rm. Review the new NEWS
+	  section, e.g. the order of the entries.
 	- Update meson.build
-	- git commit --signoff --message "NEWS, meson.build: prepare for portage-${VERSION}" NEWS meson.build
+	- git commit --signoff --message "NEWS, meson.build: prepare for portage-${VERSION}" NEWS NEWS.d meson.build
 
 2. Run the tests:
      - meson setup -Dcode-only=true build

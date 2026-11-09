@@ -1,0 +1,3 @@
+isolated-functions.sh: Print the diagnostic messages of failed helpers
+verbatim where nonfatal is in effect, rather than interpret backslash-escape
+sequences or treat arguments as options of the echo builtin.
