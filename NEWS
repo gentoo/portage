@@ -103,7 +103,8 @@ Features:
 
 * sets: Speed up matching package sets.
 
-* ebuild.sh: Avoid subshells when printing metadata keys.
+* ebuild.sh: Speed up metadata generation by avoiding a subshell for each
+  metadata key in the depend phase.
 
 * dosym: Accelerate pathname canonicalisation by processing components in a
   single pass.
