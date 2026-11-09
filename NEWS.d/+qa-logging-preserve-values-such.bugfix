@@ -1,0 +1,2 @@
+QA logging: Preserve values such as -n and -e instead of interpreting them as
+echo options.

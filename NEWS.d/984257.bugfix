@@ -1,0 +1,2 @@
+elog: Prevent valid messages containing carriage returns from being rejected
+as malformed.

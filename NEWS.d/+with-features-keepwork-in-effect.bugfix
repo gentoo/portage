@@ -1,0 +1,2 @@
+With FEATURES="keepwork" in effect, the clean phase once again removes
+nested empty directories from the build directory, WORKDIR excepted.

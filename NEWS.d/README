@@ -1,0 +1,47 @@
+News fragments
+--------------
+
+Each change that belongs in NEWS gets its own file in this directory.  At
+release time, towncrier collects the files into NEWS and removes them.
+
+Name the file <bug>.<type>, e.g. 984255.bugfix, or +<name>.<type> for a
+change without a bug, e.g. +estrip-prefix.bugfix.  The types are:
+
+  summary      Paragraphs below the release heading
+  breaking     Breaking changes
+  security     Security
+  feature      Features
+  bugfix       Bug fixes
+  performance  Performance
+  cleanup      Cleanups
+
+The file contains the entry as it should appear in NEWS, without the
+leading "* " and the indentation.  Separate further paragraphs with a
+blank line:
+
+  vartree: Skip preserve-libs linkmap rebuild when it is unnecessary.
+
+  This improves merge time performance.
+
+For a file named after a bug, "(bug #N)" is added to the end of the first
+paragraph.  If a change fixes several bugs, symlink the other bug numbers
+to the first fragment:
+
+  ln -s 175808.feature NEWS.d/222601.feature
+
+A second fragment for the same bug and type takes a counter, e.g.,
+984255.bugfix.1.
+
+Entries are sorted by their text.  Starting an entry with the component,
+as in commit messages, keeps related changes together.
+
+Cheat sheet
+-----------
+
+  towncrier create --edit 984255.bugfix       # new fragment
+  towncrier create --edit +<name>.feature     # new fragment without a bug
+  towncrier build --draft --version 3.0.85    # preview the next release
+  towncrier build --yes --version 3.0.85      # update NEWS, git rm fragments
+
+Always pass --version.  Without it, towncrier uses the version of the
+installed portage.

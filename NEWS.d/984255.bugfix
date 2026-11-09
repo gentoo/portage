@@ -1,0 +1,2 @@
+bintree: Fix a performance regression caused by needlessly extracting metadata
+from binary packages built without user patches.

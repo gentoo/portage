@@ -1,0 +1,2 @@
+config: Fix a defective comparison that prevented setcpv() from returning
+early where nothing had changed.

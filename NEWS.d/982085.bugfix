@@ -1,0 +1,2 @@
+spawn: Reset inherited signal handlers in the pid-sandbox supervisor to prevent
+spurious stty(1) diagnostics upon resizing the terminal.

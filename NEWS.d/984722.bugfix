@@ -1,0 +1,2 @@
+env-update: Warn and skip ldconfig(8) for unrecognised operating systems
+instead of raising UnboundLocalError.

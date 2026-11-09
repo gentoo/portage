@@ -1,0 +1,2 @@
+fowners: Stop after failed user or group lookups in a custom root, rather than
+proceed with an incomplete owner.

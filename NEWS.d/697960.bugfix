@@ -1,0 +1,1 @@
+estrip: Make dostrip arguments effective under RESTRICT=strip.

@@ -1,0 +1,2 @@
+EbuildExecuter: Prevent src phases from being erroneously skipped for packages
+whose metadata cache entries lack DEFINED_PHASES.

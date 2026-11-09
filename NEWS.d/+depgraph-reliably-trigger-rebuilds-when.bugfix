@@ -1,0 +1,2 @@
+depgraph: Reliably trigger rebuilds when the same dependency is in both DEPEND
+and BDEPEND across different roots.

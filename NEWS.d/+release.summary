@@ -1,0 +1,5 @@
+More significant improvements to circular dependency handling, as well
+as performance improvements for merges (in particular binary packages).
+
+Fixed backtracking to not waste cycles on 'dead end' solutions, which are
+especially problematic with binpkgs where such solutions arise easily.

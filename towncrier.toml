@@ -1,0 +1,52 @@
+[tool.towncrier]
+filename = "NEWS"
+directory = "NEWS.d"
+template = "NEWS.d/template.j2"
+# Insert new releases below the "Releases" heading.
+start_string = "--------\nReleases\n--------\n"
+issue_format = "bug #{issue}"
+# Fragments are named after a Gentoo bug number or start with '+'.
+issue_pattern = "\\d+"
+underlines = ["-"]
+all_bullets = false
+# Use an explicit ignore list, so that types in fragments, e.g.,
+# 123456.bugfx are rejected by towncrier.
+ignore = ["README", "template.j2"]
+
+# Categories are listed in the order they appear in NEWS.
+
+[[tool.towncrier.type]]
+directory = "summary"
+name = "Summary"
+showcontent = true
+check = false
+
+[[tool.towncrier.type]]
+directory = "breaking"
+name = "Breaking changes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "security"
+name = "Security"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "Features"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bug fixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "performance"
+name = "Performance"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "cleanup"
+name = "Cleanups"
+showcontent = true

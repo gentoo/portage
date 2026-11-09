@@ -1,0 +1,2 @@
+output: Use os.get_terminal_size() to obtain terminal dimensions, avoiding
+incorrect results and spurious diagnostics from stty(1).

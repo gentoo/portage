@@ -1,0 +1,3 @@
+phase-functions.sh: Prevent src phases from being erroneously skipped where
+PATCHES is an array whose first element is unset or empty, leaving its
+patches unapplied.

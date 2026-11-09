@@ -1,0 +1,3 @@
+PackagePhase: Prevent hard links from being broken in binary packages created
+with PKG_INSTALL_MASK or FEATURES=packdebug in effect, as could occur with
+GNU coreutils 9.10 or later.
