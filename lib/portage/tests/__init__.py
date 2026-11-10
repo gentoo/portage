@@ -81,12 +81,6 @@ def get_pythonpath():
 
 
 class TestCase(unittest.TestCase):
-    """
-    We need a way to mark a unit test as "ok to fail"
-    This way someone can add a broken test and mark it as failed
-    and then fix the code later.  This may not be a great approach
-    (broken code!!??!11oneone) but it does happen at times.
-    """
 
     def __init__(self, *pargs, **kwargs):
         unittest.TestCase.__init__(self, *pargs, **kwargs)

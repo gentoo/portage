@@ -93,11 +93,13 @@ class ResolverPlayground:
     config_files = frozenset(
         (
             "eapi",
+            "bashrc",
             "binrepos.conf",
             "layout.conf",
             "make.conf",
             "modules",
             "package.accept_keywords",
+            "package.bashrc",
             "package.env",
             "package.keywords",
             "package.license",
@@ -851,11 +853,19 @@ class ResolverPlayground:
 
                 if profile:
                     for config_file, lines in profile.items():
-                        if config_file not in self.config_files:
+                        if config_file not in self.config_files and not any(
+                            fnmatch.fnmatch(config_file, os.path.join(x, "*"))
+                            for x in self.config_files
+                        ):
                             raise ValueError(f"Unknown config file: '{config_file}'")
 
                         file_name = os.path.join(sub_profile_dir, config_file)
+                        if "/" in config_file and not os.path.isdir(
+                            os.path.dirname(file_name)
+                        ):
+                            os.makedirs(os.path.dirname(file_name))
                         with open(file_name, "w") as f:
+                            print(file_name)
                             f.writelines(f"{line}\n" for line in lines)
 
                 # Create profile symlink
@@ -918,10 +928,16 @@ class ResolverPlayground:
             )
 
         for config_file, lines in configs.items():
-            if config_file not in self.config_files:
+            if config_file not in self.config_files and not any(
+                fnmatch.fnmatch(config_file, os.path.join(x, "*"))
+                for x in self.config_files
+            ):
                 raise ValueError(f"Unknown config file: '{config_file}'")
 
             file_name = os.path.join(user_config_dir, config_file)
+            if "/" in config_file and not os.path.isdir(os.path.dirname(file_name)):
+                os.makedirs(os.path.dirname(file_name))
+
             with open(file_name, "w") as f:
                 f.writelines(f"{line}\n" for line in lines)
 
