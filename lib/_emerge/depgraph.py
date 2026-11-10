@@ -46,7 +46,6 @@ from portage.exception import (
     CorruptionKeyError,
     InvalidAtom,
     InvalidBinaryPackageFormat,
-    InvalidData,
     InvalidDependString,
     PackageNotFound,
     PortageException,
@@ -2050,9 +2049,7 @@ class depgraph:
                     conflict_graph.add(matched[0], parent)
                 else:
                     # This typically means that autounmask broke a
-                    # USE-dep, but it could also be due to the slot
-                    # not matching due to multislot (bug #220341).
-                    # Either way, don't try to solve this conflict.
+                    # USE-dep, so don't try to solve this conflict.
                     # Instead, force them all into the graph so that
                     # they are protected from removal.
                     non_matching_forced.update(conflict)
@@ -7429,68 +7426,6 @@ class depgraph:
                             continue
                         matched_something = True
                         yield pkg
-
-        # USE=multislot can make an installed package appear as if
-        # it doesn't satisfy a slot dependency. Rebuilding the ebuild
-        # won't do any good as long as USE=multislot is enabled since
-        # the newly built package still won't have the expected slot.
-        # Therefore, assume that such SLOT dependencies are already
-        # satisfied rather than forcing a rebuild.
-        if (
-            not matched_something
-            and installed
-            and atom.slot is not None
-            and not atom.slot_operator_built
-        ):
-            if "remove" in self._dynamic_config.myparams:
-                # We need to search the portdbapi, which is not in our
-                # normal dbs list, in order to find the real SLOT.
-                portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
-                db_keys = list(portdb._aux_cache_keys)
-                dbs = [(portdb, "ebuild", False, False, db_keys)]
-            else:
-                dbs = self._dynamic_config._filtered_trees[root_config.root]["dbs"]
-
-            cp_list = db.cp_list(atom_exp.cp)
-            if cp_list:
-                atom_set = InternalPackageSet(
-                    initial_atoms=(atom.without_slot,), allow_repo=True
-                )
-                atom_exp_without_slot = atom_exp.without_slot
-                cp_list.reverse()
-                for cpv in cp_list:
-                    if not match_from_list(atom_exp_without_slot, [cpv]):
-                        continue
-                    slot_available = False
-                    for (
-                        other_db,
-                        other_type,
-                        other_built,
-                        other_installed,
-                        other_keys,
-                    ) in dbs:
-                        try:
-                            if portage.dep._match_slot(
-                                atom, other_db._pkg_str(str(cpv), None)
-                            ):
-                                slot_available = True
-                                break
-                        except (KeyError, InvalidData):
-                            pass
-                    if not slot_available:
-                        continue
-                    inst_pkg = self._pkg(
-                        cpv,
-                        "installed",
-                        root_config,
-                        installed=installed,
-                        myrepo=atom.repo,
-                    )
-                    # Remove the slot from the atom and verify that
-                    # the package matches the resulting atom.
-                    if atom_set.findAtomForPackage(inst_pkg):
-                        yield inst_pkg
-                        return
 
     def _select_pkg_highest_available(self, root, atom, onlydeps=False, parent=None):
         if atom.package:
