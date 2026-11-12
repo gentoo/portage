@@ -173,6 +173,9 @@ Bug fixes:
 * With FEATURES="keepwork" in effect, the clean phase once again removes
   nested empty directories from the build directory, WORKDIR excepted.
 
+* config: Restore the warnings import, the absence of which caused deprecation
+  warnings to raise NameError instead.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.

@@ -17,6 +17,7 @@ import re
 import shlex
 import sys
 import traceback
+import warnings
 from itertools import chain
 
 from _emerge.Package import Package
