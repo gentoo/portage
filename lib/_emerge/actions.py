@@ -1156,9 +1156,13 @@ def action_depclean(
 
 
 def calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spinner):
-    result = _calc_depclean(
-        settings, trees, ldpath_mtimes, myopts, action, args_set, spinner
-    )
+    try:
+        result = _calc_depclean(
+            settings, trees, ldpath_mtimes, myopts, action, args_set, spinner
+        )
+    finally:
+        if spinner is not None:
+            spinner.end_notice()
     return (
         result.returncode,
         result.cleanlist,
