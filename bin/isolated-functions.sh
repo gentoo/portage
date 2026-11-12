@@ -437,16 +437,6 @@ if [[ -z ${USERLAND} ]] ; then
 	esac
 fi
 
-if [[ -z ${XARGS} ]] ; then
-	if XARGS=$(type -P gxargs); then
-		export XARGS+=" -r"
-	elif : | xargs -r 2>/dev/null; then
-		export XARGS="xargs -r"
-	else
-		export XARGS="xargs"
-	fi
-fi
-
 # Assigns REPLY the number of jobs specified by the -j or --jobs option in
 # MAKEOPTS or, failing that, the number of online processors. Should neither
 # be determinable, assigns 1 and returns 1.

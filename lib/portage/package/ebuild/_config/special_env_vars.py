@@ -204,7 +204,6 @@ environ_whitelist = frozenset(
         "USE_ORDER",
         "USERLAND",
         "WORKDIR",
-        "XARGS",
         "__PORTAGE_TEST_HARDLINK_LOCKS",
         # user config variables
         "DOC_SYMLINKS_DIR",

@@ -34,6 +34,9 @@ Breaking changes:
   The primary motivation for this was to use Bash's new nofork command
   substitution.
 
+* XARGS is no longer exported to the ebuild environment. Its value was
+  invariably equivalent to "xargs -r".
+
 Features:
 
 * emerge: Solve a circular dependency with an autounmask USE change when the

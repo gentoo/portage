@@ -158,7 +158,6 @@ __save_ebuild_env() (
 		TEMP
 		TMP
 		TMPDIR
-		XARGS
 		_RC_GET_KV_CACHE
 
 		# User config variables.
