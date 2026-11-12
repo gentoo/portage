@@ -484,8 +484,7 @@ class _rebuild_config:
             return False
         trees = self._frozen_config.trees
         reinstall = False
-        for slot_atom, dep_pkg in build_deps.items():
-            dep_root_slot = (dep_pkg.root, slot_atom)
+        for dep_root_slot, dep_pkg in build_deps.items():
             if self._needs_rebuild(dep_pkg):
                 self.rebuild_list.add(root_slot)
                 return True
@@ -559,7 +558,6 @@ class _rebuild_config:
             if node not in graph:
                 # This can be triggered by circular dependencies.
                 continue
-            slot_atom = node.slot_atom
 
             # Remove our leaf node from the graph, keeping track of deps.
             parents = graph.parent_nodes(node)
@@ -570,7 +568,7 @@ class _rebuild_config:
                     # Ignore a direct cycle.
                     continue
                 parent_bdeps = build_deps.setdefault(parent, {})
-                parent_bdeps[slot_atom] = node
+                parent_bdeps[(node.root, node.slot_atom)] = node
                 if not graph.child_nodes(parent):
                     leaf_nodes.append(parent)
 

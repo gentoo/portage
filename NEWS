@@ -176,6 +176,9 @@ Bug fixes:
 * config: Restore the warnings import, the absence of which caused deprecation
   warnings to raise NameError instead.
 
+* depgraph: Reliably trigger rebuilds when the same dependency is in both DEPEND
+  and BDEPEND across different roots.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
