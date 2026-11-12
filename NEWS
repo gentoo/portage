@@ -170,6 +170,9 @@ Bug fixes:
 * dolib: Overwrite existing destination files when installing symbolic links, as
   required by PMS. Preserve trailing newline characters in link targets.
 
+* With FEATURES="keepwork" in effect, the clean phase once again removes
+  nested empty directories from the build directory, WORKDIR excepted.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
