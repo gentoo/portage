@@ -1,0 +1,54 @@
+# Check for xattrs.  See https://bugs.gentoo.org/815220.
+
+xattr_check() {
+	type -P getfattr >/dev/null || return
+
+	pushd "${ED}" >/dev/null || die
+	local x file= keys
+	local -A data=()
+	while read -r x; do
+		case ${x} in
+			"# file: "*)
+				file=${x#*: }
+				file=/${file#.}
+				;;
+			btrfs.*)
+				# ignore btrfs xattrs, they're implicit fs metadata
+				;;
+			security.capability)
+				# don't report caps if we have fcaps.eclass inherited
+				if ! has fcaps ${INHERITED}; then
+					data[${file}]+=" ${x}"
+				fi
+				;;
+			?*)
+				data[${file}]+=" ${x}"
+				;;
+		esac
+	done < <(getfattr -R -h -m - . 2>/dev/null)
+	popd >/dev/null || die
+
+	if [[ ${data[@]} ]]; then
+		eqawarn "One or more files in \${ED} include extended attributes."
+		eqawarn
+
+		for file in "${!data[@]}"; do
+			keys=( ${data[${file}]} )
+			for x in "${keys[@]}"; do
+				eqatag xattr "key=${x}" "${file}"
+			done
+			eqawarn "  ${file} (${keys[*]})"
+		done
+
+		eqawarn
+		eqawarn "It is impossible to reliably guarantee that the extended attributes"
+		eqawarn "will be reliably preserved while merging.  Please file a bug"
+		eqawarn "and make it block the tracker https://bugs.gentoo.org/815220."
+		eqawarn "More information about the problem can also be found on the tracker."
+	fi
+}
+
+xattr_check
+: # guarantee successful exit
+
+# vim:ft=sh
