@@ -13589,6 +13589,10 @@ def get_mask_info(
         if not portage.eapi_is_supported(eapi):
             mreasons = [f"EAPI {eapi}"]
         else:
+            db = getattr(db, "_db", db)
+            if getattr(cpv, "_db", None) is not db:
+                cpv = _pkg_str(cpv, db=db)
+
             pkg = Package(
                 type_name=pkg_type,
                 root_config=root_config,
