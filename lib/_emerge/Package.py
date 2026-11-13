@@ -139,7 +139,8 @@ class Package(Task):
                 raise
             db = self.root_config.trees["porttree"].dbapi
 
-        if self.type_name == "binary":
+        # db could be a vardbapi if --quickpkg-direct is in use
+        if self.type_name == "binary" and hasattr(db, "bintree"):
             self.remote = db.bintree.isremote(self.cpv)
         else:
             self.remote = False
