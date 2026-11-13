@@ -1,4 +1,4 @@
-# Copyright 2010-2025 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
@@ -172,6 +172,7 @@ class ResolverPlayground:
         eclasses={},
         eprefix=None,
         targetroot=False,
+        sysroot=False,
         share_metadata=True,
         debug=False,
     ):
@@ -180,6 +181,7 @@ class ResolverPlayground:
         installed: cpv -> metadata mapping simulating installed packages.
                 If a metadata key is missing, it gets a default value.
         profile: settings defined by the profile.
+        sysroot: with targetroot, set SYSROOT to the target root.
         share_metadata: whether the metadata of the ebuilds may be shared
                 with other playgrounds (see TEST-NOTES). Pass False for a
                 test that exercises metadata generation itself.
@@ -267,6 +269,7 @@ class ResolverPlayground:
             self.target_root = os.path.join(self.eroot, "target_root")
         else:
             self.target_root = os.sep
+        self._sysroot = sysroot
         self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
         self.pkgdir = os.path.join(self.eprefix, "pkgdir")
         self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
@@ -990,6 +993,8 @@ class ResolverPlayground:
         create_trees_kwargs = {}
         if self.target_root != os.sep:
             create_trees_kwargs["target_root"] = self.target_root
+            if self._sysroot:
+                create_trees_kwargs["sysroot"] = self.target_root
 
         path = f"{self.eprefix}/usr/sbin:{self.eprefix}/usr/bin:{os.environ['PATH']}"
         env = {"PATH": path}
