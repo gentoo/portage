@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -189,5 +189,42 @@ class RebuildTestCase(TestCase):
             for test_case in test_cases:
                 playground.run_TestCase(test_case)
                 self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
+
+    def testRebuildCrossRoot(self):
+        """
+        Track a dep in both DEPEND and BDEPEND once per root.
+        """
+        a = {"EAPI": "8", "DEPEND": "dev-libs/B", "BDEPEND": "dev-libs/B"}
+        b = {"EAPI": "8"}
+        ebuilds = {"dev-libs/A-1": a, "dev-libs/B-1": b}
+        binpkgs = {"dev-libs/A-1": a}
+        installed = {"dev-libs/B-1": b}
+
+        # B is installed in the host root but is built from source for
+        # the target root, so A must be rebuilt rather than taken from
+        # its binpkg.
+        test_case = ResolverPlaygroundTestCase(
+            ["dev-libs/A"],
+            options={
+                "--usepkg": True,
+                "--with-bdeps": "y",
+                "--rebuild-if-unbuilt": True,
+            },
+            success=True,
+            mergelist=["dev-libs/B-1{targetroot}", "dev-libs/A-1{targetroot}"],
+        )
+
+        playground = ResolverPlayground(
+            ebuilds=ebuilds,
+            binpkgs=binpkgs,
+            installed=installed,
+            targetroot=True,
+            sysroot=True,
+        )
+        try:
+            playground.run_TestCase(test_case)
+            self.assertEqual(test_case.test_success, True, test_case.fail_msg)
         finally:
             playground.cleanup()
