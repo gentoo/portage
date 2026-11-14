@@ -8,7 +8,6 @@ py.install_sources(
         'mappings.py',
         'metadata.py',
         'sqlite.py',
-        'sql_template.py',
         'template.py',
         'volatile.py',
         '__init__.py',

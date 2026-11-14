@@ -1,0 +1,1 @@
+cache: Remove the defunct sql_template module, unused since 2006.
