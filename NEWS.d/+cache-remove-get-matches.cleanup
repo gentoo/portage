@@ -1,0 +1,1 @@
+cache: Remove the get_matches() method, which has never worked.

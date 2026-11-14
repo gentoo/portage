@@ -31,16 +31,6 @@ class GeneralCacheCorruption(CacheError):
         return f"corruption detected: {self.ex!s}"
 
 
-class InvalidRestriction(CacheError):
-    def __init__(self, key, restriction, exception=None):
-        if exception is None:
-            exception = ""
-        self.key, self.restriction, self.ex = key, restriction, ex
-
-    def __str__(self):
-        return f"{self.key}:{self.restriction} is not valid: {self.ex!s}"
-
-
 class ReadOnlyRestriction(CacheError):
     def __init__(self, info=""):
         self.info = info

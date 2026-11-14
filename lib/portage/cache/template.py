@@ -6,7 +6,6 @@ import operator
 import warnings
 
 from portage.cache import cache_errors
-from portage.cache.cache_errors import InvalidRestriction
 from portage.cache.mappings import ProtectedDict
 
 
@@ -262,39 +261,6 @@ class database:
         if update:
             entry["_eclasses_"] = update
         return True
-
-    def get_matches(self, match_dict):
-        """generic function for walking the entire cache db, matching restrictions to
-        filter what cpv's are returned.  Derived classes should override this if they
-        can implement a faster method then pulling each cpv:values, and checking it.
-
-        For example, RDBMS derived classes should push the matching logic down to the
-        actual RDBM."""
-
-        import re
-
-        restricts = {}
-        for key, match in match_dict.items():
-            # XXX this sucks.
-            try:
-                if isinstance(match, str):
-                    restricts[key] = re.compile(match).match
-                else:
-                    restricts[key] = re.compile(match[0], match[1]).match
-            except re.error as e:
-                raise InvalidRestriction(key, match, e)
-            if key not in self.__known_keys:
-                raise InvalidRestriction(key, match, "Key isn't valid")
-
-        for cpv in self:
-            cont = True
-            vals = self[cpv]
-            for key, match in restricts.items():
-                if not match(vals[key]):
-                    cont = False
-                    break
-            if cont:
-                yield cpv
 
     keys = __iter__
     items = iteritems
