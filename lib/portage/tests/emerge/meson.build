@@ -12,6 +12,7 @@ py.install_sources(
         'test_global_updates.py',
         'test_is_valid_package_atom.py',
         'test_merge_use_vdb.py',
+        'test_merge_wait_ready.py',
         'test_baseline.py',
         'test_job_status_display.py',
         'test_jobs_tmpdir_binpkg.py',
