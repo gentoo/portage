@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation."""
@@ -33,6 +33,7 @@ from portage.versions import best
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
+from _emerge.UseFlagDisplay import masked_use_display, masked_use_reasons
 from _emerge.resolver.output_helpers import (
     PkgInfo,
     _create_use_string,
@@ -212,6 +213,15 @@ class Display:
 
         old_use = [flag for flag in old_use if flag in old_iuse]
 
+        # Flags masked by MASKED_USE are shown separately, along with the
+        # flags that mask them. They are meaningless for the current USE
+        # settings, so changes to them are not shown either.
+        masked_reasons = masked_use_reasons(pkg, cur_use)
+        if masked_reasons:
+            cur_iuse = [flag for flag in cur_iuse if flag not in masked_reasons]
+            old_iuse = [flag for flag in old_iuse if flag not in masked_reasons]
+            old_use = [flag for flag in old_use if flag not in masked_reasons]
+
         self.use_expand = pkg.use.expand
         self.use_expand_hidden = pkg.use.expand_hidden
 
@@ -259,6 +269,15 @@ class Display:
                 is_new,
                 reinst_flags_map.get(key),
             )
+
+        if (
+            masked_reasons
+            and self.conf.print_use_string
+            and (is_new or self.conf.all_flags)
+        ):
+            masked = masked_use_display(pkg, masked_reasons)
+            if masked:
+                self.verboseadd += masked + " "
 
     @staticmethod
     def pkgprint(pkg_str, pkg_info):

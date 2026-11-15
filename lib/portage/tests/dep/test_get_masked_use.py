@@ -1,7 +1,7 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.dep import get_masked_use
+from portage.dep import get_masked_use, get_masked_use_reasons
 from portage.exception import InvalidDependString
 from portage.tests import TestCase
 
@@ -54,10 +54,13 @@ class TestGetMaskedUse(TestCase):
         )
 
         for masked_use, use, expected in test_cases:
+            msg = f"MASKED_USE: '{masked_use}', USE: '{' '.join(use)}'"
+            self.assertEqual(get_masked_use(masked_use, use), frozenset(expected), msg)
+            # Both functions must agree on what is masked.
             self.assertEqual(
-                get_masked_use(masked_use, use),
+                frozenset(get_masked_use_reasons(masked_use, use)),
                 frozenset(expected),
-                f"MASKED_USE: '{masked_use}', USE: '{' '.join(use)}'",
+                msg,
             )
 
         for masked_use in test_cases_xfail:
@@ -97,4 +100,27 @@ class TestGetMaskedUse(TestCase):
                 [],
                 is_valid_flag=is_valid_flag,
                 matchall=True,
+            )
+
+    def testGetMaskedUseReasons(self):
+        test_cases = (
+            # (MASKED_USE, enabled flags, {masked flag: reason})
+            ("", ["a"], {}),
+            ("a", [], {"a": ()}),
+            ("( a )", [], {"a": ()}),
+            ("!a? ( b c )", [], {"b": ("-a",), "c": ("-a",)}),
+            ("a? ( b )", ["a"], {"b": ("a",)}),
+            ("!a? ( b !c? ( d ) )", [], {"b": ("-a",), "d": ("-a", "-c")}),
+            ("a? ( ( b? ( c ) ) )", ["a", "b"], {"c": ("a", "b")}),
+            # The first group that masks a flag gives the reason.
+            ("!a? ( c ) !b? ( c )", ["a"], {"c": ("-b",)}),
+            ("!a? ( c ) !b? ( c )", [], {"c": ("-a",)}),
+            # Conditionals see USE before anything is masked.
+            ("a? ( b ) !b? ( c )", ["a", "b", "c"], {"b": ("a",)}),
+        )
+        for masked_use, use, expected in test_cases:
+            self.assertEqual(
+                get_masked_use_reasons(masked_use, use),
+                expected,
+                f"MASKED_USE: '{masked_use}', USE: '{' '.join(use)}'",
             )

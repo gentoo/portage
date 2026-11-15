@@ -40,6 +40,7 @@ from portage.dbapi import dbapi
 from portage.dep import (
     Atom,
     get_masked_use,
+    get_masked_use_reasons,
     isvalidatom,
     use_reduce,
 )
@@ -305,6 +306,7 @@ class config:
             self._pbashrc = clone._pbashrc
             self._repo_make_defaults = clone._repo_make_defaults
             self.usemask = clone.usemask
+            self.masked_use_reasons = clone.masked_use_reasons
             self.useforce = clone.useforce
             self.puse = clone.puse
             self._cycle_use = clone._cycle_use
@@ -830,6 +832,7 @@ class config:
             )
             # Initialize all USE related variables we track ourselves.
             self.usemask = self._use_manager.getUseMask()
+            self.masked_use_reasons = {}
             self.useforce = self._use_manager.getUseForce()
             self.configdict["conf"]["USE"] = (
                 self._use_manager.extract_global_USE_changes(
@@ -1664,6 +1667,7 @@ class config:
             self.configdict["repo"].clear()
             self.configdict["defaults"]["USE"] = " ".join(self.make_defaults_use)
             self.usemask = self._use_manager.getUseMask()
+            self.masked_use_reasons = {}
             self.useforce = self._use_manager.getUseForce()
         self.regenerate()
 
@@ -2292,6 +2296,7 @@ class config:
             if k + "_*" in use:
                 use.update(x for x in use_expand_iuse if x not in usemask)
 
+        self.masked_use_reasons = {}
         if masked_use:
             # This comes last, since it depends on all other flags. Adding
             # the flags to usemask makes them behave like profile masks.
@@ -2302,6 +2307,16 @@ class config:
                 # package.
                 pass
             else:
+                # Record why each flag is masked, for emerge output. A built
+                # package shows the masks for the USE it was built with.
+                # Flags that the profile masks are shown as such.
+                self.masked_use_reasons = {
+                    flag: reason
+                    for flag, reason in get_masked_use_reasons(
+                        masked_use, use if built_use is None else built_use
+                    ).items()
+                    if flag not in self.usemask
+                }
                 if conditional_usemask:
                     use.difference_update(conditional_usemask)
                     self.usemask = frozenset(self.usemask).union(conditional_usemask)

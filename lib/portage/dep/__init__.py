@@ -16,6 +16,7 @@ __all__ = [
     "dep_getslot",
     "dep_getusedeps",
     "get_masked_use",
+    "get_masked_use_reasons",
     "get_operator",
     "isjustname",
     "isspecific",
@@ -3448,6 +3449,50 @@ def get_masked_use(masked_use, use, is_valid_flag=None, eapi=None, matchall=Fals
                 _("MASKED_USE flag '%s' is not in IUSE") % (token,)
             )
     return frozenset(tokens)
+
+
+def get_masked_use_reasons(masked_use, use):
+    """
+    Returns why each flag that get_masked_use() masks is masked.
+
+    The masked_use string is expected to have been validated by
+    get_masked_use() already. Like get_masked_use(), the conditionals are
+    evaluated against use, before any flag is masked.
+
+    @param masked_use: MASKED_USE string
+    @type masked_use: String
+    @param use: Enabled USE flags
+    @type use: Iterable
+    @rtype: dict
+    @return: A dict that maps each masked flag to the conditionals that
+        mask it, as a tuple of flag names from the outermost conditional
+        inwards. A flag name is prefixed with "-" if its conditional is
+        negated, so "!a? ( b? ( c ) )" maps c to ("-a", "b"). A flag that
+        is masked by more than one group keeps the conditionals of the
+        first one. A flag outside of any conditional maps to ().
+    """
+    use = frozenset(use)
+    reasons = {}
+    # Each entry is the conditional of an open group, or None for a group
+    # without one, or False when the group's conditional is not satisfied.
+    stack = []
+    conditional = None
+    for token in masked_use.split():
+        if token == "(":
+            stack.append(conditional)
+            conditional = None
+        elif token == ")":
+            stack.pop()
+        elif token.endswith("?"):
+            flag = token[:-1]
+            if flag.startswith("!"):
+                flag = flag[1:]
+                conditional = False if flag in use else "-" + flag
+            else:
+                conditional = flag if flag in use else False
+        elif False not in stack and token not in reasons:
+            reasons[token] = tuple(x for x in stack if x is not None)
+    return reasons
 
 
 def check_required_use(required_use, use, iuse_match, eapi=None):

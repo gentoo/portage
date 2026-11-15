@@ -1,6 +1,10 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import contextlib
+import io
+
+import portage
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
@@ -309,3 +313,196 @@ class MaskedUseTestCase(TestCase):
                 self.assertEqual(test_case.test_success, True, test_case.fail_msg)
         finally:
             playground.cleanup()
+
+    def testMaskedUseDisplay(self):
+        """
+        The merge list shows flags masked by MASKED_USE in a MASKED_USE
+        variable of their own, grouped by the conditionals that mask them,
+        instead of showing them like flags masked by the profile.
+        """
+        py = "python_single_target_python3_"
+        ebuilds = {
+            "dev-vcs/git-1": {
+                "EAPI": "10-pre",
+                "IUSE": f"gui perforce gtk qt6 tk {py}12 {py}13",
+                "MASKED_USE": f"!perforce? ( {py}12 {py}13 ) !gui? ( gtk qt6 )",
+            },
+            # Only part of PYTHON_SINGLE_TARGET is masked.
+            "dev-libs/partial-1": {
+                "EAPI": "10-pre",
+                "IUSE": f"a {py}12 {py}13",
+                "MASKED_USE": f"!a? ( {py}12 )",
+            },
+            "dev-libs/nested-1": {
+                "EAPI": "10-pre",
+                "IUSE": "a b c",
+                "MASKED_USE": "a? ( !b? ( c ) ) b? ( c )",
+            },
+            "dev-libs/unconditional-1": {
+                "EAPI": "10-pre",
+                "IUSE": "a x",
+                "MASKED_USE": "x",
+            },
+            # Conditionals see USE before anything is masked, so the cause
+            # of b is not mistaken for -b.
+            "dev-libs/chained-1": {
+                "EAPI": "10-pre",
+                "IUSE": "a b c",
+                "MASKED_USE": "a? ( b ) !b? ( c )",
+            },
+        }
+        profile = {"use.mask": ("tk",)}
+        user_config = {
+            "make.conf": ('USE_EXPAND="PYTHON_SINGLE_TARGET"',),
+            "package.use": (
+                "dev-libs/nested a c",
+                "dev-libs/chained a b c",
+            ),
+        }
+        expected = {
+            "dev-vcs/git-1": (
+                'USE="-gui -perforce (-tk)" '
+                'MASKED_USE="-perforce => PYTHON_SINGLE_TARGET, -gui => gtk qt6"'
+            ),
+            "dev-libs/partial-1": (
+                'USE="-a" PYTHON_SINGLE_TARGET="-python3_13" '
+                f'MASKED_USE="-a => {py}12"'
+            ),
+            "dev-libs/nested-1": 'USE="a -b" MASKED_USE="a,-b => c"',
+            "dev-libs/unconditional-1": 'USE="-a" MASKED_USE="x"',
+            "dev-libs/chained-1": 'USE="a c" MASKED_USE="a => b"',
+        }
+
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, profile=profile, user_config=user_config
+        )
+        try:
+            for cpv, use_str in expected.items():
+                result = playground.run(
+                    [f"={cpv}"], options={"--pretend": True, "--verbose": True}
+                )
+                self.assertEqual(result.success, True, cpv)
+                self.assertEqual(
+                    self._merge_list_use(result.depgraph, cpv), use_str, cpv
+                )
+        finally:
+            playground.cleanup()
+
+    def testMaskedUseDisplayBinpkg(self):
+        """
+        A binary package shows the MASKED_USE flags for the USE settings it
+        was built with, rather than those of the configuration.
+        """
+        py = "python_single_target_python3_"
+        metadata = {
+            "EAPI": "10-pre",
+            "IUSE": f"perforce {py}12 {py}13",
+            "MASKED_USE": f"!perforce? ( {py}12 {py}13 )",
+        }
+        binpkgs = {
+            "dev-vcs/git-1": {**metadata, "USE": f"perforce {py}13"},
+            "dev-vcs/git-2": {**metadata, "USE": ""},
+        }
+        expected = {
+            # Without perforce in USE, the python targets are masked by the
+            # configuration, but not by the USE that git-1 was built with.
+            (): {
+                "dev-vcs/git-1": 'USE="perforce" '
+                'PYTHON_SINGLE_TARGET="(python3_13) (-python3_12)"',
+                "dev-vcs/git-2": 'USE="-perforce" '
+                'MASKED_USE="-perforce => PYTHON_SINGLE_TARGET"',
+            },
+            ("dev-vcs/git perforce",): {
+                "dev-vcs/git-1": 'USE="perforce" '
+                'PYTHON_SINGLE_TARGET="python3_13 -python3_12"',
+                "dev-vcs/git-2": 'USE="-perforce" '
+                'MASKED_USE="-perforce => PYTHON_SINGLE_TARGET"',
+            },
+        }
+
+        for package_use, expected_use in expected.items():
+            playground = ResolverPlayground(
+                binpkgs=binpkgs,
+                user_config={
+                    "make.conf": (
+                        'USE_EXPAND="PYTHON_SINGLE_TARGET"',
+                        f'USE="{py}13"',
+                    ),
+                    "package.use": package_use,
+                },
+            )
+            try:
+                for cpv, use_str in expected_use.items():
+                    result = playground.run(
+                        [f"={cpv}"],
+                        options={
+                            "--pretend": True,
+                            "--usepkgonly": True,
+                            "--verbose": True,
+                        },
+                    )
+                    self.assertEqual(result.success, True, cpv)
+                    self.assertEqual(
+                        self._merge_list_use(result.depgraph, cpv), use_str, cpv
+                    )
+            finally:
+                playground.cleanup()
+
+    def testMaskedUseDisplayRequiredUse(self):
+        """
+        The message for unmet REQUIRED_USE also shows MASKED_USE flags
+        separately.
+        """
+        py = "python_single_target_python3_"
+        ebuilds = {
+            "dev-libs/z-1": {
+                "EAPI": "10-pre",
+                "IUSE": f"python {py}12 {py}13",
+                "MASKED_USE": f"!python? ( {py}12 {py}13 )",
+                "REQUIRED_USE": f"^^ ( {py}12 {py}13 )",
+            },
+        }
+        user_config = {"make.conf": ('USE_EXPAND="PYTHON_SINGLE_TARGET"',)}
+        playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
+        try:
+            result = playground.run(["dev-libs/z"], options={"--pretend": True})
+            self.assertEqual(result.success, False)
+            havecolor = portage.output.havecolor
+            noiselimit = portage.util.noiselimit
+            portage.output.havecolor = 0
+            portage.util.noiselimit = 0
+            stderr = io.StringIO()
+            try:
+                with contextlib.redirect_stderr(stderr):
+                    result.depgraph.display_problems()
+            finally:
+                portage.output.havecolor = havecolor
+                portage.util.noiselimit = noiselimit
+            self.assertIn(
+                '- dev-libs/z-1::test_repo USE="-python" '
+                'MASKED_USE="-python => PYTHON_SINGLE_TARGET"\n',
+                stderr.getvalue(),
+            )
+        finally:
+            playground.cleanup()
+
+    @staticmethod
+    def _merge_list_use(depgraph, cpv):
+        """Return the USE strings of cpv in the merge list, without color"""
+        havecolor = portage.output.havecolor
+        noiselimit = portage.util.noiselimit
+        portage.output.havecolor = 0
+        portage.util.noiselimit = 0
+        stdout = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(stdout):
+                depgraph.display(depgraph._dynamic_config._serialized_tasks_cache)
+        finally:
+            portage.output.havecolor = havecolor
+            portage.util.noiselimit = noiselimit
+        for line in stdout.getvalue().splitlines():
+            if f"] {cpv}" in line:
+                line = line.split(f"{cpv}::test_repo", 1)[1]
+                # Drop the download size at the end.
+                return line.rsplit(" ", 2)[0].strip()
+        raise AssertionError(f"{cpv} not in merge list:\n{stdout.getvalue()}")
