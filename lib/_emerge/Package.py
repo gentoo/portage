@@ -684,7 +684,15 @@ class Package(Task):
         )
 
     class _use_class:
-        __slots__ = ("_expand", "_expand_hidden", "_force", "_mask", "_pkg", "enabled")
+        __slots__ = (
+            "_expand",
+            "_expand_hidden",
+            "_force",
+            "_mask",
+            "_masked_reasons",
+            "_pkg",
+            "enabled",
+        )
 
         def __init__(self, pkg, enabled_flags):
             self._pkg = pkg
@@ -692,6 +700,7 @@ class Package(Task):
             self._expand_hidden = None
             self._force = None
             self._mask = None
+            self._masked_reasons = None
             self.enabled = _intern_frozenset(enabled_flags)
             if pkg.built:
                 # Use IUSE to validate USE settings for built packages,
@@ -714,6 +723,7 @@ class Package(Task):
             )
             self._force = _intern_frozenset(pkgsettings.useforce)
             self._mask = _intern_frozenset(pkgsettings.usemask)
+            self._masked_reasons = pkgsettings.masked_use_reasons
 
         @property
         def expand(self):
@@ -738,6 +748,12 @@ class Package(Task):
             if self._mask is None:
                 self._init_force_mask()
             return self._mask
+
+        @property
+        def masked_reasons(self):
+            if self._masked_reasons is None:
+                self._init_force_mask()
+            return self._masked_reasons
 
     @property
     def repo(self):
