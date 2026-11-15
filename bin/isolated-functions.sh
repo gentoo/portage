@@ -250,12 +250,12 @@ __eprint() {
 	local -a lines
 	shift 2
 
-	if [[ ${EBUILD_PHASE} == depend && ! ${__PORTAGE_ELOG_BANNER_OUTPUT} ]]; then
+	if [[ ${EBUILD_PHASE} == depend ]] && (( ! ___state[banner-shown] )); then
 		# If in the depend phase, output a banner indicating which
 		# package emitted the message.
 		printf '\nMessages for package %s%s%s:\n' \
 			"${PORTAGE_COLOR_INFO}" "${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}" "${PORTAGE_COLOR_NORMAL}"
-		__PORTAGE_ELOG_BANNER_OUTPUT=1
+		___state[banner-shown]=1
 	fi
 
 	case ${level} in
@@ -330,7 +330,7 @@ ebegin() {
 	msg="$* ..."
 	einfon "${msg}"
 	echo >&2
-	(( ++__EBEGIN_EEND_COUNT ))
+	(( ___state[ebegin-depth]++ ))
 	return 0
 }
 
@@ -366,8 +366,8 @@ eend() {
 	[[ -n ${1} ]] || die "${FUNCNAME}(): Missing argument"
 	local retval=${1}
 	shift
-	if (( --__EBEGIN_EEND_COUNT < 0 )); then
-		__EBEGIN_EEND_COUNT=0
+	if (( ___state[ebegin-depth]-- < 1 )); then
+		___state[ebegin-depth]=0
 		eqawarn "QA Notice: eend called without preceding ebegin in ${FUNCNAME[1]}"
 	fi
 

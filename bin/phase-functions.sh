@@ -259,11 +259,18 @@ __preprocess_ebuild_env() {
 }
 
 __ebuild_phase() {
-	local __EBEGIN_EEND_COUNT=0
+	local prior_depth
 
-	declare -F "$1" >/dev/null && __qa_call $1
-	if (( __EBEGIN_EEND_COUNT > 0 )); then
-		eqawarn "QA Notice: ebegin called without eend in $1"
+	if declare -F "$1" >/dev/null; then
+		# Count from zero while the phase function runs, so as to detect
+		# whether it calls ebegin without also calling eend.
+		prior_depth=${___state[ebegin-depth]}
+		___state[ebegin-depth]=0
+		__qa_call "$1"
+		if (( ___state[ebegin-depth] > 0 )); then
+			eqawarn "QA Notice: ebegin called without eend in $1"
+		fi
+		___state[ebegin-depth]=${prior_depth}
 	fi
 }
 
