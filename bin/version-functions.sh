@@ -193,6 +193,8 @@ ver_test() {
 
 if ___eapi_has_ver_replacing; then
 	ver_replacing() {
+		local - v
+
 		case ${EBUILD_PHASE} in
 			pretend|setup|preinst|postinst) ;;
 			*)
@@ -202,7 +204,7 @@ if ___eapi_has_ver_replacing; then
 
 		[[ $# -eq 2 ]] || die "Usage: ver_replacing <op> <ver>"
 
-		local v
+		set -f
 		for v in ${REPLACING_VERSIONS}; do
 			ver_test "${v}" "$@" && return 0
 		done
