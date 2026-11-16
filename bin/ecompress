@@ -148,7 +148,7 @@ guess_suffix() (
 )
 
 fix_symlinks() (
-	local something_changed link target1 target2 i
+	local something_changed repaired_link link target1 target2 i
 
 	# Run the last element of the ensuing pipeline in the current shell.
 	# This option shall not persist because the function is a forking list.
@@ -173,6 +173,8 @@ fix_symlinks() (
 			fi
 
 			something_changed=1
+			repaired_link=${link}
+
 			rm -f -- "${link}" \
 			&& ln -snf -- "${target2}" "${link}${PORTAGE_COMPRESS_SUFFIX}" \
 			|| return
@@ -192,7 +194,7 @@ fix_symlinks() (
 		elif (( ++i >= 100 )); then
 			# Protect against possibility of a bug triggering an endless loop.
 			eerror "${program}: too many levels of indirection for" \
-				"'${something_changed#"${ED%/}"}'"
+				"'${repaired_link#"${ED%/}"}'"
 			break
 		fi
 	done
