@@ -914,107 +914,105 @@ __ebuild_arg_to_phase() {
 }
 
 __ebuild_phase_funcs() {
-	[[ $# -ne 2 ]] && die "expected exactly 2 args, got $#: $*"
+	local eapi=$1 phase_func=$2
+	local -a phase_funcs
+	local func impl msg
 
-	local eapi=$1
-	local phase_func=$2
-	local all_phases="src_compile pkg_config src_configure pkg_info
-		src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
-		src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
-	local x
+	if (( $# != 2 )); then
+		die "${FUNCNAME}: expected exactly 2 args, got $#: ${*@Q}"
+	fi
 
-	# First, set up the error handlers for default*
-	for x in ${all_phases} ; do
-		eval "default_${x}() {
-			die \"default_${x}() is not supported in EAPI='${eapi}' in phase ${phase_func}\"
-		}"
+	phase_funcs=(
+		pkg_config
+		pkg_info
+		pkg_nofetch
+		pkg_postinst
+		pkg_postrm
+		pkg_preinst
+		pkg_prerm
+		pkg_pretend
+		pkg_setup
+		src_compile
+		src_configure
+		src_install
+		src_prepare
+		src_test
+		src_unpack
+	)
+
+	if ! contains_word "${phase_func}" "${phase_funcs[@]}"; then
+		die "${FUNCNAME}: unknown phase function: ${phase_func@Q}"
+	fi
+
+	# Guard against the misuse of default phase functions, which would
+	# otherwise yield only a non-fatal "command not found" error.
+	for func in "${phase_funcs[@]}"; do
+		msg="default_${func}() is not supported in EAPI='${eapi}' in phase ${phase_func}"
+		eval "default_${func} () { die ${msg@Q}; }"
 	done
 
-	# We can just call the specific handler -- it will either error out
-	# on invalid phase or run it.
-	eval "default() {
-		default_${phase_func}
-	}"
+	# Bind the default() function to the current phase, which it would
+	# otherwise be unable to infer prior to EAPI 5.
+	eval "default () { default_${phase_func}; }"
 
-	case "${eapi}" in
-		0|1) # EAPIs not supporting 'default'
-
-			for x in pkg_nofetch src_unpack src_test ; do
-				declare -F ${x} >/dev/null || \
-					eval "$x() { __eapi0_${x}; }"
-			done
-
-			if ! declare -F src_compile >/dev/null ; then
-				case "${eapi}" in
-					0)
-						src_compile() { __eapi0_src_compile; }
-						;;
-					*)
-						src_compile() { __eapi1_src_compile; }
-						;;
-				esac
-			fi
+	# Select the implementation of the default phase function, if any.
+	case ${eapi}:${phase_func} in
+		*:pkg_nofetch | *:src_test | *:src_unpack)
+			impl=__eapi0_${phase_func}
 			;;
-
-		*) # EAPIs supporting 'default'
-
-			# defaults starting with EAPI 0
-			[[ ${phase_func} == pkg_nofetch ]] && \
-				default_pkg_nofetch() { __eapi0_pkg_nofetch; }
-			[[ ${phase_func} == src_unpack ]] && \
-				default_src_unpack() { __eapi0_src_unpack; }
-			[[ ${phase_func} == src_test ]] && \
-				default_src_test() { __eapi0_src_test; }
-
-			# defaults starting with EAPI 2
-			[[ ${phase_func} == src_prepare ]] && \
-				default_src_prepare() { __eapi2_src_prepare; }
-			[[ ${phase_func} == src_configure ]] && \
-				default_src_configure() { __eapi2_src_configure; }
-			[[ ${phase_func} == src_compile ]] && \
-				default_src_compile() { __eapi2_src_compile; }
-
-			# bind supported phases to the defaults
-			declare -F pkg_nofetch >/dev/null || \
-				pkg_nofetch() { default; }
-			declare -F src_unpack >/dev/null || \
-				src_unpack() { default; }
-			declare -F src_prepare >/dev/null || \
-				src_prepare() { default; }
-			declare -F src_configure >/dev/null || \
-				src_configure() { default; }
-			declare -F src_compile >/dev/null || \
-				src_compile() { default; }
-			declare -F src_test >/dev/null || \
-				src_test() { default; }
-
-			# defaults starting with EAPI 4
-			if [[ ${eapi} != [23] ]]; then
-				[[ ${phase_func} == src_install ]] && \
-					default_src_install() { __eapi4_src_install; }
-
-				declare -F src_install >/dev/null || \
-					src_install() { default; }
-			fi
-
-			# defaults starting with EAPI 6
-			if [[ ${eapi} != [2-5] ]]; then
-				[[ ${phase_func} == src_prepare ]] && \
-					default_src_prepare() { __eapi6_src_prepare; }
-				[[ ${phase_func} == src_install ]] && \
-					default_src_install() { __eapi6_src_install; }
-
-				declare -F src_prepare >/dev/null || \
-					src_prepare() { default; }
-			fi
-
-			# defaults starting with EAPI 8
-			if [[ ${eapi} != [2-7] ]]; then
-				[[ ${phase_func} == src_prepare ]] && \
-					default_src_prepare() { __eapi8_src_prepare; }
-			fi
+		0:src_compile)
+			impl=__eapi0_src_compile
 			;;
+		1:src_compile)
+			impl=__eapi1_src_compile
+			;;
+		*:src_compile)
+			impl=__eapi2_src_compile
+			;;
+		[01]:src_configure)
+			return
+			;;
+		*:src_configure)
+			impl=__eapi2_src_configure
+			;;
+		[0-3]:src_install)
+			return
+			;;
+		[45]:src_install)
+			impl=__eapi4_src_install
+			;;
+		*:src_install)
+			impl=__eapi6_src_install
+			;;
+		[01]:src_prepare)
+			return
+			;;
+		[2-5]:src_prepare)
+			impl=__eapi2_src_prepare
+			;;
+		[67]:src_prepare)
+			impl=__eapi6_src_prepare
+			;;
+		*:src_prepare)
+			impl=__eapi8_src_prepare
+			;;
+		*)
+			return
 	esac
+
+	# Define the phase function, should the ebuild not already have done
+	# so. Prior to EAPI 2, it must call the implementation directly, there
+	# being no default() function.
+	if [[ ${eapi} == [01] ]]; then
+		if ! declare -F "${phase_func}" >/dev/null; then
+			eval "${phase_func} () { ${impl}; }"
+		fi
+	else
+		eval "default_${phase_func} () { ${impl}; }"
+		if ! declare -F "${phase_func}" >/dev/null; then
+			eval "${phase_func} () { default; }"
+		fi
+	fi
 }
 
 __ebuild_main() {
