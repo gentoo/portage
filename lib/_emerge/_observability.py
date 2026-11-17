@@ -712,9 +712,16 @@ class ObservabilityMonitor:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             sock.setblocking(False)
             sock.bind(self._socket_path)
-            # Before listen(), so that no connection is accepted while the
-            # socket still has the permissions the umask gave it.
-            _os.chmod(self._socket_path, 0o600)
+            # Before listen(), so that no connection is accepted with the
+            # umask's permissions. The portage group, not everyone: each
+            # connection forces a republish past the rate limit.
+            mode = 0o600
+            try:
+                _os.chown(self._socket_path, -1, portage.data.portage_gid)
+                mode = 0o660
+            except OSError:
+                pass
+            _os.chmod(self._socket_path, mode)
             sock.listen()
             self._loop = asyncio._safe_loop()
             self._server = sock
