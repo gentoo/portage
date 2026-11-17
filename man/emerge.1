@@ -1465,8 +1465,8 @@ permanent, you can put them in /etc/portage/package.use instead.
 If \fBemerge \-\-update @system\fR or \fBemerge \-\-update @world\fR
 fails with an error message, it may be that an ebuild uses some
 newer feature not present in this version of \fBemerge\fR.  You
-can use \fBemerge \-\-update sys-apps/portage\fR to upgrade to the latest
-version, which should support any necessary new features.
+can use \fBemerge \-\-oneshot \-\-update sys-apps/portage\fR to upgrade
+to the latest version, which should support any necessary new features.
 .SH "MASKED PACKAGES"
 \fINOTE: Please use caution when using development packages.  Problems
 and bugs resulting from misusing masked packages drains Gentoo
