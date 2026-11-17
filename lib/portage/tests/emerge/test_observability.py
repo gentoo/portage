@@ -16,6 +16,7 @@ import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import portage.data
 from _emerge import _observability
 from _emerge._observability import (
     ObservabilityMonitor,
@@ -368,6 +369,20 @@ class ObservabilitySnapshotTestCase(TestCase):
 
             try:
                 global_event_loop().run_until_complete(exercise())
+            finally:
+                monitor.close()
+
+    def test_socket_is_open_to_the_portage_group(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=99)
+            sched = _make_scheduler(eprefix=tmp, tasks=[build])
+            monitor = ObservabilityMonitor(sched)
+            monitor.note_task_started(build)
+            try:
+                monitor.update(force=True)
+                st = os.stat(monitor._socket_path)
+                self.assertEqual(st.st_gid, portage.data.portage_gid)
+                self.assertEqual(st.st_mode & 0o777, 0o660)
             finally:
                 monitor.close()
 

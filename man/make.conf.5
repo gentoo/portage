@@ -717,7 +717,8 @@ a phase runs, and whenever a client connects to the socket described
 below; it is removed when emerge exits. Query it with \fBportageq jobs\fR
 or \fBemerge \-\-status\fR.
 A \fI/run/portage/emerge\-<pid>.sock\fR Unix socket additionally streams
-newline\-delimited JSON snapshots to connected clients. This feature
+newline\-delimited JSON snapshots to connected clients; members of the
+portage group may connect. This feature
 degrades silently when the runtime directory is not writable (for
 example, for an unprivileged emerge).
 .TP
