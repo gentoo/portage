@@ -40,7 +40,7 @@ from portage.util.human_readable import bytes_to_human
 
 from _emerge.PackageMerge import PackageMerge as _PackageMerge
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 
 def _pkg_key(cpv, root):
@@ -220,6 +220,9 @@ def build_snapshot(monitor):
             "elapsed": elapsed,
             "build_elapsed": build_elapsed,
         }
+        settings = _task_attr(task, "settings")
+        if settings is not None and settings.get("PORTAGE_BUILDDIR"):
+            entry["builddir"] = settings["PORTAGE_BUILDDIR"]
         if frozen_res is not None:
             entry["resources"] = frozen_res
         elif cgroup is not None:
