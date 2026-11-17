@@ -48,15 +48,12 @@ def _pkg_key(cpv, root):
     return (str(cpv), root)
 
 
-def _task_pkg(task):
-    """Return the Package associated with a running task, or None."""
-    pkg = getattr(task, "pkg", None)
-    if pkg is not None:
-        return pkg
-    merge = getattr(task, "merge", None)
-    if merge is not None:
-        return getattr(merge, "pkg", None)
-    return None
+def _task_attr(task, name):
+    """Return task.<name>, or that of the PackageMerge's merge, or None."""
+    value = getattr(task, name, None)
+    if value is None:
+        value = getattr(getattr(task, "merge", None), name, None)
+    return value
 
 
 def _task_pid(task):
@@ -164,7 +161,7 @@ def build_snapshot(monitor):
 
     tasks = []
     for task in scheduler._running_tasks.values():
-        pkg = _task_pkg(task)
+        pkg = _task_attr(task, "pkg")
         if pkg is None:
             continue
         # PackageMerge installs an already-built package; everything else
@@ -553,7 +550,7 @@ class ObservabilityMonitor:
 
     def note_task_started(self, task):
         now = time.time()
-        pkg = _task_pkg(task)
+        pkg = _task_attr(task, "pkg")
         key = _pkg_key(pkg.cpv, pkg.root) if pkg is not None else None
         if self.enabled:
             self._task_start[id(task)] = now
@@ -568,7 +565,7 @@ class ObservabilityMonitor:
 
     def note_task_finished(self, task):
         self._task_start.pop(id(task), None)
-        pkg = _task_pkg(task)
+        pkg = _task_attr(task, "pkg")
         if pkg is None:
             return
         key = _pkg_key(pkg.cpv, pkg.root)
@@ -614,7 +611,7 @@ class ObservabilityMonitor:
         build that produces no merge task has to say so, or nothing ever
         drops it.
         """
-        pkg = _task_pkg(task)
+        pkg = _task_attr(task, "pkg")
         if pkg is not None:
             key = _pkg_key(pkg.cpv, pkg.root)
             self._build_times.pop(key, None)
