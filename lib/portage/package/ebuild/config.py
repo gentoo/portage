@@ -2100,9 +2100,9 @@ class config:
         elif previous_penv:
             has_changed = True
 
-        if not (
-            previous_iuse == iuse
-            and previous_iuse_effective is not None == eapi_attrs.iuse_effective
+        if (
+            previous_iuse != iuse
+            or (previous_iuse_effective is None) == eapi_attrs.iuse_effective
         ):
             has_changed = True
 

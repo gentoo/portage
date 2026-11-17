@@ -186,6 +186,9 @@ Bug fixes:
 * depgraph: Reliably trigger rebuilds when the same dependency is in both DEPEND
   and BDEPEND across different roots.
 
+* config: Fix a defective comparison that prevented setcpv() from returning
+  early where nothing had changed (bug #986023).
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
