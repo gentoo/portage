@@ -286,12 +286,10 @@ __save_ebuild_env() (
 		${QA_INTERCEPTORS}
 	)
 
-	for REPLY in \
-		pkg_{config,info,nofetch,postinst,preinst,pretend,postrm,prerm,setup} \
-		src_{configure,compile,install,prepare,test,unpack}
-	do
-		MAPFILE+=( default_"${REPLY}" __eapi{0,1,2,4,6,8}_"${REPLY}" )
-	done
+	MAPFILE+=(
+		{default,__eapi{0,1,2,4,6,8}}_pkg_{config,info,nofetch,postinst,preinst,pretend,postrm,prerm,setup}
+		{default,__eapi{0,1,2,4,6,8}}_src_{configure,compile,install,prepare,test,unpack}
+	)
 
 	___eapi_has_ver_replacing && MAPFILE+=( ver_replacing )
 	___eapi_has_einstalldocs && MAPFILE+=( einstalldocs )
