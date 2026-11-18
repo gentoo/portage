@@ -189,6 +189,9 @@ Bug fixes:
 * config: Fix a defective comparison that prevented setcpv() from returning
   early where nothing had changed (bug #986023).
 
+* save-ebuild-env.sh: Prevent the QA interceptor functions from leaking into the
+  saved ebuild environment, a regression introduced by portage-3.0.69.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.

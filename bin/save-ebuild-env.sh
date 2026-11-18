@@ -153,7 +153,6 @@ __save_ebuild_env() (
 		PORTAGE_COLOR_QAWARN
 		PORTAGE_COLOR_WARN
 		PORTAGE_NONFATAL
-		QA_INTERCEPTORS
 		RC_ENDCOL
 		TEMP
 		TMP
@@ -314,7 +313,7 @@ __save_ebuild_env() (
 			unset -f "${REPLY}"
 		fi
 	done < <(declare -F)
-	unset -v MAPFILE REPLY "${!___@}"
+	unset -v MAPFILE QA_INTERCEPTORS REPLY "${!___@}"
 
 	declare -p
 	declare -fp
