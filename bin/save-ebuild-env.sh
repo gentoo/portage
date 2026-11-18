@@ -222,7 +222,6 @@ __save_ebuild_env() (
 		__set_colors
 		__source_all_bashrcs
 		__source_env_files
-		__start_distcc
 		__strip_duplicate_slashes
 		__try_source
 		__unset_colors
