@@ -1205,6 +1205,13 @@ __ebuild_main() {
 		;;
 	esac
 
+	# Clean ___state[einfo-indent] before leaving the phase.
+	local prev_indent_level=${#___state[einfo-indent]}
+	if [[ ${prev_indent_level} -ne 0 ]]; then
+		___state[einfo-indent]=""
+		eqawarn "${1} phase finished with indent level $(( prev_indent_level / 2 )), missing eoutdent call(s)"
+	fi
+
 	# Save the env only for relevant phases.
 	if [[ $1 != @(clean|help|info|nofetch) ]]; then
 		umask 002
