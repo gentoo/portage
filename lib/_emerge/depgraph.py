@@ -7002,7 +7002,10 @@ class depgraph:
                             and repo in portdb.repositories
                         ):
                             repo_config = portdb.repositories[repo]
-                            if cp_priority > (repo_config.package_priority or 0):
+                            if (
+                                atom.cp in repo_config.package_priority_exclude
+                                or cp_priority > (repo_config.package_priority or 0)
+                            ):
                                 mreasons = [
                                     f"package-priority favors "
                                     + ", ".join(sorted(prioritized_repos))
@@ -7540,7 +7543,9 @@ class depgraph:
 
                 if cp_priority is not None and pkg.repo in portdb.repositories:
                     repo = portdb.repositories[pkg.repo]
-                    if cp_priority > (repo.package_priority or 0):
+                    if pkg.cp in repo.package_priority_exclude or cp_priority > (
+                        repo.package_priority or 0
+                    ):
                         continue
 
                 yield pkg
@@ -7590,7 +7595,10 @@ class depgraph:
                     else:
                         if cp_priority is not None and pkg.repo in portdb.repositories:
                             repo = portdb.repositories[pkg.repo]
-                            if cp_priority > (repo.package_priority or 0):
+                            if (
+                                atom_exp.cp in repo.package_priority_exclude
+                                or cp_priority > (repo.package_priority or 0)
+                            ):
                                 continue
 
                         # A cpv can be returned from dbapi.match() as an

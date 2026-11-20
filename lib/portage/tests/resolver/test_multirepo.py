@@ -310,6 +310,8 @@ class MultirepoTestCase(TestCase):
             "dev-libs/PPA-3::pp-repo2": {},
             "dev-libs/PPB-1": {"DEPEND": "=dev-libs/PPA-1"},
             "dev-libs/PPC-1": {"DEPEND": "=dev-libs/PPA-3"},
+            "dev-libs/PPE-2::pp-repo1": {},
+            "dev-libs/PPE-3::pp-repo2": {},
         }
 
         installed = {
@@ -326,6 +328,8 @@ class MultirepoTestCase(TestCase):
             "dev-libs/PPA-2::pp-repo1": {},
             "dev-libs/PPA-4::pp-repo2": {},
             "dev-libs/PPD-1::pp-repo2": {},
+            "dev-libs/PPE-2::pp-repo1": {},
+            "dev-libs/PPE-4::pp-repo2": {},
         }
 
         user_config = {
@@ -346,6 +350,7 @@ class MultirepoTestCase(TestCase):
             "repos.conf": (
                 "[pp-repo1]",
                 "package-priority = 1",
+                "package-priority-exclude = dev-libs/A dev-libs/PPE",
                 "[pp-repo2]",
                 "package-priority = -1",
             ),
@@ -521,6 +526,21 @@ class MultirepoTestCase(TestCase):
                 success=True,
                 check_repo_names=True,
                 mergelist=["[binary]dev-libs/PPD-1::pp-repo2"],
+            ),
+            # PP: ::repo1 ebuild loses because of package-priority-exclude.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPE"],
+                success=True,
+                check_repo_names=True,
+                mergelist=["dev-libs/PPE-3::pp-repo2"],
+            ),
+            # PP: :repo1 binpkg loses because of package-priority-exclude.
+            ResolverPlaygroundTestCase(
+                ["dev-libs/PPE"],
+                options={"--usepkgonly": True},
+                success=True,
+                check_repo_names=True,
+                mergelist=["[binary]dev-libs/PPE-4::pp-repo2"],
             ),
         )
 

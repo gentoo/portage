@@ -164,6 +164,7 @@ class RepoConfig:
         "module_specific_options",
         "name",
         "package_priority",
+        "package_priority_exclude",
         "portage1_profiles",
         "portage1_profiles_compat",
         "profile_formats",
@@ -281,6 +282,28 @@ class RepoConfig:
             for a in conflicted_atoms:
                 self.usepkg_exclude.remove(a)
                 self.usepkg_include.remove(a)
+
+        if name == "DEFAULT":
+            self.package_priority_exclude = None
+        else:
+            ppe_atoms = set()
+            bad_atoms = []
+            for x in repo_opts.get("package-priority-exclude", "").split():
+                try:
+                    atom = Atom(x)
+                except portage.exception.InvalidAtom:
+                    atom = None
+                if atom is None or atom != atom.cp:
+                    bad_atoms.append(x)
+                else:
+                    ppe_atoms.add(atom.cp)
+            if bad_atoms:
+                writemsg(
+                    "\n!!! The following atoms are invalid in package-priority-exclude attribute "
+                    "for repo [%s] (only category/package names allowed):\n"
+                    "\n    %s\n" % (name, "\n    ".join(str(a) for a in bad_atoms))
+                )
+            self.package_priority_exclude = frozenset(ppe_atoms)
 
         package_priority = repo_opts.get("package-priority")
         if package_priority is not None:
@@ -786,6 +809,7 @@ _str_tuple_keys = (
     "aliases",
     "eclass_overrides",
     "force",
+    "package_priority_exclude",
     "usepkg_exclude",
     "usepkg_include",
 )
@@ -869,6 +893,7 @@ class RepoConfigLoader:
                             "masters",
                             "module_specific_options",
                             "package_priority",
+                            "package_priority_exclude",
                             "strict_misc_digests",
                             "sync_allow_hardlinks",
                             "sync_depth",
