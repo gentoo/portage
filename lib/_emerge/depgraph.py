@@ -6809,6 +6809,15 @@ class depgraph:
             self._frozen_config.myopts.get("--use-ebuild-visibility", "n") != "n"
         )
 
+        # Determine which repos prioritized this package in case that is the
+        # reason the dependency wasn't satisfied. This check is cheap.
+        cp_priority = portdb.cp_priority(atom.cp) if atom.package else None
+        prioritized_repos = (
+            {cp.repo for cp in portdb.cp_list(atom.cp)}
+            if cp_priority is not None
+            else None
+        )
+
         for db, pkg_type, built, installed, db_keys in dbs:
             if installed:
                 continue
@@ -6817,7 +6826,14 @@ class depgraph:
                     continue
                 cpv_list = db.match(atom)
             elif hasattr(db, "xmatch"):
-                cpv_list = db.xmatch("match-all-cpv-only", atom.without_use)
+                # xmatch (via cp_list) is influenced by package priority, so we
+                # must determine which versions are masked by this another way.
+                if atom.repo is None and cp_priority is not None:
+                    cpv_list = match_from_list(
+                        atom.without_use, db.cp_list(atom.cp, mytree=db.porttrees)
+                    )
+                else:
+                    cpv_list = db.xmatch("match-all-cpv-only", atom.without_use)
             else:
                 cpv_list = db.match(atom.without_use)
 
@@ -6895,6 +6911,20 @@ class depgraph:
                             )
                         ):
                             mreasons = ["exclude option"]
+                        if (
+                            not mreasons
+                            and cp_priority is not None
+                            and repo in portdb.repositories
+                        ):
+                            repo_config = portdb.repositories[repo]
+                            if (
+                                atom.cp in repo_config.package_priority_exclude
+                                or cp_priority > (repo_config.package_priority or 0)
+                            ):
+                                mreasons = [
+                                    f"package-priority favors "
+                                    + ", ".join(sorted(prioritized_repos))
+                                ]
                         if mreasons:
                             masked_pkg_instances.add(pkg)
                         if atom.package and atom.unevaluated_atom.use:
@@ -7409,15 +7439,31 @@ class depgraph:
         )
 
     def _iter_match_pkgs_soname(self, root_config, pkg_type, atom, onlydeps=False):
+        portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
         db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
         installed = pkg_type == "installed"
 
         if isinstance(db, DbapiProvidesIndex):
             # descending order
             for cpv in reversed(db.match(atom)):
-                yield self._pkg(
+                pkg = self._pkg(
                     cpv, pkg_type, root_config, installed=installed, onlydeps=onlydeps
                 )
+
+                # Package priority filtering is handled by portdbapi.cp_list,
+                # but this is not applied to binary packages, so do that here.
+                cp_priority = (
+                    portdb.cp_priority(pkg.cp) if pkg_type == "binary" else None
+                )
+
+                if cp_priority is not None and pkg.repo in portdb.repositories:
+                    repo = portdb.repositories[pkg.repo]
+                    if pkg.cp in repo.package_priority_exclude or cp_priority > (
+                        repo.package_priority or 0
+                    ):
+                        continue
+
+                yield pkg
 
     def _iter_match_pkgs_atom(self, root_config, pkg_type, atom, onlydeps=False):
         """
@@ -7427,6 +7473,7 @@ class depgraph:
         checks (to avoid the expense when possible).
         """
 
+        portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
         db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
         atom_exp = dep_expand(atom, mydb=db, settings=root_config.settings)
         cp_list = db.cp_list(atom_exp.cp)
@@ -7435,6 +7482,12 @@ class depgraph:
 
         if cp_list:
             atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
+
+            # Package priority filtering is handled by portdbapi.cp_list, but
+            # this is not applied to binary packages, so do that here.
+            cp_priority = (
+                portdb.cp_priority(atom_exp.cp) if pkg_type == "binary" else None
+            )
 
             # descending order
             cp_list.reverse()
@@ -7455,6 +7508,14 @@ class depgraph:
                     except portage.exception.PackageNotFound:
                         pass
                     else:
+                        if cp_priority is not None and pkg.repo in portdb.repositories:
+                            repo = portdb.repositories[pkg.repo]
+                            if (
+                                atom_exp.cp in repo.package_priority_exclude
+                                or cp_priority > (repo.package_priority or 0)
+                            ):
+                                continue
+
                         # A cpv can be returned from dbapi.match() as an
                         # old-style virtual match even in cases when the
                         # package does not actually PROVIDE the virtual.
@@ -7488,7 +7549,6 @@ class depgraph:
             if "remove" in self._dynamic_config.myparams:
                 # We need to search the portdbapi, which is not in our
                 # normal dbs list, in order to find the real SLOT.
-                portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
                 db_keys = list(portdb._aux_cache_keys)
                 dbs = [(portdb, "ebuild", False, False, db_keys)]
             else:
@@ -8267,7 +8327,6 @@ class depgraph:
                         # list only contains unbuilt ebuilds since USE can't
                         # be changed for built packages.
                         higher_version_rejected = False
-                        repo_priority = pkg.repo_priority
                         for rejected in packages_with_invalid_use_config:
                             if rejected.cp != pkg.cp:
                                 continue
@@ -8275,13 +8334,9 @@ class depgraph:
                                 higher_version_rejected = True
                                 break
                             if portage.dep.cpvequal(rejected.cpv, pkg.cpv):
-                                # If version is identical then compare
-                                # repo priority (see bug #350254).
-                                rej_repo_priority = rejected.repo_priority
-                                if rej_repo_priority is not None and (
-                                    repo_priority is None
-                                    or rej_repo_priority > repo_priority
-                                ):
+                                # If version is identical then compare by the
+                                # established repo order (see bug #350254).
+                                if rejected.repo_order > pkg.repo_order:
                                     higher_version_rejected = True
                                     break
                         if higher_version_rejected:

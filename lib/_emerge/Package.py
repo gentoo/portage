@@ -722,11 +722,11 @@ class Package(Task):
         return self._metadata["repository"]
 
     @property
-    def repo_priority(self):
-        repo_info = self.root_config.settings.repositories.prepos.get(self.repo)
-        if repo_info is None:
-            return None
-        return repo_info.priority
+    def repo_order(self):
+        try:
+            return self.root_config.settings.repositories.prepos_order.index(self.repo)
+        except ValueError:
+            return -1
 
     @property
     def use(self):
