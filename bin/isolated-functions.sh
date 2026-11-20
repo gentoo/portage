@@ -375,6 +375,13 @@ __unset_colors() {
 	PORTAGE_COLOR_WARN=
 }
 
+# Determines whether the first parameter is an unsigned decimal integer.
+# Leading zeroes are forbidden, lest they be considered as octal in an
+# arithmetic context.
+__is_uint() {
+	[[ $1 == @(0|[1-9]*([0-9])) ]]
+}
+
 __set_colors() {
 	# bash's internal COLUMNS variable
 	COLS=${COLUMNS:-0}

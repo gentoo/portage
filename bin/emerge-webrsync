@@ -167,15 +167,11 @@ get_repository_timestamp() {
 	path=${repo_location}/metadata/timestamp.x
 	if [[ ! -f ${path} ]]; then
 		unixtime=0
-	elif ! read -r unixtime _ < "${path}" || ! is_uint "${unixtime}"; then
+	elif ! read -r unixtime _ < "${path}" || ! __is_uint "${unixtime}"; then
 		return 1
 	fi
 
 	printf '%s\n' "${unixtime}"
-}
-
-is_uint() {
-	[[ $1 == @(0|[1-9]*([0-9])) ]]
 }
 
 fetch_file() {
@@ -378,7 +374,7 @@ get_snapshot_timestamp() {
 	tar ${is_gnu+--wildcards} -O -xf "${file}" '*/metadata/timestamp.x' |
 	{
 		read -r unixtime _ \
-		&& is_uint "${unixtime}" \
+		&& __is_uint "${unixtime}" \
 		&& printf '%s\n' "${unixtime}"
 	}
 }

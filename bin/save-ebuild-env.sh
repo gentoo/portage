@@ -211,6 +211,7 @@ __save_ebuild_env() (
 		__filter_readonly_variables
 		__has_phase_defined_up_to
 		__helpers_die
+		__is_uint
 		__pipestatus
 		__preprocess_ebuild_env
 		__qa_call
