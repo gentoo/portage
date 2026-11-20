@@ -344,12 +344,6 @@ class portdbapi(dbapi):
         # Keep a list of repo names in the established repo order.
         self._ordered_repo_name_list = tuple(reversed(self._porttrees_repos))
 
-        # Also keep a grouped list of repos, sorted by package priority. The
-        # established order above is preserved within each group.
-        self._package_prioritized_repos = _group_repos_by_package_priority(
-            self._porttrees_repos.values()
-        )
-
     def _get_porttrees(self):
         return self._porttrees
 
@@ -1178,12 +1172,21 @@ class portdbapi(dbapi):
                 for repo in reversed(self._better_cache[mycp])
                 if repo.name in self._porttrees_repos
             ]
-        if mytree is not None or len(self._package_prioritized_repos) < 2:
+
+        if mytree is not None:
             prioritized_repos = (repos,)
-        elif self._better_cache is None:
-            prioritized_repos = self._package_prioritized_repos
         else:
-            prioritized_repos = _group_repos_by_package_priority(repos)
+            by_prio = {}
+            no_prio = []
+            for repo in repos:
+                if mycp in repo.package_priority_exclude:
+                    no_prio.append(repo)
+                else:
+                    by_prio.setdefault(repo.package_priority or 0, []).append(repo)
+            prioritized_repos = [by_prio[p] for p in sorted(by_prio, reverse=True)] + [
+                no_prio
+            ]
+
         mylist = []
         for equal_repos in prioritized_repos:
             for repo in equal_repos:
@@ -1253,7 +1256,10 @@ class portdbapi(dbapi):
         if not mylist:
             return None
         repo = self.repositories.prepos.get(mylist[0].repo)
-        return None if repo is None else (repo.package_priority or 0)
+        if repo is None or cp in repo.package_priority_exclude:
+            return None
+        else:
+            return repo.package_priority or 0
 
     def freeze(self):
         for x in (
@@ -1792,10 +1798,3 @@ def _parse_uri_map(cpv, metadata, use=None, only_restricted=False):
         uri_map[k] = tuple(v)
 
     return uri_map
-
-
-def _group_repos_by_package_priority(repos):
-    by_prio = {}
-    for repo in repos:
-        by_prio.setdefault(repo.package_priority or 0, []).append(repo)
-    return [by_prio[p] for p in sorted(by_prio, reverse=True)]

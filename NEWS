@@ -125,6 +125,10 @@ Features:
   priority repositories, regardless of package version and any other
   configuration. (bug #983159)
 
+* config: repos.conf: Add 'package-priority-exclude' to exclude packages from
+  the above prioritization. Matching packages from the repository are given the
+  lowest priority. (bug #983159)
+
 Bug fixes:
 
 * bintree: Fix a performance regression caused by needlessly extracting metadata

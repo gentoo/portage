@@ -1068,6 +1068,12 @@ from matches one currently configured in the target system. This feature is
 most useful for downstream distributions where an overlay should be used over
 the upstream repository no matter what.
 .TP
+.B package\-priority\-exclude
+A space separated list of category/package names to not prioritize from this
+repository. Matching ebuilds and binaries from this repository are given lower
+priority than all others, regardless of package version or any other
+configuration.
+.TP
 .B strict\-misc\-digests = yes|no|true|false
 This setting determines whether digests are checked for files declared
 in the Manifest with MISC type (includes ChangeLog and metadata.xml
