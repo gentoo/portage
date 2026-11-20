@@ -44,7 +44,7 @@ portage_saved_readonly_vars=(
 # In order to prevent changed values from causing unexpected
 # interference, they are filtered out of the environment when
 # it is saved or loaded (any mutations do not persist).
-portage_mutable_filtered_vars=( AA HOSTNAME )
+portage_mutable_filtered_vars=( AA EINFO_INDENT HOSTNAME )
 
 # @FUNCTION: __filter_readonly_variables
 # @DESCRIPTION: [--filter-sandbox] [--allow-extra-vars]
@@ -1197,6 +1197,12 @@ __ebuild_main() {
 		exit 1
 		;;
 	esac
+
+	# Clean EINFO_INDENT before leaving the phase.
+	if [[ ${#EINFO_INDENT} -ne 0 ]]; then
+		EINFO_INDENT=""
+		eqawarn "eindent called without eoutdent"
+	fi
 
 	# Save the env only for relevant phases.
 	if [[ $1 != @(clean|help|info|nofetch) ]]; then

@@ -1,4 +1,4 @@
-# Copyright 2010-2025 Gentoo Authors
+# Copyright 2010-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -217,6 +217,7 @@ class Eapi:
         "7",
         "8",
         "9",
+        "10",
     )
 
     _eapi_val: int = -1
