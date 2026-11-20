@@ -120,6 +120,8 @@ die() {
 
 	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
+	# reset indentation when dying
+	EINFO_INDENT=""
 
 	if ___eapi_die_supports_nonfatal && [[ $1 == -n ]]; then
 		shift
@@ -246,7 +248,7 @@ __elog_base() {
 	fi
 	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
 	echo -e "$@" | while read -r ; do
-		echo "${messagetype} ${REPLY}"
+		echo "${messagetype} ${EINFO_INDENT}${REPLY}"
 	done >> "${T}/logging/${EBUILD_PHASE:-other}"
 	return 0
 }
@@ -255,7 +257,7 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${EINFO_INDENT}${REPLY}"
 	done >&2
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -265,7 +267,7 @@ elog() {
 	__elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${EINFO_INDENT}${REPLY}"
 	done >&2
 	LAST_E_CMD="elog"
 	return 0
@@ -275,7 +277,7 @@ einfo() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${EINFO_INDENT}${REPLY}"
 	done >&2
 	LAST_E_CMD="einfo"
 	return 0
@@ -284,7 +286,7 @@ einfo() {
 einfon() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
-	echo -ne " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} $*" >&2
+	echo -ne " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${EINFO_INDENT}$*" >&2
 	LAST_E_CMD="einfon"
 	return 0
 }
@@ -293,7 +295,7 @@ ewarn() {
 	__elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${EINFO_INDENT}${REPLY}"
 	done >&2
 	LAST_E_CMD="ewarn"
 	return 0
@@ -303,7 +305,7 @@ eerror() {
 	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
+		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${EINFO_INDENT}${REPLY}"
 	done >&2
 	LAST_E_CMD="eerror"
 	return 0
@@ -411,6 +413,7 @@ __set_colors() {
 }
 
 RC_ENDCOL="yes"
+EINFO_INDENT=""
 
 if [[ -z ${NO_COLOR} ]] ; then
 	case ${NOCOLOR:-false} in
@@ -754,5 +757,18 @@ configparser() {
 
 	eval "${reset_extglob}"
 }
+
+if ___eapi_has_eindent; then
+	eindent() {
+		EINFO_INDENT+="  "
+	}
+
+	eoutdent() {
+		if [[ ${#EINFO_INDENT} -eq 0 ]]; then
+			eqawarn "eoutdent called without eindent"
+		fi
+		EINFO_INDENT=${EINFO_INDENT%  }
+	}
+fi
 
 true
