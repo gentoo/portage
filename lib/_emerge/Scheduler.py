@@ -291,6 +291,9 @@ class Scheduler(PollScheduler):
         self._prefetchers = weakref.WeakValueDictionary()
         self._pkg_queue = []
         self._jobs = 0
+        # Running jobs that build from source. Binary package jobs
+        # don't count, since merge-wait exists to protect builds.
+        self._source_jobs = 0
         self._running_tasks = {}
         self._job_tokens = {}
         self._completed_tasks = set()
@@ -1897,6 +1900,8 @@ class Scheduler(PollScheduler):
                 self._status_display.failed = len(self._failed_pkgs)
             self._deallocate_config(build.settings)
         self._jobs -= 1
+        if not build.pkg.built:
+            self._source_jobs -= 1
         self._status_display.running = self._jobs
         self._status_display.merge_wait = len(self._merge_wait_queue)
         self._observability.update()
@@ -2273,6 +2278,18 @@ class Scheduler(PollScheduler):
 
         return True
 
+    def _merge_wait_ready(self):
+        """
+        Return True if a merge at the head of _merge_wait_queue may start.
+        """
+        if not self._merge_wait_queue:
+            return False
+        if self._flush_merge_wait_queue:
+            return True
+        if self._merge_wait_queue[0].is_system_pkg:
+            return not self._jobs and not self._task_queues.merge
+        return not self._source_jobs
+
     def _schedule_tasks(self):
         if self._terminated.is_set():
             self._merge_wait_queue.clear()
@@ -2280,16 +2297,11 @@ class Scheduler(PollScheduler):
         while True:
             state_change = 0
 
-            # When the number of jobs and merges drops to zero,
-            # process a single merge from _merge_wait_queue if
-            # it's not empty. We only process one since these are
-            # special packages and we want to ensure that
-            # parallel-install does not cause more than one of
-            # them to install at the same time.
-            if self._merge_wait_queue and (
-                (not self._jobs and not self._task_queues.merge)
-                or self._flush_merge_wait_queue
-            ):
+            # Release merges from _merge_wait_queue once nothing is
+            # building from source. A system package also waits for
+            # every other job and merge to finish, so that
+            # parallel-install never merges one alongside anything else.
+            if self._merge_wait_ready():
                 if self._flush_merge_wait_queue:
                     self._status_msg(
                         "Manual flush of the merge-wait queue requested (e.g., via SIGUSR2)"
@@ -2345,14 +2357,7 @@ class Scheduler(PollScheduler):
                 # state_change (counting it triggers an infinite loop).
                 self._task_queues.fetch.clear()
 
-            if not (
-                state_change
-                or (
-                    self._merge_wait_queue
-                    and not self._jobs
-                    and not self._task_queues.merge
-                )
-            ):
+            if not (state_change or self._merge_wait_ready()):
                 break
 
         if not (
@@ -2515,7 +2520,7 @@ class Scheduler(PollScheduler):
 
             if (
                 self._choose_pkg_return_early
-                or self._merge_wait_scheduled
+                or any(task.is_system_pkg for task in self._merge_wait_scheduled)
                 or (self._jobs and self._unsatisfied_system_deps)
                 or not self._can_add_job()
                 or self._job_delay()
@@ -2524,6 +2529,11 @@ class Scheduler(PollScheduler):
 
             pkg = self._choose_pkg()
             if pkg is None:
+                return state_change
+
+            # Source builds wait for merges released from merge-wait.
+            if self._merge_wait_scheduled and not pkg.built:
+                self._pkg_queue.insert(0, pkg)
                 return state_change
 
             # --jobs-tmpdir-require-free-gb is sized for source builds. A
@@ -2557,6 +2567,8 @@ class Scheduler(PollScheduler):
 
             else:
                 self._jobs += 1
+                if not pkg.built:
+                    self._source_jobs += 1
                 self._previous_job_start_time = time.time()
                 self._status_display.running = self._jobs
                 self._jobserver_tokens[id(task)] = token
