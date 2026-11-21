@@ -16,6 +16,7 @@ import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import portage.data
 from _emerge import _observability
 from _emerge._observability import (
     ObservabilityMonitor,
@@ -185,7 +186,7 @@ class ObservabilitySnapshotTestCase(TestCase):
         snap = build_snapshot(monitor)
 
         self.assertEqual(snap["type"], "snapshot")
-        self.assertEqual(snap["schema"], 2)
+        self.assertEqual(snap["schema"], 3)
         self.assertEqual(snap["jobs"]["completed"], 1)
         self.assertEqual(snap["jobs"]["total"], 5)
         self.assertEqual(len(snap["tasks"]), 2)
@@ -195,6 +196,30 @@ class ObservabilitySnapshotTestCase(TestCase):
         self.assertEqual(by_cpv["dev-libs/foo-1.2"]["pid"], 4321)
         self.assertEqual(by_cpv["dev-libs/foo-1.2"]["kind"], "build")
         self.assertEqual(by_cpv["sys-apps/bar-3"]["kind"], "merge")
+
+    def test_snapshot_includes_builddir(self):
+        build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=7)
+        build.settings = _Settings(PORTAGE_BUILDDIR="/var/tmp/portage/dev-libs/foo-1.2")
+        inner = EbuildBuild(_Pkg("sys-apps/bar-3"))
+        inner.settings = _Settings(PORTAGE_BUILDDIR="/var/tmp/portage/sys-apps/bar-3")
+        merge = PackageMerge(inner)
+        nodir = EbuildBuild(_Pkg("dev-libs/baz-1"), pid=8)
+        nodir.settings = _Settings()
+        sched = _make_scheduler(tasks=[build, merge, nodir])
+        monitor = ObservabilityMonitor(sched)
+        for task in (build, merge, nodir):
+            monitor.note_task_started(task)
+
+        by_cpv = {t["cpv"]: t for t in build_snapshot(monitor)["tasks"]}
+        self.assertEqual(
+            by_cpv["dev-libs/foo-1.2"]["builddir"],
+            "/var/tmp/portage/dev-libs/foo-1.2",
+        )
+        self.assertEqual(
+            by_cpv["sys-apps/bar-3"]["builddir"],
+            "/var/tmp/portage/sys-apps/bar-3",
+        )
+        self.assertNotIn("builddir", by_cpv["dev-libs/baz-1"])
 
     def test_snapshot_includes_cgroup_resources(self):
         build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=7)
@@ -368,6 +393,20 @@ class ObservabilitySnapshotTestCase(TestCase):
 
             try:
                 global_event_loop().run_until_complete(exercise())
+            finally:
+                monitor.close()
+
+    def test_socket_is_open_to_the_portage_group(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            build = EbuildBuild(_Pkg("dev-libs/foo-1.2"), pid=99)
+            sched = _make_scheduler(eprefix=tmp, tasks=[build])
+            monitor = ObservabilityMonitor(sched)
+            monitor.note_task_started(build)
+            try:
+                monitor.update(force=True)
+                st = os.stat(monitor._socket_path)
+                self.assertEqual(st.st_gid, portage.data.portage_gid)
+                self.assertEqual(st.st_mode & 0o777, 0o660)
             finally:
                 monitor.close()
 
