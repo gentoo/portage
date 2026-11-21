@@ -510,7 +510,7 @@ class GitSync(NewBase):
                         out.einfo(f"Using keys from {self.repo.sync_openpgp_key_path}")
 
                     with open(self.repo.sync_openpgp_key_path, "rb") as f:
-                        openpgp_env.import_key(f)
+                        self._import_key(openpgp_env, f)
                     self._refresh_keys(openpgp_env)
                 except (GematoException, asyncio.TimeoutError) as e:
                     writemsg_level(
