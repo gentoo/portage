@@ -320,7 +320,15 @@ __eend() {
 		msg="${PORTAGE_COLOR_BRACKET}[ ${PORTAGE_COLOR_BAD}!!${PORTAGE_COLOR_BRACKET} ]${PORTAGE_COLOR_NORMAL}"
 	fi
 
-	echo -e "${ENDCOL} ${msg}" >&2
+	if (( ___state[can-move-cursor] )); then
+		# Move the cursor up by one line with CUU, then forward with CUF
+		# to where the indicator belongs. This presumes that the ebegin
+		# message occupied one line, and that the cursor is at the first
+		# column, neither of which is guaranteed.
+		printf '\e[A\e[%dC %b\n' "$(( COLS > 8 ? COLS - 8 : 0 ))" "${msg}" >&2
+	else
+		printf ' %b\n' "${msg}" >&2
+	fi
 
 	return "${retval}"
 }
@@ -341,7 +349,6 @@ eend() {
 
 __unset_colors() {
 	COLS=80
-	ENDCOL=
 
 	PORTAGE_COLOR_BAD=
 	PORTAGE_COLOR_BRACKET=
@@ -375,9 +382,6 @@ __set_colors() {
 		COLS=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
 
-	# Now, ${ENDCOL} will move us to the end of the
-	# column; regardless of character width
-	ENDCOL=$'\e[A\e['$(( COLS - 8 ))'C'
 	# shellcheck disable=2034
 	if [[ ${PORTAGE_COLORMAP} ]]; then
 		# The PORTAGE_COLORMAP environment variable is defined by the
@@ -397,10 +401,19 @@ __set_colors() {
 	fi
 }
 
+# Declare the array where ebuild.sh has not, for the helpers source this unit
+# but not ebuild.sh.
+[[ ${___state@a} == *A* ]] || declare -A ___state=()
+
+# Determines whether __eend() may move the cursor. It may not if colour is
+# disabled, despite that being no indication of whether the terminal is able to.
+___state[can-move-cursor]=1
+
 if [[ -z ${NO_COLOR} ]] ; then
 	case ${NOCOLOR:-false} in
 	yes|true)
 		__unset_colors
+		___state[can-move-cursor]=0
 		;;
 	no|false)
 		__set_colors
@@ -408,6 +421,7 @@ if [[ -z ${NO_COLOR} ]] ; then
 	esac
 else
 	__unset_colors
+	___state[can-move-cursor]=0
 fi
 
 

@@ -134,7 +134,6 @@ __save_ebuild_env() (
 		# Variables set directly in bash following ebuild.sh execution.
 		COLS
 		EBUILD_MASTER_PID
-		ENDCOL
 		HOME
 		MISC_FUNCTIONS_ARGS
 		MOPREFIX
