@@ -238,7 +238,7 @@ inherit() {
 
 		ECLASS="${1##*/}"
 		__export_funcs_var=__export_functions_${___state[eclass-depth]}
-		unset ${__export_funcs_var}
+		unset "${__export_funcs_var}"
 
 		if (( ! ___state[in-qa-check] )) \
 			&& [[ ${EBUILD_PHASE} != @(depend|nofetch|*rm) && ${EMERGE_FROM} != binary ]]
@@ -363,7 +363,7 @@ inherit() {
 					eval "$x() { ${ECLASS}_${x} \"\$@\" ; }" > /dev/null
 				done
 			fi
-			unset $__export_funcs_var
+			unset "${__export_funcs_var}"
 
 			if ! contains_word "$1" "${INHERITED}"; then
 				export INHERITED+=" $1"
