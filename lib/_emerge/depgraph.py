@@ -124,6 +124,10 @@ if TYPE_CHECKING:
 # computation, which catches a missing _invalidate_probe_caches() call.
 _verify_probe_caches = False
 
+# Reported with PORTAGE_SHOW_LRU_CACHE_INFO.
+_probe_cache_hits = collections.Counter()
+_probe_cache_misses = collections.Counter()
+
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple(
     "_dep_check_graph_interface",
@@ -2819,10 +2823,12 @@ class depgraph:
         try:
             cached = cache[key]
         except KeyError:
+            _probe_cache_misses["slot_operator_update_probe"] += 1
             cached = cache[key] = self._slot_operator_update_probe_uncached(
                 dep, new_child_slot, slot_conflict
             )
             return cached
+        _probe_cache_hits["slot_operator_update_probe"] += 1
 
         if _verify_probe_caches:
             fresh = self._slot_operator_update_probe_uncached(
@@ -3305,8 +3311,10 @@ class depgraph:
         try:
             cached = cache[key]
         except KeyError:
+            _probe_cache_misses["select_atoms_probe"] += 1
             cached = cache[key] = self._select_atoms_probe_uncached(root, pkg, use)
             return cached
+        _probe_cache_hits["select_atoms_probe"] += 1
 
         if _verify_probe_caches:
             if cached != self._select_atoms_probe_uncached(root, pkg, use):
@@ -13305,6 +13313,17 @@ def _show_resolution_report(start_time, backtracked: int = -1, max_retries: int 
         f"Dependency resolution took {darkgreen(time_fmt)} s{backtrack_info}.\n\n"
     )
     show_lru_cache_info()
+
+    if os.environ.get("PORTAGE_SHOW_LRU_CACHE_INFO"):
+        print("Resolver probe cache information")
+        for name in sorted(_probe_cache_hits.keys() | _probe_cache_misses.keys()):
+            hits = _probe_cache_hits[name]
+            misses = _probe_cache_misses[name]
+            total = hits + misses
+            print(
+                f"{name}: hit ratio: {hits / total:.2%} "
+                f"(total: {total}, hits: {hits}, misses: {misses})"
+            )
 
 
 def save_nomerge_favorites(root_config, myopts, all_added):
