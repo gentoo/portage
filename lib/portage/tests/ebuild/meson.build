@@ -7,6 +7,7 @@ py.install_sources(
         'test_doebuild_spawn.py',
         'test_ebuild_ipc.py',
         'test_ebuild_lock_skip.py',
+        'test_exit_timeout_warning.py',
         'test_fetch.py',
         'test_ipc_daemon.py',
         'test_prepare_self_update.py',
