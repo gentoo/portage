@@ -67,6 +67,7 @@ py.install_sources(
         'test_output.py',
         'test_package_tracker.py',
         'test_perl_rebuild_bug.py',
+        'test_probe_cache_invalidation.py',
         'test_profile_default_eapi.py',
         'test_profile_package_set.py',
         'test_profile_use_stable.py',

@@ -82,6 +82,13 @@ def metadata_cache(request, tmp_path_factory):
 
 
 @pytest.fixture(autouse=True, scope="session")
+def verify_probe_caches():
+    import _emerge.depgraph
+
+    _emerge.depgraph._verify_probe_caches = True
+
+
+@pytest.fixture(autouse=True, scope="session")
 def prepare_environment():
     # Pretend that the current user's uid/gid are the 'portage' uid/gid,
     # so things go smoothly regardless of the current user and global
