@@ -253,59 +253,47 @@ __elog_base() {
 
 eqawarn() {
 	__elog_base QA "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
 		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
 	done >&2
-	LAST_E_CMD="eqawarn"
 	return 0
 }
 
 elog() {
 	__elog_base LOG "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
 		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
 	done >&2
-	LAST_E_CMD="elog"
 	return 0
 }
 
 einfo() {
 	__elog_base INFO "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
 		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
 	done >&2
-	LAST_E_CMD="einfo"
 	return 0
 }
 
 einfon() {
 	__elog_base INFO "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -ne " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} $*" >&2
-	LAST_E_CMD="einfon"
 	return 0
 }
 
 ewarn() {
 	__elog_base WARN "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
 		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
 	done >&2
-	LAST_E_CMD="ewarn"
 	return 0
 }
 
 eerror() {
 	__elog_base ERROR "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
 		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${REPLY}"
 	done >&2
-	LAST_E_CMD="eerror"
 	return 0
 }
 
@@ -314,9 +302,7 @@ ebegin() {
 
 	msg="$* ..."
 	einfon "${msg}"
-	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
-	LAST_E_LEN=$(( 3 + ${#msg} ))
-	LAST_E_CMD="ebegin"
+	echo >&2
 	(( ++__EBEGIN_EEND_COUNT ))
 	return 0
 }
@@ -334,12 +320,7 @@ __eend() {
 		msg="${PORTAGE_COLOR_BRACKET}[ ${PORTAGE_COLOR_BAD}!!${PORTAGE_COLOR_BRACKET} ]${PORTAGE_COLOR_NORMAL}"
 	fi
 
-	if [[ ${RC_ENDCOL} == "yes" ]] ; then
-		echo -e "${ENDCOL} ${msg}" >&2
-	else
-		[[ ${LAST_E_CMD} == ebegin ]] || LAST_E_LEN=0
-		printf "%$(( COLS - LAST_E_LEN - 7 ))s%b\n" '' "${msg}" >&2
-	fi
+	echo -e "${ENDCOL} ${msg}" >&2
 
 	return "${retval}"
 }
@@ -355,7 +336,6 @@ eend() {
 
 	__eend "${retval}" eerror "$*"
 
-	LAST_E_CMD="eend"
 	return "${retval}"
 }
 
@@ -416,8 +396,6 @@ __set_colors() {
 		PORTAGE_COLOR_WARN=$'\e[33;01m'
 	fi
 }
-
-RC_ENDCOL="yes"
 
 if [[ -z ${NO_COLOR} ]] ; then
 	case ${NOCOLOR:-false} in
