@@ -53,9 +53,7 @@ class EbuildExecuter(CompositeTask):
         # pkg._metadata["SRC_URI"] is not populated in this context.
         if self.settings.configdict["pkg"].get("A", "").strip():
             return False
-        metadata = self.pkg._metadata
-        defined_phases = frozenset(metadata.get("DEFINED_PHASES", "").split())
-        if defined_phases.intersection(self._skippable_src_phases):
+        if self._skippable_src_phases.intersection(self.pkg.defined_phases):
             return False
 
         # pkg_setup (which has run by now) records whether PATCHES is set;

@@ -220,6 +220,9 @@ Bug fixes:
   PATCHES is an array whose first element is unset or empty, leaving its
   patches unapplied.
 
+* EbuildExecuter: Prevent src phases from being erroneously skipped for packages
+  whose metadata cache entries lack DEFINED_PHASES.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
