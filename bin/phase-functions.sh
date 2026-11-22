@@ -1190,7 +1190,7 @@ __ebuild_main() {
 		# The ebuild is sourced by the time pkg_setup has run, so PATCHES
 		# is visible here. Record when it is set: the default src_prepare
 		# applies it, so the no-op src-phase skip must not fire.
-		if [[ ${1} == setup && -n ${PATCHES} ]]; then
+		if [[ $1 == setup ]] && _=${| __expand_patches; }; then
 			: > "${PORTAGE_BUILDDIR}/.src_patches"
 		fi
 		;;
