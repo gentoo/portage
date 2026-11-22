@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import shlex
 
 import portage
 from portage.util._async.AsyncFunction import AsyncFunction
@@ -28,6 +27,19 @@ class PackagePhase(CompositeTask):
     )
 
     _shell_binary = portage.const.BASH_BINARY
+
+    # Recursively copies the directory given by the first parameter to the
+    # pathname given by the second, having first removed the latter. If cp(1)
+    # is found to support -l, regular files shall be hard-linked rather than
+    # copied.
+    _copy_proot_script = """
+        rm -rf -- "${2:?}" || exit
+        opts=-pPR
+        if cp --help | grep -q -- "^[[:space:]]*-l,"; then
+            opts+=l
+        fi
+        exec cp "${opts}" -- "$1" "$2"
+    """
 
     def _start(self):
         packdebug_maskstr = ""
@@ -56,13 +68,11 @@ class PackagePhase(CompositeTask):
                 SpawnProcess(
                     args=[
                         self._shell_binary,
-                        "-e",
                         "-c",
-                        (
-                            f"rm -rf {shlex.quote(self._proot)}; "
-                            'cp -pPR $(cp --help | grep -q -- "^[[:space:]]*-l," && echo -l)'
-                            f' "${{D}}" {shlex.quote(self._proot)}'
-                        ),
+                        self._copy_proot_script,
+                        self._shell_binary,
+                        self.settings["D"],
+                        self._proot,
                     ],
                     background=self.background,
                     env=self.settings.environ(),
