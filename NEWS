@@ -212,6 +212,10 @@ Bug fixes:
 * PackagePhase: Fix a performance regression caused by needlessly copying the
   image directory prior to creating a binary package (bug #987123).
 
+* PackagePhase: Prevent hard links from being broken in binary packages created
+  with PKG_INSTALL_MASK or FEATURES=packdebug in effect, as could occur with
+  GNU coreutils 9.10 or later.
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.

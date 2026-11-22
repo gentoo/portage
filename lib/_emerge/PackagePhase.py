@@ -30,12 +30,12 @@ class PackagePhase(CompositeTask):
 
     # Recursively copies the directory given by the first parameter to the
     # pathname given by the second, having first removed the latter. If cp(1)
-    # is found to support -l, regular files shall be hard-linked rather than
-    # copied.
+    # is provided by GNU coreutils, regular files shall be hard-linked rather
+    # than copied.
     _copy_proot_script = """
         rm -rf -- "${2:?}" || exit
         opts=-pPR
-        if cp --help | grep -q -- "^[[:space:]]*-l,"; then
+        if cp -l --help >/dev/null 2>&1; then
             opts+=l
         fi
         exec cp "${opts}" -- "$1" "$2"
