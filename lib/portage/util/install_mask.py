@@ -72,6 +72,10 @@ class InstallMask:
             else:
                 self._unanchored.append(pattern_obj)
 
+    def __bool__(self):
+        # Every pattern is stored in one of these two collections.
+        return bool(self._unanchored or self._anchored)
+
     def _iter_relevant_patterns(self, path):
         """
         Iterate over patterns that may be relevant for the given path.

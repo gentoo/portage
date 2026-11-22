@@ -209,6 +209,9 @@ Bug fixes:
 * isolated-functions.sh: Prevent einfo, einfon, elog, ewarn, eqawarn and eerror
   from treating any of their arguments as options of the echo builtin.
 
+* PackagePhase: Fix a performance regression caused by needlessly copying the
+  image directory prior to creating a binary package (bug #987123).
+
 Cleanups:
 
 * man: Misc copyediting and formatting fixes.
