@@ -202,6 +202,7 @@ __save_ebuild_env() (
 		__eprint
 		__eqaquote
 		__eqatag
+		__expand_patches
 		__filter_readonly_variables
 		__get_columns
 		__has_phase_defined_up_to

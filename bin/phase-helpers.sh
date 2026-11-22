@@ -827,13 +827,23 @@ __eapi4_src_install() {
 }
 
 __eapi6_src_prepare() {
-	if [[ ${PATCHES@a} == *a* ]] ; then
-		[[ ${#PATCHES[@]} -gt 0 ]] && eapply "${PATCHES[@]}"
-	elif [[ -n ${PATCHES} ]]; then
-		eapply ${PATCHES}
-	fi
+	local -a patches
 
+	if _=${| __expand_patches && patches=( "${REPLY[@]}" ); }; then
+		eapply "$@" "${patches[@]}"
+	fi
 	eapply_user
+}
+
+__expand_patches() {
+	local IFS
+
+	if [[ ${PATCHES@a} == *a* ]]; then
+		REPLY=( "${PATCHES[@]}" )
+	else
+		REPLY=( ${PATCHES} )
+	fi
+	(( ${#REPLY[@]} ))
 }
 
 __eapi6_src_install() {
@@ -845,14 +855,7 @@ __eapi6_src_install() {
 }
 
 __eapi8_src_prepare() {
-	local f
-	if [[ ${PATCHES@a} == *a* ]] ; then
-		[[ ${#PATCHES[@]} -gt 0 ]] && eapply -- "${PATCHES[@]}"
-	elif [[ -n ${PATCHES} ]]; then
-		eapply -- ${PATCHES}
-	fi
-
-	eapply_user
+	__eapi6_src_prepare --
 }
 
 ___best_version_and_has_version_common() {
