@@ -9,7 +9,6 @@
 from portage import installation
 
 try:
-    import asyncio
     import errno
     import sys
 
@@ -262,16 +261,19 @@ if _multiprocessing_method:
 
 
 class _ForkWatcher:
+    current_pid = None
+
     @staticmethod
     def hook(_ForkWatcher):
         _ForkWatcher.current_pid = None
         # Force instantiation of a new event loop policy as a workaround
-        # for https://bugs.python.org/issue22087.
-        if sys.version_info < (3, 12):
+        # for https://bugs.python.org/issue22087. If asyncio has not been
+        # imported, there is no policy to reset.
+        if sys.version_info < (3, 12) and "asyncio" in sys.modules:
+            import asyncio
+
             asyncio.set_event_loop_policy(None)
 
-
-_ForkWatcher.hook(_ForkWatcher)
 
 os.register_at_fork(after_in_child=functools.partial(_ForkWatcher.hook, _ForkWatcher))
 
