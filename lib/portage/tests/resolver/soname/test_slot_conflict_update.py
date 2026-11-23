@@ -59,7 +59,7 @@ class SonameSlotConflictUpdateTestCase(TestCase):
 
         test_cases = (
             ResolverPlaygroundTestCase(
-                world,
+                ["@world"],
                 all_permutations=True,
                 options={
                     "--deep": True,
@@ -75,7 +75,7 @@ class SonameSlotConflictUpdateTestCase(TestCase):
                 ],
             ),
             ResolverPlaygroundTestCase(
-                world,
+                ["@world"],
                 all_permutations=True,
                 options={
                     "--deep": True,
