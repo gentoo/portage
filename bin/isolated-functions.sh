@@ -717,6 +717,8 @@ configparser() {
 
 	# https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
 	mapfile -t lines
+	# Append an empty line to ensure the final entry, if any, is flushed.
+	lines+=( '' )
 	for nr in "${!lines[@]}"; do
 		# Trim trailing whitespace characters.
 		line=${lines[nr++]%%+([[:space:]])}
@@ -767,7 +769,7 @@ configparser() {
 			return 1
 		fi && flush=1
 
-		if (( nr == ${#lines[@]} - 1 )); then
+		if (( nr == ${#lines[@]} )); then
 			# Last line encountered. Flush any pending value.
 			flush=1
 		fi
