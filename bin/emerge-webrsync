@@ -668,11 +668,13 @@ if [[ -f ${functions_script} ]]; then
 fi
 
 repo_name=gentoo
-repo_location=$(__repo_attr "${repo_name}" location)
-if [[ -z ${repo_location} ]]; then
+if ! __get_repo_attrs "${repo_name}" location sync-type; then
+	die "couldn't parse PORTAGE_REPOSITORIES"
+elif [[ ! ${REPLY[0]} ]]; then
 	die "Repository '${repo_name}' not found"
+else
+	repo_location=${REPLY[0]} repo_sync_type=${REPLY[1]}
 fi
-repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.

@@ -205,6 +205,7 @@ __save_ebuild_env() (
 		__expand_patches
 		__filter_readonly_variables
 		__get_columns
+		__get_repo_attrs
 		__has_phase_defined_up_to
 		__helpers_die
 		__is_uint
@@ -213,7 +214,6 @@ __save_ebuild_env() (
 		__qa_call
 		__qa_source
 		__quiet_mode
-		__repo_attr
 		__save_ebuild_env
 		__sb_append_var
 		__set_colors

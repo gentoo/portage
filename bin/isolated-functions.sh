@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# shellcheck disable=2128,2185,2219
+# shellcheck disable=2128,2178,2185,2219
 
 source "${PORTAGE_BIN_PATH:?}/eapi.sh" || exit
 
@@ -561,23 +561,30 @@ has() {
 	return 1
 }
 
-__repo_attr() {
-	local section key val i
+# __get_repo_attrs <section> <key>...
+#
+# Parses the value of PORTAGE_REPOSITORIES and assigns REPLY as an array
+# containing the values of the specified keys of the named section, in the same
+# order. Where a key is absent, its element shall be unset. The return value
+# shall be that of the configparser() function.
+__get_repo_attrs() {
+	local section key i j
 	local -a records
 
 	mapfile -td '' records < <(configparser <<<"${PORTAGE_REPOSITORIES}")
 
+	REPLY=()
 	for (( i = 0; i < ${#records[@]}; i += 3 )); do
 		section=${records[i]}
 		key=${records[i + 1]}
-		if [[ ${section} == "$1" && ${key} == "$2" ]]; then
-			val=${records[i + 2]}
-			break
-		fi
+		for (( j = 2; j <= $#; j++ )); do
+			if [[ ${section} == "$1" && ${key} == "${!j}" ]]; then
+				REPLY[j - 2]=${records[i + 2]}
+			fi
+		done
 	done
 
-	# Only print the found value in the case that configparser succeeded.
-	wait "$!" && [[ -v val ]] && printf '%s\n' "${val}"
+	wait "$!"
 }
 
 # __eqaquote <string>
