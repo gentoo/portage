@@ -26,6 +26,7 @@ ___eapi_has_prefix_vars()               [[ ${1-${EAPI-0}} != [0-2] ]]
 
 ___eapi_accumulates_PROPERTIES()        [[ ${1-${EAPI-0}} != [0-7] ]]
 ___eapi_accumulates_RESTRICT()          [[ ${1-${EAPI-0}} != [0-7] ]]
+___eapi_has_MASKED_USE()                [[ ${1-${EAPI-0}} == 10-pre ]]
 
 # LEGACY VARIABLES
 

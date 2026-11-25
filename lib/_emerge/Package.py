@@ -12,6 +12,7 @@ from portage.dep import (
     _repo_separator,
     _slot_separator,
     check_required_use,
+    get_masked_use,
     paren_enclose,
     use_reduce,
 )
@@ -95,6 +96,7 @@ class Package(Task):
         "IUSE",
         "KEYWORDS",
         "LICENSE",
+        "MASKED_USE",
         "MD5",
         "PDEPEND",
         "PROVIDES",
@@ -406,6 +408,26 @@ class Package(Task):
                 except InvalidDependString as e:
                     self._invalid_metadata(k + ".syntax", f"{k}: {e}")
 
+        k = "MASKED_USE"
+        v = self._metadata.get(k)
+        if v and not self.built:
+            if not _get_eapi_attrs(eapi).masked_use:
+                self._invalid_metadata(
+                    "EAPI.incompatible",
+                    f"MASKED_USE set, but EAPI='{eapi}' doesn't allow it",
+                )
+            else:
+                try:
+                    get_masked_use(
+                        v,
+                        (),
+                        is_valid_flag=self.iuse.is_valid_flag,
+                        eapi=eapi,
+                        matchall=True,
+                    )
+                except InvalidDependString as e:
+                    self._invalid_metadata(k + ".syntax", f"{k}: {e}")
+
         k = "SRC_URI"
         v = self._metadata.get(k)
         if v:
@@ -662,7 +684,15 @@ class Package(Task):
         )
 
     class _use_class:
-        __slots__ = ("_expand", "_expand_hidden", "_force", "_mask", "_pkg", "enabled")
+        __slots__ = (
+            "_expand",
+            "_expand_hidden",
+            "_force",
+            "_mask",
+            "_masked_reasons",
+            "_pkg",
+            "enabled",
+        )
 
         def __init__(self, pkg, enabled_flags):
             self._pkg = pkg
@@ -670,6 +700,7 @@ class Package(Task):
             self._expand_hidden = None
             self._force = None
             self._mask = None
+            self._masked_reasons = None
             self.enabled = _intern_frozenset(enabled_flags)
             if pkg.built:
                 # Use IUSE to validate USE settings for built packages,
@@ -692,6 +723,7 @@ class Package(Task):
             )
             self._force = _intern_frozenset(pkgsettings.useforce)
             self._mask = _intern_frozenset(pkgsettings.usemask)
+            self._masked_reasons = pkgsettings.masked_use_reasons
 
         @property
         def expand(self):
@@ -716,6 +748,12 @@ class Package(Task):
             if self._mask is None:
                 self._init_force_mask()
             return self._mask
+
+        @property
+        def masked_reasons(self):
+            if self._masked_reasons is None:
+                self._init_force_mask()
+            return self._masked_reasons
 
     @property
     def repo(self):

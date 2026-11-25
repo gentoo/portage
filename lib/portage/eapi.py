@@ -112,6 +112,10 @@ def eapi_has_repo_deps(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).repo_deps
 
 
+def eapi_has_masked_use(eapi: str) -> bool:
+    return _get_eapi_attrs(eapi).masked_use
+
+
 def eapi_supports_use_stable(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).use_stable
 
@@ -179,6 +183,7 @@ _eapi_attrs = collections.namedtuple(
         "idepend",
         "iuse_defaults",
         "iuse_effective",
+        "masked_use",
         "posixish_locale",
         "path_variables_end_with_trailing_slash",
         "pkg_pretend",
@@ -205,6 +210,10 @@ _eapi_attrs = collections.namedtuple(
 )
 
 
+# Experimental EAPIs that support MASKED_USE (bug 790422).
+_masked_use_eapis = frozenset(["10-pre"])
+
+
 class Eapi:
     ALL_EAPIS = (
         "0",
@@ -217,6 +226,7 @@ class Eapi:
         "7",
         "8",
         "9",
+        "10",
     )
 
     _eapi_val: int = -1
@@ -262,6 +272,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             idepend=False,
             iuse_defaults=True,
             iuse_effective=False,
+            masked_use=True,
             path_variables_end_with_trailing_slash=False,
             pkg_pretend=True,
             posixish_locale=False,
@@ -304,6 +315,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             idepend=eapi >= Eapi("8"),
             iuse_defaults=eapi >= Eapi("1"),
             iuse_effective=eapi >= Eapi("5"),
+            masked_use=eapi_str in _masked_use_eapis,
             path_variables_end_with_trailing_slash=eapi <= Eapi("6"),
             pkg_pretend=eapi >= Eapi("4"),
             posixish_locale=eapi >= Eapi("6"),

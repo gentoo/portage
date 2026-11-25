@@ -1236,6 +1236,16 @@ Symbol	Location	Meaning
 %	suffix	newly added or removed
 ()	circumfix	forced, masked, or removed
 .TE
+
+Flags that the ebuild masks with \fBMASKED_USE\fR (see \fBebuild\fR(5))
+are not shown with the other flags. They are listed in a separate
+\fBMASKED_USE\fR variable at the end, grouped by the flags that mask
+them, for example
+\fBMASKED_USE="\-gui => gtk qt6, \-perforce => PYTHON_SINGLE_TARGET"\fR.
+A flag before \fB=>\fR is prefixed with \fB\-\fR if it masks the flags
+when disabled, and nested conditionals are separated by commas, as in
+\fBa,\-b => c\fR. A \fBUSE_EXPAND\fR variable is named instead of its
+flags when all of them are masked by the same flags.
 .TP
 .BR \-\-verbose\-conflicts
 Make slot conflicts more verbose. Note that this may in some cases output
