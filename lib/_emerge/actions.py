@@ -3443,6 +3443,17 @@ def getgccversion(chost=None):
 
     if chost:
         try:
+            gcc_env_d = os.path.join(portage.const.EPREFIX, "etc/env.d/gcc")
+            with open(os.path.join(gcc_env_d, "config-" + chost)) as config_file:
+                config = config_file.readline().strip().removeprefix("CURRENT=")
+            if config.startswith(chost + "-") and os.path.isfile(
+                os.path.join(gcc_env_d, config)
+            ):
+                return config.replace(chost + "-", gcc_ver_prefix, 1)
+        except OSError:
+            pass
+
+        try:
             proc = subprocess.Popen(
                 ["gcc-config", "-c"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
