@@ -2,8 +2,7 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-# Prevent aliases from causing portage to act inappropriately.
-# Make sure it's before everything so we don't mess aliases that follow.
+# Discard any aliases that the file specified by BASH_ENV may have defined.
 unalias -a
 
 # Make sure this isn't exported to scripts we execute.
@@ -421,6 +420,10 @@ __source_all_bashrcs() {
 	if [[ ${EBUILD_PHASE} != depend ]] ; then
 		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
+
+	# Any of the files sourced above may have enabled alias expansion.
+	# Disable it so that it cannot interfere with code read hereafter.
+	shopt -u expand_aliases
 }
 
 # @FUNCTION: __source_env_files
@@ -599,8 +602,6 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		|| [[ -f ${PORTAGE_BUILDDIR}/.ebuild_changed ]] \
 		|| contains_word noauto "${FEATURES}"
 	then
-		# The bashrcs get an opportunity here to set aliases that will be expanded
-		# during sourcing of ebuilds and eclasses.
 		__source_all_bashrcs
 
 		# When EBUILD_PHASE != depend, INHERITED comes pre-initialized

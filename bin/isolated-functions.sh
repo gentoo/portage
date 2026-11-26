@@ -18,10 +18,6 @@ if [[ -v PORTAGE_EBUILD_EXTRA_SOURCE ]]; then
 	# (usually by sourcing isolated-functions.sh).
 fi
 
-# We need this next line for "die" and "assert". It expands
-# It _must_ preceed all the calls to die and assert.
-shopt -s expand_aliases
-
 # Simplified version of pipestatus() for internal use
 __pipestatus() {
 	local status=( "${PIPESTATUS[@]}" ) s ret=0

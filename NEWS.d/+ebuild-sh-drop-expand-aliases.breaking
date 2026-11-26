@@ -1,0 +1,3 @@
+ebuild.sh: Portage no longer enables the expand_aliases shell option of its
+own accord. Aliases defined by bashrc files can no longer interfere with
+ebuilds and eclasses.
