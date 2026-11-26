@@ -376,7 +376,7 @@ preinst_mask() {
 	# Store INSTALL_MASK in build-info with whitespace collapsed.
 	cd "${PORTAGE_BUILDDIR}"/build-info || die
 
-	set -f
+	set -o noglob
 	set -- ${INSTALL_MASK}
 	if (( $# )); then
 		printf '%s\n' "$*" > INSTALL_MASK

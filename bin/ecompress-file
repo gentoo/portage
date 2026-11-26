@@ -7,12 +7,12 @@ source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 compress_file() {
 	mask_ext_re=""
 
-	set -f
+	set -o noglob
 	local x
 	for x in ${PORTAGE_COMPRESS_EXCLUDE_SUFFIXES} ; do
 		mask_ext_re+="|${x}"
 	done
-	set +f
+	set +o noglob
 
 	mask_ext_re="^(${mask_ext_re:1})\$"
 	local filtered_args=()

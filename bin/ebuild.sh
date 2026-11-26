@@ -147,10 +147,10 @@ shift $#
 # Unset some variables that break things.
 unset -v BZIP BZIP2 CDPATH GLOBIGNORE GREP_COLOR GREP_OPTIONS GZIP
 if ___eapi_has_ENV_UNSET; then
-	set -f
+	set -o noglob
 	# shellcheck disable=2086
 	unset -v -- ${ENV_UNSET}
-	set +f
+	set +o noglob
 fi
 
 [[ ${PORTAGE_QUIET} != "" ]] && export PORTAGE_QUIET
@@ -775,14 +775,14 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 
 	INHERIT=${PORTAGE_EXPLICIT_INHERIT}
 
-	set -f
+	set -o noglob
 	for key in "${metadata_keys[@]}"; do
 		# The value is collapsed to a series of space-separated words.
 		set -- ${!key}
 		printf '%s=%s\n' "${key}" "$*" || ! break
 	done >&"${PORTAGE_PIPE_FD}" || exit
 	exec {PORTAGE_PIPE_FD}>&-
-	set +f
+	set +o noglob
 
 	[[ -s ${SANDBOX_LOG} ]] && die "Sandbox violations found, exiting"
 else

@@ -9,7 +9,7 @@ world_writable_check() {
 
 	OLDIFS=${IFS}
 	IFS=$'\n'
-	set -f
+	set -o noglob
 
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: world writable file(s):"
@@ -31,7 +31,7 @@ world_writable_check() {
 	fi
 
 	IFS=${OLDIFS}
-	[[ ${prev_shopts} == *f* ]] || set +f
+	[[ ${prev_shopts} == *f* ]] || set +o noglob
 }
 
 world_writable_check

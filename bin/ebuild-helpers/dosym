@@ -37,7 +37,7 @@ if [[ ${option_r} ]]; then
 		local comp IFS -
 
 		IFS=/
-		set -f
+		set -o noglob
 		REPLY=
 		for comp in $1; do
 			case ${comp} in
@@ -62,7 +62,7 @@ if [[ ${option_r} ]]; then
 	linkdir=${linkdir%/*}	# poor man's dirname(1)
 	linkdir=${linkdir:-/}	# always keep the initial "/"
 
-	set -f
+	set -o noglob
 	IFS=/
 	for comp in ${linkdir}; do
 		if [[ ${target%%/*} == "${comp}" ]]; then
@@ -73,7 +73,7 @@ if [[ ${option_r} ]]; then
 		fi
 	done
 	unset -v IFS
-	set +f
+	set +o noglob
 	target=${target:-.}
 fi
 

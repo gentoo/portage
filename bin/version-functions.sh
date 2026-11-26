@@ -204,7 +204,7 @@ if ___eapi_has_ver_replacing; then
 
 		[[ $# -eq 2 ]] || die "Usage: ver_replacing <op> <ver>"
 
-		set -f
+		set -o noglob
 		for v in ${REPLACING_VERSIONS}; do
 			ver_test "${v}" "$@" && return 0
 		done

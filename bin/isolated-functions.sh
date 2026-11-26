@@ -404,7 +404,7 @@ __get_columns() {
 	if __is_uint "${COLUMNS}" && (( COLUMNS > 0 )); then
 		REPLY=${COLUMNS}
 	else
-		set -f
+		set -o noglob
 		# shellcheck disable=2046
 		set -- $(stty size <&2 2>/dev/null)
 		if __is_uint "$2" && (( $2 > 0 )); then

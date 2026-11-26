@@ -6,7 +6,7 @@
 cd "${PORTAGE_PYM_PATH}" || exit 1
 
 IFS=":"
-set -f # in case ${PATH} contains any shell glob characters
+set -o noglob # in case ${PATH} contains any shell glob characters
 
 for path in "${PORTAGE_BIN_PATH:?}" ${PATH}; do
 	[[ -x ${path}/portageq ]] || continue

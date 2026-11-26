@@ -3,7 +3,7 @@
 # Check udev rule installs
 
 udev_check() {
-	set +f
+	set +o noglob
 	local x f=
 	for x in "${ED%/}/etc/udev/rules.d/"* "${ED%/}/lib"*"/udev/rules.d/"* ; do
 		[[ -e ${x} ]] || continue

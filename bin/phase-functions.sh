@@ -736,7 +736,7 @@ __dyn_install() {
 	__vecho
 
 	cd "${PORTAGE_BUILDDIR}"/build-info
-	set -f
+	set -o noglob
 	local f x
 
 	IFS=$' \t\n\r'
@@ -768,7 +768,7 @@ __dyn_install() {
 		echo "${EPREFIX}" > EPREFIX
 	fi
 
-	set +f
+	set +o noglob
 
 	# local variables can leak into the saved environment.
 	unset -v f
