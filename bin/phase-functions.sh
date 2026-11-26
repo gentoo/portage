@@ -105,10 +105,10 @@ __filter_readonly_variables() {
 		# Like compgen -A variable but doesn't require readline support.
 		env -i -- "${qemu_env[@]}" "${BASH}" -c '
 			printf -v p "\${!%s*} " {A..Z} {a..z} _
-			eval "unset p; printf %s\\\\n ${p}"'
+			eval "unset -v p; printf %s\\\\n ${p}"'
 	)
 	for x in "${!bash_vars[@]}"; do
-		[[ -n ${bash_vars[x]} && ${excluded_vars[${bash_vars[x]}]} ]] && unset "bash_vars[x]"
+		[[ -n ${bash_vars[x]} && ${excluded_vars[${bash_vars[x]}]} ]] && unset -v "bash_vars[x]"
 	done
 	# Incorporate other variables that are known to either be set by or be
 	# able to influence bash. This list was last updated for bash-5.3.
@@ -213,7 +213,7 @@ __preprocess_ebuild_env() {
 	__filter_readonly_variables ${_portage_filter_opts} < "${T}"/environment \
 		>> "${T}/environment.filtered" || return $?
 
-	unset _portage_filter_opts
+	unset -v _portage_filter_opts
 	mv "${T}"/environment.filtered "${T}"/environment || return $?
 	rm -f "${T}/environment.success" || return $?
 
@@ -237,7 +237,7 @@ __preprocess_ebuild_env() {
 		source "${PORTAGE_BIN_PATH}/save-ebuild-env.sh" || exit $?
 
 		# Prefer latest make.conf values of these.
-		unset PORTAGE_BZIP2_COMMAND PORTAGE_BUNZIP2_COMMAND
+		unset -v PORTAGE_BZIP2_COMMAND PORTAGE_BUNZIP2_COMMAND
 
 		# Rely on __save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
@@ -625,7 +625,7 @@ __dyn_install() {
 			fi
 		done
 
-		unset x
+		unset -v x
 	fi
 
 	# This needs to be exported since prepstrip is a separate shell script.
@@ -642,7 +642,7 @@ __dyn_install() {
 	fi
 	rm -rf "${D}"
 	mkdir -p "${_x}"
-	unset _x
+	unset -v _x
 
 	if [[ -d ${S} ]] ; then
 		cd "${S}"
@@ -771,7 +771,7 @@ __dyn_install() {
 	set +f
 
 	# local variables can leak into the saved environment.
-	unset f
+	unset -v f
 
 	# Use safe cwd, avoiding unsafe import for bug #469338.
 	cd "${PORTAGE_PYM_PATH}"
@@ -1062,7 +1062,7 @@ __ebuild_main() {
 		if [[ -n ${x} ]] ; then
 			export SANDBOX_ON=${x}
 		fi
-		unset x
+		unset -v x
 	fi
 
 	# Force configure scripts that automatically detect ccache to
@@ -1136,7 +1136,7 @@ __ebuild_main() {
 				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
 				[[ ${!x+set} = set ]] && export ${x}
 			done
-			unset x
+			unset -v x
 
 			contains_word distcc "${FEATURES}" \
 			&& [[ ${DISTCC_DIR} ]] \

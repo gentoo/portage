@@ -46,7 +46,7 @@ __save_ebuild_env() (
 		# want binpkgs generated on different sized hosts to be
 		# identical, so strip them from the binpkg. It's also not needed
 		# for installing / removing a package.
-		unset MAKEOPTS NINJAOPTS
+		unset -v MAKEOPTS NINJAOPTS
 	fi
 
 	MAPFILE+=(

@@ -12,7 +12,7 @@
 source "${PORTAGE_BIN_PATH:?}"/isolated-functions.sh || exit
 
 # Prevent MAKEOPTS from resetting MAKEFLAGS jobserver mode for bug 692576.
-[[ -n ${MAKEFLAGS} ]] && unset MAKEOPTS
+[[ -n ${MAKEFLAGS} ]] && unset -v MAKEOPTS
 
 cmd=(
 	${MAKE:-make} ${MAKEOPTS} "$@" ${EXTRA_EMAKE}

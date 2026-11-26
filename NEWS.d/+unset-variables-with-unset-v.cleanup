@@ -1,0 +1,2 @@
+Specify the -v option wherever the unset builtin is used to unset a variable,
+so that it can never unset a function by the same name instead.

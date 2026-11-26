@@ -75,7 +75,7 @@ bashcomp_check() {
 				qa_warnings+=(
 					"${f##*/}: 'have' command is deprecated and must not be used."
 				)
-				unset 'completions[0]'
+				unset -v 'completions[0]'
 			fi
 
 			if (( ! ${#completions[@]} )); then

@@ -72,7 +72,7 @@ if [[ ${option_r} ]]; then
 			target=..${target:+/}${target}
 		fi
 	done
-	unset IFS
+	unset -v IFS
 	set +f
 	target=${target:-.}
 fi

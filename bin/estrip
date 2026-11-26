@@ -501,7 +501,7 @@ fi
 declare -A warned_for
 
 # Figure out what tool set we're using to strip stuff
-unset SAFE_STRIP_FLAGS DEF_STRIP_FLAGS SPLIT_STRIP_FLAGS
+unset -v SAFE_STRIP_FLAGS DEF_STRIP_FLAGS SPLIT_STRIP_FLAGS
 case $("${name_of[strip]}" --version 2>/dev/null) in
 	*elfutils*) # dev-libs/elfutils
 		# elfutils default behavior is always safe, so don't need to specify

@@ -10,7 +10,7 @@ PS4='+${BASH_SOURCE[0]##*/}:$LINENO:${FUNCNAME-}: '
 unalias -a
 
 # Make sure this isn't exported to scripts we execute.
-unset BASH_COMPAT
+unset -v BASH_COMPAT
 declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 
 # Define an array to act as a key-value store that need not be known to
@@ -87,7 +87,7 @@ else
 	for x in ${funcs} ; do
 		eval "${x} () { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
-	unset funcs x
+	unset -v funcs x
 
 	# prevent the shell from finding external executables
 	# note: we can't use empty because it implies current directory
@@ -101,7 +101,7 @@ fi
 # Don't use sandbox's BASH_ENV for new shells because it does
 # 'source /etc/profile' which can interfere with the build
 # environment by modifying our PATH.
-unset BASH_ENV
+unset -v BASH_ENV
 
 # This is just a temporary workaround for portage-9999 users since
 # earlier portage versions do not detect a version change in this case
@@ -185,7 +185,7 @@ elif [[ ${SANDBOX_ON} = 1 ]] ; then
 	for x in TEMP TMP TMPDIR ; do
 		[[ -n ${!x} ]] && addwrite "${!x}"
 	done
-	unset x
+	unset -v x
 fi
 
 # The sandbox is disabled by default except when overridden in the relevant stages
@@ -241,7 +241,7 @@ inherit() {
 
 		ECLASS="${1##*/}"
 		__export_funcs_var=__export_functions_${___state[eclass-depth]}
-		unset "${__export_funcs_var}"
+		unset -v "${__export_funcs_var}"
 
 		if (( ! ___state[in-qa-check] )) \
 			&& [[ ${EBUILD_PHASE} != @(depend|nofetch|*rm) && ${EMERGE_FROM} != binary ]]
@@ -277,8 +277,8 @@ inherit() {
 			set -f
 
 			# Retain the old data and restore it later.
-			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
-			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
+			unset -v B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
+			unset -v B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
 			[[ -v IUSE         ]] && B_IUSE="${IUSE}"
 			[[ -v REQUIRED_USE ]] && B_REQUIRED_USE="${REQUIRED_USE}"
 			[[ -v DEPEND       ]] && B_DEPEND="${DEPEND}"
@@ -286,15 +286,15 @@ inherit() {
 			[[ -v PDEPEND      ]] && B_PDEPEND="${PDEPEND}"
 			[[ -v BDEPEND      ]] && B_BDEPEND="${BDEPEND}"
 			[[ -v IDEPEND      ]] && B_IDEPEND="${IDEPEND}"
-			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
+			unset -v IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
 
 			if ___eapi_accumulates_PROPERTIES; then
 				[[ -v PROPERTIES ]] && B_PROPERTIES=${PROPERTIES}
-				unset PROPERTIES
+				unset -v PROPERTIES
 			fi
 			if ___eapi_accumulates_RESTRICT; then
 				[[ -v RESTRICT ]] && B_RESTRICT=${RESTRICT}
-				unset RESTRICT
+				unset -v RESTRICT
 			fi
 
 			# Turn on glob expansion
@@ -318,25 +318,25 @@ inherit() {
 			[[ -v IDEPEND      ]] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
 
 			[[ -v B_IUSE ]] && IUSE="${B_IUSE}"
-			[[ -v B_IUSE ]] || unset IUSE
+			[[ -v B_IUSE ]] || unset -v IUSE
 
 			[[ -v B_REQUIRED_USE ]] && REQUIRED_USE="${B_REQUIRED_USE}"
-			[[ -v B_REQUIRED_USE ]] || unset REQUIRED_USE
+			[[ -v B_REQUIRED_USE ]] || unset -v REQUIRED_USE
 
 			[[ -v B_DEPEND ]] && DEPEND="${B_DEPEND}"
-			[[ -v B_DEPEND ]] || unset DEPEND
+			[[ -v B_DEPEND ]] || unset -v DEPEND
 
 			[[ -v B_RDEPEND ]] && RDEPEND="${B_RDEPEND}"
-			[[ -v B_RDEPEND ]] || unset RDEPEND
+			[[ -v B_RDEPEND ]] || unset -v RDEPEND
 
 			[[ -v B_PDEPEND ]] && PDEPEND="${B_PDEPEND}"
-			[[ -v B_PDEPEND ]] || unset PDEPEND
+			[[ -v B_PDEPEND ]] || unset -v PDEPEND
 
 			[[ -v B_BDEPEND ]] && BDEPEND="${B_BDEPEND}"
-			[[ -v B_BDEPEND ]] || unset BDEPEND
+			[[ -v B_BDEPEND ]] || unset -v BDEPEND
 
 			[[ -v B_IDEPEND ]] && IDEPEND="${B_IDEPEND}"
-			[[ -v B_IDEPEND ]] || unset IDEPEND
+			[[ -v B_IDEPEND ]] || unset -v IDEPEND
 
 			if ___eapi_accumulates_PROPERTIES; then
 				[[ -v PROPERTIES ]] &&
@@ -344,7 +344,7 @@ inherit() {
 				[[ -v B_PROPERTIES ]] &&
 					PROPERTIES=${B_PROPERTIES}
 				[[ -v B_PROPERTIES ]] ||
-					unset PROPERTIES
+					unset -v PROPERTIES
 			fi
 			if ___eapi_accumulates_RESTRICT; then
 				[[ -v RESTRICT ]] &&
@@ -352,7 +352,7 @@ inherit() {
 				[[ -v B_RESTRICT ]] &&
 					RESTRICT=${B_RESTRICT}
 				[[ -v B_RESTRICT ]] ||
-					unset RESTRICT
+					unset -v RESTRICT
 			fi
 
 			# Turn on glob expansion
@@ -366,7 +366,7 @@ inherit() {
 					eval "$x() { ${ECLASS}_${x} \"\$@\" ; }" > /dev/null
 				done
 			fi
-			unset "${__export_funcs_var}"
+			unset -v "${__export_funcs_var}"
 
 			if ! contains_word "$1" "${INHERITED}"; then
 				export INHERITED+=" $1"
@@ -493,7 +493,7 @@ if [[ ${EBUILD_PHASE} == depend ]] ; then
 		gawk gcc grep javac java-config nawk perl
 		pkg-config python python-config sed"
 elif [[ ${EBUILD_PHASE} == clean* ]] ; then
-	unset QA_INTERCEPTORS
+	unset -v QA_INTERCEPTORS
 else
 	QA_INTERCEPTORS="autoconf automake aclocal libtoolize"
 fi
@@ -544,7 +544,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 		fi
 		eval "${FUNC_SRC}" || echo "error creating QA interceptor ${BIN}" >&2
 	done
-	unset BIN_PATH BIN BODY FUNC_SRC
+	unset -v BIN_PATH BIN BODY FUNC_SRC
 fi
 
 # Subshell/helper die support (must export for the die helper).
@@ -585,12 +585,12 @@ then
 			fi
 		done <<<"${!___y}:${!x}:"
 		export "${x}=${___val}"
-		unset "${___y}"
+		unset -v "${___y}"
 	done
 
-	unset path seen x ___y ___val
+	unset -v path seen x ___y ___val
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
-	unset PORTAGE_SANDBOX_ON
+	unset -v PORTAGE_SANDBOX_ON
 	[[ -n ${EAPI} ]] || EAPI=0
 fi
 
@@ -625,11 +625,11 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND IDEPEND PROPERTIES RESTRICT
-		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
-		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
-		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
-		unset PORTAGE_EXPLICIT_INHERIT
+		unset -v EAPI DEPEND RDEPEND PDEPEND BDEPEND IDEPEND PROPERTIES RESTRICT
+		unset -v INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
+		unset -v E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
+		unset -v E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
+		unset -v PORTAGE_EXPLICIT_INHERIT
 
 		pre_source_sandbox() {
 			export SANDBOX_ON=1
@@ -709,8 +709,8 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 			RESTRICT+=${RESTRICT:+ }${E_RESTRICT}
 		fi
 
-		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
-		unset E_BDEPEND E_PROPERTIES E_RESTRICT '___state[cached-inherited]'
+		unset -v ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
+		unset -v E_BDEPEND E_PROPERTIES E_RESTRICT '___state[cached-inherited]'
 
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
 			PROPERTIES=${PORTAGE_PROPERTIES}
@@ -746,7 +746,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 		done
 		[[ -n ${DEFINED_PHASES} ]] || DEFINED_PHASES=-
 
-		unset _f _valid_phases
+		unset -v _f _valid_phases
 
 		if [[ ${EBUILD_PHASE} != depend ]] ; then
 
@@ -778,10 +778,10 @@ if [[ ${EBUILD_PHASE} = depend ]] ; then
 	)
 
 	if ! ___eapi_has_BDEPEND; then
-		unset BDEPEND
+		unset -v BDEPEND
 	fi
 	if ! ___eapi_has_IDEPEND; then
-		unset IDEPEND
+		unset -v IDEPEND
 	fi
 
 	INHERIT=${PORTAGE_EXPLICIT_INHERIT}
@@ -825,7 +825,7 @@ else
 			# emerge uses to monitor ebuild.sh.
 			if [[ -n ${PORTAGE_PIPE_FD} ]] ; then
 				eval "exec ${PORTAGE_PIPE_FD}>&-"
-				unset PORTAGE_PIPE_FD
+				unset -v PORTAGE_PIPE_FD
 			fi
 			__ebuild_main ${EBUILD_SH_ARGS}
 			exit 0

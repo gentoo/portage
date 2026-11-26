@@ -121,12 +121,12 @@ if [ "${FETCHCOMMAND/getdelta.sh}" != "${FETCHCOMMAND}" ]; then
 	eval "$(grep "^FETCHCOMMAND=" "${EPREFIX}/usr/share/portage/config/make.globals")"
 fi
 
-unset f
-unset IFS
+unset -v f
+unset -v IFS
 
 do_verbose=0
 MUST_SYNC='1'
-unset PUKE_HELP
+unset -v PUKE_HELP
 for x in $*; do
 	case "${x}" in
 		-q|--quiet)
@@ -794,10 +794,10 @@ echo "Looking for available base versions for a delta"
 
 #note we're already in distdir
 
-unset base_version
+unset -v base_version
 # portage-snapshots in reverse order.
 # icky.
-unset dfile
+unset -v dfile
 potentials="$(ls -1 portage-2[[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]].tar.bz2 ${STATE_DIR}/portage-2[[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]].tar.bz2 2> /dev/null | sed -e 's:^.*/::' | sort -r)"
 for basef in ${potentials}; do
 	chksum=''
@@ -903,7 +903,7 @@ if [[ -z $patches ]]; then
 	exit $?
 fi
 
-unset got_umd5
+unset -v got_umd5
 #grab the md5 for later usage.
 if [[ ! -e portage-${final_date}.tar.bz2.md5sum ]] && ! fetch_from_mirrors "/snapshots/portage-${final_date}.tar.bz2.md5sum" "portage-${final_date}.tar.bz2.md5sum"; then
 	echo "warning... couldn't grab the md5sum for ${final_date}.  which is odd"
@@ -951,7 +951,7 @@ if [[ -n $got_umd5 ]]; then
 	fi
 fi
 
-unset need_last_sync
+unset -v need_last_sync
 if [ "$verified" == "1" ]; then
 	need_last_sync="dar"
 	if [[ ${WEBRSYNC_VERIFY_SIGNATURE} == 1 ]] ; then

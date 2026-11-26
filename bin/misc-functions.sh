@@ -738,7 +738,7 @@ if [[ -n "${MISC_FUNCTIONS_ARGS}" ]]; then
 	for x in ${MISC_FUNCTIONS_ARGS}; do
 		${x}
 	done
-	unset x
+	unset -v x
 
 	[[ -n ${PORTAGE_EBUILD_EXIT_FILE} ]] && > "${PORTAGE_EBUILD_EXIT_FILE}"
 
