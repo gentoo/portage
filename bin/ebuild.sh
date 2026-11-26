@@ -273,9 +273,6 @@ inherit() {
 			# We need to back up the values of *DEPEND to B_*DEPEND
 			# (if set).. and then restore them after the inherit call.
 
-			# Turn off glob expansion
-			set -f
-
 			# Retain the old data and restore it later.
 			unset -v B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
 			unset -v B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
@@ -296,17 +293,11 @@ inherit() {
 				[[ -v RESTRICT ]] && B_RESTRICT=${RESTRICT}
 				unset -v RESTRICT
 			fi
-
-			# Turn on glob expansion
-			set +f
 		fi
 
 		__qa_source "${location}" || die "died sourcing ${location} in inherit()"
 
 		if (( ! ___state[in-qa-check] )); then
-			# Turn off glob expansion
-			set -f
-
 			# If each var has a value, append it to the global variable E_* to
 			# be applied after everything is finished. New incremental behavior.
 			[[ -v IUSE         ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
@@ -354,9 +345,6 @@ inherit() {
 				[[ -v B_RESTRICT ]] ||
 					unset -v RESTRICT
 			fi
-
-			# Turn on glob expansion
-			set +f
 
 			if [[ -n ${!__export_funcs_var} ]] ; then
 				for x in ${!__export_funcs_var} ; do
