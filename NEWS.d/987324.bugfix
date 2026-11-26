@@ -1,0 +1,2 @@
+emerge: Fix an intermittent hang during dependency calculation, which occurred
+if a process was forked while the spinner was writing to standard output.

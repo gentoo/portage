@@ -1,6 +1,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import platform
 import sys
 import threading
@@ -8,6 +9,17 @@ import time
 
 from portage.output import darkgreen, green
 from portage.process import atexit_register
+
+# Held while a frame is rendered, and across any fork. Otherwise, a child
+# forked mid-frame would inherit a locked sys.stdout buffer that nothing could
+# unlock, and would block upon next writing to or flushing it (bug 987324).
+_fork_lock = threading.Lock()
+
+os.register_at_fork(
+    before=_fork_lock.acquire,
+    after_in_parent=_fork_lock.release,
+    after_in_child=_fork_lock.release,
+)
 
 
 # Drive stdout_spinner animation from a daemon thread at a steady cadence.
@@ -163,10 +175,11 @@ class stdout_spinner:
 
     def update(self):
         # Render an animation frame on behalf of the driver thread.
-        if self.mode == self.TWIRL:
-            self._render_twirl()
-        elif self.mode == self.SCROLL:
-            self._render_scroll()
+        with _fork_lock:
+            if self.mode == self.TWIRL:
+                self._render_twirl()
+            elif self.mode == self.SCROLL:
+                self._render_scroll()
 
     def _render_scroll(self):
         frame = self._frame_index()
