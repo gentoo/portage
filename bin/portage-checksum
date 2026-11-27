@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+"""
+Compute distfile checksums using Portage's checksum API.
+
+Usage: portage-checksum HASHTYPE[,HASHTYPE,...] FILE
+
+Prints one line per hash type, followed by a size line:
+    HASHTYPE hexdigest
+    ...
+    size filesize
+
+Intended for use with CHECKSUMCOMMAND to offload digest computation
+to a remote system (e.g., an NFS server hosting distfiles).
+"""
+
+import sys
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 3:
+        print(f"Usage: {argv[0]} HASHTYPE[,HASHTYPE,...] FILE", file=sys.stderr)
+        return 1
+
+    hash_types: list[str] = argv[1].split(",")
+    filename: str = argv[2]
+
+    from portage.checksum import perform_checksum
+
+    size: int | None = None
+    for hash_type in hash_types:
+        try:
+            hexdigest, file_size = perform_checksum(filename, hash_type)
+        except Exception as e:
+            print(f"Error computing {hash_type} for {filename}: {e}", file=sys.stderr)
+            return 1
+        print(f"{hash_type} {hexdigest}")
+        size = file_size
+
+    print(f"size {size}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
