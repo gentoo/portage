@@ -5030,23 +5030,27 @@ class dblink:
             _(">>> Merging %(cpv)s to %(destroot)s\n")
             % {"cpv": self.mycpv, "destroot": destroot}
         )
+
         phase = EbuildPhase(
             background=False,
             phase="preinst",
             scheduler=self._scheduler,
             settings=self.settings,
         )
-        phase.start()
-        a = phase.wait()
+        # pkg_preinst has no default definition, so elide it where
+        # unnecessary (inc. no hooks from user).
+        if phase._phase_runs_code():
+            phase.start()
+            a = phase.wait()
 
-        # XXX: Decide how to handle failures here.
-        if a != os.EX_OK:
-            showMessage(
-                _("!!! FAILED preinst: ") + str(a) + "\n",
-                level=logging.ERROR,
-                noiselevel=-1,
-            )
-            return a
+            # XXX: Decide how to handle failures here.
+            if a != os.EX_OK:
+                showMessage(
+                    _("!!! FAILED preinst: ") + str(a) + "\n",
+                    level=logging.ERROR,
+                    noiselevel=-1,
+                )
+                return a
 
         # copy "info" files (like SLOT, CFLAGS, etc.) into the database
         for x in os.listdir(inforoot):
@@ -5298,11 +5302,11 @@ class dblink:
         self.vartree.dbapi._add(self)
         contents = self.getcontents()
 
-        # do postinst script
         self.settings["PORTAGE_UPDATE_ENV"] = os.path.join(
             self.dbpkgdir, "environment.bz2"
         )
         self.settings.backup_changes("PORTAGE_UPDATE_ENV")
+        a = None
         try:
             phase = EbuildPhase(
                 background=False,
@@ -5310,24 +5314,27 @@ class dblink:
                 scheduler=self._scheduler,
                 settings=self.settings,
             )
-            phase.start()
-            a = phase.wait()
-            if a == os.EX_OK:
-                showMessage(_(">>> %s merged.\n") % self.mycpv)
+            # pkg_postinst has no default definition, so elide it where
+            # unnecessary (inc. no hooks from user).
+            if phase._phase_runs_code():
+                phase.start()
+                a = phase.wait()
+                if a == os.EX_OK:
+                    showMessage(_(">>> %s merged.\n") % self.mycpv)
         finally:
             self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
-        if a != os.EX_OK:
-            # It's stupid to bail out here, so keep going regardless of
-            # phase return code.
-            self._postinst_failure = True
-            self._elog(
-                "eerror",
-                "postinst",
-                [
-                    _("FAILED postinst: %s") % (a,),
-                ],
-            )
+            if a != None and a != os.EX_OK:
+                # It's stupid to bail out here, so keep going regardless of
+                # phase return code.
+                self._postinst_failure = True
+                self._elog(
+                    "eerror",
+                    "postinst",
+                    [
+                        _("FAILED postinst: %s") % (a,),
+                    ],
+                )
 
         # Update environment settings, library paths. DO NOT change symlinks.
         # Only do this if we actually installed something.
