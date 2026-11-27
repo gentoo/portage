@@ -8,6 +8,7 @@ py.install_sources(
         'test_autounmask_keep_keywords.py',
         'test_autounmask_multilib_use.py',
         'test_autounmask_parent.py',
+        'test_autounmask_recursive_use_changes.py',
         'test_autounmask_use_backtrack.py',
         'test_autounmask_use_breakage.py',
         'test_autounmask_use_slot_conflict.py',
