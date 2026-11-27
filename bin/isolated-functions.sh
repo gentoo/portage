@@ -117,6 +117,8 @@ die() {
 
 	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
+	# reset indentation when dying
+	___state[einfo-indent]=""
 
 	if ___eapi_die_supports_nonfatal && [[ $1 == -n ]]; then
 		shift
@@ -236,7 +238,7 @@ __elog_base() {
 
 	if [[ ${T} && -d ${T}/logging ]]; then
 		for line; do
-			printf '%s %s\n' "${level}" "${line%$'\n'}"
+			printf '%s %s%s\n' "${level}" "${___state[einfo-indent]}" "${line%$'\n'}"
 		done >> "${T}/logging/${EBUILD_PHASE:-other}"
 	fi
 }
@@ -287,7 +289,7 @@ __eprint() {
 	fi
 
 	for line in "${lines[@]}"; do
-		printf ' %s*%s %s' "${color}" "${PORTAGE_COLOR_NORMAL}" "${line}"
+		printf ' %s*%s %s%s' "${color}" "${PORTAGE_COLOR_NORMAL}" "${___state[einfo-indent]}" "${line}"
 	done
 
 	# Refrain from logging if the joined parameters form an empty string.
@@ -442,6 +444,8 @@ __set_colors() {
 # Determines whether __eend() may move the cursor. It may not if colour is
 # disabled, despite that being no indication of whether the terminal is able to.
 ___state[can-move-cursor]=1
+
+___state[einfo-indent]=""
 
 if [[ -z ${NO_COLOR} ]] ; then
 	case ${NOCOLOR:-false} in
@@ -796,5 +800,18 @@ configparser() {
 
 	eval "${reset_extglob}"
 }
+
+if ___eapi_has_eindent; then
+	eindent() {
+		___state[einfo-indent]+="  "
+	}
+
+	eoutdent() {
+		if [[ ${#___state[einfo-indent]} -eq 0 ]]; then
+			eqawarn "eoutdent called without eindent"
+		fi
+		___state[einfo-indent]=${___state[einfo-indent]%  }
+	}
+fi
 
 true

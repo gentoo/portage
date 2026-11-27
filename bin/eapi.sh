@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2012-2025 Gentoo Authors
+# Copyright 2012-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # EBUILD PHASES
@@ -40,6 +40,7 @@ ___eapi_has_dostrip()                   [[ ${1-${EAPI-0}} != [0-6] ]]
 ___eapi_has_eapply()                    [[ ${1-${EAPI-0}} != [0-5] ]]
 ___eapi_has_eapply_user()               [[ ${1-${EAPI-0}} != [0-5] ]]
 ___eapi_has_edo()                       [[ ${1-${EAPI-0}} != [0-8] ]]
+___eapi_has_eindent()                   [[ ${1-${EAPI-0}} != [0-9] ]]
 ___eapi_has_einstalldocs()              [[ ${1-${EAPI-0}} != [0-5] ]]
 ___eapi_has_get_libdir()                [[ ${1-${EAPI-0}} != [0-5] ]]
 ___eapi_has_in_iuse()                   [[ ${1-${EAPI-0}} != [0-5] ]]
