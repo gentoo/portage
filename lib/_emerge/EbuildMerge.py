@@ -16,6 +16,7 @@ class EbuildMerge(CompositeTask):
         "find_blockers",
         "ldpath_mtimes",
         "logger",
+        "merge_summary",
         "pkg",
         "pkg_count",
         "pkg_path",
@@ -63,6 +64,7 @@ class EbuildMerge(CompositeTask):
             self._start_exit_hook(self.returncode)
             return
 
+        self.merge_summary = merge_task.merge_summary
         self.postinst_failure = merge_task.postinst_failure
         pkg = self.pkg
         self.world_atom(pkg)

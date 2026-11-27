@@ -29,9 +29,11 @@ class MergeProcess(ForkProcess):
         "_elog_keys",
         "_elog_reader_fd",
         "_locked_vdb",
+        "_merge_summary_reader",
         "_mtime_reader",
         "blockers",
         "infloc",
+        "merge_summary",
         "mycat",
         "mydbapi",
         "myebuild",
@@ -153,6 +155,11 @@ class MergeProcess(ForkProcess):
         self.scheduler.add_reader(mtime_reader.fileno(), self._mtime_handler)
         self._mtime_reader = mtime_reader
 
+        # The summary is read once the subprocess has exited, see
+        # _unregister().
+        merge_summary_reader, merge_summary_writer = multiprocessing.Pipe(duplex=False)
+        self._merge_summary_reader = merge_summary_reader
+
         blockers = None
         if self.blockers is not None:
             # Query blockers in the main process, since closing
@@ -169,6 +176,7 @@ class MergeProcess(ForkProcess):
             blockers=blockers,
             pipe=elog_writer_fd,
             mtime_pipe=mtime_writer,
+            merge_summary_pipe=merge_summary_writer,
         )
         self.scheduler.add_reader(elog_reader_fd.fileno(), self._elog_output_handler)
 
@@ -213,6 +221,7 @@ class MergeProcess(ForkProcess):
         pids = super()._spawn(args, fd_pipes, **kwargs)
         elog_writer_fd.close()
         mtime_writer.close()
+        merge_summary_writer.close()
         self._buf = ""
         self._elog_keys = set()
         # Discard messages which will be collected by the subprocess,
@@ -311,6 +320,16 @@ class MergeProcess(ForkProcess):
                 pass
 
         self._unlock_vdb()
+        if self._merge_summary_reader is not None:
+            # The subprocess has exited, so the summary is either in the
+            # pipe already or was never sent, and poll() does not block.
+            try:
+                if self._merge_summary_reader.poll():
+                    self.merge_summary = self._merge_summary_reader.recv()
+            except EOFError:
+                pass
+            self._merge_summary_reader.close()
+            self._merge_summary_reader = None
         if self._elog_reader_fd is not None:
             self.scheduler.remove_reader(self._elog_reader_fd.fileno())
             self._elog_reader_fd.close()

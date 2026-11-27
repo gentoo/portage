@@ -6,6 +6,7 @@ py.install_sources(
         'test_bintree_digests.py',
         'test_fakedbapi.py',
         'test_may_preserve_libs.py',
+        'test_merge_contents.py',
         'test_owners.py',
         'test_portdb_cache.py',
         'test_preserved_libs.py',

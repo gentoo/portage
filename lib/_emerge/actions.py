@@ -2527,6 +2527,7 @@ def action_info(settings, trees, myopts, myfiles):
         "PORTAGE_BINHOST",
         "PORTAGE_BUNZIP2_COMMAND",
         "PORTAGE_BZIP2_COMMAND",
+        "PORTAGE_MERGE_JOBS",
         "USE",
         "CHOST",
         "CFLAGS",
@@ -3087,7 +3088,8 @@ def adjust_config(myopts, settings):
         settings.backup_changes("PORTAGE_QUIET")
 
     if "--verbose" in myopts:
-        settings["PORTAGE_VERBOSE"] = "1"
+        # The verbosity level, i.e. the number of -v options.
+        settings["PORTAGE_VERBOSE"] = str(int(myopts["--verbose"]))
         settings.backup_changes("PORTAGE_VERBOSE")
 
     # Set so that configs will be merged regardless of remembered status
