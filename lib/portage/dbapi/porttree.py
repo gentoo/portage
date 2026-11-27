@@ -222,9 +222,6 @@ class portdbapi(dbapi):
         self.xcache = {}
         self.frozen = 0
 
-        # Keep a list of repo names, sorted by priority (highest priority first).
-        self._ordered_repo_name_list = tuple(reversed(self.repositories.prepos_order))
-
         self.auxdbmodule = self.settings.load_best_module("portdbapi.auxdbmodule")
         self.auxdb = {}
         self._pregen_auxdb = {}
@@ -332,8 +329,7 @@ class portdbapi(dbapi):
         order to modify the effective set of repositories for all portdbapi
         operations.
 
-        @param porttrees: list of repo locations, in ascending order by
-                repo priority
+        @param porttrees: list of repo locations in the established order
         @type porttrees: list
         """
         self._porttrees = tuple(porttrees)
@@ -344,6 +340,9 @@ class portdbapi(dbapi):
                 for location in self._porttrees
             )
         )
+
+        # Keep a list of repo names in the established repo order.
+        self._ordered_repo_name_list = tuple(reversed(self._porttrees_repos))
 
     def _get_porttrees(self):
         return self._porttrees
@@ -1154,9 +1153,8 @@ class portdbapi(dbapi):
                 return cachelist[:]
         mysplit = mycp.split("/")
         invalid_category = mysplit[0] not in self._categories
-        # Process repos in ascending order by repo.priority, so that
-        # stable sort by version produces results ordered by
-        # (pkg.version, repo.priority).
+        # Process repos in the established ascending order, so that stable sort
+        # by version is deterministic.
         if mytree is not None:
             if isinstance(mytree, str):
                 repos = [self.repositories.get_repo_for_location(mytree)]
@@ -1174,45 +1172,65 @@ class portdbapi(dbapi):
                 for repo in reversed(self._better_cache[mycp])
                 if repo.name in self._porttrees_repos
             ]
-        mylist = []
-        for repo in repos:
-            oroot = repo.location
-            try:
-                file_list = os.listdir(os.path.join(oroot, mycp))
-            except OSError:
-                continue
-            for x in file_list:
-                pf = None
-                if x[-7:] == ".ebuild":
-                    pf = x[:-7]
 
-                if pf is not None:
-                    ps = pkgsplit(pf)
-                    if not ps:
-                        writemsg(
-                            _("\nInvalid ebuild name: %s\n")
-                            % os.path.join(oroot, mycp, x),
-                            noiselevel=-1,
+        if mytree is not None:
+            prioritized_repos = (repos,)
+        else:
+            by_prio = {}
+            no_prio = []
+            for repo in repos:
+                if mycp in repo.package_priority_exclude:
+                    no_prio.append(repo)
+                else:
+                    by_prio.setdefault(repo.package_priority or 0, []).append(repo)
+            prioritized_repos = [by_prio[p] for p in sorted(by_prio, reverse=True)] + [
+                no_prio
+            ]
+
+        mylist = []
+        for equal_repos in prioritized_repos:
+            for repo in equal_repos:
+                oroot = repo.location
+                try:
+                    file_list = os.listdir(os.path.join(oroot, mycp))
+                except OSError:
+                    continue
+                for x in file_list:
+                    pf = None
+                    if x[-7:] == ".ebuild":
+                        pf = x[:-7]
+
+                    if pf is not None:
+                        ps = pkgsplit(pf)
+                        if not ps:
+                            writemsg(
+                                _("\nInvalid ebuild name: %s\n")
+                                % os.path.join(oroot, mycp, x),
+                                noiselevel=-1,
+                            )
+                            continue
+                        if ps[0] != mysplit[1]:
+                            writemsg(
+                                _("\nInvalid ebuild name: %s\n")
+                                % os.path.join(oroot, mycp, x),
+                                noiselevel=-1,
+                            )
+                            continue
+                        ver_match = ver_regexp.match("-".join(ps[1:]))
+                        if ver_match is None or not ver_match.groups():
+                            writemsg(
+                                _("\nInvalid ebuild version: %s\n")
+                                % os.path.join(oroot, mycp, x),
+                                noiselevel=-1,
+                            )
+                            continue
+                        mylist.append(
+                            _pkg_str(mysplit[0] + "/" + pf, db=self, repo=repo.name)
                         )
-                        continue
-                    if ps[0] != mysplit[1]:
-                        writemsg(
-                            _("\nInvalid ebuild name: %s\n")
-                            % os.path.join(oroot, mycp, x),
-                            noiselevel=-1,
-                        )
-                        continue
-                    ver_match = ver_regexp.match("-".join(ps[1:]))
-                    if ver_match is None or not ver_match.groups():
-                        writemsg(
-                            _("\nInvalid ebuild version: %s\n")
-                            % os.path.join(oroot, mycp, x),
-                            noiselevel=-1,
-                        )
-                        continue
-                    mylist.append(
-                        _pkg_str(mysplit[0] + "/" + pf, db=self, repo=repo.name)
-                    )
+            # Note that a package directory must contain at least one valid
+            # ebuild for the repository to be prioritized over another.
+            if mylist:
+                break
         if invalid_category and mylist:
             writemsg(
                 _(
@@ -1223,17 +1241,25 @@ class portdbapi(dbapi):
                 noiselevel=-1,
             )
             mylist = []
-        # Always sort in ascending order here since it's handy and
-        # the result can be easily cached and reused. Since mylist
-        # is initially in ascending order by repo.priority, stable
-        # sort by version produces results in ascending order by
-        # (pkg.version, repo.priority).
+        # Always sort in ascending order here since it's handy and the result
+        # can be easily cached and reused. Since mylist is initially in the
+        # established ascending order, stable sort by version is deterministic.
         self._cpv_sort_ascending(mylist)
         if self.frozen and mytree is None:
             cachelist = mylist[:]
             self.xcache["cp-list"][mycp] = cachelist
             self.xcache["match-all"][(mycp, mycp)] = cachelist
         return mylist
+
+    def cp_priority(self, cp):
+        mylist = self.cp_list(cp)
+        if not mylist:
+            return None
+        repo = self.repositories.prepos.get(mylist[0].repo)
+        if repo is None or cp in repo.package_priority_exclude:
+            return None
+        else:
+            return repo.package_priority or 0
 
     def freeze(self):
         for x in (

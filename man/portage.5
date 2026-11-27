@@ -681,9 +681,11 @@ fetch non-matching remote binary packages except where overridden by the
 
 This is an experimental option subject to change.
 .TP
-.B priority
-Specifies priority of given repository. When a package exists in multiple
-repositories, those with higher priority are preferred.
+.B priority = integer
+When the same version of a package exists in multiple repositories,
+repositories with a higher priority are preferred. When priorities are equal,
+repositories whose names sort last lexicographically are preferred. Negative
+values are permitted. The default value is 0.
 .TP
 .B location
 Specify a cache location which serves as a partial local mirror of a
@@ -959,7 +961,15 @@ only.
 .TP
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information.
-.br
+
+The configuration comprises of named sections, a \fBDEFAULT\fR section, plus
+one for each repository. A repository section name must match the name
+assigned by the repository's own metadata.
+
+When the same version of a package exists in multiple repositories,
+repositories whose names sort last lexicographically are preferred, apart
+from the main repository, which is always considered last.
+
 Configuration specified in \fBrepos.conf\fR can be overridden by
 \fBPORTAGE_REPOSITORIES\fR environmental variable, which has the same
 format as \fBrepos.conf\fR.
@@ -1055,8 +1065,23 @@ When 'force = masters' attribute is not set, \fBegencache\fR(1) and
 \fBemirrordist\fR(1) ignore this attribute, since operations performed by
 these tools are inherently \fBnot\fR \fIsite\-specific\fR.
 .TP
-.B priority
-Specifies priority of given repository.
+.B package\-priority = integer
+When a package exists in multiple repositories, repositories with a higher
+priority are preferred. This takes precedence over constraints like version
+selection, masks, and USE flags. When priorities are equal, repositories are
+then considered in isolation in the usual manner. Negative values are
+permitted. The default value is 0. Explicit requests for a lower priority
+package with the \fB::repo\fR syntax are rejected. The rule extends to binary
+packages when the name of the repository a package was built from matches one
+currently configured in the target system. This feature is most useful for
+downstream distributions where an overlay should be used over the upstream
+repository no matter what.
+.TP
+.B package\-priority\-exclude
+A space separated list of category/package names to deprioritize from this
+repository. Matching ebuilds and binaries from this repository are given
+lower priority than all others. This takes precedence over constraints like
+version selection, masks, and USE flags.
 .TP
 .B strict\-misc\-digests = yes|no|true|false
 This setting determines whether digests are checked for files declared
@@ -1387,10 +1412,6 @@ main\-repo = gentoo
 eclass\-overrides = java\-overlay java\-experimental
 
 [gentoo]
-# repos with higher priorities are preferred when ebuilds with equal versions
-# are found in multiple repos (see the `emerge \-\-info \-\-verbose` repo
-# display for a listing of repos and their corresponding priorities).
-priority = 9999
 # disable all eclass overrides for ebuilds from the gentoo repository
 eclass\-overrides =
 # when processing metadata/layout.conf from other repositories, substitute
