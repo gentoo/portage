@@ -1,0 +1,2 @@
+save-ebuild-env.sh: Stop duplicating the name of every function that portage
+defines. Instead, have ebuild.sh record the functions that are declared.

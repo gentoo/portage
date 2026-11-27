@@ -532,7 +532,14 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 		fi
 		eval "${FUNC_SRC}" || echo "error creating QA interceptor ${BIN}" >&2
 	done
-	unset -v BIN_PATH BIN BODY FUNC_SRC
+	unset -v BIN_PATH BIN BODY FUNC_SRC QA_INTERCEPTORS
+fi
+
+# Record the functions that are declared before the saved environment, the
+# bashrc files, the ebuild and its eclasses are sourced, so that the
+# __save_ebuild_env() function can avoid saving them.
+if [[ ${EBUILD_PHASE} != depend ]]; then
+	___state[initial-functions]=${ declare -F; }
 fi
 
 # Subshell/helper die support (must export for the die helper).

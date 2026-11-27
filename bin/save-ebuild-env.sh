@@ -165,139 +165,20 @@ __save_ebuild_env() (
 	# Unset the collected variables before moving on to functions.
 	unset -v "${MAPFILE[@]}"
 
-	MAPFILE=(
-		EXPORT_FUNCTIONS
-		KV_major
-		KV_micro
-		KV_minor
-		KV_to_int
+	# Collect the functions that ebuild.sh recorded.
+	MAPFILE=()
+	while IFS=' ' read -r _ _ REPLY; do
+		if [[ ${REPLY} ]]; then
+			MAPFILE+=( "${REPLY}" )
+		fi
+	done <<<"${___state[initial-functions]}"
 
-		__abort_compile
-		__abort_configure
-		__abort_handler
-		__abort_install
-		__abort_prepare
-		__abort_test
-		__check_bash_version
-		__dump_trace
-		__dyn_clean
-		__dyn_compile
-		__dyn_configure
-		__dyn_help
-		__dyn_install
-		__dyn_prepare
-		__dyn_pretend
-		__dyn_setup
-		__dyn_test
-		__dyn_unpack
-		__ebuild_arg_to_phase
-		__ebuild_exit
-		__ebuild_ipc
-		__ebuild_main
-		__ebuild_phase
-		__ebuild_phase_funcs
-		__ebuild_phase_with_hooks
-		__eend
-		__elog_base
-		__eprint
-		__eqaquote
-		__eqatag
-		__expand_patches
-		__filter_readonly_variables
-		__get_columns
-		__get_repo_attrs
-		__has_phase_defined_up_to
-		__helpers_die
-		__is_uint
-		__pipestatus
-		__preprocess_ebuild_env
-		__qa_call
-		__qa_source
-		__quiet_mode
-		__save_ebuild_env
-		__sb_append_var
-		__set_colors
-		__source_all_bashrcs
-		__source_env_files
-		__strip_duplicate_slashes
-		__try_source
-		__unset_colors
-		__vecho
-		__ver_compare
-		__ver_compare_int
-		__ver_parse_range
-		__ver_split
-
-		adddeny
-		addpredict
-		addread
-		addwrite
-		assert
-		best_version
-		configparser
-		contains_word
-		debug-print
-		debug-print-function
-		debug-print-section
-		default
-		die
-		diropts
-		docinto
-		docompress
-		dostrip
-		ebegin
-		econf
-		eend
-		eerror
-		einfo
-		einfon
-		einstall
-		elog
-		eqawarn
-		ewarn
-		exeinto
-		exeopts
-		find0
-		get_KV
-		has
-		has_version
-		hasq
-		hasv
-		inherit
-		insinto
-		insopts
-		into
-		libopts
-		nonfatal
-		portageq
-		register_die_hook
-		register_success_hook
-		unpack
-		use
-		use_enable
-		use_with
-		useq
-		usev
-
-		# Defined by the "ebuild.sh" utility.
-		${QA_INTERCEPTORS}
-	)
-
+	# Collect those that __ebuild_phase_funcs() defines thereafter.
 	MAPFILE+=(
-		{default,__eapi{0,1,2,4,6,8}}_pkg_{config,info,nofetch,postinst,preinst,pretend,postrm,prerm,setup}
-		{default,__eapi{0,1,2,4,6,8}}_src_{configure,compile,install,prepare,test,unpack}
+		default
+		default_pkg_{config,info,nofetch,postinst,preinst,pretend,postrm,prerm,setup}
+		default_src_{configure,compile,install,prepare,test,unpack}
 	)
-
-	___eapi_has_ver_replacing && MAPFILE+=( ver_replacing )
-	___eapi_has_einstalldocs && MAPFILE+=( einstalldocs )
-	___eapi_has_eapply_user && MAPFILE+=( __readdir eapply_user )
-	___eapi_has_ver_helpers && MAPFILE+=( ver_test ver_cut ver_rs )
-	___eapi_has_get_libdir && MAPFILE+=( get_libdir )
-	___eapi_has_pipestatus && MAPFILE+=( pipestatus )
-	___eapi_has_in_iuse && MAPFILE+=( in_iuse )
-	___eapi_has_eapply && MAPFILE+=( __eapply_patch eapply patch )
-	___eapi_has_usex && MAPFILE+=( usex )
-	___eapi_has_edo && MAPFILE+=( edo )
 
 	# Destroy the collected functions.
 	unset -f "${MAPFILE[@]}"
@@ -307,8 +188,8 @@ __save_ebuild_env() (
 		if [[ ${REPLY} == ___* ]]; then
 			unset -f "${REPLY}"
 		fi
-	done < <(declare -F)
-	unset -v MAPFILE QA_INTERCEPTORS REPLY "${!___@}"
+	done <<<"${ declare -F; }"
+	unset -v MAPFILE REPLY "${!___@}"
 
 	declare -p
 	declare -fp
