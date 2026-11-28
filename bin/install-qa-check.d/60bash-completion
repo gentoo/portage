@@ -34,7 +34,7 @@ bashcomp_check() {
 				[[ ${args[0]} == complete ]] || continue
 				# command always comes last, one per line
 				echo "${args[$(( ${#args[@]} - 1))]}"
-			done < <(complete -p)
+			done <<<"${ complete -p; }"
 		}
 
 		# load the global helpers
