@@ -32,12 +32,13 @@ elf_check() {
 	f=""
 	for dir in "${forbidden_dirs[@]}"; do
 		while read l; do
+			[[ ${l} ]] || continue
 			f+="  ${l/:/\n    RPATH: }\n"
 			if ! contains_word stricter "${FEATURES}"; then
 				__vecho "Auto fixing rpaths for ${l%%:*}"
 				TMPDIR="${dir}" scanelf -BXr "${l%%:*}" -o /dev/null
 			fi
-		done < <(echo "${rpath_files}" | grep -F -e ":${dir}" -e "::" -e ": ")
+		done <<<"${ grep -F -e ":${dir}" -e "::" -e ": " <<<"${rpath_files}"; }"
 	done
 
 	# Reject set*id binaries with $ORIGIN in RPATH #260331
