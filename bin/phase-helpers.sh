@@ -1214,9 +1214,8 @@ if ___eapi_has_eapply_user; then
 				|| die "eapply_user: could not generate individual user patch digests"
 			done < <(printf '%s\0' "${!patch_by[@]}" | LC_ALL=C sort -z)
 
-			read -r hash _ < <(printf '%s' "${total}" | sha256sum) \
-			&& wait "$!" \
-			&& printf '%s\n' "${hash}" > "${userpatches_hash}" \
+			hash=${ printf '%s' "${total}" | sha256sum; } \
+			&& printf '%s\n' "${hash%% *}" > "${userpatches_hash}" \
 			|| die "eapply_user: could not generate hash over all user patches"
 
 			einfo "User patches applied."
