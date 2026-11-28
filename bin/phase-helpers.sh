@@ -1148,7 +1148,6 @@ if ___eapi_has_eapply_user; then
 		local basename basedir columns tagfile hr d f
 		local -A patch_by
 		local -a dirents
-		local IFS
 
 		[[ ${EBUILD_PHASE} == prepare ]] || \
 			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
@@ -1207,8 +1206,8 @@ if ___eapi_has_eapply_user; then
 			while IFS= read -rd '' basename; do
 				eapply -- "${patch_by[$basename]}"
 
-				read -r hash _ < <(sha256sum < "${patch_by[$basename]}") \
-				&& wait "$!" \
+				hash=${ sha256sum < "${patch_by[$basename]}"; } \
+				&& hash=${hash%% *} \
 				&& total+="${hash}" \
 				&& printf '%s\0' "${hash}" "${basename}" >> "${userpatch_digests}" \
 				|| die "eapply_user: could not generate individual user patch digests"
